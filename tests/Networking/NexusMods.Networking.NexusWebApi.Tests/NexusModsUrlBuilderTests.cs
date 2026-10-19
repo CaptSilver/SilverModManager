@@ -1,11 +1,11 @@
 using DynamicData.Kernel;
 using FluentAssertions;
 using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Abstractions.Telemetry;
+using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Sdk.NexusModsApi;
 using Xunit;
 
-namespace NexusMods.Telemetry.Tests;
+namespace NexusMods.Networking.NexusWebApi.Tests;
 
 public class NexusModsUrlBuilderTests
 {

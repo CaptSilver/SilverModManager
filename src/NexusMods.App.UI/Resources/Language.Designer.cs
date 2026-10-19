@@ -2788,46 +2788,6 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Allow.
-        /// </summary>
-        public static string MetricsOptIn_ALLOW {
-            get {
-                return ResourceManager.GetString("MetricsOptIn_ALLOW", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Deny.
-        /// </summary>
-        public static string MetricsOptIn_DENY {
-            get {
-                return ResourceManager.GetString("MetricsOptIn_DENY", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to We’d like to collect diagnostics and usage data to improve performance and enhance your experience. This data helps us identify issues, optimize features, and ensure the Nexus Mods app works better for everyone.
-        ///
-        ///Your data will be processed in accordance with our Privacy Policy. You can change your preference anytime in settings.
-        ///
-        ///Would you like to enable data collection?.
-        /// </summary>
-        public static string MetricsOptIn_MainMessage {
-            get {
-                return ResourceManager.GetString("MetricsOptIn_MainMessage", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Diagnostics and usage data.
-        /// </summary>
-        public static string MetricsOptIn_OverlayTitle {
-            get {
-                return ResourceManager.GetString("MetricsOptIn_OverlayTitle", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to remaining.
         /// </summary>
         public static string MinutesRemainingTextBlock {

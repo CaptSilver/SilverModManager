@@ -27,7 +27,6 @@
     <PackageVersion Include="NexusMods.Paths" Version="0.20.0" />
     <PackageVersion Include="NexusMods.Paths.Extensions.Nx" Version="0.20.0" />
     <PackageVersion Include="NexusMods.Paths.TestingHelpers" Version="0.20.0" />
-    <PackageVersion Include="NexusMods.Telemetry.OpenTelemetry" Version="1.0.0" />
     <PackageVersion Include="FomodInstaller.Interface" Version="1.2.0" />
     <PackageVersion Include="FomodInstaller.Scripting.XmlScript" Version="1.0.0" />
     <PackageVersion Include="Bannerlord.LauncherManager" Version="1.0.140" />
@@ -49,9 +48,6 @@
     <PackageVersion Include="StrawberryShake.Server" Version="15.1.10" />
     <PackageVersion Include="System.Text.Json" Version="9.0.0" VersionOverride="9.0.0" />
     <PackageVersion Include="TextMateSharp.Grammars" Version="1.0.70" />
-    <PackageVersion Include="OpenTelemetry" Version="1.12.0" />
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.12.0" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.12.0" />
     <PackageVersion Include="Polly.Core" Version="8.6.3" />
     <PackageVersion Include="Polly" Version="8.6.3" />
     <PackageVersion Include="Verify" Version="31.4.1" />

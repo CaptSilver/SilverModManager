@@ -32,18 +32,6 @@
     <data name="BrowseGames" xml:space="preserve">
         <value>Oyunlara göz at</value>
     </data>
-    <data name="MetricsOptIn_OverlayTitle" xml:space="preserve">
-        <value>Tanılama ve kullanım verileri</value>
-    </data>
-    <data name="MetricsOptIn_MainMessage" xml:space="preserve">
-        <value>Performansı iyileştirmek ve deneyiminizi geliştirmek için tanılama ve kullanım verileri toplamak istiyoruz. Bu veriler sorunları tespit etmemize, özellikleri optimize etmemize ve Nexus Mods uygulamasının herkes için daha iyi çalışmasını sağlamamıza yardımcı olur.&amp;#x0a;&amp;#x0a;Verileriniz Gizlilik Politikamız doğrultusunda işlenecektir. Tercihinizi istediğiniz zaman ayarlardan değiştirebilirsiniz.&amp;#x0a;&amp;#x0a;Veri toplamayı etkinleştirmek ister misiniz?</value>
-    </data>
-    <data name="MetricsOptIn_ALLOW" xml:space="preserve">
-        <value>İzin ver</value>
-    </data>
-    <data name="MetricsOptIn_DENY" xml:space="preserve">
-        <value>Reddet</value>
-    </data>
     <data name="Updater_UPDATE" xml:space="preserve">
         <value>Güncellemeyi görüntüle</value>
     </data>

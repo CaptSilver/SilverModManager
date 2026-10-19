@@ -5,7 +5,6 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Extensions;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Sdk.Resources;
-using NexusMods.Abstractions.Telemetry;
 using NexusMods.Games.StardewValley.Models;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk;

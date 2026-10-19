@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.WebUtilities;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Sdk.NexusModsApi;
 
-namespace NexusMods.Abstractions.Telemetry;
+namespace NexusMods.Abstractions.NexusWebApi;
 
-/// NOTE(erri120): This class consolidates all URL tracking parameter related
+/// NOTE(erri120): This class consolidates all URL campaign parameter related
 /// functionality. Anything that exposes a URL to the user that points to
 /// Nexus Mods should use this class.
 /// Everything in here is hardcoded and parameter values shouldn't be changed.

@@ -126,22 +126,6 @@
   <data name="BrowseGames" xml:space="preserve">
     <value>Обзор игр</value>
   </data>
-  <data name="MetricsOptIn_OverlayTitle" xml:space="preserve">
-    <value>Данные диагностики и использования</value>
-  </data>
-  <data name="MetricsOptIn_MainMessage" xml:space="preserve">
-    <value>Мы хотели бы собирать данные диагностики и использования для улучшения производительности и вашего опыта. Эти данные помогают нам выявлять проблемы, оптимизировать функции и обеспечивать лучшую работу приложения Nexus Mods для всех.
-
-Ваши данные будут обрабатываться в соответствии с нашей Политикой конфиденциальности. Вы можете изменить свои предпочтения в любое время в настройках.
-
-Хотите включить сбор данных?</value>
-  </data>
-  <data name="MetricsOptIn_ALLOW" xml:space="preserve">
-    <value>Разрешить</value>
-  </data>
-  <data name="MetricsOptIn_DENY" xml:space="preserve">
-    <value>Запретить</value>
-  </data>
   <data name="Updater_UPDATE" xml:space="preserve">
     <value>Посмотреть обновление</value>
   </data>

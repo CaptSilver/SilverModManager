@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Logging;
 using NexusMods.Abstractions.Serialization;
 using NexusMods.Sdk.Settings;
-using NexusMods.Abstractions.Telemetry;
 using NexusMods.App.Commandline;
 using NexusMods.App.UI;
 using NexusMods.App.UI.Settings;
@@ -24,7 +23,6 @@ using NexusMods.DataModel.SchemaVersions;
 using NexusMods.Paths;
 using NexusMods.ProxyConsole;
 using NexusMods.Sdk;
-using NexusMods.Sdk.Tracking;
 using NexusMods.SingleProcess;
 using NexusMods.SingleProcess.Exceptions;
 using NLog.Extensions.Logging;
@@ -47,14 +45,12 @@ public class Program
 
         MainThreadData.SetMainThread();
 
-        TrackingSettings trackingSettings;
         LoggingSettings loggingSettings;
         ExperimentalSettings experimentalSettings;
         GameLocatorSettings gameLocatorSettings;
         using (var settingsHost = BuildSettingsHost())
         {
             var settingsManager = settingsHost.Services.GetRequiredService<ISettingsManager>();
-            trackingSettings = settingsManager.Get<TrackingSettings>();
             loggingSettings = settingsManager.Get<LoggingSettings>();
             experimentalSettings = settingsManager.Get<ExperimentalSettings>();
             gameLocatorSettings = settingsManager.Get<GameLocatorSettings>();
@@ -63,7 +59,6 @@ public class Program
         var startupMode = StartupMode.Parse(args);
         using var host = BuildHost(
             startupMode,
-            trackingSettings,
             loggingSettings,
             experimentalSettings,
             gameLocatorSettings
@@ -71,13 +66,6 @@ public class Program
 
         var services = host.Services;
         _logger = services.GetRequiredService<ILogger<Program>>();
-
-        if (trackingSettings.EnableTracking)
-        {
-            Tracker.SetTracker(services.GetService<IEventTracker>());
-            Tracker.SetTracker(services.GetService<IExceptionTracker>());
-            Events.AppLaunched();
-        }
 
         // NOTE(erri120): has to come before host startup
         CleanupUnresponsiveProcesses(services).Wait(timeout: TimeSpan.FromSeconds(10));
@@ -316,7 +304,6 @@ public class Program
                 .AddSettingsManager()
                 .AddSerializationAbstractions()
                 .AddStorageBackend<JsonStorageBackend>()
-                .AddSettings<TrackingSettings>()
                 .AddSettings<LoggingSettings>()
                 .AddSettings<ExperimentalSettings>()
                 .AddSettings<GameLocatorSettings>()
@@ -339,7 +326,6 @@ public class Program
     /// </summary>
     private static IHost BuildHost(
         StartupMode startupMode,
-        TrackingSettings trackingSettings,
         LoggingSettings loggingSettings,
         ExperimentalSettings experimentalSettings,
         GameLocatorSettings? gameLocatorSettings = null)
@@ -348,12 +334,11 @@ public class Program
         var host = new HostBuilder().ConfigureServices(services =>
         {
             var s = services.AddApp(
-                trackingSettings,
                 startupMode: startupMode,
                 experimentalSettings: experimentalSettings,
                 gameLocatorSettings: gameLocatorSettings).Validate();
 
-            if (loggingSettings.ShowExceptions || trackingSettings.EnableTracking)
+            if (loggingSettings.ShowExceptions)
                 s.AddSingleton<IObservableExceptionSource, ObservableLoggingTarget>(_ => observableTarget);
 
             if (startupMode.IsAvaloniaDesigner)
@@ -446,7 +431,6 @@ public class Program
         };
 
         var host = BuildHost(startupMode,
-            trackingSettings: new TrackingSettings(),
             LoggingSettings.CreateDefault(OSInformation.Shared),
             experimentalSettings: new ExperimentalSettings()
         );

@@ -33,7 +33,7 @@ public partial class GameInstallMetadata : IModelDefinition
     // TODO: remove
     /// <summary>
     /// User friendly name for the game.
-    /// May be referred to from diagnostics, telemetry or otherwise.
+    /// May be referred to from diagnostics or otherwise.
     /// </summary>
     [Obsolete("to be removed")]
     public static readonly StringAttribute Name = new(Namespace, nameof(Name));

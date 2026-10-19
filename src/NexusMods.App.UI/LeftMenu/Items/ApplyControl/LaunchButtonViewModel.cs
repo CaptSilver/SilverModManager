@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -12,7 +11,6 @@ using NexusMods.App.UI.Resources;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Loadouts;
-using NexusMods.Telemetry;
 using NexusMods.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -68,21 +66,7 @@ public class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>, ILaunch
         try
         {
             var tool = _toolManager.GetTools(marker).OfType<IRunGameTool>().First();
-            await Task.Run(async () =>
-            {
-                var installation = marker.InstallationInstance;
-                var sw = Stopwatch.StartNew();
-                try
-                {
-                    Tracking.AddEvent(Events.Game.LaunchGame, new EventMetadata(name: $"{installation.Game.DisplayName} - {installation.LocatorResult.Store}"));
-                    await _toolManager.RunTool(tool, marker, _monitor, token: token);
-                }
-                finally
-                {
-                    var duration = sw.Elapsed;
-                    Tracking.AddEvent(Events.Game.ExitGame, EventMetadata.Create(name: $"{installation.Game.DisplayName} - {installation.LocatorResult.Store}", value: duration.TotalSeconds));
-                }
-            }, token);
+            await Task.Run(async () => await _toolManager.RunTool(tool, marker, _monitor, token: token), token);
         }
         catch (ExecutableInUseException)
         {

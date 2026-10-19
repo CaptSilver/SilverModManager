@@ -21,18 +21,6 @@
 	<data name="BrowseGames" xml:space="preserve">
 		<value>Przeglądaj gry</value>
 	</data>
-	<data name="MetricsOptIn_ALLOW" xml:space="preserve">
-		<value>Zezwól</value>
-	</data>
-	<data name="MetricsOptIn_DENY" xml:space="preserve">
-		<value>Odrzuć</value>
-	</data>
-	<data name="MetricsOptIn_OverlayTitle" xml:space="preserve">
-		<value>Diagnostyka i dane</value>
-	</data>
-	<data name="MetricsOptIn_MainMessage" xml:space="preserve">
-		<value>Chcielibyśmy zbierać dane diagnostyczne oraz informacje o Twoim użytkowaniu, aby poprawić wydajność i zwiększyć komfort korzystania z aplikacji. Dzięki tym danym będziemy mogli lepiej identyfikować ewentualne problemy, optymalizować funkcje oraz zapewniać, że Nexus Mods działa jeszcze sprawniej dla wszystkich użytkowników.&#x0a;&#x0a;Twoje dane będą przetwarzane zgodnie z naszą Polityką prywatności. W dowolnym momencie możesz zmienić swoje preferencje w ustawieniach.&#x0a;&#x0a;Czy chcesz włączyć zbieranie danych?</value>
-	</data>
 	<data name="Updater_UPDATE" xml:space="preserve">
 		<value>Zobacz aktualizację</value>
 	</data>

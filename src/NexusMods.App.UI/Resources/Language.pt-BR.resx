@@ -129,22 +129,6 @@
   <data name="BrowseGames" xml:space="preserve">
     <value>Procurar Jogos</value>
   </data>
-  <data name="MetricsOptIn_OverlayTitle" xml:space="preserve">
-    <value>Diagnóstico e dados de Utilização</value>
-  </data>
-  <data name="MetricsOptIn_MainMessage" xml:space="preserve">
-    <value>Ajude-nos a fornecer a você a melhor experiência de modificação.
-
-com sua permissão, coletaremos informações de análise e as enviaremos à nossa equipe para nos ajudar a melhorar a qualidade e o desempenho.
-
- esta informação é enviada anonimamente e nunca será compartilhada com uma parte 3rd.</value>
-  </data>
-  <data name="MetricsOptIn_ALLOW" xml:space="preserve">
-    <value>Permitir</value>
-  </data>
-  <data name="MetricsOptIn_DENY" xml:space="preserve">
-    <value>Negar</value>
-  </data>
   <data name="Updater_UPDATE" xml:space="preserve">
     <value>Ver atualização</value>
   </data>

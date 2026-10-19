@@ -27,25 +27,6 @@
     <data name="BrowseGames" xml:space="preserve">
         <value>Spiele suchen</value>
     </data>
-    <data name="MetricsOptIn_ALLOW" xml:space="preserve">
-        <value>Erlauben</value>
-    </data>
-    <data name="MetricsOptIn_DENY" xml:space="preserve">
-        <value>Verbieten</value>
-    </data>
-    <data name="MetricsOptIn_OverlayTitle" xml:space="preserve">
-        <value>Diagnose- und Nutzungsdaten</value>
-    </data>
-    <data name="MetricsOptIn_MoreInfoAboutTheDataWeTrack" xml:space="preserve">
-        <value>Weitere Informationen über die von uns gesammelten Daten</value>
-    </data>
-    <data name="MetricsOptIn_MainMessage" xml:space="preserve">
-        <value>Helfe uns, damit wir dir das beste Modding-Erlebnis bieten können.
-
-Mit deiner Erlaubnis sammeln wir Analysedaten und senden sie an unser Team, um die Qualität und Leistung zu verbessern.
-
-Diese Informationen werden anonym gesendet und werden niemals an Dritte weitergegeben.</value>
-    </data>
     <data name="Updater_LATER" xml:space="preserve">
         <value>Später</value>
     </data>

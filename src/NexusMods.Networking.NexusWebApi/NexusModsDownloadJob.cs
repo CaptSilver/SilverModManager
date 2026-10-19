@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.HttpDownloads;
@@ -6,11 +5,8 @@ using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Networking.HttpDownloader;
 using NexusMods.Paths;
-using DynamicData.Kernel;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Tracking;
 
 namespace NexusMods.Networking.NexusWebApi;
 
@@ -19,7 +15,6 @@ public class NexusModsDownloadJob : INexusModsDownloadJob, IJobDefinitionWithSta
     public required ILogger Logger { private get; init; }
     public required IJobTask<IHttpDownloadJob, AbsolutePath> HttpDownloadJob { get; init; }
     public required NexusModsFileMetadata.ReadOnly FileMetadata { get; init; }
-    public Optional<CollectionRevisionMetadata.ReadOnly> ParentRevision { get; init; }
 
     /// <inheritdoc/>
     public AbsolutePath Destination => HttpDownloadJob.JobDefinition.Destination;
@@ -27,8 +22,7 @@ public class NexusModsDownloadJob : INexusModsDownloadJob, IJobDefinitionWithSta
     public static IJobTask<NexusModsDownloadJob, AbsolutePath> Create(
         IServiceProvider provider,
         IJobTask<HttpDownloadJob, AbsolutePath> httpDownloadJob,
-        NexusModsFileMetadata.ReadOnly fileMetadata,
-        Optional<CollectionRevisionMetadata.ReadOnly> parentRevision = default)
+        NexusModsFileMetadata.ReadOnly fileMetadata)
     {
         var monitor = provider.GetRequiredService<IJobMonitor>();
         var job = new NexusModsDownloadJob
@@ -36,7 +30,6 @@ public class NexusModsDownloadJob : INexusModsDownloadJob, IJobDefinitionWithSta
             Logger = provider.GetRequiredService<ILogger<NexusModsDownloadJob>>(),
             HttpDownloadJob = httpDownloadJob,
             FileMetadata = fileMetadata,
-            ParentRevision = parentRevision,
         };
 
         return monitor.Begin<NexusModsDownloadJob, AbsolutePath>(job);
@@ -46,51 +39,16 @@ public class NexusModsDownloadJob : INexusModsDownloadJob, IJobDefinitionWithSta
     {
         try
         {
-            var sw = Stopwatch.StartNew();
-            var path = await HttpDownloadJob;
-
-            Events.ModsDownloadCompleted(
-                fileId: FileMetadata.Uid.FileId.Value,
-                modId: FileMetadata.ModPage.Uid.ModId.Value,
-                gameId: FileMetadata.Uid.GameId.Value,
-                modUid: FileMetadata.ModPage.Uid.AsUlong,
-                fileUid: FileMetadata.Uid.AsUlong,
-                fileSize: FileMetadata.Size.ValueOrDefault(),
-                duration: sw,
-                collectionId: ParentRevision.Convert(x => x.Collection.CollectionId.Value),
-                revisionId: ParentRevision.Convert(x => x.RevisionId.Value)
-            );
-
-            return path;
+            return await HttpDownloadJob;
         }
         catch (TaskCanceledException)
         {
-            Events.ModsDownloadCancelled(
-                fileId: FileMetadata.Uid.FileId.Value,
-                modId: FileMetadata.ModPage.Uid.ModId.Value,
-                gameId: FileMetadata.Uid.GameId.Value,
-                modUid: FileMetadata.ModPage.Uid.AsUlong,
-                fileUid: FileMetadata.Uid.AsUlong,
-                collectionId: ParentRevision.Convert(x => x.Collection.CollectionId.Value),
-                revisionId: ParentRevision.Convert(x => x.RevisionId.Value)
-            );
-
             // Propagate cancellation so upstream jobs (e.g. AddDownloadJob) can abort follow-up actions.
             Logger.LogInformation("Download cancelled by user for file `{GameId}/{ModId}/{FileId}`", FileMetadata.Uid.GameId, FileMetadata.ModPage.Uid.ModId, FileMetadata.Uid.FileId);
             throw;
         }
         catch (Exception e)
         {
-            Events.ModsDownloadFailed(
-                fileId: FileMetadata.Uid.FileId.Value,
-                modId: FileMetadata.ModPage.Uid.ModId.Value,
-                gameId: FileMetadata.Uid.GameId.Value,
-                modUid: FileMetadata.ModPage.Uid.AsUlong,
-                fileUid: FileMetadata.Uid.AsUlong,
-                collectionId: ParentRevision.Convert(x => x.Collection.CollectionId.Value),
-                revisionId: ParentRevision.Convert(x => x.RevisionId.Value)
-            );
-
             Logger.LogError(e, "Exception while downloading file `{GameId}/{ModId}/{FileId}`", FileMetadata.Uid.GameId, FileMetadata.ModPage.Uid.ModId, FileMetadata.Uid.FileId);
             throw;
         }

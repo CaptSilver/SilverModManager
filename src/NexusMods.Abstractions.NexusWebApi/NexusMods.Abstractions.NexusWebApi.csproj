@@ -5,6 +5,7 @@
     <ItemGroup>
         <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <PackageReference Include="DynamicData" />
+        <PackageReference Include="Microsoft.AspNetCore.WebUtilities" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
         <PackageReference Include="NexusMods.MnemonicDB.Abstractions" />
     </ItemGroup>

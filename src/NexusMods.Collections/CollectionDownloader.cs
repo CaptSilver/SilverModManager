@@ -13,7 +13,6 @@ using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Sdk.Settings;
-using NexusMods.Abstractions.Telemetry;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.DatomIterators;
 using NexusMods.MnemonicDB.Abstractions.ElementComparers;
@@ -189,7 +188,7 @@ public class CollectionDownloader
         if (userInfo.UserRole is UserRole.Premium)
         {
             await using var tempPath = _temporaryFileManager.CreateFile();
-            var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, download.FileMetadata, parentRevision: download.AsCollectionDownload().CollectionRevision, cancellationToken: cancellationToken);
+            var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, download.FileMetadata, cancellationToken: cancellationToken);
             await _libraryService.AddDownload(job);
         }
         else

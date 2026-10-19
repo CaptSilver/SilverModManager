@@ -30,12 +30,6 @@ public partial class WelcomeOverlayView : ReactiveUserControl<IWelcomeOverlayVie
             this.BindCommand(ViewModel, vm => vm.CommandClose, view => view.ButtonClose)
                 .AddTo(disposables);
 
-            this.BindCommand(ViewModel, vm => vm.CommandOpenPrivacyPolicy, view => view.ButtonOpenPrivacyPolicy)
-                .AddTo(disposables);
-
-            this.Bind(ViewModel, vm => vm.AllowTelemetry.Value, view => view.CheckBoxAllowTelemetry.IsChecked)
-                .AddTo(disposables);
-
             this.WhenAnyValue(view => view.ViewModel!.IsLoggedIn.Value)
                 .Subscribe(isLoggedIn =>
                 {

@@ -33,18 +33,6 @@
         <value>Browse Games</value>
     </data>
 
-    <data name="MetricsOptIn_OverlayTitle" xml:space="preserve">
-        <value>Diagnostics and usage data</value>
-    </data>
-    <data name="MetricsOptIn_MainMessage" xml:space="preserve">
-        <value>We’d like to collect diagnostics and usage data to improve performance and enhance your experience. This data helps us identify issues, optimize features, and ensure the Nexus Mods app works better for everyone.&#x0a;&#x0a;Your data will be processed in accordance with our Privacy Policy. You can change your preference anytime in settings.&#x0a;&#x0a;Would you like to enable data collection?</value>
-    </data>
-    <data name="MetricsOptIn_ALLOW" xml:space="preserve">
-        <value>Allow</value>
-    </data>
-    <data name="MetricsOptIn_DENY" xml:space="preserve">
-        <value>Deny</value>
-    </data>
 
     <data name="Updater_UPDATE" xml:space="preserve">
         <value>View update</value>

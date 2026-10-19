@@ -62,22 +62,6 @@
     <data name="MessageBox_Button_Yes" xml:space="preserve">
         <value>Sì</value>
     </data>
-    <data name="MetricsOptIn_ALLOW" xml:space="preserve">
-        <value>PERMETTI</value>
-    </data>
-    <data name="MetricsOptIn_DENY" xml:space="preserve">
-        <value>RIFIUTA</value>
-    </data>
-    <data name="MetricsOptIn_MainMessage" xml:space="preserve">
-        <value>Aiutaci ad offirti la migliore esperienza di modding.
-
-Con il tuo permesso, raccoglieremo informazioni analitiche da mandare al team di sviluppo per aiutarci a migliorare la stabilità, qualità e performance dell'applicazione.
-
-Questi dati sono raccolti in maniera anonima e non saranno mai condivisi con terze parti.</value>
-    </data>
-    <data name="MetricsOptIn_MoreInfoAboutTheDataWeTrack" xml:space="preserve">
-        <value>Più informazioni riguardanti i dati che raccogliamo.</value>
-    </data>
     <data name="MyGames" xml:space="preserve">
         <value>I Miei Giochi</value>
     </data>
@@ -107,9 +91,6 @@ Questi dati sono raccolti in maniera anonima e non saranno mai condivisi con ter
     </data>
     <data name="DownloadStatus_Progress" xml:space="preserve">
         <value>Progresso</value>
-    </data>
-    <data name="MetricsOptIn_OverlayTitle" xml:space="preserve">
-        <value>Dati diagnostici e di utilizzo</value>
     </data>
     <data name="Nexus_Premium_Status__Premium" xml:space="preserve">
         <value>PREMIUM</value>

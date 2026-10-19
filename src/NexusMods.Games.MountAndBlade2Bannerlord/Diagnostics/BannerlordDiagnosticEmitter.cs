@@ -9,7 +9,6 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Extensions;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Abstractions.Telemetry;
 using NexusMods.Games.MountAndBlade2Bannerlord.Models;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.NexusModsApi;
