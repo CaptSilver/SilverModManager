@@ -53,34 +53,10 @@ public partial class HostOsCheckGuardTests
     [Fact]
     public void Test_NoUnlistedOsChecksInSource()
     {
-        var root = FindRepoRoot();
-        var allowed = Allowed.Select(a => (a.File, a.Line)).ToHashSet();
+        var root = RepoScanGuard.FindRepoRoot();
+        var files = RepoScanGuard.EnumerateFiles(root, "src", "*.cs");
+        var found = RepoScanGuard.FindLines(root, files, line => !line.StartsWith("//") && HostOsCheck().IsMatch(line));
 
-        var found = new HashSet<(string File, string Line)>();
-        foreach (var path in Directory.EnumerateFiles(Path.Combine(root, "src"), "*.cs", SearchOption.AllDirectories))
-        {
-            var relative = Path.GetRelativePath(root, path).Replace('\\', '/');
-            if (relative.Split('/').Any(part => part is "obj" or "bin")) continue;
-
-            foreach (var line in File.ReadLines(path))
-            {
-                var trimmed = line.Trim();
-                if (trimmed.StartsWith("//")) continue;
-                if (HostOsCheck().IsMatch(trimmed)) found.Add((relative, trimmed));
-            }
-        }
-
-        var unlisted = found.Except(allowed).OrderBy(x => x.File).Select(x => $"{x.File}: {x.Line}");
-        string.Join(Environment.NewLine, unlisted).Should().BeEmpty("the app only runs on Linux; only checks on the game's target OS belong in src. Collapse the check or add it to the allowlist with a reason");
-
-        var stale = allowed.Except(found).OrderBy(x => x.File).Select(x => $"{x.File}: {x.Line}");
-        string.Join(Environment.NewLine, stale).Should().BeEmpty("allowlist entries must match a line in src, remove the ones that no longer do");
-    }
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "NexusMods.App.sln"))) dir = dir.Parent;
-        return dir?.FullName ?? throw new InvalidOperationException("Could not find NexusMods.App.sln above the test binaries");
+        RepoScanGuard.AssertMatchesAllowlist(found, Allowed, "the app only runs on Linux; only checks on the game's target OS belong in src. Collapse the check or add it to the allowlist with a reason");
     }
 }

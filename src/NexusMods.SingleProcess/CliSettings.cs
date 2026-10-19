@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Sdk.Settings;
 using NexusMods.Paths;
+using NexusMods.Sdk;
 
 namespace NexusMods.SingleProcess;
 
@@ -29,14 +30,14 @@ public class CliSettings() : ISettings
     /// </summary>
     /// <param name="provider"></param>
     /// <returns></returns>
-    private static CliSettings CreateDefault(IServiceProvider provider)
+    internal static CliSettings CreateDefault(IServiceProvider provider)
     {
         var fs = provider.GetRequiredService<IFileSystem>();
         var directory = fs.GetKnownPath(KnownPath.XDG_RUNTIME_DIR);
 
         return new CliSettings
         {
-            SyncFile = directory.Combine("NexusMods.App-sync_file.sync"),
+            SyncFile = directory.Combine($"{ApplicationConstants.DataDirectoryName}-sync_file.sync"),
         };
     }
 

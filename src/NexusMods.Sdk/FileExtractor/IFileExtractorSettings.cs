@@ -32,7 +32,7 @@ public record FileExtractorSettings : ISettings
         //       often a RAM disk and too small to handle large files.
         return new FileExtractorSettings
         {
-            TempFolderLocation = new ConfigurablePath(KnownPath.XDG_STATE_HOME, "NexusMods.App/Temp"),
+            TempFolderLocation = new ConfigurablePath(KnownPath.XDG_STATE_HOME, $"{ApplicationConstants.DataDirectoryName}/Temp"),
         };
     }
 }

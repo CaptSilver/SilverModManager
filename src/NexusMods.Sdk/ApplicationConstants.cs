@@ -14,6 +14,22 @@ namespace NexusMods.Sdk;
 public static class ApplicationConstants
 {
     /// <summary>
+    /// The product name, shown to the user and used as the window class and user agent name.
+    /// </summary>
+    public const string ProductName = "SilverModManager";
+
+    /// <summary>
+    /// The reverse-DNS application id, used for desktop integration only.
+    /// </summary>
+    public const string ApplicationId = "io.github.CaptSilver.SilverModManager";
+
+    /// <summary>
+    /// Name of the folder under the XDG data, state and local application data directories.
+    /// It differs from the upstream app's folder so both can run side by side.
+    /// </summary>
+    public const string DataDirectoryName = "SilverModManager";
+
+    /// <summary>
     /// Whether the application is running in debug mode.
     /// </summary>
     public static readonly bool IsDebug;
@@ -175,7 +191,7 @@ public static class ApplicationConstants
     /// <summary>
     /// Default user agent application name.
     /// </summary>
-    private const string DefaultUserAgentName = "NexusModsApp";
+    private const string DefaultUserAgentName = ProductName;
 
 #endregion
 }

@@ -85,5 +85,5 @@ public record DataModelSettings : ISettings
     }
 
     private const KnownPath BaseKnownPath = KnownPath.XDG_DATA_HOME;
-    private const string BaseDirectoryName = "NexusMods.App";
+    private const string BaseDirectoryName = ApplicationConstants.DataDirectoryName;
 }

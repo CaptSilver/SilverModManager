@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Settings;
 
 namespace NexusMods.Backend;
@@ -32,9 +33,9 @@ public sealed class JsonStorageBackend : IStorageBackend
         _configDirectory.CreateDirectory();
     }
 
-    private static AbsolutePath GetConfigsFolderPath(IFileSystem fileSystem)
+    internal static AbsolutePath GetConfigsFolderPath(IFileSystem fileSystem)
     {
-        return fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine("NexusMods.App/Configs");
+        return fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine($"{ApplicationConstants.DataDirectoryName}/Configs");
     }
 
     private AbsolutePath GetConfigPath<T>(string? key)

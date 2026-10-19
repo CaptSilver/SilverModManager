@@ -14,5 +14,8 @@
       <ProjectReference Include="..\NexusMods.App.Cli\NexusMods.App.Cli.csproj" />
       <ProjectReference Include="..\NexusMods.ProxyConsole\NexusMods.ProxyConsole.csproj" />
     </ItemGroup>
+    <ItemGroup>
+      <InternalsVisibleTo Include="NexusMods.CLI.Tests" />
+    </ItemGroup>
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 </Project>

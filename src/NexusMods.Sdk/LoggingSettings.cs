@@ -118,13 +118,16 @@ public record LoggingSettings : ISettings
     {
         return new LoggingSettings
         {
-            MainProcessLogFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/nexusmods.app.main.current.log"),
-            MainProcessArchiveFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/nexusmods.app.main.{{##}}.log"),
-            SlimProcessLogFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/nexusmods.app.slim.current.log"),
-            SlimProcessArchiveFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/nexusmods.app.slim.{{##}}.log"),
+            MainProcessLogFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.main.current.log"),
+            MainProcessArchiveFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.main.{{##}}.log"),
+            SlimProcessLogFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.slim.current.log"),
+            SlimProcessArchiveFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.slim.{{##}}.log"),
         };
     }
 
     private const KnownPath BaseKnownPath = KnownPath.XDG_STATE_HOME;
-    private const string BaseDirectoryName = "NexusMods.App/Logs";
+    private const string BaseDirectoryName = $"{ApplicationConstants.DataDirectoryName}/Logs";
+
+    // Lowercase, as log file names conventionally are; the product name has capitals.
+    private const string LogFilePrefix = "silvermodmanager";
 }

@@ -73,6 +73,13 @@ public class Program
 
             var modelExists = dataModelSettings.MnemonicDBPath.ToPath(fileSystem).DirectoryExists();
 
+            // Both apps would treat a game folder managed by the other as their own, so a
+            // loadout left applied by upstream gets recorded as the game's original state.
+            if (UpstreamData.Exists(fileSystem))
+            {
+                _logger.LogWarning("Upstream Nexus Mods App data found at {Path}; unmanage shared games there first", UpstreamData.DataModelPath(fileSystem));
+            }
+
             _ = Task.Run(async () =>
             {
                 try
