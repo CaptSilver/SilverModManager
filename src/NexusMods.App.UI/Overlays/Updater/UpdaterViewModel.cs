@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.App.UI.Settings;
 using NexusMods.Sdk.Settings;
 using NexusMods.Networking.GitHub;
-using NexusMods.Paths;
 using NexusMods.Sdk;
 using R3;
 
@@ -54,7 +53,6 @@ public class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IUpdaterVi
     {
         var currentVersion = ApplicationConstants.Version;
         var installationMethod = ApplicationConstants.InstallationMethod;
-        var os = OSInformation.Shared;
 
         if (!UpdateChecker.ShouldCheckForUpdate(currentVersion, installationMethod)) return null;
         var updateChecker = serviceProvider.GetRequiredService<UpdateChecker>();
@@ -66,7 +64,7 @@ public class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IUpdaterVi
         if (!release.TryGetVersion(out var latestVersion)) throw new UnreachableException();
         if (settingsManager.Get<UpdaterSettings>().VersionToSkip.Equals(latestVersion)) return null;
 
-        updateChecker.TryGetMatchingReleaseAsset(release, os, installationMethod, out var releaseAsset);
+        updateChecker.TryGetMatchingReleaseAsset(release, installationMethod, out var releaseAsset);
 
         return new UpdaterViewModel(
             osInterop: serviceProvider.GetRequiredService<IOSInterop>(),

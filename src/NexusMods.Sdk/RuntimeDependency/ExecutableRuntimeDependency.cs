@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Text;
 using CliWrap;
 using DynamicData.Kernel;
@@ -15,9 +14,6 @@ public abstract class ExecutableRuntimeDependency : IRuntimeDependency
     public abstract string Description { get; }
     /// <inheritdoc/>
     public abstract Uri Homepage { get; }
-    /// <inheritdoc/>
-    public abstract OSPlatform[] SupportedPlatforms { get; }
-
     /// <inheritdoc/>
     public RuntimeDependencyType DependencyType => RuntimeDependencyType.Executable;
 

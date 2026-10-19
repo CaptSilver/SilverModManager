@@ -1,6 +1,4 @@
-using System.Runtime.InteropServices;
 using DynamicData.Kernel;
-using NexusMods.Paths;
 
 namespace NexusMods.Sdk;
 
@@ -21,9 +19,6 @@ public class AggregateExecutableRuntimeDependency : IRuntimeDependency
 
     /// <inheritdoc />
     public Uri Homepage { get; }
-
-    /// <inheritdoc />
-    public OSPlatform[] SupportedPlatforms { get; }
 
     /// <inheritdoc />
     public RuntimeDependencyType DependencyType => RuntimeDependencyType.Executable;
@@ -48,14 +43,10 @@ public class AggregateExecutableRuntimeDependency : IRuntimeDependency
         DisplayName = displayName;
         Description = description;
         Homepage = homepage;
-        SupportedPlatforms = dependencies
-            .SelectMany(d => d.SupportedPlatforms)
-            .Distinct()
-            .ToArray();
     }
 
     /// <summary>
-    /// Gets the currently active dependency implementation that is both installed and supports the current operating system.
+    /// Gets the currently active dependency implementation that is installed.
     /// </summary>
     private async ValueTask<ExecutableRuntimeDependency?> GetActiveDependencyAsync(CancellationToken cancellationToken = default)
     {
@@ -66,10 +57,6 @@ public class AggregateExecutableRuntimeDependency : IRuntimeDependency
         {
             try
             {
-                // Verify the inner dependency supports our OS.
-                if (!dependency.SupportedPlatforms.Contains(OSInformation.Shared.Platform))
-                    continue;
-
                 var result = await dependency.QueryInstallationInformation(cancellationToken);
                 if (!result.HasValue) 
                     continue;

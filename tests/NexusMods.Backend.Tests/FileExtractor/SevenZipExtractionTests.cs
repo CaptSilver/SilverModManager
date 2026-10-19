@@ -3,7 +3,6 @@ using NexusMods.Backend.FileExtractor.Extractors;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
-using Reloaded.Memory.Extensions;
 
 namespace NexusMods.Backend.Tests.FileExtractor;
 
@@ -21,28 +20,6 @@ public class SevenZipExtractionTests : AFileExtractorTest
 
         var files = destination.Path.EnumerateFiles().ToArray();
         files.Should().OnlyContain(x => x.FileExists);
-    }
-
-    [Theory]
-    [InlineData("foo/bar", "foo/bar")]
-    [InlineData("foo/bar ", "foo/bar_")]
-    [InlineData("foo/bar  ", "foo/bar__")]
-    [InlineData("foo/bar.", "foo/bar_")]
-    [InlineData("foo/bar..", "foo/bar__")]
-    [InlineData("foo/bar. ", "foo/bar__")]
-    [InlineData(". ", "__")]
-    [InlineData(".", "_")]
-    [InlineData(" ", "_")]
-    public void Test_To7ZipWindowsExtractionPath(string input, string expected)
-    {
-        Span<char> span = stackalloc char[input.Length];
-        input.AsSpan().CopyTo(span);
-
-        var slice = span.SliceFast(start: 0, length: input.Length);
-        SevenZipExtractor.To7ZipWindowsExtractionPath(slice);
-
-        var actual = slice.ToString();
-        actual.Should().Be(expected);
     }
 
     [Theory]

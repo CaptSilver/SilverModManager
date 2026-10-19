@@ -1,40 +1,43 @@
-using System.Runtime.InteropServices;
 using FluentAssertions;
 using NexusMods.App.UI.Overlays.Updater;
-using NexusMods.Paths;
 using NexusMods.Sdk;
 
 namespace NexusMods.UI.Tests;
 
 public class UpdateCheckerTests
 {
-    private static readonly OSPlatform[] Platforms = [OSPlatform.Linux, OSPlatform.Windows];
     private static readonly InstallationMethod[] InstallationMethods = Enum.GetValues<InstallationMethod>();
 
     [Theory]
     [MemberData(nameof(TestData_Matches))]
-    public void Test_Matches(string fileName, OSPlatform platform, InstallationMethod installationMethod)
+    public void Test_Matches(string fileName, InstallationMethod installationMethod)
     {
-        // NOTE(erri120): tests all permutations and makes sure that the givenFile only matches the provided platform and method
-        foreach (var otherPlatform in Platforms)
+        // NOTE(erri120): tests all permutations and makes sure that the givenFile only matches the provided method
+        foreach (var otherMethod in InstallationMethods)
         {
-            var os = new OSInformation(otherPlatform);
-            foreach (var otherMethod in InstallationMethods)
-            {
-                var expected = otherMethod == installationMethod && otherPlatform.Equals(platform);
-                var actual = UpdateChecker.Matches(fileName, os, otherMethod);
-                actual.Should().Be(expected, because: $"fileName={fileName} platform={otherPlatform} method={otherMethod}");
-            }
+            var expected = otherMethod == installationMethod;
+            var actual = UpdateChecker.Matches(fileName, otherMethod);
+            actual.Should().Be(expected, because: $"fileName={fileName} method={otherMethod}");
         }
     }
 
-    public static TheoryData<string, OSPlatform, InstallationMethod> TestData_Matches()
+    [Theory]
+    [InlineData("App.win-x64.zip")]
+    [InlineData("App.osx-arm64.zip")]
+    public void Test_Matches_RejectsOtherPlatforms(string fileName)
     {
-        return new TheoryData<string, OSPlatform, InstallationMethod>
+        foreach (var method in InstallationMethods)
         {
-            { "App.linux-x64.zip", OSPlatform.Linux, InstallationMethod.Archive },
-            { "App.win-x64.zip", OSPlatform.Windows, InstallationMethod.Archive },
-            { "App.AppImage", OSPlatform.Linux, InstallationMethod.AppImage},
+            UpdateChecker.Matches(fileName, method).Should().BeFalse(because: $"fileName={fileName} method={method}");
+        }
+    }
+
+    public static TheoryData<string, InstallationMethod> TestData_Matches()
+    {
+        return new TheoryData<string, InstallationMethod>
+        {
+            { "App.linux-x64.zip", InstallationMethod.Archive },
+            { "App.AppImage", InstallationMethod.AppImage},
         };
     }
 }

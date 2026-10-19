@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 
@@ -24,11 +23,6 @@ public interface IRuntimeDependency
     /// Gets a Uri to the homepage of the dependency.
     /// </summary>
     Uri Homepage { get; }
-
-    /// <summary>
-    /// Gets all platforms on which the dependency is used.
-    /// </summary>
-    OSPlatform[] SupportedPlatforms { get; }
 
     /// <summary>
     /// Gets the type.

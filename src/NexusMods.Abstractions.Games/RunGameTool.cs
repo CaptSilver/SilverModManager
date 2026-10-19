@@ -61,7 +61,7 @@ public class RunGameTool<T> : IRunGameTool
         var program = await GetGamePath(loadout);
         var primaryFile = loadout.InstallationInstance.Locations.ToAbsolutePath(_game.GetPrimaryFile(loadout.InstallationInstance));
 
-        if (OSInformation.Shared.IsLinux && program.Equals(primaryFile))
+        if (program.Equals(primaryFile))
         {
             var locatorResult = loadout.InstallationInstance.LocatorResult;
             if (locatorResult.Store == GameStore.Steam)
@@ -171,8 +171,6 @@ public class RunGameTool<T> : IRunGameTool
 
     private async Task RunThroughSteam(string appId, CancellationToken cancellationToken, string[] commandLineArgs)
     {
-        if (!OSInformation.Shared.IsLinux) OSInformation.Shared.ThrowUnsupported();
-
         var timeout = TimeSpan.FromMinutes(5);
 
         // NOTE(erri120): This should be empty for most of the time. We want to wait until the reaper process for
@@ -205,8 +203,6 @@ public class RunGameTool<T> : IRunGameTool
 
     private async Task RunThroughHeroic(string type, string productId, CancellationToken cancellationToken, string[] commandLineArgs)
     {
-        Debug.Assert(OSInformation.Shared.IsLinux);
-
         // TODO: track process
         if (commandLineArgs.Length > 0)
             _logger.LogError("Heroic does not currently support command line arguments: https://github.com/Nexus-Mods/NexusMods.App/issues/2264 . " +

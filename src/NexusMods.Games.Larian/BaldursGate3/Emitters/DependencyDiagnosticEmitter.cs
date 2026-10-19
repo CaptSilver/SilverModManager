@@ -12,7 +12,6 @@ using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Games.Larian.BaldursGate3.Utils.PakParsing;
-using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.NexusModsApi;
@@ -25,14 +24,12 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
 {
     private readonly ILogger _logger;
     private readonly IResourceLoader<Hash, Outcome<LspkPackageFormat.PakMetaData>> _metadataPipeline;
-    private readonly IOSInformation _os;
     private readonly GameDomain _gameDomain;
 
-    public DependencyDiagnosticEmitter(IServiceProvider serviceProvider, ILogger<DependencyDiagnosticEmitter> logger, IOSInformation os, IGameDomainToGameIdMappingCache mappingCache)
+    public DependencyDiagnosticEmitter(IServiceProvider serviceProvider, ILogger<DependencyDiagnosticEmitter> logger, IGameDomainToGameIdMappingCache mappingCache)
     {
         _logger = logger;
         _metadataPipeline = Pipelines.GetMetadataPipeline(serviceProvider);
-        _os = os;
         _gameDomain = mappingCache[BaldursGate3.NexusModsGameId.Value];
     }
 
@@ -41,7 +38,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
         var bg3LoadoutFile = GetScriptExtenderLoadoutFile(loadout);
         
         // BG3SE WINEDLLOVERRIDE diagnostic
-        if (_os.IsLinux  && bg3LoadoutFile.HasValue && loadout.Installation.Store == GameStore.Steam)
+        if (bg3LoadoutFile.HasValue && loadout.Installation.Store == GameStore.Steam)
         {
             // yield return Diagnostics.
             yield return Diagnostics.CreateBg3SeWineDllOverrideSteam(Template: "text");

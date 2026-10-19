@@ -81,36 +81,22 @@ public class StardewValley : IGame, IGameData<StardewValley>
     public GamePath GetPrimaryFile(GameInstallation installation)
     {
         // NOTE(erri120): Our SMAPI installer overrides all of these files.
-        return installation.LocatorResult.TargetOS.MatchPlatform(
-            onWindows: () => new GamePath(LocationId.Game, "Stardew Valley.exe"),
-            onLinux: () => new GamePath(LocationId.Game, "StardewValley"),
-            onOSX: () => new GamePath(LocationId.Game, "Contents/MacOS/StardewValley")
-        );
+        return installation.LocatorResult.TargetOS.IsWindows
+            ? new GamePath(LocationId.Game, "Stardew Valley.exe")
+            : new GamePath(LocationId.Game, "StardewValley");
     }
 
     public Optional<GamePath> GetFallbackCollectionInstallDirectory(GameInstallation installation)
     {
         // NOTE(erri120): see https://github.com/Nexus-Mods/NexusMods.App/issues/2553
-        var path = installation.LocatorResult.TargetOS.MatchPlatform(
-            onWindows: () => new GamePath(LocationId.Game, Constants.ModsFolder),
-            onLinux: () => new GamePath(LocationId.Game, Constants.ModsFolder),
-            onOSX: () => new GamePath(LocationId.Game, "Contents/MacOS" / Constants.ModsFolder)
-        );
-
-        return Optional<GamePath>.Create(path);
+        return Optional<GamePath>.Create(new GamePath(LocationId.Game, Constants.ModsFolder));
     }
 
     public Optional<Version> GetLocalVersion(GameInstallation installation)
     {
         try
         {
-            var path = installation.LocatorResult.TargetOS.MatchPlatform(
-                onWindows: () => "Stardew Valley.dll",
-                onLinux: () => "Stardew Valley.dll",
-                onOSX: () => "Contents/MacOS/Stardew Valley.dll"
-            );
-
-            var fileInfo = installation.Locations[LocationId.Game].Path.Combine(path).FileInfo;
+            var fileInfo = installation.Locations[LocationId.Game].Path.Combine("Stardew Valley.dll").FileInfo;
             return fileInfo.GetFileVersionInfo().FileVersion;
         }
         catch (Exception)

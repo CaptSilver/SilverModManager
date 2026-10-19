@@ -42,9 +42,9 @@ public class GameLocatorResult
     /// The platform of the game.
     /// </summary>
     /// <remarks>
-    /// On Linux you can install Windows versions using WINE/Proton in addition to native Linux builds.
+    /// Defaults to a native Linux build. Windows versions run through WINE/Proton set this to Windows.
     /// </remarks>
-    public OSPlatform Platform { get; init; } = OSInformation.Shared.Platform;
+    public OSPlatform Platform { get; init; } = OSPlatform.Linux;
 
     /// <summary>
     /// Target operating system.

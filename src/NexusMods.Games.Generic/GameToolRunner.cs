@@ -1,7 +1,6 @@
 using CliWrap;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Games.Generic.Dependencies;
-using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -39,11 +38,7 @@ public class GameToolRunner
     /// <param name="cancellationToken">Allows you to cancel the task, killing the process prematurely.</param>
     public async Task<CommandResult> ExecuteAsync(Loadout.ReadOnly loadout, Command command, bool logProcessOutput = true, CancellationToken cancellationToken = default)
     {
-        var isLinux = FileSystem.Shared.OS.IsLinux;
-        if (!isLinux)
-            return await _processRunner.RunAsync(command, logProcessOutput, cancellationToken: cancellationToken);
-
-        // For Linux, if the user is managing the game via Steam, we can use proton (via protontricks)
+        // If the user is managing the game via Steam, we can use proton (via protontricks)
         var install = loadout.InstallationInstance;
         if (install.LocatorResult.Store == GameStore.Steam && _protontricks is not null)
         {

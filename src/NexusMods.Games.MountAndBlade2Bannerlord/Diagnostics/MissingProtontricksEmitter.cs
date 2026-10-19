@@ -4,7 +4,6 @@ using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Diagnostics.Values;
 using NexusMods.Games.Generic.Dependencies;
-using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 
@@ -26,7 +25,7 @@ public partial class MissingProtontricksEmitter : ILoadoutDiagnosticEmitter
         Loadout.ReadOnly loadout,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        if (!FileSystem.Shared.OS.IsLinux || _protontricksDependency == null)
+        if (_protontricksDependency == null)
             yield break;
 
         if (loadout.Installation.Store == GameStore.Steam)

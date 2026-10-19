@@ -57,7 +57,7 @@ internal class SteamLocator : IGameLocator
             var winePrefixDirectoryPath = gameFinderGame.GetProtonPrefix()?.ProtonDirectory.Combine("pfx");
             var linuxCompatibilityDataProvider = winePrefixDirectoryPath is not null ? new LinuxCompatibilityDataProvider(gameFinderGame, winePrefixDirectoryPath.Value) : null;
 
-            var platform = linuxCompatibilityDataProvider is null ? OSInformation.Shared.Platform : OSPlatform.Windows;
+            var platform = linuxCompatibilityDataProvider is null ? OSPlatform.Linux : OSPlatform.Windows;
 
             yield return new GameLocatorResult
             {

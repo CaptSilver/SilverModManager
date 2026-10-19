@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.InteropServices;
 using CliWrap;
 using NexusMods.Sdk;
 
@@ -10,7 +9,6 @@ internal class UpdateDesktopDatabaseDependency : ExecutableRuntimeDependency
     public override string DisplayName => "update-desktop-database";
     public override string Description => "Updates the database containing a cache of MIME types handled by desktop files.";
     public override Uri Homepage { get; } = new("https://www.freedesktop.org/wiki/Software/desktop-file-utils/");
-    public override OSPlatform[] SupportedPlatforms { get; } = [OSPlatform.Linux];
 
     public UpdateDesktopDatabaseDependency(IProcessRunner runner) : base(runner) { }
 

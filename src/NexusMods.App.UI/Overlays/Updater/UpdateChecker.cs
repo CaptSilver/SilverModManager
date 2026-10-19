@@ -52,7 +52,7 @@ public class UpdateChecker
         return latestRelease;
     }
 
-    public bool TryGetMatchingReleaseAsset(Release release, IOSInformation os, InstallationMethod installationMethod, [NotNullWhen(true)] out Asset? releaseAsset)
+    public bool TryGetMatchingReleaseAsset(Release release, InstallationMethod installationMethod, [NotNullWhen(true)] out Asset? releaseAsset)
     {
         if (release.Assets.Count == 0)
         {
@@ -62,7 +62,7 @@ public class UpdateChecker
 
         foreach (var asset in release.Assets)
         {
-            if (!Matches(asset.Name, os, installationMethod)) continue;
+            if (!Matches(asset.Name, installationMethod)) continue;
 
             releaseAsset = asset;
             return true;
@@ -75,18 +75,14 @@ public class UpdateChecker
     private static readonly Extension ArchiveExtension = new(".zip");
     private static readonly Extension AppImageExtension = new(".AppImage");
 
-    internal static bool Matches(RelativePath fileName, IOSInformation os, InstallationMethod installationMethod)
+    internal static bool Matches(RelativePath fileName, InstallationMethod installationMethod)
     {
-        if (installationMethod is InstallationMethod.AppImage && os.IsLinux) return fileName.Extension.Equals(AppImageExtension);
+        if (installationMethod is InstallationMethod.AppImage) return fileName.Extension.Equals(AppImageExtension);
 
         if (installationMethod is InstallationMethod.Archive)
         {
             if (!fileName.Extension.Equals(ArchiveExtension)) return false;
-            if (os.IsWindows) return fileName.Path.Contains(".win-", StringComparison.OrdinalIgnoreCase);
-            if (os.IsLinux) return fileName.Path.Contains(".linux-", StringComparison.OrdinalIgnoreCase);
-
-            // not supported
-            return false;
+            return fileName.Path.Contains(".linux-", StringComparison.OrdinalIgnoreCase);
         }
 
         // not supported

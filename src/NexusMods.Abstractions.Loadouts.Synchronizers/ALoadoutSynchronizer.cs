@@ -46,7 +46,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private readonly IFileStore _fileStore;
 
     protected readonly ILogger Logger;
-    private readonly IOSInformation _os;
     private readonly ISorter _sorter;
     private readonly IGarbageCollectorRunner _garbageCollectorRunner;
     private readonly ISynchronizerService _synchronizerService;
@@ -74,7 +73,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         IFileStore fileStore,
         ISorter sorter,
         IConnection conn,
-        IOSInformation os,
         IFileHashesService fileHashService,
         IGarbageCollectorRunner garbageCollectorRunner)
     {
@@ -91,7 +89,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         _fileStore = fileStore;
         _sorter = sorter;
         Connection = conn;
-        _os = os;
         _garbageCollectorRunner = garbageCollectorRunner;
     }
 
@@ -105,7 +102,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         provider.GetRequiredService<IFileStore>(),
         provider.GetRequiredService<ISorter>(),
         provider.GetRequiredService<IConnection>(),
-        provider.GetRequiredService<IOSInformation>(),
         provider.GetRequiredService<IFileHashesService>(),
         provider.GetRequiredService<IGarbageCollectorRunner>()
     ) { }
@@ -811,7 +807,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         {
             await _fileStore.ExtractFiles(toExtract, CancellationToken.None, UpdateStatus);
 
-            var isUnix = _os.IsUnix();
             foreach (var (gamePath, node) in groupings)
             {
                 if (!node.Actions.HasFlag(Actions.ExtractToDisk))
@@ -841,10 +836,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 }
 
 
-                // And mark them as executable if necessary, on Unix
-                if (!isUnix)
-                    continue;
-
+                // And mark them as executable if necessary
                 var ext = resolvedPath.Extension.ToString().ToLower();
                 if (ext is not ("" or ".sh" or ".bin" or ".run" or ".py" or ".pl" or ".php" or ".rb" or ".out"
                     or ".elf")) continue;

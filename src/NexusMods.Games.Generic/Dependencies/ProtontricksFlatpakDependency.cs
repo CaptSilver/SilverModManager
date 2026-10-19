@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using CliWrap;
 using NexusMods.Sdk;
 
@@ -19,8 +18,6 @@ public class ProtontricksFlatpakDependency : ExecutableRuntimeDependency, IProto
     public override string Description => "Manage Proton games and their dependencies (Flatpak version)";
     /// <inheritdoc />
     public override Uri Homepage { get; } = new("https://github.com/Matoking/protontricks");
-    /// <inheritdoc />
-    public override OSPlatform[] SupportedPlatforms { get; } = [OSPlatform.Linux];
 
     /// <inheritdoc />
     public ProtontricksFlatpakDependency(IProcessRunner runner) : base(runner) { }

@@ -77,40 +77,18 @@ public class SevenZipExtractor : IExtractor
         AbsolutePath destinationPath)
     {
         // NOTE(erri120): We need to fix paths that end in whitespace as they cause a lot of issues.
-        // On Linux, 7z extracts "foo/bar " to "foo/bar " properly, but our path sanitization will trim the path and the app won't find the file on disk
-        // On Windows, 7z changes "foo/bar " to "far/bar_" because paths ending with whitespace aren't supported on Windows
-        // See https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+        // 7z extracts "foo/bar " to "foo/bar " properly, but our path sanitization will trim the path and the app won't find the file on disk
 
-        var isWindows = _osInformation.IsWindows;
         var nativePath = destinationPath.ToNativeSeparators(_osInformation);
-
-        const int maxBufferSize = 512;
-        Span<char> span = stackalloc char[maxBufferSize];
 
         foreach (var tuple in trimmablePathsInArchive)
         {
             var (fileName, isDirectory) = tuple;
 
-            string fileNameOnDisk;
-            if (isWindows)
-            {
-                if (fileName.Length > maxBufferSize) throw new NotSupportedException($"File name is too long: `{fileName}`");
-                fileName.AsSpan().CopyTo(span);
-
-                var slice = span.SliceFast(start: 0, length: fileName.Length);
-                To7ZipWindowsExtractionPath(slice);
-
-                fileNameOnDisk = slice.ToString();
-            }
-            else
-            {
-                fileNameOnDisk = fileName;
-            }
-
             var fixedFileName = PathsHelper.FixFileName(fileName);
             Debug.Assert(fixedFileName.All(c => !PathsHelper.IsInvalidChar(c)), message: $"`{fixedFileName}` should be fixed");
 
-            var source = System.IO.Path.Combine(nativePath, fileNameOnDisk);
+            var source = System.IO.Path.Combine(nativePath, fileName);
             var destination = System.IO.Path.Combine(nativePath, fixedFileName);
 
             if (isDirectory)
@@ -153,25 +131,6 @@ public class SevenZipExtractor : IExtractor
                     _logger.LogError(e, "Failed to fix path by moving file from `{From}` to `{To}`", source, destination);
                 }
             }
-        }
-    }
-
-    internal static void To7ZipWindowsExtractionPath(Span<char> input)
-    {
-        // https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
-        // https://github.com/mcmilk/7-Zip/blob/c44df79f9a65142c460313f720dc22c8783c63b1/CPP/7zip/UI/Common/ExtractingFilePath.cpp#L53-L88
-        // 7zip creates "safe" Windows paths, so we'll mirror the Microsoft recommendations:
-
-        // Do not end a file or directory name with a space or a period.
-        // Although the underlying file system may support such names, the Windows shell and user interface does not.
-        // However, it is acceptable to specify a period as the first character of a name. For example, ".temp".
-
-        for (var i = input.Length - 1; i >= 0; i--)
-        {
-            var current = input[i];
-            if (!PathsHelper.IsInvalidChar(current)) break;
-
-            input[i] = '_';
         }
     }
 

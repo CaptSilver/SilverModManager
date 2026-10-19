@@ -121,11 +121,7 @@ internal sealed class SMAPIWebApi : ISMAPIWebApi
 
     private static Platform ToPlatform(IOSInformation os)
     {
-        return os.MatchPlatform(
-            onWindows: () => Platform.Windows,
-            onLinux: () => Platform.Linux,
-            onOSX: () => Platform.Mac
-        );
+        return os.IsWindows ? Platform.Windows : Platform.Linux;
     }
 
     public void Dispose()

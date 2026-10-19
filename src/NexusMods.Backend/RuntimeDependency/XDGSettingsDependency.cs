@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.InteropServices;
 using CliWrap;
 using JetBrains.Annotations;
 using NexusMods.Sdk;
@@ -12,7 +11,6 @@ internal class XdgSettingsDependency : ExecutableRuntimeDependency
     public override string DisplayName => "xdg-settings";
     public override string Description => "Get or set the default URL handlers.";
     public override Uri Homepage { get; } = new("https://www.freedesktop.org/wiki/Software/xdg-utils/");
-    public override OSPlatform[] SupportedPlatforms { get; } = [OSPlatform.Linux];
 
     public XdgSettingsDependency(IProcessRunner processRunner) : base(processRunner) { }
 

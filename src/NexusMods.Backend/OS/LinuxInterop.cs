@@ -22,8 +22,6 @@ internal partial class LinuxInterop : IOSInterop
 
     public LinuxInterop(IServiceProvider serviceProvider)
     {
-        Debug.Assert(serviceProvider.GetRequiredService<IOSInformation>().IsLinux, "this interop only supports Linux");
-
         _logger = serviceProvider.GetRequiredService<ILogger<LinuxInterop>>();
         _processRunner = serviceProvider.GetRequiredService<IProcessRunner>();
         _fileSystem = serviceProvider.GetRequiredService<IFileSystem>();

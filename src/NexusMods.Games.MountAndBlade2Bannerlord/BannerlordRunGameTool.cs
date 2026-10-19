@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
 using NexusMods.Games.Generic;
-using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using static Bannerlord.LauncherManager.Constants;
@@ -19,14 +18,12 @@ public class BannerlordRunGameTool : RunGameTool<Bannerlord>
     private readonly ILogger<BannerlordRunGameTool> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly GameToolRunner _runner;
-    private readonly IOSInformation _os;
 
-    public BannerlordRunGameTool(IServiceProvider serviceProvider, Bannerlord game, GameToolRunner runner, IOSInformation os)
+    public BannerlordRunGameTool(IServiceProvider serviceProvider, Bannerlord game, GameToolRunner runner)
         : base(serviceProvider, game)
     {
         _serviceProvider = serviceProvider;
         _runner = runner;
-        _os = os;
         _logger = serviceProvider.GetRequiredService<ILogger<BannerlordRunGameTool>>();
     }
 
@@ -46,14 +43,13 @@ public class BannerlordRunGameTool : RunGameTool<Bannerlord>
         {
             exe = exe/blseRelativePath;
             
-            // Note(sewer): If the user is on Linux, there is no guarantee they
-            // have .NET Framework installed; instead, Framework stuff may be run on
+            // Note(sewer): On Linux there is no guarantee .NET Framework is
+            // installed; instead, Framework stuff may be run on
             // Mono. Because BLSE interacts with low level components of the runtime,
             // we will instead use a 'hidden' BLSE feature to use the .NET Runtime
             // stored in the game folder. In this case, that's .NET 6 at the time of
             // writing.
-            if (_os.IsLinux)
-                args = [..args, "/forcenetcore"];
+            args = [..args, "/forcenetcore"];
         }
         else
         {
