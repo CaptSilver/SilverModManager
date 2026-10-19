@@ -219,8 +219,8 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
             .ToArray();
     }
 
-    private NamedLink NexusModsLink => new("Nexus Mods - Baldur's Gate 3", NexusModsUrlBuilder.GetGameUri(_gameDomain, campaign: NexusModsUrlBuilder.CampaignDiagnostics));
-    private NamedLink BG3SENexusModsLink => new("Nexus Mods", NexusModsUrlBuilder.GetModUri(_gameDomain, ModId.From(2172), campaign: NexusModsUrlBuilder.CampaignDiagnostics));
+    private NamedLink NexusModsLink => new("Nexus Mods - Baldur's Gate 3", NexusModsUrlBuilder.GetGameUri(_gameDomain));
+    private NamedLink BG3SENexusModsLink => new("Nexus Mods", NexusModsUrlBuilder.GetModUri(_gameDomain, ModId.From(2172)));
 
 #endregion Helpers
 }

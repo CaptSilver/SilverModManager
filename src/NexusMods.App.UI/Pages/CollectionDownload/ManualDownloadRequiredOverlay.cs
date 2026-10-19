@@ -74,7 +74,7 @@ public class ManualDownloadRequiredOverlayViewModel : AOverlayViewModel<IManualD
 
         var gameDomain = mappingCache[downloadEntity.AsCollectionDownload().CollectionRevision.Collection.GameId];
         var revision = downloadEntity.AsCollectionDownload().CollectionRevision;
-        var revisionBugsUri = NexusModsUrlBuilder.GetCollectionBugsUri(gameDomain, revision.Collection.Slug, revision.RevisionNumber, campaign: NexusModsUrlBuilder.CampaignCollections);
+        var revisionBugsUri = NexusModsUrlBuilder.GetCollectionBugsUri(gameDomain, revision.Collection.Slug, revision.RevisionNumber);
 
         CommandCancel = new ReactiveCommand(_ => { base.Close(); });
         CommandOpenBrowser = new ReactiveCommand(execute: _ => osInterop.OpenUri(downloadEntity.Uri));

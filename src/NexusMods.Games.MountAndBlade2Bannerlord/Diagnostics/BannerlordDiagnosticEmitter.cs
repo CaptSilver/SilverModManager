@@ -24,8 +24,8 @@ namespace NexusMods.Games.MountAndBlade2Bannerlord.Diagnostics;
 /// </summary>
 internal partial class BannerlordDiagnosticEmitter : ILoadoutDiagnosticEmitter
 {
-    private NamedLink BlseLink => new("Bannerlord Software Extender", NexusModsUrlBuilder.GetModUri(_gameDomain, ModId.From(1), campaign: NexusModsUrlBuilder.CampaignDiagnostics));
-    private NamedLink HarmonyLink => new("Harmony",NexusModsUrlBuilder.GetModUri(_gameDomain, ModId.From(2006), campaign: NexusModsUrlBuilder.CampaignDiagnostics));
+    private NamedLink BlseLink => new("Bannerlord Software Extender", NexusModsUrlBuilder.GetModUri(_gameDomain, ModId.From(1)));
+    private NamedLink HarmonyLink => new("Harmony",NexusModsUrlBuilder.GetModUri(_gameDomain, ModId.From(2006)));
     private readonly IResourceLoader<BannerlordModuleLoadoutItem.ReadOnly, ModuleInfoExtended> _manifestPipeline;
     private readonly ILogger _logger;
     private readonly GameDomain _gameDomain;

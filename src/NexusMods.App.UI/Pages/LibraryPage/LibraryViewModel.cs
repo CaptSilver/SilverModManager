@@ -677,7 +677,7 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
         var osInterop = _serviceProvider.GetRequiredService<IOSInterop>();
         foreach (var newestFile in newestToCurrentMapping.Keys)
         {
-            var uri = NexusModsUrlBuilder.GetFileDownloadUri(newestFile.ModPage.GameDomain, newestFile.ModPage.Uid.ModId, newestFile.Uid.FileId, useNxmLink: true, campaign: NexusModsUrlBuilder.CampaignUpdates);
+            var uri = NexusModsUrlBuilder.GetFileDownloadUri(newestFile.ModPage.GameDomain, newestFile.ModPage.Uid.ModId, newestFile.Uid.FileId, useNxmLink: true);
             osInterop.OpenUri(uri);
         }
     }

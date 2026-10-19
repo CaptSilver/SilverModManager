@@ -18,8 +18,8 @@ namespace NexusMods.Games.StardewValley.Emitters;
 
 internal static class Helpers
 {
-    public static NamedLink GetNexusModsLink(IGameDomainToGameIdMappingCache mapping) => new("Nexus Mods", NexusModsUrlBuilder.GetGameUri(mapping[StardewValley.NexusModsGameId.Value], campaign: NexusModsUrlBuilder.CampaignDiagnostics));
-    public static NamedLink GetSMAPILink(IGameDomainToGameIdMappingCache mapping) => new("Nexus Mods", NexusModsUrlBuilder.GetModUri(mapping[StardewValley.NexusModsGameId.Value], ModId.From(2400), campaign: NexusModsUrlBuilder.CampaignDiagnostics));
+    public static NamedLink GetNexusModsLink(IGameDomainToGameIdMappingCache mapping) => new("Nexus Mods", NexusModsUrlBuilder.GetGameUri(mapping[StardewValley.NexusModsGameId.Value]));
+    public static NamedLink GetSMAPILink(IGameDomainToGameIdMappingCache mapping) => new("Nexus Mods", NexusModsUrlBuilder.GetModUri(mapping[StardewValley.NexusModsGameId.Value], ModId.From(2400)));
 
     public static ISemanticVersion GetGameVersion(Loadout.ReadOnly loadout)
     {
