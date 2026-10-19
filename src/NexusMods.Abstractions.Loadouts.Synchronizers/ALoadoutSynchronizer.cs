@@ -225,8 +225,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             if (gamePath == default(GamePath)) throw new Exception($"Item of type `{itemType}` with ID `{tuple.Id}` has no valid game path!");
 
             // The disk side of the tree never contains filtered paths, so a loadout item on one has to be left
-            // out too: otherwise the sync would write the file and could never take it off disk again.
-            if (GamePathFilter.ShouldFilter(gamePath))
+            // out too: otherwise the sync would write the file and could never take it off disk again. A mod
+            // flagged to allow protected paths is the exception, its files are tracked on disk once deployed.
+            if (GamePathFilter.ShouldFilter(gamePath) && !IsAllowedOnProtectedPath(tuple.Id, gamePath))
             {
                 LogSkippedFilteredItem(tuple.Id, gamePath);
                 continue;
@@ -268,7 +269,69 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         MergeStates(latestDiskState, previousDiskState, syncTree);
+        LeaveUserProtectedFilesAlone(syncTree, loadout);
         return syncTree;
+    }
+
+    /// <summary>
+    /// Whether the loadout item, or a group it sits in, is flagged to deploy to paths the filter protects.
+    /// </summary>
+    /// <remarks>
+    /// Shared Proton caches never qualify: the flag exists for save files, and a cache changes on every launch.
+    /// </remarks>
+    private bool IsAllowedOnProtectedPath(EntityId itemId, GamePath gamePath)
+    {
+        if (IsSharedProtonCache(gamePath)) return false;
+
+        var item = LoadoutItem.Load(Connection.Db, itemId);
+        while (item.IsValid())
+        {
+            if (item.IsProtectedPathsAllowed) return true;
+            if (!item.HasParent()) return false;
+            item = item.Parent.AsLoadoutItem();
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Takes files on protected paths out of the tree when deploying or deleting them would touch something
+    /// that is not the loadout's to touch.
+    /// </summary>
+    /// <remarks>
+    /// Protected paths are not indexed unless the loadout deployed to them, so a file there that the disk
+    /// state does not know is the user's own and is never overwritten. A deployed file that no longer matches the
+    /// loadout's copy is the user's too (the game rewrites saves as it runs): it must be neither ingested into
+    /// the loadout nor overwritten with the mod's version.
+    /// </remarks>
+    private void LeaveUserProtectedFilesAlone(Dictionary<GamePath, SyncNode> syncTree, Loadout.ReadOnly loadout)
+    {
+        List<GamePath>? toRemove = null;
+
+        foreach (var (path, node) in syncTree)
+        {
+            if (!node.HaveLoadout || !GamePathFilter.ShouldFilter(path)) continue;
+
+            if (node.HaveLoadout && !node.HaveDisk && !node.HavePrevious)
+            {
+                var onDisk = loadout.InstallationInstance.Locations.ToAbsolutePath(path);
+                if (!onDisk.FileExists) continue;
+                Logger.LogWarning("Not deploying `{Path}`: a file of that name is already there and was not put there by the loadout", path);
+            }
+            else if (node.HaveDisk && node.HaveLoadout && node.Disk.Hash != node.Loadout.Hash)
+            {
+                Logger.LogWarning("Leaving `{Path}` alone: it differs from the loadout's copy, so the game or the user has changed it since", path);
+            }
+            else
+            {
+                continue;
+            }
+
+            (toRemove ??= []).Add(path);
+        }
+
+        if (toRemove is null) return;
+        foreach (var path in toRemove) syncTree.Remove(path);
     }
 
     private void LogSkippedFilteredItem(EntityId itemId, GamePath gamePath)
@@ -1288,6 +1351,15 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <summary>
+    /// A protected path only has a disk state entry if the loadout deployed to it. Those files stay indexed so
+    /// the synchronizer can see them change or disappear; every other file on a protected path stays unseen.
+    /// </summary>
+    private static bool IsTrackedProtectedFile(FrozenDictionary<GamePath, DiskStateEntry.ReadOnly> previousState, GamePath path)
+    {
+        return !IsSharedProtonCache(path) && previousState.ContainsKey(path);
+    }
+
+    /// <summary>
     /// Reindex the state of the game
     /// </summary>
     private async Task<bool> ReindexState(GameInstallMetadata.ReadOnly metadata, GameInstallation installation, ITransaction tx)
@@ -1297,7 +1369,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var indexGameResult = await _gameLocationsService.IndexGame(
             installation: installation,
             previousDiskState: previousState,
-            filter: GamePathFilter,
+            filter: Synchronizers.GamePathFilters.Create(path => GamePathFilter.ShouldFilter(path) && !IsTrackedProtectedFile(previousState, path)),
             cancellationToken: CancellationToken.None
         );
 

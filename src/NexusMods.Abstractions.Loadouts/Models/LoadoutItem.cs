@@ -28,6 +28,13 @@ public partial class LoadoutItem : IModelDefinition
     public static readonly MarkerAttribute Disabled = new(Namespace, nameof(Disabled)) { IsIndexed = true };
 
     /// <summary>
+    /// Marker that lets the item, and everything below it, deploy to paths the synchronizer otherwise protects,
+    /// such as the game's save folder. Some mods are nothing but save files. Without the marker such files are
+    /// skipped; with it they are written unless a file of the user's own is already there.
+    /// </summary>
+    public static readonly MarkerAttribute ProtectedPathsAllowed = new(Namespace, nameof(ProtectedPathsAllowed)) { IsIndexed = true };
+
+    /// <summary>
     /// Loadout that contains the item.
     /// </summary>
     public static readonly ReferenceAttribute<Loadout> Loadout = new(Namespace, nameof(Loadout)) { IsIndexed = true };
