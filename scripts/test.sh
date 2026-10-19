@@ -1,30 +1,21 @@
 #!/usr/bin/env bash
 # Runs the offline test suite (everything except RequiresNetworking, RequiresApiKey
-# and FlakeyTest) through Microsoft.Testing.Platform, inside the `fedora` distrobox
-# unless already in a container. Extra arguments go to `dotnet test`, e.g.
+# and FlakeyTest) through Microsoft.Testing.Platform, inside the distrobox named by
+# SILVER_BOX (default fedora) unless already in a container. Extra arguments go to
+# `dotnet test`, e.g.
 #   scripts/test.sh --project tests/NexusMods.CLI.Tests
 #
 # The filters travel as the XunitArgs MSBuild property, which tests/Directory.Build.props
 # maps onto TestingPlatformCommandLineArguments.
 set -euo pipefail
 
-root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-if [[ -z "${CONTAINER_ID:-}" ]] && command -v distrobox >/dev/null; then
-    # Quote each argument so ones with spaces survive the trip through bash -lc.
-    # printf '%q ' with no arguments still prints '', hence the guard.
-    args=""
-    (( $# )) && args="$(printf '%q ' "$@")"
-    exec distrobox enter fedora -- bash -lc "cd $(printf %q "$root") && scripts/test.sh $args"
-fi
+# shellcheck source=lib/box.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/box.sh"
+box_reexec "${BASH_SOURCE[0]}" "$@"
 
 cd "$root"
-export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 QT_QPA_PLATFORM=offscreen
-
-# Nothing MSBuild starts should outlive the run. Directory.Build.rsp already turns off
-# node reuse; the variable keeps it off under -noAutoResponse, and the MSBuild server is
-# a separate resident process the response file doesn't cover.
-export MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0
+export_dotnet_env
+export QT_QPA_PLATFORM=offscreen
 
 # Test hosts build the real service graph, which touches the desktop session: it writes
 # .desktop files and mimeapps entries under XDG_DATA_HOME/XDG_CONFIG_HOME and can reach
