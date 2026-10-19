@@ -31,7 +31,7 @@ testing purposes may not be playable. You can still use the app to test the UI a
 but some features may not work as expected. To add a supported game manually:
 
 1. Have a directory ready and copy its path for the game you want to add to store its mods.
-2. After building the project, go to your terminal and change the directory to the `src/NexusMods.App/bin/Debug/net9.0` folder.
+2. After building the project, go to your terminal and change the directory to the `src/NexusMods.App/bin/Debug/net10.0` folder.
 3. Enter the following CLI command and replace the arguments: 
    ```bash
    NexusMods.App as-main add-game -g "Game Name" -v [Version] -p "Path"

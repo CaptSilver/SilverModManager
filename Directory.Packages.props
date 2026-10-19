@@ -48,7 +48,6 @@
     <PackageVersion Include="Spectre.Console.Testing" Version="0.51.1" />
     <PackageVersion Include="SteamKit2" Version="3.3.1" />
     <PackageVersion Include="StrawberryShake.Server" Version="15.1.10" />
-    <PackageVersion Include="System.Linq" Version="4.3.0" />
     <PackageVersion Include="System.Text.Json" Version="9.0.0" VersionOverride="9.0.0" />
     <PackageVersion Include="TextMateSharp.Grammars" Version="1.0.70" />
     <PackageVersion Include="OpenTelemetry" Version="1.12.0" />
@@ -96,7 +95,7 @@
     <PackageVersion Include="System.CommandLine.NamingConventionBinder" Version="2.0.0-beta4.22272.1" />
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="7.2.0" />
     <PackageVersion Include="System.IO.Hashing" Version="9.0.4" />
-    <PackageVersion Include="System.Linq.Async" Version="6.0.3" />
+    <PackageVersion Include="System.Linq.Async" Version="7.0.1" />
     <PackageVersion Include="System.Reactive" Version="6.0.2" />
     <PackageVersion Include="Microsoft.AspNetCore.WebUtilities" Version="9.0.8" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.8" />
