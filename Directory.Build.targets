@@ -7,4 +7,30 @@
     as empty turns it off for every build.
     -->
     <Target Name="AvaloniaStats" />
+
+    <!--
+    NuGet packages ship native libraries for every platform under runtimes/<rid>/, and a
+    framework-dependent build or publish copies all of them next to the app. Only Linux is a
+    supported host, so drop the assets for the other operating systems (and Android's bionic).
+    This runs on the NuGet item lists themselves rather than on the copy-local list built
+    from them, because build output, publish and deps.json each read a different one of them.
+    The Linux RIDs stay in so arm64 packages keep working. Games run under Proton/Wine in a
+    separate process and need none of these.
+    -->
+    <PropertyGroup>
+        <_NonLinuxRuntimePattern>^runtimes/(win|osx|browser|android|ios|maccatalyst|tvos|tizen|linux-bionic)</_NonLinuxRuntimePattern>
+    </PropertyGroup>
+
+    <Target Name="PruneNonLinuxRuntimeAssets" AfterTargets="ResolveLockFileCopyLocalFiles">
+        <ItemGroup>
+            <NativeCopyLocalItems Remove="@(NativeCopyLocalItems)"
+                                  Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(NativeCopyLocalItems.DestinationSubDirectory)', '$(_NonLinuxRuntimePattern)'))" />
+            <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)"
+                                          Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(RuntimeTargetsCopyLocalItems.DestinationSubDirectory)', '$(_NonLinuxRuntimePattern)'))" />
+            <_ResolvedCopyLocalBuildAssets Remove="@(_ResolvedCopyLocalBuildAssets)"
+                                           Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(_ResolvedCopyLocalBuildAssets.DestinationSubDirectory)', '$(_NonLinuxRuntimePattern)'))" />
+            <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"
+                                     Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(ReferenceCopyLocalPaths.DestinationSubDirectory)', '$(_NonLinuxRuntimePattern)'))" />
+        </ItemGroup>
+    </Target>
 </Project>
