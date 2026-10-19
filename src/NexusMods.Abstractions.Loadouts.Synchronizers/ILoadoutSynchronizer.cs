@@ -12,6 +12,12 @@ namespace NexusMods.Abstractions.Loadouts.Synchronizers;
 public interface ILoadoutSynchronizer
 {
     /// <summary>
+    /// Paths the synchronizer ignores completely: they are not indexed, backed up, deployed or deleted,
+    /// and loadout items that target them are left out of the sync tree.
+    /// </summary>
+    IGamePathFilter GamePathFilter { get; }
+
+    /// <summary>
     /// Creates a new sync tree from the current state of the game folder, the loadout and the previous state. This
     /// sync tree contains a matching of all the files in all 3 sources based on their path.
     /// </summary>

@@ -217,6 +217,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             var gamePath = new GamePath(tuple.Location, tuple.Path);
             if (gamePath == default(GamePath)) throw new Exception($"Item of type `{itemType}` with ID `{tuple.Id}` has no valid game path!");
 
+            // The disk side of the tree never contains filtered paths, so a loadout item on one has to be left
+            // out too: otherwise the sync would write the file and could never take it off disk again.
+            if (GamePathFilter.ShouldFilter(gamePath))
+            {
+                LogSkippedFilteredItem(tuple.Id, gamePath);
+                continue;
+            }
+
             ref var syncTreeEntry = ref CollectionsMarshal.GetValueRefOrAddDefault(syncTree, gamePath, out var exists);
             Debug.Assert(!exists, "query should not return duplicate items");
 
@@ -254,6 +262,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         MergeStates(latestDiskState, previousDiskState, syncTree);
         return syncTree;
+    }
+
+    private void LogSkippedFilteredItem(EntityId itemId, GamePath gamePath)
+    {
+        var item = LoadoutItem.Load(Connection.Db, itemId);
+        var group = item.IsValid() && item.HasParent() ? item.Parent.AsLoadoutItem().Name : "(no group)";
+        Logger.LogWarning("Skipping `{Path}` from `{Group}`: the synchronizer ignores this path", gamePath, group);
     }
 
     /// <inheritdoc />
@@ -1327,14 +1342,30 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <inheritdoc />
     public virtual bool IsIgnoredBackupPath(GamePath path) => false;
 
+    private IGamePathFilter? _composedFilter;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The base rule joined with <see cref="GameSpecificPathFilter"/>. It is composed on first use rather than in
+    /// an initializer because an initializer cannot call the virtual member.
+    /// </remarks>
+    public IGamePathFilter GamePathFilter => _composedFilter ??= Synchronizers.GamePathFilters.Any(BaseGamePathFilter, GameSpecificPathFilter);
+
     /// <summary>
-    /// Whether to ignore the file at the given path when indexing.
+    /// The rule every game gets: save files are never indexed, backed up, overwritten or deleted, whichever
+    /// folder the game's <see cref="LocationId.Saves"/> location resolves to. A game's own rules cover only the
+    /// save folders its author knew about, and a reset or unmanage would otherwise delete the rest.
+    /// </summary>
+    private static readonly IGamePathFilter BaseGamePathFilter = Synchronizers.GamePathFilters.Create(path => path.LocationId == LocationId.Saves);
+
+    /// <summary>
+    /// Whether to ignore the file at the given path when indexing, in addition to the rule every game gets.
     /// </summary>
     /// <remarks>
     /// Files ignored by this method will not be included in the sync tree. Prefer not including
     /// the path in the first place instead of using this method.
     /// </remarks>
-    protected virtual IGamePathFilter GamePathFilter { get; } = Synchronizers.GamePathFilters.Empty;
+    protected virtual IGamePathFilter GameSpecificPathFilter { get; } = Synchronizers.GamePathFilters.Empty;
 
     /// <summary>
     /// Gets a set of files intrinsic to this game. Such as mod order files, preference files, etc.

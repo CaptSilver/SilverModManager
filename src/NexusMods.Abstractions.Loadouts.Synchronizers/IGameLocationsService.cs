@@ -52,6 +52,27 @@ public static class GamePathFilters
         return new PredicateFilter(predicate);
     }
 
+    /// <summary>
+    /// A filter that rejects a path when any of the given filters does.
+    /// </summary>
+    public static IGamePathFilter Any(params IGamePathFilter[] filters)
+    {
+        return new AnyFilter(filters);
+    }
+
+    private class AnyFilter(IGamePathFilter[] filters) : IGamePathFilter
+    {
+        public bool ShouldFilter(GamePath gamePath)
+        {
+            foreach (var filter in filters)
+            {
+                if (filter.ShouldFilter(gamePath)) return true;
+            }
+
+            return false;
+        }
+    }
+
     private class PredicateFilter : IGamePathFilter
     {
         private readonly Func<GamePath, bool> _predicate;

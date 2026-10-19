@@ -9,6 +9,13 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
     where TGame : IGame
 {
     private readonly TemporaryPath _path;
+
+    /// <summary>
+    /// The game folder as seen through the file system that resolves the game's known folders. Game
+    /// locations are computed from <c>Path.FileSystem</c>, so passing a Wine prefix overlay here makes a
+    /// game's Documents and AppData locations land in the prefix, as for a game installed through Wine.
+    /// </summary>
+    private readonly AbsolutePath _locatedPath;
     private readonly TGame _game;
     private readonly GameStore[] _stores;
 
@@ -19,10 +26,14 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
         IFileSystem fileSystem,
         TemporaryFileManager fileManager,
         Dictionary<RelativePath, byte[]>? gameFiles = null,
-        GameStore[]? stores = null)
+        GameStore[]? stores = null,
+        IFileSystem? locationsFileSystem = null)
     {
         _stores = stores ?? [GameStore.Unknown];
         _path = fileManager.CreateFolder(typeof(TGame).Name);
+        _locatedPath = locationsFileSystem is null
+            ? _path.Path
+            : locationsFileSystem.FromUnsanitizedFullPath(_path.Path.GetFullPath());
         _game = serviceProvider.GetRequiredService<TGame>();
 
         if (gameFiles is null) return;
@@ -44,7 +55,7 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
                 Locator = this,
                 LocatorIds = [..LocatorIds],
                 Store = store,
-                Path = _path,
+                Path = _locatedPath,
                 StoreIdentifier = LocatorIds[0].Value,
             };
         }
