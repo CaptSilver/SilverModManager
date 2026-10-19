@@ -138,9 +138,6 @@
   <data name="Updater_UsePackageManager" xml:space="preserve">
     <value>Вы можете обновить приложение с помощью менеджера пакетов, который вы использовали для установки приложения.</value>
   </data>
-  <data name="Updater_UseInnoSetup" xml:space="preserve">
-    <value>Вы можете обновить приложение, скачав установщик и запустив его после закрытия приложения.</value>
-  </data>
   <data name="Updater_UseFlatpak" xml:space="preserve">
     <value>Вы можете обновить приложение с помощью Flatpak.</value>
   </data>

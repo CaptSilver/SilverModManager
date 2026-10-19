@@ -29,11 +29,6 @@ public enum InstallationMethod
     PackageManager,
 
     /// <summary>
-    /// The App was installed using the InnoSetup.
-    /// </summary>
-    InnoSetup,
-
-    /// <summary>
     /// The App was installed as a Flatpak.
     /// </summary>
     Flatpak,

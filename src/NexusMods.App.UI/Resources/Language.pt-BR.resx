@@ -141,9 +141,6 @@
   <data name="Updater_UsePackageManager" xml:space="preserve">
     <value>Você pode atualizar o aplicativo usando o gerenciador de pacotes usado para instalar o aplicativo.</value>
   </data>
-  <data name="Updater_UseInnoSetup" xml:space="preserve">
-    <value>Você pode atualizar o aplicativo baixando o instalador e executando-o após fechá-lo.</value>
-  </data>
   <data name="Updater_UseFlatpak" xml:space="preserve">
     <value>Você pode atualizar o aplicativo usando o Flatpak.</value>
   </data>

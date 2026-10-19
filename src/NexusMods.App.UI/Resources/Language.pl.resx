@@ -27,9 +27,6 @@
 	<data name="Updater_UpdateAvailable" xml:space="preserve">
 		<value>Dostępna aktualizacja {0}</value>
 	</data>
-    <data name="Updater_UseInnoSetup" xml:space="preserve">
-		<value>Aplikację można zaktualizować, pobierając instalator i uruchamiając go po zamknięciu aplikacji.</value>
-	</data>
     <data name="Updater_UseFlatpak" xml:space="preserve">
         <value>Aplikację można zaktualizować za pośrednictwem Flatpaka.</value>
     </data>

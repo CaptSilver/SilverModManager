@@ -28,10 +28,6 @@ public partial class UpdaterView : ReactiveUserControl<IUpdaterViewModel>
                             {
                                 TextInstructions.Text = Language.Updater_UsePackageManager;
                             }
-                            else if (installationMethod is InstallationMethod.InnoSetup)
-                            {
-                                TextInstructions.Text = Language.Updater_UseInnoSetup;
-                            }
                             else if (installationMethod is InstallationMethod.Flatpak)
                             {
                                 TextInstructions.Text = Language.Updater_UseFlatpak;

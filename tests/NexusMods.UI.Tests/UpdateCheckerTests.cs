@@ -34,7 +34,6 @@ public class UpdateCheckerTests
         {
             { "App.linux-x64.zip", OSPlatform.Linux, InstallationMethod.Archive },
             { "App.win-x64.zip", OSPlatform.Windows, InstallationMethod.Archive },
-            { "App.exe", OSPlatform.Windows, InstallationMethod.InnoSetup },
             { "App.AppImage", OSPlatform.Linux, InstallationMethod.AppImage},
         };
     }

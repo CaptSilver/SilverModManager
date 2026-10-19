@@ -44,9 +44,6 @@
     <data name="Updater_UsePackageManager" xml:space="preserve">
         <value>Uygulamayı, yüklerken kullandığınız paket yöneticisi ile güncelleyebilirsiniz.</value>
     </data>
-    <data name="Updater_UseInnoSetup" xml:space="preserve">
-        <value>Uygulamayı kapattıktan sonra yükleyiciyi indirip çalıştırarak güncelleyebilirsiniz.</value>
-    </data>
     <data name="Updater_UseFlatpak" xml:space="preserve">
         <value>Uygulamayı Flatpak ile güncelleyebilirsiniz.</value>
     </data>

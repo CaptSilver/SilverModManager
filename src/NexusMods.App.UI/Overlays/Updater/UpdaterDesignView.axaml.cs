@@ -14,7 +14,6 @@ public partial class UpdaterDesignView : UserControl
         ItemsControl.ItemsSource = new[]
         {
             Create(InstallationMethod.Archive, hasAsset: true),
-            Create(InstallationMethod.InnoSetup, hasAsset: true),
             Create(InstallationMethod.AppImage, hasAsset: true),
             Create(InstallationMethod.Flatpak, hasAsset: false),
             Create(InstallationMethod.PackageManager, hasAsset: false),

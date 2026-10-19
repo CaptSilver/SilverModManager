@@ -1,4 +1,3 @@
-using CliWrap;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Cli;
 using NexusMods.Abstractions.FileExtractor;
@@ -86,10 +85,7 @@ internal static class CleanupVerbs
                 DataModelSettings.GetLocalApplicationDataDirectory(fileSystem),
             }.Concat(dataModelSettings.ArchiveLocations.Select(path => path.ToPath(fileSystem)));
 
-            if (fileSystem.OS.IsUnix())
-                await DeleteRemainingFilesUnix(renderer, appFiles, appDirectories);
-            else
-                await DeleteRemainingFilesWindows(appFiles, appDirectories);
+            await DeleteRemainingFilesUnix(renderer, appFiles, appDirectories);
 
             await renderer.Text("Application uninstalled successfully");
             return 0;
@@ -111,29 +107,6 @@ internal static class CleanupVerbs
         await DeleteDirectoriesUnix(renderer, appDirectories);
     }
     
-    private static async Task DeleteRemainingFilesWindows(AbsolutePath[] appFiles, IEnumerable<AbsolutePath> appDirectories)
-    {
-        var filesToDeletePath = Path.Combine(Path.GetTempPath(), "files_to_delete.txt");
-        await File.WriteAllLinesAsync(filesToDeletePath, appFiles.Select(f => f.ToString()));
-
-        var directoriesToDeletePath = Path.Combine(Path.GetTempPath(), "directories_to_delete.txt");
-        await File.WriteAllLinesAsync(directoriesToDeletePath, appDirectories.Select(d => d.ToString()));
-
-        // uninstall-helper.ps1 is beside our current EXE.
-        var scriptPath = Path.Combine(AppContext.BaseDirectory, "uninstall-helper.ps1");
-
-        // Execute the PowerShell script
-        var args = $"-ExecutionPolicy Bypass -Command \"& \'{scriptPath}\' -FilesToDeletePath \'{filesToDeletePath}\' -DirectoriesToDeletePath \'{directoriesToDeletePath}\'\"";
-        await Cli.Wrap("powershell")
-            .WithArguments(args)
-            .ExecuteAsync();
-
-        // Clean up the temporary files
-        // Note: This should never be executed in practice.
-        File.Delete(filesToDeletePath);
-        File.Delete(directoriesToDeletePath);
-    }
-
     private static async Task DeleteDirectoriesUnix(IRenderer renderer, IEnumerable<AbsolutePath> appDirectories)
     {
         foreach (var directory in appDirectories)

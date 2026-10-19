@@ -51,10 +51,6 @@
         <value
         >Ви можете оновити програму за допомогою менеджера пакетів, який ви використовували для її встановлення.</value>
     </data>
-    <data name="Updater_UseInnoSetup" xml:space="preserve">
-        <value
-        >Ви можете оновити програму, завантаживши інсталятор і запустивши його після закриття програми.</value>
-    </data>
     <data name="Updater_UseFlatpak" xml:space="preserve">
         <value>Ви можете оновити програму за допомогою Flatpak.</value>
     </data>

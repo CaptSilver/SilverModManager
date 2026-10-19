@@ -57,20 +57,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Update="uninstall-helper.ps1">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-            <DependentUpon>app.pupnet.conf</DependentUpon>
-        </None>
         <None Update="com.nexusmods.app.desktop">
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
         <None Update="com.nexusmods.app.metainfo.xml">
-            <DependentUpon>app.pupnet.conf</DependentUpon>
-        </None>
-        <None Update="sign.bat">
-            <DependentUpon>app.pupnet.conf</DependentUpon>
-        </None>
-        <None Update="uninstall.bat">
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
         <None Update="icon.svg">
@@ -80,9 +70,4 @@
           <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
     </ItemGroup>
-
-    <Target Name="CopyCustomContentOnPublish" AfterTargets="Publish"
-            Condition="'$(RuntimeIdentifier)' == 'win-x64' Or '$(RuntimeIdentifier)' == 'win-x86' Or '$(RuntimeIdentifier)' == 'win'">
-        <Copy SourceFiles="uninstall.bat" DestinationFolder="$(PublishDir)" />
-    </Target>
 </Project>

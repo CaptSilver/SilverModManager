@@ -129,8 +129,6 @@ public static class ApplicationConstants
                 InstallationMethod.AppImage;
 #elif INSTALLATION_METHOD_PACKAGE_MANAGER
                 InstallationMethod.PackageManager;
-#elif INSTALLATION_METHOD_INNO_SETUP
-                InstallationMethod.InnoSetup;
 #elif INSTALLATION_METHOD_FLATPAK
                 InstallationMethod.Flatpak;
 #else

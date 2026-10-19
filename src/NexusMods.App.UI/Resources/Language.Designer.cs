@@ -3629,15 +3629,6 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to You can update the app by downloading the installer and running it after closing the app..
-        /// </summary>
-        public static string Updater_UseInnoSetup {
-            get {
-                return ResourceManager.GetString("Updater_UseInnoSetup", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to You can update the app using the package manager you used to install the app with..
         /// </summary>
         public static string Updater_UsePackageManager {
