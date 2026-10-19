@@ -53,7 +53,14 @@ public class RedModDeployTool : ITool
         }
 
         var linuxCompatibilityDataProvider = loadout.InstallationInstance.LocatorResult.LinuxCompatabilityDataProvider;
-        if (linuxCompatibilityDataProvider is null) return;
+        if (linuxCompatibilityDataProvider is null)
+        {
+            // redmod.exe only runs inside the game's Wine prefix, so without Proton/Wine data there is
+            // nowhere to run it. Returning quietly would leave the RedMods undeployed with no sign why.
+            throw new InvalidOperationException(
+                $"Cannot deploy RedMods for {loadout.InstallationInstance.Game.DisplayName}: no Proton/Wine compatibility data was found for this installation, so there is no Wine prefix to run redmod in."
+            );
+        }
 
         var wineDirectory = linuxCompatibilityDataProvider.WinePrefixDirectoryPath;
         var cDriveDirectory = wineDirectory.Combine("drive_c");
