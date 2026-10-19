@@ -10,6 +10,7 @@ using NexusMods.Networking.NexusWebApi.UpdateFilters;
 using NexusMods.Networking.NexusWebApi.V1Interop;
 using NexusMods.Sdk;
 using NexusMods.Sdk.NexusModsApi;
+using NexusMods.Sdk.Settings;
 
 namespace NexusMods.Networking.NexusWebApi;
 
@@ -76,6 +77,7 @@ public static class Services
             .AddSingleton<IModUpdateFilterService, ModUpdateFilterService>()
             .AddAllSingleton<IModUpdateService, ModUpdateService>()
             .AddHostedService<HandlerRegistration>()
+            .AddSettings<NxmHandlerSettings>()
             .AddNexusApiVerbs();
 
         collection
