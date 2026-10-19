@@ -160,8 +160,15 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         foreach (var dir in directoriesToDelete)
         {
+            var absolutePath = installation.Locations.ToAbsolutePath(dir);
+            if (!absolutePath.DirectoryExists()) continue;
+
+            // Filtered files (saves, shader caches) never enter the disk state, so "no tracked file
+            // underneath" does not mean "empty". Deleting recursively would take them with it.
+            if (absolutePath.EnumerateFiles(recursive: true).Any()) continue;
+
             // Could have other empty directories as children, so we need to delete recursively
-            installation.Locations.ToAbsolutePath(dir).DeleteDirectory(recursive: true);
+            absolutePath.DeleteDirectory(recursive: true);
         }
     }
 

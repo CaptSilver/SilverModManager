@@ -1,8 +1,10 @@
 using FluentAssertions;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Hashing.xxHash3;
+using NexusMods.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Loadouts;
 using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
 using Xunit;
 
@@ -142,5 +144,61 @@ public class SaveProtectionTests(ITestOutputHelper helper) : AStubbedGameTest<Sa
 
         // Guards against the assertions passing only because nothing was indexed at all.
         IndexedPaths().Should().Contain(new GamePath(LocationId.Preferences, "settings.ini"));
+    }
+
+    private async Task<(Loadout.ReadOnly Loadout, LoadoutItemGroup.ReadOnly Mod)> InstallModWithFile(Loadout.ReadOnly loadout, RelativePath archivePath)
+    {
+        await using var archiveFile = await CreateTestArchive(new Dictionary<RelativePath, byte[]>
+        {
+            { archivePath, "a normal mod file"u8.ToArray() },
+        });
+        var archive = await RegisterLocalArchive(archiveFile.Path);
+        var result = await LoadoutManager.InstallItem(archive.AsLibraryFile().AsLibraryItem(), loadout, installer: new StubbedGameInstaller(ServiceProvider));
+        return (Refresh(loadout), result.LoadoutItemGroup!.Value);
+    }
+
+    private async Task DisableAndSync(Loadout.ReadOnly loadout, LoadoutItemGroup.ReadOnly mod)
+    {
+        using var tx = Connection.BeginTransaction();
+        tx.Add(mod.Id, LoadoutItem.Disabled, Null.Instance);
+        await tx.Commit();
+        await Synchronizer.Synchronize(Refresh(loadout));
+    }
+
+    [Fact]
+    public async Task RemovingTheOnlyManagedFile_KeepsUntrackedFilesInTheSameFolder()
+    {
+        var loadout = await CreateLoadout();
+        var (installed, mod) = await InstallModWithFile(loadout, "game/sub/mod.txt");
+        loadout = await Synchronizer.Synchronize(installed);
+
+        var modFile = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "game/sub/mod.txt"));
+        var cache = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "game/sub/x.dxvk-cache"));
+        modFile.FileExists.Should().BeTrue();
+
+        // The cache is filtered, so the synchronizer never tracks it and a folder holding it looks empty
+        // once the managed file is gone.
+        await cache.WriteAllBytesAsync("shader cache"u8.ToArray());
+        loadout = await Synchronizer.Synchronize(loadout);
+
+        await DisableAndSync(loadout, mod);
+
+        modFile.FileExists.Should().BeFalse();
+        cache.FileExists.Should().BeTrue("a file the synchronizer does not track must survive folder cleanup");
+    }
+
+    [Fact]
+    public async Task RemovingTheOnlyManagedFile_StillRemovesTheEmptyFolder()
+    {
+        var loadout = await CreateLoadout();
+        var (installed, mod) = await InstallModWithFile(loadout, "game/sub2/mod.txt");
+        loadout = await Synchronizer.Synchronize(installed);
+
+        var folder = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "game/sub2"));
+        folder.DirectoryExists().Should().BeTrue();
+
+        await DisableAndSync(loadout, mod);
+
+        folder.DirectoryExists().Should().BeFalse("a folder with nothing left in it is still cleaned up");
     }
 }
