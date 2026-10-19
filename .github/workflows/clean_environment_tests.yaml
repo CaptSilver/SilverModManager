@@ -36,6 +36,12 @@ jobs:
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
       DOTNET_NOLOGO: 1
+      # Test hosts write .desktop files and mimeapps entries under the XDG dirs; keep that
+      # out of the runner's real profile (same isolation as scripts/test.sh).
+      XDG_DATA_HOME: ${{ runner.temp }}/xdg/data
+      XDG_CONFIG_HOME: ${{ runner.temp }}/xdg/config
+      XDG_STATE_HOME: ${{ runner.temp }}/xdg/state
+      XDG_CACHE_HOME: ${{ runner.temp }}/xdg/cache
     steps:
       - uses: actions/checkout@v4
         with:

@@ -22,6 +22,16 @@ fi
 cd "$root"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 QT_QPA_PLATFORM=offscreen
 
+# Test hosts build the real service graph, which touches the desktop session: it writes
+# .desktop files and mimeapps entries under XDG_DATA_HOME/XDG_CONFIG_HOME and can reach
+# the compositor. Point every XDG dir at a throwaway directory and drop the display
+# variables so a test run can never change the user's file associations or open windows.
+xdg_root="$(mktemp -d)"
+trap 'rm -rf "$xdg_root"' EXIT
+export XDG_DATA_HOME="$xdg_root/data" XDG_CONFIG_HOME="$xdg_root/config" \
+       XDG_STATE_HOME="$xdg_root/state" XDG_CACHE_HOME="$xdg_root/cache"
+unset DISPLAY WAYLAND_DISPLAY
+
 # Exit code 8 is MTP's "zero tests ran". Helper projects and projects whose tests
 # are all filtered out hit it, so it must not fail the run.
 #
@@ -34,7 +44,7 @@ for arg in "$@"; do
     esac
 done
 
-exec dotnet test "${target[@]}" --ignore-exit-code 8 \
+dotnet test "${target[@]}" --ignore-exit-code 8 \
     -p:XunitArgs="--filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait FlakeyTest=True" \
     -p:TUnitArgs="" \
     "$@"

@@ -14,6 +14,12 @@ jobs:
     
     env:
       NEXUS_API_KEY: ${{ secrets.NEXUS_API_KEY }}
+      # Test hosts write .desktop files and mimeapps entries under the XDG dirs; this runner is
+      # self-hosted, so keep that out of its real profile (same isolation as scripts/test.sh).
+      XDG_DATA_HOME: ${{ runner.temp }}/xdg/data
+      XDG_CONFIG_HOME: ${{ runner.temp }}/xdg/config
+      XDG_STATE_HOME: ${{ runner.temp }}/xdg/state
+      XDG_CACHE_HOME: ${{ runner.temp }}/xdg/cache
 
     steps:
       - uses: actions/checkout@v3
