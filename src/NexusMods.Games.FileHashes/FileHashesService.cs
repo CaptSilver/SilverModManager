@@ -13,6 +13,7 @@ using NexusMods.Sdk.Settings;
 using NexusMods.Abstractions.Steam.Values;
 using NexusMods.Games.FileHashes.DTOs;
 using NexusMods.Hashing.xxHash3;
+using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Storage;
 using NexusMods.MnemonicDB.Storage.RocksDbBackend;
@@ -99,7 +100,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         }
     }
 
-    private record struct DatabaseInfo(AbsolutePath Path, DateTimeOffset CreationTime);
+    internal record struct DatabaseInfo(AbsolutePath Path, DateTimeOffset CreationTime);
 
     private IEnumerable<DatabaseInfo> ExistingDBs()
     {
@@ -253,12 +254,17 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         }
     }
 
-    private async ValueTask<Optional<DatabaseInfo>> AddReleaseDatabase(Manifest releaseManifest, CancellationToken cancellationToken)
+    internal async ValueTask<Optional<DatabaseInfo>> AddReleaseDatabase(Manifest releaseManifest, CancellationToken cancellationToken)
     {
         try
         {
+            // The manifest and the zip come from separate requests, so the manifest is the only
+            // thing that says what the zip is supposed to contain.
+            var asset = releaseManifest.Assets.FirstOrDefault(static asset => asset.Type == AssetType.GameHashDb)
+                ?? throw new InvalidDataException("The release manifest does not list a game hashes database asset");
+
             await using var httpStream = await _httpClient.GetStreamAsync(_settings.GameHashesDbUrl, cancellationToken: cancellationToken);
-            var path = await AddDatabase(httpStream, releaseManifest.CreatedAt, cancellationToken: cancellationToken);
+            var path = await AddDatabase(httpStream, releaseManifest.CreatedAt, cancellationToken, expectedArchive: asset);
             return new DatabaseInfo(path, releaseManifest.CreatedAt);
         }
         catch (Exception e)
@@ -271,7 +277,8 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     private async ValueTask<AbsolutePath> AddDatabase(
         Stream archiveStream,
         DateTimeOffset databaseCreationTime,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Asset? expectedArchive = null)
     {
         var name = $"{Guid.NewGuid()}_{databaseCreationTime.ToUnixTimeSeconds()}";
 
@@ -281,13 +288,19 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             await archiveStream.CopyToAsync(fileStream, cancellationToken: cancellationToken);
         }
 
+        if (expectedArchive is not null) await VerifyArchive(archivePath.Path, expectedArchive, cancellationToken);
+
         await using var extractionDirectory = new TemporaryPath(_fileSystem, _hashDatabaseLocation / $"{name}_tmp");
         await using (var fileStream = archivePath.Path.Read())
         using (var zipArchive = new ZipArchive(fileStream, ZipArchiveMode.Read))
         {
-            foreach (var fileEntry in zipArchive.Entries)
+            // Resolve every entry before writing any, so a bad archive leaves nothing behind.
+            var destinations = zipArchive.Entries
+                .Select(entry => (Entry: entry, Destination: ResolveEntryPath(extractionDirectory.Path, entry.FullName)))
+                .ToArray();
+
+            foreach (var (fileEntry, destinationPath) in destinations)
             {
-                var destinationPath = extractionDirectory.Path.Combine(fileEntry.FullName);
                 destinationPath.Parent.CreateDirectory();
 
                 await using var entryStream = fileEntry.Open();
@@ -303,6 +316,39 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         );
 
         return finalDirectory;
+    }
+
+    /// <summary>
+    /// Checks the downloaded archive against the size and xxHash3 the release manifest lists for it.
+    /// The database builder computes the manifest hash the same way, as the xxHash3 of the whole zip file.
+    /// </summary>
+    private static async ValueTask VerifyArchive(AbsolutePath archivePath, Asset expected, CancellationToken cancellationToken)
+    {
+        var actualSize = archivePath.FileInfo.Size;
+        if (actualSize != expected.Size)
+            throw new InvalidDataException($"Downloaded archive is {actualSize} but the release manifest lists {expected.Size}");
+
+        var actualHash = await archivePath.XxHash3Async(token: cancellationToken);
+        if (actualHash != expected.Hash)
+            throw new InvalidDataException($"Downloaded archive hash {actualHash} does not match the release manifest hash {expected.Hash}");
+    }
+
+    /// <summary>
+    /// Maps a zip entry name to its destination below <paramref name="root"/>. Entry names are
+    /// attacker-controlled, and <c>Combine</c> keeps <c>..</c> segments, so the result is
+    /// normalised and has to stay under the root.
+    /// </summary>
+    private AbsolutePath ResolveEntryPath(AbsolutePath root, string entryName)
+    {
+        if (Path.IsPathRooted(entryName))
+            throw new InvalidDataException($"Archive entry `{entryName}` has an absolute path");
+
+        var rootPath = Path.GetFullPath(root.ToString());
+        var fullPath = Path.GetFullPath(root.Combine(entryName).ToString());
+        if (!fullPath.StartsWith(rootPath + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            throw new InvalidDataException($"Archive entry `{entryName}` resolves outside the extraction directory");
+
+        return _fileSystem.FromUnsanitizedFullPath(fullPath);
     }
 
     private AbsolutePath GameHashesReleaseFileName => _hashDatabaseLocation / _settings.ReleaseFilePath;
