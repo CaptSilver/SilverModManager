@@ -1,0 +1,8 @@
+# Read by every MSBuild run started from this directory tree (dotnet build, test, publish).
+# Reused worker nodes outlive the build that started them, and a concurrent build can't
+# borrow a busy one, so parallel builds stack up one node per CPU thread each until the
+# machine runs out of memory. With reuse off, workers exit with their build.
+#
+# A -maxcpucount cap can't live here: the dotnet CLI always passes a bare -maxcpucount,
+# and command-line switches override this file.
+-nodeReuse:false

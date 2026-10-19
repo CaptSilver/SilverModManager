@@ -21,6 +21,11 @@ fi
 cd "$root"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 QT_QPA_PLATFORM=offscreen
 
+# Nothing MSBuild starts should outlive the run. Directory.Build.rsp already turns off
+# node reuse; the variable keeps it off under -noAutoResponse, and the MSBuild server is
+# a separate resident process the response file doesn't cover.
+export MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0
+
 # Test hosts build the real service graph, which touches the desktop session: it writes
 # .desktop files and mimeapps entries under XDG_DATA_HOME/XDG_CONFIG_HOME and can reach
 # the compositor. Point every XDG dir at a throwaway directory and drop the display
