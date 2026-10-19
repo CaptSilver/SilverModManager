@@ -25,7 +25,6 @@ public sealed class ReleaseDatabaseTests : IDisposable
     private readonly string _outside;
     private readonly CapturingLogger _logger = new();
     private readonly FileHashesServiceSettings _settings;
-    private byte[] _downloadBody = [];
 
     public ReleaseDatabaseTests()
     {
@@ -161,6 +160,27 @@ public sealed class ReleaseDatabaseTests : IDisposable
     }
 
     [Fact]
+    public async Task FirstRun_RejectedReleaseDownload_FallsBackToEmbeddedDatabase()
+    {
+        // The embedded database is only used when the release is newer than it, so the
+        // release has to be dated well past any build date to reach the download.
+        var zip = BuildZip(("db/data.bin", "aa"));
+        var manifest = await ManifestFor(zip);
+        manifest.CreatedAt = new DateTimeOffset(2100, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var tampered = BuildZip(("db/data.bin", "bb"));
+
+        using var service = CreateService(new StubHandler(request =>
+            request.RequestUri!.AbsolutePath.EndsWith("manifest.json", StringComparison.Ordinal)
+                ? JsonSerializer.SerializeToUtf8Bytes(manifest, AppJsonOptions)
+                : tampered));
+
+        await service.CheckForUpdate();
+
+        _logger.Errors.Should().NotBeEmpty("the rejected download is reported");
+        service.Invoking(s => s.Current).Should().NotThrow("the embedded database stays available when the release is rejected");
+    }
+
+    [Fact]
     public async Task RealRelease_HashAndSizeMatchManifest()
     {
         var (zipPath, manifestPath) = RealReleaseFiles();
@@ -255,28 +275,32 @@ public sealed class ReleaseDatabaseTests : IDisposable
 
     private async Task<Optional<FileHashesService.DatabaseInfo>> AddRelease(byte[] body, Manifest manifest)
     {
-        _downloadBody = body;
+        using var service = CreateService(new StubHandler(_ => body));
+        return await service.AddReleaseDatabase(manifest, CancellationToken.None);
+    }
+
+    private FileHashesService CreateService(StubHandler handler)
+    {
         var services = new ServiceCollection();
+        services.AddLogging();
         services.AddSingleton(Substitute.For<IQueryEngine>());
         var settingsManager = Substitute.For<ISettingsManager>();
         settingsManager.Get<FileHashesServiceSettings>().Returns(_settings);
 
-        using var service = new FileHashesService(
+        return new FileHashesService(
             _logger,
             settingsManager,
             FileSystem.Shared,
-            new HttpClient(new StubHandler(() => _downloadBody)),
+            new HttpClient(handler),
             AppJsonOptions,
             services.BuildServiceProvider());
-
-        return await service.AddReleaseDatabase(manifest, CancellationToken.None);
     }
 
-    private sealed class StubHandler(Func<byte[]> body) : HttpMessageHandler
+    private sealed class StubHandler(Func<HttpRequestMessage, byte[]> body) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            return Task.FromResult(new HttpResponseMessage { Content = new ByteArrayContent(body()) });
+            return Task.FromResult(new HttpResponseMessage { Content = new ByteArrayContent(body(request)) });
         }
     }
 

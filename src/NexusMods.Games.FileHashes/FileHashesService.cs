@@ -206,7 +206,13 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
         _logger.LogInformation("Fetching latest games hashes database");
         var releaseDatabaseInfo = await AddReleaseDatabase(latestReleaseManifest, cancellationToken);
-        if (!releaseDatabaseInfo.HasValue) return;
+        if (!releaseDatabaseInfo.HasValue)
+        {
+            // Without this, a first run (or a call that skipped StartAsync) leaves no database connected.
+            _logger.LogWarning("Failed to add the latest game hashes database, using the existing one which may be out-of-date");
+            _currentDb = OpenDb(existingDatabases[0]);
+            return;
+        }
 
         _currentDb = OpenDb(releaseDatabaseInfo.Value);
     }
