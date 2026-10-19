@@ -1,0 +1,10 @@
+<Project>
+    <!--
+    Avalonia.BuildServices (pulled in by every Avalonia package) runs an AvaloniaStats
+    target before CoreCompile that records project, framework and OS details into
+    .avalonia-build-tasks/ for upload. Its only off switch is the AVALONIA_TELEMETRY_OPTOUT
+    environment variable, which a plain `dotnet build` won't have. Redefining the target
+    as empty turns it off for every build.
+    -->
+    <Target Name="AvaloniaStats" />
+</Project>
