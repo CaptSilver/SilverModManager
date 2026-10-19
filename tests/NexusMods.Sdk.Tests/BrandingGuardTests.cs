@@ -15,11 +15,12 @@ public partial class BrandingGuardTests
     private static readonly (string File, string Line, string Reason)[] Allowed =
     [
         ("src/NexusMods.App/UpstreamData.cs", "return fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine(\"NexusMods.App/DataModel\");", "locates upstream's data folder on purpose, to warn about shared game folders"),
+        ("src/NexusMods.App/app.pupnet.conf", "# Reference Config: https://raw.githubusercontent.com/kuiperzone/PupNet-HelloWorld/main/HelloWorld.pupnet.conf", "points at the PupNet tool's sample config, not at upstream"),
     ];
 
     // Data folder, config folder, log and sync file names that would collide with a running
-    // upstream install, upstream's HTTP user agent, upstream's desktop entry and app id, and upstream's GitHub organization.
-    [GeneratedRegex("\"NexusMods\\.App[/\"-]|nexusmods\\.app\\.(main|slim)|\"NexusModsApp\"|com\\.nexusmods|nexus_mods_app|StartupWMClass=NexusMods|\"Nexus-Mods\"")]
+    // upstream install, upstream's HTTP user agent, upstream's desktop entry and app id, upstream's GitHub organization, and raw.githubusercontent.com (nothing is fetched from upstream's repository at runtime).
+    [GeneratedRegex("\"NexusMods\\.App[/\"-]|nexusmods\\.app\\.(main|slim)|\"NexusModsApp\"|com\\.nexusmods|nexus_mods_app|StartupWMClass=NexusMods|\"Nexus-Mods\"|raw\\.githubusercontent")]
     private static partial Regex UpstreamIdentity();
 
     [Fact]

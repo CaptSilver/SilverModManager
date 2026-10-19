@@ -1,5 +1,6 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Text;
 using DynamicData;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +8,7 @@ using NexusMods.App.UI.Controls.MarkdownRenderer;
 using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
+using NexusMods.Sdk.IO;
 using NexusMods.UI.Sdk.Icons;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -17,7 +19,10 @@ namespace NexusMods.App.UI.Pages.Changelog;
 [UsedImplicitly]
 public class ChangelogPageViewModel : APageViewModel<IChangelogPageViewModel>, IChangelogPageViewModel
 {
-    private readonly Uri _changelogUri = new("https://raw.githubusercontent.com/Nexus-Mods/NexusMods.App/main/CHANGELOG.md");
+    /// <summary>
+    /// The changelog ships inside the app so the page works offline and never reads from upstream's repository.
+    /// </summary>
+    private const string ChangelogResourceName = "NexusMods.App.UI.CHANGELOG.md";
 
     public IMarkdownRendererViewModel MarkdownRendererViewModel { get; }
 
@@ -86,8 +91,16 @@ public class ChangelogPageViewModel : APageViewModel<IChangelogPageViewModel>, I
                 .BindToVM(this, vm => vm.TargetVersion)
                 .DisposeWith(disposables);
 
-            MarkdownRendererViewModel.MarkdownUri = _changelogUri;
+            MarkdownRendererViewModel.Contents = ReadBundledChangelog();
         });
+    }
+
+    private static string ReadBundledChangelog()
+    {
+        // The factory completes synchronously, so blocking on it inside activation is safe.
+        using var stream = new EmbeddedResourceStreamFactory<ChangelogPageViewModel>(ChangelogResourceName).GetStreamAsync().GetAwaiter().GetResult();
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        return reader.ReadToEnd();
     }
 }
 

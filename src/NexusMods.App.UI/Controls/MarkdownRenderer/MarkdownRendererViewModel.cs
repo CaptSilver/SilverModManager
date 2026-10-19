@@ -1,7 +1,5 @@
 using System.Diagnostics;
 using System.Reactive;
-using System.Reactive.Disposables;
-using System.Reactive.Linq;
 using System.Text;
 using Avalonia.Media;
 using JetBrains.Annotations;
@@ -10,7 +8,6 @@ using Markdown.Avalonia.Utils;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Sdk.Resources;
-using NexusMods.App.UI.Extensions;
 using NexusMods.Sdk;
 using NexusMods.UI.Sdk;
 using ReactiveUI;
@@ -22,15 +19,11 @@ namespace NexusMods.App.UI.Controls.MarkdownRenderer;
 public class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>, IMarkdownRendererViewModel
 {
     private readonly ILogger _logger;
-    private readonly HttpClient _httpClient;
     private readonly IResourceLoader<Uri, IImage> _remoteImagePipeline;
 
     [Reactive]
     [LanguageInjection("markdown")]
     public string Contents { get; set; } = string.Empty;
-
-    [Reactive] public Uri? MarkdownUri { get; set; }
-    private Uri? _gitHubBaseUri;
 
     public IMdAvPlugin ImageResolverPlugin { get; }
     public IPathResolver PathResolver { get; }
@@ -39,8 +32,7 @@ public class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>,
     public MarkdownRendererViewModel()
     {
         _logger = NullLogger.Instance;
-        _httpClient = new HttpClient();
-        _remoteImagePipeline = ImagePipelines.CreateMarkdownRendererRemoteImagePipeline(_httpClient);
+        _remoteImagePipeline = ImagePipelines.CreateMarkdownRendererRemoteImagePipeline(new HttpClient());
 
         PathResolver = new PathResolverImpl(this);
         ImageResolverPlugin = new ImageResolvePluginImpl(new ImageResolverImpl(this));
@@ -51,11 +43,9 @@ public class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>,
     public MarkdownRendererViewModel(
         IServiceProvider serviceProvider,
         ILogger<MarkdownRendererViewModel> logger,
-        IOSInterop osInterop,
-        HttpClient httpClient)
+        IOSInterop osInterop)
     {
         _logger = logger;
-        _httpClient = httpClient;
         _remoteImagePipeline = ImagePipelines.GetMarkdownRendererRemoteImagePipeline(serviceProvider);
 
         PathResolver = new PathResolverImpl(this);
@@ -66,73 +56,6 @@ public class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>,
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return;
             osInterop.OpenUri(uri);
         });
-
-        var fetchMarkdownCommand = ReactiveCommand.CreateFromTask<Uri, string>(FetchMarkdown);
-
-        this.WhenActivated(disposables =>
-        {
-            this.WhenAnyValue(vm => vm.MarkdownUri)
-                .OnUI()
-                .Do(ParseGitHubUri)
-                .WhereNotNull()
-                .OffUi()
-                .InvokeReactiveCommand(fetchMarkdownCommand)
-                .DisposeWith(disposables);
-
-            fetchMarkdownCommand
-                .OnUI()
-                .BindToVM(this, vm => vm.Contents)
-                .DisposeWith(disposables);
-        });
-    }
-
-    private void ParseGitHubUri(Uri? markdownUri)
-    {
-        // https://raw.githubusercontent.com/Nexus-Mods/NexusMods.App/main/CHANGELOG.md
-        // https://raw.githubusercontent.com/Nexus-Mods/NexusMods.App/main/docs/changelog-assets/081da2f32c8803bbd759cf2f22641810.webp
-
-        _gitHubBaseUri = null;
-        if (markdownUri is null) return;
-
-        var url = markdownUri.ToString();
-        var span = url.AsSpan();
-
-        const string prefix = "https://raw.githubusercontent.com/";
-        if (!span.StartsWith(prefix)) return;
-
-        var slice = span.Slice(prefix.Length);
-        var slashIndex = slice.IndexOf('/');
-        if (slashIndex == -1) return;
-
-        var user = slice.Slice(start: 0, length: slashIndex).ToString();
-        slice = slice.Slice(slashIndex + 1);
-
-        slashIndex = slice.IndexOf('/');
-        if (slashIndex == -1) return;
-
-        var repo = slice.Slice(start: 0, length: slashIndex).ToString();
-        slice = slice.Slice(slashIndex + 1);
-
-        slashIndex = slice.IndexOf('/');
-        if (slashIndex == -1) return;
-
-        var branch = slice.Slice(start: 0, length: slashIndex).ToString();
-        _gitHubBaseUri = new Uri($"{prefix}{user}/{repo}/{branch}/");
-    }
-
-    private async Task<string> FetchMarkdown(Uri uri, CancellationToken cancellationToken = default)
-    {
-        var changelog = await _httpClient.GetStringAsync(uri, cancellationToken);
-        return changelog;
-    }
-
-    private async Task<Stream?> FetchGitHubImage(string path, CancellationToken cancellationToken = default)
-    {
-        if (_gitHubBaseUri is null) return null;
-        if (path.StartsWith("./")) path = path.Substring(startIndex: 2);
-
-        var uri = new Uri($"{_gitHubBaseUri}{path}");
-        return await FetchRemoteImage(uri, cancellationToken);
     }
 
     private Task<Stream?> FetchRemoteImage(Uri uri, CancellationToken cancellationToken = default)
@@ -188,8 +111,8 @@ public class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>,
                 return _parent.FetchRemoteImage(uri);
             }
 
-            if (_parent.MarkdownUri is null) return null;
-            return _parent.FetchGitHubImage(relativeOrAbsolutePath);
+            _parent._logger.LogWarning("Skip loading image from relative path, there is no base to resolve it against: {Path}", relativeOrAbsolutePath);
+            return null;
         }
     }
 

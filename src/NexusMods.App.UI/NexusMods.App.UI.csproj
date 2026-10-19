@@ -811,6 +811,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="../../CHANGELOG.md" LogicalName="NexusMods.App.UI.CHANGELOG.md" />
+    </ItemGroup>
+
+    <ItemGroup>
         <EmbeddedResource Update="Resources\Language.resx">
             <Generator>PublicResXFileCodeGenerator</Generator>
             <LastGenOutput>Language.Designer.cs</LastGenOutput>
