@@ -70,6 +70,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageVersion>
     <PackageVersion Include="NetEscapades.EnumGenerators" Version="1.0.0-beta07" PrivateAssets="all" ExcludeAssets="compile;runtime" />
+    <!-- Transitive via Avalonia.FreeDesktop; 0.21.2 has GHSA-xrw6-gwf8-vvr9. Stay on 0.21.x: Avalonia 11.3 uses ClientConnectionOptions, which 0.93 removed. -->
+    <PackageVersion Include="Tmds.DBus.Protocol" Version="0.21.3" />
     <PackageVersion Include="Avalonia" Version="11.3.5" />
     <PackageVersion Include="Avalonia.Controls.DataGrid" Version="11.3.5" />
     <PackageVersion Include="Avalonia.Controls.TreeDataGrid" Version="11.1.1" />
