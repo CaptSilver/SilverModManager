@@ -1,6 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
+        <!--
+            This is a BenchmarkDotNet runner, not a test module. It references the test
+            projects for their fixtures, which makes the testing platform treat it as one:
+            `dotnet test` on the solution launches it, it runs no tests and the run exits 1.
+        -->
+        <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+        <IsTestProject>false</IsTestProject>
     </PropertyGroup>
 
 
