@@ -1,17 +1,19 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NexusMods.App.UI.Settings;
 using NexusMods.Networking.GitHub;
 using NexusMods.Networking.GitHub.DTOs;
 using NexusMods.Paths;
 using NexusMods.Sdk;
+using NexusMods.Sdk.Settings;
 
 namespace NexusMods.App.UI.Overlays.Updater;
 
 public class UpdateChecker
 {
-    private const string GitHubOrganization = "Nexus-Mods";
-    private const string GitHubRepository = "NexusMods.App";
+    private const string GitHubOrganization = "CaptSilver";
+    private const string GitHubRepository = "SilverModManager";
 
     private readonly ILogger _logger;
     private readonly IGitHubApi _gitHubApi;
@@ -22,10 +24,16 @@ public class UpdateChecker
         _gitHubApi = serviceProvider.GetRequiredService<IGitHubApi>();
     }
 
-    public static bool ShouldCheckForUpdate() => ShouldCheckForUpdate(ApplicationConstants.Version, ApplicationConstants.InstallationMethod);
-
-    public static bool ShouldCheckForUpdate(Version currentVersion, InstallationMethod installationMethod)
+    public static bool ShouldCheckForUpdate(ISettingsManager settingsManager)
     {
+        return ShouldCheckForUpdate(ApplicationConstants.Version, ApplicationConstants.InstallationMethod, settingsManager.Get<UpdaterSettings>());
+    }
+
+    public static bool ShouldCheckForUpdate(Version currentVersion, InstallationMethod installationMethod, UpdaterSettings settings)
+    {
+        // The release feed is opt-in: no request leaves the machine unless the user turned it on.
+        if (!settings.ReleaseFeedEnabled) return false;
+
         // NOTE(erri120): don't check for updates if build from source
         return installationMethod is not InstallationMethod.Manually;
     }

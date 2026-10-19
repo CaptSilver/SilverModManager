@@ -14,13 +14,12 @@ public partial class BrandingGuardTests
 
     private static readonly (string File, string Line, string Reason)[] Allowed =
     [
-        ("src/NexusMods.App.UI/Overlays/Updater/UpdateChecker.cs", "private const string GitHubRepository = \"NexusMods.App\";", "update check still points at upstream's releases until it is gated and repointed"),
         ("src/NexusMods.App/UpstreamData.cs", "return fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine(\"NexusMods.App/DataModel\");", "locates upstream's data folder on purpose, to warn about shared game folders"),
     ];
 
     // Data folder, config folder, log and sync file names that would collide with a running
-    // upstream install, upstream's HTTP user agent, and upstream's desktop entry and app id.
-    [GeneratedRegex("\"NexusMods\\.App[/\"-]|nexusmods\\.app\\.(main|slim)|\"NexusModsApp\"|com\\.nexusmods|nexus_mods_app|StartupWMClass=NexusMods")]
+    // upstream install, upstream's HTTP user agent, upstream's desktop entry and app id, and upstream's GitHub organization.
+    [GeneratedRegex("\"NexusMods\\.App[/\"-]|nexusmods\\.app\\.(main|slim)|\"NexusModsApp\"|com\\.nexusmods|nexus_mods_app|StartupWMClass=NexusMods|\"Nexus-Mods\"")]
     private static partial Regex UpstreamIdentity();
 
     [Fact]

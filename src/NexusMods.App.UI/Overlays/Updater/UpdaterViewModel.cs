@@ -54,9 +54,9 @@ public class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IUpdaterVi
         var currentVersion = ApplicationConstants.Version;
         var installationMethod = ApplicationConstants.InstallationMethod;
 
-        if (!UpdateChecker.ShouldCheckForUpdate(currentVersion, installationMethod)) return null;
-        var updateChecker = serviceProvider.GetRequiredService<UpdateChecker>();
         var settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
+        if (!UpdateChecker.ShouldCheckForUpdate(currentVersion, installationMethod, settingsManager.Get<UpdaterSettings>())) return null;
+        var updateChecker = serviceProvider.GetRequiredService<UpdateChecker>();
 
         var release = await updateChecker.FetchUpdateRelease(currentVersion, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (release is null) return null;

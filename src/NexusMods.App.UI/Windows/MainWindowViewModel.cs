@@ -94,7 +94,7 @@ public class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMainWindow
             if (welcomeOverlayViewModel is not null) overlayController.Enqueue(welcomeOverlayViewModel);
 
             R3.Observable
-                .Return(UpdateChecker.ShouldCheckForUpdate())
+                .Return(UpdateChecker.ShouldCheckForUpdate(settingsManager))
                 .Where(shouldCheck => shouldCheck)
                 .ObserveOnThreadPool()
                 .SelectAwait(

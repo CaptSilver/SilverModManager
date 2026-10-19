@@ -46,7 +46,7 @@ public class GitHubApiTests
         //     api.AuthenticationHeaderValue = new AuthenticationHeaderValue(scheme: "token", token);
         // }
 
-        var releases = await api.FetchReleases("Nexus-Mods", "NexusMods.App");
+        var releases = await api.FetchReleases("CaptSilver", "SilverModManager");
         releases.Should().NotBeNullOrEmpty();
     }
 }
