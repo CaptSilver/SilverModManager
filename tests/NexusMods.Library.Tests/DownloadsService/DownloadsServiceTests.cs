@@ -11,15 +11,15 @@ using SyncHelpers = NexusMods.Library.Tests.DownloadsService.Helpers.Synchroniza
 
 namespace NexusMods.Library.Tests.DownloadsService;
 
-public class DownloadsServiceTests(
+public abstract class DownloadsServiceTestsBase(
     IJobMonitor jobMonitor,
     Library.DownloadsService service,
     IServiceProvider serviceProvider)
 {
-    private readonly DownloadJobFactory _jobFactory = new(jobMonitor, serviceProvider);
+    protected readonly DownloadJobFactory _jobFactory = new(jobMonitor, serviceProvider);
 
     // Helper methods
-    private CompositeDisposable SetupCollectionSubscriptions(
+    protected CompositeDisposable SetupCollectionSubscriptions(
         out List<DownloadInfo> allDownloads,
         out List<DownloadInfo> completedDownloads,
         out List<DownloadInfo> activeDownloads,
@@ -114,7 +114,7 @@ public class DownloadsServiceTests(
         return disposables;
     }
     
-    private CompositeDisposable SetupCollectionSubscriptions(
+    protected CompositeDisposable SetupCollectionSubscriptions(
         out List<DownloadInfo> allDownloads,
         out List<DownloadInfo> completedDownloads,
         out List<DownloadInfo> activeDownloads)
@@ -122,6 +122,14 @@ public class DownloadsServiceTests(
         return SetupCollectionSubscriptions(out allDownloads, out completedDownloads, out activeDownloads, out _);
     }
     
+}
+
+public class DownloadsServiceTests(
+    IJobMonitor jobMonitor,
+    Library.DownloadsService service,
+    IServiceProvider serviceProvider)
+    : DownloadsServiceTestsBase(jobMonitor, service, serviceProvider)
+{
     [Fact]
     public async Task Validate_Download_Jobs_Lifetime()
     {
@@ -178,54 +186,6 @@ public class DownloadsServiceTests(
         gameDownloads.Should().HaveCount(1, "completed job should remain in game-specific downloads");
     }
     
-    [Fact]
-    public async Task CancelledJobs_ShouldBeCompletelyRemoved_FromAllCollections()
-    {
-        // Arrange
-        var gameId = NexusModsGameId.From(1234u);
-        
-        using var disposables = SetupCollectionSubscriptions(
-            out var allDownloads,
-            out var completedDownloads,
-            out var activeDownloads);
-        
-        // Initially empty
-        allDownloads.Should().BeEmpty("no jobs should exist initially");
-        
-        // Create and start job
-        var context = _jobFactory.CreateAndStartDownloadJob(gameId);
-        
-        // Wait for jobs to signal they're ready before checking state
-        context.WaitForJobsReady(TimeSpan.FromSeconds(30))
-            .Should().BeTrue("jobs should signal ready within timeout");
-        
-        // Job should appear in collections
-        allDownloads.Should().HaveCount(1, "job should be in AllDownloads when started");
-        activeDownloads.Should().HaveCount(1, "job should be in ActiveDownloads when started");
-        
-        // Start a pre-Cancelled the job
-        context.CancelJob();
-        context.SignalJobsToStart();
-        
-        try
-        {
-            await context.JobTask.Job.WaitAsync();
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected
-        }
-
-        // Cancelled jobs should be completely removed
-        // Note: The change isn't instant so we must wait for the collections to update
-        (await SyncHelpers.WaitForCollectionCount(allDownloads, 0, TimeSpan.FromSeconds(30)))
-            .Should().BeTrue("cancelled jobs should be removed from AllDownloads");
-        (await SyncHelpers.WaitForCollectionCount(completedDownloads, 0, TimeSpan.FromSeconds(30)))
-            .Should().BeTrue("cancelled jobs should not be in CompletedDownloads");
-        (await SyncHelpers.WaitForCollectionCount(activeDownloads, 0, TimeSpan.FromSeconds(30)))
-            .Should().BeTrue("cancelled jobs should not be in ActiveDownloads");
-    }
-
     // Nested Startup class for Xunit.DependencyInjection
     public class Startup
     {

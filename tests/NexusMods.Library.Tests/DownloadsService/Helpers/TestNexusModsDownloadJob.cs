@@ -50,8 +50,13 @@ public record TestNexusModsDownloadJob : IJobDefinitionWithStart<TestNexusModsDo
         // Yield to allow other operations
         await context.YieldAsync();
             
-        // Simply await the completion source - matches original NexusModsDownloadJob pattern
-        return await CompletionSource.Task;
+        // Finish only once the HTTP job has finished, like the real NexusModsDownloadJob.
+        // DownloadsService takes DownloadInfo.Status from the HTTP job and stops listening
+        // when this job leaves the monitor, so completing first would drop the HTTP
+        // job's Completed status. Awaiting the completion source here raced with it.
+        var path = await HttpDownloadJob;
+        CompletionSource.TrySetResult(path);
+        return path;
     }
     
     // <see cref="IDownloadJob"/> metadata implementation

@@ -80,6 +80,10 @@ public record WaitForCancellationJob(ManualResetEventSlim ReadySignal) : IJobDef
             await context.YieldAsync();
         }
 
+        // Cancellation can land after YieldAsync but before the loop condition is
+        // checked, which would otherwise end the job normally instead of cancelled.
+        context.CancellationToken.ThrowIfCancellationRequested();
+
         return "Should not reach here";
     }
 }
