@@ -5,7 +5,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.DataModel.Undo;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Loadouts;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.DataModel.Tests.Undo;
 

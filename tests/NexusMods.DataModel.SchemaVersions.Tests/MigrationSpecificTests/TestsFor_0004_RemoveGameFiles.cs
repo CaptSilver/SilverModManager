@@ -3,7 +3,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.MnemonicDB.Abstractions.IndexSegments;
 using NexusMods.MnemonicDB.Abstractions.Query;
 using NexusMods.Sdk.Loadouts;
-using Xunit.Abstractions;
+using Xunit;
 using Xunit.DependencyInjection;
 
 namespace NexusMods.DataModel.SchemaVersions.Tests.MigrationSpecificTests;

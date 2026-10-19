@@ -7,7 +7,7 @@ using NexusMods.Games.TestFramework;
 using NexusMods.Networking.ModUpdates.Tests.Helpers;
 using NexusMods.Networking.NexusWebApi;
 using NexusMods.Sdk.NexusModsApi;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.Networking.ModUpdates.Tests;
 

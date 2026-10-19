@@ -7,7 +7,7 @@ using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Games;
 using NexusMods.App.UI.DiagnosticSystem;
 using NexusMods.Sdk.Loadouts;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.Games.TestFramework;
 

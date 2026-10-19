@@ -30,8 +30,14 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
+      # The xunit v3 and TUnit runners reject each other's filter options, so each gets its own
+      # MSBuild property (see tests/Directory.Build.props). The TUnit tree filter selects tests
+      # marked [Property("RequiresNetworking", "True")]. Exit code 8 (zero tests ran) is not a failure.
       - name: Tests
-        run: dotnet test --no-build --logger "GitHubActions" --filter "RequiresNetworking=True" --blame-hang-timeout 20m
+        run: >
+          dotnet test --solution NexusMods.App.sln --no-build --ignore-exit-code 8
+          -p:XunitArgs="--report-github --timeout 20m --filter-trait RequiresNetworking=True"
+          -p:TUnitArgs="--report-github --timeout 20m --treenode-filter /*/*/*/*[RequiresNetworking=True]"
 
 
 

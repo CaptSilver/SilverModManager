@@ -9,7 +9,7 @@ using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Games.TestFramework;
 using NexusMods.Sdk.Games;
 using Xunit;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.Collections.Tests;
 

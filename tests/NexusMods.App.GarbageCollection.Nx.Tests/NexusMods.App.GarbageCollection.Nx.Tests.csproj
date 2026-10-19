@@ -3,6 +3,9 @@
         <PackageReference Include="NexusMods.Paths.TestingHelpers"/>
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="..\NexusMods.App.GarbageCollection.Tests\AutoFileSystemAttribute.cs" Link="AutoFileSystemAttribute.cs" />
+    </ItemGroup>
+    <ItemGroup>
         <ProjectReference Include="..\..\src\NexusMods.App.GarbageCollection.Nx\NexusMods.App.GarbageCollection.Nx.csproj"/>
     </ItemGroup>
 </Project>

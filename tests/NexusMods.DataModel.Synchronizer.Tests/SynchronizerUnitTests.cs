@@ -9,7 +9,7 @@ using NexusMods.Games.TestFramework.FluentAssertionExtensions;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Sdk.Games;
 using NexusMods.StandardGameLocators.TestHelpers;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.DataModel.Synchronizer.Tests;
 

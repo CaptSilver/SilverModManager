@@ -1,6 +1,6 @@
 using FluentAssertions;
 using NexusMods.Abstractions.NexusModsLibrary;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.DataModel.SchemaVersions.Tests.MigrationSpecificTests;
 

@@ -5,7 +5,7 @@ using NexusMods.Games.Generic;
 using NexusMods.Games.RedEngine;
 using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.StandardGameLocators.TestHelpers;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.Games.TestFramework;
 

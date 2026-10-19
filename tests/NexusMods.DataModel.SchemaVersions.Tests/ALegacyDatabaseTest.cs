@@ -34,7 +34,7 @@ using NexusMods.Sdk.Settings;
 using NexusMods.StandardGameLocators;
 using NexusMods.StandardGameLocators.TestHelpers;
 using NSubstitute;
-using Xunit.Abstractions;
+using Xunit;
 using Xunit.DependencyInjection;
 
 namespace NexusMods.DataModel.SchemaVersions.Tests;

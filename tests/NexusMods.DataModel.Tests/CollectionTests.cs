@@ -5,7 +5,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Collections;
 using NexusMods.MnemonicDB.Abstractions;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.DataModel.Tests;
 

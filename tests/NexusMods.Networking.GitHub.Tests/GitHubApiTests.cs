@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NexusMods.Sdk;
 using Xunit;
-using Xunit.Abstractions;
+using Xunit;
 using Xunit.DependencyInjection;
 using Xunit.DependencyInjection.Logging;
 

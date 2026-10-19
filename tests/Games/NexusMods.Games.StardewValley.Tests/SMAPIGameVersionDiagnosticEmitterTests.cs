@@ -4,7 +4,7 @@ using NexusMods.Games.StardewValley.Emitters;
 using NexusMods.Games.TestFramework;
 using NexusMods.StandardGameLocators.TestHelpers;
 using StardewModdingAPI.Toolkit;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.Games.StardewValley.Tests;
 

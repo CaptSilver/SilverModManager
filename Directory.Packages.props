@@ -110,11 +110,11 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing.XUnit" Version="1.1.2" />
     <PackageVersion Include="AutoFixture" Version="4.18.1" />
+    <PackageVersion Include="AutoFixture.Xunit3" Version="4.19.0" />
+    <!-- Only pinned so NexusMods.Paths.TestingHelpers' transitive xunit v2 dependency can be excluded, see tests/Directory.Build.props -->
     <PackageVersion Include="AutoFixture.Xunit2" Version="4.18.1" />
-    <PackageVersion Include="coverlet.collector" Version="6.0.2">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageVersion>
+    <PackageVersion Include="xunit.extensibility.core" Version="2.9.3" />
+    <PackageVersion Include="xunit.abstractions" Version="2.0.3" />
     <!-- NOTE: FluentAssertions version 8.x changes license (see https://fluentassertions.com/) -->
     <PackageVersion Include="FluentAssertions" Version="7.2.0" />
     <PackageVersion Include="FluentAssertions.OneOf" Version="0.0.5" />
@@ -122,29 +122,23 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageVersion>
-    <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1">
+    <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.5">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageVersion>
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <PackageVersion Include="NSubstitute.Analyzers.CSharp" Version="1.0.17">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageVersion>
-    <PackageVersion Include="Verify.Xunit" Version="30.11.0" />
+    <PackageVersion Include="Verify.XunitV3" Version="31.4.1" />
     <PackageVersion Include="Verify.ImageMagick" Version="3.7.3" />
     <PackageVersion Include="Verify.SourceGenerators" Version="2.5.0" />
-    <PackageVersion Include="xunit" Version="2.9.3" />
-    <PackageVersion Include="Xunit.DependencyInjection" Version="9.6.0" />
-    <PackageVersion Include="Xunit.DependencyInjection.Logging" Version="9.0.0" />
-    <PackageVersion Include="Xunit.DependencyInjection.SkippableFact" Version="9.0.0" />
-    <PackageVersion Include="xunit.extensibility.core" Version="2.6.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageVersion>
-    <PackageVersion Include="Xunit.SkippableFact" Version="1.4.13" />
+    <PackageVersion Include="xunit.v3.mtp-v2" Version="3.2.2" />
+    <PackageVersion Include="xunit.v3.extensibility.core" Version="3.2.2" />
+    <PackageVersion Include="xunit.v3.assert" Version="3.2.2" />
+    <PackageVersion Include="Xunit.DependencyInjection" Version="11.3.2" />
+    <PackageVersion Include="Xunit.DependencyInjection.Logging" Version="11.0.0" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.2" />
     <PackageVersion Include="BitFaster.Caching" Version="2.5.4" />
     <PackageVersion Include="CliWrap" Version="3.9.0" />

@@ -6,7 +6,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.IO;
-using Xunit.Abstractions;
+using Xunit;
 using Xunit.DependencyInjection;
 
 namespace NexusMods.DataModel.Tests;

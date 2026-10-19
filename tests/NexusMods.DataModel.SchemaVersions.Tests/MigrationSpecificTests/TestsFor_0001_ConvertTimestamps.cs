@@ -2,7 +2,7 @@
 using FluentAssertions;
 using NexusMods.MnemonicDB.Abstractions.Attributes;
 using NexusMods.MnemonicDB.Abstractions.BuiltInEntities;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.DataModel.SchemaVersions.Tests.MigrationSpecificTests;
 

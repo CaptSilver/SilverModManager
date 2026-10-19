@@ -9,7 +9,6 @@ public class Startup
     public void ConfigureServices(IServiceCollection container)
     {
         container
-            .AddSkippableFactSupport()
             .AddLogging(builder => builder.AddXUnit());
     }
 }

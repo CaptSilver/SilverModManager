@@ -2,12 +2,15 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing.XUnit"/>
-        <PackageReference Include="Verify.Xunit"/>
+        <PackageReference Include="Verify.XunitV3"/>
         <PackageReference Include="Verify.SourceGenerators"/>
+
+        <!-- Verify.SourceGenerators is compiled against Microsoft.CodeAnalysis 4.9 -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="4.9.2" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" VersionOverride="4.9.2" />
 
         <PackageReference Remove="Xunit.DependencyInjection" />
         <PackageReference Remove="Xunit.DependencyInjection.Logging" />
-        <PackageReference Remove="Xunit.DependencyInjection.SkippableFact" />
     </ItemGroup>
 
     <ItemGroup>

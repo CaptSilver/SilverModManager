@@ -36,7 +36,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".solutionItems", ".solution
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 		.gitattributes = .gitattributes
-		codecov.yaml = codecov.yaml
 		Directory.Build.props = Directory.Build.props
 		LICENSE.md = LICENSE.md
 		NuGet.Build.props = NuGet.Build.props

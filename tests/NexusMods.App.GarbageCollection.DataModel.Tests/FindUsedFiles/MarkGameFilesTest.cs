@@ -15,7 +15,7 @@ using NexusMods.Sdk.Games;
 using NexusMods.StandardGameLocators;
 using NexusMods.StandardGameLocators.TestHelpers;
 using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.App.GarbageCollection.DataModel.Tests.FindUsedFiles;
 

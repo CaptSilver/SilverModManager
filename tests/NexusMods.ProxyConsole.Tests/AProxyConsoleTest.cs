@@ -20,7 +20,7 @@ public class AProxyConsoleTest : IAsyncLifetime
         (_serverStream, _clientStream) = FullDuplexStream.CreatePair();
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _client = new ClientRendererAdaptor(_clientStream, LoggingRenderer, _provider);
         (_, _server) = await ProxiedRenderer.Create(_provider, _serverStream);
@@ -70,7 +70,7 @@ public class AProxyConsoleTest : IAsyncLifetime
         });
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         if (_client != null && _client is IDisposable d)
         {
@@ -82,6 +82,6 @@ public class AProxyConsoleTest : IAsyncLifetime
             d2.Dispose();
         }
 
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 }

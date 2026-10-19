@@ -13,7 +13,7 @@ using NexusMods.Sdk;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
-using Xunit.Abstractions;
+using Xunit;
 using PathTuple = (NexusMods.MnemonicDB.Abstractions.EntityId, NexusMods.Sdk.Games.LocationId, NexusMods.Paths.RelativePath);
 
 namespace NexusMods.Games.TestFramework;

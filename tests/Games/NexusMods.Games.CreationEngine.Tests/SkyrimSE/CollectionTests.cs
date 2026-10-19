@@ -12,7 +12,7 @@ using NexusMods.HyperDuck;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.StandardGameLocators.TestHelpers;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.Games.CreationEngine.Tests.SkyrimSE;
 

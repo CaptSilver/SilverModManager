@@ -56,6 +56,24 @@ These tests are marked with the `RequiresApiKey` trait and will fail if the API 
 
 To run networking tests locally, set the `NEXUS_API_KEY` environment variable.
 
+## Running tests
+
+All test projects run on [Microsoft.Testing.Platform](https://learn.microsoft.com/dotnet/core/testing/microsoft-testing-platform-intro) (xUnit v3 and TUnit), selected by the `test` section of `global.json`. `dotnet test` therefore takes `--solution` / `--project` rather than a positional path.
+
+```bash
+scripts/test.sh                                      # offline suite, whole solution
+scripts/test.sh --no-build                           # skip the build step
+dotnet test --project tests/NexusMods.CLI.Tests      # one project
+```
+
+`scripts/test.sh` excludes tests carrying the `RequiresNetworking`, `RequiresApiKey` and `FlakeyTest` traits. The xUnit and TUnit runners reject each other's filter options, so the filters are passed as MSBuild properties (`-p:XunitArgs=...`, `-p:TUnitArgs=...`) that each test project maps onto `TestingPlatformCommandLineArguments`. To run only the networking tests:
+
+```bash
+dotnet test --solution NexusMods.App.sln --ignore-exit-code 8 -p:XunitArgs="--filter-trait RequiresNetworking=True"
+```
+
+Exit code 8 means "zero tests ran", which is expected for helper projects and for projects whose tests are all filtered out.
+
 ## Translations
 
 Translations are currently handled via the IDE. See [this issue](https://github.com/Nexus-Mods/NexusMods.App/issues/598) for more details.

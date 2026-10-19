@@ -7,7 +7,7 @@ using NexusMods.Games.TestFramework;
 using NexusMods.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.DataModel.Synchronizer.Tests;
 

@@ -4,7 +4,7 @@ using FluentAssertions.Common;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.TestFramework;
 using NexusMods.Sdk.Games;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.DataModel.Synchronizer.Tests;
 

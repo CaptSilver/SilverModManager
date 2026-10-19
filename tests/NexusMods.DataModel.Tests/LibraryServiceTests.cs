@@ -13,7 +13,7 @@ using NexusMods.Sdk;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
-using Xunit.Abstractions;
+using Xunit;
 using NexusMods.Sdk.Library;
 using Loadout = NexusMods.Sdk.Loadouts.Loadout;
 

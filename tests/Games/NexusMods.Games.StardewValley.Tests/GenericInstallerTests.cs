@@ -8,7 +8,7 @@ using NexusMods.Games.TestFramework;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.NexusModsApi;
 using NexusMods.StandardGameLocators.TestHelpers;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.Games.StardewValley.Tests;
 

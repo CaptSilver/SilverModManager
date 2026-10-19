@@ -13,7 +13,7 @@ using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Loadouts;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.Games.RedEngine.Tests;
 

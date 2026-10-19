@@ -14,7 +14,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Verify.Xunit" />
+      <PackageReference Include="Verify.XunitV3" />
     </ItemGroup>
 
     <Target Name="CopyResources" AfterTargets="PostBuildEvent">

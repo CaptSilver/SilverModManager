@@ -7,7 +7,7 @@ using NexusMods.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.StandardGameLocators.TestHelpers;
-using Xunit.Abstractions;
+using Xunit;
 using Xunit.DependencyInjection;
 
 namespace NexusMods.Games.RedEngine.Tests.LibraryArchiveInstallerTests;

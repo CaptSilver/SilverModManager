@@ -6,7 +6,7 @@ using NexusMods.HyperDuck;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.NexusModsApi;
 using NexusMods.StandardGameLocators.TestHelpers;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.Games.CreationEngine.Tests.Fallout4;
 

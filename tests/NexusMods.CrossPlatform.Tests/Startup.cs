@@ -18,7 +18,6 @@ public class Startup
             .AddFileSystem()
             .AddOSInterop()
             .AddRuntimeDependencies()
-            .AddSkippableFactSupport()
             .AddLogging(builder => builder.AddXUnit());
     }
 }

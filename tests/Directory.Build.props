@@ -3,6 +3,22 @@
 
     <PropertyGroup>
         <IsPackable>false</IsPackable>
+        <!--
+            xunit.v3 and TUnit test projects are executables. Helper libraries that only
+            share test code (Games.TestFramework, StandardGameLocators.TestHelpers) set
+            <OutputType>Library</OutputType> and are left out of everything below that is
+            conditioned on OutputType.
+        -->
+        <OutputType>Exe</OutputType>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <!--
+            Extra command line arguments for the test executables, set from the outside:
+            dotnet test, solution mode, with -p:XunitArgs=... and -p:TUnitArgs=...
+            xunit.v3 and TUnit reject each other's filter options, so each gets its own property.
+        -->
+        <TestingPlatformCommandLineArguments>$(XunitArgs)</TestingPlatformCommandLineArguments>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,7 +28,11 @@
 
     <ItemGroup>
         <PackageReference Include="AutoFixture" />
-        <PackageReference Include="AutoFixture.Xunit2" />
+        <PackageReference Include="AutoFixture.Xunit3" />
+        <!-- NexusMods.Paths.TestingHelpers pulls in AutoFixture.Xunit2 (and with it xunit v2 attributes), which clash with xunit.v3 -->
+        <PackageReference Include="AutoFixture.Xunit2" ExcludeAssets="all" />
+        <PackageReference Include="xunit.extensibility.core" ExcludeAssets="all" />
+        <PackageReference Include="xunit.abstractions" ExcludeAssets="all" />
     </ItemGroup>
 
     <ItemGroup>
@@ -22,17 +42,19 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="xunit" />
-        <PackageReference Include="xunit.runner.visualstudio" />
-        <PackageReference Include="Xunit.SkippableFact" />
         <PackageReference Include="Xunit.DependencyInjection" />
         <PackageReference Include="Xunit.DependencyInjection.Logging" />
-        <PackageReference Include="Xunit.DependencyInjection.SkippableFact" />
     </ItemGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
-        <PackageReference Include="coverlet.collector" />
+    <!-- Runner and reporters, only for projects that produce a test executable -->
+    <ItemGroup Condition="'$(OutputType)' == 'Exe'">
+        <PackageReference Include="xunit.v3.mtp-v2" />
         <PackageReference Include="GitHubActionsTestLogger" />
+    </ItemGroup>
+
+    <!-- Helper libraries only need the xunit types, not the runner -->
+    <ItemGroup Condition="'$(OutputType)' != 'Exe'">
+        <PackageReference Include="xunit.v3.extensibility.core" />
+        <PackageReference Include="xunit.v3.assert" />
     </ItemGroup>
 </Project>

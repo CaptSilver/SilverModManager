@@ -30,8 +30,33 @@ jobs:
 
   build-and-test:
     if: github.event_name == 'push' || github.event.pull_request.draft == false
-    uses: Nexus-Mods/NexusMods.App.Meta/.github/workflows/dotnet-build-and-test-with-osx.yaml@main
-    with:
-      extra-test-args: "--blame-hang-timeout 20m"
-      test-filter: "RequiresNetworking!=True&FlakeyTest!=True"
-      codecov-flags: ",clean_environment_tests"
+    name: Build and test (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+          lfs: true
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore NexusMods.App.sln
+
+      - name: Build
+        run: dotnet build NexusMods.App.sln --no-restore
+
+      # Same filters as scripts/test.sh: the offline suite only. Exit code 8 means a project
+      # ran zero tests (helpers, or everything filtered out), which is not a failure.
+      - name: Test
+        run: >
+          dotnet test --solution NexusMods.App.sln --no-build --ignore-exit-code 8
+          -p:XunitArgs="--report-github --timeout 20m --filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait FlakeyTest=True"
+          -p:TUnitArgs="--report-github --timeout 20m"

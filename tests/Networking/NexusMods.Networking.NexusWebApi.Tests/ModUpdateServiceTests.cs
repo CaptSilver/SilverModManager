@@ -11,7 +11,7 @@ using NexusMods.Abstractions.GC;
 using NexusMods.Games.TestFramework;
 using NexusMods.Networking.NexusWebApi.UpdateFilters;
 using NexusMods.Sdk.NexusModsApi;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.Networking.NexusWebApi.Tests;
 

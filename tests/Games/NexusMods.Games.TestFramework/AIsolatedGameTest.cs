@@ -38,7 +38,7 @@ using NexusMods.Sdk.Games;
 using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.NexusModsApi;
-using Xunit.Abstractions;
+using Xunit;
 using Xunit.DependencyInjection;
 using NexusMods.Sdk.Library;
 
@@ -549,7 +549,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
         }
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _host.Services.GetRequiredService<IFileHashesService>().GetFileHashesDb();
 
@@ -564,7 +564,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
         Game = (TGame)GameInstallation.Game;
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _ = Task.Run(async () =>
         {
@@ -577,7 +577,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
             }
         });
 
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
     
     /// <summary>

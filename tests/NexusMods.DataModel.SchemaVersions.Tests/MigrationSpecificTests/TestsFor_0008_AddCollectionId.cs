@@ -5,7 +5,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Networking.NexusWebApi;
 using NSubstitute;
 using StrawberryShake;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.DataModel.SchemaVersions.Tests.MigrationSpecificTests;
 

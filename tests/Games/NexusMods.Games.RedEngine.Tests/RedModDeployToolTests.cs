@@ -13,7 +13,7 @@ using NexusMods.Paths;
 using NexusMods.Sdk.Loadouts;
 using OneOf;
 using R3;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace NexusMods.Games.RedEngine.Tests;
 
