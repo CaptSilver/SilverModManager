@@ -38,21 +38,6 @@ public readonly partial struct GameStore
     public static readonly GameStore EGS = From("Epic Games Store");
 
     /// <summary>
-    /// Origin.
-    /// </summary>
-    public static readonly GameStore Origin = From("Origin");
-
-    /// <summary>
-    /// EA Desktop.
-    /// </summary>
-    public static readonly GameStore EADesktop = From("EA Desktop");
-
-    /// <summary>
-    /// Xbox Game Pass.
-    /// </summary>
-    public static readonly GameStore XboxGamePass = From("Xbox Game Pass");
-
-    /// <summary>
     /// Manually added.
     /// </summary>
     public static readonly GameStore ManuallyAdded = From("Manually Added");

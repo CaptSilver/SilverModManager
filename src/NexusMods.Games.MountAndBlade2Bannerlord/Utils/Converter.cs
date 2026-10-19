@@ -13,8 +13,6 @@ public static class Converter
             return GameStoreTW.GOG;
         if (store == GameStore.EGS)
             return GameStoreTW.Epic;
-        if (store == GameStore.XboxGamePass)
-            return GameStoreTW.Xbox;
         return GameStoreTW.Unknown;
     }
 }

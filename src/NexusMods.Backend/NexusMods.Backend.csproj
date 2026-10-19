@@ -9,7 +9,12 @@
 
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.HighPerformance"/>
-        <PackageReference Include="GameFinder" />
+        <PackageReference Include="GameFinder.Launcher.Heroic" />
+        <PackageReference Include="GameFinder.RegistryUtils" />
+        <PackageReference Include="GameFinder.StoreHandlers.EGS" />
+        <PackageReference Include="GameFinder.StoreHandlers.GOG" />
+        <PackageReference Include="GameFinder.StoreHandlers.Steam" />
+        <PackageReference Include="GameFinder.Wine" />
         <PackageReference Include="LinuxDesktopUtils.XDGDesktopPortal" />
         <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
         <PackageReference Include="SharpZipLib" />

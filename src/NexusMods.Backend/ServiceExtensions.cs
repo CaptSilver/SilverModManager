@@ -24,9 +24,7 @@ namespace NexusMods.Backend;
 
 public static class ServiceExtensions
 {
-    public static IServiceCollection AddGameLocators(
-        this IServiceCollection serviceCollection,
-        GameLocatorSettings? settings = null)
+    public static IServiceCollection AddGameLocators(this IServiceCollection serviceCollection)
     {
         OSInformation.Shared.SwitchPlatform(
             onWindows: () =>
@@ -34,9 +32,6 @@ public static class ServiceExtensions
                 serviceCollection.AddSingleton<IGameLocator, SteamLocator>();
                 serviceCollection.AddSingleton<IGameLocator, GOGLocator>();
                 serviceCollection.AddSingleton<IGameLocator, EGSLocator>();
-
-                if (settings?.EnableXboxGamePass ?? false)
-                    serviceCollection.AddSingleton<IGameLocator, XboxLocator>();
             },
             onLinux: () =>
             {
@@ -69,7 +64,6 @@ public static class ServiceExtensions
             .AddSingleton<IGameLocationsService, GameLocationsService>()
             .AddSingleton<IGameRegistry, GameRegistry>()
             .AddGameInstallMetadataModel()
-            .AddSettings<GameLocatorSettings>()
             .AddSingleton<IGameLocator, ManuallyAddedLocator>()
             .AddManuallyAddedGameModel();
     }

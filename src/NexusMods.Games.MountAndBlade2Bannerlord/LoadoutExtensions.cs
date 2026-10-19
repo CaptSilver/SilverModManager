@@ -17,14 +17,13 @@ public static class LoadoutExtensions
     /// </summary>
     public static bool LocateBLSE(this Loadout.ReadOnly loadout, out RelativePath path)
     {
-        var blseXboxPath = (RelativePath)BinFolder / XboxConfiguration / BlseExecutable;
         var blseStandalonePath = (RelativePath)BinFolder / Win64Configuration / BlseExecutable;
         var blseLauncher = LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath()
             .Where(x => x.AsLoadoutItem().IsEnabled())
             .FirstOrDefault(x =>
             {
                 var relativePath = x.TargetPath.Item3;
-                return relativePath.Equals(blseXboxPath) || relativePath.Equals(blseStandalonePath);
+                return relativePath.Equals(blseStandalonePath);
             }
         );
 

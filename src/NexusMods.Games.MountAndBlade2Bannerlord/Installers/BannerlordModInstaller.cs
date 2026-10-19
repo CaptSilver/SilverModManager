@@ -38,9 +38,6 @@ public sealed class BannerlordModInstaller : ALibraryArchiveInstaller
         if (moduleInfoFileTuples.Count == 0) return new NotSupported(Reason: "Found no module info files in the archive"); // TODO: Will it install in root folder the content?
 
         var launcherManager = _launcherManagerFactory.Get(loadout.Installation);
-        var store = loadout.Installation.Store;
-        var isXboxStore = store == Sdk.Games.GameStore.XboxGamePass;
-        var isNonXboxStore = !isXboxStore;
 
         foreach (var tuple in moduleInfoFileTuples)
         {
@@ -77,37 +74,22 @@ public sealed class BannerlordModInstaller : ALibraryArchiveInstaller
             }
             
             var storeFilesToCopy = installResult.Instructions.OfType<CopyStoreInstallInstruction>().ToArray();
-            var hasXboxFiles = storeFilesToCopy.Any(x => x.Store == GameStore.Xbox);
             var hasNonXboxFiles = storeFilesToCopy.Any(x => x.Store != GameStore.Xbox);
             var usedDestinations = new HashSet<RelativePath>();
             
             foreach (var instruction in storeFilesToCopy)
             {
-                // Note(sewer) Alias Xbox store with Steam store files, in case mod author
+                // Note(sewer) Alias Xbox store files with Steam store files, in case mod author
                 //      included files for only one version of the game.
                 //      For more info, see `0004-MountAndBlade2Bannerlord.md`.
                 RelativePath source = instruction.Source;
                 RelativePath destination = instruction.Destination;
-                
-                // If this mod has no files for Xbox store, and we're on Xbox store.
+
                 // InstallModuleContent emits multiple stores for `Win64_Shipping_Client`,
                 // so we want to avoid adding multiple times, hence the hashset.
-                
-                // Alias non-Xbox files onto Xbox files, if only non-Xbox files exist.
-                if (!hasXboxFiles && isXboxStore && !usedDestinations.Contains(destination))
-                {
-                    destination = destination.Path.Replace("Win64_Shipping_Client", "Gaming.Desktop.x64_Shipping_Client");
-                    if (!usedDestinations.Contains(destination))
-                    {
-                        moduleInfoLoadoutItemId = AddFileFromFilesToCopy(libraryArchive, transaction, loadout,
-                            source, destination, modGroup, moduleInfoFile,
-                            moduleInfoLoadoutItemId
-                        );
-                    }
-                }
 
                 // Alias Xbox files onto non-Xbox files, if only Xbox files exist.
-                if (!hasNonXboxFiles && isNonXboxStore)
+                if (!hasNonXboxFiles)
                 {
                     destination = destination.Path.Replace("Gaming.Desktop.x64_Shipping_Client", "Win64_Shipping_Client");
                     if (!usedDestinations.Contains(destination))

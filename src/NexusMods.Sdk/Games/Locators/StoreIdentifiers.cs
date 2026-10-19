@@ -35,8 +35,4 @@ public record StoreIdentifiers(GameId GameId)
     /// and you'll find the Item ID in the table at the top as well as in the URL.
     /// </remarks>
     public ImmutableArray<string> EGSCatalogItemId { get; init; } = ImmutableArray<string>.Empty;
-
-    public ImmutableArray<string> XboxPackageIdentifiers { get; init; } = ImmutableArray<string>.Empty;
-    public ImmutableArray<string> OriginManifestIds { get; init; } = ImmutableArray<string>.Empty;
-    public ImmutableArray<string> EADesktopSoftwareIds { get; init; } = ImmutableArray<string>.Empty;
 }

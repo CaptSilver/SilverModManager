@@ -1210,10 +1210,7 @@
                             <icons:UnifiedIcon Value="{x:Static icons:IconValues.ShieldHalfFull}"
                                                ToolTip.Tip="ShieldHalfFull" />
                             <icons:UnifiedIcon Value="{x:Static icons:IconValues.Steam}" ToolTip.Tip="Steam" />
-                            <icons:UnifiedIcon Value="{x:Static icons:IconValues.EA}" ToolTip.Tip="EA" />
                             <icons:UnifiedIcon Value="{x:Static icons:IconValues.GOG}" ToolTip.Tip="GOG" />
-                            <icons:UnifiedIcon Value="{x:Static icons:IconValues.Ubisoft}" ToolTip.Tip="Ubisoft" />
-                            <icons:UnifiedIcon Value="{x:Static icons:IconValues.Xbox}" ToolTip.Tip="Xbox" />
                             <icons:UnifiedIcon Value="{x:Static icons:IconValues.Epic}" ToolTip.Tip="Epic" />
                             <icons:UnifiedIcon Value="{x:Static icons:IconValues.Size}" ToolTip.Tip="Size" />
                             <icons:UnifiedIcon Value="{x:Static icons:IconValues.GamepadOutline}"

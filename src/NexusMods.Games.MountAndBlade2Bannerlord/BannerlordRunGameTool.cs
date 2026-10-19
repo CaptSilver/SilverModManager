@@ -57,8 +57,7 @@ public class BannerlordRunGameTool : RunGameTool<Bannerlord>
         }
         else
         {
-            if (install.LocatorResult.Store != GameStore.XboxGamePass) { exe = exe/BinFolder/Win64Configuration/BannerlordExecutable; }
-            else { exe = exe/BinFolder/XboxConfiguration/BannerlordExecutable; }
+            exe = exe/BinFolder/Win64Configuration/BannerlordExecutable;
         }
 
         var command = Cli.Wrap(exe.ToString())

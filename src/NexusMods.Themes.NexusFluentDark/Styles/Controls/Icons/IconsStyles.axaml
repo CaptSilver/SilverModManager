@@ -153,10 +153,7 @@
                 <WrapPanel>
                     <icons:UnifiedIcon Classes="Nexus" />
                     <icons:UnifiedIcon Classes="Steam" />
-                    <icons:UnifiedIcon Classes="EA" />
-                    <icons:UnifiedIcon Classes="Ubisoft" />
                     <icons:UnifiedIcon Classes="GOG" />
-                    <icons:UnifiedIcon Classes="Xbox" />
                     <icons:UnifiedIcon Classes="Epic" />
                     <icons:UnifiedIcon Classes="GitHub" />
                     <icons:UnifiedIcon Classes="Premium" />
@@ -581,24 +578,12 @@
         <Setter Property="Value" Value="{x:Static icons:IconValues.Steam}" />
     </Style>
 
-    <Style Selector="icons|UnifiedIcon.EA">
-        <Setter Property="Value" Value="{x:Static icons:IconValues.EA}" />
-    </Style>
-
     <Style Selector="icons|UnifiedIcon.Epic">
         <Setter Property="Value" Value="{x:Static icons:IconValues.Epic}" />
     </Style>
 
     <Style Selector="icons|UnifiedIcon.GOG">
         <Setter Property="Value" Value="{x:Static icons:IconValues.GOG}" />
-    </Style>
-
-    <Style Selector="icons|UnifiedIcon.Xbox">
-        <Setter Property="Value" Value="{x:Static icons:IconValues.Xbox}" />
-    </Style>
-
-    <Style Selector="icons|UnifiedIcon.Ubisoft">
-        <Setter Property="Value" Value="{x:Static icons:IconValues.Ubisoft}" />
     </Style>
 
     <Style Selector="icons|UnifiedIcon.ThumbUp">

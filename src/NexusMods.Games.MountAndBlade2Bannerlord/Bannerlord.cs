@@ -30,7 +30,6 @@ public sealed class Bannerlord : IGame, IGameData<Bannerlord>
         SteamAppIds = [261550u],
         GOGProductIds = [1802539526L, 1564781494L],
         EGSCatalogItemId = ["Chickadee"],
-        XboxPackageIdentifiers = ["TaleWorldsEntertainment.MountBladeIIBannerlord"],
     };
 
     public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<Bannerlord>("NexusMods.Games.MountAndBlade2Bannerlord.Resources.thumbnail.webp");
@@ -71,7 +70,7 @@ public sealed class Bannerlord : IGame, IGameData<Bannerlord>
         var documentsFolder = fileSystem.GetKnownPath(KnownPath.MyDocumentsDirectory);
         return new Dictionary<LocationId, AbsolutePath>
         {
-            { LocationId.Game, gameLocatorResult.Store == GameStore.XboxGamePass ? gameLocatorResult.Path.Combine("Content") : gameLocatorResult.Path },
+            { LocationId.Game, gameLocatorResult.Path },
             { LocationId.Saves, documentsFolder.Combine($"{DocumentsFolderName}/Game Saves") },
             { LocationId.Preferences, documentsFolder.Combine($"{DocumentsFolderName}/Configs") },
         }.ToImmutableDictionary();

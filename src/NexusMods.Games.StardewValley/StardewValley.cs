@@ -27,7 +27,6 @@ public class StardewValley : IGame, IGameData<StardewValley>
     {
         SteamAppIds = [413150u],
         GOGProductIds = [1453375253L],
-        XboxPackageIdentifiers = ["ConcernedApe.StardewValleyPC"],
     };
 
     public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<StardewValley>("NexusMods.Games.StardewValley.Resources.thumbnail.webp");

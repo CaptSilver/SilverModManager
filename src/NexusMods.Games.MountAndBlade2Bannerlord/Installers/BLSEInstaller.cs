@@ -34,8 +34,8 @@ namespace NexusMods.Games.MountAndBlade2Bannerlord.Installers;
 ///         📄 Bannerlord.BLSE.Standalone.exe.config (156 B)
 /// </code>
 ///
-/// This installer will extract the files in the `bin` folder from either `Win64_Shipping_Client` or `Gaming.Desktop.x64_Shipping_Client`
-/// based on the user's game store.
+/// This installer extracts the files in the `bin/Win64_Shipping_Client` folder. The `Gaming.Desktop.x64_Shipping_Client`
+/// folder in the archive is for the Xbox build of the game, which isn't supported.
 /// </summary>
 // ReSharper disable once InconsistentNaming
 public class BLSEInstaller : ALibraryArchiveInstaller
@@ -49,8 +49,7 @@ public class BLSEInstaller : ALibraryArchiveInstaller
     {
         const string launcherFileName = "Bannerlord.BLSE.Launcher.exe";
 
-        var store = loadout.Installation.Store;
-        var installDir = store == GameStore.XboxGamePass ? (RelativePath)"bin/Gaming.Desktop.x64_Shipping_Client" : (RelativePath)"bin/Win64_Shipping_Client";
+        var installDir = (RelativePath)"bin/Win64_Shipping_Client";
 
         // Check if we are BLSE, we'll do a simple file check to determine this.
         var hasBlseLauncher = libraryArchive.Children.Any(x => x.Path.StartsWith(installDir / launcherFileName));

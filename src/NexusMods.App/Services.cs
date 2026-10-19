@@ -8,7 +8,6 @@ using NexusMods.App.Commandline;
 using NexusMods.App.UI;
 using NexusMods.App.UI.Settings;
 using NexusMods.Backend;
-using NexusMods.Backend.Games.Locators;
 using NexusMods.CLI;
 using NexusMods.Collections;
 using NexusMods.CrossPlatform;
@@ -42,8 +41,7 @@ public static class Services
         this IServiceCollection services,
         bool addStandardGameLocators = true,
         StartupMode? startupMode = null,
-        ExperimentalSettings? experimentalSettings = null,
-        GameLocatorSettings? gameLocatorSettings = null)
+        ExperimentalSettings? experimentalSettings = null)
     {
         services.Configure<HostOptions>(options =>
         {
@@ -103,7 +101,7 @@ public static class Services
                 services.AddSingleProcess(Mode.Main);
 
             if (addStandardGameLocators)
-                services.AddGameLocators(settings: gameLocatorSettings);
+                services.AddGameLocators();
         }
         else
         {

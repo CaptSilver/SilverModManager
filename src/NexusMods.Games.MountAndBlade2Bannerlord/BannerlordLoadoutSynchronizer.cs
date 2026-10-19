@@ -18,8 +18,6 @@ public class BannerlordLoadoutSynchronizer : ALoadoutSynchronizer
     // Paths to known locations
     private static GamePath GameGenegratedImGuiFile => new(LocationId.Game, "bin/Win64_Shipping_Client/imgui.ini");
     private static GamePath GameGeneratedSteamAppIdFile => new(LocationId.Game, "bin/Win64_Shipping_Client/steam_appid.txt");
-    private static GamePath GameGenegratedImGuiFileXbox => new(LocationId.Game, "bin/Gaming.Desktop.x64_Shipping_Client/imgui.ini");
-    private static GamePath GameGeneratedSteamAppIdFileXbox => new(LocationId.Game, "bin/Gaming.Desktop.x64_Shipping_Client/steam_appid.txt");
     
     // Base game mods that are part of the game distribution and which MUST be enabled
     private static GamePath ModuleNative => new(LocationId.Game, "Modules/Native");
@@ -45,9 +43,7 @@ public class BannerlordLoadoutSynchronizer : ALoadoutSynchronizer
     private static readonly GamePath[] IgnoredBackupPaths =
     [
         GameGenegratedImGuiFile,
-        GameGenegratedImGuiFileXbox,
         GameGeneratedSteamAppIdFile,
-        GameGeneratedSteamAppIdFileXbox,
     ];
     
     // Folders ignored for backup.
