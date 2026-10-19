@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Runs the offline test suite (everything except RequiresNetworking, RequiresApiKey
-# and FlakeyTest) through Microsoft.Testing.Platform, inside the distrobox named by
-# SILVER_BOX (default fedora) unless already in a container. Extra arguments go to
-# `dotnet test`, e.g.
+# Runs the offline test suite (everything except RequiresNetworking, RequiresApiKey,
+# RequiresProton and FlakeyTest) through Microsoft.Testing.Platform, inside the
+# distrobox named by SILVER_BOX (default fedora) unless already in a container.
+# Extra arguments go to `dotnet test`, e.g.
 #   scripts/test.sh --project tests/NexusMods.CLI.Tests
 #
 # The filters travel as the XunitArgs MSBuild property, which tests/Directory.Build.props
@@ -40,5 +40,5 @@ for arg in "$@"; do
 done
 
 dotnet test "${target[@]}" --ignore-exit-code 8 \
-    -p:XunitArgs="--filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait FlakeyTest=True" \
+    -p:XunitArgs="--filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait RequiresProton=True --filter-not-trait FlakeyTest=True" \
     "$@"

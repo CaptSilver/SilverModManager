@@ -13,6 +13,7 @@ namespace NexusMods.Backend.Games.Locators;
 internal class SteamLocator : IGameLocator
 {
     private readonly ILogger _logger;
+    private readonly IFileSystem _fileSystem;
     private readonly SteamHandler _handler;
     private readonly FrozenDictionary<uint, IGameData> _registeredGames;
 
@@ -21,6 +22,7 @@ internal class SteamLocator : IGameLocator
     public SteamLocator(IEnumerable<IGameData> games, ILoggerFactory loggerFactory, IFileSystem fileSystem, GameFinder.RegistryUtils.IRegistry? registry)
     {
         _logger = loggerFactory.CreateLogger<SteamLocator>();
+        _fileSystem = fileSystem;
 
         _handler = new SteamHandler(
             fileSystem: fileSystem,
@@ -48,23 +50,30 @@ internal class SteamLocator : IGameLocator
 
             if (!_registeredGames.TryGetValue(storeIdentifier, out var game)) continue;
 
-            var path = gameFinderGame.Path;
-
             var locatorIds = gameFinderGame.AppManifest.InstalledDepots
                 .Select(x => LocatorId.From(x.Value.ManifestId.Value.ToString()))
                 .ToImmutableArray();
 
-            var winePrefixDirectoryPath = gameFinderGame.GetProtonPrefix()?.ProtonDirectory.Combine("pfx");
-            var linuxCompatibilityDataProvider = winePrefixDirectoryPath is not null ? new LinuxCompatibilityDataProvider(gameFinderGame, winePrefixDirectoryPath.Value) : null;
+            // GetProtonPrefix() only checks that compatdata/<appid> exists, which Steam creates before
+            // Proton has written anything into it. Build the prefix from the manifest instead and ask
+            // ProtonPrefix.IsReady, so a game that was never launched still resolves its known folders
+            // into the prefix it will get rather than silently into the host's home.
+            var protonDirectory = gameFinderGame.AppManifest.GetCompatabilityDataDirectoryPath();
+            var prefix = new ProtonWinePrefix { ProtonDirectory = protonDirectory, ConfigurationDirectory = protonDirectory.Combine("pfx") };
+            var prefixReady = ProtonPrefix.IsReady(prefix.ConfigurationDirectory);
+            var isWindowsBuild = prefixReady || !game.HasNativeLinuxBuild;
 
-            var platform = linuxCompatibilityDataProvider is null ? OSPlatform.Linux : OSPlatform.Windows;
+            var fileSystem = isWindowsBuild ? prefix.CreateOverlayFileSystem(_fileSystem) : _fileSystem;
+            var path = fileSystem.FromUnsanitizedFullPath(gameFinderGame.Path.GetFullPath());
+            var linuxCompatibilityDataProvider = prefixReady ? new LinuxCompatibilityDataProvider(gameFinderGame, prefix.ConfigurationDirectory) : null;
 
             yield return new GameLocatorResult
             {
                 Game = game,
                 Path = path,
                 LocatorIds = locatorIds,
-                Platform = platform,
+                Platform = isWindowsBuild ? OSPlatform.Windows : OSPlatform.Linux,
+                WinePrefixPath = isWindowsBuild ? prefix.ConfigurationDirectory : null,
                 StoreIdentifier = storeIdentifier.ToString(),
                 Store = Store,
                 Locator = this,

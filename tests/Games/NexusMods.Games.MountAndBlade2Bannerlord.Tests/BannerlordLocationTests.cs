@@ -3,6 +3,7 @@ using FluentAssertions;
 using GameFinder.Wine;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
+using NexusMods.Games.TestFramework.Helpers;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NSubstitute;
@@ -29,6 +30,19 @@ public class BannerlordLocationTests(IServiceProvider serviceProvider)
         locations[LocationId.Saves].Should()
             .Be(documents.Combine($"{BannerlordConstants.DocumentsFolderName}/Game Saves"));
         locations[LocationId.Saves].GetFullPath().Should().StartWith("/prefix/drive_c/users/");
+    }
+
+    [Fact]
+    public void GetLocations_UnderProton_ResolvesSavesAndConfigsIntoThePrefix()
+    {
+        var prefix = ProtonTestPrefix.Create();
+        var game = serviceProvider.GetServices<IGame>().OfType<Bannerlord>().Single();
+        var documents = prefix.Home.Combine($"Documents/{BannerlordConstants.DocumentsFolderName}");
+
+        var locations = game.GetLocations(prefix.GameFileSystem, prefix.LocatorResult());
+
+        locations[LocationId.Saves].Should().Be(documents.Combine("Game Saves"));
+        locations[LocationId.Preferences].Should().Be(documents.Combine("Configs"));
     }
 
     private static GameLocatorResult LocatorResult(IFileSystem fileSystem) => new()

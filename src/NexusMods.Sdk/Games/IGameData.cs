@@ -39,6 +39,16 @@ public interface IGameData
     /// </summary>
     IStreamFactory TileImage { get; }
 
+    /// <summary>
+    /// Whether the game ships a native Linux build.
+    /// </summary>
+    /// <remarks>
+    /// Steam's app manifest doesn't say, so this is a per-game fact. It only matters when no Proton
+    /// prefix exists yet: a native game then runs on the host, any other game is assumed to run
+    /// under Proton and resolves into the prefix it will get.
+    /// </remarks>
+    bool HasNativeLinuxBuild => false;
+
     ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult);
 
     /// <summary>

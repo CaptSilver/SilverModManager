@@ -16,6 +16,12 @@ public class GameLocatorResult
     /// <summary>
     /// The path of the game.
     /// </summary>
+    /// <remarks>
+    /// The file system of this path is the game's view of the machine, not the host's. For a game
+    /// running under Wine or Proton it maps the Windows known folders (documents, local app data)
+    /// into the prefix. Ask it for known paths only to resolve game locations; host folders come from
+    /// the host file system.
+    /// </remarks>
     public required AbsolutePath Path { get; init; }
 
     /// <summary>
@@ -55,4 +61,14 @@ public class GameLocatorResult
     /// Optional linux compatability data provider.
     /// </summary>
     public ILinuxCompatabilityDataProvider? LinuxCompatabilityDataProvider { get; init; }
+
+    /// <summary>
+    /// The Wine prefix directory (the <c>pfx</c> directory for Proton) the game's known folders
+    /// resolve into, or null for a native Linux build.
+    /// </summary>
+    /// <remarks>
+    /// The directory may not exist yet: a game that was never launched has no prefix. Use
+    /// <see cref="ProtonPrefix.IsReady"/> to tell.
+    /// </remarks>
+    public AbsolutePath? WinePrefixPath { get; init; }
 }

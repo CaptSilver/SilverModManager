@@ -29,7 +29,7 @@ public partial class HostOsCheckGuardTests
         ("src/NexusMods.Networking.GOG/CLI/Verbs.cs", "if (!installers.TryGetFirst(x => x.OS == OSPlatform.Linux, out var linuxInstaller)) return;", "picks GOG's Linux installer from their list"),
 
         // Located games: native Linux builds are Linux, builds run under Proton are the Windows build.
-        ("src/NexusMods.Backend/Games/Locators/SteamLocator.cs", "var platform = linuxCompatibilityDataProvider is null ? OSPlatform.Linux : OSPlatform.Windows;", "Proton runs the Windows build of the game"),
+        ("src/NexusMods.Backend/Games/Locators/SteamLocator.cs", "Platform = isWindowsBuild ? OSPlatform.Windows : OSPlatform.Linux,", "Proton runs the Windows build of the game, a native install without a prefix is Linux"),
         ("src/NexusMods.Sdk/Games/Locators/GameLocatorResult.cs", "public OSPlatform Platform { get; init; } = OSPlatform.Linux;", "target OS of the located game, native Linux unless a locator says otherwise"),
 
         // Target OS of the located game: Proton runs the Windows build, native installs are Linux.

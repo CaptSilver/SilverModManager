@@ -70,6 +70,9 @@ public class StardewValley : IGame, IGameData<StardewValley>
         ];
     }
 
+    // Stardew ships a native Linux build, so a Steam install with no Proton prefix is that build.
+    public bool HasNativeLinuxBuild => true;
+
     public ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult)
     {
         return new Dictionary<LocationId, AbsolutePath>
