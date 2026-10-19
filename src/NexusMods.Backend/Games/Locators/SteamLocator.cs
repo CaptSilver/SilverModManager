@@ -68,6 +68,7 @@ internal class SteamLocator : IGameLocator
                 StoreIdentifier = storeIdentifier.ToString(),
                 Store = Store,
                 Locator = this,
+                LinuxCompatabilityDataProvider = linuxCompatibilityDataProvider,
             };
         }
     }
