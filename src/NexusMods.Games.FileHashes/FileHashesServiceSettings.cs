@@ -1,5 +1,4 @@
 using JetBrains.Annotations;
-using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Sdk.Settings;
 using NexusMods.Paths;
 using NexusMods.Sdk;
@@ -45,20 +44,9 @@ public record FileHashesServiceSettings : ISettings
     /// </summary>
     public static FileHashesServiceSettings CreateDefault(IServiceProvider serviceProvider)
     {
-        var os = serviceProvider.GetRequiredService<IFileSystem>().OS;
-
-        // Note: The idiomatic place for this is Temporary Directory (/tmp on Linux, %TEMP% on Windows)
-        //       however this can be dangerous to do on Linux, as /tmp is often a RAM disk, and can be
-        //       too small to handle large files.
-        var baseKnownPath = os.MatchPlatform(
-            onWindows: () => KnownPath.LocalApplicationDataDirectory,
-            onLinux: () => KnownPath.XDG_DATA_HOME,
-            onOSX: () => KnownPath.LocalApplicationDataDirectory
-        );
-
         return new FileHashesServiceSettings
         {
-            HashDatabaseLocation = new ConfigurablePath(baseKnownPath, "NexusMods.App/FileHashesDatabase"),
+            HashDatabaseLocation = new ConfigurablePath(KnownPath.XDG_DATA_HOME, "NexusMods.App/FileHashesDatabase"),
         };
     }
 }

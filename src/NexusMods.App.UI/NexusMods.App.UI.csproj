@@ -1,9 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
-        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-        <ApplicationManifest>app.manifest</ApplicationManifest>
-    </PropertyGroup>
-
     <ItemGroup>
         <AvaloniaResource Include="Assets\**" />
         <None Remove=".gitignore" />

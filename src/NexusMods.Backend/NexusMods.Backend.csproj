@@ -31,9 +31,6 @@
       <Compile Update="OS\LinuxInterop.Protocol.cs">
         <DependentUpon>LinuxInterop.cs</DependentUpon>
       </Compile>
-      <Compile Update="OS\WindowsInterop.Protocol.cs">
-        <DependentUpon>WindowsInterop.cs</DependentUpon>
-      </Compile>
     </ItemGroup>
 
     <ItemGroup>

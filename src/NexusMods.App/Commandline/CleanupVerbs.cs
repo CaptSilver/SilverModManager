@@ -77,7 +77,7 @@ internal static class CleanupVerbs
             {
                 dataModelSettings.MnemonicDBPath.ToPath(fileSystem),
                 fileExtractorSettings.TempFolderLocation.ToPath(fileSystem),
-                LoggingSettings.GetLogBaseFolder(OSInformation.Shared, fileSystem),
+                LoggingSettings.GetLogBaseFolder(fileSystem),
 
                 // The DataModel folder.
                 DataModelSettings.GetStandardDataModelFolder(fileSystem),

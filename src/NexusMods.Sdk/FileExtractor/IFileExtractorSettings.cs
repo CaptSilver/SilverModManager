@@ -1,5 +1,4 @@
 ﻿using JetBrains.Annotations;
-using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using NexusMods.Sdk.Settings;
 
@@ -29,20 +28,11 @@ public record FileExtractorSettings : ISettings
     /// </summary>
     public static FileExtractorSettings CreateDefault(IServiceProvider serviceProvider)
     {
-        var os = serviceProvider.GetRequiredService<IFileSystem>().OS;
-
-        // Note: The idiomatic place for this is Temporary Directory (/tmp on Linux, %TEMP% on Windows)
-        //       however this can be dangerous to do on Linux, as /tmp is often a RAM disk, and can be
-        //       too small to handle large files.
-        var baseKnownPath = os.MatchPlatform(
-            onWindows: () => KnownPath.TempDirectory,
-            onLinux: () => KnownPath.XDG_STATE_HOME,
-            onOSX: () => KnownPath.TempDirectory
-        );
-
+        // Note: The idiomatic place for this is the temporary directory (/tmp), however that is
+        //       often a RAM disk and too small to handle large files.
         return new FileExtractorSettings
         {
-            TempFolderLocation = new ConfigurablePath(baseKnownPath, "NexusMods.App/Temp"),
+            TempFolderLocation = new ConfigurablePath(KnownPath.XDG_STATE_HOME, "NexusMods.App/Temp"),
         };
     }
 }

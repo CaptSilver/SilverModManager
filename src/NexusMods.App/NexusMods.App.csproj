@@ -1,9 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <!-- Target WinExe so that a console isn't automatically created on Windows -->
-        <OutputType>WinExe</OutputType>
-        <ApplicationIcon>icon.ico</ApplicationIcon>
-        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <OutputType>Exe</OutputType>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -65,9 +62,6 @@
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
         <None Update="com.nexusmods.app.desktop">
-            <DependentUpon>app.pupnet.conf</DependentUpon>
-        </None>
-        <None Update="app.manifest">
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
         <None Update="com.nexusmods.app.metainfo.xml">

@@ -34,16 +34,7 @@ public sealed class JsonStorageBackend : IStorageBackend
 
     private static AbsolutePath GetConfigsFolderPath(IFileSystem fileSystem)
     {
-        var os = fileSystem.OS;
-        var baseKnownPath = os.MatchPlatform(
-            onWindows: () => KnownPath.LocalApplicationDataDirectory,
-            onLinux: () => KnownPath.XDG_DATA_HOME,
-            onOSX: () => KnownPath.LocalApplicationDataDirectory
-        );
-
-        // NOTE: OSX ".App" is apparently special, using _ instead of . to prevent weirdness
-        var baseDirectoryName = os.IsOSX ? "NexusMods_App/Configs" : "NexusMods.App/Configs";
-        return fileSystem.GetKnownPath(baseKnownPath).Combine(baseDirectoryName);
+        return fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine("NexusMods.App/Configs");
     }
 
     private AbsolutePath GetConfigPath<T>(string? key)

@@ -1,5 +1,4 @@
 using JetBrains.Annotations;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using NexusMods.Sdk;
@@ -64,7 +63,7 @@ public record LoggingSettings : ISettings
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder
-            .ConfigureDefault(serviceProvider => CreateDefault(serviceProvider.GetRequiredService<IFileSystem>().OS))
+            .ConfigureDefault(_ => CreateDefault())
             .ConfigureBackend(StorageBackendOptions.Use(StorageBackends.Json))
             .ConfigureProperty(
                 x => x.MinimumLevel,
@@ -110,37 +109,22 @@ public record LoggingSettings : ISettings
             );
     }
 
-    public static AbsolutePath GetLogBaseFolder(IOSInformation os, IFileSystem fs)
+    public static AbsolutePath GetLogBaseFolder(IFileSystem fs)
     {
-        var baseKnownPath = BaseKnownPath(os);
-        var baseDirectoryName = GetBaseDirectoryName(os);
-        return fs.GetKnownPath(baseKnownPath).Combine(baseDirectoryName);
+        return fs.GetKnownPath(BaseKnownPath).Combine(BaseDirectoryName);
     }
 
-    public static LoggingSettings CreateDefault(IOSInformation os)
+    public static LoggingSettings CreateDefault()
     {
-        var baseKnownPath = BaseKnownPath(os);
-        var baseDirectoryName = GetBaseDirectoryName(os);
-
         return new LoggingSettings
         {
-            MainProcessLogFilePath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/nexusmods.app.main.current.log"),
-            MainProcessArchiveFilePath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/nexusmods.app.main.{{##}}.log"),
-            SlimProcessLogFilePath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/nexusmods.app.slim.current.log"),
-            SlimProcessArchiveFilePath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/nexusmods.app.slim.{{##}}.log"),
+            MainProcessLogFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/nexusmods.app.main.current.log"),
+            MainProcessArchiveFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/nexusmods.app.main.{{##}}.log"),
+            SlimProcessLogFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/nexusmods.app.slim.current.log"),
+            SlimProcessArchiveFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/nexusmods.app.slim.{{##}}.log"),
         };
     }
-    
-    // NOTE: OSX ".App" is apparently special, using _ instead of . to prevent weirdness
-    private static string GetBaseDirectoryName(IOSInformation os) => os.IsOSX ? "NexusMods_App/Logs" : "NexusMods.App/Logs";
 
-    private static KnownPath BaseKnownPath(IOSInformation os)
-    {
-        var baseKnownPath = os.MatchPlatform(
-            onWindows: () => KnownPath.LocalApplicationDataDirectory,
-            onLinux: () => KnownPath.XDG_STATE_HOME,
-            onOSX: () => KnownPath.LocalApplicationDataDirectory
-        );
-        return baseKnownPath;
-    }
+    private const KnownPath BaseKnownPath = KnownPath.XDG_STATE_HOME;
+    private const string BaseDirectoryName = "NexusMods.App/Logs";
 }

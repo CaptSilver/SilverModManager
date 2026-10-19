@@ -78,34 +78,18 @@ public static class ServiceExtensions
     {
         os ??= OSInformation.Shared;
 
-        serviceCollection = serviceCollection
+        return serviceCollection
             .AddSingleton(os)
-            .AddSingleton<IProcessRunner, ProcessRunner>();
-
-        serviceCollection = os.MatchPlatform(
-            ref serviceCollection,
-            onWindows: static (ref IServiceCollection value) => value.AddSingleton<IOSInterop, WindowsInterop>(),
-            onLinux: static (ref IServiceCollection value) => value.AddSingleton<IOSInterop, LinuxInterop>(),
-            onOSX: static (ref IServiceCollection value) => value.AddSingleton<IOSInterop, MacOSInterop>()
-        );
-
-        return serviceCollection;
+            .AddSingleton<IProcessRunner, ProcessRunner>()
+            .AddSingleton<IOSInterop, LinuxInterop>();
     }
 
-    public static IServiceCollection AddRuntimeDependencies(this IServiceCollection serviceCollection, IOSInformation? os = null)
+    public static IServiceCollection AddRuntimeDependencies(this IServiceCollection serviceCollection)
     {
-        os ??= OSInformation.Shared;
-
-        serviceCollection = serviceCollection.AddHostedService<RuntimeDependencyChecker>();
-
-        if (os.IsLinux)
-        {
-            serviceCollection = serviceCollection
-                .AddAllSingleton<IRuntimeDependency, XdgSettingsDependency>()
-                .AddAllSingleton<IRuntimeDependency, UpdateDesktopDatabaseDependency>();
-        }
-
-        return serviceCollection;
+        return serviceCollection
+            .AddHostedService<RuntimeDependencyChecker>()
+            .AddAllSingleton<IRuntimeDependency, XdgSettingsDependency>()
+            .AddAllSingleton<IRuntimeDependency, UpdateDesktopDatabaseDependency>();
     }
 
     public static IServiceCollection AddSettingsManager(this IServiceCollection serviceCollection)

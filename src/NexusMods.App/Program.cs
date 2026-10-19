@@ -39,10 +39,6 @@ public class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        // This code will not work properly if it comes after anything that uses the console. So we need to do this first.
-        if (OperatingSystem.IsWindows())
-            ConsoleHelper.EnsureConsole();
-
         MainThreadData.SetMainThread();
 
         LoggingSettings loggingSettings;
@@ -431,7 +427,7 @@ public class Program
         };
 
         var host = BuildHost(startupMode,
-            LoggingSettings.CreateDefault(OSInformation.Shared),
+            LoggingSettings.CreateDefault(),
             experimentalSettings: new ExperimentalSettings()
         );
 

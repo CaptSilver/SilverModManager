@@ -1,5 +1,5 @@
 <reactiveUi:ReactiveWindow
-    Icon="/Assets/nexus-logo.ico"
+    Icon="/Assets/nexus-logo.png"
     Title="Nexus Mods App"
     d:DesignHeight="450"
     d:DesignWidth="800"

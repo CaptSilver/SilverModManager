@@ -100,4 +100,4 @@ The App will [generate](https://github.com/Nexus-Mods/NexusMods.App/blob/main/sr
 Besides the Desktop Entry file, we also provide the following files that you should make use of, if possible:
 
 - [AppStream](https://www.freedesktop.org/software/appstream/docs/) [`com.nexusmods.app.metainfo.xml`](https://github.com/Nexus-Mods/NexusMods.App/blob/main/src/NexusMods.App/com.nexusmods.app.metainfo.xml)
-- [`icon.svg`](https://github.com/Nexus-Mods/NexusMods.App/blob/main/src/NexusMods.App/icon.svg) and [`icon.ico`](https://github.com/Nexus-Mods/NexusMods.App/blob/main/src/NexusMods.App/icon.ico)
+- [`icon.svg`](https://github.com/Nexus-Mods/NexusMods.App/blob/main/src/NexusMods.App/icon.svg)

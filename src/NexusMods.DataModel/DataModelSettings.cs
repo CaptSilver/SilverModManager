@@ -1,5 +1,4 @@
 ﻿using JetBrains.Annotations;
-using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Settings;
@@ -58,14 +57,11 @@ public record DataModelSettings : ISettings
     /// </summary>
     public static DataModelSettings CreateDefault(IServiceProvider serviceProvider)
     {
-        var os = serviceProvider.GetRequiredService<IFileSystem>().OS;
-        var baseKnownPath = GetLocalApplicationDataDirectory(os, out var baseDirectoryName);
-
         return new DataModelSettings
         {
-            MnemonicDBPath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/{DataModelFolderName}/MnemonicDB.rocksdb"),
+            MnemonicDBPath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{DataModelFolderName}/MnemonicDB.rocksdb"),
             ArchiveLocations = [
-                new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/{DataModelFolderName}/Archives"),
+                new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{DataModelFolderName}/Archives"),
             ],
         };
     }
@@ -76,8 +72,7 @@ public record DataModelSettings : ISettings
     /// <returns>The absolute path to the local application data directory.</returns>
     public static AbsolutePath GetLocalApplicationDataDirectory(IFileSystem fs)
     {
-        var basePath = GetLocalApplicationDataDirectory(fs.OS, out var relativePath);
-        return fs.GetKnownPath(basePath).Combine(relativePath);
+        return fs.GetKnownPath(BaseKnownPath).Combine(BaseDirectoryName);
     }
 
     /// <summary>
@@ -86,27 +81,9 @@ public record DataModelSettings : ISettings
     /// </summary>
     public static AbsolutePath GetStandardDataModelFolder(IFileSystem fs)
     {
-        var os = fs.OS;
-        var baseKnownPath = GetLocalApplicationDataDirectory(os, out var baseDirectoryName);
-        return fs.GetKnownPath(baseKnownPath).Combine(baseDirectoryName).Combine(DataModelFolderName);
+        return GetLocalApplicationDataDirectory(fs).Combine(DataModelFolderName);
     }
 
-    /// <summary>
-    /// Retrieves the base directory where the App stores its local application data.
-    /// </summary>
-    /// <param name="os">OS Information.</param>
-    /// <param name="baseDirectoryName">Relative path to the returned <see cref="KnownPath"/>.</param>
-    /// <returns></returns>
-    private static KnownPath GetLocalApplicationDataDirectory(IOSInformation os, out string baseDirectoryName)
-    {
-        var baseKnownPath = os.MatchPlatform(
-            onWindows: () => KnownPath.LocalApplicationDataDirectory,
-            onLinux: () => KnownPath.XDG_DATA_HOME,
-            onOSX: () => KnownPath.LocalApplicationDataDirectory
-        );
-
-        // NOTE: OSX ".App" is apparently special, using _ instead of . to prevent weirdness
-        baseDirectoryName = os.IsOSX ? "NexusMods_App" : "NexusMods.App";
-        return baseKnownPath;
-    }
+    private const KnownPath BaseKnownPath = KnownPath.XDG_DATA_HOME;
+    private const string BaseDirectoryName = "NexusMods.App";
 }
