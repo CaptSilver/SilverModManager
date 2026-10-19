@@ -40,16 +40,6 @@
 
     <ItemGroup>
         <!-- Using .nupkg convention for auto extract. -->
-        <None Update="runtimes\win-x64\**">
-            <Pack>true</Pack>
-            <PackagePath>runtimes/win-x64</PackagePath>
-        </None>
-
-        <None Update="runtimes\osx-x64\**">
-            <Pack>true</Pack>
-            <PackagePath>runtimes/osx-x64</PackagePath>
-        </None>
-
         <None Update="runtimes\linux-x64\**">
             <Pack>true</Pack>
             <PackagePath>runtimes/linux-x64</PackagePath>

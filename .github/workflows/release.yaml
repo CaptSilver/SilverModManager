@@ -79,26 +79,9 @@ jobs:
       ProjectFile: ${{ needs.transformInputs.outputs.ProjectFile }}
       RetentionDays: 1
 
-  build-windows:
-    needs: [ transformInputs ]
-    uses: ./.github/workflows/build-windows-pupnet.yaml
-    with:
-      AppVersion: ${{ needs.transformInputs.outputs.RawVersion }}
-      Target: ${{ needs.transformInputs.outputs.TargetSha }}
-      # this is a bit of a hack, you can't use environment variables here
-      # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
-      ProjectFile: ${{ needs.transformInputs.outputs.ProjectFile }}
-      RetentionDays: 1
-      SignExecutable: true
-    secrets:
-      ES_USERNAME: ${{ secrets.ES_USERNAME }}
-      ES_PASSWORD: ${{ secrets.ES_PASSWORD }}
-      ES_CREDENTIAL_ID: ${{ secrets.ES_CREDENTIAL_ID }}
-      ES_TOTP_SECRET: ${{ secrets.ES_TOTP_SECRET }}
-
   release-github:
     runs-on: ubuntu-latest
-    needs: [ transformInputs, build-linux, build-windows ]
+    needs: [ transformInputs, build-linux ]
     outputs:
       GitHubReleaseUrl: ${{ steps.create-gh-release.outputs.url }}
 
@@ -119,18 +102,6 @@ jobs:
           name: ${{ needs.build-linux.outputs.ArtifactNameLinuxAppImage }}
           path: bin/LinuxAppImage
 
-      - name: Get Windows Archive
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.build-windows.outputs.ArtifactNameWindowsArchive }}
-          path: bin/WindowsArchive
-
-      - name: Get Windows Inno Setup
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.build-windows.outputs.ArtifactNameWindowsInnoSetup }}
-          path: bin/WindowsInnoSetup
-
       - name: List Artifacts
         shell: bash
         run: tree bin
@@ -149,7 +120,7 @@ jobs:
 
   release-nexus-mods:
     runs-on: ubuntu-latest
-    needs: [ transformInputs, build-linux, build-windows ]
+    needs: [ transformInputs, build-linux ]
 
     steps:
       - name: Empty

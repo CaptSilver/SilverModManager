@@ -33,7 +33,6 @@ public class RedModDeployTool : ITool
 
     public async Task Execute(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
-        var exe = loadout.InstallationInstance.Locations.ToAbsolutePath(RedModPath);
         var deployFolder = loadout.InstallationInstance.Locations.ToAbsolutePath(RedModDeployFolder);
 
         await using var loadorderFile = _temporaryFileManager.CreateFile();
@@ -47,41 +46,29 @@ public class RedModDeployTool : ITool
         // Note (halgari): When we change the redmod order, we need to force redmod to re-run. This is due to a bug in redmod
         // not recognizing order as a change in the mod configuration. If that bug ever gets fixed (does an order check) then  
         // we can resolve this by removing the -force flag.
-        var fs = FileSystem.Shared;
-        if (fs.OS.IsWindows)
+        if (loadout.Installation.Store != GameStore.Steam)
         {
-            var command = Cli.Wrap(exe.ToString())
-                .WithArguments(["deploy", "-force", "-modlist=" + loadorderFile.Path], true)
-                .WithWorkingDirectory(exe.Parent.ToString());
-            await _toolRunner.ExecuteAsync(loadout, command, true, cancellationToken);
+            _logger.LogWarning("Skip running redmod, it's only supported for Steam on Linux at the moment");
+            return;
         }
-        else
+
+        var linuxCompatibilityDataProvider = loadout.InstallationInstance.LocatorResult.LinuxCompatabilityDataProvider;
+        if (linuxCompatibilityDataProvider is null) return;
+
+        var wineDirectory = linuxCompatibilityDataProvider.WinePrefixDirectoryPath;
+        var cDriveDirectory = wineDirectory.Combine("drive_c");
+
+        if (!cDriveDirectory.DirectoryExists()) cDriveDirectory.CreateDirectory();
+        var tmpFile = cDriveDirectory.Combine("modlist.txt");
+        await using (var input = loadorderFile.Path.Read())
+        await using (var output = tmpFile.Open(FileMode.Create, FileAccess.ReadWrite, FileShare.None))
         {
-            if (loadout.Installation.Store == GameStore.Steam)
-            {
-                var linuxCompatibilityDataProvider = loadout.InstallationInstance.LocatorResult.LinuxCompatabilityDataProvider;
-                if (linuxCompatibilityDataProvider is null) return;
-
-                var wineDirectory = linuxCompatibilityDataProvider.WinePrefixDirectoryPath;
-                var cDriveDirectory = wineDirectory.Combine("drive_c");
-
-                if (!cDriveDirectory.DirectoryExists()) cDriveDirectory.CreateDirectory();
-                var tmpFile = cDriveDirectory.Combine("modlist.txt");
-                await using (var input = loadorderFile.Path.Read())
-                await using (var output = tmpFile.Open(FileMode.Create, FileAccess.ReadWrite, FileShare.None))
-                {
-                    await input.CopyToAsync(output, cancellationToken: cancellationToken);
-                }
-
-                await using var batchPath = await ExtractTemporaryDeployScript();
-                var command = Cli.Wrap(batchPath.ToString()).WithArguments(["deploy", "-force", "-modlist=C:\\modlist.txt"], escape: true);
-                await _toolRunner.ExecuteAsync(loadout, command, true, cancellationToken);
-            }            
-            else
-            {
-                _logger.LogWarning("Skip running redmod, it's only supported for Steam on Linux at the moment");
-            }
+            await input.CopyToAsync(output, cancellationToken: cancellationToken);
         }
+
+        await using var batchPath = await ExtractTemporaryDeployScript();
+        var command = Cli.Wrap(batchPath.ToString()).WithArguments(["deploy", "-force", "-modlist=C:\\modlist.txt"], escape: true);
+        await _toolRunner.ExecuteAsync(loadout, command, true, cancellationToken);
     }
 
     internal async Task WriteLoadOrderFile(AbsolutePath loadorderFilePath, Loadout.ReadOnly loadout)

@@ -54,7 +54,7 @@ public class SevenZipExtractor : IExtractor
         _processRunner = processRunner;
         _osInformation = osInformation;
 
-        _exePath = GetExtractorExecutable(fileSystem, osInformation);
+        _exePath = GetExtractorExecutable(fileSystem);
         logger.LogDebug("Using extractor at {ExtractorExecutable}", _exePath);
     }
 
@@ -287,35 +287,17 @@ public class SevenZipExtractor : IExtractor
         return Priority.None;
     }
 
-    private static string GetExtractorExecutableFileName(IOSInformation osInformation)
-    {
-        return osInformation.MatchPlatform(
-            onWindows: static () => "7z.exe",
-            onLinux: static () => "7zz",
-            onOSX: static () => "7zz"
-        );
-    }
-
-    private static string GetExtractorExecutable(IFileSystem fileSystem, IOSInformation osInformation)
+    private static string GetExtractorExecutable(IFileSystem fileSystem)
     {
 #pragma warning disable CS0162 // Unreachable code detected
         if (UseSystemExtractor)
         {
             // Depending on the user's distro and package of choice, 7z
             // may have different names, so we'll check for the common ones.
-            return !osInformation.IsLinux
-                ? GetExtractorExecutableFileName(osInformation) :
-                FindSystem7zOnLinux();
+            return FindSystem7zOnLinux();
         }
 
-        var fileName = GetExtractorExecutableFileName(osInformation);
-        var directory = osInformation.MatchPlatform(
-            onWindows: static () => "runtimes/win-x64/native/",
-            onLinux: static () => "runtimes/linux-x64/native/",
-            onOSX: static () => "runtimes/osx-x64/native/"
-        );
-
-        return fileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine(directory + fileName).ToString();
+        return fileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine("runtimes/linux-x64/native/7zz").ToString();
 #pragma warning restore CS0162 // Unreachable code detected
     }
 

@@ -31,8 +31,6 @@
         <PackageReference Include="SkiaSharp" />
         <PackageReference Include="SkiaSharp.HarfBuzz" />
         <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
-        <PackageReference Include="SkiaSharp.NativeAssets.macOS" />
-        <PackageReference Include="SkiaSharp.NativeAssets.Win32" />
         <PackageReference Include="System.Reactive" />
         <PackageReference Include="TextMateSharp.Grammars" />
         <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
