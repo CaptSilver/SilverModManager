@@ -21,4 +21,33 @@ public class StartupModeTests
         mode.ExecuteCli.Should().Be(executeCli);
         string.Join(' ', mode.Args).Should().Be(finalArgs);
     }
+
+    [Theory]
+    [InlineData("--help", false)]
+    [InlineData("loadouts list", false)]
+    [InlineData("protocol-invoke -u nxm://stardewvalley/mods/1/files/2", true)]
+    public void TestStartsUiWhenNoMainRunning(string input, bool expected)
+    {
+        var mode = StartupMode.Parse(input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        // Only a client looks for a main process, so every row has to parse as one.
+        mode.RunAsMain.Should().BeFalse();
+        mode.StartsUiWhenNoMainRunning.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("--help", "as-main --help")]
+    [InlineData("loadouts list", "as-main loadouts list")]
+    public void TestHeadlessMainArgsRoundTrip(string input, string expected)
+    {
+        var args = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var client = StartupMode.Parse(args);
+
+        string.Join(' ', client.HeadlessMainArgs).Should().Be(expected);
+
+        var main = StartupMode.Parse(client.HeadlessMainArgs);
+        main.RunAsMain.Should().BeTrue();
+        main.ShowUI.Should().BeFalse();
+        main.ExecuteCli.Should().BeTrue();
+        main.Args.Should().Equal(args);
+    }
 }

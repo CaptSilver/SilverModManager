@@ -232,6 +232,32 @@ public class Program
             await client.ExecuteCommand(startupMode.Args, AnsiConsole.Console);
             return 0;
         }
+        catch (NoMainProcessStarted _) when (!startupMode.StartsUiWhenNoMainRunning)
+        {
+            // The verb needs the main process because that is what owns the database. Run
+            // it in a headless main that exits when the verb is done. Starting a plain main
+            // (no arguments) would open the UI and leave the process running.
+            var interop = services.GetRequiredService<IOSInterop>();
+            var ownExe = interop.GetRunningExecutablePath(out var _);
+            _logger.LogInformation("No main process started, running verb in headless main {OwnExe}", ownExe);
+            var processInfo = new ProcessStartInfo
+            {
+                FileName = ownExe.ToString(),
+                // Inherit stdio so the verb's output reaches this terminal.
+                UseShellExecute = false,
+            };
+            foreach (var arg in startupMode.HeadlessMainArgs) processInfo.ArgumentList.Add(arg);
+
+            using var process = Process.Start(processInfo);
+            if (process is null)
+            {
+                _logger.LogError("Failed to start headless main {OwnExe}", ownExe);
+                return 1;
+            }
+
+            await process.WaitForExitAsync();
+            return process.ExitCode;
+        }
         catch (NoMainProcessStarted _)
         {
             var interop = services.GetRequiredService<IOSInterop>();

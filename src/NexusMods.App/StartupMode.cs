@@ -28,6 +28,21 @@ public class StartupMode
     public bool ShowUI { get; set; } = true;
     
     public bool IsAvaloniaDesigner { get; set; } = false;
+
+    /// <summary>
+    /// Whether a client that finds no main process must start one that shows the UI.
+    /// Only a protocol link needs this: the user clicked a link in a browser and expects the
+    /// app to come up. Every other verb (including --help) is plain terminal use and must
+    /// never open a window.
+    /// </summary>
+    public bool StartsUiWhenNoMainRunning =>
+        Args.Length > 0 && Args[0].Equals("protocol-invoke", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Arguments that make a new process run <see cref="Args"/> as a headless main process,
+    /// which executes the verb against the database it owns and then exits.
+    /// </summary>
+    public string[] HeadlessMainArgs => ["as-main", .. Args];
     
     public static StartupMode Parse(string[] args)
     {
