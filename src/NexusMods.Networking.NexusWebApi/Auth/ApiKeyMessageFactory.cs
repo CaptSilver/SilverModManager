@@ -36,11 +36,23 @@ public class ApiKeyMessageFactory(IConnection conn) : BaseHttpMessageFactory, IA
     }
 
     /// <inheritdoc />
-    public override ValueTask<bool> IsAuthenticated()
+    public override ValueTask ApplyAuthentication(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var dataStoreResult = !string.IsNullOrWhiteSpace(Auth.ApiKey.Get(conn.Db));
-        return ValueTask.FromResult(dataStoreResult || EnvironmentApiKey != null);
+        // ApiKey throws when nothing is stored, so check first to keep unauthenticated requests anonymous.
+        if (!HasApiKey) return ValueTask.CompletedTask;
+
+        request.Headers.Remove("apikey");
+        request.Headers.Add("apikey", ApiKey);
+        return ValueTask.CompletedTask;
     }
+
+    /// <summary>
+    /// True when a key is stored or <see cref="NexusApiKeyEnvironmentVariable"/> is set.
+    /// </summary>
+    public bool HasApiKey => !string.IsNullOrWhiteSpace(Auth.ApiKey.Get(conn.Db)) || EnvironmentApiKey != null;
+
+    /// <inheritdoc />
+    public override ValueTask<bool> IsAuthenticated() => ValueTask.FromResult(HasApiKey);
 
     /// <summary>
     /// Sets the API key used for future requests.

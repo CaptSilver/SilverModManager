@@ -30,7 +30,7 @@ public class Startup
             .AddHttpDownloader()
             .AddSingleton<TemporaryFileManager>()
             .AddSingleton<LocalHttpServer>()
-            .AddNexusWebApi(true)
+            .AddNexusWebApi()
             .AddOSInterop()
             .AddRuntimeDependencies()
             .AddSettings<LoggingSettings>()

@@ -30,23 +30,6 @@ public class OAuth2MessageFactory : BaseHttpMessageFactory, IAuthenticatingMessa
 
     private readonly IConnection _conn;
 
-    /// <inheritdoc/>
-    public override AuthenticationHeaderValue? GetAuthenticationHeaderValue()
-    {
-        var token = GetToken();
-        if (token is null) return null;
-
-        return new AuthenticationHeaderValue("Bearer", token);
-    }
-
-    private string? GetToken()
-    {
-        if (!JWTToken.TryFind(_conn.Db, out var token)) return null;
-        if (!token.HasExpired) return token.AccessToken;
-
-        return null;
-    }
-
     private async ValueTask<string?> GetOrRefreshToken(CancellationToken cancellationToken)
     {
         if (!JWTToken.TryFind(_conn.Db, out var token)) return null;
@@ -80,6 +63,16 @@ public class OAuth2MessageFactory : BaseHttpMessageFactory, IAuthenticatingMessa
         var requestMessage = await base.Create(method, uri);
         requestMessage.Headers.Add("Authorization", $"Bearer {token}");
         return requestMessage;
+    }
+
+    /// <inheritdoc/>
+    public override async ValueTask ApplyAuthentication(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        // Refresh here rather than skip an expired token, or the request would go out anonymous.
+        var token = await GetOrRefreshToken(cancellationToken);
+        if (token is null) return;
+
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
     /// <inheritdoc/>

@@ -60,7 +60,7 @@ public static class DependencyInjectionHelper
             .AddFileSystem()
             .AddSingleton<ICoreDelegates, MockDelegates>()
             .AddSingleton<TemporaryFileManager>(_ => new TemporaryFileManager(FileSystem.Shared, prefix))
-            .AddNexusWebApi(true)
+            .AddNexusWebApi()
             .AddNexusModsCollections()
             .AddOSInterop()
             .AddRuntimeDependencies()

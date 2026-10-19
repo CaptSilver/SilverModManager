@@ -76,10 +76,13 @@ public sealed class LoginManager : IDisposable, ILoginManager
         _nexusApiClient = nexusApiClient;
         _logger = logger;
 
-        _observeDatomDisposable = _conn
-            .ObserveDatoms(JWTToken.PrimaryAttribute)
-            .IsNotEmpty()
-            .ToObservable()
+        // Signed in means a token or a key is stored. A plain merge of the two streams would let the
+        // token stream's "empty" evict the user info right after the key stream's "present".
+        var hasToken = _conn.ObserveDatoms(JWTToken.PrimaryAttribute).IsNotEmpty().ToObservable();
+        var hasKey = _conn.ObserveDatoms(ApiKey.PrimaryAttribute).IsNotEmpty().ToObservable();
+
+        _observeDatomDisposable = hasToken
+            .CombineLatest(hasKey, static (token, key) => token || key)
             .DistinctUntilChanged()
             .SubscribeAwait(async (hasValue, cancellationToken) =>
             {

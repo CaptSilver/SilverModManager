@@ -21,24 +21,17 @@ public static class Services
     /// <summary>
     /// Adds the Nexus Web API to your DI Container's service collection.
     /// </summary>
-    public static IServiceCollection AddNexusWebApi(this IServiceCollection collection, bool? apiKeyAuth = null)
+    public static IServiceCollection AddNexusWebApi(this IServiceCollection collection)
     {
         collection.AddLoginVerbs();
 
-        apiKeyAuth ??= Environment.GetEnvironmentVariable(ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable) != null;
-
-        if (apiKeyAuth!.Value)
-        {
-            collection
-                .AddAllSingleton<IHttpMessageFactory, ApiKeyMessageFactory>()
-                .AddSingleton<IAuthenticatingMessageFactory, ApiKeyMessageFactory>();
-        }
-        else
-        {
-            collection
-                .AddAllSingleton<IHttpMessageFactory, OAuth2MessageFactory>()
-                .AddSingleton<IAuthenticatingMessageFactory, OAuth2MessageFactory>();
-        }
+        // Both credential kinds are always registered; the routed factory picks one per call, so a
+        // key or token stored while the app runs takes effect without a restart.
+        collection
+            .AddSingleton<ApiKeyMessageFactory>()
+            .AddSingleton<OAuth2MessageFactory>()
+            .AddAllSingleton<IHttpMessageFactory, CredentialRoutedMessageFactory>()
+            .AddSingleton<IAuthenticatingMessageFactory>(sp => sp.GetRequiredService<CredentialRoutedMessageFactory>());
         collection.AddSingleton<OAuth>();
         collection.AddSingleton<IIDGenerator, IDGenerator>();
 
@@ -76,6 +69,7 @@ public static class Services
             .AddSettings<NexusAuthSettings>()
             .AddNexusApiVerbs();
 
+        collection.AddTransient<NexusAuthHandler>();
         collection
             .AddNexusGraphQLClient()
             .ConfigureHttpClient((serviceProvider, httpClient) =>
@@ -85,12 +79,7 @@ public static class Services
 
                 httpClient.DefaultRequestHeaders.Add(BaseHttpMessageFactory.HeaderApplicationName, ApplicationConstants.UserAgent.ApplicationName);
                 httpClient.DefaultRequestHeaders.Add(BaseHttpMessageFactory.HeaderApplicationVersion, ApplicationConstants.UserAgent.ApplicationVersion);
-
-                var authenticationHeaderValue = serviceProvider.GetRequiredService<IHttpMessageFactory>().GetAuthenticationHeaderValue();
-                if (authenticationHeaderValue is null) return;
-
-                httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
-            });
+            }, clientBuilder => clientBuilder.AddHttpMessageHandler<NexusAuthHandler>());
 
         return collection;
     }

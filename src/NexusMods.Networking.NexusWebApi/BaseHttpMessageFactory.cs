@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Sdk;
 
@@ -22,7 +21,7 @@ public class BaseHttpMessageFactory : IHttpMessageFactory
     }
 
     /// <inheritdoc/>
-    public virtual AuthenticationHeaderValue? GetAuthenticationHeaderValue() => null;
+    public virtual ValueTask ApplyAuthentication(HttpRequestMessage request, CancellationToken cancellationToken) => ValueTask.CompletedTask;
 
     /// <inheritdoc/>
     public virtual ValueTask<bool> IsAuthenticated() => ValueTask.FromResult(false);

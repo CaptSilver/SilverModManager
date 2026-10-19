@@ -50,7 +50,7 @@ public class Startup
                 .AddFileHashes()
                 .AddCLI()
                 .AddHttpDownloader()
-                .AddNexusWebApi(true)
+                .AddNexusWebApi()
                 .AddLoadoutAbstractions()
                 .AddSerializationAbstractions()
                 .AddGames()
