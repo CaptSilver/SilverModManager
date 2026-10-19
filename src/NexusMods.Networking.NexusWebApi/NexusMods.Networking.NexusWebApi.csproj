@@ -23,25 +23,11 @@
         <ProjectReference Include="..\NexusMods.Networking.ModUpdates\NexusMods.Networking.ModUpdates.csproj" />
     </ItemGroup>
 
-    <PropertyGroup>
-        <GamesJsonInput>https://data.nexusmods.com/file/nexus-data/games.json</GamesJsonInput>
-        <GamesJsonOutput>$(BaseIntermediateOutputPath)games.json</GamesJsonOutput>
-    </PropertyGroup>
-
-    <!-- NOTE(erri120): Downloading the games.json file at build time if it doesn't exist -->
-    <Target Name="DownloadGamesJson" BeforeTargets="BeforeBuild" Condition="!Exists('$(GamesJsonOutput)')">
-        <MakeDir Directories="$(BaseIntermediateOutputPath)" />
-        <Exec Condition="'$(OS)' != 'Windows_NT'" Command="curl -sSL -o $(GamesJsonOutput) $(GamesJsonInput)"  />
-        <Exec Condition="'$(OS)' == 'Windows_NT'" Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Invoke-WebRequest -Uri '$(GamesJsonInput)' -OutFile '$(GamesJsonOutput)'&quot;" />
-    </Target>
-
-    <Target Name="EmbedOutput" AfterTargets="DownloadGamesJson">
-        <Error Condition="!Exists('$(GamesJsonOutput)')" Text="Failed to embed file $(GamesJsonOutput)" />
-
-        <ItemGroup>
-            <EmbeddedResource Include="$(GamesJsonOutput)" LogicalName="games.json" />
-        </ItemGroup>
-    </Target>
+    <!-- games.json is vendored (only id and domain_name). Refresh it with scripts/update-games-json.sh;
+         the build never downloads it. -->
+    <ItemGroup>
+        <EmbeddedResource Include="V1Interop\games.json" LogicalName="games.json" />
+    </ItemGroup>
 
     <ItemGroup>
       <Compile Update="V1Interop\GameMetadata.cs">

@@ -1,5 +1,4 @@
 using System.Collections.Frozen;
-using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.NexusModsLibrary;
@@ -54,15 +53,11 @@ public static class Services
         {
             var logger = serviceProvider.GetRequiredService<ILogger<LocalMappingCache>>();
 
+            // TryParseJsonFile logs why parsing failed; this logs what it costs. Every lookup then
+            // goes through the fallback cache, which is slower but correct, so the app stays usable.
             var didParse = LocalMappingCache.TryParseJsonFile(logger, out var gameIdToDomain, out var gameDomainToId);
-            Debug.Assert(didParse);
-
-            if (!didParse) logger.LogWarning("Failed to parse local mapping cache data, all mapping requests will be handled by the fallback cache");
-            else
-            {
-                Debug.Assert(gameIdToDomain is not null && gameDomainToId is not null);
-                logger.LogInformation("Loaded local mapping cache data with {Count} entries", gameDomainToId?.Count ?? 0);
-            }
+            if (didParse) logger.LogInformation("Loaded local mapping cache data with {Count} entries", gameDomainToId!.Count);
+            else logger.LogError("Failed to parse local mapping cache data, all mapping requests will be handled by the fallback cache");
 
             var fallbackCache = serviceProvider.GetRequiredService<GameDomainToGameIdMappingCache>();
             return new LocalMappingCache(logger, gameIdToDomain ?? FrozenDictionary<NexusModsGameId, GameDomain>.Empty, gameDomainToId ?? FrozenDictionary<GameDomain, NexusModsGameId>.Empty, fallbackCache);
