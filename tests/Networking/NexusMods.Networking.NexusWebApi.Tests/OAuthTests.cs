@@ -7,6 +7,7 @@ using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Networking.NexusWebApi.Auth;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Jobs;
+using NexusMods.Sdk.Settings;
 using NSubstitute;
 
 namespace NexusMods.Networking.NexusWebApi.Tests;
@@ -14,7 +15,7 @@ namespace NexusMods.Networking.NexusWebApi.Tests;
 public class OAuthTests
 {
     // ReSharper disable once InconsistentNaming
-    private readonly Uri ExpectedAuthURL = new("https://users.nexusmods.com/oauth/authorize?response_type=code&scope=openid profile email&code_challenge_method=S256&client_id=nma&redirect_uri=nxm%3A%2F%2Foauth%2Fcallback&code_challenge=QMZ4D7BLeehAXINE9NZ8dho2i5AYVTbfqJ8PhQ4eUrE&state=00000000-0000-0000-0000-000000000000");
+    private readonly Uri ExpectedAuthURL = new("https://users.nexusmods.com/oauth/authorize?response_type=code&scope=openid profile email&code_challenge_method=S256&client_id=test-client&redirect_uri=nxm%3A%2F%2Foauth%2Fcallback&code_challenge=QMZ4D7BLeehAXINE9NZ8dho2i5AYVTbfqJ8PhQ4eUrE&state=00000000-0000-0000-0000-000000000000");
     private readonly ILogger<OAuth> _logger;
     private readonly IJobMonitor _jobMonitor;
 
@@ -23,6 +24,45 @@ public class OAuthTests
     {
         _logger = logger;
         _jobMonitor = jobMonitor;
+    }
+
+    private static ISettingsManager CreateSettings(string clientId)
+    {
+        var settingsManager = Substitute.For<ISettingsManager>();
+        settingsManager.Get<NexusAuthSettings>(Arg.Any<string?>()).Returns(new NexusAuthSettings { OAuthClientId = clientId });
+        return settingsManager;
+    }
+
+    [Fact]
+    public async Task AuthorizeRequestThrowsWithoutClientId()
+    {
+        var idGen = Substitute.For<IIDGenerator>();
+        var os = Substitute.For<IOSInterop>();
+        var oauth = new OAuth(_jobMonitor, _logger, new HttpClient(Substitute.ForPartsOf<MockHttpMessageHandler>()), idGen, os, CreateSettings(""));
+
+        Func<Task> call = () => oauth.AuthorizeRequest(CancellationToken.None);
+        await call.Should().ThrowAsync<InvalidOperationException>().WithMessage("No OAuth client id configured*");
+
+        os.DidNotReceive().OpenUri(Arg.Any<Uri>());
+    }
+
+    [Fact]
+    public async Task RefreshTokenSendsConfiguredClientId()
+    {
+        var messageHandler = Substitute.ForPartsOf<MockHttpMessageHandler>();
+        string? body = null;
+        messageHandler
+            .SendMock(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                body = await call.Arg<HttpRequestMessage>().Content!.ReadAsStringAsync();
+                return new HttpResponseMessage { StatusCode = HttpStatusCode.OK, Content = new StringContent(JsonSerializer.Serialize(ReplyToken)) };
+            });
+
+        var oauth = new OAuth(_jobMonitor, _logger, new HttpClient(messageHandler), Substitute.For<IIDGenerator>(), Substitute.For<IOSInterop>(), CreateSettings("test-client"));
+        await oauth.RefreshToken("refresh_token", CancellationToken.None);
+
+        body.Should().Contain("client_id=test-client");
     }
 
     [Fact]
@@ -49,7 +89,7 @@ public class OAuthTests
         #endregion
 
         #region Execution
-        var oauth = new OAuth(_jobMonitor, _logger, httpClient, idGen, os);
+        var oauth = new OAuth(_jobMonitor, _logger, httpClient, idGen, os, CreateSettings("test-client"));
         var tokenTask = oauth.AuthorizeRequest(CancellationToken.None);
         oauth.AddUrl(NXMUrl.Parse($"nxm://oauth/callback?state={stateId}&code=code").OAuth);
         var result = await tokenTask;
@@ -87,7 +127,7 @@ public class OAuthTests
         #endregion
 
         #region Execution
-        var oauth = new OAuth(_jobMonitor, _logger, httpClient, idGen, os);
+        var oauth = new OAuth(_jobMonitor, _logger, httpClient, idGen, os, CreateSettings("test-client"));
         var token = await oauth.RefreshToken("refresh_token", CancellationToken.None);
         #endregion
 
@@ -124,7 +164,7 @@ public class OAuthTests
         #endregion
 
         #region Execution
-        var oauth = new OAuth(_jobMonitor, _logger, httpClient, idGen, os);
+        var oauth = new OAuth(_jobMonitor, _logger, httpClient, idGen, os, CreateSettings("test-client"));
         Func<Task> call = () => oauth.AuthorizeRequest(CancellationToken.None);
         var tokenTask = call.Should().ThrowAsync<JsonException>();
         oauth.AddUrl(NXMUrl.Parse($"nxm://oauth/callback?state={stateId}&code=code").OAuth);
@@ -150,7 +190,7 @@ public class OAuthTests
     //     #endregion
     //
     //     #region Execution
-    //     var oauth = new OAuth(_jobMonitor, _logger, httpClient, idGen, os);
+    //     var oauth = new OAuth(_jobMonitor, _logger, httpClient, idGen, os, CreateSettings("test-client"));
     //     Func<Task> call = () => oauth.AuthorizeRequest(cts.Token);
     //     var task = call.Should().ThrowAsync<OperationCanceledException>();
     //     cts.Cancel();
@@ -172,7 +212,7 @@ public class OAuthTests
     [Fact]
     public void Test_GenerateAuthorizeUrl()
     {
-        var res = OAuth.GenerateAuthorizeUrl("QMZ4D7BLeehAXINE9NZ8dho2i5AYVTbfqJ8PhQ4eUrE", "00000000-0000-0000-0000-000000000000");
+        var res = OAuth.GenerateAuthorizeUrl("test-client", "QMZ4D7BLeehAXINE9NZ8dho2i5AYVTbfqJ8PhQ4eUrE", "00000000-0000-0000-0000-000000000000");
         res.Should().Be(ExpectedAuthURL);
     }
 }

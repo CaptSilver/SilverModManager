@@ -73,6 +73,7 @@ public static class Services
             .AddAllSingleton<IModUpdateService, ModUpdateService>()
             .AddHostedService<HandlerRegistration>()
             .AddSettings<NxmHandlerSettings>()
+            .AddSettings<NexusAuthSettings>()
             .AddNexusApiVerbs();
 
         collection

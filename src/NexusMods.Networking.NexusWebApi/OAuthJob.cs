@@ -17,6 +17,7 @@ internal sealed class OAuthJob : IOAuthJob, IJobDefinitionWithStart<OAuthJob, Op
     private readonly IIDGenerator _idGenerator;
     private readonly IOSInterop _os;
     private readonly HttpClient _httpClient;
+    private readonly string _clientId;
     private readonly Observable<NXMOAuthUrl> _nxmUrlMessages;
 
     public BehaviorSubject<Uri?> LoginUriSubject { get; } = new(initialValue: null);
@@ -25,8 +26,10 @@ internal sealed class OAuthJob : IOAuthJob, IJobDefinitionWithStart<OAuthJob, Op
         IIDGenerator idGenerator,
         IOSInterop os,
         HttpClient httpClient,
+        string clientId,
         Observable<NXMOAuthUrl> nxmUrlMessages)
     {
+        _clientId = clientId;
         _idGenerator = idGenerator;
         _os = os;
         _httpClient = httpClient;
@@ -38,9 +41,10 @@ internal sealed class OAuthJob : IOAuthJob, IJobDefinitionWithStart<OAuthJob, Op
         IIDGenerator idGenerator,
         IOSInterop os,
         HttpClient httpClient,
+        string clientId,
         Observable<NXMOAuthUrl> nxmUrlMessages)
     {
-        var job = new OAuthJob(idGenerator, os, httpClient, nxmUrlMessages);
+        var job = new OAuthJob(idGenerator, os, httpClient, clientId, nxmUrlMessages);
         return jobMonitor.Begin<OAuthJob, Optional<JwtTokenReply>>(job);
     }
 
@@ -54,7 +58,7 @@ internal sealed class OAuthJob : IOAuthJob, IJobDefinitionWithStart<OAuthJob, Op
         var codeChallenge = WebEncoders.Base64UrlEncode(codeChallengeBytes);
 
         var state = _idGenerator.UUIDv4();
-        var uri = OAuth.GenerateAuthorizeUrl(codeChallenge, state);
+        var uri = OAuth.GenerateAuthorizeUrl(_clientId, codeChallenge, state);
         LoginUriSubject.OnNext(uri);
 
         var cts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
@@ -72,7 +76,7 @@ internal sealed class OAuthJob : IOAuthJob, IJobDefinitionWithStart<OAuthJob, Op
         cts.CancelAfter(TimeSpan.FromMinutes(3));
         var code = await codeTask;
 
-        var token = await OAuth.AuthorizeToken(codeVerifier, code, _httpClient, context.CancellationToken);
+        var token = await OAuth.AuthorizeToken(_clientId, codeVerifier, code, _httpClient, context.CancellationToken);
         return token;
     }
 

@@ -6,6 +6,7 @@ using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Jobs;
+using NexusMods.Sdk.Settings;
 using R3;
 
 namespace NexusMods.Networking.NexusWebApi.Auth;
@@ -18,13 +19,13 @@ public class OAuth
     // NOTE(erri120): The backend has a list of valid redirect URLs and client IDs.
     // We can't change these on our own.
     private const string OAuthRedirectUrl = "nxm://oauth/callback";
-    private const string OAuthClientId = "nma";
 
     private readonly IJobMonitor _jobMonitor;
     private readonly ILogger<OAuth> _logger;
     private readonly HttpClient _http;
     private readonly IOSInterop _os;
     private readonly IIDGenerator _idGenerator;
+    private readonly ISettingsManager _settingsManager;
     private readonly BehaviorSubject<NXMOAuthUrl?> _nxmUrlMessages = new(initialValue: null);
 
     /// <summary>
@@ -35,8 +36,10 @@ public class OAuth
         ILogger<OAuth> logger,
         HttpClient http,
         IIDGenerator idGenerator,
-        IOSInterop os)
+        IOSInterop os,
+        ISettingsManager settingsManager)
     {
+        _settingsManager = settingsManager;
         _jobMonitor = jobMonitor;
         _logger = logger;
         _http = http;
@@ -49,11 +52,16 @@ public class OAuth
     /// </summary>
     public async Task<JwtTokenReply?> AuthorizeRequest(CancellationToken cancellationToken)
     {
+        // Without a client id registered for this app, refuse rather than sign in as another app.
+        var clientId = _settingsManager.Get<NexusAuthSettings>().OAuthClientId;
+        if (string.IsNullOrWhiteSpace(clientId)) throw new InvalidOperationException("No OAuth client id configured");
+
         var job = OAuthJob.Create(
             jobMonitor: _jobMonitor,
             idGenerator: _idGenerator,
             os: _os,
             httpClient: _http,
+            clientId: clientId,
             nxmUrlMessages: _nxmUrlMessages.WhereNotNull()
         );
 
@@ -80,7 +88,7 @@ public class OAuth
         var request = new Dictionary<string, string>
         {
             { "grant_type", "refresh_token" },
-            { "client_id", OAuthClientId },
+            { "client_id", _settingsManager.Get<NexusAuthSettings>().OAuthClientId },
             { "refresh_token", refreshToken },
         };
 
@@ -92,6 +100,7 @@ public class OAuth
     }
 
     internal static async Task<JwtTokenReply?> AuthorizeToken(
+        string clientId,
         string verifier,
         string code,
         HttpClient httpClient,
@@ -99,7 +108,7 @@ public class OAuth
     {
         var request = new Dictionary<string, string> {
             { "grant_type", "authorization_code" },
-            { "client_id", OAuthClientId },
+            { "client_id", clientId },
             { "redirect_uri", OAuthRedirectUrl },
             { "code", code },
             { "code_verifier", verifier },
@@ -112,14 +121,14 @@ public class OAuth
         return JsonSerializer.Deserialize<JwtTokenReply>(responseString);
     }
 
-    internal static Uri GenerateAuthorizeUrl(string challenge, string state)
+    internal static Uri GenerateAuthorizeUrl(string clientId, string challenge, string state)
     {
         var request = new Dictionary<string, string?>
         {
             { "response_type", "code" },
             { "scope", "openid profile email" },
             { "code_challenge_method", "S256" },
-            { "client_id", OAuthClientId },
+            { "client_id", clientId },
             { "redirect_uri",  OAuthRedirectUrl },
             { "code_challenge", challenge },
             { "state", state },
