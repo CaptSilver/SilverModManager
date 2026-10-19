@@ -61,15 +61,19 @@ public class JobStateTransitionTests : AJobsTest
         // Arrange
         var expectedException = new InvalidOperationException("Test exception");
         var failSignal = new ManualResetEventSlim();
-        var job = new FailingJob(expectedException, failSignal);
+        var startedSignal = new ManualResetEventSlim();
+        var job = new FailingJob(expectedException, failSignal, startedSignal);
         var stateChanges = new List<JobStatus>();
         
         // Act
         var task = JobMonitor.Begin<FailingJob, string>(job);
+
+        // The status subject replays its current value on subscribe, and the job thread can
+        // move it from Created to Running before a subscription made right after Begin lands.
+        // The job body only runs once Running is published, so subscribing after it starts
+        // always sees Running first.
+        startedSignal.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken).Should().BeTrue();
         using var subscription = task.Job.ObservableStatus.Subscribe(status => stateChanges.Add(status));
-        
-        // Wait for job to reach `Running` state before signaling failure
-        await SynchronizationHelpers.WaitForJobState(task.Job, JobStatus.Running, TimeSpan.FromSeconds(30));
         
         // Now signal the job to fail
         failSignal.Set();
@@ -78,7 +82,7 @@ public class JobStateTransitionTests : AJobsTest
         await FluentActions.Awaiting(() => task.Job.WaitAsync()).Should().ThrowAsync<InvalidOperationException>();
 
         task.Job.Status.Should().Be(JobStatus.Failed);
-        stateChanges.Should().Equal([JobStatus.Created, JobStatus.Running, JobStatus.Failed]);
+        stateChanges.Should().Equal([JobStatus.Running, JobStatus.Failed]);
     }
 
     [Fact]

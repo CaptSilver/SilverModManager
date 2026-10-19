@@ -51,10 +51,11 @@ public record SignaledJob(ManualResetEventSlim StartSignal) : IJobDefinitionWith
     }
 }
 
-public record FailingJob(Exception ExceptionToThrow, ManualResetEventSlim? FailSignal = null) : IJobDefinitionWithStart<FailingJob, string>
+public record FailingJob(Exception ExceptionToThrow, ManualResetEventSlim? FailSignal = null, ManualResetEventSlim? StartedSignal = null) : IJobDefinitionWithStart<FailingJob, string>
 {
     public async ValueTask<string> StartAsync(IJobContext<FailingJob> context)
     {
+        StartedSignal?.Set();
         await context.YieldAsync();
         context.SetPercent(Size.From(1UL), Size.From(3UL));
         
