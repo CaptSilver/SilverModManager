@@ -2,16 +2,16 @@
 Type=Application
 # Version=1.5
 # Commented out because PupNet needs updating to recognise 1.5, so letting it default to latest is ideal.
-Name=Nexus Mods App
+Name=SilverModManager
 GenericName=Mod Manager
 Comment=Mod Manager for your games
 Categories=Game
 Terminal=false
-StartupWMClass=NexusMods.App
+StartupWMClass=SilverModManager
 MimeType=x-scheme-handler/nxm
-Icon=com.nexusmods.app
+Icon=io.github.CaptSilver.SilverModManager
 Exec=${INSTALL_EXEC} %u
 TryExec=${INSTALL_TRYEXEC}
 X-AppImage-Integrate=true
-X-AppImage-Name=NexusMods.App
+X-AppImage-Name=SilverModManager
 X-AppImage-Arch=x86_64

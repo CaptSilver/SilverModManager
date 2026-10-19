@@ -97,6 +97,9 @@ public class Startup
                 // NOTE(erri120): Prevents DBus exceptions for tooltips.
                 // For details see https://github.com/Nexus-Mods/NexusMods.App/issues/2799
                 UseDBusMenu = false,
+
+                // Must equal StartupWMClass in the desktop file or KDE under XWayland cannot match the window to its launcher.
+                WmClass = ApplicationConstants.ProductName,
             })
             .With(new SkiaOptions
             {

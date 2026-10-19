@@ -19,8 +19,8 @@ public partial class BrandingGuardTests
     ];
 
     // Data folder, config folder, log and sync file names that would collide with a running
-    // upstream install, and upstream's HTTP user agent.
-    [GeneratedRegex("\"NexusMods\\.App[/\"-]|nexusmods\\.app\\.(main|slim)|\"NexusModsApp\"")]
+    // upstream install, upstream's HTTP user agent, and upstream's desktop entry and app id.
+    [GeneratedRegex("\"NexusMods\\.App[/\"-]|nexusmods\\.app\\.(main|slim)|\"NexusModsApp\"|com\\.nexusmods|nexus_mods_app|StartupWMClass=NexusMods")]
     private static partial Regex UpstreamIdentity();
 
     [Fact]
