@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.Sdk.IO;
@@ -25,7 +26,7 @@ public class ChunkedStreamTests
         return (ms, hash);
     }
 
-    [Test]
+    [Fact]
     public async Task CanCopyLargeStream()
     {
         var (stream, expectedHash) = CreateData();
@@ -35,17 +36,17 @@ public class ChunkedStreamTests
         await using var chunked = new ChunkedStream<ChunkedMemoryStream>(source);
 
         var actualHash = await chunked.HashingCopyAsync(Stream.Null, CancellationToken.None);
-        await Assert.That(actualHash).IsEqualTo(expectedHash);
+        actualHash.Should().Be(expectedHash);
     }
 
-    [Test]
-    [Arguments(1)]
-    [Arguments(2)]
-    [Arguments(4)]
-    [Arguments(8)]
-    [Arguments(11)] // Same as the input data
-    [Arguments(16)]
-    [Arguments(32)]
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(8)]
+    [InlineData(11)] // Same as the input data
+    [InlineData(16)]
+    [InlineData(32)]
     public async Task CanCopySmallStreamAsync(int chunkSize)
     {
         using var ms = new MemoryStream();
@@ -55,20 +56,20 @@ public class ChunkedStreamTests
         await using var chunked = new ChunkedStream<ChunkedMemoryStream>(source);
 
         using var outputStream = new MemoryStream();
-        await chunked.CopyToAsync(outputStream);
+        await chunked.CopyToAsync(outputStream, TestContext.Current.CancellationToken);
 
-        await Assert.That(outputStream.Length).IsEqualTo(ms.Length);
-        await Assert.That(outputStream.ToArray()).IsEquivalentTo("Hello World"u8.ToArray());
+        outputStream.Length.Should().Be(ms.Length);
+        outputStream.ToArray().Should().Equal("Hello World"u8.ToArray());
     }
 
-    [Test]
-    [Arguments(1)]
-    [Arguments(2)]
-    [Arguments(4)]
-    [Arguments(8)]
-    [Arguments(11)] // Same as the input data
-    [Arguments(16)]
-    [Arguments(32)]
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(8)]
+    [InlineData(11)] // Same as the input data
+    [InlineData(16)]
+    [InlineData(32)]
     public async Task CanCopySmallStreamSync(int chunkSize)
     {
         using var ms = new MemoryStream();
@@ -81,11 +82,11 @@ public class ChunkedStreamTests
         // ReSharper disable once MethodHasAsyncOverload
         chunked.CopyTo(outputStream);
 
-        await Assert.That(outputStream.Length).IsEqualTo(ms.Length);
-        await Assert.That(outputStream.ToArray()).IsEquivalentTo("Hello World"u8.ToArray());
+        outputStream.Length.Should().Be(ms.Length);
+        outputStream.ToArray().Should().Equal("Hello World"u8.ToArray());
     }
 
-    [Test]
+    [Fact]
     public async Task Test_EndOfStream()
     {
         var buffer = new byte[16];
@@ -94,11 +95,11 @@ public class ChunkedStreamTests
         var source = await ChunkedMemoryStream.Create(ms, chunkSize: 16);
         await using var chunked = new ChunkedStream<ChunkedMemoryStream>(source);
 
-        var bytesRead = await chunked.ReadAsync(buffer);
-        await Assert.That(bytesRead).IsEqualTo(16);
+        var bytesRead = await chunked.ReadAsync(buffer, TestContext.Current.CancellationToken);
+        bytesRead.Should().Be(16);
 
-        bytesRead = await chunked.ReadAsync(buffer);
-        await Assert.That(bytesRead).IsEqualTo(0) .Because("Reached end of stream");
+        bytesRead = await chunked.ReadAsync(buffer, TestContext.Current.CancellationToken);
+        bytesRead.Should().Be(0, "Reached end of stream");
     }
     
     private class ChunkedMemoryStream : IChunkedStreamSource

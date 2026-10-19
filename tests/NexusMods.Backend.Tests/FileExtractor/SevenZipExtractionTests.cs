@@ -9,30 +9,30 @@ namespace NexusMods.Backend.Tests.FileExtractor;
 
 public class SevenZipExtractionTests : AFileExtractorTest
 {
-    [Test]
+    [Fact]
     public async Task Test_Issue3003()
     {
         const string fileName = "zip-with-spaces.zip";
         var archivePath = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine(fileName);
-        await Assert.That(archivePath.FileExists).IsTrue();
+        archivePath.FileExists.Should().BeTrue();
 
         await using var destination = TemporaryFileManager.CreateFolder();
-        await FileExtractor.ExtractAllAsync(archivePath, destination);
+        await FileExtractor.ExtractAllAsync(archivePath, destination, TestContext.Current.CancellationToken);
 
         var files = destination.Path.EnumerateFiles().ToArray();
-        await Assert.That(files).All(x => x.FileExists);
+        files.Should().OnlyContain(x => x.FileExists);
     }
 
-    [Test]
-    [Arguments("foo/bar", "foo/bar")]
-    [Arguments("foo/bar ", "foo/bar_")]
-    [Arguments("foo/bar  ", "foo/bar__")]
-    [Arguments("foo/bar.", "foo/bar_")]
-    [Arguments("foo/bar..", "foo/bar__")]
-    [Arguments("foo/bar. ", "foo/bar__")]
-    [Arguments(". ", "__")]
-    [Arguments(".", "_")]
-    [Arguments(" ", "_")]
+    [Theory]
+    [InlineData("foo/bar", "foo/bar")]
+    [InlineData("foo/bar ", "foo/bar_")]
+    [InlineData("foo/bar  ", "foo/bar__")]
+    [InlineData("foo/bar.", "foo/bar_")]
+    [InlineData("foo/bar..", "foo/bar__")]
+    [InlineData("foo/bar. ", "foo/bar__")]
+    [InlineData(". ", "__")]
+    [InlineData(".", "_")]
+    [InlineData(" ", "_")]
     public void Test_To7ZipWindowsExtractionPath(string input, string expected)
     {
         Span<char> span = stackalloc char[input.Length];
@@ -45,13 +45,13 @@ public class SevenZipExtractionTests : AFileExtractorTest
         actual.Should().Be(expected);
     }
 
-    [Test]
-    [Arguments("2024-04-16 06:10:44 D....            0            0  .", false, null, true)]
-    [Arguments("2024-04-16 06:10:44 D....            0            0  ..", false, null, true)]
-    [Arguments("2024-04-16 06:10:44 D....            0            0  foo ", true, "foo ", true)]
-    [Arguments("2024-04-16 06:10:44 .....            0            0  foo ", true, "foo ", false)]
-    [Arguments("2024-04-16 06:10:44 .....            0            0  foo", false, null, false)]
-    [Arguments("2024-04-16 06:10:44 D....            0            0  foo", false, null, true)]
+    [Theory]
+    [InlineData("2024-04-16 06:10:44 D....            0            0  .", false, null, true)]
+    [InlineData("2024-04-16 06:10:44 D....            0            0  ..", false, null, true)]
+    [InlineData("2024-04-16 06:10:44 D....            0            0  foo ", true, "foo ", true)]
+    [InlineData("2024-04-16 06:10:44 .....            0            0  foo ", true, "foo ", false)]
+    [InlineData("2024-04-16 06:10:44 .....            0            0  foo", false, null, false)]
+    [InlineData("2024-04-16 06:10:44 D....            0            0  foo", false, null, true)]
     public void Test_TryParseListCommandOutput(string input, bool expected, string? expectedFileName, bool expectedIsDirectory)
     {
         var actual = SevenZipExtractor.TryParseListCommandOutput(input, out var fileName, out var isDirectory);
@@ -61,7 +61,7 @@ public class SevenZipExtractionTests : AFileExtractorTest
         isDirectory.Should().Be(expectedIsDirectory);
     }
 
-    [Test]
+    [Fact]
     public async Task CanExtractToLongPath()
     {
         await using var tempFolder = TemporaryFileManager.CreateFolder();
@@ -81,14 +81,14 @@ public class SevenZipExtractionTests : AFileExtractorTest
         var file = FileSystem.GetKnownPath(KnownPath.CurrentDirectory)
             .Combine("Resources/data_7zip_lzma2.7z");
 
-        var act = async () => await FileExtractor.ExtractAllAsync(file, dest, CancellationToken.None);
+        var act = async () => await FileExtractor.ExtractAllAsync(file, dest, TestContext.Current.CancellationToken);
 
         await act.Should().NotThrowAsync();
 
         var actual = await tempFolder.Path.EnumerateFiles()
             .ToAsyncEnumerable()
             .SelectAwait(async f => (f.RelativeTo(dest), await f.XxHash3Async()))
-            .ToArrayAsync();
+            .ToArrayAsync(TestContext.Current.CancellationToken);
 
         (RelativePath, Hash)[] expected = [
             ("deepFolder/deepFolder2/deepFolder3/deepFolder4/deepFile.txt", (Hash)0x3F0AB4D495E35A9A),

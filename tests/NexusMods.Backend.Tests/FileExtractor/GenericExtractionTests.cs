@@ -1,23 +1,29 @@
+using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
-using TUnit.Assertions.Enums;
 
 namespace NexusMods.Backend.Tests.FileExtractor;
 
 public class GenericExtractionTests : AFileExtractorTest
 {
-    [Test]
-    [ArchiveDataSource]
-    public async Task CanExtractAll(AbsolutePath path)
+    // Only the archives the expected hashes below describe. A name that goes missing
+    // fails the test instead of silently dropping out of an enumerated directory.
+    public static TheoryData<string> Archives => ["data_7zip_lzma2.7z", "data_zip_lzma.zip"];
+
+    [Theory]
+    [MemberData(nameof(Archives))]
+    public async Task CanExtractAll(string archiveName)
     {
+        var path = FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine(archiveName);
+
         await using var tempFolder = TemporaryFileManager.CreateFolder();
-        await FileExtractor.ExtractAllAsync(path, tempFolder, CancellationToken.None);
+        await FileExtractor.ExtractAllAsync(path, tempFolder, TestContext.Current.CancellationToken);
 
         var actual = await tempFolder.Path.EnumerateFiles()
             .ToAsyncEnumerable()
             .SelectAwait(async f => (f.RelativeTo(tempFolder.Path), await f.XxHash3Async()))
-            .ToArrayAsync();
+            .ToArrayAsync(TestContext.Current.CancellationToken);
 
         (RelativePath, Hash)[] expected = [
             ("deepFolder/deepFolder2/deepFolder3/deepFolder4/deepFile.txt", (Hash)0x3F0AB4D495E35A9A),
@@ -25,18 +31,6 @@ public class GenericExtractionTests : AFileExtractorTest
             ("rootFile.txt", (Hash)0x818A82701BC1CC30),
         ];
 
-        await Assert.That(actual).IsEquivalentTo(expected, ordering: CollectionOrdering.Any, comparer: EqualityComparer<(RelativePath, Hash)>.Default);
-    }
-}
-
-internal class ArchiveDataSource : DataSourceGeneratorAttribute<AbsolutePath>
-{
-    protected override IEnumerable<Func<AbsolutePath>> GenerateDataSources(DataGeneratorMetadata dataGeneratorMetadata)
-    {
-        return FileSystem.Shared.GetKnownPath(KnownPath.CurrentDirectory)
-            .Combine("Resources")
-            .EnumerateFiles()
-            .Where(file => file.FileName is "data_7zip_lzma2.7z" or "data_zip_lzma.zip")
-            .Select<AbsolutePath, Func<AbsolutePath>>(file => () => file);
+        actual.Should().BeEquivalentTo(expected);
     }
 }

@@ -1,5 +1,6 @@
 using System.IO.Hashing;
 using System.Text;
+using FluentAssertions;
 using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Backend.FileExtractor.Extractors;
@@ -10,26 +11,25 @@ namespace NexusMods.Backend.Tests.FileExtractor;
 
 public class ManagedZipExtractorTests
 {
-    [Test]
-    [Arguments("unicode-names.zip", "こんにちわ.txt")]
-    [Arguments("unicode-extra-data.zip", "こんにちわ.txt")]
+    [Theory]
+    [InlineData("unicode-names.zip", "こんにちわ.txt")]
+    [InlineData("unicode-extra-data.zip", "こんにちわ.txt")]
     public async Task Test(string archiveName, string expectedFileName)
     {
         // NOTE(erri120): The archive "unicode-extra-data" was created using the CreateZipFile() method
         // and then manually binary patched to remove the unicode flag.
 
         var archivePath = FileSystem.Shared.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources").Combine(archiveName);
-        await Assert.That(archivePath.FileExists).IsTrue();
+        archivePath.FileExists.Should().BeTrue();
 
         var extractor = new ManagedZipExtractor(NullLogger<ManagedZipExtractor>.Instance);
         using var temporaryFileManager = new TemporaryFileManager(FileSystem.Shared);
 
         await using var destinationPath = temporaryFileManager.CreateFolder();
-        await extractor.ExtractAllAsync(new NativeFileStreamFactory(archivePath), destinationPath);
+        await extractor.ExtractAllAsync(new NativeFileStreamFactory(archivePath), destinationPath, TestContext.Current.CancellationToken);
 
         var files = destinationPath.Path.EnumerateFiles().ToArray();
-        await Assert.That(files.Where(f => f.FileName == expectedFileName))
-            .HasSingleItem();
+        files.Where(f => f.FileName == expectedFileName).Should().ContainSingle();
     }
 
     private static async Task CreateZipFile()

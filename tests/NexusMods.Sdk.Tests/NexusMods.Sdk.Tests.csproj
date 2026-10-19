@@ -1,19 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-      <OutputType>Exe</OutputType>
-      <TestingPlatformCommandLineArguments>$(TUnitArgs)</TestingPlatformCommandLineArguments>
-  </PropertyGroup>
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-      <PackageReference Remove="xunit.v3.mtp-v2" />
-      <PackageReference Remove="Xunit.DependencyInjection" />
-      <PackageReference Remove="Xunit.DependencyInjection.Logging" />
-      <PackageReference Remove="AutoFixture.Xunit3" />
-  </ItemGroup>
-
-  <ItemGroup>
-      <PackageReference Include="TUnit" />
+    <Using Include="Xunit"/>
   </ItemGroup>
 
   <ItemGroup>

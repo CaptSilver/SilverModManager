@@ -8,7 +8,7 @@ using NexusMods.Sdk.Settings;
 
 namespace NexusMods.Backend.Tests.FileExtractor;
 
-public class AFileExtractorTest
+public class AFileExtractorTest : IAsyncLifetime
 {
     private readonly IHost _host;
 
@@ -34,15 +34,20 @@ public class AFileExtractorTest
             ).Build();
     }
 
-    [Before(Test)]
-    public async Task SetupServices()
+    public async ValueTask InitializeAsync()
     {
-        await _host.StartAsync();
+        await _host.StartAsync(TestContext.Current.CancellationToken);
         ServiceProvider = _host.Services;
         JobMonitor = ServiceProvider.GetRequiredService<IJobMonitor>();
         TemporaryFileManager = ServiceProvider.GetRequiredService<TemporaryFileManager>();
         FileExtractor = ServiceProvider.GetRequiredService<IFileExtractor>();
         FileSystem = ServiceProvider.GetRequiredService<IFileSystem>();
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _host.Dispose();
+        return ValueTask.CompletedTask;
     }
 
     public IFileSystem FileSystem { get; set; }

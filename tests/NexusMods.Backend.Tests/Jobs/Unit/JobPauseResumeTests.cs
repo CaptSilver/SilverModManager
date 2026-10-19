@@ -1,13 +1,14 @@
 using NexusMods.Backend.Tests.Jobs.TestInfrastructure;
 using NexusMods.Jobs.Tests;
 using NexusMods.Jobs.Tests.TestInfrastructure;
+using FluentAssertions;
 using NexusMods.Sdk.Jobs;
 
 namespace NexusMods.Backend.Tests.Jobs.Unit;
 
 public class JobPauseResumeTests : AJobsTest
 {
-    [Test]
+    [Fact]
     public async Task Should_Pause_And_Resume_Job()
     {
         // Arrange
@@ -34,8 +35,8 @@ public class JobPauseResumeTests : AJobsTest
         JobMonitor.Resume(task);
         
         // Wait for the job to signal it has resumed execution
-        await Assert.That(jobHasResumedSignal.Wait(TimeSpan.FromSeconds(30))).IsTrue();
-        await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Running);
+        jobHasResumedSignal.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken).Should().BeTrue();
+        task.Job.Status.Should().Be(JobStatus.Running);
 
         // Allow the job to complete
         allowJobToCompleteSignal.Set();
@@ -43,11 +44,11 @@ public class JobPauseResumeTests : AJobsTest
         // Wait for completion
         var result = await task;
 
-        await Assert.That(result).IsEqualTo(42);
-        await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Completed);
+        result.Should().Be(42);
+        task.Job.Status.Should().Be(JobStatus.Completed);
     }
 
-    [Test]
+    [Fact]
     public async Task Should_Cancel_Paused_Job()
     {
         // Arrange
@@ -65,11 +66,11 @@ public class JobPauseResumeTests : AJobsTest
         JobMonitor.Cancel(task);
 
         // Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task.Job.WaitAsync());
-        await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Cancelled);
+        await FluentActions.Awaiting(() => task.Job.WaitAsync()).Should().ThrowAsync<OperationCanceledException>();
+        task.Job.Status.Should().Be(JobStatus.Cancelled);
     }
 
-    [Test]
+    [Fact]
     public async Task Should_Cancel_Instead_Of_Pause_When_SupportsPausing_Is_False()
     {
         // Arrange
@@ -89,7 +90,7 @@ public class JobPauseResumeTests : AJobsTest
         JobMonitor.Pause(task);
         
         // Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task.Job.WaitAsync());
-        await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Cancelled);
+        await FluentActions.Awaiting(() => task.Job.WaitAsync()).Should().ThrowAsync<OperationCanceledException>();
+        task.Job.Status.Should().Be(JobStatus.Cancelled);
     }
 }

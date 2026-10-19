@@ -1,13 +1,14 @@
 using DynamicData;
 using NexusMods.Jobs.Tests;
 using NexusMods.Jobs.Tests.TestInfrastructure;
+using FluentAssertions;
 using NexusMods.Sdk.Jobs;
 
 namespace NexusMods.Backend.Tests.Jobs.Unit;
 
 public class JobMonitorTrackingTests : AJobsTest
 {
-    [Test]
+    [Fact]
     public async Task Should_Filter_ChangeSet_By_Job_Type()
     {
         // Arrange
@@ -27,21 +28,21 @@ public class JobMonitorTrackingTests : AJobsTest
         var progressTask = JobMonitor.Begin<ProgressReportingJob, double>(progressJob);
         var simpleTask = JobMonitor.Begin<SimpleTestJob, string>(simpleJob);
         
-        await Task.WhenAll(progressTask.Job.WaitAsync(), simpleTask.Job.WaitAsync());
+        await Task.WhenAll(progressTask.Job.WaitAsync(TestContext.Current.CancellationToken), simpleTask.Job.WaitAsync(TestContext.Current.CancellationToken));
         
         // Assert
-        await Assert.That(progressJobChanges).IsNotEmpty();
-        await Assert.That(simpleJobChanges).IsNotEmpty();
+        progressJobChanges.Should().NotBeEmpty();
+        simpleJobChanges.Should().NotBeEmpty();
 
         // Verify that each filtered stream only contains jobs of the correct type
         var progressJobs = progressJobChanges.SelectMany(cs => cs).Select(change => change.Current);
         var simpleJobs = simpleJobChanges.SelectMany(cs => cs).Select(change => change.Current);
 
-        await Assert.That(progressJobs.All(job => job.Definition is ProgressReportingJob)).IsTrue();
-        await Assert.That(simpleJobs.All(job => job.Definition is SimpleTestJob)).IsTrue();
+        progressJobs.All(job => job.Definition is ProgressReportingJob).Should().BeTrue();
+        simpleJobs.All(job => job.Definition is SimpleTestJob).Should().BeTrue();
     }
 
-    [Test]
+    [Fact]
     public async Task Should_Emit_ChangeSet_Events_For_Job_Lifecycle()
     {
         // Arrange
@@ -68,10 +69,10 @@ public class JobMonitorTrackingTests : AJobsTest
         changeSignal.WaitOne(TimeSpan.FromSeconds(2));
         
         // Assert
-        await Assert.That(changeSets).IsNotEmpty();
+        changeSets.Should().NotBeEmpty();
 
         // Should have at least one Add operation
         var hasAddOperation = changeSets.Any(cs => cs.Any(change => change.Reason == ChangeReason.Add));
-        await Assert.That(hasAddOperation).IsTrue();
+        hasAddOperation.Should().BeTrue();
     }
 }

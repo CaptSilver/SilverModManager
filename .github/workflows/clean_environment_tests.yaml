@@ -65,4 +65,3 @@ jobs:
         run: >
           dotnet test --solution NexusMods.App.sln --no-build --ignore-exit-code 8
           -p:XunitArgs="--report-github --timeout 20m --filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait FlakeyTest=True"
-          -p:TUnitArgs="--report-github --timeout 20m"

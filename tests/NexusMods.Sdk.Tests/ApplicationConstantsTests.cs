@@ -1,12 +1,13 @@
+using FluentAssertions;
+
 namespace NexusMods.Sdk.Tests;
 
 public class ApplicationConstantsTests
 {
-    [Test]
-    public async Task Test_BuildDate()
+    [Fact]
+    public void Test_BuildDate()
     {
-        await Assert
-            .That(ApplicationConstants.BuildDate)
-            .IsNotEqualTo(DateTimeOffset.UnixEpoch).Because("it shouldn't be the default");
+        ApplicationConstants.BuildDate
+            .Should().NotBe(DateTimeOffset.UnixEpoch, "it shouldn't be the default");
     }
 }

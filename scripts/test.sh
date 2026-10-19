@@ -4,9 +4,8 @@
 # unless already in a container. Extra arguments go to `dotnet test`, e.g.
 #   scripts/test.sh --project tests/NexusMods.CLI.Tests
 #
-# The xunit v3 and TUnit runners reject each other's filter options, so the filters
-# travel as MSBuild properties (XunitArgs / TUnitArgs) that each test project maps
-# onto TestingPlatformCommandLineArguments.
+# The filters travel as the XunitArgs MSBuild property, which tests/Directory.Build.props
+# maps onto TestingPlatformCommandLineArguments.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -46,5 +45,4 @@ done
 
 dotnet test "${target[@]}" --ignore-exit-code 8 \
     -p:XunitArgs="--filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait FlakeyTest=True" \
-    -p:TUnitArgs="" \
     "$@"

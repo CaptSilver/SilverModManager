@@ -1,22 +1,23 @@
+using FluentAssertions;
 using NexusMods.Sdk.Jobs;
 
 namespace NexusMods.Backend.Tests.Jobs.Unit;
 
 public class JobCancellationTokenTests
 {
-    [Test]
-    public async Task Should_Initialize_In_Running_State()
+    [Fact]
+    public void Should_Initialize_In_Running_State()
     {
         // Arrange & Act
         var token = new JobCancellationToken();
 
         // Assert
-        await Assert.That(token.IsPaused).IsFalse();
-        await Assert.That(token.Token.IsCancellationRequested).IsFalse();
+        token.IsPaused.Should().BeFalse();
+        token.Token.IsCancellationRequested.Should().BeFalse();
     }
 
-    [Test]
-    public async Task Should_Support_Basic_Cancellation()
+    [Fact]
+    public void Should_Support_Basic_Cancellation()
     {
         // Arrange
         var token = new JobCancellationToken();
@@ -25,12 +26,12 @@ public class JobCancellationTokenTests
         token.Cancel();
 
         // Assert
-        await Assert.That(token.Token.IsCancellationRequested).IsTrue();
-        await Assert.That(token.IsCancelled).IsTrue();
+        token.Token.IsCancellationRequested.Should().BeTrue();
+        token.IsCancelled.Should().BeTrue();
     }
 
-    [Test]
-    public async Task Should_Cancel_And_Set_Cancellation_Token()
+    [Fact]
+    public void Should_Cancel_And_Set_Cancellation_Token()
     {
         // Arrange
         var token = new JobCancellationToken();
@@ -39,12 +40,12 @@ public class JobCancellationTokenTests
         token.Cancel();
 
         // Assert
-        await Assert.That(token.Token.IsCancellationRequested).IsTrue();
-        await Assert.That(token.IsPaused).IsFalse(); // Cancelled jobs are not considered paused
+        token.Token.IsCancellationRequested.Should().BeTrue();
+        token.IsPaused.Should().BeFalse(); // Cancelled jobs are not considered paused
     }
 
-    [Test]
-    public async Task Should_Cancel_And_Recycle_Token_on_Pause()
+    [Fact]
+    public void Should_Cancel_And_Recycle_Token_on_Pause()
     {
         // Arrange
         var token = new JobCancellationToken();
@@ -54,16 +55,16 @@ public class JobCancellationTokenTests
         token.Pause();
 
         // Assert
-        await Assert.That(token.IsPaused).IsTrue();
+        token.IsPaused.Should().BeTrue();
         
         // Original token should request cancellation,
         // while new token should be recycled
-        await Assert.That(originalToken.IsCancellationRequested).IsTrue();
-        await Assert.That(token.Token.IsCancellationRequested).IsFalse();
+        originalToken.IsCancellationRequested.Should().BeTrue();
+        token.Token.IsCancellationRequested.Should().BeFalse();
     }
 
-    [Test]
-    public async Task Should_Resume_From_Paused_State()
+    [Fact]
+    public void Should_Resume_From_Paused_State()
     {
         // Arrange
         var token = new JobCancellationToken();
@@ -73,11 +74,11 @@ public class JobCancellationTokenTests
         token.Resume();
 
         // Assert
-        await Assert.That(token.IsPaused).IsFalse();
+        token.IsPaused.Should().BeFalse();
     }
 
-    [Test]
-    public async Task Should_Ignore_Resume_When_Not_Paused()
+    [Fact]
+    public void Should_Ignore_Resume_When_Not_Paused()
     {
         // Arrange
         var token = new JobCancellationToken();
@@ -86,11 +87,11 @@ public class JobCancellationTokenTests
         token.Resume();
 
         // Assert
-        await Assert.That(token.IsPaused).IsFalse();
+        token.IsPaused.Should().BeFalse();
     }
 
-    [Test]
-    public async Task Should_Ignore_Resume_When_Cancelled()
+    [Fact]
+    public void Should_Ignore_Resume_When_Cancelled()
     {
         // Arrange
         var token = new JobCancellationToken();
@@ -100,7 +101,7 @@ public class JobCancellationTokenTests
         token.Resume();
 
         // Assert
-        await Assert.That(token.Token.IsCancellationRequested).IsTrue();
-        await Assert.That(token.IsPaused).IsFalse();
+        token.Token.IsCancellationRequested.Should().BeTrue();
+        token.IsPaused.Should().BeFalse();
     }
 }

@@ -1,13 +1,14 @@
 using NexusMods.Backend.Tests.Jobs.TestInfrastructure;
 using NexusMods.Jobs.Tests;
 using NexusMods.Jobs.Tests.TestInfrastructure;
+using FluentAssertions;
 using NexusMods.Sdk.Jobs;
 
 namespace NexusMods.Backend.Tests.Jobs.Unit;
 
 public class JobStateTransitionTests : AJobsTest
 {
-    [Test]
+    [Fact]
     public async Task Should_Start_And_Complete_Successfully()
     {
         // Arrange
@@ -18,16 +19,16 @@ public class JobStateTransitionTests : AJobsTest
         var task = JobMonitor.Begin<SignaledJob, bool>(job);
 
         // Assert
-        await Assert.That(task.Job.Status == JobStatus.None || task.Job.Status == JobStatus.Created || task.Job.Status == JobStatus.Running).IsTrue();
+        task.Job.Status.Should().BeOneOf(JobStatus.None, JobStatus.Created, JobStatus.Running);
         startSignal.Set(); // Allow job to complete
         var result = await task;
 
         // Verify successful completion
-        await Assert.That(result).IsTrue();
-        await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Completed);
+        result.Should().BeTrue();
+        task.Job.Status.Should().Be(JobStatus.Completed);
     }
 
-    [Test]
+    [Fact]
     public async Task Should_Transition_From_Running_To_Completed()
     {
         // Arrange
@@ -47,14 +48,14 @@ public class JobStateTransitionTests : AJobsTest
         var result = await task;
         
         // Assert
-        await Assert.That(result).IsTrue();
-        await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Completed);
-        await Assert.That(stateChanges).Contains(JobStatus.Completed);
+        result.Should().BeTrue();
+        task.Job.Status.Should().Be(JobStatus.Completed);
+        stateChanges.Should().Contain(JobStatus.Completed);
         // Note(sewer): We have no control up until the job starts with `Running`,
         // so we can't verify Created/None state.
     }
 
-    [Test]
+    [Fact]
     public async Task Should_Transition_From_Running_To_Failed_On_Exception()
     {
         // Arrange
@@ -74,13 +75,13 @@ public class JobStateTransitionTests : AJobsTest
         failSignal.Set();
         
         // Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => task.Job.WaitAsync());
+        await FluentActions.Awaiting(() => task.Job.WaitAsync()).Should().ThrowAsync<InvalidOperationException>();
 
-        await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Failed);
-        await Assert.That(stateChanges).IsEquivalentTo([JobStatus.Created, JobStatus.Running, JobStatus.Failed]);
+        task.Job.Status.Should().Be(JobStatus.Failed);
+        stateChanges.Should().Equal([JobStatus.Created, JobStatus.Running, JobStatus.Failed]);
     }
 
-    [Test]
+    [Fact]
     public async Task Should_Transition_From_Running_To_Cancelled()
     {
         // Arrange
@@ -92,16 +93,16 @@ public class JobStateTransitionTests : AJobsTest
         var task = JobMonitor.Begin<WaitForCancellationJob, string>(job);
         
         // Wait for job to be ready, then cancel
-        readySignal.Wait(TimeSpan.FromSeconds(30));
+        readySignal.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         
         // Note(sewer): The job is running by definition, since readySignal was signaled on job's end.
         using var subscription = task.Job.ObservableStatus.Subscribe(status => stateChanges.Add(status));
         JobMonitor.Cancel(task.Job.Id);
         
         // Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(() => task.Job.WaitAsync());
+        await FluentActions.Awaiting(() => task.Job.WaitAsync()).Should().ThrowAsync<OperationCanceledException>();
 
-        await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Cancelled);
-        await Assert.That(stateChanges).IsEquivalentTo([JobStatus.Running, JobStatus.Cancelled]);
+        task.Job.Status.Should().Be(JobStatus.Cancelled);
+        stateChanges.Should().Equal([JobStatus.Running, JobStatus.Cancelled]);
     }
 }

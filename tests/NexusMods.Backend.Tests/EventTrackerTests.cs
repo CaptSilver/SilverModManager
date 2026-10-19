@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NexusMods.Abstractions.NexusWebApi;
@@ -38,7 +39,7 @@ public class EventTrackerTests
         return tracker;
     }
     
-    [Test]
+    [Fact]
     public async Task Test_PrepareRequest()
     {
         var tracker = Setup();
@@ -50,7 +51,7 @@ public class EventTrackerTests
         tracker.Track("my second event", ("a", "a"), ("b", "b"), ("c", "c"), ("e", 1));
 
         using var buffer = tracker.PrepareRequest();
-        await Assert.That(buffer).IsNotNull();
+        buffer.Should().NotBeNull();
 
         var json = Encoding.UTF8.GetString(buffer!.WrittenSpan);
         await VerifyJson(json)

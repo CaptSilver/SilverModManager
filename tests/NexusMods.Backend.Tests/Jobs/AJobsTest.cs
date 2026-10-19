@@ -7,7 +7,7 @@ using NexusMods.Sdk.Jobs;
 
 namespace NexusMods.Jobs.Tests;
 
-public class AJobsTest
+public class AJobsTest : IAsyncLifetime
 {
     private readonly IHost _host;
 
@@ -29,12 +29,17 @@ public class AJobsTest
             ).Build();
     }
 
-    [Before(Test)]
-    public async Task SetupServices()
+    public async ValueTask InitializeAsync()
     {
-        await _host.StartAsync();
+        await _host.StartAsync(TestContext.Current.CancellationToken);
         ServiceProvider = _host.Services;
         JobMonitor = ServiceProvider.GetRequiredService<IJobMonitor>();
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _host.Dispose();
+        return ValueTask.CompletedTask;
     }
 
     public IJobMonitor JobMonitor { get; private set; }

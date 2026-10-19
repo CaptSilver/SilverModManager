@@ -1,23 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
-    <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <TestingPlatformCommandLineArguments>$(TUnitArgs)</TestingPlatformCommandLineArguments>
-    </PropertyGroup>
+<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <PackageReference Remove="xunit.v3.mtp-v2" />
-        <PackageReference Remove="Xunit.DependencyInjection" />
-        <PackageReference Remove="Xunit.DependencyInjection.Logging" />
-        <PackageReference Remove="AutoFixture.Xunit3" />
+        <Using Include="Xunit"/>
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
         <PackageReference Include="NexusMods.Hashing.xxHash3.Paths" />
-        <PackageReference Include="TUnit" />
-        <PackageReference Include="Verify" />
-        <PackageReference Include="Verify.TUnit" />
+        <PackageReference Include="Verify.XunitV3" />
     </ItemGroup>
 
     <ItemGroup>

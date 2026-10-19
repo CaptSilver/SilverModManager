@@ -1,3 +1,4 @@
+using FluentAssertions;
 using System.Text;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -7,15 +8,15 @@ namespace NexusMods.Sdk.Tests.Hashes;
 
 public class MultiHasherTests
 {
-    [Test]
+    [Fact]
     public async Task Test_Hasher()
     {
         const string input = "foo bar baz";
         var inputBytes = Encoding.ASCII.GetBytes(input);
         var stream = new MemoryStream(inputBytes);
 
-        var multiHash = await MultiHasher.HashStream(stream);
-        await Assert.That(multiHash).IsEqualTo(new MultiHash
+        var multiHash = await MultiHasher.HashStream(stream, TestContext.Current.CancellationToken);
+        multiHash.Should().Be(new MultiHash
         {
             Size = Size.FromLong(inputBytes.LongLength),
             Crc32 = Crc32Value.From(4066565729),

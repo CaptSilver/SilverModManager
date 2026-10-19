@@ -1,13 +1,13 @@
 using NexusMods.Jobs.Tests;
 using NexusMods.Jobs.Tests.TestInfrastructure;
+using FluentAssertions;
 using NexusMods.Sdk.Jobs;
-using TUnit.Assertions;
 
 namespace NexusMods.Backend.Tests.Jobs.Unit;
 
 public class JobCancellationTests : AJobsTest
 {
-    [Test]
+    [Fact]
     public async Task Should_Cancel_Job_By_Task_Reference()
     {
         // Arrange
@@ -18,20 +18,20 @@ public class JobCancellationTests : AJobsTest
         var task = JobMonitor.Begin<WaitForCancellationJob, string>(job);
         
         // Wait for job to be ready
-        readySignal.Wait(TimeSpan.FromSeconds(30));
+        readySignal.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         
         // Cancel by task reference
         JobMonitor.Cancel(task);
         
         // Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task.Job.WaitAsync());
-        await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Cancelled);
+        await FluentActions.Awaiting(() => task.Job.WaitAsync()).Should().ThrowAsync<OperationCanceledException>();
+        task.Job.Status.Should().Be(JobStatus.Cancelled);
     }
 
     // TODO: Should_Cancel_All_Jobs_In_Group once there is a proper group API.
     //       Right now, there is not.
 
-    [Test]
+    [Fact]
     public async Task Should_Cancel_All_Active_Jobs()
     {
         // Arrange
@@ -50,7 +50,7 @@ public class JobCancellationTests : AJobsTest
         // Wait for all jobs to be ready
         // Note(sewer): Is there a world where a single core processor may not get enough threads on threadpool?
         foreach (var signal in readySignals) 
-            signal.Wait(TimeSpan.FromSeconds(30));
+            signal.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         
         // Cancel all active jobs
         JobMonitor.CancelAll();
@@ -58,12 +58,12 @@ public class JobCancellationTests : AJobsTest
         // Assert
         foreach (var task in tasks)
         {
-            await Assert.ThrowsAsync<OperationCanceledException>(async () => await task.Job.WaitAsync());
-            await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Cancelled);
+            await FluentActions.Awaiting(() => task.Job.WaitAsync()).Should().ThrowAsync<OperationCanceledException>();
+            task.Job.Status.Should().Be(JobStatus.Cancelled);
         }
     }
 
-    [Test]
+    [Fact]
     public async Task Should_Self_Cancel_Via_CancelAndThrow()
     {
         // Arrange
@@ -75,13 +75,13 @@ public class JobCancellationTests : AJobsTest
         using var subscription = task.Job.ObservableStatus.Subscribe(status => stateChanges.Add(status));
         
         // Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task.Job.WaitAsync());
+        await FluentActions.Awaiting(() => task.Job.WaitAsync()).Should().ThrowAsync<OperationCanceledException>();
         
-        await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Cancelled);
-        await Assert.That(stateChanges).Contains(JobStatus.Cancelled);
+        task.Job.Status.Should().Be(JobStatus.Cancelled);
+        stateChanges.Should().Contain(JobStatus.Cancelled);
     }
 
-    [Test]
+    [Fact]
     public async Task Should_Not_Cancel_Completed_Jobs()
     {
         // Arrange
@@ -97,11 +97,11 @@ public class JobCancellationTests : AJobsTest
         JobMonitor.Cancel(task.Job.Id);
         
         // Assert - Job should remain completed
-        await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Completed);
-        await Assert.That(result).IsEqualTo("Completed");
+        task.Job.Status.Should().Be(JobStatus.Completed);
+        result.Should().Be("Completed");
     }
 
-    [Test]
+    [Fact]
     public async Task Should_Cancel_Job_That_Never_Yields()
     {
         // This test demonstrates that jobs which don't call YieldAsync() may not be cancellable
@@ -116,7 +116,7 @@ public class JobCancellationTests : AJobsTest
         var task = JobMonitor.Begin<NonYieldingJob, string>(job);
         
         // Wait for job to start before trying to cancel
-        startedSignal.Wait(TimeSpan.FromSeconds(30));
+        startedSignal.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         
         // Allow the job to complete
         completionSignal.Set();
@@ -127,7 +127,7 @@ public class JobCancellationTests : AJobsTest
         // Assert - Since the job never calls YieldAsync() and doesn't use cancellation-aware APIs,
         // it should complete normally despite the cancellation request
         var result = await task;
-        await Assert.That(result).IsEqualTo("Non-yielding work completed");
-        await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Completed);
+        result.Should().Be("Non-yielding work completed");
+        task.Job.Status.Should().Be(JobStatus.Completed);
     }
 }

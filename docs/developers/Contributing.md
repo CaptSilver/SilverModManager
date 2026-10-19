@@ -58,7 +58,7 @@ To run networking tests locally, set the `NEXUS_API_KEY` environment variable.
 
 ## Running tests
 
-All test projects run on [Microsoft.Testing.Platform](https://learn.microsoft.com/dotnet/core/testing/microsoft-testing-platform-intro) (xUnit v3 and TUnit), selected by the `test` section of `global.json`. `dotnet test` therefore takes `--solution` / `--project` rather than a positional path.
+All test projects run on [Microsoft.Testing.Platform](https://learn.microsoft.com/dotnet/core/testing/microsoft-testing-platform-intro) (xUnit v3), selected by the `test` section of `global.json`. `dotnet test` therefore takes `--solution` / `--project` rather than a positional path.
 
 ```bash
 scripts/test.sh                                      # offline suite, whole solution
@@ -66,7 +66,7 @@ scripts/test.sh --no-build                           # skip the build step
 dotnet test --project tests/NexusMods.CLI.Tests      # one project
 ```
 
-`scripts/test.sh` excludes tests carrying the `RequiresNetworking`, `RequiresApiKey` and `FlakeyTest` traits. The xUnit and TUnit runners reject each other's filter options, so the filters are passed as MSBuild properties (`-p:XunitArgs=...`, `-p:TUnitArgs=...`) that each test project maps onto `TestingPlatformCommandLineArguments`. To run only the networking tests:
+`scripts/test.sh` excludes tests carrying the `RequiresNetworking`, `RequiresApiKey` and `FlakeyTest` traits. The filters are passed as the `-p:XunitArgs=...` MSBuild property, which `tests/Directory.Build.props` maps onto `TestingPlatformCommandLineArguments`. To run only the networking tests:
 
 ```bash
 dotnet test --solution NexusMods.App.sln --ignore-exit-code 8 -p:XunitArgs="--filter-trait RequiresNetworking=True"

@@ -4,7 +4,7 @@
     <PropertyGroup>
         <IsPackable>false</IsPackable>
         <!--
-            xunit.v3 and TUnit test projects are executables. Helper libraries that only
+            xunit.v3 test projects are executables. Helper libraries that only
             share test code (Games.TestFramework, StandardGameLocators.TestHelpers) set
             <OutputType>Library</OutputType> and are left out of everything below that is
             conditioned on OutputType.
@@ -15,8 +15,7 @@
     <PropertyGroup>
         <!--
             Extra command line arguments for the test executables, set from the outside:
-            dotnet test, solution mode, with -p:XunitArgs=... and -p:TUnitArgs=...
-            xunit.v3 and TUnit reject each other's filter options, so each gets its own property.
+            dotnet test, solution mode, with -p:XunitArgs=...
         -->
         <TestingPlatformCommandLineArguments>$(XunitArgs)</TestingPlatformCommandLineArguments>
     </PropertyGroup>
