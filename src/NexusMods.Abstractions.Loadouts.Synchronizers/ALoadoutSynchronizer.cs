@@ -1443,6 +1443,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             desiredState.Add(gameFile.Path, syncNode);
         }
 
+        AddDesiredStateOutsideGame(desiredState, metadata, diskState);
+
         // Merge the states into a tree. Passing in the current state as the current and previous state. 
         // This fakes the synchronizer into thinking that there are no changes on disk and we only want to do a
         // hard reset to the desired state.
@@ -1453,6 +1455,95 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         // Run the groupings
         await RunActions(desiredState, installation);
+    }
+
+    /// <summary>
+    /// Fills in the desired state for every indexed file outside the <see cref="LocationId.Game"/> location.
+    /// </summary>
+    /// <remarks>
+    /// Game files have a known vanilla state, so a reset can hard-set them. Anything else (configs,
+    /// preferences) is the user's: without an entry here the reset would see "no desired file" and delete it.
+    /// Only what the last synced loadout deployed is undone. A deployed file goes back to its copy from before
+    /// the game was managed, or is removed if there was none. Files from the loadout's overrides, and files the
+    /// loadout never touched, are kept as they are.
+    /// </remarks>
+    private void AddDesiredStateOutsideGame(Dictionary<GamePath, SyncNode> desiredState, GameInstallMetadata.ReadOnly metadata, List<PathPartPair> diskState)
+    {
+        var deployed = GetFilesDeployedByLastSyncedLoadout(metadata, diskState);
+        var initialState = GameInstallMetadata.InitialDiskStateTransaction.TryGetValue(metadata, out var initialTx)
+            ? ((ILoadoutSynchronizer)this).GetDiskStateForGameAsOf(metadata, TxId.From(initialTx.Value))
+                .ToDictionary(p => p.Path, p => p.Part)
+            : new Dictionary<GamePath, SyncNodePart>();
+
+        foreach (var (path, diskPart) in diskState)
+        {
+            if (path.LocationId == LocationId.Game) continue;
+
+            if (!deployed.Contains(path))
+            {
+                desiredState.Add(path, new SyncNode { Loadout = diskPart, SourceItemType = LoadoutSourceItemType.Game });
+                continue;
+            }
+
+            if (!initialState.TryGetValue(path, out var initialPart))
+            {
+                // The loadout created this file: nothing to restore, so it has no desired state and is deleted.
+                continue;
+            }
+
+            if (!HaveArchive(initialPart.Hash))
+            {
+                Logger.LogWarning("Initial copy of `{Path}` is missing from the file store, deleting it instead of restoring", path);
+                continue;
+            }
+
+            desiredState.Add(path, new SyncNode
+            {
+                Loadout = new SyncNodePart { Hash = initialPart.Hash, Size = initialPart.Size, LastModifiedTicks = 0 },
+                SourceItemType = LoadoutSourceItemType.Game,
+            });
+        }
+    }
+
+    /// <summary>
+    /// The indexed files outside <see cref="LocationId.Game"/> that the last synced loadout put on disk from a
+    /// mod or an intrinsic file. Files that came from the loadout's overrides were ingested from the user's own
+    /// files, so they are not included.
+    /// </summary>
+    private HashSet<GamePath> GetFilesDeployedByLastSyncedLoadout(GameInstallMetadata.ReadOnly metadata, List<PathPartPair> diskState)
+    {
+        var result = new HashSet<GamePath>();
+        if (!GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastSynced)) return result;
+
+        var loadout = Loadout.Load(metadata.Db, lastSynced);
+        if (!loadout.IsValid()) return result;
+
+        var overridesGroup = LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var found)
+            ? found.Id
+            : default(EntityId);
+
+        // The tree is only read for what the loadout provides, so the disk state doubles as the previous state.
+        foreach (var (path, node) in BuildSyncTree(diskState, diskState, loadout))
+        {
+            if (path.LocationId == LocationId.Game || !node.HaveDisk) continue;
+
+            var isDeployed = node.SourceItemType switch
+            {
+                LoadoutSourceItemType.Intrinsic => true,
+                LoadoutSourceItemType.Loadout => node.Loadout.HaveEntityId && !IsInGroup(loadout.Db, node.Loadout.EntityId, overridesGroup),
+                _ => false,
+            };
+
+            if (isDeployed) result.Add(path);
+        }
+
+        return result;
+    }
+
+    private static bool IsInGroup(IDb db, EntityId itemId, EntityId groupId)
+    {
+        var item = LoadoutItem.Load(db, itemId);
+        return item.IsValid() && item.HasParent() && item.ParentId.Value == groupId;
     }
 }
 
