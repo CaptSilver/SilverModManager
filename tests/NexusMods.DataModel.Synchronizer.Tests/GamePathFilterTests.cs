@@ -21,4 +21,22 @@ public class GamePathFilterTests(ITestOutputHelper helper) : AStubbedGameTest<Ga
     {
         Synchronizer.GamePathFilter.ShouldFilter(new GamePath(LocationId.From(location), path)).Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData("Game", "vkd3d-proton.cache")]
+    [InlineData("Game", "vkd3d-proton.cache.write.0")]
+    [InlineData("Game", "bin/x64/Cyberpunk2077.dxvk-cache")]
+    [InlineData("AppData", "vkd3d-proton.cache")]
+    public void ProtonShaderCaches_AreFiltered(string location, string path)
+    {
+        Synchronizer.GamePathFilter.ShouldFilter(new GamePath(LocationId.From(location), path)).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("Game", "cache.txt")]
+    [InlineData("Game", "bin/vkd3d-proton.cache.txt/readme.md")]
+    public void SimilarlyNamedFiles_AreNotFiltered(string location, string path)
+    {
+        Synchronizer.GamePathFilter.ShouldFilter(new GamePath(LocationId.From(location), path)).Should().BeFalse();
+    }
 }

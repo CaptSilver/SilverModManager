@@ -1356,7 +1356,28 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// folder the game's <see cref="LocationId.Saves"/> location resolves to. A game's own rules cover only the
     /// save folders its author knew about, and a reset or unmanage would otherwise delete the rest.
     /// </summary>
-    private static readonly IGamePathFilter BaseGamePathFilter = Synchronizers.GamePathFilters.Create(path => path.LocationId == LocationId.Saves);
+    /// <remarks>
+    /// Proton's shared shader caches are filtered too, see <see cref="IsSharedProtonCache"/>.
+    /// </remarks>
+    private static readonly IGamePathFilter BaseGamePathFilter = Synchronizers.GamePathFilters.Create(path => path.LocationId == LocationId.Saves || IsSharedProtonCache(path));
+
+    /// <summary>
+    /// Whether the path is a shader cache that Proton (vkd3d-proton, DXVK) drops next to the running game.
+    /// </summary>
+    /// <remarks>
+    /// Proton writes these into the game's working directory, so they show up in <see cref="LocationId.Game"/>
+    /// or wherever the game runs from. They change on every launch, so indexing them would report an external
+    /// change and back up a new copy after each play session. The match is on the file name alone, so it holds
+    /// for any location.
+    /// </remarks>
+    private static bool IsSharedProtonCache(GamePath path)
+    {
+        var name = path.FileName;
+        return name.ToString().StartsWith("vkd3d-proton.cache", StringComparison.Ordinal)
+               || name.Extension == DxvkCacheExtension;
+    }
+
+    private static readonly Extension DxvkCacheExtension = new(".dxvk-cache");
 
     /// <summary>
     /// Whether to ignore the file at the given path when indexing, in addition to the rule every game gets.

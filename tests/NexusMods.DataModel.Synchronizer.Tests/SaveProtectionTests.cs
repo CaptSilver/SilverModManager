@@ -119,4 +119,28 @@ public class SaveProtectionTests(ITestOutputHelper helper) : AStubbedGameTest<Sa
         GameInstallation.Locations.ToAbsolutePath(evil).FileExists.Should().BeFalse();
         await AssertSavesUntouched();
     }
+
+    [Fact]
+    public async Task ProtonShaderCache_IsNeverIndexedOrReportedAsAnExternalChange()
+    {
+        var loadout = await CreateLoadout();
+
+        // Proton writes the cache while the game runs, after the loadout already exists.
+        var cache = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "vkd3d-proton.cache"));
+        var cacheBytes = "shader cache written by Proton at runtime"u8.ToArray();
+        cache.Parent.CreateDirectory();
+        await cache.WriteAllBytesAsync(cacheBytes);
+
+        loadout = await Synchronizer.Synchronize(loadout);
+
+        LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath()
+            .Select(i => ((GamePath)i.TargetPath).Path.FileName.ToString())
+            .Should().NotContain(n => n.StartsWith("vkd3d-proton.cache"), "a cache is not an external change");
+        IndexedPaths().Should().NotContain(p => p.Path.FileName.ToString().StartsWith("vkd3d-proton.cache"));
+        (await FileStore.HaveFile(cacheBytes.xxHash3())).Should().BeFalse();
+        cache.FileExists.Should().BeTrue();
+
+        // Guards against the assertions passing only because nothing was indexed at all.
+        IndexedPaths().Should().Contain(new GamePath(LocationId.Preferences, "settings.ini"));
+    }
 }
