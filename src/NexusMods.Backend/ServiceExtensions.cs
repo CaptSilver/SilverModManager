@@ -26,34 +26,21 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddGameLocators(this IServiceCollection serviceCollection)
     {
-        OSInformation.Shared.SwitchPlatform(
-            onWindows: () =>
-            {
-                serviceCollection.AddSingleton<IGameLocator, SteamLocator>();
-                serviceCollection.AddSingleton<IGameLocator, GOGLocator>();
-                serviceCollection.AddSingleton<IGameLocator, EGSLocator>();
-            },
-            onLinux: () =>
-            {
-                serviceCollection.AddSingleton<IGameLocator>(serviceProvider => new SteamLocator(serviceProvider.GetServices<IGameData>(), serviceProvider.GetRequiredService<ILoggerFactory>(), serviceProvider.GetRequiredService<IFileSystem>(), registry: null));
-                serviceCollection.AddSingleton<IGameLocator, HeroicGOGLocator>();
+        // Steam runs the games through Proton, so there is no Windows registry to hand to the locator.
+        serviceCollection.AddSingleton<IGameLocator>(serviceProvider => new SteamLocator(serviceProvider.GetServices<IGameData>(), serviceProvider.GetRequiredService<ILoggerFactory>(), serviceProvider.GetRequiredService<IFileSystem>(), registry: null));
+        serviceCollection.AddSingleton<IGameLocator, HeroicGOGLocator>();
 
-                serviceCollection.AddSingleton<IGameLocator>(serviceProvider =>
-                {
-                    var locatorFactories = new WinePrefixWrappingLocator.LocatorFactory[]
-                    {
-                        (provider, loggerFactory, fileSystem, registry) => new GOGLocator(provider.GetServices<IGameData>(), loggerFactory, fileSystem, registry),
-                        (provider, loggerFactory, fileSystem, registry) => new EGSLocator(provider.GetServices<IGameData>(), loggerFactory, fileSystem, registry),
-                    };
-
-                    return new WinePrefixWrappingLocator(serviceProvider, locatorFactories);
-                });
-            },
-            onOSX: () =>
+        // GOG and Epic installs made through Wine live in prefixes, each with its own registry and file system overlay.
+        serviceCollection.AddSingleton<IGameLocator>(serviceProvider =>
+        {
+            var locatorFactories = new WinePrefixWrappingLocator.LocatorFactory[]
             {
-                serviceCollection.AddSingleton<IGameLocator, SteamLocator>();
-            }
-        );
+                (provider, loggerFactory, fileSystem, registry) => new GOGLocator(provider.GetServices<IGameData>(), loggerFactory, fileSystem, registry),
+                (provider, loggerFactory, fileSystem, registry) => new EGSLocator(provider.GetServices<IGameData>(), loggerFactory, fileSystem, registry),
+            };
+
+            return new WinePrefixWrappingLocator(serviceProvider, locatorFactories);
+        });
 
         return serviceCollection;
     }
