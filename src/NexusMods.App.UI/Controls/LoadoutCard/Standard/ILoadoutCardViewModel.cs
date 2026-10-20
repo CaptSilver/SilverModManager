@@ -37,4 +37,9 @@ public interface ILoadoutCardViewModel : IViewModelInterface
     ReactiveCommand<Unit, Unit> RenameLoadoutCommand { get; }
 
     ReactiveCommand<Unit, Unit> UseFromSteamCommand { get; }
+
+    /// <summary>
+    /// Whether the loadout's game was installed through Steam; only then can Steam launch with it.
+    /// </summary>
+    bool CanUseFromSteam { get; }
 }

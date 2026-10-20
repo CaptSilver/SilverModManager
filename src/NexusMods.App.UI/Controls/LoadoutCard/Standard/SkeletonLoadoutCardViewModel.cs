@@ -23,4 +23,5 @@ public class SkeletonLoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
     public ReactiveCommand<Unit, Unit> DeleteLoadoutCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> RenameLoadoutCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> UseFromSteamCommand { get; } = ReactiveCommand.Create(() => { });
+    public bool CanUseFromSteam { get; } = false;
 }

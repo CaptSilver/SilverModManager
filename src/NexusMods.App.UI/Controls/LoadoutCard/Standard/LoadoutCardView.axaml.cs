@@ -117,6 +117,12 @@ public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel
                         view => view.RenameButton)
                     .DisposeWith(d);
 
+                // Only Steam installations can use the Steam launch option
+                this.OneWayBind(ViewModel,
+                        vm => vm.CanUseFromSteam,
+                        view => view.SteamButton.IsVisible)
+                    .DisposeWith(d);
+
                 // Steam launch option command
                 this.BindCommand(ViewModel,
                         vm => vm.UseFromSteamCommand,

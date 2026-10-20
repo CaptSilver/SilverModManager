@@ -66,6 +66,7 @@ public class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutC
         RenameLoadoutCommand = ReactiveCommand.CreateFromTask(() => RenameLoadout(loadout));
 
         UseFromSteamCommand = ReactiveCommand.CreateFromTask(() => ShowSteamLaunchOption(loadout));
+        CanUseFromSteam = loadout.Installation.Store == GameStore.Steam;
 
         this.WhenActivated(d =>
         {
@@ -140,6 +141,7 @@ public class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutC
     public ReactiveCommand<Unit, Unit> DeleteLoadoutCommand { get; }
     public ReactiveCommand<Unit, Unit> RenameLoadoutCommand { get; }
     public ReactiveCommand<Unit, Unit> UseFromSteamCommand { get; }
+    public bool CanUseFromSteam { get; }
     
     [Reactive] public bool IsLastLoadout { get; set; } = true;
     
