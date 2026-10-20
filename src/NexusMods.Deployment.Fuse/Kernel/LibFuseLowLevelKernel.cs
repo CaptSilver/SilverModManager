@@ -13,6 +13,17 @@ namespace NexusMods.Deployment.Fuse.Kernel;
 /// </summary>
 public sealed class LibFuseLowLevelKernel(ILogger<LibFuseLowLevelKernel> logger, IFuseUnmounter unmounter) : IFuseKernel
 {
+    private readonly IPassthroughRegistrar? _passthroughRegistrar;
+    private readonly Func<string>? _readProcessStatus;
+
+    // Lets a test script the kernel's answer to passthrough and the privileges the process appears to have.
+    internal LibFuseLowLevelKernel(ILogger<LibFuseLowLevelKernel> logger, IFuseUnmounter unmounter, IPassthroughRegistrar registrar, string processStatus)
+        : this(logger, unmounter)
+    {
+        _passthroughRegistrar = registrar;
+        _readProcessStatus = () => processStatus;
+    }
+
     public async Task<IFuseMount> Mount(IVfsOperations operations, FuseMountOptions options, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
@@ -29,7 +40,7 @@ public sealed class LibFuseLowLevelKernel(ILogger<LibFuseLowLevelKernel> logger,
         var mountPoint = options.MountPoint.ToString();
         if (!Directory.Exists(mountPoint)) throw new DirectoryNotFoundException($"The mount point `{mountPoint}` is not a directory.");
 
-        var mount = new LibFuseLowLevelMount(operations, options, logger, unmounter, soname, fuseVersion, LibcProcess.RealPath(mountPoint));
+        var mount = new LibFuseLowLevelMount(operations, options, logger, unmounter, soname, fuseVersion, LibcProcess.RealPath(mountPoint), _passthroughRegistrar, _readProcessStatus);
         await mount.Start().ConfigureAwait(false);
 
         // Cancelling the token ends the mount the same way disposing it does.

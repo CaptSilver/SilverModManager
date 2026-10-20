@@ -219,7 +219,7 @@ internal static unsafe partial class LibFuse3LowLevel
     [LibraryImport(Lib, EntryPoint = NotifyInvalEntrySymbol)]
     internal static partial int fuse_lowlevel_notify_inval_entry(IntPtr session, ulong parent, byte* name, nuint nameLength);
 
-    [LibraryImport(Lib, EntryPoint = PassthroughOpenSymbol)]
+    [LibraryImport(Lib, EntryPoint = PassthroughOpenSymbol, SetLastError = true)]
     internal static partial int fuse_passthrough_open(IntPtr req, int fd);
 
     [LibraryImport(Lib, EntryPoint = PassthroughCloseSymbol)]

@@ -12,7 +12,7 @@ using NexusMods.Sdk.Native;
 namespace NexusMods.Deployment.Fuse.Kernel;
 
 /// <summary>What the library and the kernel agreed on during <c>init</c>, for diagnostics.</summary>
-internal sealed record FuseSessionInfo(string Soname, int FuseVersion, uint ProtoMajor, uint ProtoMinor, uint MaxWrite, bool PassthroughCapable);
+internal sealed record FuseSessionInfo(string Soname, int FuseVersion, uint ProtoMajor, uint ProtoMinor, uint MaxWrite, bool PassthroughCapable, bool PassthroughRequested);
 
 /// <summary>
 /// One libfuse session. The session loop runs on its own thread for the life of the mount, and libfuse calls
@@ -79,10 +79,13 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     private volatile bool _unmounting;
     private int _exitCode;
     private volatile FuseSessionInfo? _negotiated;
+    private readonly KernelPassthrough _passthrough;
+    private readonly Func<string> _readProcessStatus;
 
     internal LibFuseLowLevelMount(
         IVfsOperations operations, FuseMountOptions options, ILogger logger, IFuseUnmounter unmounter,
-        string soname, int fuseVersion, string realMountPoint)
+        string soname, int fuseVersion, string realMountPoint,
+        IPassthroughRegistrar? passthroughRegistrar = null, Func<string>? readProcessStatus = null)
     {
         _operations = operations;
         _options = options;
@@ -92,6 +95,8 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
         _fuseVersion = fuseVersion;
         _realMountPoint = realMountPoint;
         _fileSystemType = FuseMountArguments.FileSystemType(options);
+        _passthrough = new KernelPassthrough(passthroughRegistrar ?? new LibFusePassthroughRegistrar(), logger);
+        _readProcessStatus = readProcessStatus ?? PassthroughPolicy.ReadProcessStatus;
         _disposal = new Lazy<Task>(DisposeCore);
         MountPoint = options.MountPoint;
     }
@@ -455,8 +460,11 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
         return handle;
     }
 
-    private void Unregister(ulong handle)
+    // req is null when there is no live request to close a backing id with: the session is going away, or a
+    // reply already failed and libfuse freed the request with it. The kernel drops those ids with the connection.
+    private void Unregister(ulong handle, IntPtr req)
     {
+        _passthrough.Release(req, handle);
         if (_files.TryRemove(handle, out var file)) _operations.Release(file);
     }
 
@@ -561,9 +569,12 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
         if (!result.Ok) { ReplyError(req, result.Error!.Value); return; }
 
         var info = *fi;
-        var handle = Register(result.Value!, &info);
-        // A non-zero return means the request was interrupted and the kernel never saw the open.
-        if (LibFuse3LowLevel.fuse_reply_open(req, &info) != 0) Unregister(handle);
+        var file = result.Value!;
+        var handle = Register(file, &info);
+        _passthrough.TryAttach(req, handle, file, ref info);
+        // A non-zero return means the request was interrupted and the kernel never saw the open. The reply has
+        // freed req either way, so it cannot be used to close the backing id.
+        if (LibFuse3LowLevel.fuse_reply_open(req, &info) != 0) Unregister(handle, IntPtr.Zero);
     }
 
     private unsafe void DoCreate(IntPtr req, ulong parent, string name, uint mode, FuseFileInfo* fi)
@@ -574,8 +585,9 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
         var (created, file) = result.Value!;
         var info = *fi;
         var handle = Register(file, &info);
+        _passthrough.TryAttach(req, handle, file, ref info);
         var entry = EntryOf(created);
-        if (LibFuse3LowLevel.fuse_reply_create(req, &entry, &info) != 0) Unregister(handle);
+        if (LibFuse3LowLevel.fuse_reply_create(req, &entry, &info) != 0) Unregister(handle, IntPtr.Zero);
     }
 
     private unsafe void DoRead(IntPtr req, nuint size, long offset, FuseFileInfo* fi)
@@ -615,7 +627,7 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
 
     private unsafe void DoRelease(IntPtr req, FuseFileInfo* fi)
     {
-        Unregister(fi->Fh);
+        Unregister(fi->Fh, req);
         LibFuse3LowLevel.fuse_reply_err(req, 0);
     }
 
@@ -663,15 +675,35 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     {
         conn->MaxWrite = MaxWrite;
         // max_read stays at the library's value: FuseMountArguments explains why.
-        var passthrough = LibFuse3LowLevel.fuse_get_feature_flag(conn, FuseCapabilities.Passthrough);
-        if (passthrough) LibFuse3LowLevel.fuse_set_feature_flag(conn, FuseCapabilities.Passthrough);
-        _negotiated = new FuseSessionInfo(_soname, _fuseVersion, conn->ProtoMajor, conn->ProtoMinor, conn->MaxWrite, passthrough);
+        var capable = LibFuse3LowLevel.fuse_get_feature_flag(conn, FuseCapabilities.Passthrough);
+        var requested = capable && RequestPassthrough(conn);
+        _negotiated = new FuseSessionInfo(_soname, _fuseVersion, conn->ProtoMajor, conn->ProtoMinor, conn->MaxWrite, capable, requested);
+    }
+
+    private unsafe bool RequestPassthrough(FuseConnInfo* conn)
+    {
+        if (!HasCapSysAdmin())
+        {
+            _logger.LogInformation("kernel passthrough not requested for `{MountPoint}`: the process lacks CAP_SYS_ADMIN; reads go through the daemon", MountPoint);
+            return false;
+        }
+
+        if (!LibFuse3LowLevel.fuse_set_feature_flag(conn, FuseCapabilities.Passthrough)) return false;
+        _passthrough.Enable();
+        return true;
+    }
+
+    private bool HasCapSysAdmin()
+    {
+        try { return PassthroughPolicy.HasCapSysAdmin(_readProcessStatus()); }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
     }
 
     private void DoDestroy()
     {
         // The session is going away; close whatever the kernel never released.
-        foreach (var handle in _files.Keys) Unregister(handle);
+        foreach (var handle in _files.Keys) Unregister(handle, IntPtr.Zero);
     }
 
     // ---- libfuse entry points ----------------------------------------------------------------------------

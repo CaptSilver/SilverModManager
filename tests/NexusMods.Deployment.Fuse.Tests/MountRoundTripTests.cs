@@ -39,7 +39,9 @@ public class MountRoundTripTests(ITestOutputHelper output) : IDisposable
     private static LibFuseLowLevelKernel NewKernel() =>
         new(NullLogger<LibFuseLowLevelKernel>.Instance, new FusermountUnmounter(new CliFusermountRunner()));
 
-    private async Task<Mounted> MountTree(params (string Path, byte[] Content)[] staged)
+    private Task<Mounted> MountTree(params (string Path, byte[] Content)[] staged) => MountTreeWith(NewKernel(), staged);
+
+    private async Task<Mounted> MountTreeWith(LibFuseLowLevelKernel kernel, params (string Path, byte[] Content)[] staged)
     {
         var backing = _directory.Combine("game");
         var loose = _directory.Combine("loose");
@@ -61,7 +63,7 @@ public class MountRoundTripTests(ITestOutputHelper output) : IDisposable
         var tree = VfsTree.Build(backing, new BackingScanner().Scan(backing), sources, staging, VfsCachePolicy.Default);
 
         _mountPoints.Add(mountPoint.ToString());
-        var mount = await NewKernel().Mount(tree, FuseMountOptions.Default(mountPoint), CancellationToken.None);
+        var mount = await kernel.Mount(tree, FuseMountOptions.Default(mountPoint), CancellationToken.None);
         return new Mounted(mount, mountPoint, staging, backing);
     }
 
@@ -269,5 +271,45 @@ public class MountRoundTripTests(ITestOutputHelper output) : IDisposable
 
         // Closing the last file lets the kernel drop the connection and the session loop exit.
         await mounted.Mount.Completion.WaitAsync(TimeSpan.FromSeconds(15));
+    }
+
+    [Fact, Trait("RequiresFuse", "True")]
+    public async Task ReadsReturnTheBytesWhetherOrNotTheKernelAcceptsPassthrough()
+    {
+        RequiresFuse.SkipUnlessAvailable();
+        // The status text claims CAP_SYS_ADMIN so init asks for passthrough; the registrar then refuses, as the
+        // kernel does for a process without the capability, and the open falls back to the daemon.
+        var registrar = new PassthroughTests.FakeRegistrar(id: 0, errno: 1);
+        var kernel = new LibFuseLowLevelKernel(NullLogger<LibFuseLowLevelKernel>.Instance, new FusermountUnmounter(new CliFusermountRunner()), registrar, "CapEff:\t0000000000200000\n");
+        var mounted = await MountTreeWith(kernel, ("Data/mod.txt", Bytes("staged")));
+        try
+        {
+            var path = Path.Combine(mounted.MountPoint.ToString(), "Data", "mod.txt");
+            (await File.ReadAllTextAsync(path)).Should().Be("staged");
+            (await File.ReadAllTextAsync(path)).Should().Be("staged");
+
+            var negotiated = ((LibFuseLowLevelMount)mounted.Mount).Negotiated!;
+            Assert.SkipUnless(negotiated.PassthroughRequested, "the kernel does not offer passthrough");
+            registrar.Registered.Should().HaveCount(1, "the first refusal ends the attempts");
+            output.WriteLine($"passthrough path: refused by the registrar, reads served by the daemon; {negotiated}");
+        }
+        finally { await Unmount(mounted); }
+    }
+
+    [Fact, Trait("RequiresFuse", "True")]
+    public async Task WithoutCapSysAdminTheMountNeverRequestsPassthrough()
+    {
+        RequiresFuse.SkipUnlessAvailable();
+        var registrar = new PassthroughTests.FakeRegistrar(id: 7, errno: 0);
+        var kernel = new LibFuseLowLevelKernel(NullLogger<LibFuseLowLevelKernel>.Instance, new FusermountUnmounter(new CliFusermountRunner()), registrar, "CapEff:\t0000000000000000\n");
+        var mounted = await MountTreeWith(kernel, ("Data/mod.txt", Bytes("staged")));
+        try
+        {
+            (await File.ReadAllTextAsync(Path.Combine(mounted.MountPoint.ToString(), "Data", "mod.txt"))).Should().Be("staged");
+
+            ((LibFuseLowLevelMount)mounted.Mount).Negotiated!.PassthroughRequested.Should().BeFalse();
+            registrar.Registered.Should().BeEmpty();
+        }
+        finally { await Unmount(mounted); }
     }
 }
