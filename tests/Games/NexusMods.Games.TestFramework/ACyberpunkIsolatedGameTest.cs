@@ -20,6 +20,7 @@ public class ACyberpunkIsolatedGameTest<TTest>(ITestOutputHelper helper) : AIsol
             .AddOSInterop()
             .AddRuntimeDependencies()
             .AddGenericGameSupport()
+            .AddFakeToolRunner()
             .AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"))
             .AddRedEngineGames();
     }

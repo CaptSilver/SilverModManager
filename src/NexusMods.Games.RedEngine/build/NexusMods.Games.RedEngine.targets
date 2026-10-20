@@ -1,8 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <!--
-     The batch file is only used for running redmod via protontricks on Linux,
-     due to protontricks limitation. It is embedded on every build.
+     The batch file is only used for running redmod through Wine on Linux, so the
+     working directory and arguments reach redMod.exe the same way under every runner.
+     It is embedded on every build.
     -->
 
     <PropertyGroup>

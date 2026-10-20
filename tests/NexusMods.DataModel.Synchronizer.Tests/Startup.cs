@@ -24,7 +24,8 @@ public class Startup
             .AddOSInterop()
             .AddRuntimeDependencies()
             .AddGenericGameSupport()
-            .AddFakeProcessTracker();
+            .AddFakeProcessTracker()
+            .AddFakeToolRunner();
     }
 }
 

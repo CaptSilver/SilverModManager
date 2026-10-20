@@ -1,9 +1,7 @@
 using System.Reflection;
-using CliWrap;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Generic;
 using NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -16,15 +14,17 @@ namespace NexusMods.Games.RedEngine;
 
 public class RedModDeployTool : ITool
 {
-    private readonly GameToolRunner _toolRunner;
+    private readonly IToolRunner _toolRunner;
+    private readonly IPrefixResolver _prefixResolver;
     private readonly TemporaryFileManager _temporaryFileManager;
     private readonly ILogger _logger;
     private readonly RedModSortOrderVariety _redModSortOrderVariety;
 
-    public RedModDeployTool(GameToolRunner toolRunner, TemporaryFileManager temporaryFileManager, ILogger<RedModDeployTool> logger, RedModSortOrderVariety sortOrderVariety)
+    public RedModDeployTool(IToolRunner toolRunner, IPrefixResolver prefixResolver, TemporaryFileManager temporaryFileManager, ILogger<RedModDeployTool> logger, RedModSortOrderVariety sortOrderVariety)
     {
         _logger = logger;
         _toolRunner = toolRunner;
+        _prefixResolver = prefixResolver;
         _temporaryFileManager = temporaryFileManager;
         _redModSortOrderVariety = sortOrderVariety;
     }
@@ -46,24 +46,19 @@ public class RedModDeployTool : ITool
         // Note (halgari): When we change the redmod order, we need to force redmod to re-run. This is due to a bug in redmod
         // not recognizing order as a change in the mod configuration. If that bug ever gets fixed (does an order check) then  
         // we can resolve this by removing the -force flag.
-        if (loadout.Installation.Store != GameStore.Steam)
-        {
-            _logger.LogWarning("Skip running redmod, it's only supported for Steam on Linux at the moment");
-            return;
-        }
+        var installation = loadout.InstallationInstance;
+        var gameName = installation.Game.DisplayName;
 
-        var linuxCompatibilityDataProvider = loadout.InstallationInstance.LocatorResult.LinuxCompatabilityDataProvider;
-        if (linuxCompatibilityDataProvider is null)
-        {
-            // redmod.exe only runs inside the game's Wine prefix, so without Proton/Wine data there is
-            // nowhere to run it. Returning quietly would leave the RedMods undeployed with no sign why.
-            throw new InvalidOperationException(
-                $"Cannot deploy RedMods for {loadout.InstallationInstance.Game.DisplayName}: no Proton/Wine compatibility data was found for this installation, so there is no Wine prefix to run redmod in."
-            );
-        }
+        // redmod.exe only runs inside a Wine prefix, so without a way to run it, returning quietly would
+        // leave the RedMods undeployed with no sign why.
+        if (!_toolRunner.CanRun(installation, out var cannotRunReason))
+            throw new InvalidOperationException($"Cannot deploy RedMods for {gameName}: {cannotRunReason}");
 
-        var wineDirectory = linuxCompatibilityDataProvider.WinePrefixDirectoryPath;
-        var cDriveDirectory = wineDirectory.Combine("drive_c");
+        var prefix = _prefixResolver.Resolve(installation);
+        if (!prefix.IsResolved)
+            throw new InvalidOperationException($"Cannot deploy RedMods for {gameName}: {prefix.Diagnostic ?? "this installation does not run in a Wine prefix."}");
+
+        var cDriveDirectory = prefix.Prefix.Path.Combine("drive_c");
 
         if (!cDriveDirectory.DirectoryExists()) cDriveDirectory.CreateDirectory();
         var tmpFile = cDriveDirectory.Combine("modlist.txt");
@@ -73,9 +68,26 @@ public class RedModDeployTool : ITool
             await input.CopyToAsync(output, cancellationToken: cancellationToken);
         }
 
+        // The script cds into %STEAM_APP_PATH% to find redMod.exe. Steam's launcher sets it, ours does not.
+        var env = new Dictionary<string, string>
+        {
+            ["STEAM_APP_PATH"] = installation.Locations[LocationId.Game].Path.ToString(),
+        };
+
         await using var batchPath = await ExtractTemporaryDeployScript();
-        var command = Cli.Wrap(batchPath.ToString()).WithArguments(["deploy", "-force", "-modlist=C:\\modlist.txt"], escape: true);
-        await _toolRunner.ExecuteAsync(loadout, command, true, cancellationToken);
+        var result = await _toolRunner.RunWindowsTool(
+            installation,
+            batchPath.Path,
+            ["deploy", "-force", "-modlist=C:\\modlist.txt"],
+            env,
+            logOutput: true,
+            cancellationToken
+        );
+
+        // The tool runner reports the exit code rather than throwing, and both the script's own checks and
+        // a failed redmod deploy end in a non-zero exit, so the error has to surface here.
+        if (result.ExitCode != 0)
+            throw new InvalidOperationException($"Cannot deploy RedMods for {gameName}: redmod finished with exit code {result.ExitCode}; see the process logs for its output.");
     }
 
     internal async Task WriteLoadOrderFile(AbsolutePath loadorderFilePath, Loadout.ReadOnly loadout)

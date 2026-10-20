@@ -35,6 +35,7 @@ public class RunCyberpunk2077GameTests(ITestOutputHelper helper) : AIsolatedGame
         return base.AddServices(services)
             .AddRuntimeDependencies()
             .AddGenericGameSupport()
+            .AddFakeToolRunner()
             .AddSingleton<IGameLocator>(provider => new UniversalStubbedGameLocator<Cyberpunk2077Game>(
                 provider,
                 provider.GetRequiredService<IFileSystem>(),

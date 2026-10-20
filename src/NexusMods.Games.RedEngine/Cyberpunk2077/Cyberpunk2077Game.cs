@@ -66,7 +66,7 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>
             new NoWayToSourceFilesOnDisk(),
             new UndeployableLoadoutDueToMissingGameFiles(provider),
             new PatternBasedDependencyEmitter(PatternDefinitions.Definitions, provider),
-            new MissingProtontricksForRedModEmitter(provider),
+            new NoWayToRunRedModEmitter(provider),
             new MissingRedModEmitter(),
             new WinePrefixRequirementsEmitter(),
             provider.GetRequiredService<ProtonPrefixEmitter>(),

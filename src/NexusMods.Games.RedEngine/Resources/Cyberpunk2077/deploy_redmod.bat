@@ -1,17 +1,13 @@
 @echo off
 
-:: This script works with protontricks versions >= 1.8.0
-:: And also handles the breaking change in 1.12.0 (unreleased).script
-
-:: In 1.12.0, protontricks will respect the current working directory,
-:: while currently it does not. This is a breaking change. In order
-:: to handle both < 1.12.0 and >= 1.12.0, we instead use the STEAM_APP_PATH
-:: variable. After that we set the working directory ourselves.
+:: Runs redMod.exe from the game folder. The app passes the game folder in
+:: STEAM_APP_PATH, since the working directory of a program started through
+:: Proton, umu or Wine is not reliably the game folder.
 
 rem Check if STEAM_APP_PATH environment variable is set
 if "%STEAM_APP_PATH%"=="" (
     echo Error: STEAM_APP_PATH environment variable is not set.
-    echo Please make sure to run this script through protontricks-launch.
+    echo This script is meant to be started by the app.
     pause
     exit /b 1
 )

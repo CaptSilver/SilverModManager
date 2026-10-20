@@ -173,17 +173,17 @@ OR
     
     [DiagnosticTemplate]
     [UsedImplicitly]
-    internal static IDiagnosticTemplate MissingProtontricksForRedMod = DiagnosticTemplateBuilder
+    internal static IDiagnosticTemplate NoWayToRunRedMod = DiagnosticTemplateBuilder
         .Start()
         .WithId(new DiagnosticId(Source, number: 3))
-        .WithTitle("Protontricks is not installed")
+        .WithTitle("No way to run REDmod")
         .WithSeverity(DiagnosticSeverity.Critical)
-        .WithSummary("Protontricks is required to use REDmods but is not present.")
+        .WithSummary("REDmod is a Windows program and nothing on this system can run it for Cyberpunk 2077.")
         .WithDetails("""
-Protontricks is not installed but is required to use the REDmod DLC when playing Cyberpunk 2077 on Linux.
+The REDmod DLC is installed, but it is a Windows program and the app found no way to run it for this copy of Cyberpunk 2077. REDmods will not be deployed until it can.
 
 ### How to Resolve
-1. Install Protontricks by following the instructions in the {ProtontricksUri}.
+1. Make sure the game is set up to run through Proton, umu or Wine, for example by launching it once from Steam or Heroic.
 2. Restart the app.
 
 OR
@@ -191,10 +191,10 @@ OR
 1. Remove any mods requiring REDmod from "Installed Mods".
 
 ### Technical Details
-The OS did not return any information when querying for Protontricks installation information. This indicates that Protontricks is not installed.
+{Reason}
 """)
         .WithMessageData(messageBuilder => messageBuilder
-            .AddValue<NamedLink>("ProtontricksUri")
+            .AddValue<string>("Reason")
         )
         .Finish();
     
