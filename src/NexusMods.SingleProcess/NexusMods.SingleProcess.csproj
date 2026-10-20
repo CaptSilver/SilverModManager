@@ -16,6 +16,7 @@
     </ItemGroup>
     <ItemGroup>
       <InternalsVisibleTo Include="NexusMods.CLI.Tests" />
+      <InternalsVisibleTo Include="NexusMods.SingleProcess.Tests" />
     </ItemGroup>
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 </Project>

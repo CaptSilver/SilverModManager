@@ -2,6 +2,8 @@ using System.Diagnostics;
 using FluentAssertions;
 using Microsoft.Extensions.Hosting;
 using NexusMods.App;
+using NexusMods.SingleProcess;
+using NexusMods.SingleProcess.Exceptions;
 
 namespace NexusMods.CLI.Tests;
 
@@ -10,11 +12,12 @@ public class ProcessStartupTests
     private sealed class Recorder
     {
         public List<string> Calls { get; } = [];
-        public (Process? Process, int Port) SyncInfo { get; set; } = (null, 0);
+        public (Process? Process, MainKind Kind, int Port) SyncInfo { get; set; } = (null, MainKind.Gui, 0);
         public bool CanConnect { get; set; } = true;
         public int CliExitCode { get; set; }
         public bool KillThrows { get; set; }
         public bool OpenDatabaseThrows { get; set; }
+        public List<string> Errors { get; } = [];
 
         public ProcessStartupSteps Steps() => new()
         {
@@ -27,6 +30,7 @@ public class ProcessStartupTests
             RunCliAsMain = (_, _) => { Calls.Add("cli-as-main"); return Task.FromResult(CliExitCode); },
             RunCliRemotely = (_, _) => { Calls.Add("cli-remote"); return Task.FromResult(CliExitCode); },
             RunUi = _ => Calls.Add("ui"),
+            WriteError = Errors.Add,
         };
     }
 
@@ -48,7 +52,7 @@ public class ProcessStartupTests
     {
         var recorder = new Recorder
         {
-            SyncInfo = (Process.GetCurrentProcess(), 1234),
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
             CanConnect = false,
         };
 
@@ -60,7 +64,7 @@ public class ProcessStartupTests
     [Fact]
     public void KillerDoesNotRunWhenMainResponds()
     {
-        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), 1234) };
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234) };
 
         Run(recorder);
 
@@ -72,7 +76,7 @@ public class ProcessStartupTests
     {
         var recorder = new Recorder
         {
-            SyncInfo = (Process.GetCurrentProcess(), 1234),
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
             CanConnect = false,
             KillThrows = true,
         };
@@ -123,5 +127,40 @@ public class ProcessStartupTests
         var act = () => Run(recorder);
 
         act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Theory]
+    [InlineData(MainKind.HeadlessRun)]
+    [InlineData(MainKind.HeadlessCli)]
+    public void KillerLeavesHeadlessMainAlone(MainKind kind)
+    {
+        // A headless main has no server to answer the heartbeat, so it must not look unresponsive.
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), kind, 0),
+            CanConnect = false,
+        };
+
+        Run(recorder, "some-verb");
+
+        recorder.Calls.Should().NotContain("can-connect").And.NotContain("kill");
+    }
+
+    [Theory]
+    [InlineData(MainKind.HeadlessRun, "A game is running through SilverModManager")]
+    [InlineData(MainKind.HeadlessCli, "busy in another terminal")]
+    public void ClientPrintsTheHeadlessMessageAndFails(MainKind kind, string expected)
+    {
+        var recorder = new Recorder();
+        var steps = recorder.Steps() with
+        {
+            // Faulted task, like the real async step, so the exception arrives wrapped.
+            RunCliRemotely = (_, _) => Task.FromException<int>(new HeadlessMainRunning(kind, 4242)),
+        };
+
+        ProcessStartup.Run(StartupMode.Parse(["some-verb"]), ["some-verb"], steps).Should().NotBe(0);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Contain(expected).And.Contain("4242");
+        recorder.Calls.Should().NotContain("cli-as-main").And.NotContain("open-database");
     }
 }

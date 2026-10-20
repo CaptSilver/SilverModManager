@@ -18,10 +18,17 @@ public class CliClient(ILogger<CliClient> logger, SyncFile syncFile, IServicePro
     /// </summary>
     public async Task ExecuteCommand(string[] args, IAnsiConsole? console = null)
     {
-        var (process, port) = syncFile.GetSyncInfo();
+        var (process, kind, port) = syncFile.GetSyncInfo();
         if (process is null)
         {
             throw new NoMainProcessStarted();
+        }
+
+        // A headless main has no server to connect to, and starting another main would
+        // fight it for the game and the database.
+        if (kind != MainKind.Gui)
+        {
+            throw new HeadlessMainRunning(kind, process.Id);
         }
 
         logger.LogInformation("Found main process {ProcessId} listening on port {Port}", process.Id, port);

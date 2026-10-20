@@ -66,7 +66,7 @@ public sealed class CliServer : IHostedService, IDisposable
         Task.Run(async () => await StartListeningAsync(), _cancellationTokenSource.Token);
         var port = ((IPEndPoint)_tcpListener.LocalEndpoint).Port;
 
-        if (!_syncFile.TrySetMain(port))
+        if (!_syncFile.TrySetMain(MainKind.Gui, port))
         {
             _logger.LogError("Failed to set main process in shared array, another process is likely running");
             throw new SingleProcessLockException();

@@ -242,6 +242,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusMods.Backend.Tests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusMods.StandardGameLocators.TestHelpers", "tests\NexusMods.StandardGameLocators.TestHelpers\NexusMods.StandardGameLocators.TestHelpers.csproj", "{148215FF-2949-426F-AE4C-57A80A8E5AFF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusMods.SingleProcess.Tests", "tests\NexusMods.SingleProcess.Tests\NexusMods.SingleProcess.Tests.csproj", "{C0EE621D-624D-4797-87CE-93D99E1F9D24}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -628,6 +630,10 @@ Global
 		{148215FF-2949-426F-AE4C-57A80A8E5AFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{148215FF-2949-426F-AE4C-57A80A8E5AFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{148215FF-2949-426F-AE4C-57A80A8E5AFF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C0EE621D-624D-4797-87CE-93D99E1F9D24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C0EE621D-624D-4797-87CE-93D99E1F9D24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C0EE621D-624D-4797-87CE-93D99E1F9D24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C0EE621D-624D-4797-87CE-93D99E1F9D24}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -740,6 +746,7 @@ Global
 		{8E8D0E1E-598D-459C-8624-DA1F8F4127D3} = {05B06AC1-7F2B-492F-983E-5BC63CDBF20D}
 		{9BA054EF-E912-49AB-8889-AE807713BD74} = {52AF9D62-7D5B-4AD0-BA12-86F2AA67428B}
 		{148215FF-2949-426F-AE4C-57A80A8E5AFF} = {52AF9D62-7D5B-4AD0-BA12-86F2AA67428B}
+		{C0EE621D-624D-4797-87CE-93D99E1F9D24} = {52AF9D62-7D5B-4AD0-BA12-86F2AA67428B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9F9F8352-34DD-42C0-8564-EE9AF34A3501}

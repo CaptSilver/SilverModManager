@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NexusMods.Sdk;
 using NexusMods.SingleProcess;
+using NexusMods.SingleProcess.Exceptions;
 
 namespace NexusMods.App;
 
@@ -15,7 +16,7 @@ namespace NexusMods.App;
 public sealed record ProcessStartupSteps
 {
     public required Func<StartupMode, IHost> BuildHost { get; init; }
-    public required Func<IServiceProvider, (Process? Process, int Port)> ReadSyncInfo { get; init; }
+    public required Func<IServiceProvider, (Process? Process, MainKind Kind, int Port)> ReadSyncInfo { get; init; }
     public required Func<IServiceProvider, int, Task<bool>> CanConnect { get; init; }
     public required Action<Process> Kill { get; init; }
     public required Action<IServiceProvider> OpenDatabase { get; init; }
@@ -23,6 +24,11 @@ public sealed record ProcessStartupSteps
     public required Func<IServiceProvider, StartupMode, Task<int>> RunCliAsMain { get; init; }
     public required Func<IServiceProvider, StartupMode, Task<int>> RunCliRemotely { get; init; }
     public required Action<IServiceProvider> RunUi { get; init; }
+
+    /// <summary>
+    /// Reports a refusal to the person at the terminal.
+    /// </summary>
+    public Action<string> WriteError { get; init; } = message => Console.Error.WriteLine(message);
 }
 
 public static class ProcessStartup
@@ -64,7 +70,12 @@ public static class ProcessStartup
                 return task.Result;
             }
 
-            return steps.RunCliRemotely(services, startupMode).Result;
+            return steps.RunCliRemotely(services, startupMode).GetAwaiter().GetResult();
+        }
+        catch (HeadlessMainRunning ex)
+        {
+            steps.WriteError(ex.Message);
+            return 1;
         }
         catch (Exception ex)
         {
@@ -82,8 +93,11 @@ public static class ProcessStartup
     private static async Task CleanupUnresponsiveProcesses(IServiceProvider services, ILogger logger, ProcessStartupSteps steps)
     {
         // NOTE(erri120): this is a hack, see https://github.com/Nexus-Mods/NexusMods.App/issues/3633
-        var (process, port) = steps.ReadSyncInfo(services);
+        var (process, kind, port) = steps.ReadSyncInfo(services);
         if (process is null) return;
+
+        // A headless main runs no CLI server, so a failed heartbeat says nothing about it.
+        if (kind != MainKind.Gui) return;
 
         var pid = process.Id;
         var canConnect = await steps.CanConnect(services, port);
