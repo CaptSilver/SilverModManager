@@ -53,6 +53,15 @@
                                    Description="{x:Static resources:Language.DiagnosticListView_Page_Description}"
                                    Icon="{x:Static icons:IconValues.PictogramHealth}"/> 
 
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="{StaticResource Spacing-2.5}" Margin="0,0,0,8">
+                <controls:StandardButton x:Name="SupportBundleButton" Text="Copy support bundle" Type="Secondary" />
+                <TextBlock x:Name="SupportBundleText"
+                           VerticalAlignment="Center"
+                           Theme="{StaticResource BodyMDNormalTheme}"
+                           Foreground="{StaticResource NeutralSubduedBrush}"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+
             <controls:EmptyState x:Name="EmptyState"
                                  Margin="0"
                                  Padding="0"

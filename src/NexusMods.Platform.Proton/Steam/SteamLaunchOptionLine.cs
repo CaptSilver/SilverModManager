@@ -85,6 +85,44 @@ public static class SteamLaunchOptionLine
             : Join(parsed.Prefix, CommandToken, parsed.Tail);
     }
 
+    /// <summary>
+    /// Replaces the value of every <c>KEY=value</c> word in the part of the line that runs before the game with
+    /// <c>KEY=...</c>, keeping the rest byte for byte. Environment prefixes are where people put tokens and
+    /// keys; the launcher span and everything after <c>%command%</c> are left alone. A line without
+    /// <c>%command%</c> has no such part, so only its leading assignments count.
+    /// </summary>
+    public static string RedactEnvPrefixValues(string line)
+    {
+        var words = new List<Word>();
+        Tokenize(line, words, []);
+        var scan = Scan(line);
+        var hasCommand = scan.SpanEnd > scan.SpanStart;
+
+        var sb = new StringBuilder();
+        var copied = 0;
+        foreach (var word in words)
+        {
+            var key = EnvKey(word.Raw);
+            if (hasCommand ? word.Start >= scan.SpanStart : key is null) break;
+            if (key is null) continue;
+
+            sb.Append(line, copied, word.Start - copied).Append(key).Append("=...");
+            copied = word.End;
+        }
+
+        return sb.Append(line, copied, line.Length - copied).ToString();
+    }
+
+    /// <summary>The variable name when the word is a shell assignment, otherwise null.</summary>
+    private static string? EnvKey(string raw)
+    {
+        var equals = raw.IndexOf('=');
+        if (equals <= 0 || !(char.IsAsciiLetter(raw[0]) || raw[0] == '_')) return null;
+        return raw.AsSpan(0, equals).IndexOfAnyExcept("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_") < 0
+            ? raw[..equals]
+            : null;
+    }
+
     private static string Join(string prefix, string middle, string tail)
     {
         var sb = new StringBuilder();

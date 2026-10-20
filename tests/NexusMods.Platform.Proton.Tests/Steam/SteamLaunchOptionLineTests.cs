@@ -22,6 +22,20 @@ public class SteamLaunchOptionLineTests : IDisposable
             .Should().Be($"'{Shim}' run 'Skyrim - Survival' -- %command%");
     }
 
+    [Theory]
+    [InlineData("TOKEN=abc PROTON_LOG=1 %command%", "TOKEN=... PROTON_LOG=... %command%")]
+    [InlineData("SECRET=\"two words\" MORE='it'\\''s' %command%", "SECRET=... MORE=... %command%")]
+    [InlineData("env X=1 %command% Y=2 --flag=3", "env X=... %command% Y=2 --flag=3")]
+    [InlineData("A=1 B=2 run-something C=3", "A=... B=... run-something C=3")]
+    [InlineData("PROTON_LOG=1 '/x/bin/silvermod' run 'K=v' -- %command%", "PROTON_LOG=... '/x/bin/silvermod' run 'K=v' -- %command%")]
+    [InlineData("%command% --windowed", "%command% --windowed")]
+    [InlineData("--fullscreen -novid", "--fullscreen -novid")]
+    [InlineData("", "")]
+    public void Test_RedactEnvPrefixValuesKeepsKeysAndTheRestOfTheLine(string line, string expected)
+    {
+        SteamLaunchOptionLine.RedactEnvPrefixValues(line).Should().Be(expected);
+    }
+
     [Fact]
     public void Test_ComposeEscapesQuoteInName()
     {

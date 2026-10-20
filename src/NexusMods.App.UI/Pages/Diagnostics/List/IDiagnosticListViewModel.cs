@@ -22,7 +22,15 @@ public interface IDiagnosticListViewModel : IPageViewModelInterface
 
     public DiagnosticFilter Filter { get; set; }
 
+    /// <summary>
+    /// Writes a support bundle and puts its path on the clipboard.
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> CopySupportBundleCommand { get; }
 
+    /// <summary>
+    /// What the last <see cref="CopySupportBundleCommand"/> run did; empty before the first run.
+    /// </summary>
+    public string SupportBundleMessage { get; }
 }
 
 [Flags]

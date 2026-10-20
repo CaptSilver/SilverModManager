@@ -42,6 +42,12 @@ public partial class DiagnosticListView : ReactiveUserControl<IDiagnosticListVie
                     )
                     .DisposeWith(disposable);
                 
+                this.BindCommand(ViewModel, vm => vm.CopySupportBundleCommand, view => view.SupportBundleButton)
+                    .DisposeWith(disposable);
+
+                this.OneWayBind(ViewModel, vm => vm.SupportBundleMessage, view => view.SupportBundleText.Text)
+                    .DisposeWith(disposable);
+
                 // // bind all DiagnosticEntries to the AllItemsControl
                 this.OneWayBind(ViewModel, vm => vm.DiagnosticEntries, view => view.HealthCheckItemsControl.ItemsSource)
                     .DisposeWith(disposable);

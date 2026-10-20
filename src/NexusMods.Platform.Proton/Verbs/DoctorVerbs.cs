@@ -1,9 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Cli;
-using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.ProxyConsole;
 
 namespace NexusMods.Platform.Proton.Verbs;
@@ -19,19 +16,11 @@ internal static class DoctorVerbs
     [Verb("doctor", "Reports how each managed game would launch: prefix, Proton, tool runner, Steam launch options and launch lock")]
     private static async Task<int> Doctor(
         [Injected] IRenderer renderer,
-        [Injected] IConnection connection,
-        [Injected] IGameRegistry registry,
+        [Injected] IManagedInstallations installations,
         [Injected] DoctorReporter reporter,
         [Option("j", "json", "Print the report as JSON", true)] bool json)
     {
-        var installations = Loadout.All(connection.Db)
-            .Where(loadout => loadout.IsVisible())
-            .Select(loadout => (Loadout: loadout, Found: registry.TryGetGameInstallation(loadout, out var installation) ? installation : null))
-            .Where(x => x.Found is not null)
-            .GroupBy(x => x.Found!)
-            .Select(group => new ManagedInstallation(group.Key, group.Select(x => x.Loadout.Name).Order(StringComparer.Ordinal).ToArray()));
-
-        var report = reporter.Build(installations);
+        var report = reporter.Build(installations.List());
         if (json)
         {
             await renderer.TextLine(report.ToJson());

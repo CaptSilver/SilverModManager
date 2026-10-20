@@ -1,3 +1,4 @@
+using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using JetBrains.Annotations;
@@ -5,6 +6,7 @@ using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Sdk.Settings;
 using NexusMods.App.UI.Controls.Diagnostics;
+using NexusMods.Platform.Proton.Support;
 using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
@@ -32,6 +34,9 @@ internal class DiagnosticListViewModel : APageViewModel<IDiagnosticListViewModel
 
     [Reactive] public DiagnosticFilter Filter { get; set; }
 
+    [Reactive] public string SupportBundleMessage { get; private set; } = "";
+
+    public ReactiveCommand<Unit, Unit> CopySupportBundleCommand { get; }
 
 
     private const DiagnosticFilter AllFilter = DiagnosticFilter.Critical | DiagnosticFilter.Warnings | DiagnosticFilter.Suggestions;
@@ -43,8 +48,12 @@ internal class DiagnosticListViewModel : APageViewModel<IDiagnosticListViewModel
         IWindowManager windowManager,
         IDiagnosticManager diagnosticManager,
         IDiagnosticWriter diagnosticWriter,
-        ISettingsManager settingsManager) : base(windowManager)
+        ISettingsManager settingsManager,
+        ISupportBundleWriter supportBundleWriter,
+        IAvaloniaInterop interop) : base(windowManager)
     {
+        CopySupportBundleCommand = ReactiveCommand.CreateFromTask(() => CopySupportBundle(supportBundleWriter, interop));
+
         TabIcon = IconValues.Cardiology;
         TabTitle = Language.DiagnosticListViewModel_DiagnosticListViewModel_Diagnostics;
 
@@ -165,6 +174,32 @@ internal class DiagnosticListViewModel : APageViewModel<IDiagnosticListViewModel
                 })
                 .DisposeWith(disposable);
         });
+    }
+
+    private async Task CopySupportBundle(ISupportBundleWriter writer, IAvaloniaInterop interop)
+    {
+        SupportBundleMessage = "Collecting logs and launch state...";
+
+        string path;
+        try
+        {
+            path = (await writer.WriteAsync()).ToString();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            SupportBundleMessage = $"Could not write the support bundle: {ex.Message}";
+            return;
+        }
+
+        try
+        {
+            await interop.SetClipboardTextAsync(path);
+            SupportBundleMessage = $"Support bundle written. Its path is on the clipboard: {path}";
+        }
+        catch (InvalidOperationException)
+        {
+            SupportBundleMessage = $"Support bundle written to {path}. Could not copy the path to the clipboard.";
+        }
     }
 
     private static DiagnosticFilter SeverityToFilter(DiagnosticSeverity severity)

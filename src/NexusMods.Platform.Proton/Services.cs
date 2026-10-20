@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NexusMods.Platform.Proton.Doctor;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Platform.Proton.Support;
 using NexusMods.Platform.Proton.Protontricks;
 using NexusMods.Platform.Proton.Steam;
 using NexusMods.Platform.Proton.Verbs;
@@ -38,6 +40,8 @@ public static class Services
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
         services.TryAddSingleton<LocalConfigVdfWriter>();
+        services.AddSingleton<IManagedInstallations, LoadoutManagedInstallations>();
+        services.AddSingleton<ISupportBundleWriter, SupportBundleWriter>();
         return services.AddDoctorVerbs().AddSelftestVerbs();
     }
 
