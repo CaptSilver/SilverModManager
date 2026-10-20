@@ -12,6 +12,9 @@ public class StartupModeTests
     [InlineData("arg1 arg2", false, false, true, "arg1 arg2")]
     [InlineData("as-main arg1 arg2", true, false, true, "arg1 arg2")]
     [InlineData("as-main-ui arg1 arg2", true, true, true, "arg1 arg2")]
+    [InlineData("run", true, false, false, "")]
+    [InlineData("run 12345", true, false, false, "12345")]
+    [InlineData("run -- game.exe --flag", true, false, false, "-- game.exe --flag")]
     public void TestStartupModeParsing(string input, bool asMain, bool showUi, bool executeCli, string finalArgs)
     {
         var splitInput = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -23,9 +26,23 @@ public class StartupModeTests
     }
 
     [Theory]
+    [InlineData("run", true)]
+    [InlineData("RUN 12345", true)]
+    [InlineData("", false)]
+    [InlineData("as-main run", false)]
+    [InlineData("loadouts list", false)]
+    [InlineData("steam-launch-option", false)]
+    public void TestIsHeadlessRun(string input, bool expected)
+    {
+        var mode = StartupMode.Parse(input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        mode.IsHeadlessRun.Should().Be(expected);
+    }
+
+    [Theory]
     [InlineData("--help", false)]
     [InlineData("loadouts list", false)]
     [InlineData("protocol-invoke -u nxm://stardewvalley/mods/1/files/2", true)]
+    [InlineData("steam-launch-option", false)]
     public void TestStartsUiWhenNoMainRunning(string input, bool expected)
     {
         var mode = StartupMode.Parse(input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
@@ -37,6 +54,7 @@ public class StartupModeTests
     [Theory]
     [InlineData("--help", "as-main --help")]
     [InlineData("loadouts list", "as-main loadouts list")]
+    [InlineData("steam-launch-option --app 1091500", "as-main steam-launch-option --app 1091500")]
     public void TestHeadlessMainArgsRoundTrip(string input, string expected)
     {
         var args = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);

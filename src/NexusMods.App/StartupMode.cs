@@ -30,6 +30,13 @@ public class StartupMode
     public bool IsAvaloniaDesigner { get; set; } = false;
 
     /// <summary>
+    /// True for <c>run</c>: the process is the main process for the lifetime of one game
+    /// launch. It must never take the slim-client path, because it holds the database and
+    /// the launch session until the game exits.
+    /// </summary>
+    public bool IsHeadlessRun { get; set; } = false;
+
+    /// <summary>
     /// Whether a client that finds no main process must start one that shows the UI.
     /// Only a protocol link needs this: the user clicked a link in a browser and expects the
     /// app to come up. Every other verb (including --help) is plain terminal use and must
@@ -74,6 +81,14 @@ public class StartupMode
             mode.ShowUI = true;
             mode.Args = args[1..];
             mode.ExecuteCli = args.Length > 1;
+        }
+        else if (arg.Equals("run", StringComparison.OrdinalIgnoreCase))
+        {
+            mode.RunAsMain = true;
+            mode.ShowUI = false;
+            mode.IsHeadlessRun = true;
+            mode.Args = args[1..];
+            mode.ExecuteCli = false;
         }
         else
         {
