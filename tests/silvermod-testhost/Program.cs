@@ -1,8 +1,17 @@
+using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using NexusMods.Paths;
+using NexusMods.Platform.Proton;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Sdk;
+using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Loadouts;
+using NSubstitute;
 
 // Out-of-process helper for the installation lock tests. flock, O_CLOEXEC and fork/exec behaviour
 // can't be observed from inside the xunit process, so each scenario runs here.
@@ -13,6 +22,10 @@ using NexusMods.Platform.Proton.Launch;
 //   spawn-child-and-exit <lockPath>  take the lock, start a long-lived child, print its pid, exit
 //   stop-handler                     install StopHandler, print "ready", then "signal <name> <phase> cancelled=<bool>"
 //                                    after the first signal and "count <n>" once a second has been absorbed
+//   session <runtimeDir> <preparing|running|finishing> [killfail]
+//                                    host a LaunchSession over fakes with a StopHandler; prints "ready", then
+//                                    "in <phase>" once the fakes are blocked in that phase, then after the run
+//                                    "result <exit code> <events>" where events lists the fakes' calls in order
 //   host-lifetime <console|nosignal> run a generic host beside a StopHandler, print "ready", then after a signal
 //                                    "stopping" if ApplicationStopping fired or "running" if it did not
 return args switch
@@ -22,6 +35,8 @@ return args switch
     ["write-wrapper", var path, var pid] => WriteWrapper(path, pid),
     ["spawn-child-and-exit", var path] => SpawnChildAndExit(path),
     ["stop-handler"] => StopHandlerScenario(),
+    ["session", var dir, var phase] => SessionScenario(dir, phase, killFail: false),
+    ["session", var dir, var phase, "killfail"] => SessionScenario(dir, phase, killFail: true),
     ["host-lifetime", var kind] => HostLifetimeScenario(kind),
     _ => Usage(),
 };
@@ -117,8 +132,122 @@ static int HostLifetimeScenario(string kind)
     return 0;
 }
 
+static int SessionScenario(string runtimeDir, string blockIn, bool killFail)
+{
+    var events = new ConcurrentQueue<string>();
+    using var stop = new StopHandler(NullLogger.Instance);
+    var signalled = new ManualResetEventSlim();
+    stop.Stopping += (_, _) => signalled.Set();
+
+    // Each fake parks in the phase under test until the first signal has been delivered, so the signal is
+    // guaranteed to land in that phase.
+    void Park(string phase)
+    {
+        if (blockIn != phase) return;
+        Console.WriteLine($"in {phase}");
+        Console.Out.Flush();
+        signalled.Wait(TimeSpan.FromSeconds(30));
+    }
+
+    var synchronizer = new ScenarioSynchronizer(events, Park);
+    var processes = new ScenarioProcessFactory(events, signalled, blockIn == "running", killFail, Park);
+    var lockFactory = Substitute.For<IInstallationLockFactory>();
+    lockFactory.Create(Arg.Any<string>(), Arg.Any<string>())
+        .Returns(call => new InstallationLock(InstallationLock.PathFor(runtimeDir, call.ArgAt<string>(0), call.ArgAt<string>(1))));
+    var gate = new ScenarioGate(events);
+
+    var game = Substitute.For<IGameData>();
+    game.DisplayName.Returns("Test Game");
+    var folder = FileSystem.Shared.FromUnsanitizedFullPath(runtimeDir);
+    var installation = new GameInstallation(new GameLocatorResult
+    {
+        Game = game,
+        Path = folder,
+        Store = GameStore.Steam,
+        StoreIdentifier = "42",
+        LocatorIds = ImmutableArray<LocatorId>.Empty,
+        Locator = Substitute.For<IGameLocator>(),
+        Platform = OSPlatform.Windows,
+    }, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, folder)));
+
+    var session = new LaunchSession(lockFactory, new ActiveLaunchSessions(), synchronizer, processes, [gate],
+        Substitute.For<IDesktopNotifier>(), NullLogger<LaunchSession>.Instance, TextWriter.Null, stop);
+    Console.WriteLine("ready");
+    Console.Out.Flush();
+
+    var result = session.RunAsync(new LaunchContext(installation, LoadoutId.From(1), "test-loadout"), () => new GameProcessSpec(["game.exe"])).GetAwaiter().GetResult();
+    session.Release();
+    Console.WriteLine($"result {result.ExitCode} {string.Join(',', events)}");
+    return 0;
+}
+
 static int Usage()
 {
-    Console.Error.WriteLine("usage: silvermod-testhost hold-lock <path> <seconds> | probe <path> | write-wrapper <path> <pid> | spawn-child-and-exit <path> | stop-handler | host-lifetime <console|nosignal>");
+    Console.Error.WriteLine("usage: silvermod-testhost hold-lock <path> <seconds> | probe <path> | write-wrapper <path> <pid> | spawn-child-and-exit <path> | stop-handler | session <runtimeDir> <preparing|running|finishing> [killfail] | host-lifetime <console|nosignal>");
     return 2;
+}
+
+internal sealed class ScenarioSynchronizer(ConcurrentQueue<string> events, Action<string> park) : ILaunchSynchronizer
+{
+    private int _calls;
+
+    public Task Synchronize(LoadoutId loadoutId)
+    {
+        var call = Interlocked.Increment(ref _calls);
+        events.Enqueue("sync");
+        park(call == 1 ? "preparing" : "finishing");
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class ScenarioGate(ConcurrentQueue<string> events) : ILaunchGate
+{
+    public Veto? Check(LaunchContext context) => null;
+
+    public Task Prepare(LaunchContext context, CancellationToken cancellationToken)
+    {
+        events.Enqueue("prepare");
+        return Task.CompletedTask;
+    }
+
+    public Task Finish(LaunchContext context)
+    {
+        events.Enqueue("finish");
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class ScenarioProcessFactory(ConcurrentQueue<string> events, ManualResetEventSlim signalled, bool blockUntilTerminated, bool killFail, Action<string> park) : IGameProcessFactory
+{
+    public IGameProcess Start(GameProcessSpec spec, GameInstallation installation)
+    {
+        events.Enqueue("start");
+        return new ScenarioProcess(events, signalled, blockUntilTerminated, killFail, park);
+    }
+}
+
+internal sealed class ScenarioProcess(ConcurrentQueue<string> events, ManualResetEventSlim signalled, bool blockUntilTerminated, bool killFail, Action<string> park) : IGameProcess
+{
+    private readonly ManualResetEventSlim _terminated = new();
+
+    public int Pid => 4321;
+
+    public Task<GameProcessResult> WaitAsync(CancellationToken cancellationToken = default)
+    {
+        park("running");
+        if (blockUntilTerminated) _terminated.Wait(TimeSpan.FromSeconds(30));
+        events.Enqueue("exit");
+        return Task.FromResult(new GameProcessResult(0, killFail ? new TrackedProcess(4242, "wineserver") : null));
+    }
+
+    public void Terminate()
+    {
+        events.Enqueue("terminate");
+        // Hold the terminate open so a second signal can arrive while it is in progress.
+        signalled.Wait(TimeSpan.FromSeconds(30));
+        Thread.Sleep(300);
+        _terminated.Set();
+    }
+
+    public void Dispose() => _terminated.Dispose();
 }

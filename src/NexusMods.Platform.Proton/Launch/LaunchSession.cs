@@ -1,4 +1,6 @@
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.Games;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 
@@ -12,6 +14,15 @@ namespace NexusMods.Platform.Proton.Launch;
 public sealed record LaunchResult(int ExitCode, string? Message);
 
 /// <summary>
+/// The command a launch will start, with the steps that produced it, so the log can show how the final argv came
+/// about.
+/// </summary>
+/// <param name="Process">What to start.</param>
+/// <param name="Resolved">What the loadout's run tool resolved, or null when the command did not come from one.</param>
+/// <param name="Substitution">How the launch command Steam handed over was rewritten, or null when there was none.</param>
+public sealed record LaunchPlan(GameProcessSpec Process, LaunchSpec? Resolved = null, ExeSubstitution.Result? Substitution = null);
+
+/// <summary>
 /// One launch of one loadout: takes the installation lock, applies the loadout, runs the game and takes its
 /// changes back. The lock is held, and <see cref="ActiveLaunchSessions.IsRunning"/> stays true, until
 /// <see cref="Release"/>: the caller closes the database first, so nothing can write to a game folder that
@@ -22,6 +33,9 @@ public sealed class LaunchSession
     /// <summary>The exit code for every failure of the launch itself, as opposed to the game's own.</summary>
     public const int FailureExitCode = 125;
 
+    /// <summary>The exit code of a launch that was stopped by a signal and shut down cleanly (128 + SIGTERM).</summary>
+    public const int StoppedExitCode = 143;
+
     private readonly IInstallationLockFactory _lockFactory;
     private readonly ActiveLaunchSessions _activeSessions;
     private readonly ILaunchSynchronizer _synchronizer;
@@ -31,6 +45,15 @@ public sealed class LaunchSession
     private readonly ILogger<LaunchSession> _logger;
     private readonly TextWriter _error;
     private readonly object _releaseLock = new();
+    private readonly StopHandler? _stop;
+
+    // Guards the phase, the stop flag and the process handle together: a signal must never see a phase that
+    // disagrees with whether there is a child to terminate.
+    private readonly object _stateGate = new();
+    private LaunchPhase _phase = LaunchPhase.Preparing;
+    private bool _stopRequested;
+    private IGameProcess? _process;
+    private Task? _terminating;
 
     private InstallationLock? _lock;
     private IDisposable? _registration;
@@ -47,7 +70,8 @@ public sealed class LaunchSession
         IEnumerable<ILaunchGate> gates,
         IDesktopNotifier notifier,
         ILogger<LaunchSession> logger,
-        TextWriter? error = null)
+        TextWriter? error = null,
+        StopHandler? stop = null)
     {
         _lockFactory = lockFactory;
         _activeSessions = activeSessions;
@@ -57,6 +81,7 @@ public sealed class LaunchSession
         _notifier = notifier;
         _logger = logger;
         _error = error ?? Console.Error;
+        _stop = stop;
     }
 
     /// <summary>
@@ -68,12 +93,44 @@ public sealed class LaunchSession
     /// Builds the command once the loadout is applied, because what the run tool resolves (a script extender
     /// loader, say) can depend on files the apply just put in place.
     /// </param>
-    public async Task<LaunchResult> RunAsync(LaunchContext context, Func<GameProcessSpec> resolveSpec, CancellationToken cancellationToken = default)
+    public Task<LaunchResult> RunAsync(LaunchContext context, Func<GameProcessSpec> resolveSpec, CancellationToken cancellationToken = default)
+        => RunAsync(context, () => new LaunchPlan(resolveSpec()), cancellationToken);
+
+    /// <summary>
+    /// Runs the launch like the overload taking a spec, and logs how <paramref name="resolvePlan"/>'s command came
+    /// about before the game starts.
+    /// </summary>
+    /// <remarks>
+    /// With a <see cref="StopHandler"/>, the first signal decides by phase. While preparing, the apply in progress
+    /// is allowed to finish, the game is not started and the launch ends with <see cref="StoppedExitCode"/>. While
+    /// the game runs it is terminated, the launch is finished once and ends with <see cref="StoppedExitCode"/>.
+    /// While finishing the signal changes nothing. A game that survives SIGKILL is still
+    /// <see cref="FailureExitCode"/> with no finish.
+    /// </remarks>
+    public async Task<LaunchResult> RunAsync(LaunchContext context, Func<LaunchPlan> resolvePlan, CancellationToken cancellationToken = default)
     {
         if (_started) throw new InvalidOperationException("A launch session runs once.");
         _started = true;
 
-        var failure = await RunCore(context, resolveSpec, cancellationToken);
+        string? failure;
+        if (_stop is null)
+        {
+            failure = await RunCore(context, resolvePlan, cancellationToken);
+        }
+        else
+        {
+            _stop.Stopping += OnStopping;
+            try
+            {
+                // A signal that came in before we subscribed still counts.
+                if (_stop.Signal is not null) OnStopping(_stop.Signal.Value, _stop.PhaseAtSignal ?? LaunchPhase.Preparing);
+                failure = await RunCore(context, resolvePlan, cancellationToken);
+            }
+            finally
+            {
+                _stop.Stopping -= OnStopping;
+            }
+        }
         if (failure is null) return _result!;
 
         _logger.LogError("{Message}", failure);
@@ -85,7 +142,7 @@ public sealed class LaunchSession
     /// <summary>
     /// Returns the failure message, or null with <see cref="_result"/> set when the game ran to the end.
     /// </summary>
-    private async Task<string?> RunCore(LaunchContext context, Func<GameProcessSpec> resolveSpec, CancellationToken cancellationToken)
+    private async Task<string?> RunCore(LaunchContext context, Func<LaunchPlan> resolvePlan, CancellationToken cancellationToken)
     {
         var game = context.Installation.Game.DisplayName;
 
@@ -114,11 +171,17 @@ public sealed class LaunchSession
             }
         }
 
+        var prepared = new List<ILaunchGate>();
         try
         {
             _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Preparing);
             await _synchronizer.Synchronize(context.LoadoutId);
-            foreach (var gate in _gates) await gate.Prepare(context, cancellationToken);
+            foreach (var gate in _gates)
+            {
+                if (StopRequested) break;
+                await gate.Prepare(context, cancellationToken);
+                prepared.Add(gate);
+            }
         }
         catch (Exception e)
         {
@@ -128,17 +191,37 @@ public sealed class LaunchSession
 
         string? startFailure = null;
         GameProcessResult? exit = null;
-        try
+        if (!StopRequested)
         {
-            var spec = resolveSpec();
-            _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running);
-            using var process = _processFactory.Start(spec, context.Installation);
-            exit = await WaitFor(process, cancellationToken);
+            try
+            {
+                var plan = resolvePlan();
+                LogPlan(plan, game);
+                if (BeginRunning())
+                {
+                    _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running);
+                    using var process = _processFactory.Start(plan.Process, context.Installation);
+                    AttachProcess(process);
+                    try
+                    {
+                        exit = await WaitFor(process, cancellationToken);
+                    }
+                    finally
+                    {
+                        // A terminate already under way must end before the handle is disposed.
+                        if (DetachProcess() is { } terminating) await terminating;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Running {Game} failed", game);
+                startFailure = $"Could not start {game}: {e.Message}";
+            }
         }
-        catch (Exception e)
+        else
         {
-            _logger.LogError(e, "Running {Game} failed", game);
-            startFailure = $"Could not start {game}: {e.Message}";
+            _logger.LogInformation("Not starting {Game}: a stop signal arrived while preparing", game);
         }
 
         if (exit?.KillFailed is { } survivor)
@@ -149,13 +232,131 @@ public sealed class LaunchSession
                    "The loadout is still applied. Stop that process, then launch again.";
         }
 
-        var finishFailure = await Finish(context);
+        var stopped = BeginFinishing();
+        var finishFailure = await Finish(context, prepared);
 
         if (startFailure is not null) return startFailure;
         if (finishFailure is not null) return finishFailure;
 
-        _result = new LaunchResult(exit!.ExitCode, null);
+        _result = new LaunchResult(stopped ? StoppedExitCode : exit!.ExitCode, null);
         return null;
+    }
+
+    private bool StopRequested
+    {
+        get { lock (_stateGate) return _stopRequested; }
+    }
+
+    /// <summary>
+    /// Moves to running unless a stop has been asked for first. Returns false when the game must not start.
+    /// </summary>
+    private bool BeginRunning()
+    {
+        lock (_stateGate)
+        {
+            if (_stopRequested) return false;
+            SetPhase(LaunchPhase.Running);
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Hands the child to the signal path. A stop that arrived between the phase change and the spawn is applied
+    /// here, since there was no child to terminate when it came in.
+    /// </summary>
+    private void AttachProcess(IGameProcess process)
+    {
+        lock (_stateGate)
+        {
+            _process = process;
+            if (_stopRequested) TerminateOnce();
+        }
+    }
+
+    /// <summary>
+    /// Takes the child away from the signal path once its wait is over, so a later signal can't start a terminate
+    /// on a disposed handle. Returns the terminate a signal started, if any.
+    /// </summary>
+    private Task? DetachProcess()
+    {
+        lock (_stateGate)
+        {
+            _process = null;
+            return _terminating;
+        }
+    }
+
+    /// <summary>
+    /// Moves to finishing and reports whether a signal had already decided how this launch ends.
+    /// </summary>
+    private bool BeginFinishing()
+    {
+        lock (_stateGate)
+        {
+            SetPhase(LaunchPhase.Finishing);
+            return _stopRequested;
+        }
+    }
+
+    private void SetPhase(LaunchPhase phase)
+    {
+        _phase = phase;
+        if (_stop is not null) _stop.Phase = phase;
+    }
+
+    private void OnStopping(PosixSignal signal, LaunchPhase signalPhase)
+    {
+        lock (_stateGate)
+        {
+            if (_phase == LaunchPhase.Finishing)
+            {
+                _logger.LogInformation("Ignoring {Signal}: the launch is already finishing", signal);
+                return;
+            }
+
+            _stopRequested = true;
+            if (_phase == LaunchPhase.Running && _process is not null) TerminateOnce();
+        }
+    }
+
+    /// <summary>
+    /// Terminates the child off the calling thread, because the signal thread must not block through the grace
+    /// period. Called with <see cref="_stateGate"/> held, and only the first call does anything.
+    /// </summary>
+    private void TerminateOnce()
+    {
+        if (_terminating is not null || _process is not { } process) return;
+
+        _logger.LogInformation("Stopping process {Pid}", process.Pid);
+        _terminating = Task.Run(() =>
+        {
+            try
+            {
+                process.Terminate();
+            }
+            catch (Exception e)
+            {
+                // The wait still ends when the child does, and a survivor is reported from its result.
+                _logger.LogError(e, "Terminating process {Pid} failed", process.Pid);
+            }
+        });
+    }
+
+    private void LogPlan(LaunchPlan plan, string game)
+    {
+        if (plan.Resolved is { } resolved)
+            _logger.LogInformation("Launch spec for {Game}: exe {Exe}, extra arguments [{ExtraArgs}]", game, resolved.Exe, string.Join(' ', resolved.ExtraArgs));
+        else
+            _logger.LogInformation("Launch spec for {Game}: none resolved by a run tool", game);
+
+        if (plan.Substitution is { } substitution)
+            _logger.LogInformation("Command substitution for {Game}: app id {AppId}, {Outcome}", game, substitution.AppId ?? "none",
+                substitution.Refusal is { } refusal ? $"refused: {refusal}" : $"command [{string.Join(' ', substitution.Argv)}]");
+        else
+            _logger.LogInformation("Command substitution for {Game}: none", game);
+
+        _logger.LogInformation("Starting {Game}: argv [{Argv}], working directory {WorkingDirectory}", game,
+            string.Join(' ', plan.Process.Argv), plan.Process.WorkingDirectory ?? "inherited");
     }
 
     private static async Task<GameProcessResult> WaitFor(IGameProcess process, CancellationToken cancellationToken)
@@ -173,10 +374,11 @@ public sealed class LaunchSession
     }
 
     /// <summary>
-    /// Runs every gate's teardown and then ingests the game folder. A failing gate does not stop the others or
-    /// the ingest, so a bad teardown can't cost the user their game's changes. Returns the first failure.
+    /// Runs the teardown of every gate that was prepared and then ingests the game folder. A failing gate does not
+    /// stop the others or the ingest, so a bad teardown can't cost the user their game's changes. Returns the first
+    /// failure.
     /// </summary>
-    private async Task<string?> Finish(LaunchContext context)
+    private async Task<string?> Finish(LaunchContext context, IReadOnlyList<ILaunchGate> gates)
     {
         string? failure = null;
         void Record(Exception e, string what)
@@ -195,7 +397,7 @@ public sealed class LaunchSession
             Record(e, "recording the launch state");
         }
 
-        foreach (var gate in _gates)
+        foreach (var gate in gates)
         {
             try
             {

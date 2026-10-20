@@ -1,7 +1,8 @@
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using FluentAssertions;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.Games;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
@@ -17,6 +18,7 @@ public class LaunchSessionTests : IDisposable
     private readonly List<string> _events = [];
     private readonly List<LaunchSession> _sessions = [];
     private readonly StringWriter _error = new();
+    private readonly RecordingLogger _log;
     private readonly ActiveLaunchSessions _active = new();
     private readonly FakeSynchronizer _synchronizer;
     private readonly FakeProcessFactory _processes;
@@ -30,8 +32,9 @@ public class LaunchSessionTests : IDisposable
     {
         _installation = Installation();
         _context = new LaunchContext(_installation, LoadoutId.From(1), "My Loadout");
+        _log = new RecordingLogger();
         _synchronizer = new FakeSynchronizer(_events, this);
-        _processes = new FakeProcessFactory(_events, this);
+        _processes = new FakeProcessFactory(_events, this, _log);
         _lockFactory.Create(Arg.Any<string>(), Arg.Any<string>())
             .Returns(call => new InstallationLock(InstallationLock.PathFor(_runtimeDir, call.ArgAt<string>(0), call.ArgAt<string>(1))));
     }
@@ -64,7 +67,7 @@ public class LaunchSessionTests : IDisposable
 
     private LaunchSession NewSession()
     {
-        var session = new LaunchSession(_lockFactory, _active, _synchronizer, _processes, _gates, _notifier, NullLogger<LaunchSession>.Instance, _error);
+        var session = new LaunchSession(_lockFactory, _active, _synchronizer, _processes, _gates, _notifier, _log, _error);
         _sessions.Add(session);
         return session;
     }
@@ -366,7 +369,7 @@ public class LaunchSessionTests : IDisposable
     {
         var gate = AddGate("a");
 
-        var result = await NewSession().RunAsync(_context, () => throw new InvalidOperationException("no exe"));
+        var result = await NewSession().RunAsync(_context, GameProcessSpec () => throw new InvalidOperationException("no exe"));
 
         result.ExitCode.Should().Be(125);
         result.Message.Should().Contain("no exe");
@@ -405,6 +408,42 @@ public class LaunchSessionTests : IDisposable
 
         _error.ToString().Should().Be("Nope." + Environment.NewLine);
         _notifier.Received(1).Notify(Arg.Any<string>(), "Nope.");
+    }
+
+    [Fact]
+    public async Task TheResolvedSpec_TheSubstitution_AndTheFinalArgv_AreLoggedBeforeTheGameStarts()
+    {
+        var exe = FileSystem.Shared.FromUnsanitizedFullPath(Path.Combine(_runtimeDir, "loader.exe"));
+        var spec = new LaunchSpec(exe, ["-modded"]);
+        var substitution = new ExeSubstitution.Result(["proton", "run", exe.GetFullPath(), "-modded"], null, "1091500");
+
+        await NewSession().RunAsync(_context, () => new LaunchPlan(new GameProcessSpec(["proton", "run", exe.GetFullPath(), "-modded"]), spec, substitution));
+
+        var before = _log.Entries.Take(_processes.LogCountAtStart).ToList();
+        before.Should().Contain(e => e.Contains("Launch spec") && e.Contains("loader.exe") && e.Contains("-modded"));
+        before.Should().Contain(e => e.Contains("Command substitution") && e.Contains("1091500"));
+        before.Should().Contain(e => e.Contains("Starting Test Game") && e.Contains("proton run") && e.Contains("loader.exe -modded"));
+    }
+
+    [Fact]
+    public async Task ARefusedSubstitution_IsLoggedWithItsReason()
+    {
+        var substitution = new ExeSubstitution.Result([], "no exe slot in the command", null);
+
+        await NewSession().RunAsync(_context, () => new LaunchPlan(new GameProcessSpec(["game.exe"]), null, substitution));
+
+        _log.Entries.Should().Contain(e => e.Contains("refused: no exe slot in the command"));
+    }
+
+    private sealed class RecordingLogger : ILogger<LaunchSession>
+    {
+        public List<string> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Entries.Add(formatter(state, exception));
     }
 
     private sealed class FakeSynchronizer(List<string> events, LaunchSessionTests test) : ILaunchSynchronizer
@@ -460,8 +499,9 @@ public class LaunchSessionTests : IDisposable
         }
     }
 
-    private sealed class FakeProcessFactory(List<string> events, LaunchSessionTests test) : IGameProcessFactory
+    private sealed class FakeProcessFactory(List<string> events, LaunchSessionTests test, RecordingLogger log) : IGameProcessFactory
     {
+        public int LogCountAtStart { get; private set; }
         public GameProcessResult Result { get; set; } = new(0, null);
         public Exception? StartFailure { get; set; }
         public Action? OnStart { get; set; }
@@ -473,6 +513,7 @@ public class LaunchSessionTests : IDisposable
             if (StartFailure is not null) throw StartFailure;
             events.Add("start");
             Started = true;
+            LogCountAtStart = log.Entries.Count;
             PhaseAtStart = test.Phase();
             OnStart?.Invoke();
             return new FakeProcess(events, Result);
