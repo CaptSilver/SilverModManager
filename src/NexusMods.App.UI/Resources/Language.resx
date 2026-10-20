@@ -991,26 +991,14 @@ To apply changes or launch the game again, please close the game first.</value>
 
 
     <data name="UpgradeToPremiumView_Title" xml:space="preserve">
-        <value>Go Premium for one-click collection downloads</value>
+        <value>Collections download manually on a free account</value>
     </data>
     <data name="UpgradeToPremiumView_Desc1" xml:space="preserve">
-        <value>Download this entire collection automatically, at full speed, without leaving the app.</value>
+        <value>Nexus only allows automatic downloads on a Premium account. On a free account each file opens its page on the Nexus Mods website, where you start the download yourself.</value>
     </data>
 
     <data name="UpgradeToPremiumView_Desc2" xml:space="preserve">
-        <value>With Premium you also get:</value>
-    </data>
-    <data name="UpgradeToPremiumView_Bullet0" xml:space="preserve">
-        <value>Seamless in-app mod updates, no websites or manual downloads.</value>
-    </data>
-    <data name="UpgradeToPremiumView_Bullet1" xml:space="preserve">
-        <value>Uncapped downloads speeds</value>
-    </data>
-    <data name="UpgradeToPremiumView_Bullet2" xml:space="preserve">
-        <value>Ad-free for life, even if you cancel later</value>
-    </data>
-    <data name="UpgradeToPremiumView_Bullet3" xml:space="preserve">
-        <value>Support the creators - Premium helps reward mod authors</value>
+        <value>On each file's page, choose Slow download and the site hands the file straight to the app.</value>
     </data>
 
     <data name="UpgradeToPremiumView_CancelButton" xml:space="preserve">
@@ -1104,23 +1092,19 @@ Keep the downloaded files in your library in case you want to retry the installa
         <value>Update mod and replace the old version</value>
     </data>
     <data name="PremiumDialog_UpdateTitle" xml:space="preserve">
-        <value>Go Premium for one-click mod updates</value>
+        <value>Mod updates are manual on a free account</value>
     </data>
     <data name="PremiumDialog_UpdateDescription" xml:space="preserve">
-        <value>No browser, no manual downloads. Premium users also get:
-
-• Download entire collections with one click
-• Uncapped download speeds
-• No Ads for life, even if you unsubscribe after 1 month!</value>
+        <value>On a free account each update opens its page on the Nexus Mods website, where you start the download yourself.</value>
     </data>
     <data name="PremiumDialog_UpdateHeading" xml:space="preserve">
-        <value>Update all your mods, or individual mods, in one click.</value>
+        <value>Nexus only allows one-click updates on a Premium account.</value>
     </data>
     <data name="PremiumDialog_UpdateManuallyButton" xml:space="preserve">
         <value>Update mods manually</value>
     </data>
     <data name="DialogPremiumCollection_DialogTitle" xml:space="preserve">
-        <value>Unlock 1-click collections with Premium</value>
+        <value>Download this collection manually</value>
     </data>
     <data name="DialogPremiumCollection_UpgradeToPremium" xml:space="preserve">
         <value>Unlock Auto-download</value>

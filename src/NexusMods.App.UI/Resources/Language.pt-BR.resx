@@ -1017,24 +1017,6 @@ Para aplicar mudanças ou iniciar o jogo novamente, feche o jogo primeiro.</valu
   <data name="ManageGameWarning_Continue" xml:space="preserve">
     <value>Continuar</value>
   </data>
-  <data name="UpgradeToPremiumView_Title" xml:space="preserve">
-    <value>Torne-se Premium para downloads de coleções com um clique</value>
-  </data>
-  <data name="UpgradeToPremiumView_Desc1" xml:space="preserve">
-    <value>Baixe uma coleção completa de mods em alta velocidade com um clique, sem sair do aplicativo. Usuários gratuitos podem instalar mods individualmente da lista.</value>
-  </data>
-  <data name="UpgradeToPremiumView_Desc2" xml:space="preserve">
-    <value>Usuários Premium também ganham:</value>
-  </data>
-  <data name="UpgradeToPremiumView_Bullet1" xml:space="preserve">
-    <value>Velocidades de download ilimitadas</value>
-  </data>
-  <data name="UpgradeToPremiumView_Bullet2" xml:space="preserve">
-    <value>Sem anúncios para sempre, mesmo se você cancelar!</value>
-  </data>
-  <data name="UpgradeToPremiumView_Bullet3" xml:space="preserve">
-    <value>Apoie os criadores - Premium ajuda a recompensar os autores de mods</value>
-  </data>
   <data name="UpgradeToPremiumView_CancelButton" xml:space="preserve">
     <value>Cancelar</value>
   </data>
@@ -1118,15 +1100,6 @@ Para aplicar mudanças ou iniciar o jogo novamente, feche o jogo primeiro.</valu
   </data>
   <data name="Library_UpdateModAndReplace_ToolTip" xml:space="preserve">
     <value>Atualizar mod e substituir a versão antiga</value>
-  </data>
-  <data name="PremiumDialog_UpdateTitle" xml:space="preserve">
-    <value>Torne-se Premium para atualizações de mods com um clique</value>
-  </data>
-  <data name="PremiumDialog_UpdateDescription" xml:space="preserve">
-    <value>Sem navegador, sem downloads manuais. Usuários Premium também ganham:</value>
-  </data>
-  <data name="PremiumDialog_UpdateHeading" xml:space="preserve">
-    <value>Atualize todos os seus mods, ou mods individuais, com um clique.</value>
   </data>
   <data name="PremiumDialog_UpdateManuallyButton" xml:space="preserve">
     <value>Atualizar mods manualmente</value>

@@ -21,6 +21,7 @@ public class RemovedAssetHashesTests
         ("f75653f0bf866419f32d11ebf47ab441d4a23039110b3bffd7eca140326dd2dc", "Nexus logo window icon, src/NexusMods.App.UI/Assets/nexus-logo.png"),
         ("b1f853bd621a61e9e348554efe43a0106ef43da7403b079ebf5ee2cbe7d5d153", "Nexus package icon, Nexus-Icon.png"),
         ("93814f936a3c5dc6e1a0cb0f8a94456e27db1de02ed91fd91d433d8a9450cc44", "Nexus IDE project icon, .idea/.idea.NexusMods.App/.idea/icon.svg"),
+        ("3ae1df63cf2b5e1cf7a9da5560fa45bbe07855de21370844adbd7a8dd5d51a25", "Nexus Premium pictogram, src/NexusMods.App.UI/Assets/Pictograms/premium.svg"),
     ];
 
     [Fact]

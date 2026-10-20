@@ -206,7 +206,7 @@
                                             </controls:StandardButton>
                                             <controls:Toolbar>
                                                 <ItemsControl Classes="GetPremiumToolbarBanner">
-                                                    <TextBlock Text="Tired of waiting? Increase speed with Premium" />
+                                                    <TextBlock Text="Sample toolbar message" />
                                                     <controls:StandardButton Text="Get Premium" ShowIcon="Left"
                                                                              LeftIcon="{x:Static icons:IconValues.Premium}"
                                                                              Classes="Premium"

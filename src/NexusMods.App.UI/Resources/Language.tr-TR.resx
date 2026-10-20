@@ -920,24 +920,6 @@ Değişiklikleri uygulamak veya oyunu yeniden başlatmak için lütfen önce oyu
     <data name="ManageGameWarning_Continue" xml:space="preserve">
         <value>Devam et</value>
     </data>
-    <data name="UpgradeToPremiumView_Title" xml:space="preserve">
-        <value>Tek tıkla koleksiyon indirmek için Premium'a geçin</value>
-    </data>
-    <data name="UpgradeToPremiumView_Desc1" xml:space="preserve">
-        <value>Uygulamadan çıkmadan tek tıkla tüm mod koleksiyonunu tam hızda indir. Ücretsiz kullanıcılar modları listeden tek tek kurabilir.</value>
-    </data>
-    <data name="UpgradeToPremiumView_Desc2" xml:space="preserve">
-        <value>Premium kullanıcılar ayrıca şunlara sahip olur:</value>
-    </data>
-    <data name="UpgradeToPremiumView_Bullet1" xml:space="preserve">
-        <value>Sınırsız indirme hızı</value>
-    </data>
-    <data name="UpgradeToPremiumView_Bullet2" xml:space="preserve">
-        <value>İptal etseniz bile, ömür boyu reklam yok!</value>
-    </data>
-    <data name="UpgradeToPremiumView_Bullet3" xml:space="preserve">
-        <value>Yapımcıları destekleyin - Premium mod yazarlarını ödüllendirmeye yardımcı olur</value>
-    </data>
     <data name="UpgradeToPremiumView_CancelButton" xml:space="preserve">
         <value>İptal</value>
     </data>
@@ -1027,19 +1009,6 @@ Eğer daha sonra tekrar denemek isterseniz, indirilen dosyalar kütüphanenizde 
     </data>
     <data name="Library_UpdateModAndReplace_ToolTip" xml:space="preserve">
         <value>Modu güncelle ve eski sürümü değiştir</value>
-    </data>
-    <data name="PremiumDialog_UpdateTitle" xml:space="preserve">
-        <value>Tek tıkla mod güncellemeleri için Premium'a geçin</value>
-    </data>
-    <data name="PremiumDialog_UpdateDescription" xml:space="preserve">
-        <value>Tarayıcıya ihtiyaç yok, manuel indirmeye ihtiyaç yok. Premium kullanıcıları ayrıca şunları alır:
-
-• Koleksiyonları tek tıkla indirme
-• Sınırsız indirme hızı
-• İptal etseniz bile ömür boyu reklam yok!</value>
-    </data>
-    <data name="PremiumDialog_UpdateHeading" xml:space="preserve">
-        <value>Modları topluca veya ayrı ayrı tek tıkla güncelle.</value>
     </data>
     <data name="PremiumDialog_UpdateManuallyButton" xml:space="preserve">
         <value>Modları manuel güncelle</value>

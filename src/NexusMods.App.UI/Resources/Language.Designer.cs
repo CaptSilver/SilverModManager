@@ -774,7 +774,7 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Unlock 1-click collections with Premium.
+        ///   Looks up a localized string similar to Download this collection manually.
         /// </summary>
         public static string DialogPremiumCollection_DialogTitle {
             get {
@@ -3121,11 +3121,7 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to No browser, no manual downloads. Premium users also get:
-        ///
-        ///• Download entire collections with one click
-        ///• Uncapped download speeds
-        ///• No Ads for life, even if you unsubscribe after 1 month!.
+        ///   Looks up a localized string similar to On a free account each update opens its page on the Nexus Mods website, where you start the download yourself..
         /// </summary>
         public static string PremiumDialog_UpdateDescription {
             get {
@@ -3134,7 +3130,7 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Update all your mods, or individual mods, in one click..
+        ///   Looks up a localized string similar to Nexus only allows one-click updates on a Premium account..
         /// </summary>
         public static string PremiumDialog_UpdateHeading {
             get {
@@ -3152,7 +3148,7 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Go Premium for one-click mod updates.
+        ///   Looks up a localized string similar to Mod updates are manual on a free account.
         /// </summary>
         public static string PremiumDialog_UpdateTitle {
             get {
@@ -3692,42 +3688,6 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Seamless in-app mod updates, no websites or manual downloads..
-        /// </summary>
-        public static string UpgradeToPremiumView_Bullet0 {
-            get {
-                return ResourceManager.GetString("UpgradeToPremiumView_Bullet0", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Uncapped downloads speeds.
-        /// </summary>
-        public static string UpgradeToPremiumView_Bullet1 {
-            get {
-                return ResourceManager.GetString("UpgradeToPremiumView_Bullet1", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Ad-free for life, even if you cancel later.
-        /// </summary>
-        public static string UpgradeToPremiumView_Bullet2 {
-            get {
-                return ResourceManager.GetString("UpgradeToPremiumView_Bullet2", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Support the creators - Premium helps reward mod authors.
-        /// </summary>
-        public static string UpgradeToPremiumView_Bullet3 {
-            get {
-                return ResourceManager.GetString("UpgradeToPremiumView_Bullet3", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Cancel.
         /// </summary>
         public static string UpgradeToPremiumView_CancelButton {
@@ -3737,7 +3697,7 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Download this entire collection automatically, at full speed, without leaving the app..
+        ///   Looks up a localized string similar to Nexus only allows automatic downloads on a Premium account. On a free account each file opens its page on the Nexus Mods website, where you start the download yourself..
         /// </summary>
         public static string UpgradeToPremiumView_Desc1 {
             get {
@@ -3746,7 +3706,7 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to With Premium you also get:.
+        ///   Looks up a localized string similar to On each file's page, choose Slow download and the site hands the file straight to the app..
         /// </summary>
         public static string UpgradeToPremiumView_Desc2 {
             get {
@@ -3764,7 +3724,7 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Go Premium for one-click collection downloads.
+        ///   Looks up a localized string similar to Collections download manually on a free account.
         /// </summary>
         public static string UpgradeToPremiumView_Title {
             get {

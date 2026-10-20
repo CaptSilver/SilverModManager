@@ -1195,29 +1195,8 @@
     </data>
 
 
-    <data name="UpgradeToPremiumView_Title" xml:space="preserve">
-        <value
-        >Перейдіть на Преміум для завантаження колекцій одним кліком</value>
-    </data>
-    <data name="UpgradeToPremiumView_Desc1" xml:space="preserve">
-        <value
-        >Завантажуйте цілу колекцію модів на повній швидкості одним кліком, не виходячи з програми. Безкоштовні користувачі можуть встановлювати моди індивідуально зі списку.</value>
-    </data>
 
-    <data name="UpgradeToPremiumView_Desc2" xml:space="preserve">
-        <value>Преміум користувачі також отримують:</value>
-    </data>
 
-    <data name="UpgradeToPremiumView_Bullet1" xml:space="preserve">
-        <value>Необмежена швидкість завантаження</value>
-    </data>
-    <data name="UpgradeToPremiumView_Bullet2" xml:space="preserve">
-        <value>Без реклами назавжди, навіть якщо ви скасуєте підписку!</value>
-    </data>
-    <data name="UpgradeToPremiumView_Bullet3" xml:space="preserve">
-        <value
-        >Підтримка творців - Преміум допомагає винагороджувати авторів модів</value>
-    </data>
 
     <data name="UpgradeToPremiumView_CancelButton" xml:space="preserve">
         <value>Скасувати</value>

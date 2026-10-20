@@ -619,11 +619,8 @@ public static class IconValues
         new Rect(0, 0, 98, 96 )
     ));
     
-    // Premium icon
-    public static readonly IconValue Premium = new SimpleVectorIcon(new SimpleVectorIconImage(
-            "M7.99998 14L1.33331 6L3.33331 2H12.6666L14.6666 6L7.99998 14ZM6.41665 5.33333H9.58331L8.58331 3.33333H7.41665L6.41665 5.33333ZM7.33331 11.1167V6.66667H3.63331L7.33331 11.1167ZM8.66665 11.1167L12.3666 6.66667H8.66665V11.1167ZM11.0666 5.33333H12.8333L11.8333 3.33333H10.0666L11.0666 5.33333ZM3.16665 5.33333H4.93331L5.93331 3.33333H4.16665L3.16665 5.33333Z",
-            new Rect(0, 0, 16, 16 )
-    ));
+    // Neutral star; the paid-tier role is carried by the Premium style class colour, not by a mark
+    public static readonly IconValue Premium = new ProjektankerIcon("mdi-star");
     
     
     // Toggle On icon
@@ -727,9 +724,9 @@ public static class IconValues
     public static readonly IconValue PictogramUpload = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/upload.svg");
     
     /// <summary>
-    /// Brand pictogram for Library
+    /// Pictogram for the dialogs that explain free-account download limits
     /// </summary>
-    public static readonly IconValue PictogramPremium = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/premium.svg");
+    public static readonly IconValue PictogramPremium = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/download.svg");
 
     /// <summary>
     /// Brand pictogram for Success

@@ -993,24 +993,6 @@
   <data name="ManageGameWarning_Continue" xml:space="preserve">
     <value>Продолжить</value>
   </data>
-  <data name="UpgradeToPremiumView_Title" xml:space="preserve">
-    <value>Перейдите на Премиум для загрузки коллекций одним кликом</value>
-  </data>
-  <data name="UpgradeToPremiumView_Desc1" xml:space="preserve">
-    <value>Загружайте всю коллекцию модов на полной скорости одним кликом, не выходя из приложения. Бесплатные пользователи могут устанавливать моды по отдельности из списка.</value>
-  </data>
-  <data name="UpgradeToPremiumView_Desc2" xml:space="preserve">
-    <value>Премиум-пользователи также получают:</value>
-  </data>
-  <data name="UpgradeToPremiumView_Bullet1" xml:space="preserve">
-    <value>Неограниченная скорость загрузки</value>
-  </data>
-  <data name="UpgradeToPremiumView_Bullet2" xml:space="preserve">
-    <value>Отсутствие рекламы навсегда, даже если вы отмените подписку!</value>
-  </data>
-  <data name="UpgradeToPremiumView_Bullet3" xml:space="preserve">
-    <value>Поддержка авторов - Премиум помогает вознаграждать авторов модов</value>
-  </data>
   <data name="UpgradeToPremiumView_CancelButton" xml:space="preserve">
     <value>Отмена</value>
   </data>

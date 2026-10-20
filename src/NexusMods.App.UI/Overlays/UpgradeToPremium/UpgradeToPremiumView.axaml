@@ -31,18 +31,6 @@
                 <TextBlock x:Name="MessageTextBlock2" TextWrapping="WrapWithOverflow" 
                            Theme="{StaticResource BodyMDSemiTheme}"
                            Text="{x:Static resources:Language.UpgradeToPremiumView_Desc2}"/>
-                
-                <Grid ColumnDefinitions="20, *" RowDefinitions="Auto,10,Auto,10,Auto">
-                    <Ellipse Grid.Column="0" Grid.Row="0" Fill="{StaticResource NeutralModerateBrush}" Width="4" Height="4" />
-                    <TextBlock Grid.Column="1" Grid.Row="0" TextWrapping="WrapWithOverflow" 
-                               Text="{x:Static resources:Language.UpgradeToPremiumView_Bullet1}" />
-                    <Ellipse Grid.Column="0" Grid.Row="2"  Fill="{StaticResource NeutralModerateBrush}" Width="4" Height="4" />
-                    <TextBlock Grid.Column="1" Grid.Row="2" TextWrapping="WrapWithOverflow" 
-                               Text="{x:Static resources:Language.UpgradeToPremiumView_Bullet2}" />
-                    <Ellipse Grid.Column="0" Grid.Row="4"  Fill="{StaticResource NeutralModerateBrush}" Width="4" Height="4" />
-                    <TextBlock Grid.Column="1" Grid.Row="4" TextWrapping="WrapWithOverflow" 
-                               Text="{x:Static resources:Language.UpgradeToPremiumView_Bullet3}" />
-                </Grid>
             </StackPanel>
             
         </base:MessageBoxBackground.TopContent>
