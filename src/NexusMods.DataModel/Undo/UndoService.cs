@@ -2,6 +2,8 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.HyperDuck;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
 using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.DataModel.Undo;
@@ -94,7 +96,34 @@ public class UndoService
                 _logger.LogError("Entity {Entity} still differs from the revision on attribute {Attribute} after the revert", entity, attribute);
         }
 
-        return new RevertResult([], residual);
+        var dangling = DanglingReferencesAsserted(commitResult, owned);
+        foreach (var (entity, attribute, target) in dangling)
+            _logger.LogWarning("Reverting {Loadout} restored a reference from {Entity} ({Attribute}) to {Target}, which no longer exists", loadoutId, entity, _conn.AttributeCache.GetSymbol(attribute), target);
+
+        return new RevertResult(dangling, residual);
+    }
+
+    /// <summary>
+    /// The references the revert transaction asserted on owned entities whose target is neither owned nor
+    /// present any more. Reading them off the transaction's own datoms keeps references that were already
+    /// dangling before the revert out of the list.
+    /// </summary>
+    private static List<(EntityId Entity, AttributeId Attribute, EntityId Target)> DanglingReferencesAsserted(ICommitResult commitResult, HashSet<EntityId> owned)
+    {
+        var db = commitResult.Db;
+        var dangling = new List<(EntityId, AttributeId, EntityId)>();
+        foreach (var datom in db.Datoms(commitResult.NewTx))
+        {
+            if (datom.IsRetract || datom.Prefix.ValueTag != ValueTag.Reference || !owned.Contains(datom.E))
+                continue;
+
+            var target = EntityIdSerializer.Read(datom.ValueSpan);
+            if (owned.Contains(target) || db.Datoms(target).Count > 0)
+                continue;
+
+            dangling.Add((datom.E, datom.A, target));
+        }
+        return dangling;
     }
 
     private HashSet<EntityId> OwnedBy(IDb db, EntityId loadoutId)

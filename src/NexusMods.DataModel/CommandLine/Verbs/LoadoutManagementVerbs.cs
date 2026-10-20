@@ -276,15 +276,21 @@ public static class LoadoutManagementVerbs
         [Injected] UndoService undoService,
         [Injected] CancellationToken token)
     {
-        
         var revisions = undoService.RevisionsFor(loadout);
-        
-        var revision = revisions.OrderBy(r => r.Revision.Timestamp)
-            .Select((r, idx) => (Idx: idx, r.Revision))
-            .FirstOrDefault(row => row.Idx == revisionNumber);
-        
-        await undoService.RevertTo(revision.Revision);
-        
-        return 0;
+        if (!RevisionSelection.TryGet(revisions, revisionNumber, out var revision))
+        {
+            await renderer.Error("Revision {0} not found, this loadout has revisions 0 to {1}", revisionNumber, revisions.Count - 1);
+            return 1;
+        }
+
+        var result = await undoService.RevertTo(revision);
+
+        foreach (var (entity, attribute, target) in result.DanglingReferences)
+            await renderer.Text("Restored {0} refers to {1} through {2}, which no longer exists", entity, target, connection.AttributeCache.GetSymbol(attribute));
+
+        foreach (var (entity, attribute) in result.Residual)
+            await renderer.Error("{0} still differs from the revision on {1}", entity, connection.AttributeCache.GetSymbol(attribute));
+
+        return result.Residual.Count == 0 ? 0 : 1;
     }
 }

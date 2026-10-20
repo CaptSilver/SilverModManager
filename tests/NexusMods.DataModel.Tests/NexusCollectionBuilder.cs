@@ -173,9 +173,10 @@ public abstract class ANexusCollectionTest<TTest>(ITestOutputHelper helper) : AC
     }
 
     /// <summary>
-    /// Adds a group holding one item linked to an existing library item.
+    /// Adds a group holding one item linked to an existing library item, with a file in the group for each
+    /// entry of <paramref name="files"/> (game-relative path and content).
     /// </summary>
-    protected async Task<LoadoutItemGroupId> AddLinkedItem(LoadoutId loadout, string name, EntityId libraryItem)
+    protected async Task<LoadoutItemGroupId> AddLinkedItem(LoadoutId loadout, string name, EntityId libraryItem, params (string Path, string Content)[] files)
     {
         using var tx = Connection.BeginTransaction();
         var group = new LoadoutItemGroup.New(tx, out var id)
@@ -188,6 +189,8 @@ public abstract class ANexusCollectionTest<TTest>(ITestOutputHelper helper) : AC
             LibraryItemId = libraryItem,
             LoadoutItemGroup = group,
         };
+        foreach (var (path, content) in files)
+            AddFile(tx, loadout, LoadoutItemGroupId.From(id.Value), new GamePath(LocationId.Game, path), content);
         var result = await tx.Commit();
         return LoadoutItemGroupId.From(result[id].Value);
     }
