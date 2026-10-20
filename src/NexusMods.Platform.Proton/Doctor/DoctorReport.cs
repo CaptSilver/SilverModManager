@@ -166,7 +166,10 @@ public sealed record DoctorDeploymentRoot(string Root, string Backend, bool Reco
         return roots.Concat(implied).ToArray();
     }
 
-    private static string Describe(GamePath root) => root.Path == RelativePath.Empty
+    /// <summary>
+    /// A root as <c>Location</c> or <c>Location/path</c>.
+    /// </summary>
+    internal static string Describe(GamePath root) => root.Path == RelativePath.Empty
         ? root.LocationId.ToString()
         : $"{root.LocationId}/{root.Path}";
 }

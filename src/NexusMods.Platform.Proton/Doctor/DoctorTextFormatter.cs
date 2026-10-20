@@ -21,7 +21,7 @@ public static class DoctorTextFormatter
             if (install.Proton is { } proton) lines.AddRange(Proton(proton));
             lines.Add($"  Runner: {Runner(install.Runner)}");
             if (install.LaunchOptions is { } options) lines.Add($"  Launch options: {LaunchOptions(options)}");
-            if (install.Deployment.Count > 0) lines.Add($"  Deployment: {string.Join(", ", install.Deployment.Select(Deployment))}");
+            if (install.Deployment.Count > 0) lines.Add($"  Deployment: {string.Join(", ", install.Deployment.Select(DeploymentRoot))}");
             lines.Add($"  Launch: {Lock(install.Lock)}");
         }
         return lines;
@@ -54,7 +54,10 @@ public static class DoctorTextFormatter
         _ => $"launcher span for loadout '{options.Loadout}': {options.Line}",
     };
 
-    private static string Deployment(DoctorDeploymentRoot root)
+    /// <summary>
+    /// One root as the report shows it: <c>Game -> hardlink (chosen)</c>.
+    /// </summary>
+    public static string DeploymentRoot(DoctorDeploymentRoot root)
         => $"{root.Root} -> {root.Backend}{(root.Recorded ? "" : " (default)")}{(root.Chosen ? " (chosen)" : "")}"
          + $"{(root.Available is null ? "" : $", {root.Available} available")}{(root.Reason is null ? "" : $"; reason: {root.Reason}")}"
          + $"{(root.Registered ? "" : " (no such backend)")}";

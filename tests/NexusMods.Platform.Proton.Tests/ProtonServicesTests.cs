@@ -9,6 +9,7 @@ using NexusMods.Paths;
 using NexusMods.Platform.Proton.Protontricks;
 using NexusMods.Platform.Proton.ToolRunner;
 using NexusMods.Platform.Proton.UserTools;
+using NexusMods.Platform.Proton.Verbs;
 using NexusMods.Sdk;
 using NSubstitute;
 using NexusMods.Sdk.Games;
@@ -29,6 +30,8 @@ public class ProtonServicesTests
         services.AddSingleton(Substitute.For<IGameRegistry>());
         services.AddSingleton(Substitute.For<IDeploymentPlanStore>());
         services.AddSingleton(Substitute.For<IDeploymentBackendSelector>());
+        services.AddSingleton(Substitute.For<ISynchronizerService>());
+        services.AddSingleton(Substitute.For<ILooseStagingStore>());
         services.AddSingleton<DeploymentLaunchRoots>();
         services.AddSingleton(Substitute.For<IGameLaunchSession>());
         services.AddSingleton(Substitute.For<ISettingsManager>());
@@ -43,6 +46,7 @@ public class ProtonServicesTests
         provider.GetRequiredService<IProtonResolver>().Should().BeOfType<ProtonResolver>();
         provider.GetRequiredService<IPrefixResolver>().Should().BeOfType<PrefixResolver>();
         provider.GetRequiredService<ISupportBundleWriter>().Should().BeOfType<SupportBundleWriter>();
+        provider.GetRequiredService<DeploymentCommand>().Should().NotBeNull();
         provider.GetRequiredService<IToolRunner>().Should().BeOfType<ToolRunner.ToolRunner>();
         provider.GetServices<IToolProvider>().Should().ContainSingle().Which.Should().BeOfType<UserToolProvider>();
         provider.GetServices<IToolRunStrategy>().Select(s => s.Kind).Should().BeEquivalentTo(

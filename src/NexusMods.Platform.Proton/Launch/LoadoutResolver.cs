@@ -100,15 +100,40 @@ public sealed class LoadoutResolver(IConnection connection, IGameRegistry regist
 
         if (args.Game is not { } game) return installations;
 
-        var wantedGame = game.Trim();
-        var byGame = installations
-            .Where(i => IsSteamApp(i, wantedGame) || string.Equals(i.Game.DisplayName, wantedGame, StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-        if (byGame.Length > 0) return byGame;
+        var byGame = ByGame(installations, game);
+        if (byGame.Count > 0) return byGame;
 
-        error = $"No installed game matches --game '{game}'. Use a Steam app id or the game's name.";
+        error = NoGameMatch(game);
         return null;
     }
+
+    /// <summary>
+    /// The one installation <paramref name="game"/> names, by Steam app id or display name. Nothing is guessed
+    /// when it names none or several.
+    /// </summary>
+    public GameInstallation? ResolveGame(string game, out string? error)
+    {
+        var matches = ByGame(registry.LocateGameInstallations(), game);
+        error = matches.Count switch
+        {
+            1 => null,
+            0 => NoGameMatch(game),
+            _ => $"More than one installed game matches --game '{game}': "
+                 + string.Join(", ", matches.Select(m => $"{m.Game.DisplayName} ({m.LocatorResult.Store.Value.ToLowerInvariant()} {m.LocatorResult.StoreIdentifier})"))
+                 + ". Use the Steam app id.",
+        };
+        return error is null ? matches[0] : null;
+    }
+
+    private static IReadOnlyList<GameInstallation> ByGame(IReadOnlyList<GameInstallation> installations, string game)
+    {
+        var wanted = game.Trim();
+        return installations
+            .Where(i => IsSteamApp(i, wanted) || string.Equals(i.Game.DisplayName, wanted, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+    }
+
+    private static string NoGameMatch(string game) => $"No installed game matches --game '{game}'. Use a Steam app id or the game's name.";
 
     private static bool IsSteamApp(GameInstallation installation, string appId)
         => installation.LocatorResult.Store == GameStore.Steam && installation.LocatorResult.StoreIdentifier == appId;

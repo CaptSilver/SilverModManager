@@ -42,7 +42,7 @@ public static class Services
         services.TryAddSingleton<LocalConfigVdfWriter>();
         services.AddSingleton<IManagedInstallations, LoadoutManagedInstallations>();
         services.AddSingleton<ISupportBundleWriter, SupportBundleWriter>();
-        return services.AddDoctorVerbs().AddSelftestVerbs();
+        return services.AddDoctorVerbs().AddDeploymentVerbs().AddSelftestVerbs();
     }
 
     /// <summary>
