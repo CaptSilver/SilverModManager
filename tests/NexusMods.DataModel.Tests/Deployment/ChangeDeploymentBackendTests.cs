@@ -127,4 +127,31 @@ public class ChangeDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGa
         root.Backend.Should().Be(DeploymentBackendId.Copy);
         root.Chosen.Should().BeFalse();
     }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task ChoosingTheBackendARootAlreadyUsesMarksTheRowWithoutRedeploying()
+    {
+        await ApplyLoadoutWithFile();
+        var current = Plans.Load(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation).Id).BackendFor(GameRoot);
+
+        var changed = await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, current, chosen: true);
+
+        changed.Should().BeFalse("nothing is deployed differently");
+        Recording.Calls.Should().BeEmpty();
+        var root = Plans.Load(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation).Id).Roots.Single(r => r.Root == GameRoot);
+        root.Backend.Should().Be(current);
+        root.Chosen.Should().BeTrue("a person's pick keeps the selection chain from moving the root at the next apply");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task AChainDrivenRequestForTheCurrentBackendDoesNotMarkTheRow()
+    {
+        await ApplyLoadoutWithFile();
+        var current = Plans.Load(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation).Id).BackendFor(GameRoot);
+
+        await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, current, chosen: false);
+
+        Plans.Load(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation).Id).Roots
+            .Single(r => r.Root == GameRoot).Chosen.Should().BeFalse();
+    }
 }

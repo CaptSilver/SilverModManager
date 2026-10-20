@@ -200,7 +200,10 @@ public class SynchronizerService : ISynchronizerService
     /// Resets the game with the backends it is deployed with, records the new backends and, when asked, applies
     /// the last applied loadout again. The caller holds the semaphore and the game's state lock.
     /// </summary>
-    /// <returns>False when every root already uses its backend and nothing was done.</returns>
+    /// <returns>
+    /// False when every root already uses its backend, so nothing was redeployed. A person's pick of the backend a
+    /// root already has is still recorded as chosen.
+    /// </returns>
     private async Task<bool> MoveRoots(GameInstallation installation, IReadOnlyList<RootMove> requested, bool reapplyLastLoadout)
     {
         var metadata = _gameRegistry.ForceGetMetadata(installation);
@@ -208,7 +211,17 @@ public class SynchronizerService : ISynchronizerService
         var plans = _serviceProvider.GetRequiredService<IDeploymentPlanStore>();
         var plan = plans.Load(_conn.Db, metadataId);
         var moves = requested.Where(m => plan.BackendFor(m.Root) != m.Backend).ToArray();
-        if (moves.Length == 0) return false;
+
+        // Picking the backend a root already has deploys nothing differently, but the pick must still stick:
+        // without the mark the next apply would hand the root back to the selection chain.
+        var pins = requested
+            .Where(m => m.Chosen && plan.BackendFor(m.Root) == m.Backend && !plan.Roots.Any(r => r.Root == m.Root && r.Chosen))
+            .ToArray();
+        if (moves.Length == 0)
+        {
+            if (pins.Length > 0) await WriteRows(plans, metadataId, pins);
+            return false;
+        }
 
         // The reset below retracts LastSyncedLoadout, so it has to be read first.
         var hadLoadout = GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastLoadoutId);
@@ -235,14 +248,7 @@ public class SynchronizerService : ISynchronizerService
             }
         }
 
-        using (var tx = _conn.BeginTransaction())
-        {
-            foreach (var move in moves)
-            {
-                plans.Write(tx, _conn.Db, metadataId, move.Root, move.Backend, move.Chosen);
-            }
-            await tx.Commit();
-        }
+        await WriteRows(plans, metadataId, [..moves, ..pins]);
 
         if (hadLoadout && reapplyLastLoadout)
         {
@@ -253,6 +259,16 @@ public class SynchronizerService : ISynchronizerService
         }
 
         return true;
+    }
+
+    private async Task WriteRows(IDeploymentPlanStore plans, GameInstallMetadataId metadataId, IEnumerable<RootMove> rows)
+    {
+        using var tx = _conn.BeginTransaction();
+        foreach (var row in rows)
+        {
+            plans.Write(tx, _conn.Db, metadataId, row.Root, row.Backend, row.Chosen);
+        }
+        await tx.Commit();
     }
 
     private SynchronizerState GetOrAddLoadoutState(LoadoutId loadoutId)
