@@ -6,6 +6,7 @@ using NexusMods.CLI.OptionParsers;
 using NexusMods.CLI.Types;
 using NexusMods.CLI.Types.IpcHandlers;
 using NexusMods.Paths;
+using NexusMods.Sdk.EventBus;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.ProxyConsole;
 
@@ -24,6 +25,9 @@ public static class Services
     /// <returns></returns>
     public static IServiceCollection AddCLI(this IServiceCollection services)
     {
+        // The nxm handler publishes on it even when no window is there to listen.
+        services.AddSingleton<IEventBus, EventBus>();
+
         services.AddOptionParser<AbsolutePath, AbsolutePathParser>()
                 .AddOptionParser<IGame, GameParser>()
                 .AddOptionParser<Loadout.ReadOnly, LoadoutParser>()

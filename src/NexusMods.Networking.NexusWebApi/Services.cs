@@ -22,7 +22,11 @@ public static class Services
     /// <summary>
     /// Adds the Nexus Web API to your DI Container's service collection.
     /// </summary>
-    public static IServiceCollection AddNexusWebApi(this IServiceCollection collection)
+    /// <param name="registerNxmHandler">
+    /// Whether the process claims the nxm:// scheme at startup. A process that only runs a verb or a game
+    /// launch must not touch the desktop's link handlers.
+    /// </param>
+    public static IServiceCollection AddNexusWebApi(this IServiceCollection collection, bool registerNxmHandler = true)
     {
         collection.AddLoginVerbs();
 
@@ -68,10 +72,11 @@ public static class Services
             .AddAllSingleton<INexusApiClient, NexusApiClient>()
             .AddSingleton<IModUpdateFilterService, ModUpdateFilterService>()
             .AddAllSingleton<IModUpdateService, ModUpdateService>()
-            .AddHostedService<HandlerRegistration>()
             .AddSettings<NxmHandlerSettings>()
             .AddSettings<NexusAuthSettings>()
             .AddNexusApiVerbs();
+
+        if (registerNxmHandler) collection.AddHostedService<HandlerRegistration>();
 
         collection.AddTransient<NexusAuthHandler>();
         collection

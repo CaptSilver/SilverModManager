@@ -3,6 +3,7 @@ using NexusMods.App;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Settings;
+using NexusMods.StandardGameLocators.TestHelpers;
 
 namespace NexusMods.DataModel.SchemaVersions.Tests;
 
@@ -14,8 +15,8 @@ public class Startup
     /// <param name="container"></param>
     public void ConfigureServices(IServiceCollection container)
     {
-        // No window here, so none of the GUI-only services (such as the launcher shim refresher) start with the host.
-        var mode = new StartupMode { RunAsMain = true, ShowUI = false };
+        // The GUI graph: the schema under test is everything a real app start registers, the UI's models included.
+        var mode = new StartupMode { RunAsMain = true, ShowUI = true };
         
         const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"NexusMods.UI.Tests.Tests-{Guid.NewGuid()}";
@@ -34,7 +35,8 @@ public class Startup
                         new ConfigurablePath(baseKnownPath, $"{baseDirectory}/Archives"),
                     ],
                 }
-            );
+            )
+            .RemoveLauncherShimRefresher();
     }
 }
 

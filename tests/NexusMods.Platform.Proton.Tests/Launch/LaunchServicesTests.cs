@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
@@ -19,7 +21,7 @@ public class LaunchServicesTests
 
         var services = new ServiceCollection();
         services.AddSingleton(env);
-        AddDesktopNotifierDependencies(services);
+        AddLaunchDependencies(services);
         services.AddHeadlessLaunch();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
@@ -60,7 +62,7 @@ public class LaunchServicesTests
     {
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<IEnvironmentReader>());
-        AddDesktopNotifierDependencies(services);
+        AddLaunchDependencies(services);
         services.AddHeadlessLaunch();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
@@ -73,7 +75,7 @@ public class LaunchServicesTests
     {
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<IEnvironmentReader>());
-        AddDesktopNotifierDependencies(services);
+        AddLaunchDependencies(services);
         services.AddHeadlessLaunch();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
@@ -86,7 +88,7 @@ public class LaunchServicesTests
     {
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<IEnvironmentReader>());
-        AddDesktopNotifierDependencies(services);
+        AddLaunchDependencies(services);
         services.AddHeadlessLaunch();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
@@ -98,11 +100,24 @@ public class LaunchServicesTests
     }
 
     [Fact]
+    public void AddHeadlessLaunch_RegistersTheLoadoutResolver()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IEnvironmentReader>());
+        AddLaunchDependencies(services);
+        services.AddHeadlessLaunch();
+
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+
+        provider.GetRequiredService<LoadoutResolver>().Should().BeSameAs(provider.GetRequiredService<LoadoutResolver>());
+    }
+
+    [Fact]
     public async Task TheLaunchSynchronizer_RefusesASynchronizerServiceWithoutTheLaunchEntry()
     {
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<IEnvironmentReader>());
-        AddDesktopNotifierDependencies(services);
+        AddLaunchDependencies(services);
         var other = Substitute.For<ISynchronizerService>();
         services.AddSingleton(other);
         services.AddHeadlessLaunch();
@@ -114,9 +129,12 @@ public class LaunchServicesTests
         await other.DidNotReceiveWithAnyArgs().Synchronize(default);
     }
 
-    private static void AddDesktopNotifierDependencies(IServiceCollection services)
+    private static void AddLaunchDependencies(IServiceCollection services)
     {
         services.AddLogging();
         services.AddSingleton(Substitute.For<IProcessRunner>());
+        // What the app's data model and game registry provide to the loadout resolver.
+        services.AddSingleton(Substitute.For<IConnection>());
+        services.AddSingleton(Substitute.For<IGameRegistry>());
     }
 }

@@ -26,7 +26,7 @@ public class Startup
         services.AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"))
                 .AddApp(startupMode: new StartupMode()
                 {
-                    ShowUI = false,
+                    ShowUI = true,
                     ExecuteCli = false,
                     RunAsMain = true,
                 })
@@ -40,6 +40,7 @@ public class Startup
                 })
                 .AddSingleton<AvaloniaApp>()
                 .ReplaceDesktopNotifier()
+                .RemoveLauncherShimRefresher()
                 .AddLogging(builder => builder.AddXunitOutput().SetMinimumLevel(LogLevel.Debug))
                 .Validate();
     }

@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
+using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Platform.Proton.Launch;
@@ -93,6 +94,8 @@ public class ActiveLaunchSessionsTests
         services.AddSingleton(Substitute.For<IEnvironmentReader>());
         services.AddLogging();
         services.AddSingleton(Substitute.For<IProcessRunner>());
+        services.AddSingleton(Substitute.For<IConnection>());
+        services.AddSingleton(Substitute.For<IGameRegistry>());
         services.AddHeadlessLaunch();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });

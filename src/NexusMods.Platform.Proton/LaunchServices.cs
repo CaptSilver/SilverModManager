@@ -23,6 +23,7 @@ public static class LaunchServices
         services.TryAddSingleton<ILaunchSynchronizer, SynchronizerServiceLaunchSynchronizer>();
         services.TryAddTransient<LaunchSession>();
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
+        services.TryAddSingleton<LoadoutResolver>();
         return services;
     }
 }

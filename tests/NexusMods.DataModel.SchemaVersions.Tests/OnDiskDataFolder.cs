@@ -4,6 +4,7 @@ using NexusMods.DataModel;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Settings;
+using NexusMods.StandardGameLocators.TestHelpers;
 
 namespace NexusMods.DataModel.SchemaVersions.Tests;
 
@@ -19,13 +20,14 @@ internal sealed class OnDiskDataFolder : IDisposable
     {
         return new ServiceCollection()
             .AddLogging()
-            .AddApp(startupMode: new StartupMode { RunAsMain = true, ShowUI = false })
+            .AddApp(startupMode: new StartupMode { RunAsMain = true, ShowUI = true })
             .OverrideSettingsForTests<DataModelSettings>(settings => settings with
             {
                 UseInMemoryDataModel = false,
                 MnemonicDBPath = new ConfigurablePath(KnownPath.EntryDirectory, $"{_name}/MnemonicDB.rocksdb"),
                 ArchiveLocations = [new ConfigurablePath(KnownPath.EntryDirectory, $"{_name}/Archives")],
             })
+            .RemoveLauncherShimRefresher()
             .BuildServiceProvider();
     }
 

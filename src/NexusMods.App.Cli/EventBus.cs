@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Sdk.EventBus;
 using R3;
 
-namespace NexusMods.App.UI;
+namespace NexusMods.CLI;
 
 public sealed class EventBus : IEventBus, IDisposable
 {
