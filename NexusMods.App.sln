@@ -248,6 +248,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusMods.Abstractions.Game
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "silvermod-testhost", "tests\silvermod-testhost\silvermod-testhost.csproj", "{2EF1DE4F-B951-4D8F-B19C-9006844B38C9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusMods.Deployment.Staging", "src\NexusMods.Deployment.Staging\NexusMods.Deployment.Staging.csproj", "{13A9F8F7-2247-49FB-AAB2-3E9DBFF67024}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusMods.Deployment.Staging.Tests", "tests\NexusMods.Deployment.Staging.Tests\NexusMods.Deployment.Staging.Tests.csproj", "{992CCF44-28EF-4B2E-944B-F51D0BFC003A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -646,6 +650,14 @@ Global
 		{2EF1DE4F-B951-4D8F-B19C-9006844B38C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2EF1DE4F-B951-4D8F-B19C-9006844B38C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2EF1DE4F-B951-4D8F-B19C-9006844B38C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{13A9F8F7-2247-49FB-AAB2-3E9DBFF67024}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{13A9F8F7-2247-49FB-AAB2-3E9DBFF67024}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{13A9F8F7-2247-49FB-AAB2-3E9DBFF67024}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{13A9F8F7-2247-49FB-AAB2-3E9DBFF67024}.Release|Any CPU.Build.0 = Release|Any CPU
+		{992CCF44-28EF-4B2E-944B-F51D0BFC003A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{992CCF44-28EF-4B2E-944B-F51D0BFC003A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{992CCF44-28EF-4B2E-944B-F51D0BFC003A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{992CCF44-28EF-4B2E-944B-F51D0BFC003A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -761,6 +773,8 @@ Global
 		{C0EE621D-624D-4797-87CE-93D99E1F9D24} = {52AF9D62-7D5B-4AD0-BA12-86F2AA67428B}
 		{25AA1706-5574-482D-AF61-2A1B69DEAAE1} = {52AF9D62-7D5B-4AD0-BA12-86F2AA67428B}
 		{2EF1DE4F-B951-4D8F-B19C-9006844B38C9} = {52AF9D62-7D5B-4AD0-BA12-86F2AA67428B}
+		{13A9F8F7-2247-49FB-AAB2-3E9DBFF67024} = {E7BAE287-D505-4D6D-A090-665A64309B2D}
+		{992CCF44-28EF-4B2E-944B-F51D0BFC003A} = {52AF9D62-7D5B-4AD0-BA12-86F2AA67428B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9F9F8352-34DD-42C0-8564-EE9AF34A3501}
