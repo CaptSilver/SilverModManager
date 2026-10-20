@@ -220,6 +220,9 @@ internal sealed class ScenarioGate(ConcurrentQueue<string> events) : ILaunchGate
 
 internal sealed class ScenarioProcessFactory(ConcurrentQueue<string> events, ManualResetEventSlim signalled, bool blockUntilTerminated, bool killFail, Action<string> park) : IGameProcessFactory
 {
+    public Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, CancellationToken cancellationToken)
+        => throw new NotSupportedException("The scenarios start their game themselves");
+
     public IGameProcess Start(GameProcessSpec spec, GameInstallation installation)
     {
         events.Enqueue("start");

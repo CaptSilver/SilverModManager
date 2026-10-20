@@ -27,6 +27,13 @@ public interface IGameProcessFactory
     /// attributed to after the child exits.
     /// </summary>
     IGameProcess Start(GameProcessSpec spec, GameInstallation installation);
+
+    /// <summary>
+    /// Stops what is left of <paramref name="installation"/>'s game when it was started by someone else, such as
+    /// Steam: waits for the processes to leave, then sends SIGTERM, then SIGKILL. Returns a process that survived
+    /// SIGKILL, or null when the game is gone.
+    /// </summary>
+    Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, CancellationToken cancellationToken);
 }
 
 internal sealed class GameProcessFactory(IProcessTracker tracker, StopHandler? stop = null) : IGameProcessFactory
@@ -36,4 +43,7 @@ internal sealed class GameProcessFactory(IProcessTracker tracker, StopHandler? s
 
     public IGameProcess Start(GameProcessSpec spec, GameInstallation installation)
         => GameProcess.Start(spec, tracker, installation, forwardTermination: ForwardTermination);
+
+    public Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, CancellationToken cancellationToken)
+        => StragglerShutdown.RunAsync(tracker, installation, GameProcess.DefaultGrace, cancellationToken);
 }

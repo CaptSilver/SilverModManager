@@ -35,6 +35,8 @@ public class RunGameTool<T> : IRunGameTool
     private readonly IProcessRunner _processRunner;
     private readonly IOSInterop _osInterop;
     private readonly IProcessTracker _processTracker;
+    private readonly IGameLaunchSession _launchSessions;
+    private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
     /// Whether this tool should be started through the shell instead of directly.
@@ -42,16 +44,26 @@ public class RunGameTool<T> : IRunGameTool
     /// </summary>
     protected virtual bool UseShell { get; set; } = false;
 
+    /// <summary>How long Steam, then its reaper for the game, get to show up after the URI is opened.</summary>
+    protected virtual TimeSpan StartTimeout => TimeSpan.FromMinutes(5);
+
+    /// <summary>How often the process table is looked at while waiting.</summary>
+    protected virtual TimeSpan PollInterval => TimeSpan.FromMilliseconds(300);
+
+    private const int ReaperGoneAfterMisses = 3;
+
     /// <summary>
     /// Constructor
     /// </summary>
     public RunGameTool(IServiceProvider serviceProvider, T game)
     {
         _game = game;
+        _serviceProvider = serviceProvider;
         _logger = serviceProvider.GetRequiredService<ILogger<RunGameTool<T>>>();
         _processRunner = serviceProvider.GetRequiredService<IProcessRunner>();
         _osInterop = serviceProvider.GetRequiredService<IOSInterop>();
         _processTracker = serviceProvider.GetRequiredService<IProcessTracker>();
+        _launchSessions = serviceProvider.GetRequiredService<IGameLaunchSession>();
     }
 
     /// <inheritdoc />
@@ -81,7 +93,7 @@ public class RunGameTool<T> : IRunGameTool
             var locatorResult = loadout.InstallationInstance.LocatorResult;
             if (locatorResult.Store == GameStore.Steam)
             {
-                await RunThroughSteam(locatorResult.StoreIdentifier, cancellationToken, commandLineArgs);
+                await RunThroughSteam(loadout, locatorResult.StoreIdentifier, cancellationToken, commandLineArgs);
                 return;
             }
 
@@ -92,6 +104,13 @@ public class RunGameTool<T> : IRunGameTool
             }
         }
 
+        // The launcher or loader is started by us, so the session's lock covers it and everything it spawns.
+        using var launch = _launchSessions.BeginSession(loadout);
+        await launch.RunAsync(token => RunProgram(program, primaryFile, commandLineArgs, token), cancellationToken);
+    }
+
+    private async Task RunProgram(AbsolutePath program, AbsolutePath primaryFile, string[] commandLineArgs, CancellationToken cancellationToken)
+    {
         var names = new HashSet<string>
         {
             program.FileName,
@@ -184,17 +203,26 @@ public class RunGameTool<T> : IRunGameTool
         return process;
     }
 
-    private async Task RunThroughSteam(string appId, CancellationToken cancellationToken, string[] commandLineArgs)
+    private enum SteamRunOutcome
     {
-        var timeout = TimeSpan.FromMinutes(5);
+        /// <summary>The game's reaper started and has exited.</summary>
+        Exited,
 
-        // NOTE(erri120): This should be empty for most of the time. We want to wait until the reaper process for
-        // the current starts, so we ignore every reaper process that already exists.
-        var existingReaperProcesses = Process.GetProcessesByName("reaper").Select(x => x.Id).ToHashSet();
+        /// <summary>Steam, or the reaper for the game, did not show up in time.</summary>
+        TimedOut,
+
+        /// <summary>The caller stopped waiting.</summary>
+        Cancelled,
+    }
+
+    private async Task RunThroughSteam(Loadout.ReadOnly loadout, string storeId, CancellationToken cancellationToken, string[] commandLineArgs)
+    {
+        if (!uint.TryParse(storeId, out var appId))
+            throw new InvalidOperationException($"'{storeId}' is not a Steam app id");
 
         // Build the Steam URL with optional command line arguments
         // https://developer.valvesoftware.com/wiki/Steam_browser_protocol
-        var steamUrl = $"steam://run/{appId}";
+        var steamUrl = $"steam://run/{storeId}";
         if (commandLineArgs is { Length: > 0 })
         {
             var encodedArgs = commandLineArgs
@@ -203,17 +231,91 @@ public class RunGameTool<T> : IRunGameTool
             steamUrl += $"//{encodedArgs}/";
         }
 
-        _osInterop.OpenUri(new Uri(steamUrl));
+        var outcome = SteamRunOutcome.Cancelled;
+        using (var launch = _launchSessions.BeginSession(loadout))
+        {
+            // The URI opens only once the session has the lock and the loadout is applied, so Steam never
+            // starts the game against a half-applied folder.
+            await launch.RunAsync(async token =>
+            {
+                _osInterop.OpenUri(new Uri(steamUrl));
+                outcome = await WaitForSteamGame(launch, appId, token);
+            }, cancellationToken);
+        }
 
-        var steam = await WaitForProcessToStart("steam", timeout, existingProcesses: null, cancellationToken);
-        if (steam is null) return;
+        // Said after the session has finished, so the user is not told to retry while the lock is still held.
+        if (outcome == SteamRunOutcome.TimedOut)
+        {
+            _serviceProvider.GetRequiredService<IDesktopNotifier>().Notify(
+                ApplicationConstants.ProductName,
+                $"Steam did not start {_game.DisplayName} within 5 minutes. Make sure Steam is running and signed in, then press Play again.");
+        }
+    }
+
+    private async Task<SteamRunOutcome> WaitForSteamGame(IGameLaunch launch, uint appId, CancellationToken cancellationToken)
+    {
+        if (await PollUntil(_processTracker.IsSteamRunning, launch, cancellationToken) is { } steamFailure) return steamFailure;
 
         // NOTE(erri120): Reaper is a custom tool for cleaning up child processes
         // See https://github.com/sonic2kk/steamtinkerlaunch/wiki/Steam-Reaper for details.
-        var reaper = await WaitForProcessToStart("reaper", timeout, existingReaperProcesses, cancellationToken);
-        if (reaper is null) return;
+        // Only the reaper Steam started for this app counts: another game's reaper may be running already.
+        TrackedProcess? reaper = null;
+        if (await PollUntil(() => (reaper = _processTracker.FindReaperForApp(appId)) is not null, launch, cancellationToken) is { } reaperFailure)
+            return reaperFailure;
 
-        await reaper.WaitForExitAsync(cancellationToken);
+        _logger.LogDebug("Waiting for reaper {Pid} of app {AppId} to exit", reaper!.Pid, appId);
+        var misses = 0;
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            // A /proc entry that can't be read for a moment drops out of one scan. Taking that for the exit would
+            // shut the game down while it runs, so the reaper has to be missing from several scans in a row.
+            misses = _processTracker.FindReaperForApp(appId)?.Pid == reaper.Pid ? 0 : misses + 1;
+            if (misses >= ReaperGoneAfterMisses) return SteamRunOutcome.Exited;
+            try
+            {
+                await Task.Delay(PollInterval, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+        }
+        return SteamRunOutcome.Cancelled;
+    }
+
+    /// <summary>
+    /// Polls until <paramref name="condition"/> holds, returning null, or returns why it stopped. A timeout is
+    /// not final while a Steam wrapper has recorded itself in the launch's state file: that means the game is on
+    /// its way and the process table has just not caught up.
+    /// </summary>
+    private async Task<SteamRunOutcome?> PollUntil(Func<bool> condition, IGameLaunch launch, CancellationToken cancellationToken)
+    {
+        var started = Stopwatch.StartNew();
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            if (condition()) return null;
+
+            if (started.Elapsed >= StartTimeout)
+            {
+                // Read the file afresh every time: the wrapper writes it from another process.
+                if (!launch.WrapperActive)
+                {
+                    _logger.LogWarning("Steam did not start the game within `{Timeout:g}`", StartTimeout);
+                    return SteamRunOutcome.TimedOut;
+                }
+                started.Restart();
+            }
+
+            try
+            {
+                await Task.Delay(PollInterval, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+        }
+        return SteamRunOutcome.Cancelled;
     }
 
     private async Task RunThroughHeroic(string type, string productId, CancellationToken cancellationToken, string[] commandLineArgs)
@@ -224,43 +326,6 @@ public class RunGameTool<T> : IRunGameTool
                              $"Args {string.Join(',', commandLineArgs)} were specified but will be ignored.");
 
         _osInterop.OpenUri(new Uri($"heroic://launch/{type}/{productId}"));
-    }
-
-    private async ValueTask<Process?> WaitForProcessToStart(
-        string processName,
-        TimeSpan timeout,
-        HashSet<int>? existingProcesses,
-        CancellationToken cancellationToken = default)
-    {
-        _logger.LogDebug("Waiting for process `{ProcessName}` to start within `{Timeout:g}` second(s)", processName, timeout);
-
-        try
-        {
-            var start = DateTime.UtcNow;
-            while (!cancellationToken.IsCancellationRequested && start + timeout > DateTime.UtcNow)
-            {
-                var processes = Process.GetProcessesByName(processName);
-                var target = existingProcesses is not null
-                    ? processes.FirstOrDefault(x => !existingProcesses.Contains(x.Id))
-                    : processes.FirstOrDefault();
-
-                if (target is not null) return target;
-
-                await Task.Delay(TimeSpan.FromMilliseconds(300), cancellationToken);
-            }
-
-            _logger.LogWarning("Process `{ProcessName}` failed to start within `{Timeout:g}` second(s)", processName, timeout);
-            return null;
-        }
-        catch (TaskCanceledException)
-        {
-            return null;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Exception while waiting for process `{Process}` to start", processName);
-            return null;
-        }
     }
 
     private HashSet<TrackedProcess> FindMatchingProcesses(HashSet<string> names)

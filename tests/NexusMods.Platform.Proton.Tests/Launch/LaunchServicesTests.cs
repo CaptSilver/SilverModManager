@@ -99,6 +99,21 @@ public class LaunchServicesTests
         provider.GetRequiredService<ILaunchSynchronizer>().Should().NotBeNull();
     }
 
+    // The GUI starts its launches through the registry it gets from the container, so that one must be able to.
+    [Fact]
+    public void AddHeadlessLaunch_RegistersARegistryThatCanStartSessions()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IEnvironmentReader>());
+        AddLaunchDependencies(services);
+        services.AddHeadlessLaunch();
+
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+        var registry = provider.GetRequiredService<ActiveLaunchSessions>();
+
+        registry.CreateSession().Should().NotBeSameAs(registry.CreateSession(), "each launch is its own session");
+    }
+
     [Fact]
     public void AddHeadlessLaunch_RegistersTheLoadoutResolver()
     {

@@ -1,5 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.Platform.Proton.Launch;
 
@@ -13,13 +15,32 @@ namespace NexusMods.Platform.Proton.Launch;
 /// </remarks>
 public sealed class ActiveLaunchSessions : IGameLaunchSession
 {
+    private readonly IServiceProvider? _services;
     private readonly object _lock = new();
     private readonly Dictionary<(GameStore Store, string StoreId), int> _counts = new();
+
+    /// <param name="services">
+    /// Builds the sessions <see cref="BeginSession"/> hands out. Resolved lazily because a session depends on this
+    /// registry. Null for a registry that only answers <see cref="IsRunning"/>.
+    /// </param>
+    public ActiveLaunchSessions(IServiceProvider? services = null) => _services = services;
 
     /// <inheritdoc />
     public bool IsRunning(GameInstallation installation)
     {
         lock (_lock) return _counts.ContainsKey(KeyOf(installation));
+    }
+
+    /// <inheritdoc />
+    public IGameLaunch BeginSession(Loadout.ReadOnly loadout)
+    {
+        return new GameLaunch(CreateSession(), new LaunchContext(loadout.InstallationInstance, loadout.LoadoutId, loadout.Name));
+    }
+
+    internal LaunchSession CreateSession()
+    {
+        if (_services is null) throw new InvalidOperationException("This registry was created without a service provider and cannot start launches");
+        return _services.GetRequiredService<LaunchSession>();
     }
 
     /// <summary>

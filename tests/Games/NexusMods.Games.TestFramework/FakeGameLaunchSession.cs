@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NexusMods.Abstractions.Games;
+using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.Games;
 
 namespace NexusMods.Games.TestFramework;
@@ -15,8 +16,52 @@ public class FakeGameLaunchSession : IGameLaunchSession
     /// </summary>
     public bool Running { get; set; }
 
+    /// <summary>
+    /// What the launches this fake hands out did, in order: <c>lock</c>, <c>running</c>, <c>finish</c>, <c>release</c>.
+    /// </summary>
+    public List<string> Events { get; } = [];
+
+    /// <summary>
+    /// What <see cref="IGameLaunch.WrapperActive"/> answers; no wrapper by default.
+    /// </summary>
+    public Func<bool> WrapperActive { get; set; } = () => false;
+
+    /// <summary>
+    /// Thrown from <see cref="IGameLaunch.RunAsync"/> before the callback runs, to play a refused launch.
+    /// </summary>
+    public GameLaunchException? Refusal { get; set; }
+
     /// <inheritdoc />
     public bool IsRunning(GameInstallation installation) => Running;
+
+    /// <inheritdoc />
+    public IGameLaunch BeginSession(Loadout.ReadOnly loadout) => new FakeGameLaunch(this);
+
+    private sealed class FakeGameLaunch(FakeGameLaunchSession owner) : IGameLaunch
+    {
+        public bool WrapperActive => owner.WrapperActive();
+
+        public async Task RunAsync(Func<CancellationToken, Task> whileRunning, CancellationToken cancellationToken)
+        {
+            lock (owner.Events) owner.Events.Add("lock");
+            if (owner.Refusal is { } refusal) throw refusal;
+
+            lock (owner.Events) owner.Events.Add("running");
+            try
+            {
+                await whileRunning(cancellationToken);
+            }
+            finally
+            {
+                lock (owner.Events) owner.Events.Add("finish");
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (owner.Events) owner.Events.Add("release");
+        }
+    }
 }
 
 public static class FakeGameLaunchSessionExtensions

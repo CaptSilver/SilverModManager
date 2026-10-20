@@ -107,7 +107,24 @@ public sealed class LaunchSession
     /// While finishing the signal changes nothing. A game that survives SIGKILL is still
     /// <see cref="FailureExitCode"/> with no finish.
     /// </remarks>
-    public async Task<LaunchResult> RunAsync(LaunchContext context, Func<LaunchPlan> resolvePlan, CancellationToken cancellationToken = default)
+    public Task<LaunchResult> RunAsync(LaunchContext context, Func<LaunchPlan> resolvePlan, CancellationToken cancellationToken = default)
+        => Run(context, resolvePlan, whileRunning: null, cancellationToken);
+
+    /// <summary>
+    /// Runs the launch for a game that something else starts, such as Steam handing a URI to its client.
+    /// <paramref name="whileRunning"/> is called with the launch marked running, and returns once the game is
+    /// over or the caller has stopped waiting. What is left of the game is then shut down, so a game that
+    /// outlives the wait is not ingested while it still writes.
+    /// </summary>
+    /// <remarks>
+    /// A cancelled wait is a normal end, not a failure. Signals from a <see cref="StopHandler"/> only decide
+    /// whether the wait starts: there is no child of ours to terminate, so the callback has to watch its own
+    /// token.
+    /// </remarks>
+    public Task<LaunchResult> RunExternalAsync(LaunchContext context, Func<CancellationToken, Task> whileRunning, CancellationToken cancellationToken = default)
+        => Run(context, resolvePlan: null, whileRunning, cancellationToken);
+
+    private async Task<LaunchResult> Run(LaunchContext context, Func<LaunchPlan>? resolvePlan, Func<CancellationToken, Task>? whileRunning, CancellationToken cancellationToken)
     {
         if (_started) throw new InvalidOperationException("A launch session runs once.");
         _started = true;
@@ -115,7 +132,7 @@ public sealed class LaunchSession
         string? failure;
         if (_stop is null)
         {
-            failure = await RunCore(context, resolvePlan, cancellationToken);
+            failure = await RunCore(context, resolvePlan, whileRunning, cancellationToken);
         }
         else
         {
@@ -124,7 +141,7 @@ public sealed class LaunchSession
             {
                 // A signal that came in before we subscribed still counts.
                 if (_stop.Signal is not null) OnStopping(_stop.Signal.Value, _stop.PhaseAtSignal ?? LaunchPhase.Preparing);
-                failure = await RunCore(context, resolvePlan, cancellationToken);
+                failure = await RunCore(context, resolvePlan, whileRunning, cancellationToken);
             }
             finally
             {
@@ -142,7 +159,7 @@ public sealed class LaunchSession
     /// <summary>
     /// Returns the failure message, or null with <see cref="_result"/> set when the game ran to the end.
     /// </summary>
-    private async Task<string?> RunCore(LaunchContext context, Func<LaunchPlan> resolvePlan, CancellationToken cancellationToken)
+    private async Task<string?> RunCore(LaunchContext context, Func<LaunchPlan>? resolvePlan, Func<CancellationToken, Task>? whileRunning, CancellationToken cancellationToken)
     {
         var game = context.Installation.Game.DisplayName;
 
@@ -195,21 +212,42 @@ public sealed class LaunchSession
         {
             try
             {
-                var plan = resolvePlan();
-                LogPlan(plan, game);
-                if (BeginRunning())
+                if (resolvePlan is not null)
+                {
+                    var plan = resolvePlan();
+                    LogPlan(plan, game);
+                    if (BeginRunning())
+                    {
+                        _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running);
+                        using var process = _processFactory.Start(plan.Process, context.Installation);
+                        AttachProcess(process);
+                        try
+                        {
+                            exit = await WaitFor(process, cancellationToken);
+                        }
+                        finally
+                        {
+                            // A terminate already under way must end before the handle is disposed.
+                            if (DetachProcess() is { } terminating) await terminating;
+                        }
+                    }
+                }
+                else if (BeginRunning())
                 {
                     _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running);
-                    using var process = _processFactory.Start(plan.Process, context.Installation);
-                    AttachProcess(process);
                     try
                     {
-                        exit = await WaitFor(process, cancellationToken);
+                        await whileRunning!(cancellationToken);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        _logger.LogInformation("Stopped waiting for {Game}", game);
                     }
                     finally
                     {
-                        // A terminate already under way must end before the handle is disposed.
-                        if (DetachProcess() is { } terminating) await terminating;
+                        // Whatever happened, the game must not be left running into the ingest.
+                        var leftover = await _processFactory.ShutDownGameAsync(context.Installation, CancellationToken.None);
+                        exit = new GameProcessResult(0, leftover);
                     }
                 }
             }
@@ -437,6 +475,30 @@ public sealed class LaunchSession
             ? $"{game} is already being launched by another SilverModManager process."
             : $"{game} is already being launched by SilverModManager process {state.Pid} (loadout '{state.Loadout}', {state.Phase.ToString().ToLowerInvariant()}).";
     }
+
+    /// <summary>
+    /// True when a Steam wrapper has written its key into the state file. Read from disk on each call, because
+    /// the wrapper is another process.
+    /// </summary>
+    public bool WrapperActive
+    {
+        get
+        {
+            if (_lock is null) return false;
+            try
+            {
+                return _lock.ReadState()?.Values.ContainsKey(WrapperKey) ?? false;
+            }
+            catch (InvalidDataException)
+            {
+                // A half-written file has no wrapper we can rely on; the next poll reads it again.
+                return false;
+            }
+        }
+    }
+
+    /// <summary>The state file key the Steam wrapper reports its pid under.</summary>
+    public const string WrapperKey = "wrapper";
 
     /// <summary>
     /// Ends the session: deletes the state file, releases the lock and stops reporting the game as running, in

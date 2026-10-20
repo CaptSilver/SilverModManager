@@ -499,6 +499,121 @@ public class LaunchSessionTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task AnExternalLaunch_IsMarkedRunningBeforeTheCallbackAndShutsTheGameDownAfterIt()
+    {
+        AddGate("a");
+        LaunchPhase? phaseInCallback = null;
+
+        var result = await NewSession().RunExternalAsync(_context, _ =>
+        {
+            phaseInCallback = Phase();
+            _events.Add("callback");
+            return Task.CompletedTask;
+        });
+
+        result.Should().Be(new LaunchResult(0, null));
+        phaseInCallback.Should().Be(LaunchPhase.Running);
+        _events.Should().Equal("check:a", "sync", "prepare:a", "callback", "shutdown", "finish:a", "sync");
+        _processes.Started.Should().BeFalse("the game is started by someone else");
+    }
+
+    [Fact]
+    public async Task AnExternalLaunch_IsRunningInEveryPhaseUntilReleased()
+    {
+        var session = NewSession();
+
+        await session.RunExternalAsync(_context, _ =>
+        {
+            _active.IsRunning(_installation).Should().BeTrue();
+            return Task.CompletedTask;
+        });
+
+        _active.IsRunning(_installation).Should().BeTrue("the lock is held until Release");
+        session.Release();
+        _active.IsRunning(_installation).Should().BeFalse();
+        File.Exists(Path.ChangeExtension(LockPath, ".state")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AnExternalLaunch_WhoseCallbackIsCancelled_StillFinishesAndIsNotAFailure()
+    {
+        using var cts = new CancellationTokenSource();
+
+        var result = await NewSession().RunExternalAsync(_context, token =>
+        {
+            cts.Cancel();
+            token.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }, cts.Token);
+
+        result.Message.Should().BeNull();
+        _events.Should().EndWith(["shutdown", "sync"]);
+        _error.ToString().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AnExternalLaunch_WhoseCallbackThrows_FailsButStillFinishes()
+    {
+        var result = await NewSession().RunExternalAsync(_context, _ => throw new InvalidOperationException("boom"));
+
+        result.ExitCode.Should().Be(LaunchSession.FailureExitCode);
+        result.Message.Should().Contain("boom");
+        _events.Should().EndWith(["shutdown", "sync"]);
+    }
+
+    [Fact]
+    public async Task AnExternalLaunch_WithAProcessThatSurvivesSigkill_SkipsFinishAndKeepsTheStateRunning()
+    {
+        AddGate("a");
+        _processes.Survivor = new TrackedProcess(4242, "wineserver");
+        var session = NewSession();
+
+        var result = await session.RunExternalAsync(_context, _ => Task.CompletedTask);
+        session.Release();
+
+        result.ExitCode.Should().Be(LaunchSession.FailureExitCode);
+        result.Message.Should().Contain("4242");
+        _events.Should().NotContain("finish:a");
+        _events.Count(e => e == "sync").Should().Be(1, "the game folder is still in use");
+        using var reader = new InstallationLock(LockPath);
+        reader.ReadState()!.Phase.Should().Be(LaunchPhase.Running);
+    }
+
+    [Fact]
+    public async Task WrapperActive_FollowsTheWrapperKeyInTheStateFile()
+    {
+        var session = NewSession();
+        session.WrapperActive.Should().BeFalse("nothing has been launched yet");
+        bool? before = null, after = null;
+
+        await session.RunExternalAsync(_context, _ =>
+        {
+            before = session.WrapperActive;
+            using var wrapper = new InstallationLock(LockPath);
+            wrapper.WriteWrapperKey("wrapper", "999");
+            after = session.WrapperActive;
+            return Task.CompletedTask;
+        });
+
+        before.Should().BeFalse();
+        after.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AGameLaunch_ThrowsTheFailureMessageAndReleasesWhenDisposed()
+    {
+        _processes.Survivor = new TrackedProcess(4242, "wineserver");
+        var launch = new GameLaunch(NewSession(), _context);
+
+        var act = async () => await launch.RunAsync(_ => Task.CompletedTask, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<GameLaunchException>()).Which.Message.Should().Contain("4242");
+        _active.IsRunning(_installation).Should().BeTrue();
+        launch.Dispose();
+        _active.IsRunning(_installation).Should().BeFalse();
+    }
+
     private sealed class FakeProcessFactory(List<string> events, LaunchSessionTests test, RecordingLogger log) : IGameProcessFactory
     {
         public int LogCountAtStart { get; private set; }
@@ -507,6 +622,14 @@ public class LaunchSessionTests : IDisposable
         public Action? OnStart { get; set; }
         public bool Started { get; private set; }
         public LaunchPhase? PhaseAtStart { get; private set; }
+
+        public TrackedProcess? Survivor { get; set; }
+
+        public Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, CancellationToken cancellationToken)
+        {
+            events.Add("shutdown");
+            return Task.FromResult(Survivor);
+        }
 
         public IGameProcess Start(GameProcessSpec spec, GameInstallation installation)
         {
