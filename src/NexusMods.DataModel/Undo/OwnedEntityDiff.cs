@@ -1,0 +1,46 @@
+using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+
+namespace NexusMods.DataModel.Undo;
+
+/// <summary>
+/// The datoms that turn one entity's state into another's. Only the attribute and value are compared,
+/// never the transaction a datom was written in, so a value that was rewritten unchanged is not a difference.
+/// </summary>
+internal static class OwnedEntityDiff
+{
+    internal readonly record struct Change(AttributeId A, ValueTag Tag, byte[] Value, bool IsRetract);
+
+    /// <summary>
+    /// The changes that make <paramref name="current"/> look like <paramref name="wanted"/>.
+    /// </summary>
+    internal static List<Change> Between(EntitySegment current, EntitySegment wanted)
+    {
+        var changes = new List<Change>();
+
+        var wantedAttributes = new HashSet<AttributeId>();
+        foreach (var av in wanted.GetAVEnumerable())
+            wantedAttributes.Add(av.A);
+
+        foreach (var av in current.GetAVEnumerable())
+        {
+            if (wanted.Contains(av)) continue;
+
+            // The attribute has a different value in the wanted state. Owned attributes hold one value, so
+            // asserting the wanted one replaces this one and an explicit retract would be a second write
+            // to the same datom.
+            if (wantedAttributes.Contains(av.A)) continue;
+
+            changes.Add(new Change(av.A, av.ValueType, av.Value.ToArray(), IsRetract: true));
+        }
+
+        foreach (var av in wanted.GetAVEnumerable())
+        {
+            if (current.Contains(av)) continue;
+            changes.Add(new Change(av.A, av.ValueType, av.Value.ToArray(), IsRetract: false));
+        }
+
+        return changes;
+    }
+}

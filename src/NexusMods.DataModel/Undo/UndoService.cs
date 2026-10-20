@@ -1,16 +1,8 @@
-using System.Collections.Frozen;
-using System.Diagnostics;
-using FomodInstaller.Interface;
-using NexusMods.Abstractions.Collections;
+using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.HyperDuck;
 using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
 using NexusMods.Sdk.Loadouts;
-using GameInstallMetadata = NexusMods.Sdk.Games.GameInstallMetadata;
 
 namespace NexusMods.DataModel.Undo;
 
@@ -20,14 +12,15 @@ namespace NexusMods.DataModel.Undo;
 public class UndoService
 {
     private readonly IConnection _conn;
+    private readonly ILogger<UndoService> _logger;
 
     /// <summary>
     /// DI constructor 
     /// </summary>
-    /// <param name="connection"></param>
-    public UndoService(IConnection connection)
+    public UndoService(IConnection connection, ILogger<UndoService> logger)
     {
         _conn = connection;
+        _logger = logger;
     }
 
     /// <summary>
@@ -52,114 +45,62 @@ public class UndoService
     }
     
     /// <summary>
-    /// Attributes to ignore when undoing loadouts. Any of these attributes will not be reverted, and the entities pointed to
-    /// in the E or V parts of the datom will not be traversed during the revert process.
+    /// Reverts the entities the loadout owns to how they were at the given revision. What the loadout owns
+    /// is what <c>loadouts.TrackedEntitiesForLoadout</c> returns, taken both now and at the revision, so
+    /// items added since are deleted and items removed since come back under their original ids.
+    /// Nothing else is written: not the loadout row, and not anything an owned entity merely refers to
+    /// (library items, collection metadata, other loadouts, the install's disk state).
     /// </summary>
-    private static readonly IAttribute[] IgnoreAttributes =
-    [
-        GameInstallMetadata.LastSyncedLoadoutId,
-        GameInstallMetadata.LastSyncedLoadoutTransactionId,
-        DiskStateEntry.GameId,
-        Loadout.LastAppliedDateTime,
-        ManagedCollectionLoadoutGroup.Collection,
-    ];
-
-    /// <summary>
-    /// Reverts the given loadout to the given revision.
-    /// </summary>
-    public async Task RevertTo(LoadoutRevision revisionRevision)
+    /// <exception cref="InvalidOperationException">
+    /// The revision has no transaction, the loadout no longer exists, or it is not a regular loadout.
+    /// Nothing is written in these cases.
+    /// </exception>
+    public async Task<RevertResult> RevertTo(LoadoutRevision revision)
     {
-        var currentDb = _conn.Db;
-        var revertDb = _conn.AsOf(TxId.From(revisionRevision.TxEntity.Value));
-        var ignoreAttrs = IgnoreAttributes.Select(a => currentDb.AttributeCache.GetAttributeId(a.Id)).ToFrozenSet();
-        var toProcess = new HashSet<EntityId>();
-        toProcess.Add(revisionRevision.TxEntity);
+        var loadoutId = revision.EntityId;
+        if (revision.TxEntity.Value == 0)
+            throw new InvalidOperationException("The revision does not point at a transaction");
 
-        var tx = _conn.BeginTransaction();
-        var processed = new HashSet<EntityId>();
-        
-        while (toProcess.Count > 0)
-        {
-            var current = toProcess.First();
-            toProcess.Remove(current);
+        var loadout = Loadout.Load(_conn.Db, loadoutId);
+        if (!loadout.IsValid())
+            throw new InvalidOperationException($"Loadout {loadoutId} no longer exists");
+        if (loadout.LoadoutKind != LoadoutKind.Default)
+            throw new InvalidOperationException($"Loadout {loadoutId} is a {loadout.LoadoutKind} loadout and can't be reverted");
 
-            // Skip if the entity has already been processed
-            if (!processed.Add(current))
-                continue;
-            
-            // Skip if the entity is a transaction entity
-            if (current.Partition == PartitionId.Transactions)
-                continue;
+        var revertDb = _conn.AsOf(TxId.From(revision.TxEntity.Value));
 
+        // Both sets are computed here because a HyperDuck query can't run inside a transaction function.
+        // An entity created between this query and the commit is in neither set and survives the revert.
+        var owned = OwnedBy(_conn.Db, loadoutId);
+        owned.UnionWith(OwnedBy(revertDb, loadoutId));
 
-            var desiredState = revertDb.Datoms(current);
-            var currentState = currentDb.Datoms(current);
-
-
-            CompareEntities(current, currentState, processed, toProcess, desiredState, tx, ignoreAttrs);
-            ExtractBackReferences(currentDb, current, ignoreAttrs, processed, toProcess, revertDb);
-        }
+        using var tx = _conn.BeginTransaction();
+        tx.Add(new RevertOwnedEntitiesTxFunc(loadoutId, owned.ToArray(), revertDb));
 
         // Mark the transaction as a snapshot
-        tx.Add(EntityId.From(TxId.Tmp.Value), LoadoutSnapshot.Snapshot, revisionRevision.EntityId);
+        tx.Add(EntityId.From(TxId.Tmp.Value), LoadoutSnapshot.Snapshot, loadoutId);
 
-        await tx.Commit();
+        var commitResult = await tx.Commit();
+
+        var residual = owned
+            .SelectMany(entity => OwnedEntityDiff.Between(commitResult.Db.Datoms(entity), revertDb.Datoms(entity))
+                .Select(change => (Entity: entity, Attribute: change.A)))
+            .Distinct()
+            .ToList();
+
+        if (residual.Count > 0)
+        {
+            foreach (var (entity, attribute) in residual)
+                _logger.LogError("Entity {Entity} still differs from the revision on attribute {Attribute} after the revert", entity, attribute);
+        }
+
+        return new RevertResult([], residual);
     }
 
-    private static void ExtractBackReferences(IDb currentDb, EntityId current, FrozenSet<AttributeId> ignoreAttrs, HashSet<EntityId> processed, HashSet<EntityId> toProcess, IDb revertDb)
+    private HashSet<EntityId> OwnedBy(IDb db, EntityId loadoutId)
     {
-        var backReferenceDatoms = currentDb.Datoms(SliceDescriptor.CreateReferenceTo(current));
-        var resolver = currentDb.AttributeCache;
-        foreach (var datom in backReferenceDatoms)
-        {
-            if (ignoreAttrs.Contains(datom.A) || processed.Contains(datom.E) || datom.E.Partition == PartitionId.Transactions)
-                continue;
-            
-            toProcess.Add(datom.E);
-        }
-                
-        var backReferenceDesiredState = revertDb.Datoms(SliceDescriptor.CreateReferenceTo(current));
-        foreach (var datom in backReferenceDesiredState)
-        {
-            if (ignoreAttrs.Contains(datom.A) || processed.Contains(datom.E)  || datom.E.Partition == PartitionId.Transactions)
-                continue;
-            toProcess.Add(datom.E);
-        }
-    }
-
-    private static void CompareEntities(EntityId current, EntitySegment currentState, HashSet<EntityId> processed, HashSet<EntityId> toProcess, EntitySegment desiredState, ITransaction tx, FrozenSet<AttributeId> ignoreAttrs)
-    {
-        
-        foreach (var avData in currentState.GetAVEnumerable())
-        {
-            if (ignoreAttrs.Contains(avData.A))
-                continue;
-            
-            if (avData.ValueType == ValueTag.Reference)
-            {
-                var value = EntityIdSerializer.Read(avData.Value.Span);
-                if (!processed.Contains(value) && value.Partition != PartitionId.Transactions)
-                    toProcess.Add(value);
-            }
-                
-            if (!desiredState.Contains(avData)) 
-                tx.Add(current, avData.A, avData.ValueType, avData.Value.Span, true);
-        }
-
-        foreach (var datom in desiredState.GetAVEnumerable())
-        {
-            if (ignoreAttrs.Contains(datom.A))
-                continue;
-            
-            if (datom.ValueType == ValueTag.Reference)
-            {
-                var value = EntityIdSerializer.Read(datom.Value.Span);
-                if (!processed.Contains(value) && value.Partition != PartitionId.Transactions) 
-                    toProcess.Add(value);
-            }
-                
-            if (!currentState.Contains(datom)) 
-                tx.Add(current, datom.A, datom.ValueType, datom.Value.Span);
-        }
+        return _conn
+            .Query<EntityId>($"SELECT DISTINCT Id FROM loadouts.TrackedEntitiesForLoadout({db}, {loadoutId}) WHERE Id != {loadoutId}")
+            .ToHashSet();
     }
 }

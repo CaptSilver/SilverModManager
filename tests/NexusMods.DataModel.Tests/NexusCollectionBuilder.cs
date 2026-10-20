@@ -169,6 +169,14 @@ public abstract class ANexusCollectionTest<TTest>(ITestOutputHelper helper) : AC
     protected async Task<LoadoutItemGroupId> AddLinkedItem(LoadoutId loadout, string name)
     {
         var archive = await CreateLibraryArchive(Connection, $"{name}.zip");
+        return await AddLinkedItem(loadout, name, archive.Id);
+    }
+
+    /// <summary>
+    /// Adds a group holding one item linked to an existing library item.
+    /// </summary>
+    protected async Task<LoadoutItemGroupId> AddLinkedItem(LoadoutId loadout, string name, EntityId libraryItem)
+    {
         using var tx = Connection.BeginTransaction();
         var group = new LoadoutItemGroup.New(tx, out var id)
         {
@@ -177,7 +185,7 @@ public abstract class ANexusCollectionTest<TTest>(ITestOutputHelper helper) : AC
         };
         _ = new LibraryLinkedLoadoutItem.New(tx, id)
         {
-            LibraryItemId = archive.Id,
+            LibraryItemId = libraryItem,
             LoadoutItemGroup = group,
         };
         var result = await tx.Commit();
