@@ -19,8 +19,8 @@ public partial class BrandingGuardTests
     ];
 
     // Data folder, config folder, log and sync file names that would collide with a running
-    // upstream install, upstream's HTTP user agent, upstream's desktop entry and app id, upstream's GitHub organization, and raw.githubusercontent.com (nothing is fetched from upstream's repository at runtime).
-    [GeneratedRegex("\"NexusMods\\.App[/\"-]|nexusmods\\.app\\.(main|slim)|\"NexusModsApp\"|com\\.nexusmods|nexus_mods_app|StartupWMClass=NexusMods|\"Nexus-Mods\"|raw\\.githubusercontent")]
+    // upstream install, upstream's HTTP user agent, upstream's desktop entry and app id, upstream's GitHub organization, raw.githubusercontent.com (nothing is fetched from upstream's repository at runtime), and the Nexus logo assets and their Developer Logo comment. `nexus-logout` is the login verb, not a logo, hence the lookahead.
+    [GeneratedRegex("\"NexusMods\\.App[/\"-]|nexusmods\\.app\\.(main|slim)|\"NexusModsApp\"|com\\.nexusmods|nexus_mods_app|StartupWMClass=NexusMods|\"Nexus-Mods\"|raw\\.githubusercontent|nexus-logo(?!ut)|Nexus '?Developer'? Logo")]
     private static partial Regex UpstreamIdentity();
 
     [Fact]

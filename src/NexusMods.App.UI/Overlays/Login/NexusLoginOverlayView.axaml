@@ -29,13 +29,12 @@
             Orientation="Vertical"
             Width="552">
             <Grid ColumnDefinitions="*, Auto">
-                <Svg
+                <TextBlock
                     Grid.Column="0"
-                    Height="37"
                     HorizontalAlignment="Left"
-                    Path="avares://NexusMods.App.UI/Assets/nexus-logo-with-text.svg"
-                    VerticalAlignment="Center"
-                    Width="157" />
+                    Text="Sign in to Nexus Mods"
+                    Theme="{StaticResource HeadingXSSemiTheme}"
+                    VerticalAlignment="Center" />
                 <controls:StandardButton x:Name="CancelButton" 
                                          Grid.Column="1"
                                          HorizontalAlignment="Right"

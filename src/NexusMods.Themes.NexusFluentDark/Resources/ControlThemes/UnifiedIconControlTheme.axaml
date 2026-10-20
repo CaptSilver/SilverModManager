@@ -18,7 +18,7 @@
 
                     <!-- Svg -->
                     <icons:IconValue x:Key="AvaloniaSvgValue"
-                                     SvgSetter="avares://NexusMods.App.UI/Assets/nexus-logo.svg" />
+                                     SvgSetter="avares://NexusMods.App.UI/Assets/Pictograms/health.svg" />
 
                     <!-- PathIcon -->
                     <icons:IconValue x:Key="AvaloniaPathIconValue">
