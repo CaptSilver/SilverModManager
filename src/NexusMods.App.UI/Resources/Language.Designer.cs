@@ -2347,6 +2347,24 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Allow save files.
+        /// </summary>
+        public static string Loadout_AllowProtectedPaths_Menu_Text {
+            get {
+                return ResourceManager.GetString("Loadout_AllowProtectedPaths_Menu_Text", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Deploy this mod's files into the game's save folder. Saves already there are never overwritten.
+        /// </summary>
+        public static string Loadout_AllowProtectedPaths_Menu_ToolTip {
+            get {
+                return ResourceManager.GetString("Loadout_AllowProtectedPaths_Menu_ToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Delete Loadout.
         /// </summary>
         public static string LoadoutCard_DeleteLoadoutToolTip {

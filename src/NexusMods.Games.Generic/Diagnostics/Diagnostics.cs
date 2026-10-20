@@ -87,6 +87,9 @@ files are left out when the loadout is applied:
 
 The files stay in the loadout. Deploying them would put files on disk that the app could not remove again when
 the loadout is switched or the game is unmanaged, and could overwrite the player's own saves.
+
+If the mod is meant to ship save files, right-click it in the loadout and turn on **Allow save files**. Its files
+then deploy to the save folder, except where a file of the player's own is already there.
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddDataReference<LoadoutItemGroupReference>("Group")

@@ -251,7 +251,8 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
                             connection, GetWorkspaceController());
                         return Task.CompletedTask;
                     },
-                    uninstallItemMessage => LoadoutViewModel.HandleUninstallItem(uninstallItemMessage.Ids, windowManager, connection)
+                    uninstallItemMessage => LoadoutViewModel.HandleUninstallItem(uninstallItemMessage.Ids, windowManager, connection),
+                    toggleProtectedPathsMessage => LoadoutViewModel.HandleToggleProtectedPathsAllowed(toggleProtectedPathsMessage.Ids, connection)
                 );
             }, awaitOperation: AwaitOperation.Parallel, configureAwait: false).AddTo(disposables);
         });

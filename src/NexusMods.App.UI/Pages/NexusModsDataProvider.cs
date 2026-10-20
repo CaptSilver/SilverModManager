@@ -391,6 +391,7 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
             LoadoutDataProviderHelper.AddViewModPageActionComponent(parentItemModel, isEnabled: true);
             LoadoutDataProviderHelper.AddViewModFilesActionComponent(parentItemModel, linkedItemsObservable);
             LoadoutDataProviderHelper.AddUninstallItemComponent(parentItemModel, linkedItemsObservable);
+            LoadoutDataProviderHelper.AddAllowProtectedPathsAction(_connection, parentItemModel, linkedItemsObservable);
 
             return parentItemModel;
         });

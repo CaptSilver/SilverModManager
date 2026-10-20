@@ -77,6 +77,46 @@ public static class SharedComponents
         }
     }
     
+    /// <summary>
+    /// Context menu entry that lets a mod deploy files into protected locations such as the game's save folder.
+    /// </summary>
+    public sealed class AllowProtectedPathsAction : ReactiveR3Object, IItemModelComponent<AllowProtectedPathsAction>, IComparable<AllowProtectedPathsAction>
+    {
+        public ReactiveCommand<Unit> Command { get; } = new();
+
+        /// <summary>
+        /// True when the flag is set on every item the menu entry acts on.
+        /// </summary>
+        public IReadOnlyBindableReactiveProperty<bool> IsChecked { get; }
+
+        public int CompareTo(AllowProtectedPathsAction? other)
+        {
+            if (other is null) return 1;
+            return 0; // All of these actions are considered equal for sorting
+        }
+
+        public AllowProtectedPathsAction(bool initialValue, Observable<bool> valueObservable)
+        {
+            IsChecked = valueObservable.ToBindableReactiveProperty(initialValue);
+        }
+
+        private bool _isDisposed;
+        protected override void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                if (disposing)
+                {
+                    Disposable.Dispose(Command, IsChecked);
+                }
+
+                _isDisposed = true;
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
     public sealed class UninstallItemAction : ReactiveR3Object, IItemModelComponent<UninstallItemAction>, IComparable<UninstallItemAction>
     {
         public ReactiveCommand<Unit> CommandUninstallItem { get; } = new();

@@ -1255,6 +1255,12 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="Loadout_UninstallItem_Menu_Text__Uninstall_read_only" xml:space="preserve">
         <value>Uninstall read-only</value>
     </data>
+    <data name="Loadout_AllowProtectedPaths_Menu_Text" xml:space="preserve">
+        <value>Allow save files</value>
+    </data>
+    <data name="Loadout_AllowProtectedPaths_Menu_ToolTip" xml:space="preserve">
+        <value>Deploy this mod's files into the game's save folder. Saves already there are never overwritten.</value>
+    </data>
     <data name="Loadout_DeleteCollection_Menu_Text" xml:space="preserve">
         <value>Delete Collection</value>
     </data>

@@ -1040,6 +1040,12 @@ Zachować pobrane pliki w bibliotece na wypadek późniejszej próby instalacji?
     <data name="Loadout_UninstallItem_Menu_Text__Uninstall_read_only" xml:space="preserve">
         <value>Odinstaluj tylko do odczytu</value>
     </data>
+    <data name="Loadout_AllowProtectedPaths_Menu_Text" xml:space="preserve">
+        <value>Zezwól na pliki zapisu</value>
+    </data>
+    <data name="Loadout_AllowProtectedPaths_Menu_ToolTip" xml:space="preserve">
+        <value>Wdraża pliki tego moda do folderu zapisów gry. Zapisy, które już tam są, nigdy nie są nadpisywane.</value>
+    </data>
     <data name="Library_DeleteItem_Text" xml:space="preserve">
         <value>Usuń</value>
     </data>

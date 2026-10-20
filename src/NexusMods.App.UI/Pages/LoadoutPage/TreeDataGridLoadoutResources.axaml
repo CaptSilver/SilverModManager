@@ -53,6 +53,24 @@
             </controls:ComponentControl.ComponentTemplate>
         </controls:ComponentControl>
         
+        <!-- Allow save files action -->
+        <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="controls:SharedComponents+AllowProtectedPathsAction"
+                                            ComponentKey="{x:Static local:LoadoutColumns+EnabledState.AllowProtectedPathsComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type controls:SharedComponents+AllowProtectedPathsAction}">
+                            <MenuItem Header="{x:Static resources:Language.Loadout_AllowProtectedPaths_Menu_Text}"
+                                      Command="{CompiledBinding Command}"
+                                      ToggleType="CheckBox"
+                                      IsChecked="{CompiledBinding IsChecked.Value, Mode=OneWay}"
+                                      ToolTip.Tip="{x:Static resources:Language.Loadout_AllowProtectedPaths_Menu_ToolTip}" />
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+        </controls:ComponentControl>
+
         <!-- Uninstall item action -->
         <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
             <controls:ComponentControl.ComponentTemplate>

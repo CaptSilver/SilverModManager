@@ -75,6 +75,7 @@ public class BundledDataProvider : ILoadoutDataProvider
         LoadoutDataProviderHelper.AddEnabledStateToggle(_connection, parentItemModel, loadoutItem);
         LoadoutDataProviderHelper.AddViewModPageActionComponent(parentItemModel, isEnabled: false);
         LoadoutDataProviderHelper.AddUninstallItemComponent(parentItemModel, loadoutItem);
+        LoadoutDataProviderHelper.AddAllowProtectedPathsAction(_connection, parentItemModel, loadoutItem);
 
         return parentItemModel;
     }

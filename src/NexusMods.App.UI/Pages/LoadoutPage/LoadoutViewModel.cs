@@ -553,7 +553,8 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                                     _connection, GetWorkspaceController());
                                 return Task.CompletedTask;
                             },
-                            uninstallItemMessage => HandleUninstallItem(uninstallItemMessage.Ids, windowManager, _connection)
+                            uninstallItemMessage => HandleUninstallItem(uninstallItemMessage.Ids, windowManager, _connection),
+                            toggleProtectedPathsMessage => HandleToggleProtectedPathsAllowed(toggleProtectedPathsMessage.Ids, _connection)
                         );
                     }, awaitOperation: AwaitOperation.Parallel, configureAwait: false
                 ).AddTo(disposables);
@@ -806,6 +807,27 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
        
         var behavior = workspaceController.GetOpenPageBehavior(pageData, navInfo);
         workspaceController.OpenPage(workspaceController.ActiveWorkspaceId, pageData, behavior);
+    }
+
+    /// <summary>
+    /// Sets the flag that lets a mod deploy files into protected locations such as the game's save folder, or
+    /// clears it when every selected item already has it.
+    /// </summary>
+    internal static async Task HandleToggleProtectedPathsAllowed(LoadoutItemId[] ids, IConnection connection)
+    {
+        var items = ids.Distinct().Select(id => LoadoutItem.Load(connection.Db, id)).ToArray();
+        if (items.Length == 0) return;
+
+        var shouldAllow = !items.All(item => item.IsProtectedPathsAllowed);
+
+        using var tx = connection.BeginTransaction();
+        foreach (var item in items)
+        {
+            if (shouldAllow) tx.Add(item.Id, LoadoutItem.ProtectedPathsAllowed, Null.Instance);
+            else tx.Retract(item.Id, LoadoutItem.ProtectedPathsAllowed, Null.Instance);
+        }
+
+        await tx.Commit();
     }
 
     public static async Task HandleUninstallItem(LoadoutItemId[] ids, IWindowManager windowManager, IConnection connection)

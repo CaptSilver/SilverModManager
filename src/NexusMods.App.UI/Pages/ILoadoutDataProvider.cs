@@ -99,6 +99,7 @@ public static class LoadoutDataProviderHelper
         AddLockedEnabledState(itemModel, loadoutItem);
         AddEnabledStateToggle(connection, itemModel, loadoutItem);
         AddUninstallItemComponent(itemModel, loadoutItem);
+        AddAllowProtectedPathsAction(connection, itemModel, loadoutItem);
 
         return itemModel;
     }
@@ -196,6 +197,30 @@ public static class LoadoutDataProviderHelper
     {
         // Always show, will open the first mod page if multiple
         itemModel.Add(LoadoutColumns.EnabledState.ViewModFilesComponentKey, new SharedComponents.ViewModFilesAction(isEnabled: true));
+    }
+
+    public static void AddAllowProtectedPathsAction(IConnection connection, CompositeItemModel<EntityId> itemModel, LoadoutItem.ReadOnly loadoutItem)
+    {
+        var isAllowedObservable = LoadoutItem.Observe(connection, loadoutItem.Id).Select(static item => item.IsProtectedPathsAllowed).ToObservable();
+        itemModel.Add(LoadoutColumns.EnabledState.AllowProtectedPathsComponentKey,
+            new SharedComponents.AllowProtectedPathsAction(loadoutItem.IsProtectedPathsAllowed, isAllowedObservable)
+        );
+    }
+
+    public static void AddAllowProtectedPathsAction(
+        IConnection connection,
+        CompositeItemModel<EntityId> parentItemModel,
+        IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedItemsObservable)
+    {
+        // Checked only when every item is flagged, so one click on a mixed selection sets the flag everywhere.
+        var isAllowedObservable = linkedItemsObservable
+            .TransformOnObservable(item => LoadoutItem.Observe(connection, item.Id).Select(static i => i.IsProtectedPathsAllowed))
+            .QueryWhenChanged(static query => query.Items.Any() && query.Items.All(static isAllowed => isAllowed))
+            .ToObservable();
+
+        parentItemModel.Add(LoadoutColumns.EnabledState.AllowProtectedPathsComponentKey,
+            new SharedComponents.AllowProtectedPathsAction(initialValue: false, isAllowedObservable)
+        );
     }
 
     public static void AddUninstallItemComponent(CompositeItemModel<EntityId> itemModel, LoadoutItem.ReadOnly loadoutItem)

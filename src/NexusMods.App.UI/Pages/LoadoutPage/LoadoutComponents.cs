@@ -161,6 +161,7 @@ public static class LoadoutColumns
         public static readonly ComponentKey ViewModPageComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.ViewModPageAction));
         public static readonly ComponentKey ViewModFilesComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.ViewModFilesAction));
         public static readonly ComponentKey UninstallItemComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.UninstallItemAction));
+        public static readonly ComponentKey AllowProtectedPathsComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.AllowProtectedPathsAction));
         public static string GetColumnHeader() => "Actions";
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
     }
