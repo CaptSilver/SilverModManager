@@ -26,6 +26,8 @@ public sealed class StagingPromoter
     private readonly ILogger<StagingPromoter> _logger;
     private readonly Size _sizeCap;
 
+    internal IFileHasher Hasher => _hasher;
+
     /// <param name="sizeCap">The most staged data <see cref="Promote"/> accepts; see <see cref="VfsSettings.PromotionSizeCapBytes"/>.</param>
     public StagingPromoter(StagingDirectory staging, IPromotionSink sink, IFileHasher hasher, ILogger<StagingPromoter> logger, Size sizeCap)
     {

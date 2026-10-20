@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x7CE75C468D166BAA
-   - Total attributes: 241
-   - Total namespaces: 77
+   - Fingerprint: 0x0895453B94F4BCAA
+   - Total attributes: 249
+   - Total namespaces: 78
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -83,6 +83,14 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.DataModel.SchemaVersions.MigrationLogItem/WasRun                         | UInt8                   | False   | False | False     | 
 | SilverModManager.DataModel.Settings/Name                                                  | Utf8                    | True    | False | False     | 
 | SilverModManager.DataModel.Settings/Value                                                 | Utf8                    | False   | False | False     | 
+| SilverModManager.Deployment.VfsCatalogEntry/CTime                                         | Int64                   | False   | False | False     | 
+| SilverModManager.Deployment.VfsCatalogEntry/Device                                        | UInt64                  | False   | False | False     | 
+| SilverModManager.Deployment.VfsCatalogEntry/Hash                                          | UInt64                  | False   | False | False     | 
+| SilverModManager.Deployment.VfsCatalogEntry/Inode                                         | UInt64                  | False   | False | False     | 
+| SilverModManager.Deployment.VfsCatalogEntry/Installation                                  | Reference               | True    | False | False     | 
+| SilverModManager.Deployment.VfsCatalogEntry/MTime                                         | Int64                   | False   | False | False     | 
+| SilverModManager.Deployment.VfsCatalogEntry/Path                                          | Utf8                    | False   | False | False     | 
+| SilverModManager.Deployment.VfsCatalogEntry/Size                                          | UInt64                  | False   | False | False     | 
 | SilverModManager.GC.BackedUpFile/GameInstall                                              | Reference               | False   | False | False     | 
 | SilverModManager.GC.BackedUpFile/Hash                                                     | UInt64                  | False   | False | False     | 
 | SilverModManager.Games.FOMOD.EmptyDirectory/EmptyDirectory                                | UInt8                   | False   | False | False     | 
