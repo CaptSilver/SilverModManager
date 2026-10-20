@@ -19,7 +19,7 @@ internal sealed class OnDiskDataFolder : IDisposable
     {
         return new ServiceCollection()
             .AddLogging()
-            .AddApp(startupMode: new StartupMode { RunAsMain = true })
+            .AddApp(startupMode: new StartupMode { RunAsMain = true, ShowUI = false })
             .OverrideSettingsForTests<DataModelSettings>(settings => settings with
             {
                 UseInMemoryDataModel = false,

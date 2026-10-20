@@ -14,7 +14,8 @@ public class Startup
     /// <param name="container"></param>
     public void ConfigureServices(IServiceCollection container)
     {
-        var mode = new StartupMode { RunAsMain = true };
+        // No window here, so none of the GUI-only services (such as the launcher shim refresher) start with the host.
+        var mode = new StartupMode { RunAsMain = true, ShowUI = false };
         
         const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"NexusMods.UI.Tests.Tests-{Guid.NewGuid()}";

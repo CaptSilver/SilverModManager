@@ -103,6 +103,10 @@ public static class Services
             if (!startupMode.IsAvaloniaDesigner)
                 services.AddSingleProcess(Mode.Main);
 
+            // Only the window-showing process knows which executable Steam launch lines should come back to.
+            if (startupMode.ShowUI && !startupMode.IsAvaloniaDesigner)
+                services.AddLauncherShim();
+
             if (addStandardGameLocators)
                 services.AddGameLocators();
         }
