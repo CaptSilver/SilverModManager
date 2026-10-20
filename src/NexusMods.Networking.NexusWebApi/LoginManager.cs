@@ -127,6 +127,8 @@ public sealed class LoginManager : IDisposable, ILoginManager
 
     private CachedObject<UserInfo> _cachedUserInfo = new(TimeSpan.FromMinutes(CacheExpiryMinutes));
     private readonly SemaphoreSlim _verifySemaphore = new(initialCount: 1, maxCount: 1);
+    private readonly object _apiKeyLoginLock = new();
+    private Task? _apiKeyLogin;
     private readonly IDisposable _periodicRefreshDisposable;
     private readonly IConnection _conn;
 
@@ -309,7 +311,32 @@ public sealed class LoginManager : IDisposable, ILoginManager
     /// <remarks>
     /// Exceptions from the prompt propagate: a host with nobody to ask must fail loudly.
     /// </remarks>
-    public async Task LoginWithApiKeyAsync(CancellationToken token = default)
+    public Task LoginWithApiKeyAsync(CancellationToken token = default)
+    {
+        // Callers that arrive while the dialog is open wait on that one. Overlays are shown one at a
+        // time, so a second dialog would only queue up and reappear after the first was dismissed.
+        // The shared login ignores the caller's token: the dialog stays up when one caller gives
+        // up, and the key typed into it still has to be stored for the others.
+        Task<Task>? start = null;
+        Task login;
+        lock (_apiKeyLoginLock)
+        {
+            if (_apiKeyLogin is not { IsCompleted: false })
+            {
+                start = new Task<Task>(PromptForApiKeyAndStoreAsync);
+                _apiKeyLogin = start.Unwrap();
+            }
+
+            login = _apiKeyLogin;
+        }
+
+        // Started outside the lock: showing the dialog dispatches to the UI thread, which may be
+        // waiting on this lock.
+        start?.RunSynchronously();
+        return login.WaitAsync(token);
+    }
+
+    private async Task PromptForApiKeyAndStoreAsync()
     {
         // The key is checked against Nexus Mods while the dialog is open and stored only once it
         // passes. Storing first and verifying afterwards let an unchecked key win over a working
@@ -340,14 +367,14 @@ public sealed class LoginManager : IDisposable, ILoginManager
                 _logger.LogWarning(e, "Unable to verify the API key");
                 return $"Could not check the API key with Nexus Mods: {e.Message}";
             }
-        }, token))?.Trim();
+        }, CancellationToken.None))?.Trim();
 
         if (string.IsNullOrEmpty(key) || verified is null) return;
 
         // Publish the verified account first so the credential observer, which fires once the key
         // lands, finds it cached instead of asking again, and so it replaces any earlier user. The
         // semaphore makes a check still running against the old credential store its result first.
-        using var _ = await _verifySemaphore.WaitAsyncDisposable(token);
+        using var _ = await _verifySemaphore.WaitAsyncDisposable(CancellationToken.None);
         _cachedUserInfo.Store(verified);
         _userInfo.OnNext(verified);
         await ApiKey.Set(_conn, key);

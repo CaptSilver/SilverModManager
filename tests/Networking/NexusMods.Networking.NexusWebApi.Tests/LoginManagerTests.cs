@@ -152,6 +152,71 @@ public class LoginManagerTests : IAsyncLifetime
         (await loginManager.GetIsUserLoggedInAsync()).Should().BeFalse();
     }
 
+    /// <summary>
+    /// Like <see cref="PromptTyping"/>, but the user only types once <paramref name="typed"/> completes,
+    /// so several logins can be waiting on the dialog at the same time.
+    /// </summary>
+    private static IApiKeyPrompt PromptTypingLater(Task typed, string typedKey)
+    {
+        var prompt = Substitute.For<IApiKeyPrompt>();
+        prompt.PromptAsync(Arg.Any<Func<string, CancellationToken, ValueTask<string?>>>(), Arg.Any<CancellationToken>())
+            .Returns(call => Type(call.Arg<Func<string, CancellationToken, ValueTask<string?>>>()));
+        return prompt;
+
+        async ValueTask<string?> Type(Func<string, CancellationToken, ValueTask<string?>> validate)
+        {
+            await typed;
+            return await validate(typedKey, CancellationToken.None) is null ? typedKey : null;
+        }
+    }
+
+    [Fact]
+    public async Task ConcurrentKeyLoginsShareOneDialog()
+    {
+        var typed = new TaskCompletionSource();
+        var prompt = PromptTypingLater(typed.Task, "typed-key");
+        using var loginManager = CreateLoginManager(prompt);
+
+        var logins = Enumerable.Range(0, 3).Select(_ => loginManager.LoginWithApiKeyAsync()).ToArray();
+        typed.SetResult();
+        await Task.WhenAll(logins).WaitAsync(TimeSpan.FromSeconds(10));
+
+        await prompt.Received(1).PromptAsync(Arg.Any<Func<string, CancellationToken, ValueTask<string?>>>(), Arg.Any<CancellationToken>());
+        ApiKey.Get(_conn.Db).Should().Be("typed-key");
+    }
+
+    [Fact]
+    public async Task AKeyTypedAfterTheFirstCallerGaveUpIsStillStored()
+    {
+        // The dialog outlives whoever opened it: cancelling only stops that caller waiting.
+        var typed = new TaskCompletionSource();
+        var prompt = PromptTypingLater(typed.Task, "typed-key");
+        using var loginManager = CreateLoginManager(prompt);
+        using var firstCaller = new CancellationTokenSource();
+
+        var first = loginManager.LoginWithApiKeyAsync(firstCaller.Token);
+        var second = loginManager.LoginWithApiKeyAsync();
+        await firstCaller.CancelAsync();
+        typed.SetResult();
+
+        await first.Awaiting(t => t).Should().ThrowAsync<OperationCanceledException>();
+        await second.WaitAsync(TimeSpan.FromSeconds(10));
+        await prompt.Received(1).PromptAsync(Arg.Any<Func<string, CancellationToken, ValueTask<string?>>>(), Arg.Any<CancellationToken>());
+        ApiKey.Get(_conn.Db).Should().Be("typed-key");
+    }
+
+    [Fact]
+    public async Task AKeyLoginAfterTheDialogClosedAsksAgain()
+    {
+        var prompt = PromptTyping(null);
+        using var loginManager = CreateLoginManager(prompt);
+
+        await loginManager.LoginWithApiKeyAsync();
+        await loginManager.LoginWithApiKeyAsync();
+
+        await prompt.Received(2).PromptAsync(Arg.Any<Func<string, CancellationToken, ValueTask<string?>>>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task LoginWithoutAClientIdAndNoInteractivePromptFailsLoudly()
     {

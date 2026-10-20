@@ -33,6 +33,10 @@ public class WelcomeOverlayViewModel : AOverlayViewModel<IWelcomeOverlayViewMode
         CommandLogIn = IsLoggedIn.AsObservable().Select(static isLoggedIn => !isLoggedIn).ToReactiveCommand<Unit>(
             executeAsync: async (_, cancellationToken) =>
             {
+                // Overlays are shown one at a time. Left open, this one would hide the login dialog
+                // until the user dismissed it.
+                Close();
+
                 await loginManager.LoginAsync(token: cancellationToken);
                 
                 if (await loginManager.GetIsUserLoggedInAsync())

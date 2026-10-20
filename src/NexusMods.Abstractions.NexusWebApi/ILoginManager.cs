@@ -57,10 +57,10 @@ public interface ILoginManager
     Task LoginAsync(CancellationToken token = default);
     
     /// <summary>
-    /// Asks the user for a personal API key, stores it and verifies it. Does nothing if the
-    /// user cancels the prompt, and removes the key again if Nexus rejects it.
+    /// Asks the user for a personal API key and stores it once Nexus Mods accepts it. Does nothing
+    /// if the user cancels the prompt. Calls made while the prompt is open share it.
     /// </summary>
-    /// <param name="token"></param>
+    /// <param name="token">Stops this caller waiting; the prompt stays open for the others.</param>
     Task LoginWithApiKeyAsync(CancellationToken token = default);
 
     /// <summary>
