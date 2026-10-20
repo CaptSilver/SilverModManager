@@ -185,6 +185,44 @@ public abstract class ANexusCollectionTest<TTest>(ITestOutputHelper helper) : AC
     }
 
     /// <summary>
+    /// Adds a group holding a single <c>mods/{name}/info.json</c> file, which is what makes it a REDmod.
+    /// </summary>
+    protected async Task<LoadoutItemGroupId> AddRedMod(LoadoutId loadout, string name)
+    {
+        using var tx = Connection.BeginTransaction();
+        var group = AddEmptyGroup(tx, loadout, name);
+        AddFile(tx, loadout, group, new GamePath(LocationId.Game, $"mods/{name}/info.json"));
+        var result = await tx.Commit();
+        return LoadoutItemGroupId.From(result[group].Value);
+    }
+
+    /// <summary>
+    /// Every datom currently asserted on the given entities, as (entity, attribute, value) with the value
+    /// as hex so that set equality compares contents. The transaction is left out on purpose: a datom that
+    /// was retracted and asserted again with the same value is not a change.
+    /// </summary>
+    protected static HashSet<(EntityId E, AttributeId A, string V)> DatomsOf(IDb db, IEnumerable<EntityId> ids)
+    {
+        var result = new HashSet<(EntityId, AttributeId, string)>();
+        foreach (var id in ids)
+        {
+            foreach (var datom in db.Datoms(id))
+                result.Add((datom.E, datom.A, $"{datom.Prefix.ValueTag}:{Convert.ToHexString(datom.ValueSpan)}"));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// The entities the loadout owns in <paramref name="db"/>, excluding the loadout row itself.
+    /// </summary>
+    protected HashSet<EntityId> OwnedIds(IDb db, EntityId loadout)
+    {
+        return Connection
+            .Query<EntityId>($"SELECT DISTINCT Id FROM loadouts.TrackedEntitiesForLoadout({db}, {loadout}) WHERE Id != {loadout}")
+            .ToHashSet();
+    }
+
+    /// <summary>
     /// Records <see cref="Loadout.LastAppliedDateTime"/> on the loadout, which is what makes the undo
     /// service list a revision.
     /// </summary>
