@@ -65,13 +65,15 @@ public static class RunGarbageCollector
             }
         
             store.ReloadCaches();
-
-            // Staged files are copies of file store content, so they are swept under the same lock.
-            var live = StagingReferenceMarker.LiveHashes(connection.Db, plans, stagingBackends);
-            var swept = stagingStore.Sweep(live);
-            if (swept > 0)
-                logger.LogInformation("Removed {Count} unused files from the loose staging store", swept);
         }
+
+        // Outside the archive lock on purpose: an apply holds the staging store and then reads the
+        // archives to extract, so sweeping (which waits for that hold) while holding the archive write
+        // lock would leave each side waiting for the other. 'gcLock' still keeps runs apart. Liveness is
+        // read inside Sweep, after the holds are gone, so it includes what the apply just committed.
+        var swept = stagingStore.Sweep(() => StagingReferenceMarker.LiveHashes(connection.Db, plans, stagingBackends));
+        if (swept > 0)
+            logger.LogInformation("Removed {Count} unused files from the loose staging store", swept);
     }
 
     private record struct ToUpdateInDataStoreEntry(List<Hash> ToRemove, AbsolutePath OldFilePath, AbsolutePath NewFilePath);

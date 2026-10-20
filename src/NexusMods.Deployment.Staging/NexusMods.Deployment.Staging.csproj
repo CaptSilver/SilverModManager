@@ -13,6 +13,7 @@
     <ItemGroup>
         <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
         <ProjectReference Include="..\NexusMods.Abstractions.Loadouts\NexusMods.Abstractions.Loadouts.csproj" />
+        <ProjectReference Include="..\NexusMods.Abstractions.Loadouts.Synchronizers\NexusMods.Abstractions.Loadouts.Synchronizers.csproj" />
     </ItemGroup>
 
 </Project>

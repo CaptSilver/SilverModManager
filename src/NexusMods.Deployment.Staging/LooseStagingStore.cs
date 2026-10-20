@@ -1,13 +1,14 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Loadouts.Deployment;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Settings;
+using NexusMods.Sdk.Threading;
 
 namespace NexusMods.Deployment.Staging;
 
@@ -19,9 +20,20 @@ public sealed class LooseStagingStore : ILooseStagingStore
     private readonly IFileStore _fileStore;
     private readonly ILogger<LooseStagingStore> _logger;
 
+    // Holds are the read side and Sweep the write side, so any number of applies can stage at once
+    // while a sweep sees the store quiet.
+    private readonly AsyncFriendlyReaderWriterLock _sweepLock = new();
+
     // One gate per destination: concurrent Ensure calls for the same file share a temp name,
-    // so they must not extract at the same time. Entries stay for the life of the process.
-    private readonly ConcurrentDictionary<AbsolutePath, SemaphoreSlim> _gates = new();
+    // so they must not extract at the same time. An entry goes when its last user leaves; dropping
+    // it earlier would let a newcomer extract beside a caller still queued on the old gate.
+    private readonly Dictionary<AbsolutePath, Gate> _gates = new();
+
+    private sealed class Gate
+    {
+        public readonly SemaphoreSlim Semaphore = new(1, 1);
+        public int Users;
+    }
 
     public LooseStagingStore(ISettingsManager settingsManager, IFileStore fileStore, IFileSystem fileSystem, ILogger<LooseStagingStore> logger)
     {
@@ -32,6 +44,8 @@ public sealed class LooseStagingStore : ILooseStagingStore
 
     /// <inheritdoc/>
     public AbsolutePath Root { get; }
+
+    internal int GateCount { get { lock (_gates) return _gates.Count; } }
 
     /// <inheritdoc/>
     public AbsolutePath PathFor(GameInstallMetadataId installation, Hash hash)
@@ -46,8 +60,17 @@ public sealed class LooseStagingStore : ILooseStagingStore
         var path = PathFor(installation, hash);
         if (path.FileExists) return path;
 
-        var gate = _gates.GetOrAdd(path, static _ => new SemaphoreSlim(1, 1));
-        await gate.WaitAsync(token);
+        var gate = EnterGate(path);
+        try
+        {
+            await gate.Semaphore.WaitAsync(token);
+        }
+        catch
+        {
+            LeaveGate(path, gate);
+            throw;
+        }
+
         try
         {
             // Another caller may have finished while this one waited for the gate.
@@ -66,7 +89,26 @@ public sealed class LooseStagingStore : ILooseStagingStore
         }
         finally
         {
-            gate.Release();
+            gate.Semaphore.Release();
+            LeaveGate(path, gate);
+        }
+    }
+
+    private Gate EnterGate(AbsolutePath path)
+    {
+        lock (_gates)
+        {
+            if (!_gates.TryGetValue(path, out var gate)) _gates[path] = gate = new Gate();
+            gate.Users++;
+            return gate;
+        }
+    }
+
+    private void LeaveGate(AbsolutePath path, Gate gate)
+    {
+        lock (_gates)
+        {
+            if (--gate.Users == 0) _gates.Remove(path);
         }
     }
 
@@ -97,9 +139,46 @@ public sealed class LooseStagingStore : ILooseStagingStore
     }
 
     /// <inheritdoc/>
-    public int Sweep(IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>> live)
+    public AbsolutePath DirectoryFor(GameInstallMetadataId installation)
     {
+        var directory = InstallationDirectory(installation);
+        directory.CreateDirectory();
+        return directory;
+    }
+
+    /// <inheritdoc/>
+    public bool Release(GameInstallMetadataId installation, Hash hash)
+    {
+        var path = PathFor(installation, hash);
+        if (!path.FileExists) return false;
+        path.Delete();
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public IDisposable Hold() => new SweepHold(_sweepLock.ReadLock());
+
+    // The lock's read handle decrements on every Dispose, so a hold disposed twice would release
+    // someone else's read and let a sweep run under it.
+    private sealed class SweepHold(AsyncFriendlyReaderWriterLock.ReadLockDisposable readLock) : IDisposable
+    {
+        private int _disposed;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0) readLock.Dispose();
+        }
+    }
+
+    /// <inheritdoc/>
+    public int Sweep(Func<IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>>> liveFactory)
+    {
+        using var exclusive = _sweepLock.WriteLock();
         if (!Root.DirectoryExists()) return 0;
+
+        // Read after the lock is ours: a holder that just finished has committed what it staged by now.
+        var live = liveFactory();
+        var sweepStart = DateTime.UtcNow;
 
         var deleted = 0;
         foreach (var installation in Installations().ToArray())
@@ -108,7 +187,7 @@ public sealed class LooseStagingStore : ILooseStagingStore
 
             if (!live.TryGetValue(installation, out var liveHashes))
             {
-                deleted += directory.EnumerateFiles(recursive: true).Count();
+                deleted += Enumerate(installation).Count();
                 directory.DeleteDirectory(recursive: true);
                 continue;
             }
@@ -120,10 +199,20 @@ public sealed class LooseStagingStore : ILooseStagingStore
                 deleted++;
             }
 
+            // A crashed extraction or a probe that never got cleaned up is never parsed as a staged
+            // file, so nothing else would remove it, and it would keep its directories alive.
+            foreach (var file in directory.EnumerateFiles(recursive: true).ToArray())
+            {
+                if (IsLeftover(file.FileName) && file.FileInfo.LastWriteTimeUtc < sweepStart) file.Delete();
+            }
+
             foreach (var prefix in directory.EnumerateDirectories(recursive: false).ToArray())
             {
                 if (!prefix.EnumerateFiles(recursive: false).Any()) prefix.DeleteDirectory(recursive: false);
             }
+
+            if (!directory.EnumerateFiles(recursive: true).Any() && !directory.EnumerateDirectories(recursive: false).Any())
+                directory.DeleteDirectory(recursive: false);
         }
 
         if (deleted > 0) _logger.LogInformation("Removed {Count} unreferenced staged files", deleted);
@@ -132,6 +221,10 @@ public sealed class LooseStagingStore : ILooseStagingStore
 
     private AbsolutePath InstallationDirectory(GameInstallMetadataId installation)
         => Root.Combine(installation.Value.Value.ToString("x", CultureInfo.InvariantCulture));
+
+    private static bool IsLeftover(string name)
+        => name.StartsWith($"{ProtonMessages.ProbeFileName}-", StringComparison.Ordinal)
+           || (name.Length == 16 + 5 && name[0] == '.' && name.EndsWith(".tmp", StringComparison.Ordinal) && TryParseHash(name[1..^4], out _));
 
     private static string HashToName(Hash hash) => hash.Value.ToString("x16", CultureInfo.InvariantCulture);
 

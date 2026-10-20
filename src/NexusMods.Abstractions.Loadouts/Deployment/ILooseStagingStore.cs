@@ -49,10 +49,33 @@ public interface ILooseStagingStore
     IEnumerable<GameInstallMetadataId> Installations();
 
     /// <summary>
-    /// Deletes every staged file that is not in <paramref name="live"/> for its installation. An
-    /// installation that is missing from <paramref name="live"/> loses its whole directory. Does nothing,
-    /// and creates nothing, when <see cref="Root"/> does not exist.
+    /// The directory the installation's staged files live in, created if it does not exist. The link
+    /// backends write their probe files here so the probe sees the same filesystem as the staged files.
     /// </summary>
-    /// <returns>The number of files deleted.</returns>
-    int Sweep(IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>> live);
+    AbsolutePath DirectoryFor(GameInstallMetadataId installation);
+
+    /// <summary>
+    /// Unlinks the staged file for the installation and returns whether one was there. Only the store's
+    /// own path goes: a link made from it into a game folder keeps the bytes alive and is not touched.
+    /// The next <see cref="Ensure"/> extracts the file again.
+    /// </summary>
+    bool Release(GameInstallMetadataId installation, Hash hash);
+
+    /// <summary>
+    /// Stops <see cref="Sweep"/> from running until the returned handle is disposed. Holds are shared and
+    /// reentrant. A hold taken while a sweep runs waits for the sweep to finish. An apply holds one from
+    /// before it probes the store directory until its links are recorded, because a sweep in between
+    /// cannot yet see the files that apply is staging.
+    /// </summary>
+    IDisposable Hold();
+
+    /// <summary>
+    /// Deletes every staged file that is not in the set <paramref name="live"/> returns for its
+    /// installation, together with stale temp and probe files left in the store. An installation that is
+    /// missing from the result loses its whole directory. Waits for every <see cref="Hold"/> first, and
+    /// calls <paramref name="live"/> only after that, so the set reflects everything those holders
+    /// committed. Does nothing, and creates nothing, when <see cref="Root"/> does not exist.
+    /// </summary>
+    /// <returns>The number of staged files deleted.</returns>
+    int Sweep(Func<IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>>> live);
 }

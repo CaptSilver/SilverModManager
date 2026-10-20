@@ -10,6 +10,7 @@ using NexusMods.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using NexusMods.Sdk;
 using NexusMods.Sdk.IO;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
@@ -94,6 +95,60 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
 
         _staging.Contains(installation, deployed).Should().BeTrue("a deployed link would dangle without it");
         _staging.Contains(installation, elsewhere).Should().BeFalse("its path is routed to the copy backend");
+    }
+
+    [Fact]
+    public async Task Do_WaitsForAHoldWithoutHoldingTheArchiveLock()
+    {
+        var loadout = await CreateLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, ["mods/x"], loadout, "Mods");
+            await tx.Commit();
+        }
+        var hash = Hash("mods/x");
+        var temp = serviceProvider.GetRequiredService<IFileSystem>().GetKnownPath(KnownPath.TempDirectory).Combine($"gc-extract-{Guid.NewGuid():N}");
+
+        var hold = _staging.Hold();
+        var gc = Task.Run(RunGc, TestContext.Current.CancellationToken);
+        await Task.Delay(500, TestContext.Current.CancellationToken);
+        gc.IsCompleted.Should().BeFalse("the sweep has to wait for the hold");
+
+        // An apply under a hold reads the archives; that must not queue behind the collector.
+        var extract = Task.Run(() => _fileStore.ExtractFiles([(hash, temp)], TestContext.Current.CancellationToken), TestContext.Current.CancellationToken);
+        await extract.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        hold.Dispose();
+        await gc.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task Do_SweepsWithLivenessFromAfterTheHold()
+    {
+        var loadout = await CreateLoadout();
+        var installation = loadout.InstallationId;
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, ["mods/x"], loadout, "Mods");
+            await tx.Commit();
+        }
+        var hash = Hash("mods/x");
+        await _staging.Ensure(installation, hash);
+
+        var hold = _staging.Hold();
+        var gc = Task.Run(RunGc, TestContext.Current.CancellationToken);
+        await Task.Delay(500, TestContext.Current.CancellationToken);
+
+        // The apply commits its plan rows while it still holds the store.
+        using (var tx = Connection.BeginTransaction())
+        {
+            _plans.Write(tx, installation, new GamePath(LocationId.Game, "mods"), StagingBackend);
+            await tx.Commit();
+        }
+        hold.Dispose();
+        await gc.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        _staging.Contains(installation, hash).Should().BeTrue("the plan row committed under the hold names a staging backend");
     }
 
     private static void AddDiskState(ITransaction tx, GameInstallMetadataId installation, GamePath path, Hash hash)
