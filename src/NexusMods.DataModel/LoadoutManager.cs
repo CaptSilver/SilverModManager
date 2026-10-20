@@ -396,6 +396,13 @@ internal partial class LoadoutManager : ILoadoutManager
                 tx.Delete(entry, recursive: false);
             }
 
+            // The game's metadata outlives UnManage, so rows left here would hand a game that is managed again
+            // the backend decision of the install that was just removed.
+            foreach (var entry in DeploymentPlanEntry.FindByInstallation(metadata.Db, metadata))
+            {
+                tx.Delete(entry, recursive: false);
+            }
+
             if (metadata.Contains(GameInstallMetadata.LastSyncedLoadoutId))
                 tx.Retract(metadata, GameInstallMetadata.LastSyncedLoadoutId, metadata.LastSyncedLoadoutId.Value);
             if (metadata.Contains(GameInstallMetadata.LastSyncedLoadoutTransactionId))

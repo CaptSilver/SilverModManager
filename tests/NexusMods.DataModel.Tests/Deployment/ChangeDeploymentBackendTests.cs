@@ -78,8 +78,9 @@ public class ChangeDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGa
     public async Task SwitchingToTheCurrentBackendChangesNothing()
     {
         await ApplyLoadoutWithFile();
+        var current = Plans.Load(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation).Id).BackendFor(GameRoot);
 
-        var changed = await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, DeploymentBackendId.Copy, chosen: true);
+        var changed = await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, current, chosen: true);
 
         changed.Should().BeFalse();
         Recording.Calls.Should().BeEmpty();

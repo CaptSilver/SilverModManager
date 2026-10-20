@@ -17,12 +17,14 @@ namespace NexusMods.DataModel.Tests.Deployment;
 public class CopyDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGameIsolatedTest<CopyDeploymentBackendTests>(helper)
 {
     [Fact]
-    public void CopyIsTheOnlyRegisteredBackend()
+    public void RegisteredBackendsAreCopyReflinkHardlinkAndSymlink()
     {
-        var backend = ServiceProvider.GetServices<IDeploymentBackend>().Should().ContainSingle().Subject;
+        var backends = ServiceProvider.GetServices<IDeploymentBackend>().ToArray();
 
-        backend.Id.Should().Be(DeploymentBackendId.Copy);
-        backend.UsesLooseStaging.Should().BeFalse();
+        backends.Select(b => b.Id).Should().BeEquivalentTo(
+            [DeploymentBackendId.Copy, DeploymentBackendId.Reflink, DeploymentBackendId.Hardlink, DeploymentBackendId.Symlink]);
+        backends.Single(b => b.Id == DeploymentBackendId.Copy).UsesLooseStaging.Should().BeFalse();
+        backends.Where(b => b.Id != DeploymentBackendId.Copy).Should().OnlyContain(b => b.UsesLooseStaging);
     }
 
     [Fact]

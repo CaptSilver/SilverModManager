@@ -87,15 +87,16 @@ public class SynchronizerService : ISynchronizerService
     }
     
     /// <inheritdoc />
-    public Task Synchronize(LoadoutId loadoutId) => SynchronizeCore(loadoutId, refuseWhileRunning: true);
+    public Task Synchronize(LoadoutId loadoutId) => SynchronizeCore(loadoutId, refuseWhileRunning: true, reselectBackends: true);
 
     /// <summary>
     /// Synchronizes on behalf of a launch session, which holds the running-game state itself and so
-    /// must not be refused by it. Everything else (semaphore, state locks) is the same as <see cref="Synchronize"/>.
+    /// must not be refused by it. Everything else (semaphore, state locks) is the same as <see cref="Synchronize"/>,
+    /// except that the deployment plan is read and never changed: a launch applies what the person last applied.
     /// </summary>
-    internal Task SynchronizeFromLaunchSession(LoadoutId loadoutId) => SynchronizeCore(loadoutId, refuseWhileRunning: false);
+    internal Task SynchronizeFromLaunchSession(LoadoutId loadoutId) => SynchronizeCore(loadoutId, refuseWhileRunning: false, reselectBackends: false);
 
-    private async Task SynchronizeCore(LoadoutId loadoutId, bool refuseWhileRunning)
+    private async Task SynchronizeCore(LoadoutId loadoutId, bool refuseWhileRunning, bool reselectBackends)
     {
         await _jobMonitor.Begin(new SynchronizeLoadoutJob(loadoutId),
             async ctx =>
@@ -116,6 +117,8 @@ public class SynchronizerService : ISynchronizerService
 
                     var gameState = GetOrAddGameState(loadout.InstallationId);
                     using var _2 = gameState.WithLock();
+
+                    if (reselectBackends) await ReselectUnchosenBackends(loadout.InstallationInstance);
 
                     await loadout.InstallationInstance.GetGame().Synchronizer.Synchronize(loadout, job);
                 }
@@ -152,59 +155,104 @@ public class SynchronizerService : ISynchronizerService
         {
             RunningGameGuard.ThrowIfRunning(_serviceProvider, installation);
 
-            var metadata = _gameRegistry.ForceGetMetadata(installation);
-            var metadataId = metadata.GameInstallMetadataId;
-            var plans = _serviceProvider.GetRequiredService<IDeploymentPlanStore>();
-            var plan = plans.Load(_conn.Db, metadataId);
-            if (plan.BackendFor(root) == backend) return false;
-
-            // The reset below retracts LastSyncedLoadout, so it has to be read first.
-            var hadLoadout = GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastLoadoutId);
-
-            using var _ = GetOrAddGameState(metadataId).WithLock();
-
-            var registered = _serviceProvider.GetServices<IDeploymentBackend>().Select(b => b.Id).ToHashSet();
-            var unknown = plan.Roots.Where(r => !registered.Contains(r.Backend)).ToArray();
-            if (unknown.Length == 0)
-            {
-                // Resets with the plan as it stands, so the backend being replaced removes what it deployed. The
-                // root may have been moved here because its backend stopped working, so the apply this starts with
-                // must not refuse for that reason.
-                using (RecordedRootPreflight.Suspend())
-                {
-                    await _loadoutManager.Value.DeactivateCurrentLoadout(installation);
-                }
-            }
-            else
-            {
-                // A backend this build doesn't know can't run its reset; trying would fail on every attempt and
-                // leave the install stuck on the stale row.
-                foreach (var entry in unknown)
-                {
-                    _logger.LogWarning("Deployment root {Root} names unregistered backend {Backend}, skipping the reset before switching to {NewBackend}", entry.Root, entry.Backend, backend);
-                }
-            }
-
-            using (var tx = _conn.BeginTransaction())
-            {
-                plans.Write(tx, _conn.Db, metadataId, root, backend, chosen);
-                await tx.Commit();
-            }
-
-            if (hadLoadout)
-            {
-                // Anything loaded before the reset is bound to the old db. Not through Synchronize(LoadoutId): that
-                // waits on the semaphore this method already holds.
-                var loadout = Loadout.Load(_conn.Db, lastLoadoutId);
-                await loadout.InstallationInstance.GetGame().Synchronizer.Synchronize(loadout);
-            }
-
-            return true;
+            using var _ = GetOrAddGameState(_gameRegistry.ForceGetMetadata(installation).GameInstallMetadataId).WithLock();
+            return await MoveRoots(installation, [new RootMove(root, backend, chosen)], reapplyLastLoadout: true);
         }
         finally
         {
             _semaphore.Release();
         }
+    }
+
+    private sealed record RootMove(GamePath Root, DeploymentBackendId Backend, bool Chosen);
+
+    /// <summary>
+    /// Moves every root whose row was recorded by the selection chain, and not picked by a person, to what the
+    /// chain picks for it now. Runs at the start of an apply, with the semaphore and the game's state lock held,
+    /// so the apply that follows deploys with the new backends.
+    /// </summary>
+    private async Task ReselectUnchosenBackends(GameInstallation installation)
+    {
+        var metadataId = _gameRegistry.ForceGetMetadata(installation).GameInstallMetadataId;
+        var plan = _serviceProvider.GetRequiredService<IDeploymentPlanStore>().Load(_conn.Db, metadataId);
+        var selector = _serviceProvider.GetRequiredService<IDeploymentBackendSelector>();
+
+        var moves = new List<RootMove>();
+        // The chain probes by writing files into the store directory, which a sweep must not meet half way.
+        using (_serviceProvider.GetRequiredService<ILooseStagingStore>().Hold())
+        {
+            foreach (var row in plan.Roots.Where(r => !r.Chosen))
+            {
+                var choice = selector.Choose(installation, row.Root);
+                if (choice.Backend == row.Backend) continue;
+
+                _logger.LogInformation("Moving deployment root {Root} of {Game} from {OldBackend} to {NewBackend}: the recorded backend was not picked by hand and the selection chain now chooses differently ({Reason})",
+                    row.Root, installation.Game.DisplayName, row.Backend, choice.Backend, choice.Reason);
+                moves.Add(new RootMove(row.Root, choice.Backend, Chosen: false));
+            }
+        }
+
+        // The apply this is part of puts the files back.
+        if (moves.Count > 0) await MoveRoots(installation, moves, reapplyLastLoadout: false);
+    }
+
+    /// <summary>
+    /// Resets the game with the backends it is deployed with, records the new backends and, when asked, applies
+    /// the last applied loadout again. The caller holds the semaphore and the game's state lock.
+    /// </summary>
+    /// <returns>False when every root already uses its backend and nothing was done.</returns>
+    private async Task<bool> MoveRoots(GameInstallation installation, IReadOnlyList<RootMove> requested, bool reapplyLastLoadout)
+    {
+        var metadata = _gameRegistry.ForceGetMetadata(installation);
+        var metadataId = metadata.GameInstallMetadataId;
+        var plans = _serviceProvider.GetRequiredService<IDeploymentPlanStore>();
+        var plan = plans.Load(_conn.Db, metadataId);
+        var moves = requested.Where(m => plan.BackendFor(m.Root) != m.Backend).ToArray();
+        if (moves.Length == 0) return false;
+
+        // The reset below retracts LastSyncedLoadout, so it has to be read first.
+        var hadLoadout = GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastLoadoutId);
+
+        var registered = _serviceProvider.GetServices<IDeploymentBackend>().Select(b => b.Id).ToHashSet();
+        var unknown = plan.Roots.Where(r => !registered.Contains(r.Backend)).ToArray();
+        if (unknown.Length == 0)
+        {
+            // Resets with the plan as it stands, so the backend being replaced removes what it deployed. The
+            // root may have been moved here because its backend stopped working, so the apply this starts with
+            // must not refuse for that reason.
+            using (RecordedRootPreflight.Suspend())
+            {
+                await _loadoutManager.Value.DeactivateCurrentLoadout(installation);
+            }
+        }
+        else
+        {
+            // A backend this build doesn't know can't run its reset; trying would fail on every attempt and
+            // leave the install stuck on the stale row.
+            foreach (var entry in unknown)
+            {
+                _logger.LogWarning("Deployment root {Root} names unregistered backend {Backend}, skipping the reset before switching to {NewBackend}", entry.Root, entry.Backend, moves[0].Backend);
+            }
+        }
+
+        using (var tx = _conn.BeginTransaction())
+        {
+            foreach (var move in moves)
+            {
+                plans.Write(tx, _conn.Db, metadataId, move.Root, move.Backend, move.Chosen);
+            }
+            await tx.Commit();
+        }
+
+        if (hadLoadout && reapplyLastLoadout)
+        {
+            // Anything loaded before the reset is bound to the old db. Not through Synchronize(LoadoutId): that
+            // waits on the semaphore the caller already holds.
+            var loadout = Loadout.Load(_conn.Db, lastLoadoutId);
+            await loadout.InstallationInstance.GetGame().Synchronizer.Synchronize(loadout);
+        }
+
+        return true;
     }
 
     private SynchronizerState GetOrAddLoadoutState(LoadoutId loadoutId)

@@ -16,6 +16,7 @@ using NexusMods.DataModel.Sorting;
 using NexusMods.DataModel.Synchronizer;
 using NexusMods.DataModel.Synchronizer.DbFunctions;
 using NexusMods.DataModel.Undo;
+using NexusMods.Deployment.Links;
 using NexusMods.Deployment.Staging;
 using NexusMods.Deployment.Vfs;
 using NexusMods.HyperDuck;
@@ -107,6 +108,7 @@ public static class Services
         // GC
         coll.AddAllSingleton<IGarbageCollectorRunner, GarbageCollectorRunner>();
         coll.AddLooseStagingStore();
+        coll.AddLinkDeploymentBackends();
         coll.AddVfsCore();
         
         
