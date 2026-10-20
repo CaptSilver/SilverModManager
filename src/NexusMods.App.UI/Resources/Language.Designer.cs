@@ -3058,24 +3058,6 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Discord.
-        /// </summary>
-        public static string OpenDiscordMenuItem_Header {
-            get {
-                return ResourceManager.GetString("OpenDiscordMenuItem.Header", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Nexus Mods forums.
-        /// </summary>
-        public static string OpenForumsMenuItem_Header {
-            get {
-                return ResourceManager.GetString("OpenForumsMenuItem.Header", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to GitHub.
         /// </summary>
         public static string OpenGitHubMenuItem_Header {
@@ -3085,7 +3067,7 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Status page.
+        ///   Looks up a localized string similar to Nexus Mods status.
         /// </summary>
         public static string OpenStatusPageMenuItem_Header {
             get {
@@ -3580,7 +3562,7 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Click to give feedback and help us improve..
+        ///   Looks up a localized string similar to Click to report a problem or give feedback on GitHub..
         /// </summary>
         public static string TopBar_GiveFeedback_ToolTip {
             get {
@@ -3634,7 +3616,7 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to How to uninstall the Nexus Mods app.
+        ///   Looks up a localized string similar to How to uninstall SilverModManager.
         /// </summary>
         public static string Updated_ViewUninstallDocs {
             get {

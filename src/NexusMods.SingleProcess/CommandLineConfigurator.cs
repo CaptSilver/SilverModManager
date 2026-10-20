@@ -138,7 +138,7 @@ public class CommandLineConfigurator
     {
         // NOTE(erri120): The CLI framework we're using was designed for verbs and options only.
         // This method circumvents the entire framework to deal with this invocation:
-        // NexusMods.App nxm://something
+        // SilverModManager nxm://something
         // This invocation can't be parsed with the CLI framework, so we hand-role the parsing.
         // See https://github.com/Nexus-Mods/NexusMods.App/issues/1677 for details.
 

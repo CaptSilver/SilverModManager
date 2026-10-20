@@ -27,12 +27,8 @@
                 <StackPanel>
                     <TextBlock Theme="{StaticResource BodyXLBoldTheme}"
                                TextAlignment="Center"
-                               Foreground="{StaticResource NeutralStrongBrush}"
-                               Text="Welcome to the"/>
-                    <TextBlock Theme="{StaticResource BodyXLBoldTheme}"
-                               TextAlignment="Center"
                                Foreground="{StaticResource AppLinearGradientBrush}"
-                               Text="Nexus Mods App Preview"/>
+                               Text="Welcome to SilverModManager"/>
                 </StackPanel>
                 
 
@@ -40,7 +36,7 @@
                            TextAlignment="Center"
                            TextWrapping="Wrap"
                            Foreground="{StaticResource NeutralSubduedBrush}"
-                           Text="Currently, the app supports Stardew Valley and Cyberpunk 2077 with more games coming soon. Share your feedback anytime using the 'Give Feedback' button in the footer." />
+                           Text="SilverModManager manages mods for your games on Linux and downloads them from Nexus Mods. It is not affiliated with or endorsed by Nexus Mods. Mods you add from disk work without signing in." />
             </StackPanel>
 
             <StackPanel Spacing="8">
@@ -48,27 +44,9 @@
                            TextAlignment="Center"
                            TextWrapping="Wrap"
                            Foreground="{StaticResource NeutralSubduedBrush}"
-                           Text="Join the discussion on:" />
+                           Text="Questions, problems or feedback:" />
 
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-4}" HorizontalAlignment="Center">
-                    <controls:StandardButton x:Name="ButtonOpenDiscord"
-                                             Text="Discord"
-                                             Type="Secondary"
-                                             Fill="None"
-                                             Size="Small"
-                                             ShowIcon="Left"
-                                             LeftIcon="{x:Static icons:IconValues.Discord}"
-                                             ToolTip.Tip="Open Discord" />
-
-                    <controls:StandardButton x:Name="ButtonOpenForum"
-                                             Text="Nexus Mods Forums"
-                                             Type="Secondary"
-                                             Fill="None"
-                                             Size="Small"
-                                             ShowIcon="Left"
-                                             LeftIcon="{x:Static icons:IconValues.Forum}"
-                                             ToolTip.Tip="Open Forums at Nexus Mods" />
-
                     <controls:StandardButton x:Name="ButtonOpenGitHub"
                                              Text="GitHub"
                                              Type="Secondary"
@@ -86,7 +64,7 @@
                            TextAlignment="Center"
                            TextWrapping="Wrap"
                            Foreground="{StaticResource NeutralSubduedBrush}"
-                           Text="Enjoy the preview, and happy modding!" />
+                           Text="Happy modding!" />
                 <Border Height="1" Background="{StaticResource SurfaceMidBrush}" />
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"

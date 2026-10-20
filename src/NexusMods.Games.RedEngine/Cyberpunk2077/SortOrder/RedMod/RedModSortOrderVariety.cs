@@ -38,7 +38,7 @@ public class RedModSortOrderVariety : ASortOrderVariety<
         DisplayNameColumnHeader = "REDmod Name",
         EmptyStateMessageTitle = "No REDmods detected",
         EmptyStateMessageContents = "Some mods contain REDmod items that alter core gameplay elements. When detected, they will appear here for load order configuration.",
-        LearnMoreUrl = "https://nexus-mods.github.io/NexusMods.App/users/games/Cyberpunk2077/#redmod-load-ordering"
+        LearnMoreUrl = "https://github.com/CaptSilver/SilverModManager#readme"
     };
 
     public override async ValueTask<SortOrderId> GetOrCreateSortOrderFor(

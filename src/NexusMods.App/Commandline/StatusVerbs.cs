@@ -8,7 +8,7 @@ namespace NexusMods.App.Commandline;
 
 
 /// <summary>
-/// These verbs are used for checking the status of the Nexus Mods App.
+/// These verbs are used for checking the status of SilverModManager.
 /// </summary>
 public static class StatusVerbs
 {
@@ -18,11 +18,11 @@ public static class StatusVerbs
 
     public const string HeartbeatCommand = "heartbeat";
     /// <summary>
-    /// Returns the processId and the uptime of the Nexus Mods app process.
+    /// Returns the processId and the uptime of the SilverModManager process.
     /// </summary>
     /// <param name="renderer"></param>
     /// <returns></returns>
-    [Verb(HeartbeatCommand, "Returns process uptime for the Nexus Mods app.")]
+    [Verb(HeartbeatCommand, "Returns process uptime for SilverModManager.")]
     private static async Task<int> Heartbeat([Injected] IRenderer renderer)
     {
         var process = Process.GetCurrentProcess();

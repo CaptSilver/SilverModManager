@@ -4,7 +4,7 @@ using NexusMods.Sdk.NexusModsApi;
 namespace NexusMods.Networking.NexusWebApi.UpdateFilters;
 
 /// <summary>
-/// This service provides services for filtering mod updates in the Nexus Mods App.
+/// This service provides services for filtering mod updates in SilverModManager.
 /// More specifically, this is the entry point for all filtering; it allows you to hide or show files
 /// and unifies underlying filters with potential different under the hood implementations as one.
 /// 

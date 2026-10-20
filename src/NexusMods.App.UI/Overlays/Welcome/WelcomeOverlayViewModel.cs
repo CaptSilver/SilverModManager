@@ -13,8 +13,6 @@ namespace NexusMods.App.UI.Overlays;
 
 public class WelcomeOverlayViewModel : AOverlayViewModel<IWelcomeOverlayViewModel>, IWelcomeOverlayViewModel
 {
-    public ReactiveCommand CommandOpenDiscord { get; }
-    public ReactiveCommand CommandOpenForum { get; }
     public ReactiveCommand CommandOpenGitHub { get; }
 
     public ReactiveCommand<Unit> CommandLogIn { get; }
@@ -30,8 +28,6 @@ public class WelcomeOverlayViewModel : AOverlayViewModel<IWelcomeOverlayViewMode
         ILoginManager loginManager,
         IWindowNotificationService notificationService)
     {
-        CommandOpenDiscord = new ReactiveCommand(_ => osInterop.OpenUri(ConstantLinks.DiscordUri));
-        CommandOpenForum = new ReactiveCommand(_ => osInterop.OpenUri(ConstantLinks.ForumsUri));
         CommandOpenGitHub = new ReactiveCommand(_ => osInterop.OpenUri(ConstantLinks.GitHubUri));
 
         CommandLogIn = IsLoggedIn.AsObservable().Select(static isLoggedIn => !isLoggedIn).ToReactiveCommand<Unit>(

@@ -653,17 +653,8 @@
   <data name="ShowWelcomeMessageMenuItem.Header" xml:space="preserve">
     <value>Sobre</value>
   </data>
-  <data name="OpenDiscordMenuItem.Header" xml:space="preserve">
-    <value>Discord</value>
-  </data>
   <data name="OpenGitHubMenuItem.Header" xml:space="preserve">
     <value>GitHub</value>
-  </data>
-  <data name="OpenForumsMenuItem.Header" xml:space="preserve">
-    <value>Fóruns Nexus Mods</value>
-  </data>
-  <data name="OpenStatusPageMenuItem.Header" xml:space="preserve">
-    <value>Página de status</value>
   </data>
   <data name="NavigationControl_NavigationControl_Open_in_new_tab" xml:space="preserve">
     <value>Abrir na nova guia</value>
@@ -809,9 +800,6 @@
   <data name="LibraryItemDeleteConfirmation_DeleteModsButton" xml:space="preserve">
     <value>Delete mod(s)</value>
   </data>
-  <data name="Updated_ViewUninstallDocs" xml:space="preserve">
-    <value>Como desinstalar o aplicativo Nexus Mods</value>
-  </data>
   <data name="HumanizedDateTime_Never" xml:space="preserve">
     <value>Nunca</value>
   </data>
@@ -854,9 +842,6 @@ Para aplicar mudanças ou iniciar o jogo novamente, feche o jogo primeiro.</valu
   </data>
   <data name="TopBar_Back_ToolTip" xml:space="preserve">
     <value>Voltar</value>
-  </data>
-  <data name="TopBar_GiveFeedback_ToolTip" xml:space="preserve">
-    <value>Clique para dar seu feedback e nos ajudar a melhorar.</value>
   </data>
   <data name="TopBarActions__LOG_IN_ToolTip" xml:space="preserve">
     <value>Conecte sua conta de mods nexus</value>

@@ -7,7 +7,7 @@ using NexusMods.Sdk.Settings;
 namespace NexusMods.CrossPlatform;
 
 /// <summary>
-/// Settings related to logging in the Nexus Mods App. 
+/// Settings related to logging in SilverModManager. 
 /// </summary>
 public record LoggingSettings : ISettings
 {

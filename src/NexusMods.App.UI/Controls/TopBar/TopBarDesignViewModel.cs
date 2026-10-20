@@ -31,8 +31,6 @@ public class TopBarDesignViewModel : AViewModel<ITopBarViewModel>, ITopBarViewMo
     public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> ViewChangelogCommand => ReactiveCommand.Create<NavigationInformation, Unit>(_ => Unit.Default);
     public ReactiveUI.ReactiveCommand<Unit, Unit> ViewAppLogsCommand => Initializers.DisabledReactiveCommand;
     public ReactiveUI.ReactiveCommand<Unit, Unit> ShowWelcomeMessageCommand => Initializers.EnabledReactiveCommand;
-    public ReactiveUI.ReactiveCommand<Unit, Unit> OpenDiscordCommand => ReactiveCommand.Create(() => {});
-    public ReactiveUI.ReactiveCommand<Unit, Unit> OpenForumsCommand => ReactiveCommand.Create(() => {});
     public ReactiveUI.ReactiveCommand<Unit, Unit> OpenGitHubCommand => ReactiveCommand.Create(() => {});
     public ReactiveUI.ReactiveCommand<Unit, Unit> OpenStatusPageCommand => ReactiveCommand.Create(() => {});
 

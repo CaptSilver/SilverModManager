@@ -49,7 +49,7 @@ public enum FileTreeNodeIconType
 public static class FileTreeNodeIconTypeHelpers
 {
     /// <summary>
-    /// Maps an Icon Type from an extension to an Icon category used by the Nexus App UI.
+    /// Maps an Icon Type from an extension to an Icon category used by the app UI.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static FileTreeNodeIconType GetIconType(this Extension extension)
@@ -59,7 +59,7 @@ public static class FileTreeNodeIconTypeHelpers
     }
 
     /// <summary>
-    /// Maps an Icon Type from the Paths library to an Icon Category used by the Nexus App UI.
+    /// Maps an Icon Type from the Paths library to an Icon Category used by the app UI.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static FileTreeNodeIconType GetIconType(this ExtensionCategory category) => category switch

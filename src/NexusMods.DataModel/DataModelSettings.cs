@@ -44,7 +44,7 @@ public record DataModelSettings : ISettings
                           Mods and backups are stored in:  
                           **{currentPath[0].ToPath(FileSystem.Shared)}**
                           
-                          *Important: Existing files won’t move automatically when you change storage location, you’ll need to move them manually.* [Need help?](https://nexus-mods.github.io/NexusMods.App/users/faq/MoveLibraryLocation/)
+                          *Important: Existing files won’t move automatically when you change storage location, you’ll need to move them manually.*
                           """,
                     RequiresRestart = true,
                 },

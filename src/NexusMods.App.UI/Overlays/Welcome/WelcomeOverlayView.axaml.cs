@@ -12,12 +12,6 @@ public partial class WelcomeOverlayView : ReactiveUserControl<IWelcomeOverlayVie
 
         this.WhenActivated(disposables =>
         {
-            this.BindCommand(ViewModel, vm => vm.CommandOpenDiscord, view => view.ButtonOpenDiscord)
-                .AddTo(disposables);
-
-            this.BindCommand(ViewModel, vm => vm.CommandOpenForum, view => view.ButtonOpenForum)
-                .AddTo(disposables);
-
             this.BindCommand(ViewModel, vm => vm.CommandOpenGitHub, view => view.ButtonOpenGitHub)
                 .AddTo(disposables);
 

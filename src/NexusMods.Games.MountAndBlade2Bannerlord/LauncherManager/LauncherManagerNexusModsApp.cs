@@ -12,7 +12,7 @@ namespace NexusMods.Games.MountAndBlade2Bannerlord.LauncherManager;
 /// which shares the common logic used to manage Bannerlord within a multiple set of mod managers.
 ///
 /// This class serves as a marshaller, translating between the `LauncherManager` dependency and
-/// the 'Nexus Mods App' logic.
+/// SilverModManager's logic.
 /// </summary>
 public sealed partial class LauncherManagerNexusModsApp : LauncherManagerHandler,
     IGameInfoProvider,

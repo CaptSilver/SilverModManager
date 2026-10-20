@@ -9,24 +9,19 @@ body:
   - type: markdown
     attributes:
       value: >-
-        Please remember that the Nexus Mods app is still in development and
-        supports a limited number of games. 
+        Please remember that SilverModManager supports a limited number of
+        games.
 
 
-        ## [See all supported games
-        here](https://nexus-mods.github.io/NexusMods.App/users/games/)
-
-
-        Check out [the
-        roadmap](https://trello.com/b/gPzMuIr3/nexus-mods-app-roadmap) to see
-        the upcoming games.
+        ## [See the README for the supported
+        games](https://github.com/CaptSilver/SilverModManager#readme)
   - type: checkboxes
     id: confirm-supported
     attributes:
       label: Supported Game Check
       description: >-
         I confirm that I have checked the [supported
-        games](https://nexus-mods.github.io/NexusMods.App/users/games/), and the
+        games](https://github.com/CaptSilver/SilverModManager#readme), and the
         game I am reporting is listed as supported but has not been found by the
         app.
       options:
@@ -94,7 +89,6 @@ body:
       label: Attach Log Files
       description: >-
         Please attach your logs. If you are having issues finding your log
-        files, see [this
-        guide](https://nexus-mods.github.io/NexusMods.App/users/faq/LogFiles/).
+        files, open the help menu in the top bar and choose View app logs.
     validations:
       required: true
