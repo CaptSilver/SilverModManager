@@ -106,7 +106,7 @@ internal partial class LoadoutManager : ILoadoutManager
 
             var loadout = new Loadout.New(tx)
             {
-                Name = suggestedName ?? "Loadout " + shortName,
+                Name = EnsureUniqueName(_connection.Db, metadata, suggestedName ?? "Loadout " + shortName, self: null),
                 ShortName = shortName,
                 InstallationId = metadata,
                 Revision = 0,
@@ -219,7 +219,7 @@ internal partial class LoadoutManager : ILoadoutManager
 
         // NOTE(erri120): using latest DB to prevent duplicate short names
         var newShortName = GetNewShortName(_connection.Db, loadout.InstallationId);
-        var newName = "Loadout " + newShortName;
+        var newName = EnsureUniqueName(_connection.Db, loadout.InstallationId, "Loadout " + newShortName, self: null);
 
         tx.Add(newLoadoutId, Loadout.Name, newName);
         tx.Add(newLoadoutId, Loadout.ShortName, newShortName);
@@ -233,6 +233,43 @@ internal partial class LoadoutManager : ILoadoutManager
         {
             return entityIdList.GetValueOrDefault(entityId, entityId);
         }
+    }
+
+    public async ValueTask<Loadout.ReadOnly> RenameLoadout(LoadoutId loadoutId, string newName, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+
+        var loadout = Loadout.Load(_connection.Db, loadoutId);
+        if (!loadout.IsValid()) throw new ArgumentException($"Entity `{loadoutId}` is not a loadout", nameof(loadoutId));
+
+        var uniqueName = EnsureUniqueName(_connection.Db, loadout.InstallationId, newName, self: loadoutId);
+        if (uniqueName == loadout.Name) return loadout;
+
+        using var tx = _connection.BeginTransaction();
+        tx.Add(loadoutId, Loadout.Name, uniqueName);
+        var result = await tx.Commit();
+        return Loadout.Load(result.Db, loadoutId);
+    }
+
+    /// <summary>
+    /// Returns <paramref name="candidate"/> trimmed, with " (2)", " (3)", ... appended until no other visible loadout
+    /// of the installation has the same name (compared ignoring case). Existing duplicates are left alone.
+    /// </summary>
+    private static string EnsureUniqueName(IDb db, GameInstallMetadataId installationId, string candidate, LoadoutId? self)
+    {
+        var trimmed = candidate.Trim();
+        var taken = Loadout.All(db)
+            .Where(l => l.IsVisible() && l.InstallationId == installationId && l.LoadoutId != self)
+            .Select(l => l.Name.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var result = trimmed;
+        for (var i = 2; taken.Contains(result); i++)
+        {
+            result = $"{trimmed} ({i})";
+        }
+
+        return result;
     }
 
     public async ValueTask DeleteLoadout(LoadoutId loadoutId, GarbageCollectorRunMode gcRunMode = GarbageCollectorRunMode.DoNotRun, bool deactivateIfActive = true, CancellationToken cancellationToken = default)

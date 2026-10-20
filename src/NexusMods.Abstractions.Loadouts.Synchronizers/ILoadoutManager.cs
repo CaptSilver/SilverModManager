@@ -31,6 +31,12 @@ public interface ILoadoutManager
     ValueTask<Loadout.ReadOnly> CopyLoadout(LoadoutId loadoutId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Renames a loadout. Names are unique per installation (ignoring case and surrounding whitespace), so a taken
+    /// name gets a numeric suffix. Returns the loadout with its final name.
+    /// </summary>
+    ValueTask<Loadout.ReadOnly> RenameLoadout(LoadoutId loadoutId, string newName, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deletes the loadout for the game. If the loadout is the currently active loadout,
     /// the game's folder will be reset to its initial state.
     /// </summary>

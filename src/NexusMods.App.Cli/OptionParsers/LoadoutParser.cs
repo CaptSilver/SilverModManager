@@ -39,6 +39,9 @@ internal class LoadoutParser(IConnection conn, IOptionParser<IGame> gameParser) 
             }
         }
         
+        // A deleted loadout keeps its row until cleanup, and its name and short name are free for reuse, so the
+        // lookups by name below skip it rather than let it shadow or duplicate a live loadout.
+
         // In the format of "<Game>/<ShortName>"
         if (input.Contains("/"))
         {
@@ -50,7 +53,7 @@ internal class LoadoutParser(IConnection conn, IOptionParser<IGame> gameParser) 
             {
                 if (Loadout
                     .FindByShortName(db, shortName)
-                    .TryGetFirst(l => l.Installation.GameId == gameValue.NexusModsGameId, out var foundLoadout))
+                    .TryGetFirst(l => l.IsVisible() && l.Installation.GameId == gameValue.NexusModsGameId, out var foundLoadout))
                 {
                     value = foundLoadout;
                     return true;
@@ -58,7 +61,7 @@ internal class LoadoutParser(IConnection conn, IOptionParser<IGame> gameParser) 
             }
         }
 
-        var found = Loadout.FindByName(db, input).ToArray();
+        var found = Loadout.FindByName(db, input).Where(l => l.IsVisible()).ToArray();
 
         switch (found.Length)
         {
