@@ -29,6 +29,7 @@ public class TopBarDesignViewModel : AViewModel<ITopBarViewModel>, ITopBarViewMo
     public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> OpenSettingsCommand => ReactiveCommand.Create<NavigationInformation, Unit>(_ => Unit.Default);
 
     public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> ViewChangelogCommand => ReactiveCommand.Create<NavigationInformation, Unit>(_ => Unit.Default);
+    public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> ViewAboutCommand => ReactiveCommand.Create<NavigationInformation, Unit>(_ => Unit.Default);
     public ReactiveUI.ReactiveCommand<Unit, Unit> ViewAppLogsCommand => Initializers.DisabledReactiveCommand;
     public ReactiveUI.ReactiveCommand<Unit, Unit> ShowWelcomeMessageCommand => Initializers.EnabledReactiveCommand;
     public ReactiveUI.ReactiveCommand<Unit, Unit> OpenGitHubCommand => ReactiveCommand.Create(() => {});

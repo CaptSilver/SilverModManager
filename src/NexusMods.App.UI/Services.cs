@@ -39,6 +39,7 @@ using NexusMods.App.UI.Overlays.LibraryDeleteConfirmation;
 using NexusMods.App.UI.Overlays.Login;
 using NexusMods.App.UI.Overlays.Updater;
 using NexusMods.App.UI.Pages;
+using NexusMods.App.UI.Pages.About;
 using NexusMods.App.UI.Pages.Changelog;
 using NexusMods.App.UI.Pages.CollectionDownload;
 using NexusMods.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads;
@@ -187,6 +188,8 @@ public static class Services
             .AddViewModel<MarkdownRendererViewModel, IMarkdownRendererViewModel>()
             .AddView<ChangelogPageView, IChangelogPageViewModel>()
             .AddViewModel<ChangelogPageViewModel, IChangelogPageViewModel>()
+            .AddView<AboutPageView, IAboutPageViewModel>()
+            .AddViewModel<AboutPageViewModel, IAboutPageViewModel>()
 
             .AddView<TextEditorPageView, ITextEditorPageViewModel>()
             .AddViewModel<TextEditorPageViewModel, ITextEditorPageViewModel>()
@@ -267,6 +270,7 @@ public static class Services
             .AddSingleton<IPageFactory, ApplyDiffPageFactory>()
             .AddSingleton<IPageFactory, SettingsPageFactory>()
             .AddSingleton<IPageFactory, ChangelogPageFactory>()
+            .AddSingleton<IPageFactory, AboutPageFactory>()
             .AddSingleton<IPageFactory, TextEditorPageFactory>()
             .AddSingleton<IPageFactory, MyLoadoutsPageFactory>()
             .AddSingleton<IPageFactory, LibraryPageFactory>()

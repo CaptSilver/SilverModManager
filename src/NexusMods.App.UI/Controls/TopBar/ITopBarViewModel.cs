@@ -17,6 +17,7 @@ public interface ITopBarViewModel : IViewModelInterface
     public ReactiveCommand<NavigationInformation, Unit> OpenSettingsCommand { get; }
 
     public ReactiveCommand<NavigationInformation, Unit> ViewChangelogCommand { get; }
+    public ReactiveCommand<NavigationInformation, Unit> ViewAboutCommand { get; }
     public ReactiveCommand<Unit, Unit> ViewAppLogsCommand { get; }
     public ReactiveCommand<Unit, Unit> ShowWelcomeMessageCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenGitHubCommand { get; }

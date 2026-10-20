@@ -158,6 +158,13 @@
                                     <icons:UnifiedIcon Value="{x:Static icons:IconValues.GitHub}" />
                                 </MenuItem.Icon>
                             </MenuItem>
+                            <navigation:NavigationMenuItem
+                                Header="{x:Static resources:Language.ViewAboutMenuItem_Header}"
+                                x:Name="ViewAboutMenuItem">
+                                <MenuItem.Icon>
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.Info}" />
+                                </MenuItem.Icon>
+                            </navigation:NavigationMenuItem>
                             <MenuItem Header="-" />
                             <MenuItem Header="{x:Static resources:Language.ShowWelcomeMessageMenuItem_Header}"
                                       x:Name="ShowWelcomeMessageMenuItem">

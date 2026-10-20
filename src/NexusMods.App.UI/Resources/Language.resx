@@ -595,6 +595,12 @@
     <data name="ViewChangelogMenuItem.Header" xml:space="preserve">
         <value>View changelog</value>
     </data>
+    <data name="ViewAboutMenuItem.Header" xml:space="preserve">
+        <value>About SilverModManager</value>
+    </data>
+    <data name="AboutPageViewModel.TabTitle" xml:space="preserve">
+        <value>About</value>
+    </data>
     <data name="ViewAppLogsMenuItem.Header" xml:space="preserve">
         <value>View app logs</value>
     </data>

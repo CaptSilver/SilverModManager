@@ -1,5 +1,6 @@
 using NexusMods.Abstractions.Serialization.ExpressionGenerator;
 using NexusMods.App.UI.Pages;
+using NexusMods.App.UI.Pages.About;
 using NexusMods.App.UI.Pages.Changelog;
 using NexusMods.App.UI.Pages.CollectionDownload;
 using NexusMods.App.UI.Pages.DebugControls;
@@ -33,6 +34,7 @@ internal class TypeFinder : ITypeFinder
         typeof(ApplyDiffPageContext),
         typeof(SettingsPageContext),
         typeof(ChangelogPageContext),
+        typeof(AboutPageContext),
         typeof(TextEditorPageContext),
         typeof(MyLoadoutsPageContext),
         typeof(LoadoutGroupFilesPageContext),

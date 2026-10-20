@@ -484,6 +484,12 @@
         <Compile Update="Controls\Settings\SettingEntries\SettingInteractionControls\ComboBox\SettingComboBoxViewModel.cs">
           <DependentUpon>ISettingComboBoxViewModel.cs</DependentUpon>
         </Compile>
+        <Compile Update="Pages\About\AboutPageView.cs">
+          <DependentUpon>AboutPageView.axaml</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\About\AboutPageViewModel.cs">
+          <DependentUpon>IAboutPageViewModel.cs</DependentUpon>
+        </Compile>
         <Compile Update="Pages\Changelog\ChangelogPageView.cs">
           <DependentUpon>ChangelogPageView.axaml</DependentUpon>
         </Compile>
@@ -812,6 +818,8 @@
 
     <ItemGroup>
         <EmbeddedResource Include="../../CHANGELOG.md" LogicalName="NexusMods.App.UI.CHANGELOG.md" />
+        <EmbeddedResource Include="../../NOTICE" LogicalName="NexusMods.App.UI.NOTICE" />
+        <EmbeddedResource Include="Pages/About/About.md" LogicalName="NexusMods.App.UI.About.md" />
     </ItemGroup>
 
     <ItemGroup>

@@ -11,6 +11,7 @@ using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Sdk.Settings;
 using NexusMods.App.UI.Controls.Navigation;
 using NexusMods.App.UI.Overlays;
+using NexusMods.App.UI.Pages.About;
 using NexusMods.App.UI.Pages.Changelog;
 using NexusMods.App.UI.Pages.Settings;
 using NexusMods.App.UI.Resources;
@@ -41,6 +42,7 @@ public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
     public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> OpenSettingsCommand { get; }
 
     public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> ViewChangelogCommand { get; }
+    public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> ViewAboutCommand { get; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> ViewAppLogsCommand { get; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> ShowWelcomeMessageCommand { get; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> OpenGitHubCommand { get; }
@@ -103,6 +105,19 @@ public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
                         TargetVersion = null,
                     },
                     FactoryId = ChangelogPageFactory.StaticId,
+                };
+
+                var behavior = workspaceController.GetOpenPageBehavior(page, info);
+                workspaceController.OpenPage(workspaceController.ActiveWorkspace.Id, page, behavior);
+            }
+        );
+
+        ViewAboutCommand = ReactiveCommand.Create<NavigationInformation>(info =>
+            {
+                var page = new PageData
+                {
+                    Context = new AboutPageContext(),
+                    FactoryId = AboutPageFactory.StaticId,
                 };
 
                 var behavior = workspaceController.GetOpenPageBehavior(page, info);

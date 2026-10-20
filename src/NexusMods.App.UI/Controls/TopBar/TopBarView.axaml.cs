@@ -43,6 +43,9 @@ public partial class TopBarView : ReactiveUserControl<ITopBarViewModel>
                 this.BindCommand(ViewModel, vm => vm.ViewChangelogCommand, view => view.ViewChangelogMenuItem)
                     .DisposeWith(d);
 
+                this.BindCommand(ViewModel, vm => vm.ViewAboutCommand, view => view.ViewAboutMenuItem)
+                    .DisposeWith(d);
+
                 this.BindCommand(ViewModel, vm => vm.ViewAppLogsCommand, view => view.ViewAppLogsMenuItem)
                     .DisposeWith(d);
 

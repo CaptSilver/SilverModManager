@@ -3058,6 +3058,24 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to About SilverModManager.
+        /// </summary>
+        public static string ViewAboutMenuItem_Header {
+            get {
+                return ResourceManager.GetString("ViewAboutMenuItem.Header", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to About.
+        /// </summary>
+        public static string AboutPageViewModel_TabTitle {
+            get {
+                return ResourceManager.GetString("AboutPageViewModel.TabTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to GitHub.
         /// </summary>
         public static string OpenGitHubMenuItem_Header {
