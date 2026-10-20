@@ -31,6 +31,8 @@ public partial class HostOsCheckGuardTests
         // Located games: native Linux builds are Linux, builds run under Proton are the Windows build.
         ("src/NexusMods.Backend/Games/Locators/SteamLocator.cs", "Platform = isWindowsBuild ? OSPlatform.Windows : OSPlatform.Linux,", "Proton runs the Windows build of the game, a native install without a prefix is Linux"),
         ("src/NexusMods.Sdk/Games/Locators/GameLocatorResult.cs", "public OSPlatform Platform { get; init; } = OSPlatform.Linux;", "target OS of the located game, native Linux unless a locator says otherwise"),
+        ("src/NexusMods.Backend/Games/Locators/HeroicGOGLocator.cs", "if (game.Platform != OSPlatform.Windows || game.WineData is not { } wineData) return null;", "only Heroic's Windows builds run in a Wine or Proton prefix"),
+        ("src/NexusMods.Platform.Proton/PrefixResolver.cs", "return result.Platform == OSPlatform.Windows", "a native Linux build of the game has no prefix"),
 
         // Target OS of the located game: Proton runs the Windows build, native installs are Linux.
         ("src/NexusMods.Games.StardewValley/StardewValley.cs", "return installation.LocatorResult.TargetOS.IsWindows", "game executable name differs between the Windows and Linux builds"),
