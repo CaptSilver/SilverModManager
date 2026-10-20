@@ -15,15 +15,35 @@ namespace NexusMods.Deployment.Vfs;
 public sealed class StagingDirectory
 {
     private const string WhiteoutSuffix = ".whiteouts";
+    private const string JournalSuffix = ".promotion.json";
+    private const string RecoverySuffix = ".recovery";
 
     /// <param name="stagingLocation">The staging location setting; one subdirectory per installation lives under it, named like the loose staging store's.</param>
     public StagingDirectory(AbsolutePath stagingLocation, GameInstallMetadataId installation)
     {
         var name = installation.Value.Value.ToString("x", CultureInfo.InvariantCulture);
+        Installation = installation;
         Root = stagingLocation.Combine(name);
+        JournalFile = stagingLocation.Combine(name + JournalSuffix);
+        RecoveryRoot = stagingLocation.Combine(name + RecoverySuffix);
         WhiteoutFile = stagingLocation.Combine(name + WhiteoutSuffix);
         TempDirectory = stagingLocation.Combine(name + ".tmp");
     }
+
+    /// <summary>The installation whose game wrote these files.</summary>
+    public GameInstallMetadataId Installation { get; }
+
+    /// <summary>
+    /// Where an unfinished promotion is written down. A sibling of <see cref="Root"/>, so clearing
+    /// the staging directory cannot take the journal with it.
+    /// </summary>
+    public AbsolutePath JournalFile { get; }
+
+    /// <summary>
+    /// Holds one timestamped folder per promotion that was refused because the staged files
+    /// changed under it.
+    /// </summary>
+    public AbsolutePath RecoveryRoot { get; }
 
     /// <summary>Staged files, at their mount-relative paths.</summary>
     public AbsolutePath Root { get; }

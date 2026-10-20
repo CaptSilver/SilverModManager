@@ -10,6 +10,7 @@
         <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
         <ProjectReference Include="..\NexusMods.Abstractions.Loadouts\NexusMods.Abstractions.Loadouts.csproj" />
         <ProjectReference Include="..\NexusMods.Abstractions.Loadouts.Synchronizers\NexusMods.Abstractions.Loadouts.Synchronizers.csproj" />
+        <ProjectReference Include="..\NexusMods.Abstractions.Games\NexusMods.Abstractions.Games.csproj" />
     </ItemGroup>
 
 </Project>
