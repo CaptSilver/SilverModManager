@@ -22,6 +22,7 @@ public static class LaunchServices
         services.TryAddSingleton<IGameProcessFactory, GameProcessFactory>();
         services.TryAddSingleton<ILaunchSynchronizer, SynchronizerServiceLaunchSynchronizer>();
         services.TryAddTransient<LaunchSession>();
-        return services.AddSingleton<IInstallationLockFactory, InstallationLockFactory>();
+        services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
+        return services;
     }
 }

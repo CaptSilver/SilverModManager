@@ -28,6 +28,18 @@ public class LaunchServicesTests
         installationLock.LockPath.Should().Be("/run/user/1000/silvermod/launch-steam-1091500.lock");
     }
 
+    // The app registers both, and Validate() at startup refuses a service registered twice.
+    [Fact]
+    public void AddProtonAndAddHeadlessLaunch_RegisterEachServiceOnce()
+    {
+        var services = new ServiceCollection();
+        services.AddProton();
+        services.AddHeadlessLaunch();
+
+        var act = () => services.Validate();
+        act.Should().NotThrow();
+    }
+
     [Fact]
     public void Create_Throws_WhenThereIsNoRuntimeDir()
     {
