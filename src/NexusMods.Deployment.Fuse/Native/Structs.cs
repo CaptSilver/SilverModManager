@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using NexusMods.Deployment.Vfs;
+using NexusMods.Sdk.Native;
 
 namespace NexusMods.Deployment.Fuse.Native;
 

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using NexusMods.Sdk.Native;
 
 namespace NexusMods.Deployment.Vfs;
 

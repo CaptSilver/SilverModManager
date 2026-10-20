@@ -1,4 +1,5 @@
 using NexusMods.Paths;
+using NexusMods.Sdk.Native;
 
 namespace NexusMods.Deployment.Vfs;
 
