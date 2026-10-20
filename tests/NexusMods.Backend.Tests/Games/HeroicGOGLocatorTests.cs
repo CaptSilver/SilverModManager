@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.InteropServices;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Backend.Games.Locators;
@@ -25,6 +26,22 @@ public class HeroicGOGLocatorTests
 
         result.Compatibility.Should().Be(new CompatibilityLayer(CompatibilityLayerKind.Heroic, prefix, wine, "Wine-GE"));
         result.Store.Should().Be(GameStore.GOG);
+        result.Platform.Should().Be(OSPlatform.Windows);
+        result.TargetOS.IsWindows.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Locate_NativeLinuxBuild_ReportsLinuxWithoutCompatibilityLayer()
+    {
+        var (fileSystem, home) = NewHome();
+        var configRoot = fileSystem.GetKnownPath(KnownPath.XDG_CONFIG_HOME).Combine("heroic");
+        WriteHeroicConfig(fileSystem, configRoot, home.Combine("Games/Heroic/Game"), default, default, platform: "linux", writeWineSettings: false);
+
+        var result = Locate(fileSystem);
+
+        result.Platform.Should().Be(OSPlatform.Linux);
+        result.TargetOS.IsLinux.Should().BeTrue();
+        result.Compatibility.Should().BeNull();
     }
 
     [Fact]
@@ -55,14 +72,14 @@ public class HeroicGOGLocatorTests
         return (fileSystem, fileSystem.GetKnownPath(KnownPath.HomeDirectory));
     }
 
-    private static void WriteHeroicConfig(InMemoryFileSystem fileSystem, AbsolutePath configRoot, AbsolutePath installPath, AbsolutePath prefix, AbsolutePath wine)
+    private static void WriteHeroicConfig(InMemoryFileSystem fileSystem, AbsolutePath configRoot, AbsolutePath installPath, AbsolutePath prefix, AbsolutePath wine, string platform = "windows", bool writeWineSettings = true)
     {
         Write(fileSystem, installPath.Combine("game.exe"), "");
         Write(fileSystem, configRoot.Combine("gog_store/installed.json"), $$"""
             {
               "installed": [
                 {
-                  "platform": "windows",
+                  "platform": "{{platform}}",
                   "executable": "",
                   "install_path": "{{installPath.GetFullPath()}}",
                   "install_size": "1 GB",
@@ -78,6 +95,7 @@ public class HeroicGOGLocatorTests
               ]
             }
             """);
+        if (!writeWineSettings) return;
         Write(fileSystem, configRoot.Combine($"GamesConfig/{ProductId}.json"), $$"""
             {
               "{{ProductId}}": {

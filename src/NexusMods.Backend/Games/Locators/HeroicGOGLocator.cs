@@ -65,6 +65,7 @@ internal class HeroicGOGLocator : IGameLocator
                 Store = Store,
                 Locator = this,
                 Compatibility = GetCompatibilityLayer(gameFinderGame),
+                Platform = gameFinderGame.Platform,
             };
         }
     }
