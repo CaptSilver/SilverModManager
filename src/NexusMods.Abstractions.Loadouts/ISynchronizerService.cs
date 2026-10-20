@@ -1,4 +1,5 @@
-﻿using NexusMods.Abstractions.Loadouts.Files.Diff;
+﻿using NexusMods.Abstractions.Loadouts.Deployment;
+using NexusMods.Abstractions.Loadouts.Files.Diff;
 using NexusMods.Abstractions.Loadouts.Exceptions;
 using NexusMods.Abstractions.Loadouts.Ids;
 using NexusMods.Sdk.Games;
@@ -27,6 +28,14 @@ public interface ISynchronizerService
     /// <param name="runGc">If true, runs the garbage collector.</param>
     public Task UnManage(GameInstallation installation, bool runGc = true, bool cleanGameFolder = true);
     
+    /// <summary>
+    /// Moves the root to a different deployment backend. The game is first reset with the backend that
+    /// currently owns it, then the new choice is recorded and the last applied loadout, if any, is applied again.
+    /// </summary>
+    /// <returns>False when the root already uses <paramref name="backend"/> and nothing was done.</returns>
+    /// <throws cref="ExecutableInUseException">Thrown while the app is running a launch of this game.</throws>
+    public Task<bool> ChangeDeploymentBackend(GameInstallation installation, GamePath root, DeploymentBackendId backend);
+
     /// <summary>
     /// Get the diff tree of the unapplied changes of a loadout.
     /// </summary>

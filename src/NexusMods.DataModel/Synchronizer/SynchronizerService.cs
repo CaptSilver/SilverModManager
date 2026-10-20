@@ -4,10 +4,12 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Loadouts.Deployment;
 using NexusMods.Abstractions.Loadouts.Files.Diff;
 using NexusMods.Abstractions.Loadouts.Exceptions;
 using NexusMods.Abstractions.Loadouts.Ids;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -135,6 +137,64 @@ public class SynchronizerService : ISynchronizerService
         {
             if (!_gameRegistry.TryGetMetadata(installation, out var metadata)) return;
             await _loadoutManager.Value.UnManage(installation, runGc, cleanGameFolder);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ChangeDeploymentBackend(GameInstallation installation, GamePath root, DeploymentBackendId backend)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            RunningGameGuard.ThrowIfRunning(_serviceProvider, installation);
+
+            var metadata = _gameRegistry.ForceGetMetadata(installation);
+            var metadataId = metadata.GameInstallMetadataId;
+            var plans = _serviceProvider.GetRequiredService<IDeploymentPlanStore>();
+            var plan = plans.Load(_conn.Db, metadataId);
+            if (plan.BackendFor(root) == backend) return false;
+
+            // The reset below retracts LastSyncedLoadout, so it has to be read first.
+            var hadLoadout = GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastLoadoutId);
+
+            using var _ = GetOrAddGameState(metadataId).WithLock();
+
+            var registered = _serviceProvider.GetServices<IDeploymentBackend>().Select(b => b.Id).ToHashSet();
+            var unknown = plan.Roots.Where(r => !registered.Contains(r.Backend)).ToArray();
+            if (unknown.Length == 0)
+            {
+                // Resets with the plan as it stands, so the backend being replaced removes what it deployed.
+                await _loadoutManager.Value.DeactivateCurrentLoadout(installation);
+            }
+            else
+            {
+                // A backend this build doesn't know can't run its reset; trying would fail on every attempt and
+                // leave the install stuck on the stale row.
+                foreach (var entry in unknown)
+                {
+                    _logger.LogWarning("Deployment root {Root} names unregistered backend {Backend}, skipping the reset before switching to {NewBackend}", entry.Root, entry.Backend, backend);
+                }
+            }
+
+            using (var tx = _conn.BeginTransaction())
+            {
+                plans.Write(tx, metadataId, root, backend);
+                await tx.Commit();
+            }
+
+            if (hadLoadout)
+            {
+                // Anything loaded before the reset is bound to the old db. Not through Synchronize(LoadoutId): that
+                // waits on the semaphore this method already holds.
+                var loadout = Loadout.Load(_conn.Db, lastLoadoutId);
+                await loadout.InstallationInstance.GetGame().Synchronizer.Synchronize(loadout);
+            }
+
+            return true;
         }
         finally
         {
