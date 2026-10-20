@@ -150,13 +150,25 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
         public bool RegisterNullGuidedInstaller { get; set; } = true;
     }
     
+    /// <summary>
+    /// Where the temporary file manager, and with it the stubbed game folders, live. The default is a fresh
+    /// folder beside the test binaries. Read while the service graph is built, from the base constructor.
+    /// </summary>
+    protected virtual AbsolutePath TemporaryFilesPrefix => default;
+
+    /// <summary>
+    /// Where the loose staging store lives. The default is a folder under <see cref="TemporaryFilesPrefix"/>,
+    /// so the store and the game folders share a filesystem. Read while the service graph is built.
+    /// </summary>
+    protected virtual AbsolutePath StagingStoreLocation => default;
+
     protected virtual IServiceCollection AddServices(IServiceCollection services)
     {
         if (ConfigOptions.RegisterNullGuidedInstaller)
             services.AddSingleton<IGuidedInstaller, NullGuidedInstaller>();
         
         return services
-            .AddDefaultServicesForTesting()
+            .AddDefaultServicesForTesting(TemporaryFilesPrefix, stagingStore: StagingStoreLocation)
             .AddFomod()
             .AddLogging(builder => builder.AddXUnit())
             .AddGames()

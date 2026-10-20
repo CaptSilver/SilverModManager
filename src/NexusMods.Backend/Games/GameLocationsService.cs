@@ -14,6 +14,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Hashes;
+using NexusMods.Sdk.IO;
 
 namespace NexusMods.Backend.Games;
 
@@ -81,11 +82,8 @@ internal class GameLocationsService : IGameLocationsService
 
     private static bool HasFileChanged(AbsolutePath file, DiskStateEntry.ReadOnly previousState)
     {
-        var fileInfo= file.FileInfo;
-        var currentLastModified = new DateTimeOffset(fileInfo.LastWriteTimeUtc);
-        var currentSize = fileInfo.Size;
-
-        return currentLastModified != previousState.LastModified || currentSize != previousState.Size;
+        var fingerprint = FileFingerprint.Of(file);
+        return fingerprint.LastModified != previousState.LastModified || fingerprint.Size != previousState.Size;
     }
 
     private async ValueTask<IndexFileResult> IndexFile(
@@ -93,12 +91,10 @@ internal class GameLocationsService : IGameLocationsService
         GamePath gamePath,
         CancellationToken cancellationToken)
     {
-        var fileInfo= file.FileInfo;
-        var currentLastModified = new DateTimeOffset(fileInfo.LastWriteTimeUtc);
-        var currentSize = fileInfo.Size;
+        var fingerprint = FileFingerprint.Of(file);
 
         var newHash = await HashFile(file, gamePath, cancellationToken);
-        return new IndexFileResult(gamePath, newHash, currentSize, currentLastModified);
+        return new IndexFileResult(gamePath, newHash, fingerprint.Size, fingerprint.LastModified);
     }
 
     private async ValueTask<Hash> HashFile(AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
@@ -116,13 +112,14 @@ internal class GameLocationsService : IGameLocationsService
         var pathHashRelations = PathHashRelation.FindByPath(hashesDb, gamePath.Path);
         if (pathHashRelations.Count == 0) return Optional<Hash>.None;
 
+        var size = FileFingerprint.Of(file).Size;
         var minimalHash = await GetMinimalHash(file, cancellationToken);
 
         var foundHash = Optional<Hash>.None;
         foreach (var pathHashRelation in pathHashRelations)
         {
             var existingHashes = pathHashRelation.Hash;
-            if (existingHashes.Size != file.FileInfo.Size) continue;
+            if (existingHashes.Size != size) continue;
             if (existingHashes.MinimalHash != minimalHash) continue;
 
             if (!foundHash.HasValue)

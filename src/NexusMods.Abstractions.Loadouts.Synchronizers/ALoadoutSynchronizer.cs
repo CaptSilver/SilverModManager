@@ -53,6 +53,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private readonly IReadOnlyDictionary<DeploymentBackendId, IDeploymentBackend> _backends;
     private readonly IDeploymentPlanStore _planStore;
     private readonly IDeploymentBackendSelector _backendSelector;
+    private readonly ILooseStagingStore _stagingStore;
 
     private readonly StringPool _fileNamePool = new();
 
@@ -87,6 +88,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         _backends = serviceProvider.GetServices<IDeploymentBackend>().ToDictionary(b => b.Id);
         _planStore = serviceProvider.GetRequiredService<IDeploymentPlanStore>();
         _backendSelector = serviceProvider.GetRequiredService<IDeploymentBackendSelector>();
+        _stagingStore = serviceProvider.GetRequiredService<ILooseStagingStore>();
 
         _fileHashService = fileHashService;
 
@@ -452,8 +454,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
         var gameMetadataId = loadout.InstallationId;
+
+        // Held from before the chain probes the store directory until the links are recorded: a sweep in
+        // between cannot see the files this apply is staging and would delete them.
+        using var stagingHold = _stagingStore.Hold();
         var plan = _planStore.EnsureComplete(tx, Connection.Db, loadout.InstallationInstance, gameMetadataId, _backendSelector);
         var groups = GroupByBackend(plan, syncTree);
+        PreflightRecordedRoots(loadout.InstallationInstance, plan, syncTree);
+        await EnforceBackupLimit(syncTree);
         var foldersWithDeletedFiles = new List<IReadOnlyCollection<GamePath>>();
         var context = new DeploymentContext
         {
@@ -542,6 +550,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             if (i < foldersWithDeletedFiles.Count && foldersWithDeletedFiles[i].Count > 0)
                 groups[i].Backend.CleanDirectories(context, foldersWithDeletedFiles[i], newState);
         }
+
+        // The collector sweeps the staging store, which waits for every hold.
+        stagingHold.Dispose();
 
         job?.SetStatus("Archive Cleanup");
         await _garbageCollectorRunner.RunAsync();
@@ -663,8 +674,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         using var tx = Connection.BeginTransaction();
 
         var metadata = _gameRegistry.ForceGetMetadata(gameInstallation);
+
+        // See the loadout overload. Recorded roots are not preflighted here: a root that no longer accepts
+        // its backend still has to be reset through that backend before it can be moved to another one.
+        using var stagingHold = _stagingStore.Hold();
         var plan = _planStore.EnsureComplete(tx, Connection.Db, gameInstallation, metadata, _backendSelector);
         var groups = GroupByBackend(plan, syncTree);
+        await EnforceBackupLimit(syncTree);
         var foldersWithDeletedFiles = new List<IReadOnlyCollection<GamePath>>();
         var context = new DeploymentContext
         {
@@ -750,6 +766,84 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             if (i < foldersWithDeletedFiles.Count && foldersWithDeletedFiles[i].Count > 0)
                 groups[i].Backend.CleanDirectories(context, foldersWithDeletedFiles[i], newDiskState);
         }
+    }
+
+    /// <summary>
+    /// Refuses the apply when a root recorded with a backend other than copy no longer accepts it, before
+    /// any file is written. The game having moved to another drive, or the staging store having moved, would
+    /// otherwise surface halfway through extraction as a failed link.
+    /// </summary>
+    /// <remarks>
+    /// Only roots the tree writes into are checked, so a sync with nothing to write touches no disk, as in
+    /// <see cref="ProbeWritableRoots"/>. Deleting works whatever the backend can no longer do.
+    /// </remarks>
+    private void PreflightRecordedRoots(GameInstallation installation, DeploymentPlan plan, Dictionary<GamePath, SyncNode> syncTree)
+    {
+        if (RecordedRootPreflight.IsSuspended) return;
+
+        const Actions writes = Actions.ExtractToDisk | Actions.WriteIntrinsic;
+        foreach (var root in plan.Roots)
+        {
+            if (root.Backend == DeploymentBackendId.Copy) continue;
+            if (!syncTree.Any(x => (x.Value.Actions & writes) != 0 && plan.BackendFor(x.Key) == root.Backend && IsInside(root.Root, x.Key))) continue;
+
+            var preflight = _backends[root.Backend].Preflight(installation, root.Root);
+            if (preflight.Accepted) continue;
+
+            throw new SynchronizerPreflightException(
+                $"{installation.Game.DisplayName} is set to deploy '{root.Root}' with {root.Backend}, which does not work there any more: {preflight.Reason}. " +
+                $"Nothing was changed. Run 'silvermod deployment --game \"{installation.Game.DisplayName}\" --recommended' to move it to a backend that works, then apply again."
+            );
+        }
+
+        static bool IsInside(GamePath root, GamePath path) =>
+            root.LocationId == path.LocationId && (root.Path == RelativePath.Empty || path.Path == root.Path || path.Path.InFolder(root.Path));
+    }
+
+    /// <summary>
+    /// We'll limit backups to 5GB, for now we should never see much more than this
+    /// of modified game files.
+    /// </summary>
+    private static Size MaximumBackupSize => Size.GB * 5;
+
+    /// <summary>
+    /// Fails before anything is written when the files about to be backed up, over every backend's share of the
+    /// tree together, exceed <see cref="MaximumBackupSize"/>.
+    /// </summary>
+    private async Task EnforceBackupLimit(Dictionary<GamePath, SyncNode> syncTree)
+    {
+        var sizes = new ConcurrentBag<Size>();
+        await Parallel.ForEachAsync(syncTree, async (item, _) =>
+        {
+            var node = item.Value;
+            if (!node.Actions.HasFlag(Actions.BackupFile)) return;
+            if (await _fileStore.HaveFile(node.Disk.Hash)) return;
+            sizes.Add(node.Disk.Size);
+        });
+
+        var totalSize = sizes.Sum(static x => x);
+        if (totalSize <= MaximumBackupSize) return;
+
+        var nodeSignatures = syncTree
+            .Where(static x => x.Value.Actions.HasFlag(Actions.BackupFile))
+            .Select(static x => x.Value.Signature)
+            .GroupBy(signature => signature)
+            .Select(static grp => new { Signature = grp.Key, FileCount = grp.Count() })
+            .ToList();
+
+        Logger.LogError(
+            """
+            Cannot backup {FileCount} files with total size {TotalSize}, which exceeds maximum of {MaximumSize}.
+            Node signatures:
+            {Signatures}
+            """,
+            sizes.Count,
+            totalSize,
+            MaximumBackupSize,
+            string.Join(Environment.NewLine, nodeSignatures.Select(sig => $"  - {sig.Signature}: {sig.FileCount} files"))
+        );
+
+        throw new Exception($"Cannot backup files, total size is {totalSize}, which is larger than the maximum of {MaximumBackupSize}");
     }
 
     /// <summary>
@@ -1153,10 +1247,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private static readonly Extension DxvkCacheExtension = new(".dxvk-cache");
 
     /// <summary>
-    /// Whether the path is the file <see cref="ProbeWritableRoots"/> creates. It is deleted again right away,
-    /// but a crash in between would leave it behind, and it must never be indexed as the player's file.
+    /// Whether the path is a file <see cref="ProbeWritableRoots"/> or a link backend's preflight creates (the
+    /// latter add a suffix to the name). They are deleted again right away, but a crash in between would
+    /// leave one behind, and it must never be indexed as the player's file.
     /// </summary>
-    private static bool IsWriteProbe(GamePath path) => path.FileName.ToString() == ProtonMessages.ProbeFileName;
+    private static bool IsWriteProbe(GamePath path) => path.FileName.ToString().StartsWith(ProtonMessages.ProbeFileName, StringComparison.Ordinal);
 
     /// <inheritdoc />
     public Task Preflight(GameInstallation installation)

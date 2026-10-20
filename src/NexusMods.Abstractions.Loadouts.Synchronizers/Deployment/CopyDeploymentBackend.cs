@@ -23,12 +23,6 @@ namespace NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 /// </summary>
 public sealed class CopyDeploymentBackend : IDeploymentBackend
 {
-    /// <summary>
-    /// We'll limit backups to 5GB, for now we should never see much more than this
-    /// of modified game files.
-    /// </summary>
-    private static Size MaximumBackupSize => Size.GB * 5;
-
     private readonly IFileStore _fileStore;
     private readonly IConnection _connection;
     private readonly ILogger<CopyDeploymentBackend> _logger;
@@ -106,31 +100,6 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             }
         );
 
-        var totalSize = archivedFiles.Sum(static x => x.Size);
-        if (totalSize > MaximumBackupSize)
-        {
-            var nodeSignatures = nodes
-                .Where(static x => x.Value.Actions.HasFlag(Actions.BackupFile))
-                .Select(static x => x.Value.Signature)
-                .GroupBy(signature => signature)
-                .Select(static grp => new {Signature = grp.Key, FileCount = grp.Count()})
-                .ToList();
-            
-            _logger.LogError(
-                """
-                Cannot backup {FileCount} files with total size {TotalSize}, which exceeds maximum of {MaximumSize}. 
-                Node signatures: 
-                {Signatures}
-                """,
-                archivedFiles.Count,
-                totalSize,
-                MaximumBackupSize,
-                string.Join(Environment.NewLine, nodeSignatures.Select(sig => $"  - {sig.Signature}: {sig.FileCount} files"))
-            );
-            
-            throw new Exception($"Cannot backup files, total size is {totalSize}, which is larger than the maximum of {MaximumBackupSize}");
-        }
-        
         // PERFORMANCE: We deduplicate above with the HaveFile call.
         await _fileStore.BackupFiles(archivedFiles, deduplicate: false);
 
@@ -249,36 +218,8 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
                 var resolvedPath = context.Locations.ToAbsolutePath(gamePath);
                 var writeTimeUtc = new DateTimeOffset(resolvedPath.FileInfo.LastWriteTimeUtc);
                 
-                // Reuse the old disk state entry if it exists
-                if (node.HaveDisk)
-                {
-                    var id = node.Disk.EntityId;
-                    tx.Add(id, DiskStateEntry.Hash, node.Loadout.Hash);
-                    tx.Add(id, DiskStateEntry.Size, node.Loadout.Size);
-                    tx.Add(id, DiskStateEntry.LastModified, writeTimeUtc);
-                }
-                else
-                {
-                    _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
-                    {
-                        Path = gamePath.ToGamePathParentTuple(context.MetadataId),
-                        Hash = node.Loadout.Hash,
-                        Size = node.Loadout.Size,
-                        LastModified = writeTimeUtc,
-                        GameId = context.MetadataId,
-                    };
-                }
-
-
-                // And mark them as executable if necessary
-                var ext = resolvedPath.Extension.ToString().ToLower();
-                if (ext is not ("" or ".sh" or ".bin" or ".run" or ".py" or ".pl" or ".php" or ".rb" or ".out"
-                    or ".elf")) continue;
-
-                // Note (Sewer): I don't think we'd ever need anything other than just 'user' execute, but you can never
-                // be sure. Just in case, I'll throw in group and other to match 'chmod +x' behaviour.
-                var currentMode = resolvedPath.GetUnixFileMode();
-                resolvedPath.SetUnixFileMode(currentMode | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
+                DeployedFileRows.Record(tx, context, gamePath, node, writeTimeUtc);
+                ExecutableExtensions.ApplyTo(resolvedPath);
             }
         }
 

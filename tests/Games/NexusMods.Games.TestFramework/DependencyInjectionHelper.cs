@@ -10,6 +10,7 @@ using NexusMods.Backend;
 using NexusMods.Collections;
 using NexusMods.CrossPlatform;
 using NexusMods.DataModel;
+using NexusMods.Deployment.Staging;
 using NexusMods.FileExtractor;
 using NexusMods.Games.FileHashes;
 using NexusMods.Games.Generic;
@@ -45,14 +46,22 @@ public static class DependencyInjectionHelper
     /// </list>
     /// </summary>
     /// <param name="serviceCollection"></param>
+    /// <param name="prefix">Where the temporary file manager, and with it the stubbed game folders, live. Defaults to a fresh folder beside the test binaries.</param>
+    /// <param name="stubbedFileHashService"></param>
+    /// <param name="stagingStore">Where the loose staging store lives. Defaults to a folder under <paramref name="prefix"/>.</param>
     /// <returns></returns>
-    public static IServiceCollection AddDefaultServicesForTesting(this IServiceCollection serviceCollection, AbsolutePath prefix = default(AbsolutePath), bool stubbedFileHashService = true)
+    public static IServiceCollection AddDefaultServicesForTesting(this IServiceCollection serviceCollection, AbsolutePath prefix = default(AbsolutePath), bool stubbedFileHashService = true, AbsolutePath stagingStore = default(AbsolutePath))
     {
         const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"DataModel.{Guid.NewGuid()}";
         prefix = prefix == default(AbsolutePath) ? FileSystem.Shared
             .GetKnownPath(KnownPath.EntryDirectory)
             .Combine($"NexusMods.Games.TestFramework-{Guid.NewGuid()}") : prefix;
+
+        // One store per test graph. A shared location would let one graph's garbage collection sweep another's
+        // installation directory (the metadata ids repeat across in-memory databases). It sits beside the stubbed
+        // game folders by default because the device the two share decides which link backend works.
+        stagingStore = stagingStore == default(AbsolutePath) ? prefix.Combine($"{baseDirectory}/LooseStaging") : stagingStore;
 
         serviceCollection
             .AddLogging(builder => builder.AddXunitOutput().SetMinimumLevel(LogLevel.Debug))
@@ -81,6 +90,10 @@ public static class DependencyInjectionHelper
                 ArchiveLocations = [
                     new ConfigurablePath(baseKnownPath, $"{baseDirectory}/Archives"),
                 ],
+            })
+            .OverrideSettingsForTests<LooseStagingStoreSettings>(settings => settings with
+            {
+                Location = new ConfigurablePath(null, stagingStore.ToString()),
             })
             .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with
             {

@@ -5,6 +5,7 @@ using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.IO;
 
 namespace NexusMods.DataModel;
 
@@ -51,8 +52,8 @@ public class GameFileStreamSource : IReadOnlyStreamSource
             if (!resolvedPath.FileExists) continue;
             try
             {
-                var info = resolvedPath.FileInfo;
-                if (info.LastWriteTimeUtc != option.LastModified || info.Size != option.Size)
+                var info = FileFingerprint.Of(resolvedPath);
+                if (info.LastModified != option.LastModified || info.Size != option.Size)
                     continue;
 
                 return resolvedPath;

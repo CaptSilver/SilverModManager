@@ -167,8 +167,13 @@ public class SynchronizerService : ISynchronizerService
             var unknown = plan.Roots.Where(r => !registered.Contains(r.Backend)).ToArray();
             if (unknown.Length == 0)
             {
-                // Resets with the plan as it stands, so the backend being replaced removes what it deployed.
-                await _loadoutManager.Value.DeactivateCurrentLoadout(installation);
+                // Resets with the plan as it stands, so the backend being replaced removes what it deployed. The
+                // root may have been moved here because its backend stopped working, so the apply this starts with
+                // must not refuse for that reason.
+                using (RecordedRootPreflight.Suspend())
+                {
+                    await _loadoutManager.Value.DeactivateCurrentLoadout(installation);
+                }
             }
             else
             {

@@ -18,6 +18,7 @@
     </ItemGroup>
     <ItemGroup>
       <InternalsVisibleTo Include="NexusMods.Benchmarks" />
+      <InternalsVisibleTo Include="NexusMods.Deployment.Links" />
     </ItemGroup>
 
 </Project>
