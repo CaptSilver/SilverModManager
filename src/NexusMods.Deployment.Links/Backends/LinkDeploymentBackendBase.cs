@@ -262,7 +262,11 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         foreach (var (path, node) in nodes)
         {
             if (!node.Actions.HasFlag(Actions.WriteIntrinsic)) continue;
-            File.Delete(context.Locations.ToAbsolutePath(path).ToString());
+
+            // File.Delete treats a missing file as done but a missing folder as an error; the copy backend creates
+            // the folder when it writes.
+            var target = context.Locations.ToAbsolutePath(path);
+            if (target.Parent.DirectoryExists()) File.Delete(target.ToString());
         }
 
         await copy.WriteIntrinsics(context, nodes);
