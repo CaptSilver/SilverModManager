@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.GC;
+using NexusMods.Abstractions.Loadouts.Deployment;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Sdk.Settings;
 using NexusMods.App.GarbageCollection.DataModel;
 using NexusMods.CrossPlatform;
@@ -9,17 +11,20 @@ using NexusMods.Sdk;
 namespace NexusMods.DataModel;
 
 /// <inheritdoc />
-public class GarbageCollectorRunner(ISettingsManager settings, NxFileStore store, IConnection connection, ILogger<GarbageCollectorRunner> logger) : IGarbageCollectorRunner
+public class GarbageCollectorRunner(ISettingsManager settings, NxFileStore store, IConnection connection, ILooseStagingStore stagingStore, IDeploymentPlanStore plans, IEnumerable<IDeploymentBackend> backends, ILogger<GarbageCollectorRunner> logger) : IGarbageCollectorRunner
 {
     private readonly DataModelSettings _settings = settings.Get<DataModelSettings>();
     private readonly NxFileStore _store = store;
     private readonly IConnection _connection = connection;
     private readonly ILogger<GarbageCollectorRunner> _logger = logger;
+    private readonly ILooseStagingStore _stagingStore = stagingStore;
+    private readonly IDeploymentPlanStore _plans = plans;
+    private readonly IReadOnlySet<DeploymentBackendId> _stagingBackends = backends.Where(b => b.UsesLooseStaging).Select(b => b.Id).ToHashSet();
 
     /// <inheritdoc />
     public void Run()
     {
-        RunGarbageCollector.Do(logger, _settings.ArchiveLocations, _store, _connection);
+        RunGarbageCollector.Do(logger, _settings.ArchiveLocations, _store, _connection, _stagingStore, _plans, _stagingBackends);
     }
     
     /// <inheritdoc />

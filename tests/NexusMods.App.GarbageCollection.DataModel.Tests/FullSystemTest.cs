@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.GC;
+using NexusMods.Abstractions.Loadouts.Deployment;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Sdk.Settings;
 using NexusMods.DataModel;
@@ -15,6 +16,8 @@ public class FullSystemTest(IServiceProvider serviceProvider, ISettingsManager s
 {
     private readonly NxFileStore _fileStore = serviceProvider.GetRequiredService<NxFileStore>();
     private readonly DataModelSettings _dataModelSettings = settingsManager.Get<DataModelSettings>();
+    private readonly ILooseStagingStore _stagingStore = serviceProvider.GetRequiredService<ILooseStagingStore>();
+    private readonly IDeploymentPlanStore _plans = serviceProvider.GetRequiredService<IDeploymentPlanStore>();
     private readonly ILogger _logger = serviceProvider.GetRequiredService<ILogger<FullSystemTest>>();
 
     [Fact]
@@ -49,7 +52,7 @@ public class FullSystemTest(IServiceProvider serviceProvider, ISettingsManager s
         Refresh(ref loadout2);
 
         // Act: All files are referenced.
-        RunGarbageCollector.Do(_logger, _dataModelSettings.ArchiveLocations, _fileStore, Connection);
+        RunGarbageCollector.Do(_logger, _dataModelSettings.ArchiveLocations, _fileStore, Connection, _stagingStore, _plans, new HashSet<DeploymentBackendId>());
 
         // Assert that all files exist after a GC where everything is used.
         foreach (var hash in loadout2ModHashes.Concat(loadout1ModHashes)

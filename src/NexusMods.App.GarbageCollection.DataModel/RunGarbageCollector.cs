@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.Loadouts.Deployment;
 using NexusMods.App.GarbageCollection.Nx;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
@@ -22,7 +23,17 @@ public static class RunGarbageCollector
     /// <param name="archiveLocations">The archive locations, usually obtained from 'DataModelSettings'.</param>
     /// <param name="store">The <see cref="IFileStore"/> that requires locking for concurrent access.</param>
     /// <param name="connection">The MneumonicDB <see cref="IConnection"/> to the DataModel.</param>
-    public static void Do(ILogger logger, Span<ConfigurablePath> archiveLocations, IFileStore store, IConnection connection)
+    /// <param name="stagingStore">The loose staging store, swept of files no loadout or disk state needs.</param>
+    /// <param name="plans">Reads which backend deploys each root of an installation.</param>
+    /// <param name="stagingBackends">The backends that deploy from <paramref name="stagingStore"/>.</param>
+    public static void Do(
+        ILogger logger,
+        Span<ConfigurablePath> archiveLocations,
+        IFileStore store,
+        IConnection connection,
+        ILooseStagingStore stagingStore,
+        IDeploymentPlanStore plans,
+        IReadOnlySet<DeploymentBackendId> stagingBackends)
     {
         // See 'SAFETY' comment below for explanation of 'gcLock'
         using var gcLock = _gcLock.WriteLock();
@@ -54,6 +65,12 @@ public static class RunGarbageCollector
             }
         
             store.ReloadCaches();
+
+            // Staged files are copies of file store content, so they are swept under the same lock.
+            var live = StagingReferenceMarker.LiveHashes(connection.Db, plans, stagingBackends);
+            var swept = stagingStore.Sweep(live);
+            if (swept > 0)
+                logger.LogInformation("Removed {Count} unused files from the loose staging store", swept);
         }
     }
 
