@@ -93,6 +93,7 @@ public enum Errno
     ENOTDIR = 20,
     EISDIR = 21,
     EINVAL = 22,
+    EXDEV = 18,
     ENOSYS = 38,
     EROFS = 30,
     ENOTEMPTY = 39,
