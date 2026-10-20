@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="NexusMods.DataModel.Tests" />
+        <InternalsVisibleTo Include="NexusMods.Abstractions.Games.Tests" />
     </ItemGroup>
 
     <ItemGroup>

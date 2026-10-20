@@ -46,6 +46,12 @@ public class FakeToolRunner : IToolRunner
     public string Diagnostic { get; set; } = "The fake tool runner was told it cannot run programs.";
 
     /// <summary>
+    /// Called at the start of every <see cref="RunWindowsTool"/>, so a test can look at its surroundings while
+    /// the program is "running".
+    /// </summary>
+    public Action? OnRun { get; set; }
+
+    /// <summary>
     /// The exit code every run reports.
     /// </summary>
     public int ExitCode { get; set; }
@@ -68,6 +74,7 @@ public class FakeToolRunner : IToolRunner
     {
         if (!CanRunTools) throw new InvalidOperationException(Diagnostic);
 
+        OnRun?.Invoke();
         var contents = exe.FileExists ? await exe.ReadAllTextAsync(cancellationToken) : null;
         lock (_calls) _calls.Add(new Call(installation, exe, args.ToArray(), env, logOutput, contents, via));
         return new ToolRunResult(ExitCode);

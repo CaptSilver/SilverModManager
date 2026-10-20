@@ -33,6 +33,8 @@ public class RunGameTool<T> : IRunGameTool
     private readonly ILogger<RunGameTool<T>> _logger;
     private readonly T _game;
     private readonly IProcessRunner _processRunner;
+    private readonly IToolRunner _toolRunner;
+    private readonly IPrefixResolver _prefixResolver;
     private readonly IOSInterop _osInterop;
     private readonly IProcessTracker _processTracker;
     private readonly IGameLaunchSession _launchSessions;
@@ -61,6 +63,8 @@ public class RunGameTool<T> : IRunGameTool
         _serviceProvider = serviceProvider;
         _logger = serviceProvider.GetRequiredService<ILogger<RunGameTool<T>>>();
         _processRunner = serviceProvider.GetRequiredService<IProcessRunner>();
+        _toolRunner = serviceProvider.GetRequiredService<IToolRunner>();
+        _prefixResolver = serviceProvider.GetRequiredService<IPrefixResolver>();
         _osInterop = serviceProvider.GetRequiredService<IOSInterop>();
         _processTracker = serviceProvider.GetRequiredService<IProcessTracker>();
         _launchSessions = serviceProvider.GetRequiredService<IGameLaunchSession>();
@@ -104,12 +108,19 @@ public class RunGameTool<T> : IRunGameTool
             }
         }
 
+        // A script extender or launcher of a Windows build is a Windows program, and Linux cannot start it
+        // directly. Asked before the session so the loadout is not applied for a program that cannot run.
+        var installation = loadout.InstallationInstance;
+        var viaToolRunner = LaunchPlatform.IsWindowsProgram(_prefixResolver.Resolve(installation), installation.LocatorResult);
+        if (viaToolRunner && !_toolRunner.CanRun(installation, out var cannotRunReason))
+            throw new InvalidOperationException($"Cannot run {program.FileName} for {_game.DisplayName}: {cannotRunReason}");
+
         // The launcher or loader is started by us, so the session's lock covers it and everything it spawns.
         using var launch = _launchSessions.BeginSession(loadout);
-        await launch.RunAsync(token => RunProgram(program, primaryFile, commandLineArgs, token), cancellationToken);
+        await launch.RunAsync(token => RunProgram(installation, viaToolRunner, program, primaryFile, commandLineArgs, token), cancellationToken);
     }
 
-    private async Task RunProgram(AbsolutePath program, AbsolutePath primaryFile, string[] commandLineArgs, CancellationToken cancellationToken)
+    private async Task RunProgram(GameInstallation installation, bool viaToolRunner, AbsolutePath program, AbsolutePath primaryFile, string[] commandLineArgs, CancellationToken cancellationToken)
     {
         var names = new HashSet<string>
         {
@@ -129,7 +140,15 @@ public class RunGameTool<T> : IRunGameTool
 
         var existing = FindMatchingProcesses(names).Select(p => p.Pid).ToHashSet();
             
-        if (UseShell)
+        if (viaToolRunner)
+        {
+            // The shell would hand a Windows program to the host, which cannot open it, so this wins over UseShell.
+            _logger.LogInformation("Running {Program} through the tool runner", program);
+            var result = await _toolRunner.RunWindowsTool(installation, program, commandLineArgs, null, logOutput: true, cancellationToken);
+            if (result.ExitCode != 0)
+                _logger.LogWarning("Application closed with a non-zero exit code ({ExitCode}): {Application}", result.ExitCode, program);
+        }
+        else if (UseShell)
         {
             _logger.LogInformation("Running {Program} through shell", program);
             await RunWithShell(cancellationToken, program);
@@ -353,5 +372,20 @@ public class RunGameTool<T> : IRunGameTool
             await Execute(loadout, cancellationToken, []);
             return Unit.Default;
         });
+    }
+}
+
+internal static class LaunchPlatform
+{
+    /// <summary>
+    /// Whether a program the tool starts itself needs a Wine prefix. The resolver also gives up on games it
+    /// knows nothing about, such as a manually added native build, so a failed resolution only counts as
+    /// Windows when the locator recorded a Windows platform or a compatibility layer for the game.
+    /// </summary>
+    public static bool IsWindowsProgram(PrefixResolution resolution, GameLocatorResult locatorResult)
+    {
+        if (resolution.IsNative) return false;
+        if (resolution.IsResolved) return true;
+        return locatorResult.TargetOS.IsWindows || locatorResult.Compatibility is not null;
     }
 }

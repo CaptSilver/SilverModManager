@@ -99,6 +99,25 @@ public class RunGameViaScriptExtenderToolTests(ITestOutputHelper helper) : AIsol
         spec.Exe.Should().Be(PrimaryExe);
     }
 
+    [Fact]
+    public async Task Execute_WithTheLoaderInTheLoadout_RunsItThroughTheToolRunner()
+    {
+        var loadout = await CreateLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = AddEmptyGroup(tx, loadout, "SKSE");
+            AddFile(tx, loadout, group, KnownPaths.SKSE64Loader);
+            await tx.Commit();
+        }
+        Refresh(ref loadout);
+
+        await Tool.Execute(loadout, CancellationToken.None, ["-caller"]);
+
+        var call = ServiceProvider.GetRequiredService<FakeToolRunner>().Calls.Should().ContainSingle().Subject;
+        call.Exe.Should().Be(LoaderOnDisk);
+        call.Args.Should().Equal("-caller");
+    }
+
     private static void AddDeletedFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path)
     {
         _ = new DeletedFile.New(tx, out var id)

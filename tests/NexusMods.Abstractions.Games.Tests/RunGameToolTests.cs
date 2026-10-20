@@ -110,19 +110,30 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
             .Which.Should().Be(new Uri($"steam://run/{appId}//-extra/"));
     }
 
-    private sealed class LauncherTool(IServiceProvider provider, StubbedGame game) : RunGameTool<StubbedGame>(provider, game)
+    private sealed class LauncherTool(IServiceProvider provider, StubbedGame game, string[]? extraArgs = null) : RunGameTool<StubbedGame>(provider, game)
     {
         public override async ValueTask<LaunchSpec> GetLaunchSpec(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
         {
             var baseSpec = await base.GetLaunchSpec(loadout, cancellationToken);
-            return baseSpec with { Exe = baseSpec.Exe.Parent.Combine("launcher.exe") };
+            return baseSpec with { Exe = baseSpec.Exe.Parent.Combine("launcher.exe"), ExtraArgs = extraArgs ?? [] };
         }
     }
+
+    private FakeToolRunner ToolRunner => ServiceProvider.GetRequiredService<FakeToolRunner>();
+
+    // OS interop probes xdg tools through the same runner at startup, so look for the launcher specifically.
+    private bool LauncherStartedByProcessRunner()
+        => _processRunner.ReceivedCalls().Any(c => c.GetArguments().OfType<CliWrap.Command>().Any(x => x.TargetFilePath.EndsWith("launcher.exe")));
+
+    // The fake prefix resolver hands out a Windows prefix by default; a native build has none.
+    private void MakeBuildNative()
+        => ServiceProvider.GetRequiredService<FakePrefixResolver>().Resolution = _ => PrefixResolution.Native("runs natively");
 
     [Fact]
     public async Task Execute_WaitsForGameProcessesTheTrackerFindsAfterTheLaunch()
     {
         // Not the primary file, so the tool starts the launcher itself instead of going through the store.
+        MakeBuildNative();
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
         var tool = new LauncherTool(ServiceProvider, Game);
         var gameExe = GameInstallation.Locations.ToAbsolutePath(Game.GetPrimaryFile(GameInstallation)).FileName;
@@ -280,6 +291,7 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
     [Fact]
     public async Task NonPrimaryExe_RunsInsideTheSessionAndFinishesAfterTheProcessesExit()
     {
+        MakeBuildNative();
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
         string[]? eventsAtStart = null;
         _processRunner.RunAsync(Arg.Any<CliWrap.Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ =>
@@ -292,5 +304,71 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
 
         eventsAtStart.Should().Equal("lock", "running");
         Session.Events.Should().Equal("lock", "running", "finish", "release");
+    }
+
+    [Fact]
+    public async Task NonPrimaryExe_OnAWindowsBuild_GoesToTheToolRunnerWithTheCallersArgsThenExtraArgs()
+    {
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+        string[]? eventsAtStart = null;
+        ToolRunner.OnRun = () => { lock (Session.Events) eventsAtStart = Session.Events.ToArray(); };
+
+        await new LauncherTool(ServiceProvider, Game, ["-extra"]).Execute(loadout, CancellationToken.None, ["-caller"]);
+
+        var launcher = GameInstallation.Locations.ToAbsolutePath(Game.GetPrimaryFile(GameInstallation)).Parent.Combine("launcher.exe");
+        var call = ToolRunner.Calls.Should().ContainSingle().Subject;
+        call.Exe.Should().Be(launcher);
+        call.Args.Should().Equal("-caller", "-extra");
+        LauncherStartedByProcessRunner().Should().BeFalse();
+        eventsAtStart.Should().Equal("lock", "running");
+        Session.Events.Should().Equal("lock", "running", "finish", "release");
+    }
+
+    [Fact]
+    public async Task NonPrimaryExe_OnANativeBuild_StillGoesToTheProcessRunner()
+    {
+        MakeBuildNative();
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+        CliWrap.Command? started = null;
+        _processRunner.RunAsync(Arg.Any<CliWrap.Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            started = call.Arg<CliWrap.Command>();
+            return Task.FromResult(new CliWrap.CommandResult(0, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow));
+        });
+
+        await new LauncherTool(ServiceProvider, Game, ["-extra"]).Execute(loadout, CancellationToken.None, ["-caller"]);
+
+        started.Should().NotBeNull();
+        started!.TargetFilePath.Should().EndWith("launcher.exe");
+        started.Arguments.Should().Be("-caller -extra");
+        ToolRunner.Calls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task NonPrimaryExe_WhenNoPrefixIsFoundForANonWindowsBuild_StillGoesToTheProcessRunner()
+    {
+        // A manually added game: the resolver gives up on it whatever it is, and nothing says it is Windows.
+        ServiceProvider.GetRequiredService<FakePrefixResolver>().Resolution = _ => PrefixResolution.Failed("manually added games carry no Wine prefix yet");
+        ToolRunner.CanRunTools = false;
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+
+        await new LauncherTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
+
+        LauncherStartedByProcessRunner().Should().BeTrue();
+        ToolRunner.Calls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task NonPrimaryExe_WhenTheToolRunnerCannotRunIt_ThrowsItsDiagnosticBeforeTheSessionStarts()
+    {
+        ToolRunner.CanRunTools = false;
+        ToolRunner.Diagnostic = "No Wine prefix was found for the stubbed game.";
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+
+        var act = async () => await new LauncherTool(ServiceProvider, Game).Execute(loadout, CancellationToken.None, []);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*No Wine prefix was found for the stubbed game.*");
+        Session.Events.Should().BeEmpty("the loadout must not be applied for a program that cannot start");
+        LauncherStartedByProcessRunner().Should().BeFalse();
     }
 }
