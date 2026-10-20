@@ -24,16 +24,23 @@ public sealed class StagingPromoter
     private readonly IPromotionSink _sink;
     private readonly IFileHasher _hasher;
     private readonly ILogger<StagingPromoter> _logger;
+    private readonly Size _sizeCap;
 
-    public StagingPromoter(StagingDirectory staging, IPromotionSink sink, IFileHasher hasher, ILogger<StagingPromoter> logger)
+    /// <param name="sizeCap">The most staged data <see cref="Promote"/> accepts; see <see cref="VfsSettings.PromotionSizeCapBytes"/>.</param>
+    public StagingPromoter(StagingDirectory staging, IPromotionSink sink, IFileHasher hasher, ILogger<StagingPromoter> logger, Size sizeCap)
     {
+        _sizeCap = sizeCap;
         _staging = staging;
         _sink = sink;
         _hasher = hasher;
         _logger = logger;
     }
 
-    /// <summary>Promotes everything staged into <paramref name="target"/>.</summary>
+    /// <summary>
+    /// Promotes everything staged into <paramref name="target"/>. If the staged files add up to more
+    /// than the size cap the result is <see cref="PromotionStatus.OverCap"/> and nothing is touched:
+    /// <see cref="Discard"/> some of the files it names and promote again.
+    /// </summary>
     /// <exception cref="InvalidOperationException">A journal from an earlier attempt is still there; <see cref="Recover"/> finishes it.</exception>
     public async Task<PromotionResult> Promote(LoadoutId target, CancellationToken token = default)
     {
@@ -43,6 +50,13 @@ public sealed class StagingPromoter
         var files = _staging.Scan().Where(e => !e.IsDirectory).ToList();
         var whiteouts = _staging.ReadWhiteouts();
         if (files.Count == 0 && whiteouts.Count == 0) return PromotionResult.NothingToDo;
+
+        var report = StagingReport.Build(_staging);
+        if (PromotionSizePolicy.Evaluate(report, _sizeCap) is SizeVerdict.OverCap overCap)
+        {
+            _logger.LogWarning("Staged files total {Total} bytes, over the {Cap} byte cap; nothing was promoted", overCap.Total.Value, overCap.Cap.Value);
+            return new PromotionResult(PromotionStatus.OverCap, files.Select(f => f.Path).ToArray(), Verdict: overCap);
+        }
 
         var entries = new List<JournalEntry>(files.Count + whiteouts.Count);
         foreach (var file in files)
@@ -57,6 +71,37 @@ public sealed class StagingPromoter
         journal.Write(_staging.JournalFile);
 
         return await Run(journal, PromotionStatus.Promoted, token);
+    }
+
+    /// <summary>
+    /// Deletes one staged file. Directories and whiteouts are left alone: a whiteout is a recorded
+    /// deletion, not data with a size.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">An interrupted promotion is waiting; <see cref="Recover"/> owns the staged files until it finishes.</exception>
+    /// <exception cref="FileNotFoundException">Nothing is staged at <paramref name="path"/>.</exception>
+    public void Discard(RelativePath path)
+    {
+        ThrowIfInterrupted();
+        var file = _staging.PathFor(path);
+        if (!file.FileExists) throw new FileNotFoundException($"No staged file at {path}", file.ToString());
+        file.Delete();
+    }
+
+    /// <summary>
+    /// Forgets everything the game wrote: staged files, whiteouts and unfinished copies. No journal is
+    /// written, since nothing reaches the loadout.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">An interrupted promotion is waiting; see <see cref="Discard"/>.</exception>
+    public void DiscardAll()
+    {
+        ThrowIfInterrupted();
+        _staging.Clear();
+    }
+
+    private void ThrowIfInterrupted()
+    {
+        if (_staging.JournalFile.FileExists)
+            throw new InvalidOperationException($"An earlier promotion was interrupted and left {_staging.JournalFile}; call Recover first");
     }
 
     /// <summary>

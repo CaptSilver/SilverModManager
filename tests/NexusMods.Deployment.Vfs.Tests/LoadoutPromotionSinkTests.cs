@@ -33,7 +33,7 @@ public class LoadoutPromotionSinkTests(ITestOutputHelper helper) : AStubbedGameI
         var installation = Loadout.Load(Connection.Db, loadoutId).InstallationId;
         staging = new StagingDirectory(_directory, installation);
         var sink = new LoadoutPromotionSink(FileStore, Connection);
-        return new StagingPromoter(staging, sink, new XxHash3FileHasher(), NullLogger<StagingPromoter>.Instance);
+        return new StagingPromoter(staging, sink, new XxHash3FileHasher(), NullLogger<StagingPromoter>.Instance, Size.From(new VfsSettings().PromotionSizeCapBytes));
     }
 
     private static void Stage(StagingDirectory staging, string path, string text)

@@ -35,7 +35,7 @@ public class PromotionTests : IDisposable
     public void Dispose() => _directory.DeleteDirectory(recursive: true);
 
     private StagingPromoter NewPromoter(IFileHasher? hasher = null, IPromotionSink? sink = null)
-        => new(_staging, sink ?? _sink, hasher ?? new XxHash3FileHasher(), NullLogger<StagingPromoter>.Instance);
+        => new(_staging, sink ?? _sink, hasher ?? new XxHash3FileHasher(), NullLogger<StagingPromoter>.Instance, Size.From(new VfsSettings().PromotionSizeCapBytes));
 
     private AbsolutePath Stage(string path, string text)
     {
