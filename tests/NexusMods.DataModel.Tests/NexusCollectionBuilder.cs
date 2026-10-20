@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Collections;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
 using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.Games.RedEngine.Cyberpunk2077;
@@ -193,6 +194,25 @@ public abstract class ANexusCollectionTest<TTest>(ITestOutputHelper helper) : AC
             AddFile(tx, loadout, LoadoutItemGroupId.From(id.Value), new GamePath(LocationId.Game, path), content);
         var result = await tx.Commit();
         return LoadoutItemGroupId.From(result[id].Value);
+    }
+
+    /// <summary>
+    /// Gives the group the next free conflict priority in the loadout, the way installing it would.
+    /// </summary>
+    protected async Task<LoadoutItemGroupPriorityId> AddPriority(LoadoutId loadout, LoadoutItemGroupId target)
+    {
+        var next = LoadoutItemGroupPriority.FindByLoadout(Connection.Db, loadout)
+            .Select(priority => priority.Priority.Value)
+            .DefaultIfEmpty(0UL)
+            .Max() + 1;
+
+        using var tx = Connection.BeginTransaction();
+        var id = tx.TempId();
+        tx.Add(id, LoadoutItemGroupPriority.Loadout, loadout);
+        tx.Add(id, LoadoutItemGroupPriority.Target, target);
+        tx.Add(id, LoadoutItemGroupPriority.Priority, ConflictPriority.From(next));
+        var result = await tx.Commit();
+        return LoadoutItemGroupPriorityId.From(result[id].Value);
     }
 
     /// <summary>
