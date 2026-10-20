@@ -6,6 +6,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.App.UI;
+using NexusMods.App.UI.Helpers;
 using NexusMods.App.UI.Settings;
 using NexusMods.App.UI.Windows;
 using NexusMods.Sdk.Settings;
@@ -57,6 +58,20 @@ public class App : Application
             var reactiveWindow = _provider.GetRequiredService<MainWindow>();
             reactiveWindow.ViewModel = _provider.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = reactiveWindow;
+
+            // Exit runs before the dispatcher stops, which is the last point where a dropped
+            // D-Bus connection can still report to the UI context without aborting the process.
+            desktop.Exit += (_, _) =>
+            {
+                try
+                {
+                    AvaloniaDBus.DisposeDefaultConnection();
+                }
+                catch (MissingMemberException e)
+                {
+                    logger.LogError(e, "Avalonia's D-Bus connection could not be disposed; closing the window may abort the process");
+                }
+            };
         }
 
         base.OnFrameworkInitializationCompleted();
