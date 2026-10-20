@@ -92,4 +92,28 @@ public class StartupModeTests
         main.ExecuteCli.Should().BeTrue();
         main.Args.Should().Equal(args);
     }
+
+    [Theory]
+    [InlineData("selftest-helper ping", true)]
+    [InlineData("SELFTEST-HELPER hold-lock /x 1", true)]
+    [InlineData("", false)]
+    [InlineData("as-main selftest-helper ping", false)]
+    [InlineData("status", false)]
+    public void TestIsSelftestHelper(string input, bool expected)
+    {
+        var mode = StartupMode.Parse(input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        mode.IsSelftestHelper.Should().Be(expected);
+    }
+
+    [Fact]
+    public void SelftestHelperBuildsNoHostAndShowsNoUi()
+    {
+        var mode = StartupMode.Parse(["selftest-helper", "hold-lock", "/x", "5"]);
+
+        mode.RunAsMain.Should().BeFalse();
+        mode.ShowUI.Should().BeFalse();
+        mode.ExecuteCli.Should().BeFalse();
+        mode.IsHeadlessRun.Should().BeFalse();
+        mode.Args.Should().Equal("hold-lock", "/x", "5");
+    }
 }

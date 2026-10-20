@@ -697,4 +697,18 @@ public class ProcessStartupTests
         if (notified) recorder.Notifications.Should().ContainSingle().Which.Should().Be("described HeadlessRun 4242");
         else recorder.Notifications.Should().BeEmpty();
     }
+
+    [Theory]
+    [InlineData("status")]
+    [InlineData("selftest-helper", "ping")]
+    public void ModesAnsweredWithoutAHostAreRefusedBeforeBuildingOne(params string[] args)
+    {
+        // Program.Main answers these itself; reaching here would build a host and exit 0 having done nothing.
+        var recorder = new Recorder();
+
+        var act = () => ProcessStartup.Run(StartupMode.Parse(args), args, recorder.Steps());
+
+        act.Should().Throw<InvalidOperationException>().WithMessage($"*{args[0]}*");
+        recorder.Calls.Should().BeEmpty();
+    }
 }

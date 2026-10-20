@@ -26,6 +26,7 @@ using NSubstitute;
 //                                    host a LaunchSession over fakes with a StopHandler; prints "ready", then
 //                                    "in <phase>" once the fakes are blocked in that phase, then after the run
 //                                    "result <exit code> <events>" where events lists the fakes' calls in order
+//   selftest-helper <args...>        run the shipped binary's hidden helper logic (SelftestHelper) in this process
 //   host-lifetime <console|nosignal> run a generic host beside a StopHandler, print "ready", then after a signal
 //                                    "stopping" if ApplicationStopping fired or "running" if it did not
 return args switch
@@ -38,6 +39,7 @@ return args switch
     ["session", var dir, var phase] => SessionScenario(dir, phase, killFail: false),
     ["session", var dir, var phase, "killfail"] => SessionScenario(dir, phase, killFail: true),
     ["host-lifetime", var kind] => HostLifetimeScenario(kind),
+    ["selftest-helper", .. var rest] => SelftestHelper.Run(rest, Console.Out, Console.Error),
     _ => Usage(),
 };
 

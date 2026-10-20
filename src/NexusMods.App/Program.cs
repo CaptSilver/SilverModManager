@@ -52,6 +52,12 @@ public class Program
             return StatusCommand.Run(startupMode.Args, Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR"), "/proc/self/mountinfo", Console.Out, Console.Error);
         }
 
+        // Checks flock and signals on this binary only: no settings, logging or host, so nothing unrelated can fail or stall it.
+        if (startupMode.IsSelftestHelper)
+        {
+            return SelftestHelper.Run(startupMode.Args, Console.Out, Console.Error);
+        }
+
         LoggingSettings loggingSettings;
         ExperimentalSettings experimentalSettings;
         using (var settingsHost = BuildSettingsHost())
