@@ -20,6 +20,7 @@ public static class Services
         services.TryAddSingleton<IBackingScanner, BackingScanner>();
         services.TryAddSingleton<IPromotionSink, LoadoutPromotionSink>();
         services.TryAddSingleton<StagingPromoterFactory>();
+        services.TryAddSingleton<VfsSessionFactory>();
         return services;
     }
 }
