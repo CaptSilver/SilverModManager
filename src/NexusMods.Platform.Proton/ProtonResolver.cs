@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using NexusMods.Paths;
+using NexusMods.Platform.Proton.Steam;
 using NexusMods.Sdk.Games;
-using SteamKit2;
 
 namespace NexusMods.Platform.Proton;
 
@@ -112,7 +112,7 @@ public sealed partial class ProtonResolver(IEnvironmentReader environment) : IPr
 
     private static string? ReadInternalToolName(AbsolutePath vdf)
     {
-        var tools = ReadVdf(vdf)?["compat_tools"];
+        var tools = VdfFile.Read(vdf)?["compat_tools"];
         return tools?.Children.FirstOrDefault()?.Name;
     }
 
@@ -136,7 +136,7 @@ public sealed partial class ProtonResolver(IEnvironmentReader environment) : IPr
         var seen = new HashSet<AbsolutePath> { steamInstallPath };
         yield return steamInstallPath;
 
-        var folders = ReadVdf(steamInstallPath.Combine("steamapps/libraryfolders.vdf"));
+        var folders = VdfFile.Read(steamInstallPath.Combine("steamapps/libraryfolders.vdf"));
         if (folders is null) yield break;
 
         foreach (var library in folders.Children)
@@ -152,7 +152,7 @@ public sealed partial class ProtonResolver(IEnvironmentReader environment) : IPr
     private static Dictionary<uint, string> ReadMappings(AbsolutePath steamInstallPath)
     {
         var result = new Dictionary<uint, string>();
-        var root = ReadVdf(steamInstallPath.Combine("config/config.vdf"));
+        var root = VdfFile.Read(steamInstallPath.Combine("config/config.vdf"));
         var mapping = root?["Software"]["Valve"]["Steam"]["CompatToolMapping"];
         if (mapping is null) return result;
 
@@ -168,18 +168,6 @@ public sealed partial class ProtonResolver(IEnvironmentReader environment) : IPr
 
     private static IEnumerable<AbsolutePath> SubDirectories(AbsolutePath dir)
         => dir.DirectoryExists() ? dir.EnumerateDirectories(recursive: false) : [];
-
-    /// <summary>
-    /// Parses a VDF file. Returns null when the file is missing or malformed, so callers treat both as "not configured".
-    /// </summary>
-    private static KeyValue? ReadVdf(AbsolutePath path)
-    {
-        if (!path.FileExists) return null;
-
-        using var stream = path.Read();
-        using var reader = new StreamReader(stream);
-        return KeyValue.LoadFromString(reader.ReadToEnd());
-    }
 
     /// <summary>
     /// A build plus where it was found, since only Valve's own builds count for the fallback.
