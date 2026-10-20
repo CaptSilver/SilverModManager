@@ -48,9 +48,11 @@ public sealed partial class GameProcess : IGameProcess
     private readonly IProcessTracker? _tracker;
     private readonly GameInstallation? _installation;
     private readonly TimeSpan _grace;
+    private readonly bool _forwardTermination;
 
-    private GameProcess(Process process, IProcessTracker? tracker, GameInstallation? installation, TimeSpan grace)
+    private GameProcess(Process process, IProcessTracker? tracker, GameInstallation? installation, TimeSpan grace, bool forwardTermination)
     {
+        _forwardTermination = forwardTermination;
         _process = process;
         _tracker = tracker;
         _installation = installation;
@@ -66,14 +68,19 @@ public sealed partial class GameProcess : IGameProcess
     /// </summary>
     /// <param name="baseEnvironment">The environment to inherit; defaults to ours.</param>
     /// <param name="grace">Overrides <see cref="DefaultGrace"/>.</param>
+    /// <param name="forwardTermination">
+    /// Whether <see cref="WaitAsync"/> passes SIGTERM and SIGHUP on to the child. Turn it off when the owner
+    /// already stops the child on those signals, or the child would get each of them twice.
+    /// </param>
     public static GameProcess Start(
         GameProcessSpec spec,
         IProcessTracker tracker,
         GameInstallation installation,
         IReadOnlyDictionary<string, string>? baseEnvironment = null,
-        TimeSpan? grace = null)
+        TimeSpan? grace = null,
+        bool forwardTermination = true)
     {
-        return Spawn(spec, tracker, installation, baseEnvironment, grace);
+        return Spawn(spec, tracker, installation, baseEnvironment, grace, forwardTermination);
     }
 
     /// <summary>
@@ -82,7 +89,7 @@ public sealed partial class GameProcess : IGameProcess
     /// </summary>
     public static GameProcess PassThrough(IReadOnlyList<string> argv, IReadOnlyDictionary<string, string>? baseEnvironment = null)
     {
-        return Spawn(new GameProcessSpec(argv), tracker: null, installation: null, baseEnvironment, grace: null);
+        return Spawn(new GameProcessSpec(argv), tracker: null, installation: null, baseEnvironment, grace: null, forwardTermination: true);
     }
 
     private static GameProcess Spawn(
@@ -90,7 +97,8 @@ public sealed partial class GameProcess : IGameProcess
         IProcessTracker? tracker,
         GameInstallation? installation,
         IReadOnlyDictionary<string, string>? baseEnvironment,
-        TimeSpan? grace)
+        TimeSpan? grace,
+        bool forwardTermination)
     {
         if (spec.Argv.Count == 0) throw new ArgumentException("The command has no program.", nameof(spec));
 
@@ -103,7 +111,7 @@ public sealed partial class GameProcess : IGameProcess
         foreach (var (key, value) in environment) startInfo.Environment[key] = value;
 
         var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start {spec.Argv[0]}");
-        return new GameProcess(process, tracker, installation, grace ?? DefaultGrace);
+        return new GameProcess(process, tracker, installation, grace ?? DefaultGrace, forwardTermination);
     }
 
     private static Dictionary<string, string> CurrentEnvironment()
@@ -172,8 +180,13 @@ public sealed partial class GameProcess : IGameProcess
         // SIGINT and SIGQUIT come from the terminal and reach the child already, because it shares our
         // process group; forwarding them as well would deliver Ctrl-C twice. They only need to stop
         // killing us. SIGTERM and SIGHUP are sent to one pid, so those are passed on.
-        using var term = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context => { context.Cancel = true; Signal(SigTerm); });
-        using var hup = PosixSignalRegistration.Create(PosixSignal.SIGHUP, context => { context.Cancel = true; Signal(SigHup); });
+        // An owner that stops the child itself leaves these two out, or the child would get each signal twice.
+        using var term = _forwardTermination
+            ? PosixSignalRegistration.Create(PosixSignal.SIGTERM, context => { context.Cancel = true; Signal(SigTerm); })
+            : null;
+        using var hup = _forwardTermination
+            ? PosixSignalRegistration.Create(PosixSignal.SIGHUP, context => { context.Cancel = true; Signal(SigHup); })
+            : null;
         using var interrupt = PosixSignalRegistration.Create(PosixSignal.SIGINT, context => context.Cancel = true);
         using var quit = PosixSignalRegistration.Create(PosixSignal.SIGQUIT, context => context.Cancel = true);
 

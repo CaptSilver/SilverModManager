@@ -112,6 +112,23 @@ public class LaunchServicesTests
         provider.GetRequiredService<LoadoutResolver>().Should().BeSameAs(provider.GetRequiredService<LoadoutResolver>());
     }
 
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public void TheProcessFactoryLeavesSignalForwardingToAStopHandlerWhenThereIsOne(bool withStopHandler, bool forwards)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IEnvironmentReader>());
+        AddLaunchDependencies(services);
+        services.AddHeadlessLaunch();
+        if (withStopHandler)
+            services.AddSingleton(s => new StopHandler(s.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger(nameof(StopHandler))));
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IGameProcessFactory>().Should().BeOfType<GameProcessFactory>()
+            .Which.ForwardTermination.Should().Be(forwards);
+    }
+
     [Fact]
     public async Task TheLaunchSynchronizer_RefusesASynchronizerServiceWithoutTheLaunchEntry()
     {

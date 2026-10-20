@@ -41,7 +41,12 @@ public sealed partial class InstallationLock : IDisposable
     /// (<c>XDG_RUNTIME_DIR</c>), passed in so tests never touch the real one.
     /// </summary>
     public static string PathFor(string runtimeDir, string store, string storeId) =>
-        Path.Combine(runtimeDir, "silvermod", $"launch-{Sanitise(store)}-{Sanitise(storeId)}.lock");
+        Path.Combine(DirectoryFor(runtimeDir), $"launch-{Sanitise(store)}-{Sanitise(storeId)}.lock");
+
+    /// <summary>
+    /// The folder under <paramref name="runtimeDir"/> that holds every installation's lock and state files.
+    /// </summary>
+    public static string DirectoryFor(string runtimeDir) => Path.Combine(runtimeDir, "silvermod");
 
     public string LockPath { get; }
 

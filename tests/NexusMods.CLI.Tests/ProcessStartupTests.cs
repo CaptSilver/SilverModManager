@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
 using NexusMods.App;
+using NexusMods.Platform.Proton.Launch;
 using NexusMods.SingleProcess;
 using NexusMods.SingleProcess.Exceptions;
 
@@ -16,6 +17,15 @@ public class ProcessStartupTests
     {
         public List<string> Calls { get; } = [];
         public (Process? Process, MainKind Kind, int Port) SyncInfo { get; set; } = (null, MainKind.Gui, 0);
+
+        /// <summary>What every read after the first returns, when someone takes the slot in between.</summary>
+        public (Process? Process, MainKind Kind, int Port)? LateSyncInfo { get; set; }
+        private int _syncReads;
+        public int LaunchExitCode { get; set; }
+        public Exception? LaunchException { get; set; }
+        public List<LaunchArgs> Launches { get; } = [];
+        public List<(MainKind Kind, int Pid)> Described { get; } = [];
+        public Func<MainKind, int, string>? Describe { get; set; }
         public bool CanConnect { get; set; } = true;
         public int CliExitCode { get; set; }
         public bool KillThrows { get; set; }
@@ -38,7 +48,11 @@ public class ProcessStartupTests
                     .ConfigureServices(services => services.AddHostedService(_ => new RecordingHostedService(Calls)))
                     .Build();
             },
-            ReadSyncInfo = _ => { Calls.Add("read-sync"); return SyncInfo; },
+            ReadSyncInfo = _ =>
+            {
+                Calls.Add("read-sync");
+                return _syncReads++ == 0 ? SyncInfo : LateSyncInfo ?? SyncInfo;
+            },
             CanConnect = (_, _) => { Calls.Add("can-connect"); return Task.FromResult(CanConnect); },
             Kill = _ => { Calls.Add("kill"); if (KillThrows) throw new InvalidOperationException("gone"); },
             OpenDatabase = _ =>
@@ -66,6 +80,18 @@ public class ProcessStartupTests
                 return Task.FromResult(CliExitCode);
             },
             RunCliRemotely = (_, _) => { Calls.Add("cli-remote"); return Task.FromResult(CliExitCode); },
+            RunLaunch = (_, launch) =>
+            {
+                Calls.Add("run-launch");
+                Launches.Add(launch);
+                if (LaunchException is not null) throw LaunchException;
+                return Task.FromResult(LaunchExitCode);
+            },
+            DescribeHeadlessMain = (_, kind, pid) =>
+            {
+                Described.Add((kind, pid));
+                return Describe?.Invoke(kind, pid) ?? new HeadlessMainRunning(kind, pid).Message;
+            },
             RunUi = _ => Calls.Add("ui"),
             WriteError = Errors.Add,
         };
@@ -76,6 +102,9 @@ public class ProcessStartupTests
         public Task StartAsync(CancellationToken cancellationToken) { calls.Add("host-start"); return Task.CompletedTask; }
         public Task StopAsync(CancellationToken cancellationToken) { calls.Add("host-stop"); return Task.CompletedTask; }
     }
+
+    /// <summary>The arguments of a start with this verb; <c>run</c> needs a loadout and a command to be valid.</summary>
+    private static string[] Command(string verb) => verb == "run" ? ["run", "a loadout", "--", "a-game"] : [verb, "arg"];
 
     private static int Run(Recorder recorder, params string[] args)
         => ProcessStartup.Run(StartupMode.Parse(args), args, recorder.Steps());
@@ -244,7 +273,7 @@ public class ProcessStartupTests
 
     [Theory]
     [InlineData("as-main", "some-verb")]
-    [InlineData("run", "a-game")]
+    [InlineData("run", "a loadout", "--", "a-game")]
     public void KillerNeverRunsForHeadlessMains(params string[] args)
     {
         var recorder = new Recorder
@@ -265,7 +294,7 @@ public class ProcessStartupTests
     {
         var recorder = new Recorder();
 
-        Run(recorder, verb, "arg");
+        Run(recorder, Command(verb));
 
         recorder.ClaimRequests.Should().Equal((expectedKind, 0));
         recorder.Calls.Should().ContainInOrder("claim", "host-start", "open-database");
@@ -290,13 +319,15 @@ public class ProcessStartupTests
     [InlineData("run", MainKind.Gui, ProcessStartup.OpenedMeanwhileMessage, 125)]
     public void LosingTheClaimPrintsTheWinnersMessageAndNeverStartsTheHost(string verb, MainKind winner, string expected, int exitCode)
     {
+        // The slot was free when the start looked, and someone took it before the claim landed.
         var recorder = new Recorder
         {
             Claims = [false],
-            SyncInfo = (Process.GetCurrentProcess(), winner, 0),
+            SyncInfo = (null, MainKind.Gui, 0),
+            LateSyncInfo = (Process.GetCurrentProcess(), winner, 0),
         };
 
-        Run(recorder, verb, "arg").Should().Be(exitCode);
+        Run(recorder, Command(verb)).Should().Be(exitCode);
 
         recorder.Errors.Should().ContainSingle().Which.Should().Contain(expected);
         recorder.Calls.Should()
@@ -373,7 +404,7 @@ public class ProcessStartupTests
             OpenDatabaseException = new InvalidOperationException("open failed", new IOException("IO error: While lock file: /x/LOCK: Resource temporarily unavailable")),
         };
 
-        Run(recorder, verb, "arg").Should().Be(exitCode);
+        Run(recorder, Command(verb)).Should().Be(exitCode);
 
         recorder.Errors.Should().ContainSingle().Which.Should().Be("SilverModManager is starting...");
         recorder.Calls.Should().NotContain("close-database").And.NotContain("cli-as-main").And.EndWith("release-main");
@@ -404,7 +435,7 @@ public class ProcessStartupTests
     {
         var recorder = new Recorder();
 
-        Run(recorder, "run", "a-game");
+        Run(recorder, Command("run"));
 
         recorder.Calls.Should().ContainInOrder("host-stop", "close-database", "release-session", "release-main");
     }
@@ -419,7 +450,7 @@ public class ProcessStartupTests
             ReleaseLaunchSession = _ => throw new InvalidOperationException("session"),
         };
 
-        var args = new[] { "run", "a-game" };
+        var args = Command("run");
         ProcessStartup.Run(StartupMode.Parse(args), args, steps).Should().Be(0);
 
         recorder.Calls.Should().EndWith("release-main");
@@ -445,5 +476,147 @@ public class ProcessStartupTests
         recorder.Calls.Should()
             .NotContain("claim").And.NotContain("release-main")
             .And.NotContain("close-database").And.NotContain("release-session");
+    }
+
+    [Fact]
+    public void RunWithoutTheSeparatorExits125WithTheSynopsisAndStartsNothing()
+    {
+        var recorder = new Recorder();
+
+        Run(recorder, "run", "a loadout").Should().Be(125);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Contain(LaunchArgs.Synopsis);
+        recorder.Calls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RunWithNoMainHandsTheParsedArgumentsToTheLaunchAndReturnsItsExitCode()
+    {
+        var recorder = new Recorder { LaunchExitCode = 37 };
+
+        Run(recorder, "run", "a loadout", "--game", "489830", "--", "proton", "--", "game.exe").Should().Be(37);
+
+        var launch = recorder.Launches.Should().ContainSingle().Subject;
+        launch.LoadoutName.Should().Be("a loadout");
+        launch.Game.Should().Be("489830");
+        launch.Command.Should().Equal("proton", "--", "game.exe");
+        recorder.Calls.Should().ContainInOrder("claim", "host-start", "open-database", "run-launch", "host-stop", "close-database", "release-session", "release-main");
+        recorder.Calls.Should().NotContain("cli-as-main").And.NotContain("ui").And.NotContain("cli-remote");
+    }
+
+    [Fact]
+    public void RunThatThrowsExits125AndStillTearsDown()
+    {
+        var recorder = new Recorder { LaunchException = new InvalidOperationException("boom") };
+
+        Run(recorder, Command("run")).Should().Be(125);
+
+        // Steam shows neither stderr nor the log, so the failure has to reach the desktop as well.
+        recorder.Errors.Should().ContainSingle().Which.Should().Contain("boom");
+        recorder.Notifications.Should().ContainSingle().Which.Should().Contain("boom");
+        recorder.Calls.Should().ContainInOrder("close-database", "release-session", "release-main");
+    }
+
+    [Fact]
+    public void LosingTheClaimToAHeadlessMainPrintsThatMainsDescription()
+    {
+        var recorder = new Recorder
+        {
+            Claims = [false],
+            LateSyncInfo = (Process.GetCurrentProcess(), MainKind.HeadlessRun, 0),
+            Describe = (k, pid) => $"described {k} {pid}",
+        };
+
+        Run(recorder, Command("run")).Should().Be(125);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Be($"described HeadlessRun {Environment.ProcessId}");
+    }
+
+    [Fact]
+    public void GuiStartOnLiveHeadlessMainNotifiesWithThatMainsDescription()
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.HeadlessRun, 0),
+            Describe = (k, pid) => $"described {k} {pid}",
+        };
+
+        Run(recorder);
+
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be($"described HeadlessRun {Environment.ProcessId}");
+    }
+
+    [Fact]
+    public void RunOnStaleSlotClaimsAndLaunches()
+    {
+        var recorder = new Recorder { SyncInfo = (null, MainKind.HeadlessRun, 0) };
+
+        Run(recorder, Command("run")).Should().Be(0);
+
+        recorder.Calls.Should().Contain("claim").And.Contain("run-launch");
+        recorder.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RunAgainstALiveWindowRefusesWithTheOpenMessageAndTouchesNothing()
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234), CanConnect = false };
+
+        Run(recorder, Command("run")).Should().Be(125);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(ProcessStartup.GuiOpenMessage);
+        // Steam starts the launch option without a terminal, so the desktop has to hear about it too.
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be(ProcessStartup.GuiOpenMessage);
+        recorder.Calls.Should()
+            .NotContain("claim").And.NotContain("host-start").And.NotContain("open-database").And.NotContain("run-launch")
+            .And.NotContain("can-connect").And.NotContain("kill").And.NotContain("release-main");
+    }
+
+    [Fact]
+    public void TheOpenMessageDiffersFromTheOpenedMeanwhileMessage()
+    {
+        ProcessStartup.GuiOpenMessage.Should().NotBe(ProcessStartup.OpenedMeanwhileMessage);
+    }
+
+    [Theory]
+    [InlineData(MainKind.HeadlessRun)]
+    [InlineData(MainKind.HeadlessCli)]
+    public void RunAgainstALiveHeadlessMainRefusesWithThatMainsDescriptionAndTouchesNothing(MainKind kind)
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), kind, 0),
+            Describe = (k, pid) => $"described {k} {pid}",
+        };
+
+        Run(recorder, Command("run")).Should().Be(125);
+
+        var expected = $"described {kind} {Environment.ProcessId}";
+        recorder.Described.Should().Equal((kind, Environment.ProcessId));
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(expected);
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be(expected);
+        recorder.Calls.Should()
+            .NotContain("claim").And.NotContain("host-start").And.NotContain("open-database")
+            .And.NotContain("run-launch").And.NotContain("release-main");
+    }
+
+    [Theory]
+    [InlineData("protocol-invoke", true)]
+    [InlineData("some-verb", false)]
+    public void OnlyAProtocolLinkTellsTheDesktopThatAHeadlessMainRefusedIt(string verb, bool notified)
+    {
+        // A link is clicked in a browser, which shows no stderr.
+        var recorder = new Recorder { Describe = (k, pid) => $"described {k} {pid}" };
+        var steps = recorder.Steps() with
+        {
+            RunCliRemotely = (_, _) => Task.FromException<int>(new HeadlessMainRunning(MainKind.HeadlessRun, 4242)),
+        };
+        var args = new[] { verb, "nxm://skyrim/mods/1" };
+
+        ProcessStartup.Run(StartupMode.Parse(args), args, steps).Should().NotBe(0);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Be("described HeadlessRun 4242");
+        if (notified) recorder.Notifications.Should().ContainSingle().Which.Should().Be("described HeadlessRun 4242");
+        else recorder.Notifications.Should().BeEmpty();
     }
 }

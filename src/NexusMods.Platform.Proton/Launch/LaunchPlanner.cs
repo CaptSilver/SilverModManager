@@ -1,0 +1,29 @@
+using NexusMods.Abstractions.Games;
+using NexusMods.Paths;
+
+namespace NexusMods.Platform.Proton.Launch;
+
+/// <summary>
+/// Turns the command Steam handed over into the one to start: the loadout's run tool decides which exe and
+/// arguments the game needs, and the command is rewritten to match.
+/// </summary>
+public static class LaunchPlanner
+{
+    /// <summary>
+    /// Rewrites <paramref name="command"/> for <paramref name="spec"/>. Throws with the substitution's text
+    /// when the command can't be rewritten, because starting it unchanged would run the game without its mods.
+    /// </summary>
+    /// <param name="command">The command as Steam expanded <c>%command%</c>.</param>
+    /// <param name="gameRoot">The installation's game folder.</param>
+    /// <param name="primaryExe">The game's own executable.</param>
+    /// <param name="spec">What the run tool wants started.</param>
+    public static LaunchPlan Compose(IReadOnlyList<string> command, AbsolutePath gameRoot, AbsolutePath primaryExe, LaunchSpec spec)
+    {
+        // Arguments the game needs count like a loader: a command with no exe to put them behind would start the game without them.
+        var loaderResolved = !spec.Exe.Equals(primaryExe) || spec.ExtraArgs.Length > 0;
+        var substitution = ExeSubstitution.Apply(command, gameRoot, spec, loaderResolved);
+        if (substitution.IsRefused) throw new InvalidOperationException(substitution.Refusal);
+
+        return new LaunchPlan(new GameProcessSpec(substitution.Argv), spec, substitution);
+    }
+}

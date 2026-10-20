@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
 using NexusMods.SingleProcess;
 using NexusMods.SingleProcess.Exceptions;
@@ -49,6 +50,16 @@ public sealed record ProcessStartupSteps
     public required Action<IServiceProvider> InstallGlobalHandlers { get; init; }
     public required Func<IServiceProvider, StartupMode, Task<int>> RunCliAsMain { get; init; }
     public required Func<IServiceProvider, StartupMode, Task<int>> RunCliRemotely { get; init; }
+
+    /// <summary>
+    /// Launches the game a <c>run</c> names and returns the exit code: the game's own, or 125 when the launch failed.
+    /// </summary>
+    public required Func<IServiceProvider, LaunchArgs, Task<int>> RunLaunch { get; init; }
+
+    /// <summary>
+    /// The text that tells why a live headless main of this kind and pid is in the way.
+    /// </summary>
+    public required Func<IServiceProvider, MainKind, int, string> DescribeHeadlessMain { get; init; }
     public required Action<IServiceProvider> RunUi { get; init; }
 
     /// <summary>
@@ -64,11 +75,23 @@ public static class ProcessStartup
 
     private const int ClaimAttempts = 3;
 
+    public const string GuiOpenMessage = "SilverModManager is open, so it cannot launch this game from Steam. Close SilverModManager, or start the game from inside it.";
     public const string StartingMessage = "SilverModManager is starting...";
     public const string OpenedMeanwhileMessage = "SilverModManager opened while this command was starting. Run it again.";
 
     public static int Run(StartupMode startupMode, string[] args, ProcessStartupSteps steps)
     {
+        // A malformed launch needs no database, host or main slot to be turned away.
+        LaunchArgs? launch = null;
+        if (startupMode.IsHeadlessRun)
+        {
+            if (!LaunchArgs.TryParse(startupMode.Args, out launch, out var usageError))
+            {
+                steps.WriteError(usageError);
+                return RunFailureExitCode;
+            }
+        }
+
         using var host = steps.BuildHost(startupMode);
 
         var services = host.Services;
@@ -80,10 +103,24 @@ public static class ProcessStartup
         // A window cannot share the database with a process that holds it without a server to talk to.
         if (startupMode.RunAsMain && startupMode.ShowUI && syncInfo.Process is not null && syncInfo.Kind != MainKind.Gui)
         {
-            var refusal = new HeadlessMainRunning(syncInfo.Kind, syncInfo.Process.Id).Message;
+            var refusal = steps.DescribeHeadlessMain(services, syncInfo.Kind, syncInfo.Process.Id);
             logger.LogWarning("Not starting the UI: {Message}", refusal);
             steps.Notify(services, refusal);
             return 0;
+        }
+
+        // A launch never takes over from a live main: the window or the other launch keeps the database and the game folder.
+        if (startupMode.IsHeadlessRun && syncInfo.Process is { } holder)
+        {
+            var refusal = syncInfo.Kind == MainKind.Gui
+                ? GuiOpenMessage
+                : steps.DescribeHeadlessMain(services, syncInfo.Kind, holder.Id);
+            logger.LogWarning("Not launching: {Message}", refusal);
+            steps.WriteError(refusal);
+
+            // Steam starts a launch option without a terminal to print to.
+            steps.Notify(services, refusal);
+            return RunFailureExitCode;
         }
 
         // NOTE(erri120): has to come before host startup
@@ -144,6 +181,8 @@ public static class ProcessStartup
                 {
                     LogMessages.StartingProcess(logger, Environment.ProcessPath, Environment.ProcessId, args);
 
+                    if (launch is not null) return steps.RunLaunch(services, launch).GetAwaiter().GetResult();
+
                     var task = steps.RunCliAsMain(services, startupMode);
                     if (startupMode.ShowUI) steps.RunUi(services);
                     return task.Result;
@@ -153,13 +192,23 @@ public static class ProcessStartup
             }
             catch (HeadlessMainRunning ex)
             {
-                steps.WriteError(ex.Message);
+                var refusal = steps.DescribeHeadlessMain(services, ex.Kind, ex.ProcessId);
+                steps.WriteError(refusal);
+
+                // A link is clicked in a browser, which shows no stderr.
+                if (startupMode.StartsUiWhenNoMainRunning) steps.Notify(services, refusal);
                 return 1;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Unhandled exception");
-                return 1;
+                if (!startupMode.IsHeadlessRun) return 1;
+
+                // Steam starts the launch option without a terminal, so the log alone would leave the game silently not starting.
+                var failure = $"The launch failed: {ex.Message}";
+                steps.WriteError(failure);
+                steps.Notify(services, failure);
+                return RunFailureExitCode;
             }
         }
         finally
@@ -204,7 +253,7 @@ public static class ProcessStartup
 
             refusal = winnerKind == MainKind.Gui
                 ? OpenedMeanwhileMessage
-                : new HeadlessMainRunning(winnerKind, winner.Id).Message;
+                : steps.DescribeHeadlessMain(services, winnerKind, winner.Id);
             return false;
         }
 

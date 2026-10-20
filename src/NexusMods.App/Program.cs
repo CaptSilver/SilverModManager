@@ -22,6 +22,7 @@ using NexusMods.DataModel.SchemaVersions;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Storage.Abstractions;
 using NexusMods.Paths;
+using NexusMods.Platform.Proton;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.ProxyConsole;
 using NexusMods.Sdk;
@@ -92,6 +93,8 @@ public class Program
         },
         RunCliAsMain = (services, startupMode) => RunCliTaskAsMain(services, startupMode),
         RunCliRemotely = (services, startupMode) => RunCliTaskRemotely(services, startupMode),
+        RunLaunch = LaunchRun.RunAsync,
+        DescribeHeadlessMain = (services, kind, pid) => HeadlessMainRefusal.Describe(kind, pid, services.GetRequiredService<IEnvironmentReader>().Get("XDG_RUNTIME_DIR")),
         RunUi = services => Startup.Main(services, []),
     };
 

@@ -153,6 +153,38 @@ public class GameProcessTests : IDisposable
         IsAlive(child).Should().BeFalse();
     }
 
+    [Fact]
+    public async Task WaitAsync_LeavesTerminationSignalsAloneWhenNotForwarding()
+    {
+        var script = $"""
+            trap 'echo term > '{File_("got-term")}'' TERM HUP
+            echo ready > '{File_("ready")}'
+            while [ ! -e '{File_("stop")}' ]; do sleep 0.05; done
+            """;
+        // Stands in for the owner that stops the child itself. Without a handler the signal would end the test host.
+        using var owner = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context => context.Cancel = true);
+        using var process = GameProcess.Start(Sh(script), Substitute.For<IProcessTracker>(), Installation(), BasicEnvironment, Grace, forwardTermination: false);
+        await WaitForFile(File_("ready"));
+
+        var wait = process.WaitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
+        Kill(Environment.ProcessId, 15);
+        await Task.Delay(500);
+        await File.WriteAllTextAsync(File_("stop"), "");
+        await wait;
+
+        File.Exists(File_("got-term")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void TheFactoryForwardsTerminationOnlyWhenNothingElseStopsTheGame()
+    {
+        var tracker = Substitute.For<IProcessTracker>();
+        using var stop = new StopHandler(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
+
+        new GameProcessFactory(tracker).ForwardTermination.Should().BeTrue();
+        new GameProcessFactory(tracker, stop).ForwardTermination.Should().BeFalse();
+    }
+
     [Theory]
     [InlineData(0, false)]
     [InlineData(-1, false)]
