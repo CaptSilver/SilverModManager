@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Games.Generic.Dependencies;
+using NexusMods.Platform.Proton.Protontricks;
 
-namespace NexusMods.CrossPlatform.Tests;
+namespace NexusMods.Platform.Proton.Tests;
 
 public class ProtontricksTests
 {

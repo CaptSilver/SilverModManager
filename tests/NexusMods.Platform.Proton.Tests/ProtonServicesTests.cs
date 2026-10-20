@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
+using NexusMods.Platform.Proton.Protontricks;
 using NexusMods.Platform.Proton.ToolRunner;
 using NexusMods.Sdk;
 using NSubstitute;
@@ -33,6 +34,10 @@ public class ProtonServicesTests
             CompatibilityLayerKind.Heroic,
             CompatibilityLayerKind.HeroicFlatpak,
             CompatibilityLayerKind.PlainWine,
+            CompatibilityLayerKind.SteamProton,
         ]);
+        provider.GetServices<IToolRunStrategy>().OfType<ILastResortToolRunStrategy>().Should().ContainSingle()
+            .Which.Should().BeOfType<ProtontricksStrategy>();
+        provider.GetServices<IRuntimeDependency>().Should().ContainSingle().Which.Should().BeOfType<AggregateProtontricksDependency>();
     }
 }

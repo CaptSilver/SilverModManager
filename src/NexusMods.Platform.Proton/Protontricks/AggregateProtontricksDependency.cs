@@ -1,13 +1,12 @@
-using CliWrap;
 using NexusMods.Sdk;
 
-namespace NexusMods.Games.Generic.Dependencies;
+namespace NexusMods.Platform.Proton.Protontricks;
 
 /// <summary>
 /// Aggregates multiple Protontricks implementations, using either the native or Flatpak version
 /// depending on availability.
 /// </summary>
-public class AggregateProtontricksDependency : AggregateExecutableRuntimeDependency, IProtontricksDependency
+public class AggregateProtontricksDependency : AggregateExecutableRuntimeDependency
 {
     /// <summary>
     /// Creates a new instance of the aggregate Protontricks dependency.
@@ -26,16 +25,11 @@ public class AggregateProtontricksDependency : AggregateExecutableRuntimeDepende
     {
     }
 
-    /// <inheritdoc />
-    public async ValueTask<Command> MakeLaunchCommand(Command command, long appId)
-    {
-        var availableDependencies = await GetAvailableDependenciesAsync();
-        var protontricks = availableDependencies.FirstOrDefault() as IProtontricksDependency;
-        if (protontricks == null)
-            throw new InvalidOperationException("No Protontricks implementation is available on this system");
-
-        return await protontricks.MakeLaunchCommand(command, appId);
-    }
+    /// <summary>
+    /// The first Protontricks implementation that is installed, or null when there is none.
+    /// </summary>
+    public async ValueTask<IProtontricksDependency?> FindAvailable()
+        => (await GetAvailableDependenciesAsync()).OfType<IProtontricksDependency>().FirstOrDefault();
 
     /// <summary>
     /// Gets whether any Protontricks implementation is available on the system.

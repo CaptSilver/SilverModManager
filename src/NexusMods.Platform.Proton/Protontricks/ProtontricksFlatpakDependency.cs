@@ -1,7 +1,8 @@
 using CliWrap;
+using NexusMods.Paths;
 using NexusMods.Sdk;
 
-namespace NexusMods.Games.Generic.Dependencies;
+namespace NexusMods.Platform.Proton.Protontricks;
 
 /// <summary>
 ///     Protontricks is a tool that helps manage Proton games and their dependencies.
@@ -36,23 +37,7 @@ public class ProtontricksFlatpakDependency : ExecutableRuntimeDependency, IProto
         return command;
     }
 
-    /// <summary>
-    /// Transforms an existing command into a command which invokes the Flatpak version of
-    /// protontricks-launch with the original command as the target.
-    /// </summary>
-    public ValueTask<Command> MakeLaunchCommand(Command command, long appId)
-    {
-        var args = $"run --command=protontricks-launch {FlatpakPackageId} --appid {appId} \"{command.TargetFilePath}\" {command.Arguments}";
-        return ValueTask.FromResult(new Command(
-            "flatpak", 
-            args,
-            command.WorkingDirPath, 
-            command.ResourcePolicy,
-            command.Credentials, 
-            command.EnvironmentVariables,
-            command.Validation, 
-            command.StandardInputPipe, 
-            command.StandardOutputPipe, 
-            command.StandardErrorPipe));
-    }
+    /// <inheritdoc />
+    public IReadOnlyList<string> MakeLaunchArgv(long appId, AbsolutePath exe, IReadOnlyList<string> args)
+        => ["flatpak", "run", "--command=protontricks-launch", FlatpakPackageId, "--appid", appId.ToString(), exe.ToString(), .. args];
 }

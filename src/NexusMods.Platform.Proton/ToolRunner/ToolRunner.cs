@@ -14,7 +14,8 @@ public sealed class ToolRunner(
     IEnumerable<IToolRunStrategy> strategies,
     IProcessRunner processRunner) : IToolRunner
 {
-    private readonly IToolRunStrategy[] _strategies = DistinctByKind(strategies);
+    private readonly IToolRunStrategy[] _strategies = DistinctByKind(strategies.Where(s => s is not ILastResortToolRunStrategy));
+    private readonly ILastResortToolRunStrategy[] _lastResorts = DistinctByKind(strategies.OfType<ILastResortToolRunStrategy>()).Cast<ILastResortToolRunStrategy>().ToArray();
 
     // A second registration for a kind would otherwise be shadowed by whichever was registered first.
     private static IToolRunStrategy[] DistinctByKind(IEnumerable<IToolRunStrategy> strategies)
@@ -65,10 +66,7 @@ public sealed class ToolRunner(
     /// <inheritdoc/>
     public bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic)
     {
-        if (!TryGetStrategy(installation, out var strategy, out var prefix, out diagnostic)) return false;
-
-        diagnostic = strategy.CheckRunnable(installation, prefix);
-        return diagnostic is null;
+        return TryGetStrategy(installation, out _, out _, out diagnostic);
     }
 
     private bool TryGetStrategy(
@@ -101,7 +99,16 @@ public sealed class ToolRunner(
             return false;
         }
 
-        prefix = resolution.Prefix;
+        var resolved = resolution.Prefix;
+        prefix = resolved;
+        diagnostic = strategy.CheckRunnable(installation, resolved);
+        if (diagnostic is null) return true;
+
+        // The regular strategy's reason is the one worth showing: it is the way the program is meant to run.
+        var lastResort = _lastResorts.FirstOrDefault(s => s.Kind == kind && s.CheckRunnable(installation, resolved) is null);
+        if (lastResort is null) return false;
+
+        strategy = lastResort;
         diagnostic = null;
         return true;
     }
