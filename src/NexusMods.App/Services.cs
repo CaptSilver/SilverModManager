@@ -195,6 +195,7 @@ public static class Services
         // The sync file is how a headless main announces itself to clients; only the server is left out.
         services
             .AddSingleton<SyncFile>()
+            .AddSingleton<LaunchSessionSlot>()
             .AddSettings<CliSettings>()
             .AddTransient<CliClient>()
             .AddTransient<IGuidedInstaller, NullGuidedInstaller>()

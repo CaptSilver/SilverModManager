@@ -19,7 +19,10 @@ using NexusMods.Backend;
 using NexusMods.CrossPlatform;
 using NexusMods.DataModel;
 using NexusMods.DataModel.SchemaVersions;
+using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Storage.Abstractions;
 using NexusMods.Paths;
+using NexusMods.Platform.Proton.Launch;
 using NexusMods.ProxyConsole;
 using NexusMods.Sdk;
 using NexusMods.SingleProcess;
@@ -68,6 +71,11 @@ public class Program
         ),
         Kill = process => process.Kill(entireProcessTree: true),
         OpenDatabase = OpenDatabase,
+        TryClaimMain = (services, kind, port) => services.GetRequiredService<SyncFile>().TrySetMain(kind, port),
+        ReleaseMain = services => services.GetRequiredService<SyncFile>().ReleaseMain(),
+        CloseDatabase = CloseDatabase,
+        ReleaseLaunchSession = services => services.GetService<LaunchSessionSlot>()?.Current?.Release(),
+        Notify = (services, message) => services.GetRequiredService<IDesktopNotifier>().Notify("SilverModManager", message),
         InstallGlobalHandlers = services =>
         {
             var logger = services.GetRequiredService<ILogger<Program>>();
@@ -86,6 +94,22 @@ public class Program
         RunCliRemotely = (services, startupMode) => RunCliTaskRemotely(services, startupMode),
         RunUi = services => Startup.Main(services, []),
     };
+
+    /// <summary>
+    /// Closes the connection, the store and the RocksDB backend under it, in that order.
+    /// </summary>
+    /// <remarks>
+    /// Only the backend's dispose closes RocksDB and lets go of its lock file. The container would get to it
+    /// when the host is disposed, but that is after the sync file slot is released, and the next main opens
+    /// the database as soon as it holds the slot. All three disposes are idempotent, so the container's later
+    /// pass is harmless.
+    /// </remarks>
+    public static void CloseDatabase(IServiceProvider services)
+    {
+        (services.GetService<IConnection>() as IDisposable)?.Dispose();
+        (services.GetService<IDatomStore>() as IDisposable)?.Dispose();
+        (services.GetService<IStoreBackend>() as IDisposable)?.Dispose();
+    }
 
     private static void OpenDatabase(IServiceProvider services)
     {
