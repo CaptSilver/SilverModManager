@@ -137,13 +137,14 @@ static int SessionScenario(string runtimeDir, string blockIn, bool killFail)
     var events = new ConcurrentQueue<string>();
     using var stop = new StopHandler(NullLogger.Instance);
     var signalled = new ManualResetEventSlim();
-    stop.Stopping += (_, _) => signalled.Set();
 
     // Each fake parks in the phase under test until the first signal has been delivered, so the signal is
-    // guaranteed to land in that phase.
+    // guaranteed to land in that phase. Stopping runs its handlers in subscription order, so this one is
+    // added only once the session has subscribed: the session has recorded the stop before a fake moves on.
     void Park(string phase)
     {
         if (blockIn != phase) return;
+        stop.Stopping += (_, _) => signalled.Set();
         Console.WriteLine($"in {phase}");
         Console.Out.Flush();
         signalled.Wait(TimeSpan.FromSeconds(30));
