@@ -1,6 +1,7 @@
 using FluentAssertions;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -195,5 +196,116 @@ public class ProtectedPathsOverrideTests(ITestOutputHelper helper) : AStubbedGam
 
         await Synchronizer.ResetToOriginalGameState(GameInstallation, [LocatorId.From("StubbedGameState.zip")]);
         (await ModSave.ReadAllBytesAsync()).Should().Equal(played);
+    }
+
+    public enum WayOfLosingTheMod { Disable, Unflag, Remove, SwitchLoadout }
+
+    private async Task<Loadout.ReadOnly> LoseTheMod(Loadout.ReadOnly loadout, LoadoutItemGroup.ReadOnly mod, WayOfLosingTheMod way)
+    {
+        if (way == WayOfLosingTheMod.SwitchLoadout)
+        {
+            _ = await Synchronizer.Synchronize(await CreateLoadout());
+            return loadout;
+        }
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            switch (way)
+            {
+                case WayOfLosingTheMod.Disable: tx.Add(mod.Id, LoadoutItem.Disabled, Null.Instance); break;
+                case WayOfLosingTheMod.Unflag: tx.Retract(mod.Id, LoadoutItem.ProtectedPathsAllowed, Null.Instance); break;
+                case WayOfLosingTheMod.Remove: tx.Delete(mod.Id, recursive: true); break;
+            }
+            await tx.Commit();
+        }
+
+        return await Synchronizer.Synchronize(Refresh(loadout));
+    }
+
+    [Theory]
+    [InlineData(WayOfLosingTheMod.Disable)]
+    [InlineData(WayOfLosingTheMod.Unflag)]
+    [InlineData(WayOfLosingTheMod.Remove)]
+    [InlineData(WayOfLosingTheMod.SwitchLoadout)]
+    public async Task RewrittenSave_SurvivesLosingTheMod_AndIsNoLongerTracked(WayOfLosingTheMod way)
+    {
+        var (loadout, mod) = await InstallMod(await CreateLoadout(), SaveModFiles(), allowProtectedPaths: true);
+        loadout = await Synchronizer.Synchronize(loadout);
+        IndexedPaths().Should().Contain(ModSavePath);
+
+        var played = "the mod's save after the player carried on from it"u8.ToArray();
+        await ModSave.WriteAllBytesAsync(played);
+
+        loadout = await LoseTheMod(loadout, mod, way);
+
+        ModSave.FileExists.Should().BeTrue("the game's rewrite of the save is the player's");
+        (await ModSave.ReadAllBytesAsync()).Should().Equal(played);
+        IndexedPaths().Should().NotContain(ModSavePath, "it is an untracked user file now");
+        (await UserSave.ReadAllBytesAsync()).Should().Equal(UserSaveBytes);
+
+        // Later syncs must not pick it up again either.
+        _ = await Synchronizer.Synchronize(Refresh(loadout));
+        (await ModSave.ReadAllBytesAsync()).Should().Equal(played);
+        IndexedPaths().Should().NotContain(ModSavePath);
+    }
+
+    [Theory]
+    [InlineData(WayOfLosingTheMod.Disable)]
+    [InlineData(WayOfLosingTheMod.Unflag)]
+    [InlineData(WayOfLosingTheMod.Remove)]
+    [InlineData(WayOfLosingTheMod.SwitchLoadout)]
+    public async Task UntouchedSave_IsRemovedWhenTheModIsLost(WayOfLosingTheMod way)
+    {
+        var (loadout, mod) = await InstallMod(await CreateLoadout(), SaveModFiles(), allowProtectedPaths: true);
+        loadout = await Synchronizer.Synchronize(loadout);
+        ModSave.FileExists.Should().BeTrue();
+
+        _ = await LoseTheMod(loadout, mod, way);
+
+        ModSave.FileExists.Should().BeFalse("it is still byte-identical to what was deployed");
+        IndexedPaths().Should().NotContain(ModSavePath);
+        (await UserSave.ReadAllBytesAsync()).Should().Equal(UserSaveBytes);
+    }
+
+    private static readonly byte[] UpdatedModSaveBytes = "version two of the mod's save"u8.ToArray();
+
+    /// <summary>
+    /// Replaces the mod with a new version of itself that ships the same save path with new content.
+    /// </summary>
+    private async Task<Loadout.ReadOnly> UpdateMod(Loadout.ReadOnly loadout, LoadoutItemGroup.ReadOnly mod)
+    {
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Delete(mod.Id, recursive: true);
+            await tx.Commit();
+        }
+
+        var (updated, _) = await InstallMod(Refresh(loadout), new() { { "saves/mod.sav", UpdatedModSaveBytes } }, allowProtectedPaths: true);
+        return await Synchronizer.Synchronize(updated);
+    }
+
+    [Fact]
+    public async Task ModUpdate_DoesNotOverwriteASaveTheGameRewrote()
+    {
+        var (loadout, mod) = await InstallMod(await CreateLoadout(), SaveModFiles(), allowProtectedPaths: true);
+        loadout = await Synchronizer.Synchronize(loadout);
+
+        var played = "the mod's save after the player carried on from it"u8.ToArray();
+        await ModSave.WriteAllBytesAsync(played);
+
+        await UpdateMod(loadout, mod);
+
+        (await ModSave.ReadAllBytesAsync()).Should().Equal(played, "progress made since the deploy is the player's");
+    }
+
+    [Fact]
+    public async Task ModUpdate_ReplacesASaveNobodyTouched()
+    {
+        var (loadout, mod) = await InstallMod(await CreateLoadout(), SaveModFiles(), allowProtectedPaths: true);
+        loadout = await Synchronizer.Synchronize(loadout);
+
+        await UpdateMod(loadout, mod);
+
+        (await ModSave.ReadAllBytesAsync()).Should().Equal(UpdatedModSaveBytes);
     }
 }

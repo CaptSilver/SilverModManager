@@ -301,7 +301,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// Protected paths are not indexed unless the loadout deployed to them, so a file there that the disk
     /// state does not know is the user's own and is never overwritten. A deployed file that no longer matches the
     /// loadout's copy is the user's too (the game rewrites saves as it runs): it must be neither ingested into
-    /// the loadout nor overwritten with the mod's version.
+    /// the loadout nor overwritten with the mod's version. When there is a previous state to compare against,
+    /// <see cref="ProcessSyncTree"/> makes that call instead, since it can also tell an untouched file from a
+    /// rewritten one when the mod has been updated.
     /// </remarks>
     private void LeaveUserProtectedFilesAlone(Dictionary<GamePath, SyncNode> syncTree, Loadout.ReadOnly loadout)
     {
@@ -317,7 +319,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 if (!onDisk.FileExists) continue;
                 Logger.LogWarning("Not deploying `{Path}`: a file of that name is already there and was not put there by the loadout", path);
             }
-            else if (node.HaveDisk && node.HaveLoadout && node.Disk.Hash != node.Loadout.Hash)
+            else if (node.HaveDisk && !node.HavePrevious && node.Disk.Hash != node.Loadout.Hash)
             {
                 Logger.LogWarning("Leaving `{Path}` alone: it differs from the loadout's copy, so the game or the user has changed it since", path);
             }
@@ -491,6 +493,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
             item.Signature = signature;
             item.Actions = ActionMapping.MapActions(signature);
+
+            // A deployed file on a protected path that no longer matches what the last sync wrote has been
+            // rewritten by the game. It is the player's now: whether or not the loadout still provides it, the
+            // generic rules would delete it or write the mod's copy over it. Dropping the disk state entry also
+            // keeps the verdict: once the entry's hash follows the rewrite, the rewrite would look like a change
+            // the loadout has not caught up with.
+            if (item.HaveDisk && item.HavePrevious && item.Disk.Hash != item.Previous.Hash && GamePathFilter.ShouldFilter(path))
+                item.Actions = Actions.ForgetDiskState;
         }
     }
 
@@ -555,6 +565,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
                 case Actions.WarnOfConflict:
                     WarnOfConflict(syncTree);
+                    break;
+
+                case Actions.ForgetDiskState:
+                    ActionForgetDiskState(syncTree, tx, gameMetadataId);
                     break;
                 
                 default:
@@ -782,6 +796,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                     WarnOfConflict(syncTree);
                     break;
 
+                case Actions.ForgetDiskState:
+                    ActionForgetDiskState(syncTree, tx, metadata);
+                    break;
+
                 default:
                     throw new InvalidOperationException($"Unknown action: {action}");
             }
@@ -975,13 +993,29 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             {
                 foldersWithDeletedFiles.Add(path.Parent);
 
-                var id = node.Disk.EntityId;
-                tx.Retract(id, DiskStateEntry.Path, ((EntityId)gameMetadataId, path.LocationId, path.Path));
-                tx.Retract(id, DiskStateEntry.Hash, node.Disk.Hash);
-                tx.Retract(id, DiskStateEntry.Size, node.Disk.Size);
-                tx.Retract(id, DiskStateEntry.LastModified, new DateTimeOffset(node.Disk.LastModifiedTicks, TimeSpan.Zero));
-                tx.Retract(id, DiskStateEntry.Game, (EntityId)gameMetadataId);
+                RetractDiskStateEntry(tx, gameMetadataId, path, node);
             }
+        }
+    }
+
+    private static void RetractDiskStateEntry(ITransaction tx, GameInstallMetadataId gameMetadataId, GamePath path, SyncNode node)
+    {
+        var id = node.Disk.EntityId;
+        tx.Retract(id, DiskStateEntry.Path, ((EntityId)gameMetadataId, path.LocationId, path.Path));
+        tx.Retract(id, DiskStateEntry.Hash, node.Disk.Hash);
+        tx.Retract(id, DiskStateEntry.Size, node.Disk.Size);
+        tx.Retract(id, DiskStateEntry.LastModified, new DateTimeOffset(node.Disk.LastModifiedTicks, TimeSpan.Zero));
+        tx.Retract(id, DiskStateEntry.Game, (EntityId)gameMetadataId);
+    }
+
+    private void ActionForgetDiskState(Dictionary<GamePath, SyncNode> syncTree, ITransaction tx, GameInstallMetadataId gameMetadataId)
+    {
+        foreach (var (path, node) in syncTree)
+        {
+            if (!node.Actions.HasFlag(Actions.ForgetDiskState)) continue;
+
+            Logger.LogWarning("Leaving `{Path}` on disk: it differs from what the loadout deployed, so it is the player's and no longer tracked", path);
+            RetractDiskStateEntry(tx, gameMetadataId, path, node);
         }
     }
 
@@ -1582,7 +1616,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             desiredState.Add(gameFile.Path, syncNode);
         }
 
-        AddDesiredStateOutsideGame(desiredState, metadata, diskState);
+        var forgotten = AddDesiredStateOutsideGame(desiredState, metadata, diskState);
 
         // Merge the states into a tree. Passing in the current state as the current and previous state. 
         // This fakes the synchronizer into thinking that there are no changes on disk and we only want to do a
@@ -1591,6 +1625,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         
         // Process the tree
         ProcessSyncTree(desiredState);
+
+        // Tracked saves the game rewrote stay on disk, but nothing may track them any more.
+        foreach (var path in forgotten) CollectionsMarshal.GetValueRefOrNullRef(desiredState, path).Actions = Actions.ForgetDiskState;
 
         // Run the groupings
         await RunActions(desiredState, installation);
@@ -1606,8 +1643,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// the game was managed, or is removed if there was none. Files from the loadout's overrides, and files the
     /// loadout never touched, are kept as they are.
     /// </remarks>
-    private void AddDesiredStateOutsideGame(Dictionary<GamePath, SyncNode> desiredState, GameInstallMetadata.ReadOnly metadata, List<PathPartPair> diskState)
+    /// <returns>
+    /// The tracked files on protected paths that the reset leaves alone because they no longer match what the
+    /// loadout deployed (the game rewrote them). They are the player's, so they stay on disk and lose their
+    /// disk state entry.
+    /// </returns>
+    private List<GamePath> AddDesiredStateOutsideGame(Dictionary<GamePath, SyncNode> desiredState, GameInstallMetadata.ReadOnly metadata, List<PathPartPair> diskState)
     {
+        List<GamePath> forgotten = [];
         var deployed = GetFilesDeployedByLastSyncedLoadout(metadata, diskState);
         var initialState = GameInstallMetadata.InitialDiskStateTransaction.TryGetValue(metadata, out var initialTx)
             ? ((ILoadoutSynchronizer)this).GetDiskStateForGameAsOf(metadata, TxId.From(initialTx.Value))
@@ -1621,6 +1664,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             if (!deployed.Contains(path))
             {
                 desiredState.Add(path, new SyncNode { Loadout = diskPart, SourceItemType = LoadoutSourceItemType.Game });
+
+                // Only a deploy puts a protected path in the disk state. One that no longer counts as deployed
+                // (usually because the game rewrote it) is kept, so stop tracking it rather than leave it indexed.
+                if (GamePathFilter.ShouldFilter(path)) forgotten.Add(path);
                 continue;
             }
 
@@ -1642,6 +1689,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 SourceItemType = LoadoutSourceItemType.Game,
             });
         }
+
+        return forgotten;
     }
 
     /// <summary>
@@ -1669,7 +1718,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             var isDeployed = node.SourceItemType switch
             {
                 LoadoutSourceItemType.Intrinsic => true,
-                LoadoutSourceItemType.Loadout => node.Loadout.HaveEntityId && !IsInGroup(loadout.Db, node.Loadout.EntityId, overridesGroup),
+                // A save on a protected path that the game rewrote is no longer what the loadout deployed.
+                LoadoutSourceItemType.Loadout => node.Loadout.HaveEntityId
+                    && !IsInGroup(loadout.Db, node.Loadout.EntityId, overridesGroup)
+                    && !(GamePathFilter.ShouldFilter(path) && node.Disk.Hash != node.Loadout.Hash),
                 _ => false,
             };
 

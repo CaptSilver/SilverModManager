@@ -58,4 +58,9 @@ public enum Actions : ushort
     /// Warn the user that the merge has failed and we don't know what to do with the file
     /// </summary>
     WarnOfConflict = 1 << 9,
+
+    /// <summary>
+    /// Drops the file's disk state entry and leaves the file on disk, so it becomes an untracked user file.
+    /// </summary>
+    ForgetDiskState = 1 << 10,
 }
