@@ -82,6 +82,31 @@ public class SteamLocatorTests
     }
 
     [Fact]
+    public void Locate_ProtonGame_ExposesSteamInstallAndLocalConfigPaths()
+    {
+        var (result, hostFileSystem, _) = LocateSingle(withProtonPrefix: true);
+        var steamDirectory = hostFileSystem.GetKnownPath(KnownPath.HomeDirectory).Combine(".steam/steam");
+
+        var provider = result.LinuxCompatabilityDataProvider!;
+
+        provider.SteamInstallPath.Should().Be(steamDirectory);
+        // userdata is keyed by the 32-bit account id, which is the 64-bit LastOwner minus the individual-account base
+        provider.SteamLocalConfigPath.Should().Be(steamDirectory.Combine("userdata/39734272/config/localconfig.vdf"));
+    }
+
+    [Fact]
+    public async Task GetWineDllOverrides_ReadsTheFileAtSteamLocalConfigPath()
+    {
+        var (result, hostFileSystem, _) = LocateSingle(withProtonPrefix: true);
+        var provider = result.LinuxCompatabilityDataProvider!;
+        WriteFile(hostFileSystem, provider.SteamLocalConfigPath, LocalConfig());
+
+        var overrides = await provider.GetWineDllOverrides(CancellationToken.None);
+
+        overrides.Should().ContainSingle().Which.DllName.Should().Be("winhttp");
+    }
+
+    [Fact]
     public void Locate_NativeLinuxGameWithoutProtonPrefix_UsesTheHostFileSystem()
     {
         var (result, hostFileSystem, _) = LocateSingle(withProtonPrefix: false, hasNativeLinuxBuild: true);
@@ -133,6 +158,28 @@ public class SteamLocatorTests
         fileSystem.CreateDirectory(path.Parent);
         fileSystem.WriteAllText(path, contents);
     }
+
+    private static string LocalConfig() => $$"""
+        "UserLocalConfigStore"
+        {
+            "Software"
+            {
+                "Valve"
+                {
+                    "Steam"
+                    {
+                        "apps"
+                        {
+                            "{{AppId}}"
+                            {
+                                "LaunchOptions" "WINEDLLOVERRIDES=\"winhttp=n,b\" %command%"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """;
 
     private static string LibraryFolders(AbsolutePath steamDirectory) => $$"""
         "libraryfolders"

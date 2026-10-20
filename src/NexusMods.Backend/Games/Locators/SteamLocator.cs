@@ -88,6 +88,12 @@ internal class SteamLocator : IGameLocator
 
         public AbsolutePath WinePrefixDirectoryPath { get; }
 
+        public AbsolutePath SteamInstallPath => _steamGame.SteamPath;
+
+        public AbsolutePath SteamLocalConfigPath => SteamLocationFinder
+            .GetUserDataDirectoryPath(_steamGame.SteamPath, _steamGame.AppManifest.LastOwner)
+            .Combine("config").Combine("localconfig.vdf");
+
         public LinuxCompatibilityDataProvider(SteamGame steamGame, AbsolutePath winePrefixDirectoryPath)
         {
             _steamGame = steamGame;
@@ -103,8 +109,7 @@ internal class SteamLocator : IGameLocator
 
         public ValueTask<ImmutableArray<WineDllOverride>> GetWineDllOverrides(CancellationToken cancellationToken)
         {
-            var localConfigPath = SteamLocationFinder.GetUserDataDirectoryPath(_steamGame.SteamPath, _steamGame.AppManifest.LastOwner).Combine("config").Combine("localconfig.vdf");
-            var parserResult = LocalUserConfigParser.ParseConfigFile(_steamGame.AppManifest.LastOwner, localConfigPath);
+            var parserResult = LocalUserConfigParser.ParseConfigFile(_steamGame.AppManifest.LastOwner, SteamLocalConfigPath);
             if (parserResult.IsFailed || !parserResult.Value.LocalAppData.TryGetValue(_steamGame.AppId, out var localAppData))
                 return new ValueTask<ImmutableArray<WineDllOverride>>(ImmutableArray<WineDllOverride>.Empty);
 
