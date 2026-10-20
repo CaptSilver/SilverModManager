@@ -19,6 +19,20 @@ public class LaunchArgsTests
     }
 
     [Fact]
+    public void HelpTextStartsWithTheSynopsisAndDocumentsEveryOption()
+    {
+        LaunchArgs.HelpText.Should().StartWith(LaunchArgs.Synopsis);
+
+        // The synopsis already names every option, so only the lines after it show each one is explained.
+        var lines = LaunchArgs.HelpText[LaunchArgs.Synopsis.Length..].Split('\n').Select(line => line.Trim()).ToArray();
+        lines.Should().Contain(line => line.StartsWith("<loadout> "));
+        lines.Should().Contain(line => line.StartsWith("--game "));
+        lines.Should().Contain(line => line.StartsWith("--dry-run "));
+        lines.Should().Contain(line => line.StartsWith("-- "));
+        lines.Should().Contain(line => line.Contains("125"));
+    }
+
+    [Fact]
     public void TakesTheNameAndEverythingAfterTheSeparator()
     {
         var parsed = Parse("My Loadout", "--", "/games/game.exe", "-windowed");

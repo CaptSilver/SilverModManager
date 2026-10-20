@@ -52,6 +52,13 @@ public class Program
             return StatusCommand.Run(startupMode.Args, Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR"), "/proc/self/mountinfo", Console.Out, Console.Error);
         }
 
+        // Usage text only: no settings, logging or host, so `run --help` can neither fail nor start a launch.
+        if (startupMode.IsRunHelp)
+        {
+            Console.Out.WriteLine(LaunchArgs.HelpText);
+            return 0;
+        }
+
         // Checks flock and signals on this binary only: no settings, logging or host, so nothing unrelated can fail or stall it.
         if (startupMode.IsSelftestHelper)
         {

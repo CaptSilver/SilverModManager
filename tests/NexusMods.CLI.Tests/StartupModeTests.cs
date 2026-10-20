@@ -15,6 +15,7 @@ public class StartupModeTests
     [InlineData("run", true, false, false, "")]
     [InlineData("run 12345", true, false, false, "12345")]
     [InlineData("run -- game.exe --flag", true, false, false, "-- game.exe --flag")]
+    [InlineData("run --help", false, false, false, "--help")]
     public void TestStartupModeParsing(string input, bool asMain, bool showUi, bool executeCli, string finalArgs)
     {
         var splitInput = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -30,6 +31,9 @@ public class StartupModeTests
     [InlineData("RUN 12345", true)]
     [InlineData("", false)]
     [InlineData("as-main run", false)]
+    [InlineData("run --help", false)]
+    [InlineData("run -h", false)]
+    [InlineData("run Skyrim -- game.exe --help", true)]
     [InlineData("loadouts list", false)]
     [InlineData("steam-launch-option", false)]
     public void TestIsHeadlessRun(string input, bool expected)
@@ -49,6 +53,34 @@ public class StartupModeTests
     {
         var mode = StartupMode.Parse(input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
         mode.IsStatus.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("run --help", true)]
+    [InlineData("run -h", true)]
+    [InlineData("RUN --HELP", false)]
+    [InlineData("run Skyrim --help", true)]
+    [InlineData("run Skyrim -- game.exe --help", false)]
+    [InlineData("run Skyrim -- game.exe -h", false)]
+    [InlineData("run -- --help", false)]
+    [InlineData("run", false)]
+    [InlineData("--help", false)]
+    [InlineData("as-main run --help", false)]
+    public void TestIsRunHelp(string input, bool expected)
+    {
+        var mode = StartupMode.Parse(input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        mode.IsRunHelp.Should().Be(expected);
+    }
+
+    [Fact]
+    public void RunHelpBuildsNoHostAndShowsNoUi()
+    {
+        var mode = StartupMode.Parse(["run", "--help"]);
+
+        mode.IsHeadlessRun.Should().BeFalse();
+        mode.RunAsMain.Should().BeFalse();
+        mode.ShowUI.Should().BeFalse();
+        mode.ExecuteCli.Should().BeFalse();
     }
 
     [Fact]

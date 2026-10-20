@@ -42,6 +42,12 @@ public class StartupMode
     public bool IsStatus { get; set; } = false;
 
     /// <summary>
+    /// True for <c>run --help</c> / <c>run -h</c> with the flag before any <c>--</c>: it prints the usage and exits,
+    /// so no host is built. <c>run name -- game.exe --help</c> is still a launch, because the flag belongs to the game.
+    /// </summary>
+    public bool IsRunHelp { get; set; } = false;
+
+    /// <summary>
     /// True for the hidden <c>selftest-helper</c> entry points the selftest spawns to check flock and signal
     /// behaviour on the shipped binary. They run before any host exists, so no sync file or database is involved.
     /// </summary>
@@ -93,6 +99,14 @@ public class StartupMode
             mode.Args = args[1..];
             mode.ExecuteCli = args.Length > 1;
         }
+        else if (arg.Equals("run", StringComparison.OrdinalIgnoreCase) && AsksForHelpBeforeSeparator(args[1..]))
+        {
+            mode.RunAsMain = false;
+            mode.ShowUI = false;
+            mode.IsRunHelp = true;
+            mode.Args = args[1..];
+            mode.ExecuteCli = false;
+        }
         else if (arg.Equals("run", StringComparison.OrdinalIgnoreCase))
         {
             mode.RunAsMain = true;
@@ -124,5 +138,15 @@ public class StartupMode
         }
 
         return mode;
+    }
+
+    private static bool AsksForHelpBeforeSeparator(string[] runArgs)
+    {
+        foreach (var arg in runArgs)
+        {
+            if (arg == "--") return false;
+            if (arg is "--help" or "-h") return true;
+        }
+        return false;
     }
 }

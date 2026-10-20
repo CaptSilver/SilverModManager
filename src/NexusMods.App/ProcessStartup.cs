@@ -89,7 +89,7 @@ public static class ProcessStartup
     {
         // Program.Main answers these before any host exists. Here they would build one and exit 0 having done nothing,
         // and the host's ConsoleLifetime would take the SIGTERM a selftest helper waits for.
-        if (startupMode.IsStatus || startupMode.IsSelftestHelper)
+        if (startupMode.IsStatus || startupMode.IsRunHelp || startupMode.IsSelftestHelper)
             throw new InvalidOperationException($"'{startupMode.OriginalArgs[0]}' must be answered before a host is built");
 
         // A malformed launch needs no database, host or main slot to be turned away.

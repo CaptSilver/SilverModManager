@@ -17,6 +17,20 @@ public sealed record LaunchArgs(string LoadoutName, string? Game, IReadOnlyList<
     public const string Synopsis = "usage: silvermod run <loadout> [--game <appid|name>] [--dry-run] -- <command> [args...]";
 
     /// <summary>
+    /// The text <c>run --help</c> prints: the synopsis and one line per argument.
+    /// </summary>
+    public const string HelpText = Synopsis + """
+
+
+          <loadout>       the loadout to run, by name
+          --game <x>      the Steam app id or game name, when the loadout name alone is ambiguous
+          --dry-run       print what would be launched, without locking, applying or starting anything
+          --              ends the options; everything after it is the command, passed through untouched
+
+        Exits 125 when the launch cannot start; the game's own exit code otherwise.
+        """;
+
+    /// <summary>
     /// Parses the arguments that follow <c>run</c>. Only what comes before the first <c>--</c> is interpreted:
     /// the command after it can contain anything, including another <c>--</c> or a <c>--game</c> of its own.
     /// </summary>

@@ -700,6 +700,7 @@ public class ProcessStartupTests
 
     [Theory]
     [InlineData("status")]
+    [InlineData("run", "--help")]
     [InlineData("selftest-helper", "ping")]
     public void ModesAnsweredWithoutAHostAreRefusedBeforeBuildingOne(params string[] args)
     {
