@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NexusMods.Abstractions.Games;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Platform.Proton.Steam;
+using NexusMods.Platform.Proton.Verbs;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 
@@ -24,6 +26,7 @@ public static class LaunchServices
         services.TryAddTransient<LaunchSession>();
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<LoadoutResolver>();
-        return services;
+        services.TryAddSingleton<LocalConfigVdfWriter>();
+        return services.AddLaunchVerbs();
     }
 }

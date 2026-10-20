@@ -96,6 +96,7 @@ public class ActiveLaunchSessionsTests
         services.AddSingleton(Substitute.For<IProcessRunner>());
         services.AddSingleton(Substitute.For<IConnection>());
         services.AddSingleton(Substitute.For<IGameRegistry>());
+        services.AddSingleton(Substitute.For<IFileSystem>());
         services.AddHeadlessLaunch();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });

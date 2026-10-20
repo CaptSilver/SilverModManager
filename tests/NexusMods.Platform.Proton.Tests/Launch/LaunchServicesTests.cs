@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
@@ -168,5 +169,7 @@ public class LaunchServicesTests
         // What the app's data model and game registry provide to the loadout resolver.
         services.AddSingleton(Substitute.For<IConnection>());
         services.AddSingleton(Substitute.For<IGameRegistry>());
+        // The app's file system, which the Steam launch option verb uses to find the launcher script.
+        services.AddSingleton(Substitute.For<IFileSystem>());
     }
 }

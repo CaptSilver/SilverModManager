@@ -37,7 +37,7 @@ public static class Services
         // The doctor probes launch locks without needing the rest of the headless launch services.
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
-        services.AddSingleton<LocalConfigVdfWriter>();
+        services.TryAddSingleton<LocalConfigVdfWriter>();
         return services.AddDoctorVerbs();
     }
 
