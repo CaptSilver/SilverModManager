@@ -227,7 +227,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             // The disk side of the tree never contains filtered paths, so a loadout item on one has to be left
             // out too: otherwise the sync would write the file and could never take it off disk again. A mod
             // flagged to allow protected paths is the exception, its files are tracked on disk once deployed.
-            if (GamePathFilter.ShouldFilter(gamePath) && !IsAllowedOnProtectedPath(tuple.Id, gamePath))
+            if (GamePathFilter.ShouldFilter(gamePath) && IsSkippedAsProtected(LoadoutItem.Load(Connection.Db, tuple.Id), gamePath))
             {
                 LogSkippedFilteredItem(tuple.Id, gamePath);
                 continue;
@@ -273,25 +273,24 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return syncTree;
     }
 
-    /// <summary>
-    /// Whether the loadout item, or a group it sits in, is flagged to deploy to paths the filter protects.
-    /// </summary>
+    /// <inheritdoc />
     /// <remarks>
-    /// Shared Proton caches never qualify: the flag exists for save files, and a cache changes on every launch.
+    /// Shared Proton caches are skipped even for a flagged item: the flag exists for save files, and a cache
+    /// changes on every launch.
     /// </remarks>
-    private bool IsAllowedOnProtectedPath(EntityId itemId, GamePath gamePath)
+    public bool IsSkippedAsProtected(LoadoutItem.ReadOnly item, GamePath path)
     {
-        if (IsSharedProtonCache(gamePath)) return false;
+        if (!GamePathFilter.ShouldFilter(path)) return false;
+        if (IsSharedProtonCache(path)) return true;
 
-        var item = LoadoutItem.Load(Connection.Db, itemId);
         while (item.IsValid())
         {
-            if (item.IsProtectedPathsAllowed) return true;
-            if (!item.HasParent()) return false;
+            if (item.IsProtectedPathsAllowed) return false;
+            if (!item.HasParent()) return true;
             item = item.Parent.AsLoadoutItem();
         }
 
-        return false;
+        return true;
     }
 
     /// <summary>

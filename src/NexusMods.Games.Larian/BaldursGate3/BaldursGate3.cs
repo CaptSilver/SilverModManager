@@ -5,6 +5,7 @@ using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.Generic.Diagnostics;
 using NexusMods.Games.Generic.Installers;
 using NexusMods.Games.Larian.BaldursGate3.Emitters;
 using NexusMods.Games.Larian.BaldursGate3.Installers;
@@ -47,7 +48,11 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>
             return sortOrderManager;
         });
 
-        DiagnosticEmitters = [provider.GetRequiredService<DependencyDiagnosticEmitter>()];
+        DiagnosticEmitters =
+        [
+            provider.GetRequiredService<DependencyDiagnosticEmitter>(),
+            provider.GetRequiredService<ProtonPrefixEmitter>(),
+        ];
 
         LibraryItemInstallers =
         [

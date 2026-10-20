@@ -8,6 +8,7 @@ using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.FileHashes.Emitters;
 using NexusMods.Games.FOMOD;
+using NexusMods.Games.Generic.Diagnostics;
 using NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
 using NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder;
 using NexusMods.Games.RedEngine.ModInstallers;
@@ -65,6 +66,7 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>
             new MissingProtontricksForRedModEmitter(provider),
             new MissingRedModEmitter(),
             new WinePrefixRequirementsEmitter(),
+            provider.GetRequiredService<ProtonPrefixEmitter>(),
         ];
 
         LibraryItemInstallers =

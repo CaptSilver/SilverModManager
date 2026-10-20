@@ -15,6 +15,7 @@ using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.CreationEngine.Emitters;
 using NexusMods.Games.CreationEngine.Installers;
 using NexusMods.Games.FOMOD;
+using NexusMods.Games.Generic.Diagnostics;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.Sdk.FileStore;
@@ -62,6 +63,7 @@ public class SkyrimSE : ICreationEngineGame, IGameData<SkyrimSE>
         DiagnosticEmitters =
         [
             new MissingMasterEmitter(this),
+            provider.GetRequiredService<ProtonPrefixEmitter>(),
         ];
 
         LibraryItemInstallers =

@@ -18,6 +18,12 @@ public interface ILoadoutSynchronizer
     IGamePathFilter GamePathFilter { get; }
 
     /// <summary>
+    /// Whether the sync tree leaves out the loadout item's file at <paramref name="path"/>: the path is
+    /// protected and neither the item nor a group it sits in is flagged to deploy to protected paths.
+    /// </summary>
+    bool IsSkippedAsProtected(LoadoutItem.ReadOnly item, GamePath path);
+
+    /// <summary>
     /// Throws <see cref="SynchronizerPreflightException"/> if the game cannot be written to at all, without
     /// reading or writing anything. Every operation that changes the game folder or the loadout state calls
     /// it first; callers that are about to record something about the game (adding it) call it before they do.

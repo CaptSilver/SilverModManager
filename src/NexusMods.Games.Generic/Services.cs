@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Games.Generic.Dependencies;
+using NexusMods.Games.Generic.Diagnostics;
 using NexusMods.Games.Generic.FileAnalyzers;
 using NexusMods.Sdk;
 
@@ -11,6 +12,7 @@ public static class Services
     {
         services.AddSingleton<IniAnalysisData>();
         services.AddSingleton<GameToolRunner>();
+        services.AddSingleton<ProtonPrefixEmitter>();
 
         services.AddSingleton<ProtontricksNativeDependency>();
         services.AddSingleton<ProtontricksFlatpakDependency>();

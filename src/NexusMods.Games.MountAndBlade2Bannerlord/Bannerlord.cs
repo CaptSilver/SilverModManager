@@ -5,6 +5,7 @@ using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.Generic.Diagnostics;
 using NexusMods.Games.MountAndBlade2Bannerlord.Diagnostics;
 using NexusMods.Games.MountAndBlade2Bannerlord.Installers;
 using NexusMods.Games.MountAndBlade2Bannerlord.Utils;
@@ -56,6 +57,7 @@ public sealed class Bannerlord : IGame, IGameData<Bannerlord>
         [
             new BannerlordDiagnosticEmitter(serviceProvider),
             new MissingProtontricksEmitter(serviceProvider),
+            serviceProvider.GetRequiredService<ProtonPrefixEmitter>(),
         ];
 
         LibraryItemInstallers =
