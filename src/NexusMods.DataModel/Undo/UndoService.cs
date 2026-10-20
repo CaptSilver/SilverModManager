@@ -85,9 +85,8 @@ public class UndoService
         var commitResult = await tx.Commit();
 
         var residual = owned
-            .SelectMany(entity => OwnedEntityDiff.Between(commitResult.Db.Datoms(entity), revertDb.Datoms(entity))
-                .Select(change => (Entity: entity, Attribute: change.A)))
-            .Distinct()
+            .SelectMany(entity => OwnedEntityDiff.Mismatches(commitResult.Db.Datoms(entity), revertDb.Datoms(entity))
+                .Select(attribute => (Entity: entity, Attribute: attribute)))
             .ToList();
 
         if (residual.Count > 0)

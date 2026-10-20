@@ -43,4 +43,30 @@ internal static class OwnedEntityDiff
 
         return changes;
     }
+
+    /// <summary>
+    /// The attributes on which <paramref name="current"/> differs from <paramref name="wanted"/>: a value
+    /// either side has that the other lacks.
+    /// </summary>
+    /// <remarks>
+    /// This is deliberately stricter than <see cref="Between"/>. Between leaves out the retract of a value
+    /// the wanted state replaces, trusting the assert to drop it; this check is what finds out if it didn't.
+    /// </remarks>
+    internal static List<AttributeId> Mismatches(EntitySegment current, EntitySegment wanted)
+    {
+        var mismatches = new List<AttributeId>();
+        foreach (var av in current.GetAVEnumerable())
+        {
+            if (!wanted.Contains(av) && !mismatches.Contains(av.A))
+                mismatches.Add(av.A);
+        }
+
+        foreach (var av in wanted.GetAVEnumerable())
+        {
+            if (!current.Contains(av) && !mismatches.Contains(av.A))
+                mismatches.Add(av.A);
+        }
+
+        return mismatches;
+    }
 }
