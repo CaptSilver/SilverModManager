@@ -1,0 +1,36 @@
+SilverModManager
+Copyright (C) 2026 David Goree
+
+SilverModManager is a modified version of the Nexus Mods App
+(https://github.com/Nexus-Mods/NexusMods.App), Copyright (C) Nexus Mods,
+licensed under the GNU General Public License, version 3 (GPL-3.0-only).
+The fork starts at upstream commit 48284f38c. Every change since then is
+recorded in this repository's git history, which is the per-file record of
+what was modified. The full license text is in LICENSE.md.
+
+SilverModManager is not affiliated with or endorsed by Nexus Mods. It keeps
+Nexus Mods as the place mods are downloaded from and signed in to, and uses
+its public API for that. Nexus Mods and the Nexus Mods logo are trademarks
+of their owners; the fork's name, icon and artwork are its own.
+
+What carried over and what did not
+----------------------------------
+
+* The source code, the NexusMods.* project and namespace names, and the
+  developer notes under docs/developers are upstream's, kept so changes can
+  be merged across. Their names are provenance, not a claim to the brand.
+* Artwork that Nexus Mods wrote and that stays in the tree (placeholder
+  images, pictograms) comes with the GPL-3.0-only code it shipped in. The
+  license covers the files, not the Nexus Mods trademarks. The Nexus Mods
+  logos and glyphs were removed.
+* erm, the author's earlier project, is GPL-2.0-or-later. Code brought
+  over from it is used here under GPL-3.0-only, which its "or later" clause
+  allows.
+* The docs theme submodule (NexusMods.MkDocsMaterial.Themes.Next, GPL-3.0)
+  was dropped along with the documentation site it built. Its license text
+  is the GPL, the same as this project's.
+* Data from an installed Nexus Mods App is not imported. SilverModManager
+  keeps its own data directory and does not read upstream's.
+
+Third-party components, fonts and icons, with their licenses, are listed in
+THIRD-PARTY-NOTICES.md.

@@ -44,7 +44,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".solutionItems", ".solution
 		README.md = README.md
 		Directory.Packages.props = Directory.Packages.props
 		.gitignore = .gitignore
-		mkdocs.yml = mkdocs.yml
 		.globalconfig = .globalconfig
 		CHANGELOG.md = CHANGELOG.md
 	EndProjectSection
