@@ -27,7 +27,7 @@ namespace NexusMods.Abstractions.Loadouts;
 [PublicAPI]
 public partial class GameBackedUpFile : IModelDefinition
 {
-    private const string Namespace = "NexusMods.GC.BackedUpFile";
+    private const string Namespace = "SilverModManager.GC.BackedUpFile";
 
     /// <summary>
     /// Hash of the file.

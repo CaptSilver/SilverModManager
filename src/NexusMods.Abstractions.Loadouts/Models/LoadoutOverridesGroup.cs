@@ -11,7 +11,7 @@ namespace NexusMods.Abstractions.Loadouts;
 [Include<LoadoutItemGroup>]
 public partial class LoadoutOverridesGroup : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Loadouts.LoadoutOverridesGroup";
+    private const string Namespace = "SilverModManager.Loadouts.LoadoutOverridesGroup";
 
     public static readonly ReferenceAttribute<Loadout> OverridesFor = new(Namespace, nameof(OverridesFor));
 }

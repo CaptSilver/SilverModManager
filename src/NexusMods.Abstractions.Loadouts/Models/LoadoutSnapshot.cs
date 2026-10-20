@@ -12,7 +12,7 @@ namespace NexusMods.Abstractions.Loadouts;
 [Include<Transaction>]
 public partial class LoadoutSnapshot : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Loadouts.LoadoutSnapshot";
+    private const string Namespace = "SilverModManager.Loadouts.LoadoutSnapshot";
     
     /// <summary>
     /// Inserted on a transaction when a loadout is reverted to some previous state.

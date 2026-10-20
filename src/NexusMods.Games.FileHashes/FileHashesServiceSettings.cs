@@ -32,6 +32,8 @@ public record FileHashesServiceSettings : ISettings
     
 
     /// <inheritdoc/>
+    public static string SettingsId => "SilverModManager.Games.FileHashes.FileHashesServiceSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder

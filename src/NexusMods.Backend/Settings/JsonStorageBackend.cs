@@ -38,11 +38,9 @@ public sealed class JsonStorageBackend : IStorageBackend
         return fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine($"{ApplicationConstants.DataDirectoryName}/Configs");
     }
 
-    private AbsolutePath GetConfigPath<T>(string? key)
+    private AbsolutePath GetConfigPath<T>(string? key) where T : ISettings
     {
-        var typeName = typeof(T).FullName ?? typeof(T).Name;
-        var fileName = string.IsNullOrWhiteSpace(key) ? $"{typeName}.json" : $"{typeName}_{key}.json";
-        return _configDirectory.Combine(fileName);
+        return _configDirectory.Combine($"{SettingsIds.For<T>(key, '_')}.json");
     }
 
     private void Serialize<T>(Stream stream ,T value) where T : class

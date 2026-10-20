@@ -9,7 +9,7 @@ namespace NexusMods.Networking.NexusWebApi.V1Interop;
 /// </summary>
 public partial class GameDomainToGameIdMapping : IModelDefinition
 {
-    private const string Namespace = "NexusMods.NexusWebApi.GameDomainToGameIdMapping";
+    private const string Namespace = "SilverModManager.NexusWebApi.GameDomainToGameIdMapping";
     
     /// <summary>
     /// The game's domain.

@@ -8,7 +8,7 @@ namespace NexusMods.Abstractions.Collections;
 [Include<LoadoutItemGroup>]
 public partial class NexusCollectionItemLoadoutGroup : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Collections.NexusCollectionItemLoadoutGroup";
+    private const string Namespace = "SilverModManager.Collections.NexusCollectionItemLoadoutGroup";
 
     /// <summary>
     /// Whether the item is required or optional.

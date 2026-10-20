@@ -26,7 +26,7 @@ namespace NexusMods.Abstractions.Loadouts;
 [PublicAPI]
 public partial class LoadoutFile : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Loadouts.LoadoutFile";
+    private const string Namespace = "SilverModManager.Loadouts.LoadoutFile";
 
     /// <summary>
     /// Hash of the file.

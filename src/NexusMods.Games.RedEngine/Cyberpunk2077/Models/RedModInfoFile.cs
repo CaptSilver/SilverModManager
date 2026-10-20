@@ -8,7 +8,7 @@ namespace NexusMods.Games.RedEngine.Cyberpunk2077.Models;
 [Include<LoadoutFile>]
 public partial class RedModInfoFile : IModelDefinition
 {
-    private static string Namespace => "NexusMods.Games.RedEngine.Cyberpunk2077.RedModInfoFile";
+    private static string Namespace => "SilverModManager.Games.RedEngine.Cyberpunk2077.RedModInfoFile";
     
     /// <summary>
     /// The internal name of the mod

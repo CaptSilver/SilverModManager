@@ -14,6 +14,8 @@ public record TreeDataGridSortingStateSettings : ISettings
     /// </summary>
     public uint SchemaRevision { get; init; } = 0;
     
+    public static string SettingsId => "SilverModManager.App.UI.Settings.TreeDataGridSortingStateSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder;

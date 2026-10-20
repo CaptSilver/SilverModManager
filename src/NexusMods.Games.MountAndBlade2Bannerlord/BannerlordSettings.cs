@@ -9,6 +9,8 @@ public class BannerlordSettings : ISettings
     public bool BetaSorting { get; set; } = false;
 
 
+    public static string SettingsId => "SilverModManager.Games.MountAndBlade2Bannerlord.BannerlordSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder.ConfigureProperty(

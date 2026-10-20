@@ -11,7 +11,7 @@ namespace NexusMods.Games.RedEngine.Cyberpunk2077.Models;
 [Include<Abstractions.Loadouts.SortOrder>]
 public partial class RedModSortOrder : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Games.RedEngine.Cyberpunk2077.RedModSortOrder";
+    private const string Namespace = "SilverModManager.Games.RedEngine.Cyberpunk2077.RedModSortOrder";
     
     /// <summary>
     /// Marker attribute for querying the model, while waiting for advanced db queries

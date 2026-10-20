@@ -7,7 +7,7 @@ public class FNV1aHashScalar : AScalarFunction
 {
     public override void Setup()
     {
-        SetName("nma_fnv1a_hash_short");
+        SetName("smm_fnv1a_hash_short");
         AddParameter<string>();
         SetReturnType<ushort>();
     }

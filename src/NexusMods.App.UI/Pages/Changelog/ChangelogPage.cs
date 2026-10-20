@@ -7,7 +7,7 @@ using NexusMods.UI.Sdk.Icons;
 
 namespace NexusMods.App.UI.Pages.Changelog;
 
-[JsonName("NexusMods.App.UI.Pages.Changelog.ChangelogPageContext")]
+[JsonName("SilverModManager.App.UI.Pages.Changelog.ChangelogPageContext")]
 public record ChangelogPageContext : IPageFactoryContext
 {
     public required Version? TargetVersion { get; init; }

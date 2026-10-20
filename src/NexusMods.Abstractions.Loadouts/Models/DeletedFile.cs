@@ -11,7 +11,7 @@ namespace NexusMods.Abstractions.Loadouts;
 [Include<LoadoutItemWithTargetPath>]
 public partial class DeletedFile : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Loadouts.DeletedFile";
+    private const string Namespace = "SilverModManager.Loadouts.DeletedFile";
 
     /// <summary>
     /// Reason.

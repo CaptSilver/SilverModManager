@@ -10,7 +10,7 @@ namespace NexusMods.Networking.NexusWebApi.Auth;
 /// </summary>
 public partial class ApiKey : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Networking.NexusWebApi.Auth.ApiKey";
+    private const string Namespace = "SilverModManager.Networking.NexusWebApi.Auth.ApiKey";
     
     /// <summary>
     /// API Key storage for older Nexus Mods API calls

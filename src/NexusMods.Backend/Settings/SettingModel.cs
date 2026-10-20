@@ -8,7 +8,7 @@ namespace NexusMods.Backend;
 /// </summary>
 public partial class Setting : IModelDefinition
 {
-    private const string Namespace = "NexusMods.DataModel.Settings";
+    private const string Namespace = "SilverModManager.DataModel.Settings";
 
     /// <summary>
     /// Name of the setting

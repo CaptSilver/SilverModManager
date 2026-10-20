@@ -17,7 +17,7 @@ namespace NexusMods.Abstractions.Games;
 [PublicAPI]
 public partial class SortOrderItem : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Loadouts.SortableEntry";
+    private const string Namespace = "SilverModManager.Loadouts.SortableEntry";
     
     /// <summary>
     /// Reference to the Load Order that this item is part of.

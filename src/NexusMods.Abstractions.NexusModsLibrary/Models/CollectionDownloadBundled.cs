@@ -8,7 +8,7 @@ namespace NexusMods.Abstractions.NexusModsLibrary.Models;
 [Include<CollectionDownload>]
 public partial class CollectionDownloadBundled : IModelDefinition
 {
-    private const string Namespace = "NexusMods.NexusModsLibrary.CollectionDownloadBundled";
+    private const string Namespace = "SilverModManager.NexusModsLibrary.CollectionDownloadBundled";
 
     /// <summary>
     /// Bundled path.

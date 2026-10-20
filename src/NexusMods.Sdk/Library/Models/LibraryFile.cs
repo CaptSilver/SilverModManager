@@ -12,7 +12,7 @@ namespace NexusMods.Sdk.Library;
 [Include<LibraryItem>]
 public partial class LibraryFile : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Library.LibraryFile";
+    private const string Namespace = "SilverModManager.Library.LibraryFile";
 
     /// <summary>
     /// Hash of the file.

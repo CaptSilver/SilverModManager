@@ -8,6 +8,36 @@ namespace NexusMods.DataModel.SchemaVersions.Tests;
 
 public class SchemaFailsafes(IConnection connection)
 {
+    private const string HashesContract = "symbols of the downloaded game-hashes database, renaming them needs that database rebuilt and re-released first";
+
+    /// <summary>
+    /// The only attribute namespaces that keep a `NexusMods.` name.
+    /// </summary>
+    public static readonly (string Namespace, string Reason)[] AllowedLegacyNamespaces =
+    [
+        ("NexusMods.Abstractions.Games.FileHashes.GogBuild", HashesContract),
+        ("NexusMods.Abstractions.Games.FileHashes.GogDepot", HashesContract),
+        ("NexusMods.Abstractions.Games.FileHashes.GogManifest", HashesContract),
+        ("NexusMods.Abstractions.Games.FileHashes.HashRelation", HashesContract),
+        ("NexusMods.Abstractions.Games.FileHashes.PathHashRelation", HashesContract),
+        ("NexusMods.Abstractions.Games.FileHashes.SteamManifest", HashesContract),
+        ("NexusMods.Abstractions.Games.FileHashes.VersionDefinition", HashesContract),
+        ("NexusMods.Stores.EpicGameStore.EpicGameStoreBuild", HashesContract),
+        ("NexusMods.MnemonicDB.DatomStore", "defined by the MnemonicDB NuGet package"),
+        ("NexusMods.MnemonicDB.Transaction", "defined by the MnemonicDB NuGet package"),
+    ];
+
+    [Fact]
+    public void AttributeNamespacesUseTheForkName()
+    {
+        var namespaces = connection.Db.AttributeCache.AllAttributeIds.Select(id => id.Namespace).Distinct().ToArray();
+        var allowed = AllowedLegacyNamespaces.Select(a => a.Namespace).ToHashSet();
+
+        namespaces.Where(ns => ns.StartsWith("NexusMods.", StringComparison.Ordinal) && !allowed.Contains(ns))
+            .Should().BeEmpty("attribute namespaces start with SilverModManager.; add to AllowedLegacyNamespaces with a reason only for data the app does not write itself");
+
+        allowed.Except(namespaces).Should().BeEmpty("allowlist entries must name a namespace that still exists");
+    }
 
     [Fact]
     public async Task SchemaFingerprintHasntChanged()

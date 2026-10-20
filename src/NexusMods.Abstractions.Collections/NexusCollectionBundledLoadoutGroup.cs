@@ -11,7 +11,7 @@ namespace NexusMods.Abstractions.Collections;
 [Include<NexusCollectionItemLoadoutGroup>]
 public partial class NexusCollectionBundledLoadoutGroup : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Collections.NexusCollectionBundledLoadoutGroup";
+    private const string Namespace = "SilverModManager.Collections.NexusCollectionBundledLoadoutGroup";
 
     /// <summary>
     /// The downloaded collection archive that this mod was bundled with

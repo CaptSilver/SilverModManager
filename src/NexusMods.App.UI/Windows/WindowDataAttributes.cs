@@ -10,7 +10,7 @@ namespace NexusMods.App.UI.Windows;
 
 public partial class WindowDataAttributes : IModelDefinition
 {
-    private const string Namespace = "NexusMods.App.UI.Windows.WindowData";
+    private const string Namespace = "SilverModManager.App.UI.Windows.WindowData";
     
     /// <summary>
     /// The state of the window, stored as json

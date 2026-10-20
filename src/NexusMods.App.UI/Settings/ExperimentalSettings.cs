@@ -26,6 +26,8 @@ public record ExperimentalSettings : ISettings
         GameId.From("RedEngine.Cyberpunk2077"),
     ];
 
+    public static string SettingsId => "SilverModManager.App.UI.Settings.ExperimentalSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder

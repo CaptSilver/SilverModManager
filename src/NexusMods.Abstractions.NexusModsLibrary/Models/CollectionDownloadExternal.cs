@@ -15,7 +15,7 @@ namespace NexusMods.Abstractions.NexusModsLibrary.Models;
 [Include<CollectionDownload>]
 public partial class CollectionDownloadExternal : IModelDefinition
 {
-    private const string Namespace = "NexusMods.NexusModsLibrary.CollectionDownloadExternal";
+    private const string Namespace = "SilverModManager.NexusModsLibrary.CollectionDownloadExternal";
 
     /// <summary>
     /// MD5 hash of the file.

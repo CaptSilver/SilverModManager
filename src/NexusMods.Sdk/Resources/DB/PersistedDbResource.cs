@@ -12,7 +12,7 @@ namespace NexusMods.Sdk.Resources;
 [PublicAPI]
 public partial class PersistedDbResource : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Resources.PersistedResource";
+    private const string Namespace = "SilverModManager.Resources.PersistedResource";
 
     /// <summary>
     /// The raw data.

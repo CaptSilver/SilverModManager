@@ -8,7 +8,7 @@ public static class EnvironmentVariableNames
     /// <summary>
     /// Prefix for all environment variables.
     /// </summary>
-    private const string Prefix = "NMA_";
+    private const string Prefix = "SMM_";
 
     /// <summary>
     /// Debug mode.

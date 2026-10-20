@@ -14,6 +14,8 @@ public record NxmHandlerSettings : ISettings
 {
     public bool RegisterAsDefaultHandler { get; init; }
 
+    public static string SettingsId => "SilverModManager.Networking.NexusWebApi.NxmHandlerSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder.ConfigureProperty(

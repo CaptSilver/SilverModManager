@@ -8,7 +8,7 @@ using NexusMods.Sdk.NexusModsApi;
 
 namespace NexusMods.App.UI.Pages.Downloads;
 
-[JsonName("NexusMods.App.UI.Pages.Downloads.DownloadsPageContext")]
+[JsonName("SilverModManager.App.UI.Pages.Downloads.DownloadsPageContext")]
 public record DownloadsPageContext : IPageFactoryContext
 {
     /// <summary>

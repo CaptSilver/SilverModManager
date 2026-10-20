@@ -6,7 +6,7 @@ using NexusMods.App.UI.WorkspaceSystem;
 
 namespace NexusMods.App.UI.Pages.Settings;
 
-[JsonName("NexusMods.App.UI.Pages.SettingsPageContext")]
+[JsonName("SilverModManager.App.UI.Pages.SettingsPageContext")]
 public record SettingsPageContext : IPageFactoryContext;
 
 [UsedImplicitly]

@@ -9,7 +9,7 @@ namespace NexusMods.Games.StardewValley.Models;
 [Include<LoadoutItemGroup>]
 public partial class SMAPILoadoutItem : IModelDefinition
 {
-    private const string Namespace = "NexusMods.StardewValley.SMAPILoadoutItem";
+    private const string Namespace = "SilverModManager.StardewValley.SMAPILoadoutItem";
 
     /// <summary>
     /// The version of SMAPI.

@@ -6,7 +6,7 @@ namespace NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
 
 public partial class LoadoutItemGroupPriority : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Loadouts.LoadoutItemGroupPriority";
+    private const string Namespace = "SilverModManager.Loadouts.LoadoutItemGroupPriority";
 
     public static readonly ReferenceAttribute<Loadout> Loadout = new(Namespace, nameof(Loadout));
     public static readonly ReferenceAttribute<LoadoutItemGroup> Target = new(Namespace, nameof(Target));

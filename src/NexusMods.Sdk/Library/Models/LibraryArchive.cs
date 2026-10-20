@@ -11,7 +11,7 @@ namespace NexusMods.Sdk.Library;
 [Include<LibraryFile>]
 public partial class LibraryArchive : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Library.LibraryArchive";
+    private const string Namespace = "SilverModManager.Library.LibraryArchive";
 
     /// <summary>
     /// Marker.

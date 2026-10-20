@@ -8,7 +8,7 @@ namespace NexusMods.Networking.NexusWebApi.Errors;
 [PublicAPI]
 public record UnknownError : IGraphQlError
 {
-    internal static readonly ErrorCode DefaultCode = ErrorCode.From("NMA_UNKNOWN_ERROR");
+    internal static readonly ErrorCode DefaultCode = ErrorCode.From("SMM_UNKNOWN_ERROR");
 
     /// <inheritdoc/>
     public required ErrorCode Code { get; init; }

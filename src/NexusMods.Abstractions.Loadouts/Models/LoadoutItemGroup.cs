@@ -11,7 +11,7 @@ namespace NexusMods.Abstractions.Loadouts;
 [Include<LoadoutItem>]
 public partial class LoadoutItemGroup : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Loadouts.LoadoutItemGroup";
+    private const string Namespace = "SilverModManager.Loadouts.LoadoutItemGroup";
 
     /// <summary>
     /// Marker.

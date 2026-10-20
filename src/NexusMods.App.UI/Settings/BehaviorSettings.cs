@@ -6,6 +6,8 @@ public record BehaviorSettings : ISettings
 {
     public bool BringWindowToFront { get; set; } = true;
 
+    public static string SettingsId => "SilverModManager.App.UI.Settings.BehaviorSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder.ConfigureProperty(

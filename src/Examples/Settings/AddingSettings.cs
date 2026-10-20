@@ -10,6 +10,8 @@ file record MySettings : ISettings
     public string Name { get; init; } = "Initial Value";
 
     // This is a static method from the interface that you have to implement.
+    public static string SettingsId => "Examples.Settings.MySettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         // You can use the ISettingsBuilder to expose the properties defined in

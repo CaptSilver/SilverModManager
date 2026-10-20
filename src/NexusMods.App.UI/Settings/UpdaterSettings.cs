@@ -12,6 +12,8 @@ public class UpdaterSettings : ISettings
 
     public Version VersionToSkip { get; [UsedImplicitly] set; } = new(0, 0, 0);
 
+    public static string SettingsId => "SilverModManager.App.UI.Settings.UpdaterSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder.ConfigureProperty(

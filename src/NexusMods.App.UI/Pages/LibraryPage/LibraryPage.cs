@@ -12,7 +12,7 @@ using NexusMods.UI.Sdk.Icons;
 
 namespace NexusMods.App.UI.Pages.LibraryPage;
 
-[JsonName("NexusMods.App.UI.Pages.Library.LibraryPageContext")]
+[JsonName("SilverModManager.App.UI.Pages.Library.LibraryPageContext")]
 public record LibraryPageContext : IPageFactoryContext
 {
     public required LoadoutId LoadoutId { get; init; }

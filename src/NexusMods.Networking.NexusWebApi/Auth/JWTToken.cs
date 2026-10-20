@@ -11,7 +11,7 @@ namespace NexusMods.Networking.NexusWebApi.Auth;
 /// </summary>
 public partial class JWTToken : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Networking.NexusWebApi.Auth.JWTToken";
+    private const string Namespace = "SilverModManager.Networking.NexusWebApi.Auth.JWTToken";
 
     /// <summary>
     /// Access token portion of the JWTToken

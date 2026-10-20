@@ -5,7 +5,7 @@ namespace NexusMods.Networking.GOG.Models;
 
 public partial class AuthInfo : IModelDefinition
 {
-    public const string Namespace = "NexusMods.Networking.GOG.AuthInfo";
+    public const string Namespace = "SilverModManager.Networking.GOG.AuthInfo";
     
     /// <summary>
     /// The time at which the token expires.

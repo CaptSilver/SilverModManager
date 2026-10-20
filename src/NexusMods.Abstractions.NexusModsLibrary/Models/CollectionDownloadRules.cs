@@ -8,7 +8,7 @@ namespace NexusMods.Abstractions.NexusModsLibrary.Models;
 /// </summary>
 public partial class CollectionDownloadRules : IModelDefinition
 {
-    private const string Namespace = "NexusMods.NexusModsLibrary.CollectionDownloadRules";
+    private const string Namespace = "SilverModManager.NexusModsLibrary.CollectionDownloadRules";
 
     /// <summary>
     /// Reference to the source download.

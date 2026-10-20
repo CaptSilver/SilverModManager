@@ -13,7 +13,7 @@ namespace NexusMods.Abstractions.NexusModsLibrary;
 [PublicAPI]
 public partial class NexusModsModPageMetadata : IModelDefinition
 {
-    private const string Namespace = "NexusMods.NexusModsLibrary.NexusModsModPageMetadata";
+    private const string Namespace = "SilverModManager.NexusModsLibrary.NexusModsModPageMetadata";
 
     /// <summary>
     /// The ID of the mod page.

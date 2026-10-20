@@ -12,7 +12,7 @@ namespace NexusMods.Sdk.Games;
 /// </summary>
 public partial class GameInstallMetadata : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Loadouts.GameMetadata";
+    private const string Namespace = "SilverModManager.Loadouts.GameMetadata";
 
     // TODO: replace nexus mods game id with actual game id
     /// <summary>

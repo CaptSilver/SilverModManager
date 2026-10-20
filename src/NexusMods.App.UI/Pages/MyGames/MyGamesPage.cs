@@ -5,7 +5,7 @@ using NexusMods.App.UI.WorkspaceSystem;
 
 namespace NexusMods.App.UI.Pages.MyGames;
 
-[JsonName("NexusMods.App.UI.Pages.MyGamesPageContext")]
+[JsonName("SilverModManager.App.UI.Pages.MyGamesPageContext")]
 public record MyGamesPageContext : IPageFactoryContext;
 
 [UsedImplicitly]

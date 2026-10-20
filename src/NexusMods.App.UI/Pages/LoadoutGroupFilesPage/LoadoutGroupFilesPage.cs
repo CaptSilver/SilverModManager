@@ -6,7 +6,7 @@ using NexusMods.App.UI.WorkspaceSystem;
 
 namespace NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
 
-[JsonName("NexusMods.App.UI.Pages.ViewLoadoutGroupFilesPageContext")]
+[JsonName("SilverModManager.App.UI.Pages.ViewLoadoutGroupFilesPageContext")]
 public record LoadoutGroupFilesPageContext : IPageFactoryContext
 {
     public required LoadoutItemGroupId[] GroupIds { get; init; }

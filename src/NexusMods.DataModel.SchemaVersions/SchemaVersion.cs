@@ -4,7 +4,7 @@ namespace NexusMods.DataModel.SchemaVersions;
 
 public partial class SchemaVersion : IModelDefinition
 {
-    public const string Namespace = "NexusMods.DataModel.SchemaVersioning.SchemaVersionModel";
+    public const string Namespace = "SilverModManager.DataModel.SchemaVersioning.SchemaVersionModel";
 
     /// <summary>
     /// The current fingerprint of the database. This is used to detect when schema updates do not need to be performend,

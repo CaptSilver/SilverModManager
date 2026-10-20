@@ -7,7 +7,7 @@ using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.App.UI.WorkspaceSystem;
 
-[JsonName("NexusMods.App.UI.WorkspaceSystem.LoadoutContext")]
+[JsonName("SilverModManager.App.UI.WorkspaceSystem.LoadoutContext")]
 public record LoadoutContext : IWorkspaceContext
 {
     public required LoadoutId LoadoutId { get; init; }

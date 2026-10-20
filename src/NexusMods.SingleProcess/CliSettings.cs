@@ -11,6 +11,8 @@ namespace NexusMods.SingleProcess;
 public class CliSettings() : ISettings
 {
     /// <inheritdoc />
+    public static string SettingsId => "SilverModManager.SingleProcess.CliSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder.ConfigureDefault(CreateDefault).ConfigureBackend(StorageBackendOptions.Use(StorageBackends.Json)).ConfigureProperty(

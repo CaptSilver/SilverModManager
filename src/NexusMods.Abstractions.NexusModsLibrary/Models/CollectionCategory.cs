@@ -8,7 +8,7 @@ namespace NexusMods.Abstractions.NexusModsLibrary.Models;
 /// </summary>
 public partial class CollectionCategory : IModelDefinition
 {
-    private const string Namespace = "NexusMods.NexusModsLibrary.CollectionCategory";
+    private const string Namespace = "SilverModManager.NexusModsLibrary.CollectionCategory";
 
     /// <summary>
     /// The name of the collection tag.

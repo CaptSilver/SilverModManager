@@ -17,6 +17,8 @@ public class DownloadSettings : ISettings
     // Should be good.
     public int MaxParallelDownloads { get; set; } = Math.Max(Environment.ProcessorCount, 16);
 
+    public static string SettingsId => "SilverModManager.Collections.DownloadSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder.ConfigureProperty(

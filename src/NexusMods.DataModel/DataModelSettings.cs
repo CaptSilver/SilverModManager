@@ -29,6 +29,8 @@ public record DataModelSettings : ISettings
     public ConfigurablePath[] ArchiveLocations { get; set; } = [];
 
     /// <inheritdoc/>
+    public static string SettingsId => "SilverModManager.DataModel.DataModelSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder

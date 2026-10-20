@@ -10,7 +10,7 @@ namespace NexusMods.Abstractions.Collections;
 [Include<LocalFile>]
 public partial class DirectDownloadLibraryFile : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Collections.DirectDownloadLibraryFile";
+    private const string Namespace = "SilverModManager.Collections.DirectDownloadLibraryFile";
 
     /// <summary>
     /// A user-friendly name of the file.

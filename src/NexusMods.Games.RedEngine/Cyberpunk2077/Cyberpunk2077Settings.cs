@@ -11,6 +11,8 @@ public class Cyberpunk2077Settings : ISettings
     /// </summary>
     public bool DoFullGameBackup { get; set; } = false;
     
+    public static string SettingsId => "SilverModManager.Games.RedEngine.Cyberpunk2077.Cyberpunk2077Settings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder.ConfigureProperty(

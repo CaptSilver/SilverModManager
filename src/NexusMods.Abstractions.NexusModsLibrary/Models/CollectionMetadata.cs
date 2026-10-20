@@ -11,7 +11,7 @@ namespace NexusMods.Abstractions.NexusModsLibrary.Models;
 /// </summary>
 public partial class CollectionMetadata : IModelDefinition
 {
-    private const string Namespace = "NexusMods.NexusModsLibrary.CollectionMetadata";
+    private const string Namespace = "SilverModManager.NexusModsLibrary.CollectionMetadata";
 
     /// <summary>
     /// The collection ID.

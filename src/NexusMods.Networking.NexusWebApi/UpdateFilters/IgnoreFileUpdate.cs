@@ -11,7 +11,7 @@ namespace NexusMods.Networking.NexusWebApi.UpdateFilters;
 [PublicAPI]
 public partial class IgnoreFileUpdate : IModelDefinition
 {
-    private const string Namespace = "NexusMods.NexusWebApi.Filters.IgnoreFileUpdateModel";
+    private const string Namespace = "SilverModManager.NexusWebApi.Filters.IgnoreFileUpdateModel";
 
     /// <summary>
     /// Unique identifier for the file on Nexus Mods to be ignored.

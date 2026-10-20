@@ -12,7 +12,7 @@ namespace NexusMods.Abstractions.NexusModsLibrary;
 [Include<LibraryFile>]
 public partial class NexusModsCollectionLibraryFile : IModelDefinition
 {
-    private const string Namespace = "NexusMods.NexusModsLibrary.NexusModsCollectionLibraryFile";
+    private const string Namespace = "SilverModManager.NexusModsLibrary.NexusModsCollectionLibraryFile";
 
     public static readonly CollectionsSlugAttribute CollectionSlug = new(Namespace, nameof(CollectionSlug)) { IsIndexed = true };
 

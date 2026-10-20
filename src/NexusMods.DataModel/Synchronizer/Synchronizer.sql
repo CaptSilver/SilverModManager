@@ -68,7 +68,7 @@ WITH all_files AS
   SELECT
     Loadout,
     NULL Id,
-    {Location: nma_fnv1a_hash_short('Game'), Path: Path} Path,
+    {Location: smm_fnv1a_hash_short('Game'), Path: Path} Path,
     Hash,
     Size,
     'Game'::synchronizer.ItemType ItemType,

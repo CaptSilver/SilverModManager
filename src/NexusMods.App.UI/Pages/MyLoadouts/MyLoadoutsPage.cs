@@ -7,7 +7,7 @@ using NexusMods.UI.Sdk.Icons;
 
 namespace NexusMods.App.UI.Pages.MyLoadouts;
 
-[JsonName("NexusMods.App.UI.Pages.MyLoadoutsPageContext")]
+[JsonName("SilverModManager.App.UI.Pages.MyLoadoutsPageContext")]
 public record MyLoadoutsPageContext : IPageFactoryContext;
 
 [UsedImplicitly]

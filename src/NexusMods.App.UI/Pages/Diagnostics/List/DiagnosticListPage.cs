@@ -11,7 +11,7 @@ using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.App.UI.Pages.Diagnostics;
 
-[JsonName("NexusMods.App.UI.Pages.Diagnostics.DiagnosticListPageContext")]
+[JsonName("SilverModManager.App.UI.Pages.Diagnostics.DiagnosticListPageContext")]
 public record DiagnosticListPageContext : IPageFactoryContext
 {
     public required LoadoutId LoadoutId { get; init; }

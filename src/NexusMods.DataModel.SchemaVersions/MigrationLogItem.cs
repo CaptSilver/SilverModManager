@@ -9,7 +9,7 @@ namespace NexusMods.DataModel.SchemaVersions;
 /// </summary>
 public partial class MigrationLogItem : IModelDefinition
 {
-    private static string Namespace => "NexusMods.DataModel.SchemaVersions.MigrationLogItem";
+    private static string Namespace => "SilverModManager.DataModel.SchemaVersions.MigrationLogItem";
     
     /// <summary>
     /// The time when the migration was run

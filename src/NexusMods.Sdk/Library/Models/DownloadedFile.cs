@@ -11,7 +11,7 @@ namespace NexusMods.Sdk.Library;
 [Include<LibraryFile>]
 public partial class DownloadedFile : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Library.DownloadedFile";
+    private const string Namespace = "SilverModManager.Library.DownloadedFile";
 
     /// <summary>
     /// URI to the download page, not the direct download link.

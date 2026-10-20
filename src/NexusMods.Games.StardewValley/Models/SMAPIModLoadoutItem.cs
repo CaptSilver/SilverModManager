@@ -8,7 +8,7 @@ namespace NexusMods.Games.StardewValley.Models;
 [Include<LoadoutItemGroup>]
 public partial class SMAPIModLoadoutItem : IModelDefinition
 {
-    private const string Namespace = "NexusMods.StardewValley.SMAPIModLoadoutItem";
+    private const string Namespace = "SilverModManager.StardewValley.SMAPIModLoadoutItem";
 
     public static readonly ReferenceAttribute<SMAPIManifestLoadoutFile> Manifest = new(Namespace, nameof(Manifest));
 }

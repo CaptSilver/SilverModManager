@@ -10,6 +10,8 @@ public record TextEditorSettings : ISettings
 
     public double FontSize { get; [UsedImplicitly] set; } = 14;
 
+    public static string SettingsId => "SilverModManager.App.UI.Settings.TextEditorSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder;

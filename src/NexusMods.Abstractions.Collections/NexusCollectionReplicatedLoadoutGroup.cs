@@ -11,7 +11,7 @@ namespace NexusMods.Abstractions.Collections;
 [Include<NexusCollectionItemLoadoutGroup>]
 public partial class NexusCollectionReplicatedLoadoutGroup : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Collections.NexusCollectionReplicatedLoadoutGroup";
+    private const string Namespace = "SilverModManager.Collections.NexusCollectionReplicatedLoadoutGroup";
 
     public static readonly MarkerAttribute Replicated = new(Namespace, nameof(Replicated)) { IsIndexed = true };
 }

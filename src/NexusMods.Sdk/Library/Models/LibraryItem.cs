@@ -11,7 +11,7 @@ namespace NexusMods.Sdk.Library;
 [PublicAPI]
 public partial class LibraryItem : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Library.LibraryItem";
+    private const string Namespace = "SilverModManager.Library.LibraryItem";
 
     /// <summary>
     /// Name of the library item.

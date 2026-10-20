@@ -13,7 +13,7 @@ using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.App.UI.Pages.LoadoutPage;
 
-[JsonName("NexusMods.App.UI.Pages.Library.LoadoutPageContext")]
+[JsonName("SilverModManager.App.UI.Pages.Library.LoadoutPageContext")]
 public record LoadoutPageContext : IPageFactoryContext
 {
     public required LoadoutId LoadoutId { get; init; }

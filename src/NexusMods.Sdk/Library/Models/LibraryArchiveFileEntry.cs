@@ -15,7 +15,7 @@ namespace NexusMods.Sdk.Library;
 [Include<LibraryFile>]
 public partial class LibraryArchiveFileEntry : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Library.LibraryArchiveFileEntry";
+    private const string Namespace = "SilverModManager.Library.LibraryArchiveFileEntry";
 
     /// <summary>
     /// Path to the file inside the archive.

@@ -15,7 +15,7 @@ namespace NexusMods.Abstractions.Loadouts;
 [PublicAPI]
 public partial class SortOrder : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Loadouts.SortOrder";
+    private const string Namespace = "SilverModManager.Loadouts.SortOrder";
     
     /// <summary>
     /// The Loadout that this SortOrder is associated with.

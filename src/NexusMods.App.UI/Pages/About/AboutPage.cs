@@ -5,7 +5,7 @@ using NexusMods.App.UI.WorkspaceSystem;
 
 namespace NexusMods.App.UI.Pages.About;
 
-[JsonName("NexusMods.App.UI.Pages.About.AboutPageContext")]
+[JsonName("SilverModManager.App.UI.Pages.About.AboutPageContext")]
 public record AboutPageContext : IPageFactoryContext;
 
 [UsedImplicitly]

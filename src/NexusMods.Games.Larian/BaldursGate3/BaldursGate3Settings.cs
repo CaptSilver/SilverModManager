@@ -11,6 +11,8 @@ public class BaldursGate3Settings : ISettings
     /// </summary>
     public bool DoFullGameBackup { get; set; } = false;
     
+    public static string SettingsId => "SilverModManager.Games.Larian.BaldursGate3.BaldursGate3Settings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder.ConfigureProperty(

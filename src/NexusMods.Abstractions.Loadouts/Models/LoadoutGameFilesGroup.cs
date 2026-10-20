@@ -11,7 +11,7 @@ namespace NexusMods.Abstractions.Loadouts;
 [Include<LoadoutItemGroup>]
 public partial class LoadoutGameFilesGroup : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Loadouts.LoadoutGameFilesGroup";
+    private const string Namespace = "SilverModManager.Loadouts.LoadoutGameFilesGroup";
 
     /// <summary>
     /// Game metadata.

@@ -15,7 +15,7 @@ namespace NexusMods.Abstractions.NexusModsLibrary.Models;
 [Include<CollectionDownload>]
 public partial class CollectionDownloadNexusMods : IModelDefinition
 {
-    private const string Namespace = "NexusMods.NexusModsLibrary.CollectionDownloadNexusMods";
+    private const string Namespace = "SilverModManager.NexusModsLibrary.CollectionDownloadNexusMods";
 
     /// <summary>
     /// <see cref="FileUid"/>.

@@ -9,6 +9,8 @@ file class MyCoolSettings : ISettings
 {
     public string Name { get; init; } = "Some Name";
 
+    public static string SettingsId => "Examples.Settings.MyCoolSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         // This settings class doesn't have to appear on the UI, so we don't

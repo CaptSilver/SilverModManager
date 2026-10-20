@@ -9,7 +9,7 @@ namespace NexusMods.Games.RedEngine.Cyberpunk2077.Models;
 [Include<SortOrderItem>]
 public partial class RedModSortOrderItem : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Games.RedEngine.Cyberpunk2077.RedModSortableEntry";
+    private const string Namespace = "SilverModManager.Games.RedEngine.Cyberpunk2077.RedModSortableEntry";
     
     /// <summary>
     /// The identifier used by the game for the RedMod load order

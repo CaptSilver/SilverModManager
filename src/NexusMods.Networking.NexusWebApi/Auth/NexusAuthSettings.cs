@@ -14,6 +14,8 @@ public record NexusAuthSettings : ISettings
 {
     public string OAuthClientId { get; init; } = "";
 
+    public static string SettingsId => "SilverModManager.Networking.NexusWebApi.Auth.NexusAuthSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder.ConfigureBackend(StorageBackendOptions.Use(StorageBackends.Json));

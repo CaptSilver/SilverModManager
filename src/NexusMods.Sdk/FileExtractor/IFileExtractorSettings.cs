@@ -16,6 +16,8 @@ public record FileExtractorSettings : ISettings
     public ConfigurablePath TempFolderLocation { get; init; }
 
     /// <inheritdoc/>
+    public static string SettingsId => "SilverModManager.Sdk.FileExtractor.FileExtractorSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder

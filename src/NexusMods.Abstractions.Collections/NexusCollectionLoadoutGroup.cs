@@ -12,7 +12,7 @@ namespace NexusMods.Abstractions.Collections;
 [Include<CollectionGroup>]
 public partial class NexusCollectionLoadoutGroup : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Collections.NexusCollectionLoadoutGroup";
+    private const string Namespace = "SilverModManager.Collections.NexusCollectionLoadoutGroup";
 
     /// <summary>
     /// The collection.

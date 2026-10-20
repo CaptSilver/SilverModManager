@@ -15,6 +15,8 @@ public class DiagnosticSettings : ISettings
     public DiagnosticSeverity MinimumSeverity { get; init; } = DiagnosticSeverity.Suggestion;
 
     /// <inheritdoc/>
+    public static string SettingsId => "SilverModManager.Abstractions.Diagnostics.DiagnosticSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder.ConfigureProperty(

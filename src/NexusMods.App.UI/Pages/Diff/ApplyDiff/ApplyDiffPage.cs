@@ -10,7 +10,7 @@ using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.App.UI.Pages.Diff.ApplyDiff;
 
-[JsonName("NexusMods.App.UI.Page.ApplyDiffPageContext")]
+[JsonName("SilverModManager.App.UI.Page.ApplyDiffPageContext")]
 public record ApplyDiffPageContext : IPageFactoryContext
 {
     public required LoadoutId LoadoutId { get; init; }

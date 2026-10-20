@@ -22,7 +22,7 @@ public class ApplicationConstantsTests
     [Fact]
     public void Test_UserAgentIsProductName()
     {
-        // NMA_USER_AGENT overrides the default, so only assert when it is unset.
+        // SMM_USER_AGENT overrides the default, so only assert when it is unset.
         if (Environment.GetEnvironmentVariable(EnvironmentVariableNames.UserAgentName) is not null) return;
         ApplicationConstants.UserAgent.ApplicationName.Should().Be(ApplicationConstants.ProductName);
     }

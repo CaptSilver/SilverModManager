@@ -15,7 +15,7 @@ namespace NexusMods.Abstractions.Loadouts;
 [PublicAPI]
 public partial class LibraryLinkedLoadoutItem : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Loadouts.LibraryLinkedLoadoutItem";
+    private const string Namespace = "SilverModManager.Loadouts.LibraryLinkedLoadoutItem";
 
     /// <summary>
     /// The linked library item.

@@ -11,6 +11,8 @@ public class StardewValleySettings : ISettings
     /// </summary>
     public bool DoFullGameBackup { get; set; } = false;
 
+    public static string SettingsId => "SilverModManager.Games.StardewValley.StardewValleySettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder.ConfigureProperty(

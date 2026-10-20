@@ -14,7 +14,7 @@ namespace NexusMods.Abstractions.Collections;
 [Include<CollectionGroup>]
 public partial class ManagedCollectionLoadoutGroup : IModelDefinition
 {
-    private const string Namespace = "NexusMods.ManagedCollectionLoadoutGroup";
+    private const string Namespace = "SilverModManager.ManagedCollectionLoadoutGroup";
 
     /// <summary>
     /// The collection.

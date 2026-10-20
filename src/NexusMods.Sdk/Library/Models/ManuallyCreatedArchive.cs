@@ -17,7 +17,7 @@ public partial class ManuallyCreatedArchive : IModelDefinition
         CollectionBundled = 1,
     }
     
-    private const string Namespace = "NexusMods.Library.ManuallyCreatedArchive";
+    private const string Namespace = "SilverModManager.Library.ManuallyCreatedArchive";
 
     /// <summary>
     /// The source of this archive

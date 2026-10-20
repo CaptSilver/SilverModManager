@@ -34,6 +34,8 @@ public record LanguageSettings : ISettings
         SupportedLanguages = supportedLanguages;
     }
 
+    public static string SettingsId => "SilverModManager.App.UI.Settings.LanguageSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder.ConfigureProperty(

@@ -54,8 +54,7 @@ internal class MnemonicDBStorageBackend : IAsyncStorageBackend
 
     private static string GetId<T>(string? key) where T : ISettings
     {
-        var typeName = typeof(T).FullName ?? typeof(T).Name;
-        return string.IsNullOrWhiteSpace(key) ? typeName : $"{typeName}|{key}";
+        return SettingsIds.For<T>(key, '|');
     }
 
     public async ValueTask Save<T>(T value, string? key, CancellationToken cancellationToken) where T : class, ISettings, new()

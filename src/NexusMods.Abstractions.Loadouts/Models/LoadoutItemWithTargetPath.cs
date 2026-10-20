@@ -11,7 +11,7 @@ namespace NexusMods.Abstractions.Loadouts;
 [PublicAPI]
 public partial class LoadoutItemWithTargetPath : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Loadouts.LoadoutItemWithTargetPath";
+    private const string Namespace = "SilverModManager.Loadouts.LoadoutItemWithTargetPath";
 
     /// <summary>
     /// The target path.

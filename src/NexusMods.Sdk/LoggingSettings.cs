@@ -60,6 +60,8 @@ public record LoggingSettings : ISettings
     public bool ShowExceptions { get; [UsedImplicitly] set; } = true;
 
     /// <inheritdoc/>
+    public static string SettingsId => "SilverModManager.CrossPlatform.LoggingSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder

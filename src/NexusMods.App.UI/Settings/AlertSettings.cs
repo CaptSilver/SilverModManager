@@ -9,6 +9,8 @@ public record AlertSettings : ISettings
 
     public bool IsDismissed(string key) => AlertStatus.GetValueOrDefault(key, false);
 
+    public static string SettingsId => "SilverModManager.App.UI.Settings.AlertSettings";
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder;

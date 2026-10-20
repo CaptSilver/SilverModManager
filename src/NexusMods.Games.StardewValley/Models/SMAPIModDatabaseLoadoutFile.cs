@@ -7,7 +7,7 @@ namespace NexusMods.Games.StardewValley.Models;
 [Include<LoadoutFile>]
 public partial class SMAPIModDatabaseLoadoutFile : IModelDefinition
 {
-    private const string Namespace = "NexusMods.StardewValley.SMAPIModDatabaseLoadoutFile";
+    private const string Namespace = "SilverModManager.StardewValley.SMAPIModDatabaseLoadoutFile";
 
     public static readonly MarkerAttribute ModDatabaseFile = new(Namespace, nameof(ModDatabaseFile));
 }

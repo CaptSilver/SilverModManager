@@ -11,7 +11,7 @@ namespace NexusMods.Sdk.Library;
 [Include<LibraryFile>]
 public partial class LocalFile : IModelDefinition
 {
-    private const string Namespace = "NexusMods.Library.LocalFile";
+    private const string Namespace = "SilverModManager.Library.LocalFile";
 
     /// <summary>
     /// The original path from where the local file originated from.

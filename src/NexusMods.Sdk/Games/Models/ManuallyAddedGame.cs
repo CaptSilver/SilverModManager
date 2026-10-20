@@ -10,7 +10,7 @@ namespace NexusMods.Sdk.Games;
 [Obsolete("this is a hack that will be removed soon tm")]
 public partial class ManuallyAddedGame : IModelDefinition
 {
-    private const string Namespace = "NexusMods.StandardGameLocators.ManuallyAddedGame";
+    private const string Namespace = "SilverModManager.StandardGameLocators.ManuallyAddedGame";
 
     // TODO: replace nexus mods game id with game id
     /// <summary>
