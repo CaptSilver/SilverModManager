@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NexusMods.Platform.Proton.Launch;
 using NexusMods.Platform.Proton.Protontricks;
+using NexusMods.Platform.Proton.Verbs;
 using NexusMods.Platform.Proton.ToolRunner;
 using NexusMods.Platform.Proton.UserTools;
 using NexusMods.Abstractions.Loadouts;
@@ -30,6 +32,9 @@ public static class Services
         services.AddSingleton<IRuntimeDependency, AggregateProtontricksDependency>();
         services.AddSingleton<IToolRunStrategy, ProtontricksStrategy>();
         services.AddSingleton<IToolProvider, UserToolProvider>();
-        return services.AddSingleton<IToolRunner, ToolRunner.ToolRunner>();
+        services.AddSingleton<IToolRunner, ToolRunner.ToolRunner>();
+        // The doctor probes launch locks without needing the rest of the headless launch services.
+        services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
+        return services.AddDoctorVerbs();
     }
 }
