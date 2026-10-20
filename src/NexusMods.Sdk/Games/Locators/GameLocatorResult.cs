@@ -71,4 +71,14 @@ public class GameLocatorResult
     /// <see cref="ProtonPrefix.IsReady"/> to tell.
     /// </remarks>
     public AbsolutePath? WinePrefixPath { get; init; }
+
+    /// <summary>
+    /// What the game runs on, for a Windows build found on Linux, or null for a native build or a locator
+    /// that does not know.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Store"/> says where the game was bought; this says which prefix and runner it lives in.
+    /// A GOG game can be found by Heroic or inside a plain Wine prefix, and the two are launched differently.
+    /// </remarks>
+    public CompatibilityLayer? Compatibility { get; init; }
 }

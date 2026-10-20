@@ -58,7 +58,7 @@ internal class WinePrefixWrappingLocator : IGameLocator
                 try
                 {
                     var locator = factory(_serviceProvider, _loggerFactory, overlayFileSystem, registry);
-                    results.AddRange(locator.Locate());
+                    results.AddRange(locator.Locate().Select(result => WithPrefix(result, winePrefix)));
                 }
                 catch (Exception e)
                 {
@@ -68,5 +68,27 @@ internal class WinePrefixWrappingLocator : IGameLocator
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Records the prefix a wrapped result was found in. A locator that already knows its own compatibility
+    /// layer keeps it.
+    /// </summary>
+    private static GameLocatorResult WithPrefix(GameLocatorResult result, AWinePrefix winePrefix)
+    {
+        var prefix = winePrefix.ConfigurationDirectory;
+        return new GameLocatorResult
+        {
+            Game = result.Game,
+            Path = result.Path,
+            Store = result.Store,
+            StoreIdentifier = result.StoreIdentifier,
+            LocatorIds = result.LocatorIds,
+            Locator = result.Locator,
+            Platform = result.Platform,
+            LinuxCompatabilityDataProvider = result.LinuxCompatabilityDataProvider,
+            WinePrefixPath = result.WinePrefixPath ?? prefix,
+            Compatibility = result.Compatibility ?? new CompatibilityLayer(CompatibilityLayerKind.PlainWine, prefix),
+        };
     }
 }

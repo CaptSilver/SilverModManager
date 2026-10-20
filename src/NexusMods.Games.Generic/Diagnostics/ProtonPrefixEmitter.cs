@@ -51,6 +51,10 @@ public class ProtonPrefixEmitter(IFileSystem hostFileSystem) : ILoadoutDiagnosti
         var result = installation.LocatorResult;
         if (result.WinePrefixPath is not { } prefix) yield break;
 
+        // Every check below is about Steam's Proton prefix, down to the wording. A game found in a plain Wine
+        // or Heroic prefix has no Steam compatibility data to load and never had a Proton prefix to miss.
+        if (result.Compatibility is { Kind: not CompatibilityLayerKind.SteamProton }) yield break;
+
         var gameName = installation.Game.DisplayName;
         if (!ProtonPrefix.IsReady(prefix))
         {

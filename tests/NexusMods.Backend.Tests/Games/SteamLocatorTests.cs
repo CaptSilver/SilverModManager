@@ -23,6 +23,20 @@ public class SteamLocatorTests
     }
 
     [Fact]
+    public void Locate_WindowsBuild_RecordsSteamProtonWithThePrefix()
+    {
+        var (result, _, libraryDirectory) = LocateSingle(withProtonPrefix: false);
+
+        result.Compatibility.Should().Be(new CompatibilityLayer(CompatibilityLayerKind.SteamProton, libraryDirectory.Combine($"compatdata/{AppId}/pfx")));
+    }
+
+    [Fact]
+    public void Locate_NativeLinuxBuild_RecordsNoCompatibilityLayer()
+    {
+        LocateSingle(withProtonPrefix: false, hasNativeLinuxBuild: true).Result.Compatibility.Should().BeNull();
+    }
+
+    [Fact]
     public void Locate_ProtonGame_ResolvesKnownFoldersInsideThePrefix()
     {
         var (result, _, libraryDirectory) = LocateSingle(withProtonPrefix: true);

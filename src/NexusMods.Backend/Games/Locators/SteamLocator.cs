@@ -78,6 +78,7 @@ internal class SteamLocator : IGameLocator
                 Store = Store,
                 Locator = this,
                 LinuxCompatabilityDataProvider = linuxCompatibilityDataProvider,
+                Compatibility = isWindowsBuild ? new CompatibilityLayer(CompatibilityLayerKind.SteamProton, prefix.ConfigurationDirectory) : null,
             };
         }
     }

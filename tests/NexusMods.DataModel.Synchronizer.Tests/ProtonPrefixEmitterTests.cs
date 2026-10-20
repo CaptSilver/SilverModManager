@@ -67,7 +67,7 @@ public class ProtonPrefixEmitterTests(ITestOutputHelper helper) : AStubbedGameTe
             using var stream = Host.CreateFile(Prefix.Combine("system.reg"));
         }
 
-        public GameInstallation Installation(bool withProvider = false, bool nativeLinux = false, bool locationsMatchHost = false)
+        public GameInstallation Installation(bool withProvider = false, bool nativeLinux = false, bool locationsMatchHost = false, CompatibilityLayer? compatibility = null)
         {
             var game = Substitute.For<IGameData>();
             game.DisplayName.Returns("Test Game");
@@ -88,6 +88,7 @@ public class ProtonPrefixEmitterTests(ITestOutputHelper helper) : AStubbedGameTe
                 Platform = nativeLinux ? OSPlatform.Linux : OSPlatform.Windows,
                 WinePrefixPath = nativeLinux ? null : Prefix,
                 LinuxCompatabilityDataProvider = withProvider ? Substitute.For<ILinuxCompatabilityDataProvider>() : null,
+                Compatibility = compatibility,
             };
 
             var appData = locationsMatchHost || nativeLinux ? HostCopy : PrefixCopy;
@@ -107,6 +108,17 @@ public class ProtonPrefixEmitterTests(ITestOutputHelper helper) : AStubbedGameTe
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
         Summary(diagnostic).Should().Contain("Test Game");
         Details(diagnostic).Should().Contain(ProtonMessages.MissingPrefix("Test Game", fixture.Prefix));
+    }
+
+    [Fact]
+    public void PlainWinePrefix_IsNotDiagnosedAsAProtonPrefix()
+    {
+        var fixture = new Fixture();
+        fixture.MakePrefixReady();
+        fixture.HostCopy.CreateDirectory();
+        var installation = fixture.Installation(compatibility: new CompatibilityLayer(CompatibilityLayerKind.PlainWine, fixture.Prefix));
+
+        ProtonPrefixEmitter.DiagnoseInstallation(installation, fixture.Host).Should().BeEmpty();
     }
 
     [Fact]

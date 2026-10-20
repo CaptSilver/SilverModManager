@@ -21,5 +21,6 @@ public class ProtonServicesTests
         });
 
         provider.GetRequiredService<IProtonResolver>().Should().BeOfType<ProtonResolver>();
+        provider.GetRequiredService<IPrefixResolver>().Should().BeOfType<PrefixResolver>();
     }
 }

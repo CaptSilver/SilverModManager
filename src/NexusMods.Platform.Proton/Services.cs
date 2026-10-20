@@ -12,6 +12,7 @@ public static class Services
     public static IServiceCollection AddProton(this IServiceCollection services)
     {
         services.TryAddSingleton<IEnvironmentReader, ProcessEnvironmentReader>();
+        services.AddSingleton<IPrefixResolver, PrefixResolver>();
         return services.AddSingleton<IProtonResolver, ProtonResolver>();
     }
 }

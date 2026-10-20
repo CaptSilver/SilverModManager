@@ -1,0 +1,73 @@
+using System.Runtime.InteropServices;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Paths;
+using NexusMods.Sdk.Games;
+
+namespace NexusMods.Platform.Proton;
+
+/// <summary>
+/// Picks the prefix from what the locator recorded. Steam's own prefix is taken from the installation
+/// itself; any other layer comes from <see cref="GameLocatorResult.Compatibility"/>. If both exist and they
+/// are different directories the installation is ambiguous and nothing is chosen.
+/// </summary>
+public sealed class PrefixResolver : IPrefixResolver
+{
+    public PrefixResolution Resolve(GameInstallation installation)
+    {
+        var result = installation.LocatorResult;
+        var gameName = installation.Game.DisplayName;
+
+        if (result.Store == GameStore.ManuallyAdded)
+            return PrefixResolution.Failed($"{gameName} was manually added, and manually added games carry no Wine prefix yet.");
+
+        var steam = SteamCandidate(result);
+        var other = result.Compatibility is { Kind: not CompatibilityLayerKind.SteamProton } layer ? layer : null;
+
+        if (steam is not null && other is not null && steam.Prefix != other.Prefix)
+        {
+            return PrefixResolution.Failed(
+                $"{gameName} has more than one Wine prefix: '{steam.Prefix}' ({steam.Kind}) and '{other.Prefix}' ({other.Kind}). " +
+                "Not choosing between them; remove the one the game does not use.");
+        }
+
+        var chosen = steam ?? other;
+        if (chosen is null)
+        {
+            return result.Platform == OSPlatform.Windows
+                ? PrefixResolution.Failed($"{gameName} runs as a Windows build but no Wine prefix was found for it.")
+                : PrefixResolution.Native($"{gameName} is a native Linux build and has no Wine prefix.");
+        }
+
+        if (!ProtonPrefix.IsReady(chosen.Prefix))
+        {
+            return PrefixResolution.Failed(chosen.Kind == CompatibilityLayerKind.SteamProton
+                ? ProtonMessages.MissingPrefix(gameName, chosen.Prefix)
+                : $"{gameName} has no Wine prefix at '{chosen.Prefix}' yet. Please launch the game once from its launcher so the prefix is created, then try again.");
+        }
+
+        return PrefixResolution.Resolved(new ResolvedPrefix(
+            chosen.Prefix,
+            chosen.Kind,
+            WineBinary: chosen.WineBinary,
+            ProtonAppId: chosen.Kind == CompatibilityLayerKind.SteamProton ? SteamAppId(result) : null));
+    }
+
+    /// <summary>
+    /// The Steam prefix, from the compatibility data provider when the prefix exists, else from the prefix
+    /// path the Steam locator recorded for a game that was never launched.
+    /// </summary>
+    private static CompatibilityLayer? SteamCandidate(GameLocatorResult result)
+    {
+        if (result.LinuxCompatabilityDataProvider is { } provider)
+            return new CompatibilityLayer(CompatibilityLayerKind.SteamProton, provider.WinePrefixDirectoryPath);
+
+        if (result.Compatibility is { Kind: CompatibilityLayerKind.SteamProton } recorded) return recorded;
+
+        return result.Store == GameStore.Steam && result.WinePrefixPath is { } prefix
+            ? new CompatibilityLayer(CompatibilityLayerKind.SteamProton, prefix)
+            : null;
+    }
+
+    private static uint? SteamAppId(GameLocatorResult result)
+        => uint.TryParse(result.StoreIdentifier, out var appId) ? appId : null;
+}
