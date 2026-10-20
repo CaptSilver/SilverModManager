@@ -19,6 +19,12 @@ public record FileHashesServiceSettings : ISettings
     public TimeSpan HashDatabaseUpdateInterval { get; init; } = TimeSpan.FromMinutes(30);
     
     /// <summary>
+    /// Never contact GitHub: open the newest database on disk, or extract the embedded one when
+    /// there is none. A launch that has to start quickly and work offline sets this.
+    /// </summary>
+    public bool SkipUpdateCheck { get; init; }
+
+    /// <summary>
     /// The URL to the Github API to get the latest release.
     /// </summary>
     public Uri GithubManifestUrl { get; init; } = new("https://github.com/CaptSilver/game-hashes/releases/latest/download/manifest.json");

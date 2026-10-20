@@ -181,6 +181,46 @@ public sealed class ReleaseDatabaseTests : IDisposable
     }
 
     [Fact]
+    public async Task SkipUpdateCheck_FirstRun_UsesEmbeddedDatabaseWithoutNetwork()
+    {
+        var requests = new List<Uri>();
+        using var service = CreateService(new StubHandler(request =>
+        {
+            requests.Add(request.RequestUri!);
+            return [];
+        }), _settings with { SkipUpdateCheck = true });
+
+        await service.CheckForUpdate(forceUpdate: true);
+
+        requests.Should().BeEmpty("skipping the update check means no manifest or database request, even when forced");
+        _logger.Errors.Should().BeEmpty();
+        service.Invoking(s => s.Current).Should().NotThrow("the embedded database is extracted and opened");
+    }
+
+    [Fact]
+    public async Task SkipUpdateCheck_ExistingDatabase_IsOpenedWithoutNetwork()
+    {
+        var settings = _settings with { SkipUpdateCheck = true };
+        using (var first = CreateService(new StubHandler(_ => []), settings))
+        {
+            await first.CheckForUpdate();
+        }
+
+        var requests = new List<Uri>();
+        using var second = CreateService(new StubHandler(request =>
+        {
+            requests.Add(request.RequestUri!);
+            return [];
+        }), settings);
+
+        await second.StartAsync(CancellationToken.None);
+
+        requests.Should().BeEmpty();
+        _logger.Errors.Should().BeEmpty();
+        second.Invoking(s => s.Current).Should().NotThrow();
+    }
+
+    [Fact]
     public async Task RealRelease_HashAndSizeMatchManifest()
     {
         var (zipPath, manifestPath) = RealReleaseFiles();
@@ -279,13 +319,14 @@ public sealed class ReleaseDatabaseTests : IDisposable
         return await service.AddReleaseDatabase(manifest, CancellationToken.None);
     }
 
-    private FileHashesService CreateService(StubHandler handler)
+    private FileHashesService CreateService(StubHandler handler, FileHashesServiceSettings? settings = null)
     {
+        settings ??= _settings;
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(Substitute.For<IQueryEngine>());
         var settingsManager = Substitute.For<ISettingsManager>();
-        settingsManager.Get<FileHashesServiceSettings>().Returns(_settings);
+        settingsManager.Get<FileHashesServiceSettings>().Returns(settings);
 
         return new FileHashesService(
             _logger,

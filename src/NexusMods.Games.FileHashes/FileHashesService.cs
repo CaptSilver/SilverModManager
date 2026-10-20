@@ -154,7 +154,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         using var _ = await _lock.LockAsync();
 
         var existingDatabases = ExistingDBs().ToArray();
-        var shouldCheckForUpdate = forceUpdate || existingDatabases.Length == 0 || ShouldCheckForUpdate();
+        var shouldCheckForUpdate = !_settings.SkipUpdateCheck && (forceUpdate || existingDatabases.Length == 0 || ShouldCheckForUpdate());
 
         if (!shouldCheckForUpdate && existingDatabases.TryGetFirst(out var latestDatabase))
         {
@@ -179,7 +179,8 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                     return;
                 }
 
-                _logger.LogWarning("Failed to fetch latest release manifest, defaulting to embedded game hashes database which may be out-of-date");
+                if (_settings.SkipUpdateCheck) _logger.LogInformation("Update check skipped, using the embedded game hashes database");
+                else _logger.LogWarning("Failed to fetch latest release manifest, defaulting to embedded game hashes database which may be out-of-date");
                 _currentDb = OpenDb(embeddedDatabaseInfo.Value);
                 return;
             }
