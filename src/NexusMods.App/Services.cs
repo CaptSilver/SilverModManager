@@ -27,6 +27,7 @@ using NexusMods.Networking.HttpDownloader;
 using NexusMods.Networking.NexusWebApi;
 using NexusMods.Networking.Steam;
 using NexusMods.Paths;
+using NexusMods.Platform.Proton;
 using NexusMods.ProxyConsole;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.ProxyConsole;
@@ -62,6 +63,7 @@ public static class Services
                 .AddLibraryModels()
                 .AddJobMonitor()
                 .AddNexusModsCollections()
+                .AddProton()
 
                 .AddSettings<LoggingSettings>()
                 .AddSettings<ExperimentalSettings>()
