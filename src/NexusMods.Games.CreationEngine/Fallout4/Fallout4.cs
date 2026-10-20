@@ -38,8 +38,8 @@ public class Fallout4 : ICreationEngineGame, IGameData<Fallout4>
         GOGProductIds = [1998527297L],
     };
 
-    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<Fallout4>("NexusMods.Games.CreationEngine.Resources.Fallout4.thumbnail.webp");
-    public IStreamFactory TileImage { get; } = new EmbeddedResourceStreamFactory<Fallout4>("NexusMods.Games.CreationEngine.Resources.Fallout4.tile.webp");
+    public IStreamFactory IconImage { get; }
+    public IStreamFactory TileImage { get; }
 
     private readonly Lazy<ILoadoutSynchronizer> _synchronizer;
     public ILoadoutSynchronizer Synchronizer => _synchronizer.Value;
@@ -50,6 +50,9 @@ public class Fallout4 : ICreationEngineGame, IGameData<Fallout4>
 
     public Fallout4(IServiceProvider provider)
     {
+        var art = provider.GetRequiredService<IGameArtSource>();
+        IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
+        TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
         _streamSource = provider.GetRequiredService<IStreamSourceDispatcher>();
 
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new Fallout4Synchronizer(provider, this));

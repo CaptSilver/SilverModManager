@@ -32,8 +32,8 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>
         EGSCatalogItemId = ["5beededaad9743df90e8f07d92df153f"],
     };
 
-    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<Cyberpunk2077Game>("NexusMods.Games.RedEngine.Resources.Cyberpunk2077.thumbnail.webp");
-    public IStreamFactory TileImage { get; } = new EmbeddedResourceStreamFactory<Cyberpunk2077Game>("NexusMods.Games.RedEngine.Resources.Cyberpunk2077.tile.webp");
+    public IStreamFactory IconImage { get; }
+    public IStreamFactory TileImage { get; }
 
     private readonly Lazy<ILoadoutSynchronizer> _synchronizer;
     public ILoadoutSynchronizer Synchronizer => _synchronizer.Value;
@@ -44,6 +44,9 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>
 
     public Cyberpunk2077Game(IServiceProvider provider)
     {
+        var art = provider.GetRequiredService<IGameArtSource>();
+        IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
+        TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new Cyberpunk2077Synchronizer(provider));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {

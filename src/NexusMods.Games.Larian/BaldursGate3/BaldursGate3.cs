@@ -28,8 +28,8 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>
         GOGProductIds = [1456460669L],
     };
 
-    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<BaldursGate3>("NexusMods.Games.Larian.Resources.BaldursGate3.thumbnail.webp");
-    public IStreamFactory TileImage { get; } = new EmbeddedResourceStreamFactory<BaldursGate3>("NexusMods.Games.Larian.Resources.BaldursGate3.tile.webp");
+    public IStreamFactory IconImage { get; }
+    public IStreamFactory TileImage { get; }
 
     private readonly Lazy<ILoadoutSynchronizer> _synchronizer;
     public ILoadoutSynchronizer Synchronizer => _synchronizer.Value;
@@ -40,6 +40,9 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>
 
     public BaldursGate3(IServiceProvider provider)
     {
+        var art = provider.GetRequiredService<IGameArtSource>();
+        IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
+        TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new BaldursGate3Synchronizer(provider));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {

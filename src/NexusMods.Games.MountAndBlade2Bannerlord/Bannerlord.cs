@@ -33,8 +33,8 @@ public sealed class Bannerlord : IGame, IGameData<Bannerlord>
         EGSCatalogItemId = ["Chickadee"],
     };
 
-    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<Bannerlord>("NexusMods.Games.MountAndBlade2Bannerlord.Resources.thumbnail.webp");
-    public IStreamFactory TileImage { get; } = new EmbeddedResourceStreamFactory<Bannerlord>("NexusMods.Games.MountAndBlade2Bannerlord.Resources.tile.webp");
+    public IStreamFactory IconImage { get; }
+    public IStreamFactory TileImage { get; }
 
     private readonly Lazy<ILoadoutSynchronizer> _synchronizer;
     public ILoadoutSynchronizer Synchronizer => _synchronizer.Value;
@@ -45,6 +45,9 @@ public sealed class Bannerlord : IGame, IGameData<Bannerlord>
 
     public Bannerlord(IServiceProvider serviceProvider)
     {
+        var art = serviceProvider.GetRequiredService<IGameArtSource>();
+        IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
+        TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new BannerlordLoadoutSynchronizer(serviceProvider));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {

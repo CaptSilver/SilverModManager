@@ -27,20 +27,20 @@ public class RemovedAssetHashesTests
         ("ccea3b43e0967da798efd7283cca6d8b49222f84a8b0f2ce73b92f8f3ad915a6", "publisher game art (cyberpunk_game.png), App.UI and Themes DesignTime folders"),
         ("8d1d6a4a7f6840e12d740e77e0e2ce24ee1bb73d14bc6bff6f340a7482374b4f", "publisher game art (fantasy_game.png), App.UI and Themes DesignTime folders"),
         ("f8c1133d5782d6552099303a5a0077d4f51a7839956687a10342eba36a968fb3", "design-time header background, src/NexusMods.App.UI/Assets/DesignTime/header-background.webp"),
-        ("6c3b0293e610c3eef03c7eec51f07f9a66f89af500d53e6b75c735c7633916a9", "design-time thumbnail, src/NexusMods.App.UI/Assets/DesignTime/thumbnail.webp"),
-        ("ec52f49af45c5d521fa7b0aa810573007b51a263d0fe2e163251a7c60f1778ac", "publisher game tile, src/NexusMods.App.UI/Assets/DesignTime/tile.webp"),
+        ("6c3b0293e610c3eef03c7eec51f07f9a66f89af500d53e6b75c735c7633916a9", "Cyberpunk 2077 icon, src/NexusMods.Games.RedEngine/Resources/Cyberpunk2077/thumbnail.webp (also the old design-time thumbnail)"),
+        ("ec52f49af45c5d521fa7b0aa810573007b51a263d0fe2e163251a7c60f1778ac", "Cyberpunk 2077 tile, src/NexusMods.Games.RedEngine/Resources/Cyberpunk2077/tile.webp (also the old design-time tile)"),
+        ("6b824988219451f088b386d0ab6b2b9a734286c3a1b46f0c4ce8e7cb0a737be2", "publisher game icon, src/NexusMods.Games.CreationEngine/Resources/Fallout4/thumbnail.webp"),
+        ("f22ef0ae96abad74fd26dfc3125b074b2682bb5a2c73006ab7ca588194215c52", "publisher game tile, src/NexusMods.Games.CreationEngine/Resources/Fallout4/tile.webp"),
+        ("ff1d66383522ce9b4efc0a65235e439858874cf92a8543d9e9bbf7e69b288688", "publisher game icon, src/NexusMods.Games.CreationEngine/Resources/SkyrimSE/thumbnail.webp"),
+        ("c1cc233a50b56a83b0e1e35db4a80ec350bb8aec64c521ae83e3e6ac3d0dde0c", "publisher game tile, src/NexusMods.Games.CreationEngine/Resources/SkyrimSE/tile.webp"),
+        ("9761bf615a910b19e0584c15634856b79df6df9e9d46e9896f891e4bec540604", "publisher game icon, src/NexusMods.Games.Larian/Resources/BaldursGate3/thumbnail.webp"),
+        ("ab7dba031d3156a07595c499d02f5442165bd1348990682db6dc586a379f5701", "publisher game tile, src/NexusMods.Games.Larian/Resources/BaldursGate3/tile.webp"),
+        ("5d40f513624ac63eb3b7982eae43056524a8557ca2ffb6ca019185c37f6edda7", "publisher game icon, src/NexusMods.Games.MountAndBlade2Bannerlord/Resources/thumbnail.webp"),
+        ("0e335dbe39e07ad2dcf91c988368b86d8b1ca0e735cf81fdd35a2b99871e4b3a", "publisher game tile, src/NexusMods.Games.MountAndBlade2Bannerlord/Resources/tile.webp"),
+        ("5cdb1c91071bda4f61cdbae456a7c94233af65abf54140458c25bb04cfc20747", "publisher game icon, src/NexusMods.Games.StardewValley/Resources/thumbnail.webp"),
+        ("c92edf96ee49c85a3276b2ff43f544dd461f51c253241265a9a7e7938d9dfa13", "publisher game tile, src/NexusMods.Games.StardewValley/Resources/tile.webp"),
         ("21e2fa4af6ee5e6f2bedd325871f8426f809f5145708ed89f475841068c879bd", "FOMOD placeholder naming the upstream project, src/NexusMods.Games.FOMOD/Assets/InvalidImagePlaceholder.png"),
         ("c48d57e167d249c2d5159e02687239dc404d3b568ed9b544b3f89707fd1c9b1d", "Nexus-marked default collection image, src/NexusMods.Collections/default-collection-image.webp"),
-    ];
-
-    /// <summary>
-    /// Files that share bytes with a removed design-time placeholder but are the supported game's
-    /// own picker art, which the game module ships.
-    /// </summary>
-    private static readonly HashSet<string> SharedWithRemoved =
-    [
-        "src/NexusMods.Games.RedEngine/Resources/Cyberpunk2077/thumbnail.webp",
-        "src/NexusMods.Games.RedEngine/Resources/Cyberpunk2077/tile.webp",
     ];
 
     [Fact]
@@ -54,13 +54,11 @@ public class RemovedAssetHashesTests
 
         var hashes = Removed.ToDictionary(r => r.Sha256, r => r.WasAt);
         var hits = files
-            .Where(relative => !SharedWithRemoved.Contains(relative))
             .Select(relative => (relative, hash: Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(Path.Combine(root, relative))))))
             .Where(x => hashes.ContainsKey(x.hash))
             .Select(x => $"{x.relative} is the removed {hashes[x.hash]}")
             .ToArray();
 
         hits.Should().BeEmpty("removed upstream art must not return under any name");
-        SharedWithRemoved.Should().OnlyContain(relative => File.Exists(Path.Combine(root, relative)), "a stale allowlist entry hides nothing");
     }
 }

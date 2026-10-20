@@ -38,8 +38,8 @@ public class SkyrimSE : ICreationEngineGame, IGameData<SkyrimSE>
         GOGProductIds = [1711230643L],
     };
 
-    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<SkyrimSE>("NexusMods.Games.CreationEngine.Resources.SkyrimSE.thumbnail.webp");
-    public IStreamFactory TileImage { get; } = new EmbeddedResourceStreamFactory<SkyrimSE>("NexusMods.Games.CreationEngine.Resources.SkyrimSE.tile.webp");
+    public IStreamFactory IconImage { get; }
+    public IStreamFactory TileImage { get; }
 
     private readonly Lazy<ILoadoutSynchronizer> _synchronizer;
     public ILoadoutSynchronizer Synchronizer => _synchronizer.Value;
@@ -50,6 +50,9 @@ public class SkyrimSE : ICreationEngineGame, IGameData<SkyrimSE>
     
     public SkyrimSE(IServiceProvider provider)
     {
+        var art = provider.GetRequiredService<IGameArtSource>();
+        IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
+        TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
         _streamSource = provider.GetRequiredService<IStreamSourceDispatcher>();
 
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new SkyrimSESynchronizer(provider, this));

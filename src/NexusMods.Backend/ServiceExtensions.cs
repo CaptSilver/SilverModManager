@@ -50,6 +50,7 @@ public static class ServiceExtensions
         return serviceCollection
             .AddSingleton<IGameLocationsService, GameLocationsService>()
             .AddSingleton<IGameRegistry, GameRegistry>()
+            .AddSingleton<IGameArtSource, SteamLibraryCacheArtSource>()
             .AddGameInstallMetadataModel()
             .AddSingleton<IGameLocator, ManuallyAddedLocator>()
             .AddManuallyAddedGameModel();

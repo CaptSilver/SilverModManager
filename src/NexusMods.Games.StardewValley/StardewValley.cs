@@ -29,8 +29,8 @@ public class StardewValley : IGame, IGameData<StardewValley>
         GOGProductIds = [1453375253L],
     };
 
-    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<StardewValley>("NexusMods.Games.StardewValley.Resources.thumbnail.webp");
-    public IStreamFactory TileImage { get; } = new EmbeddedResourceStreamFactory<StardewValley>("NexusMods.Games.StardewValley.Resources.tile.webp");
+    public IStreamFactory IconImage { get; }
+    public IStreamFactory TileImage { get; }
 
     private readonly Lazy<ILoadoutSynchronizer> _synchronizer;
     public ILoadoutSynchronizer Synchronizer => _synchronizer.Value;
@@ -41,6 +41,9 @@ public class StardewValley : IGame, IGameData<StardewValley>
 
     public StardewValley(IServiceProvider serviceProvider)
     {
+        var art = serviceProvider.GetRequiredService<IGameArtSource>();
+        IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
+        TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new StardewValleyLoadoutSynchronizer(serviceProvider));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {
