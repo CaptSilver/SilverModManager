@@ -27,5 +27,12 @@ public class ProtonServicesTests
         provider.GetRequiredService<IProtonResolver>().Should().BeOfType<ProtonResolver>();
         provider.GetRequiredService<IPrefixResolver>().Should().BeOfType<PrefixResolver>();
         provider.GetRequiredService<IToolRunner>().Should().BeOfType<ToolRunner.ToolRunner>();
+        provider.GetServices<IToolRunStrategy>().Select(s => s.Kind).Should().BeEquivalentTo(
+        [
+            CompatibilityLayerKind.SteamProton,
+            CompatibilityLayerKind.Heroic,
+            CompatibilityLayerKind.HeroicFlatpak,
+            CompatibilityLayerKind.PlainWine,
+        ]);
     }
 }

@@ -16,6 +16,9 @@ public static class Services
         services.AddSingleton<IPrefixResolver, PrefixResolver>();
         services.AddSingleton<IProtonResolver, ProtonResolver>();
         services.AddSingleton<IToolRunStrategy, SteamProtonStrategy>();
+        services.AddSingleton<IToolRunStrategy, UmuStrategy>();
+        services.AddSingleton<IToolRunStrategy, HeroicFlatpakStrategy>();
+        services.AddSingleton<IToolRunStrategy, PlainWineStrategy>();
         return services.AddSingleton<IToolRunner, ToolRunner.ToolRunner>();
     }
 }
