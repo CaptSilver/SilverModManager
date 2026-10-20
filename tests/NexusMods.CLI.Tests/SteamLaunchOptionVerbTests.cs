@@ -108,7 +108,7 @@ public class SteamLaunchOptionVerbTests(IConnection connection) : IDisposable
 
         var environment = Substitute.For<IEnvironmentReader>();
         environment.Get("XDG_DATA_HOME").Returns(DataHome);
-        return new SteamLaunchOptionCommand(new LoadoutResolver(connection, registry, environment), new LocalConfigVdfWriter(_tracker), environment, FileSystem.Shared);
+        return new SteamLaunchOptionCommand(new LoadoutResolver(connection, registry, environment), new SteamLaunchOptionWriter(new LocalConfigVdfWriter(_tracker), environment, FileSystem.Shared));
     }
 
     private static string[] Lines(LoggingRenderer renderer)

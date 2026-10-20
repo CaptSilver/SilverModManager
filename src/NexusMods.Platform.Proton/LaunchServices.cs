@@ -27,6 +27,7 @@ public static class LaunchServices
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<LoadoutResolver>();
         services.TryAddSingleton<LocalConfigVdfWriter>();
+        services.TryAddSingleton<ISteamLaunchOptionWriter, SteamLaunchOptionWriter>();
         return services.AddLaunchVerbs();
     }
 }
