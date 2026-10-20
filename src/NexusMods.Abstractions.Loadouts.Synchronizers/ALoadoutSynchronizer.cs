@@ -498,6 +498,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <inheritdoc />
     public async Task<Loadout.ReadOnly> RunActions(Dictionary<GamePath, SyncNode> syncTree, Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
     {
+        await Preflight(loadout.InstallationInstance);
+        ProbeWritableRoots(syncTree, loadout.InstallationInstance.Locations);
+
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
         var gameMetadataId = loadout.InstallationId;
@@ -722,6 +725,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// </summary>
     public async Task RunActions(Dictionary<GamePath, SyncNode> syncTree, GameInstallation gameInstallation)
     {
+        await Preflight(gameInstallation);
+        ProbeWritableRoots(syncTree, gameInstallation.Locations);
+
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
 
@@ -1059,6 +1065,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <inheritdoc />
     public virtual async Task<Loadout.ReadOnly> Synchronize(Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
     {
+        // Refuse before the locator ids are updated and the game folder is re-indexed: both write to the
+        // database, and neither can mean anything when the prefix they read from is gone.
+        await Preflight(loadout.InstallationInstance);
+
         loadout = loadout.Rebase();
         
         // Update locator IDs before building the sync tree
@@ -1438,7 +1448,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <remarks>
     /// Proton's shared shader caches are filtered too, see <see cref="IsSharedProtonCache"/>.
     /// </remarks>
-    private static readonly IGamePathFilter BaseGamePathFilter = Synchronizers.GamePathFilters.Create(path => path.LocationId == LocationId.Saves || IsSharedProtonCache(path));
+    private static readonly IGamePathFilter BaseGamePathFilter = Synchronizers.GamePathFilters.Create(path => path.LocationId == LocationId.Saves || IsSharedProtonCache(path) || IsWriteProbe(path));
 
     /// <summary>
     /// Whether the path is a shader cache that Proton (vkd3d-proton, DXVK) drops next to the running game.
@@ -1457,6 +1467,61 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     private static readonly Extension DxvkCacheExtension = new(".dxvk-cache");
+
+    /// <summary>
+    /// Whether the path is the file <see cref="ProbeWritableRoots"/> creates. It is deleted again right away,
+    /// but a crash in between would leave it behind, and it must never be indexed as the player's file.
+    /// </summary>
+    private static bool IsWriteProbe(GamePath path) => path.FileName.ToString() == ProtonMessages.ProbeFileName;
+
+    /// <inheritdoc />
+    public Task Preflight(GameInstallation installation)
+    {
+        // Only the prefix path is checked, never Steam's configuration: guessing another prefix would write
+        // into a folder the player did not mean, so an unclear case is a message instead.
+        if (installation.LocatorResult.WinePrefixPath is { } prefix && !ProtonPrefix.IsReady(prefix))
+            return Task.FromException(new SynchronizerPreflightException(ProtonMessages.MissingPrefix(installation.Game.DisplayName, prefix)));
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Checks that every location the tree is about to write into can be written, before anything is.
+    /// </summary>
+    /// <remarks>
+    /// A write that fails halfway leaves some files extracted and the database not yet updated, which the next
+    /// sync reads as external changes. A tree without write actions probes nothing, so a no-op sync never
+    /// touches the disk or bumps a folder's modification time. Locations the filter rejects are skipped:
+    /// the synchronizer never writes there.
+    /// </remarks>
+    private void ProbeWritableRoots(Dictionary<GamePath, SyncNode> syncTree, GameLocations locations)
+    {
+        const Actions writes = Actions.ExtractToDisk | Actions.WriteIntrinsic | Actions.DeleteFromDisk;
+
+        HashSet<LocationId> probed = [];
+        foreach (var (path, node) in syncTree)
+        {
+            if ((node.Actions & writes) == 0) continue;
+            if (!probed.Add(path.LocationId)) continue;
+            if (GamePathFilter.ShouldFilter(new GamePath(path.LocationId, RelativePath.Empty))) continue;
+
+            // A root that does not exist yet (My Games/<game>) is created by the first extract, so what has to
+            // be writable is the closest folder that does exist.
+            var folder = locations[path.LocationId].Path;
+            while (!folder.DirectoryExists() && folder.Parent != folder) folder = folder.Parent;
+
+            var probe = folder.Combine(ProtonMessages.ProbeFileName);
+            try
+            {
+                probe.Create().Dispose();
+                probe.Delete();
+            }
+            catch (Exception e) when (e is UnauthorizedAccessException or IOException)
+            {
+                throw new SynchronizerPreflightException(ProtonMessages.UnwritableFolder(folder));
+            }
+        }
+    }
 
     /// <summary>
     /// Whether to ignore the file at the given path when indexing, in addition to the rule every game gets.
@@ -1479,6 +1544,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     public async Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds)
     {
+        // Same reasoning as in Synchronize: the re-index below writes before RunActions would refuse.
+        await Preflight(installation);
+
         var gameState = _fileHashService.GetGameFiles((installation.LocatorResult.Store, locatorIds));
         var metadata = await ReindexState(installation);
 

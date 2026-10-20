@@ -76,6 +76,10 @@ internal partial class LoadoutManager : ILoadoutManager
     {
         return _jobMonitor.Begin(new CreateLoadoutJob(installation), async ctx =>
         {
+            // Refuse before any row exists: a half-added game (metadata and loadout, nothing synced) is worse
+            // than one that was never added.
+            await installation.GetGame().Synchronizer.Preflight(installation);
+
             // Prime the hash database to make sure it's loaded
             await _fileHashesService.GetFileHashesDb();
 

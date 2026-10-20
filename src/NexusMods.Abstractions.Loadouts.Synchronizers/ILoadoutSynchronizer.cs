@@ -18,6 +18,13 @@ public interface ILoadoutSynchronizer
     IGamePathFilter GamePathFilter { get; }
 
     /// <summary>
+    /// Throws <see cref="SynchronizerPreflightException"/> if the game cannot be written to at all, without
+    /// reading or writing anything. Every operation that changes the game folder or the loadout state calls
+    /// it first; callers that are about to record something about the game (adding it) call it before they do.
+    /// </summary>
+    Task Preflight(GameInstallation installation);
+
+    /// <summary>
     /// Creates a new sync tree from the current state of the game folder, the loadout and the previous state. This
     /// sync tree contains a matching of all the files in all 3 sources based on their path.
     /// </summary>

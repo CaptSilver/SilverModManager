@@ -145,9 +145,26 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                                 var result = await overlayController.EnqueueAndWait(overlay);
                                 if (!result.ShouldRemoveGame) return;
 
+                                var stateBeforeRemoving = vm.State;
                                 vm.State = GameWidgetState.RemovingGame;
-                                await Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, filesToDelete, collections));
-                                vm.State = GameWidgetState.DetectedGame;
+                                var removed = true;
+                                try
+                                {
+                                    await Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, filesToDelete, collections));
+                                }
+                                catch (SynchronizerPreflightException e)
+                                {
+                                    // Cleaning the game folder can't be done right now, but removing the game from
+                                    // the app writes nothing there, so offer that instead of leaving it stuck.
+                                    removed = await ShowRemoveFromAppOnlyDialog(installation, e.Message);
+                                    if (removed)
+                                    {
+                                        await Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, filesToDelete, collections, cleanGameFolder: false));
+                                    }
+                                }
+
+                                // On Cancel nothing was removed and the game is still managed.
+                                vm.State = removed ? GameWidgetState.DetectedGame : stateBeforeRemoving;
                             });
 
                             vm.ViewGameCommand = ReactiveCommand.Create(() =>
@@ -232,9 +249,9 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         return OneOf<None, CreateLoadoutJob, UnmanageGameJob>.FromT0(new None());
     }
 
-    private async Task RemoveGame(GameInstallation installation, bool shouldDeleteDownloads, LibraryFile.ReadOnly[] filesToDelete, CollectionMetadata.ReadOnly[] collections)
+    private async Task RemoveGame(GameInstallation installation, bool shouldDeleteDownloads, LibraryFile.ReadOnly[] filesToDelete, CollectionMetadata.ReadOnly[] collections, bool cleanGameFolder = true)
     {
-        await _syncService.UnManage(installation);
+        await _syncService.UnManage(installation, cleanGameFolder: cleanGameFolder);
 
         if (!shouldDeleteDownloads) return;
         await _libraryService.RemoveLibraryItems(filesToDelete.Select(file => file.AsLibraryItem()));
@@ -250,8 +267,19 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         if (GetJobRunningForGameInstallation(installation).IsT1) return;
 
         vm.State = GameWidgetState.AddingGame;
-        var loadout = await Task.Run(async () => await ManageGame(installation));
-        
+        Loadout.ReadOnly loadout;
+        try
+        {
+            loadout = await Task.Run(async () => await ManageGame(installation));
+        }
+        catch (SynchronizerPreflightException e)
+        {
+            // Nothing was written, so the game goes back to being a detected game with the reason shown.
+            vm.State = GameWidgetState.DetectedGame;
+            await ShowCannotAddGameDialog(installation, e.Message);
+            return;
+        }
+
         // Check if there are external changes
         var changeEntries = await GetExternalChangesItems(loadout);
         vm.State = GameWidgetState.ManagedGame;
@@ -332,6 +360,48 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         return (await _windowManager.ShowDialog(dialog, DialogWindowType.Modal)).ButtonId;
     }
     
+    private async Task ShowCannotAddGameDialog(GameInstallation installation, string message)
+    {
+        var markdownVm = _serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
+        markdownVm.Contents = message;
+
+        var dialog = DialogFactory.CreateStandardDialog(
+            title: $"{installation.Game.DisplayName} can't be added yet",
+            new StandardDialogParameters { Markdown = markdownVm },
+            buttonDefinitions: [new DialogButtonDefinition("OK", ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Primary)]
+        );
+
+        await _windowManager.ShowDialog(dialog, DialogWindowType.Modal);
+    }
+
+    /// <summary>
+    /// Asks whether to remove the game without cleaning its game folder, because cleaning is not possible.
+    /// </summary>
+    private async Task<bool> ShowRemoveFromAppOnlyDialog(GameInstallation installation, string reason)
+    {
+        var markdownVm = _serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
+        markdownVm.Contents = $"""
+            {reason}
+
+            Until that is fixed the game folder can't be cleaned, but you can still remove {installation.Game.DisplayName} from the app only.
+            #### Important
+            - Mod files the app already deployed stay where they are.
+            - To get the vanilla game files back, verify them in Steam ("Verify integrity of game files") or in the game's launcher.
+            """;
+
+        var dialog = DialogFactory.CreateStandardDialog(
+            title: $"Can't clean the {installation.Game.DisplayName} folder",
+            new StandardDialogParameters { Markdown = markdownVm },
+            buttonDefinitions:
+            [
+                new DialogButtonDefinition("Cancel", ButtonDefinitionId.Cancel),
+                new DialogButtonDefinition("Remove from the app only", ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Primary),
+            ]
+        );
+
+        return (await _windowManager.ShowDialog(dialog, DialogWindowType.Modal)).ButtonId == ButtonDefinitionId.Accept;
+    }
+
     private async Task CleanGameFolder(GameInstallation installation, Loadout.ReadOnly loadout)
     {
         var db = _connection.Db;

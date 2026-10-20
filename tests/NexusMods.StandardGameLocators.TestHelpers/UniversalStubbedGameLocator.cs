@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Paths;
@@ -20,6 +21,18 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
     private readonly GameStore[] _stores;
 
     public LocatorId[] LocatorIds { get; set; } = [LocatorId.From("StubbedGameState.zip")];
+
+    /// <summary>
+    /// The platform reported for the located game. Set it together with <see cref="WinePrefixPath"/> to
+    /// stand in for a Windows build running under Proton.
+    /// </summary>
+    public OSPlatform Platform { get; set; } = OSPlatform.Linux;
+
+    /// <summary>
+    /// The prefix directory reported for the located game, or null for a native Linux build. It does not
+    /// have to exist: a game that was never launched has no prefix yet.
+    /// </summary>
+    public AbsolutePath? WinePrefixPath { get; set; }
 
     public UniversalStubbedGameLocator(
         IServiceProvider serviceProvider,
@@ -57,6 +70,8 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
                 Store = store,
                 Path = _locatedPath,
                 StoreIdentifier = LocatorIds[0].Value,
+                Platform = Platform,
+                WinePrefixPath = WinePrefixPath,
             };
         }
     }
