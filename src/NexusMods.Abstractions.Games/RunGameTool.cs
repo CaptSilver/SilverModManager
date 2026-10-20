@@ -34,6 +34,7 @@ public class RunGameTool<T> : IRunGameTool
     private readonly T _game;
     private readonly IProcessRunner _processRunner;
     private readonly IOSInterop _osInterop;
+    private readonly IProcessTracker _processTracker;
 
     /// <summary>
     /// Whether this tool should be started through the shell instead of directly.
@@ -50,6 +51,7 @@ public class RunGameTool<T> : IRunGameTool
         _logger = serviceProvider.GetRequiredService<ILogger<RunGameTool<T>>>();
         _processRunner = serviceProvider.GetRequiredService<IProcessRunner>();
         _osInterop = serviceProvider.GetRequiredService<IOSInterop>();
+        _processTracker = serviceProvider.GetRequiredService<IProcessTracker>();
     }
 
     /// <inheritdoc />
@@ -106,7 +108,7 @@ public class RunGameTool<T> : IRunGameTool
         // In the case of something like Skyrim this means we will start with loading skse64_loader.exe then
         // notice that SkyrimSE.exe is running and wait for that to exit.
 
-        var existing = FindMatchingProcesses(names).Select(p => p.Id).ToHashSet();
+        var existing = FindMatchingProcesses(names).Select(p => p.Pid).ToHashSet();
             
         if (UseShell)
         {
@@ -133,11 +135,11 @@ public class RunGameTool<T> : IRunGameTool
 
         _logger.LogInformation("Finished running {Program}", program);
 
-        HashSet<Process> CheckForNewProcesses()
+        HashSet<TrackedProcess> CheckForNewProcesses()
         {
             // Check if the process has spawned any new processes that we need to wait for (e.g. Launcher -> Game)
             var hashSet = FindMatchingProcesses(names)
-                .Where(p => !existing.Contains(p.Id))
+                .Where(p => !existing.Contains(p.Pid))
                 .ToHashSet();
             return hashSet;
         }
@@ -261,11 +263,9 @@ public class RunGameTool<T> : IRunGameTool
         }
     }
 
-    private static HashSet<Process> FindMatchingProcesses(HashSet<string> names)
+    private HashSet<TrackedProcess> FindMatchingProcesses(HashSet<string> names)
     {
-        return Process.GetProcesses()
-            .Where(p => names.Contains(p.ProcessName))
-            .ToHashSet();
+        return names.SelectMany(_processTracker.FindByName).ToHashSet();
     }
 
     /// <summary>

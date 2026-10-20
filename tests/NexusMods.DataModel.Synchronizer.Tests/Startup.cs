@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Backend;
 using NexusMods.CrossPlatform;
 using NexusMods.Games.Generic;
+using NexusMods.Games.TestFramework;
 using NexusMods.Paths;
 using NexusMods.Sdk.Settings;
 
@@ -22,7 +23,8 @@ public class Startup
             .AddFileSystem()
             .AddOSInterop()
             .AddRuntimeDependencies()
-            .AddGenericGameSupport();
+            .AddGenericGameSupport()
+            .AddFakeProcessTracker();
     }
 }
 

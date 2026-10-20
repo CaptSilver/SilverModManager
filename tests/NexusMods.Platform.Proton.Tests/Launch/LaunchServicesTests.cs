@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Sdk.Games;
 using NSubstitute;
 
 namespace NexusMods.Platform.Proton.Tests.Launch;
@@ -36,5 +37,17 @@ public class LaunchServicesTests
         using var provider = services.BuildServiceProvider();
         var act = () => provider.GetRequiredService<IInstallationLockFactory>().Create("steam", "1");
         act.Should().Throw<InvalidOperationException>().WithMessage("*XDG_RUNTIME_DIR*");
+    }
+
+    [Fact]
+    public void AddHeadlessLaunch_RegistersTheProcTracker()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IEnvironmentReader>());
+        services.AddHeadlessLaunch();
+
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+
+        provider.GetRequiredService<IProcessTracker>().Should().BeOfType<ProcProcessTracker>();
     }
 }

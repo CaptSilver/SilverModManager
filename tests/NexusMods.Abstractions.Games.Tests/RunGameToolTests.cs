@@ -15,6 +15,7 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
 {
     private readonly CancellationTokenSource _cts = new();
     private readonly List<Uri> _openedUris = [];
+    private readonly IProcessRunner _processRunner = Substitute.For<IProcessRunner>();
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
@@ -40,8 +41,10 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
                 LocatorIds = [LocatorId.From("3976631895")],
             })
             .AddSingleton(osInterop)
-            .AddSingleton(Substitute.For<IProcessRunner>());
+            .AddSingleton(_processRunner);
     }
+
+    private FakeProcessTracker Tracker => ServiceProvider.GetRequiredService<FakeProcessTracker>();
 
     private sealed class ArgsTool(IServiceProvider provider, StubbedGame game, string[] extraArgs) : RunGameTool<StubbedGame>(provider, game)
     {
@@ -88,5 +91,44 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
         var appId = GameInstallation.LocatorResult.StoreIdentifier;
         _openedUris.Should().ContainSingle()
             .Which.Should().Be(new Uri($"steam://run/{appId}//-extra/"));
+    }
+
+    private sealed class LauncherTool(IServiceProvider provider, StubbedGame game) : RunGameTool<StubbedGame>(provider, game)
+    {
+        public override async ValueTask<LaunchSpec> GetLaunchSpec(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
+        {
+            var baseSpec = await base.GetLaunchSpec(loadout, cancellationToken);
+            return baseSpec with { Exe = baseSpec.Exe.Parent.Combine("launcher.exe") };
+        }
+    }
+
+    [Fact]
+    public async Task Execute_WaitsForGameProcessesTheTrackerFindsAfterTheLaunch()
+    {
+        // Not the primary file, so the tool starts the launcher itself instead of going through the store.
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+        var tool = new LauncherTool(ServiceProvider, Game);
+        var gameExe = GameInstallation.Locations.ToAbsolutePath(Game.GetPrimaryFile(GameInstallation)).FileName;
+
+        // The game is already running once; the launcher starts a second copy that has to exit too.
+        var launched = false;
+        var polls = 0;
+        Tracker.ByName = name =>
+        {
+            if (name != gameExe) return [];
+            if (!launched) return [new TrackedProcess(10, name)];
+            polls++;
+            return polls == 1 ? [new TrackedProcess(10, name), new TrackedProcess(11, name)] : [new TrackedProcess(10, name)];
+        };
+        _processRunner.RunAsync(Arg.Any<CliWrap.Command>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            launched = true;
+            return Task.FromResult(new CliWrap.CommandResult(0, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow));
+        });
+
+        await tool.Execute(loadout, CancellationToken.None, []);
+
+        polls.Should().Be(2, "it polls again while the new process is alive and stops once only the old one is left");
+        Tracker.NameQueries.Should().Contain(["launcher.exe", gameExe]);
     }
 }
