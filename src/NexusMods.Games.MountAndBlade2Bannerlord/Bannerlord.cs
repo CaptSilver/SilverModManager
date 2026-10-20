@@ -59,7 +59,7 @@ public sealed class Bannerlord : IGame, IGameData<Bannerlord>
         DiagnosticEmitters =
         [
             new BannerlordDiagnosticEmitter(serviceProvider),
-            new MissingProtontricksEmitter(serviceProvider),
+            new NoWayToRunBannerlordEmitter(serviceProvider),
             serviceProvider.GetRequiredService<ProtonPrefixEmitter>(),
         ];
 

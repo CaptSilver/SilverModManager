@@ -815,19 +815,24 @@ All dependency entries must include an ID to properly identify the required mod.
     
     [DiagnosticTemplate]
     [UsedImplicitly]
-    internal static IDiagnosticTemplate MissingProtontricksForRedMod = DiagnosticTemplateBuilder
+    internal static IDiagnosticTemplate NoWayToRunBannerlord = DiagnosticTemplateBuilder
         .Start()
-        .WithId(new DiagnosticId(Source, number: 16))
-        .WithTitle("Missing Protontricks")
+        .WithId(new DiagnosticId(Source, number: 18))
+        .WithTitle("No way to run Bannerlord")
         .WithSeverity(DiagnosticSeverity.Critical)
-        .WithSummary("Protontricks is required to run the game but is not present.")
+        .WithSummary("Bannerlord is a Windows program and nothing on this system can run it.")
         .WithDetails("""
-Protontricks is required to run the game but is not present.
+The app found no way to run this copy of Bannerlord, so it cannot start the game with your mods.
 
-Refer to the {ProtontricksUri} for installation instructions.
+### How to Resolve
+1. Make sure the game is set up to run through Proton, umu or Wine, for example by launching it once from Steam or Heroic.
+2. Restart the app.
+
+### Technical Details
+{Reason}
 """)
         .WithMessageData(messageBuilder => messageBuilder
-            .AddValue<NamedLink>("ProtontricksUri")
+            .AddValue<string>("Reason")
         )
         .Finish();
     

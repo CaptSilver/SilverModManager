@@ -1,9 +1,7 @@
 using Bannerlord.LauncherManager.Utils;
-using CliWrap;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
-using NexusMods.Games.Generic;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using static Bannerlord.LauncherManager.Constants;
@@ -17,9 +15,9 @@ public class BannerlordRunGameTool : RunGameTool<Bannerlord>
 {
     private readonly ILogger<BannerlordRunGameTool> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly GameToolRunner _runner;
+    private readonly IToolRunner _runner;
 
-    public BannerlordRunGameTool(IServiceProvider serviceProvider, Bannerlord game, GameToolRunner runner)
+    public BannerlordRunGameTool(IServiceProvider serviceProvider, Bannerlord game, IToolRunner runner)
         : base(serviceProvider, game)
     {
         _serviceProvider = serviceProvider;
@@ -60,14 +58,12 @@ public class BannerlordRunGameTool : RunGameTool<Bannerlord>
         var spec = await GetLaunchSpec(loadout, cancellationToken);
 
         // External arguments specified by outside entities are preserved, ahead of the ones the tool adds.
-        var command = Cli.Wrap(spec.Exe.ToString())
-            .WithArguments([..commandLineArgs ?? [], ..spec.ExtraArgs])
-            .WithWorkingDirectory(spec.Exe.Parent.ToString());
+        // The runner starts the exe in its own folder.
+        var result = await _runner.RunWindowsTool(loadout.InstallationInstance, spec.Exe, [..commandLineArgs ?? [], ..spec.ExtraArgs], null, true, cancellationToken);
 
-        // Note(sewer): We use the tool runner to execute an alternative process,
-        //              but because the UI expects `RunGameTool`, we override the `RunGameTool's` executor
-        //              with `GameToolRunner` implementation.
-        await _runner.ExecuteAsync(loadout, command, true, cancellationToken);
+        // The runner hands back the exit code rather than throwing on it; a game closing badly is not a failed launch.
+        if (result.ExitCode != 0)
+            _logger.LogWarning("Application closed with a non-zero exit code ({ExitCode}): {Application}", result.ExitCode, spec.Exe);
     }
 
     // TODO: Refactor Bannerlord.LauncherManager so we don't have to copy (some) of the commandline logic.
