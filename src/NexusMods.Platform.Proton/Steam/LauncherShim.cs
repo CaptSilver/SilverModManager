@@ -27,7 +27,7 @@ public sealed class LauncherShim(AbsolutePath dataHome)
     public bool Write(AbsolutePath target)
     {
         var path = ShimPath.ToString();
-        var content = $"#!/bin/sh\nexec {ShellQuote(target.ToString())} \"$@\"\n";
+        var content = ContentFor(target);
 
         if (File.Exists(path) && File.ReadAllText(path) == content && File.GetUnixFileMode(path) == Mode) return false;
 
@@ -39,6 +39,15 @@ public sealed class LauncherShim(AbsolutePath dataHome)
         File.SetUnixFileMode(temp, Mode);
         File.Move(temp, path, overwrite: true);
         return true;
+    }
+
+    /// <summary>
+    /// Whether the script exists and execs <paramref name="target"/>.
+    /// </summary>
+    public bool Targets(AbsolutePath target)
+    {
+        var path = ShimPath.ToString();
+        return File.Exists(path) && File.ReadAllText(path) == ContentFor(target);
     }
 
     /// <summary>
@@ -56,6 +65,8 @@ public sealed class LauncherShim(AbsolutePath dataHome)
             : fileSystem.GetKnownPath(KnownPath.HomeDirectory);
         return homePath.Combine(".local/share");
     }
+
+    private static string ContentFor(AbsolutePath target) => $"#!/bin/sh\nexec {ShellQuote(target.ToString())} \"$@\"\n";
 
     private static string ShellQuote(string value) => "'" + value.Replace("'", @"'\''") + "'";
 }

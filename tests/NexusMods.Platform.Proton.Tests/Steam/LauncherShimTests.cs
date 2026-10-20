@@ -45,6 +45,18 @@ public class LauncherShimTests : IDisposable
     }
 
     [Fact]
+    public void Test_TargetsOnlyTheExecutableItWasWrittenFor()
+    {
+        var shim = Shim;
+        shim.Targets(Path("app")).Should().BeFalse("the script does not exist yet");
+
+        shim.Write(Path("app"));
+
+        shim.Targets(Path("app")).Should().BeTrue();
+        shim.Targets(Path("other")).Should().BeFalse();
+    }
+
+    [Fact]
     public void Test_WriteLeavesFileUntouchedWhenTargetIsSame()
     {
         var shim = Shim;

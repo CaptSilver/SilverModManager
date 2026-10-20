@@ -38,7 +38,7 @@ public static class Services
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
         services.TryAddSingleton<LocalConfigVdfWriter>();
-        return services.AddDoctorVerbs();
+        return services.AddDoctorVerbs().AddSelftestVerbs();
     }
 
     /// <summary>

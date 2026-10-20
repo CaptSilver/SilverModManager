@@ -7,7 +7,7 @@ namespace NexusMods.Platform.Proton.Tests.Launch;
 /// </summary>
 internal static class TestHost
 {
-    private static readonly string Dll = Locate();
+    internal static readonly string Dll = Locate();
 
     /// <summary>
     /// The helper is built through a ProjectReference without referencing its assembly, so its output
