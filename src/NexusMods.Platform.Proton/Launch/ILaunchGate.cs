@@ -1,0 +1,42 @@
+using NexusMods.Sdk.Loadouts;
+using NexusMods.Sdk.Games;
+
+namespace NexusMods.Platform.Proton.Launch;
+
+/// <summary>
+/// The launch a gate is asked about.
+/// </summary>
+/// <param name="Installation">The game being launched.</param>
+/// <param name="LoadoutId">The loadout being applied for it.</param>
+/// <param name="LoadoutName">The loadout's name, for messages.</param>
+public sealed record LaunchContext(GameInstallation Installation, LoadoutId LoadoutId, string LoadoutName);
+
+/// <summary>
+/// A gate's reason for refusing a launch.
+/// </summary>
+/// <param name="Message">What the user is told. It is the whole message: the session adds nothing to it.</param>
+public sealed record Veto(string Message);
+
+/// <summary>
+/// A step a launch takes part in without owning, such as a check that the game's prerequisites are in place.
+/// Gates run in registration order before the game starts and again, in the same order, after it exits.
+/// </summary>
+public interface ILaunchGate
+{
+    /// <summary>
+    /// Whether the launch may go ahead. Runs once the installation lock is held and before anything is applied,
+    /// so it must not change the game folder.
+    /// </summary>
+    Veto? Check(LaunchContext context);
+
+    /// <summary>
+    /// Runs after the loadout has been applied and before the game starts. A throw fails the launch.
+    /// </summary>
+    Task Prepare(LaunchContext context, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Runs after the game has exited, before its changes are ingested. Does not run when the game could not be
+    /// shut down, because the game folder is still in use.
+    /// </summary>
+    Task Finish(LaunchContext context);
+}

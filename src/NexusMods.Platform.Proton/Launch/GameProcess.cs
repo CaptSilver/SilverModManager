@@ -32,7 +32,7 @@ public sealed record GameProcessResult(int ExitCode, TrackedProcess? KillFailed)
 /// terminal's Ctrl-C and a closing session reach it without help. Steam's reaper and Proton need to be
 /// children of whoever started them, which rules out <c>setsid</c> or a detached spawn.
 /// </summary>
-public sealed partial class GameProcess : IDisposable
+public sealed partial class GameProcess : IGameProcess
 {
     /// <summary>
     /// How long a process gets between each step of shutting down: to exit by itself, to act on SIGTERM.

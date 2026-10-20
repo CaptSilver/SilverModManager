@@ -19,6 +19,9 @@ public static class LaunchServices
         services.TryAddSingleton<IDesktopNotifier, DesktopNotifier>();
         services.TryAddSingleton<ActiveLaunchSessions>();
         services.TryAddSingleton<IGameLaunchSession>(s => s.GetRequiredService<ActiveLaunchSessions>());
+        services.TryAddSingleton<IGameProcessFactory, GameProcessFactory>();
+        services.TryAddSingleton<ILaunchSynchronizer, SynchronizerServiceLaunchSynchronizer>();
+        services.TryAddTransient<LaunchSession>();
         return services.AddSingleton<IInstallationLockFactory, InstallationLockFactory>();
     }
 }

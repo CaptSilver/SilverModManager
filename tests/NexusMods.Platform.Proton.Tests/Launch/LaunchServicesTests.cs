@@ -1,8 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Loadouts;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Loadouts;
 using NSubstitute;
 
 namespace NexusMods.Platform.Proton.Tests.Launch;
@@ -65,6 +67,39 @@ public class LaunchServicesTests
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
 
         provider.GetRequiredService<IDesktopNotifier>().Should().BeOfType<DesktopNotifier>();
+    }
+
+    [Fact]
+    public void AddHeadlessLaunch_RegistersEverythingALaunchSessionNeeds()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IEnvironmentReader>());
+        AddDesktopNotifierDependencies(services);
+        services.AddHeadlessLaunch();
+
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+
+        provider.GetRequiredService<LaunchSession>().Should().NotBeNull();
+        provider.GetRequiredService<LaunchSession>().Should().NotBeSameAs(provider.GetRequiredService<LaunchSession>(), "each launch is its own session");
+        provider.GetRequiredService<IGameProcessFactory>().Should().NotBeNull();
+        provider.GetRequiredService<ILaunchSynchronizer>().Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task TheLaunchSynchronizer_RefusesASynchronizerServiceWithoutTheLaunchEntry()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IEnvironmentReader>());
+        AddDesktopNotifierDependencies(services);
+        var other = Substitute.For<ISynchronizerService>();
+        services.AddSingleton(other);
+        services.AddHeadlessLaunch();
+        using var provider = services.BuildServiceProvider();
+
+        var act = () => provider.GetRequiredService<ILaunchSynchronizer>().Synchronize(LoadoutId.From(1));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await other.DidNotReceiveWithAnyArgs().Synchronize(default);
     }
 
     private static void AddDesktopNotifierDependencies(IServiceCollection services)
