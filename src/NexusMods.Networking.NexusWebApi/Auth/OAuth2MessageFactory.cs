@@ -35,6 +35,14 @@ public class OAuth2MessageFactory : BaseHttpMessageFactory, IAuthenticatingMessa
         if (!JWTToken.TryFind(_conn.Db, out var token)) return null;
         if (!token.HasExpired) return token.AccessToken;
 
+        if (!_auth.HasClientId)
+        {
+            // Without a client id the refresh request cannot be made. Leave the stored token alone
+            // and report no usable credential, so the user is asked to sign in again or use an API key.
+            _logger.LogWarning("The OAuth token has expired and no OAuth client id is configured to refresh it; sign in again or use an API key");
+            return null;
+        }
+
         _logger.LogDebug("Refreshing expired OAuth token");
 
         var newToken = await _auth.RefreshToken(token.RefreshToken, cancellationToken);

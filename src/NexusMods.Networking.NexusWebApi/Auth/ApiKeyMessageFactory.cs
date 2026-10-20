@@ -1,4 +1,5 @@
 using NexusMods.Abstractions.NexusWebApi;
+using NexusMods.Abstractions.NexusWebApi.DTOs;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.MnemonicDB.Abstractions;
 
@@ -67,12 +68,17 @@ public class ApiKeyMessageFactory(IConnection conn) : BaseHttpMessageFactory, IA
     public async ValueTask<UserInfo?> Verify(INexusApiClient nexusApiNexusApiClient, CancellationToken token)
     {
         var result = await nexusApiNexusApiClient.Validate(token);
-        return new UserInfo
-        {
-            UserId = result.Data.UserId,
-            Name = result.Data.Name,
-            UserRole = result.Data.IsPremium ? UserRole.Premium : result.Data.IsSupporter ? UserRole.Supporter : UserRole.Free,
-            AvatarUrl = result.Data.ProfileUrl,
-        };
+        return ToUserInfo(result.Data);
     }
+
+    /// <summary>
+    /// The account described by a validate response.
+    /// </summary>
+    internal static UserInfo ToUserInfo(ValidateInfo info) => new()
+    {
+        UserId = info.UserId,
+        Name = info.Name,
+        UserRole = info.IsPremium ? UserRole.Premium : info.IsSupporter ? UserRole.Supporter : UserRole.Free,
+        AvatarUrl = info.ProfileUrl,
+    };
 }

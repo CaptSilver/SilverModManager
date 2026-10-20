@@ -54,9 +54,9 @@ internal static class AuthTestSupport
         await tx.Commit();
     }
 
-    public static OAuth CreateOAuth(IJobMonitor jobMonitor, HttpMessageHandler handler)
+    public static OAuth CreateOAuth(IJobMonitor jobMonitor, HttpMessageHandler handler, string oauthClientId = "test-client")
     {
-        var settings = CreateSettings("test-client");
+        var settings = CreateSettings(oauthClientId);
         return new OAuth(jobMonitor, NullLogger<OAuth>.Instance, new HttpClient(handler), Substitute.For<IIDGenerator>(), Substitute.For<IOSInterop>(), settings);
     }
 

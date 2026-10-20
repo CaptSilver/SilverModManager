@@ -7,8 +7,8 @@ namespace NexusMods.App.UI.Overlays.Login;
 /// </summary>
 public sealed class ApiKeyPrompt(IOverlayController overlayController) : IApiKeyPrompt
 {
-    public async ValueTask<string?> PromptAsync(CancellationToken cancellationToken)
+    public async ValueTask<string?> PromptAsync(Func<string, CancellationToken, ValueTask<string?>> validate, CancellationToken cancellationToken)
     {
-        return await overlayController.EnqueueAndWait(new ApiKeyLoginOverlayViewModel()).WaitAsync(cancellationToken);
+        return await overlayController.EnqueueAndWait(new ApiKeyLoginOverlayViewModel(validate)).WaitAsync(cancellationToken);
     }
 }

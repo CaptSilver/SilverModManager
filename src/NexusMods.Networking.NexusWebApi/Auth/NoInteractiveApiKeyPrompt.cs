@@ -8,7 +8,7 @@ namespace NexusMods.Networking.NexusWebApi.Auth;
 /// </summary>
 internal sealed class NoInteractiveApiKeyPrompt : IApiKeyPrompt
 {
-    public ValueTask<string?> PromptAsync(CancellationToken cancellationToken)
+    public ValueTask<string?> PromptAsync(Func<string, CancellationToken, ValueTask<string?>> validate, CancellationToken cancellationToken)
     {
         throw new InvalidOperationException("No interactive prompt; run `nexus-api-key <key>`");
     }

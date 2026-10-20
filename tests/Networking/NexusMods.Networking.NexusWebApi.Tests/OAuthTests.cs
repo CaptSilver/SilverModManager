@@ -47,6 +47,18 @@ public class OAuthTests
     }
 
     [Fact]
+    public async Task RefreshTokenThrowsWithoutClientIdAndSendsNothing()
+    {
+        var messageHandler = Substitute.ForPartsOf<MockHttpMessageHandler>();
+        var oauth = new OAuth(_jobMonitor, _logger, new HttpClient(messageHandler), Substitute.For<IIDGenerator>(), Substitute.For<IOSInterop>(), CreateSettings(""));
+
+        Func<Task> call = () => oauth.RefreshToken("refresh_token", CancellationToken.None);
+        await call.Should().ThrowAsync<InvalidOperationException>().WithMessage("No OAuth client id configured*");
+
+        await messageHandler.DidNotReceive().SendMock(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task RefreshTokenSendsConfiguredClientId()
     {
         var messageHandler = Substitute.ForPartsOf<MockHttpMessageHandler>();

@@ -28,6 +28,12 @@ public partial class ApiKeyLoginOverlayView : ReactiveUserControl<IApiKeyLoginOv
             this.Bind(ViewModel, vm => vm.ApiKey.Value, view => view.ApiKeyTextBox.Text)
                 .AddTo(disposables);
 
+            this.OneWayBind(ViewModel, vm => vm.ErrorMessage.Value, view => view.ErrorText.Text)
+                .AddTo(disposables);
+
+            this.OneWayBind(ViewModel, vm => vm.ErrorMessage.Value, view => view.ErrorText.IsVisible, message => !string.IsNullOrEmpty(message))
+                .AddTo(disposables);
+
             this.BindCommand(ViewModel, vm => vm.CommandSave, view => view.ButtonSave)
                 .AddTo(disposables);
 

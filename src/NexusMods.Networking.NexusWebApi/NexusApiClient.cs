@@ -45,6 +45,15 @@ public class NexusApiClient : INexusApiClient
         return await SendAsync<ValidateInfo>(msg, token);
     }
 
+    /// <inheritdoc />
+    public async Task<Response<ValidateInfo>> Validate(string apiKey, CancellationToken token = default)
+    {
+        // Built without the injected factory, which would attach the stored credential.
+        var msg = await new BaseHttpMessageFactory().Create(HttpMethod.Get, new Uri($"{ClientConfig.LegacyApiEndpoint}/users/validate.json"));
+        msg.Headers.Add("apikey", apiKey);
+        return await SendAsync<ValidateInfo>(msg, token);
+    }
+
     /// <summary>
     /// Retrieves information about the current user when logged in via OAuth.
     /// </summary>

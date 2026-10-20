@@ -11,9 +11,9 @@ namespace NexusMods.UI.Tests.Overlays;
 
 public class ApiKeyLoginOverlayTests
 {
-    private static ApiKeyLoginOverlayViewModel CreateViewModel()
+    private static ApiKeyLoginOverlayViewModel CreateViewModel(Func<string, CancellationToken, ValueTask<string?>>? validate = null)
     {
-        return new ApiKeyLoginOverlayViewModel { Controller = Substitute.For<IOverlayController>() };
+        return new ApiKeyLoginOverlayViewModel(validate ?? ((_, _) => ValueTask.FromResult<string?>(null))) { Controller = Substitute.For<IOverlayController>() };
     }
 
     [Fact]
@@ -43,6 +43,34 @@ public class ApiKeyLoginOverlayTests
     }
 
     [Fact]
+    public void ARefusedKeyKeepsTheDialogOpenAndShowsWhy()
+    {
+        var viewModel = CreateViewModel((_, _) => ValueTask.FromResult<string?>("Nexus Mods rejected this API key."));
+        viewModel.ApiKey.Value = "abc";
+
+        viewModel.CommandSave.Execute(Unit.Default);
+
+        viewModel.ErrorMessage.Value.Should().Be("Nexus Mods rejected this API key.");
+        viewModel.CompletionTask.IsCompleted.Should().BeFalse();
+        viewModel.Result.Should().BeNull();
+    }
+
+    [Fact]
+    public void AcceptedKeyAfterARefusalClearsTheMessage()
+    {
+        var answers = new Queue<string?>(["Nexus Mods rejected this API key.", null]);
+        var viewModel = CreateViewModel((_, _) => ValueTask.FromResult(answers.Dequeue()));
+        viewModel.ApiKey.Value = "abc";
+
+        viewModel.CommandSave.Execute(Unit.Default);
+        viewModel.ApiKey.Value = "def";
+        viewModel.CommandSave.Execute(Unit.Default);
+
+        viewModel.ErrorMessage.Value.Should().BeEmpty();
+        viewModel.Result.Should().Be("def");
+    }
+
+    [Fact]
     public void CancelCompletesWithoutAKey()
     {
         var viewModel = CreateViewModel();
@@ -60,7 +88,7 @@ public class ApiKeyLoginOverlayTests
         var controller = Substitute.For<IOverlayController>();
         controller.EnqueueAndWait(Arg.Any<IOverlayViewModel<string>>()).Returns("typed-key");
 
-        var key = await new ApiKeyPrompt(controller).PromptAsync(CancellationToken.None);
+        var key = await new ApiKeyPrompt(controller).PromptAsync((_, _) => ValueTask.FromResult<string?>(null), CancellationToken.None);
 
         key.Should().Be("typed-key");
     }
@@ -71,7 +99,7 @@ public class ApiKeyLoginOverlayTests
         var controller = Substitute.For<IOverlayController>();
         controller.EnqueueAndWait(Arg.Any<IOverlayViewModel<string>>()).Returns((string?)null);
 
-        var key = await new ApiKeyPrompt(controller).PromptAsync(CancellationToken.None);
+        var key = await new ApiKeyPrompt(controller).PromptAsync((_, _) => ValueTask.FromResult<string?>(null), CancellationToken.None);
 
         key.Should().BeNull();
     }

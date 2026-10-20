@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using DynamicData.Aggregation;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
@@ -10,7 +11,6 @@ using NexusMods.MnemonicDB.Abstractions.Query;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Networking.NexusWebApi.Auth;
 using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
 using NexusMods.Sdk.Threading;
 using R3;
 
@@ -27,7 +27,6 @@ public sealed class LoginManager : IDisposable, ILoginManager
     private readonly OAuth _oauth;
     private readonly NexusApiClient _nexusApiClient;
     private readonly IAuthenticatingMessageFactory _msgFactory;
-    private readonly ISettingsManager _settingsManager;
     private readonly IApiKeyPrompt _apiKeyPrompt;
 
     private readonly BehaviorSubject<UserInfo?> _userInfo = new(initialValue: null);
@@ -71,12 +70,10 @@ public sealed class LoginManager : IDisposable, ILoginManager
         NexusApiClient nexusApiClient,
         IAuthenticatingMessageFactory msgFactory,
         OAuth oauth,
-        ISettingsManager settingsManager,
         IApiKeyPrompt apiKeyPrompt,
         ILogger<LoginManager> logger)
     {
         _oauth = oauth;
-        _settingsManager = settingsManager;
         _apiKeyPrompt = apiKeyPrompt;
         _conn = conn;
         _msgFactory = msgFactory;
@@ -112,6 +109,8 @@ public sealed class LoginManager : IDisposable, ILoginManager
                         userInfo = null;
                     }
 
+                    // A key verified while this check was in flight is newer than its result.
+                    userInfo = _cachedUserInfo.Get() ?? userInfo;
                     _cachedUserInfo.Store(userInfo);
                     _userInfo.OnNext(userInfo);
                 }
@@ -266,7 +265,7 @@ public sealed class LoginManager : IDisposable, ILoginManager
     {
         // OAuth needs a client id registered for this app. Without one the key dialog is the only
         // way in, so go straight to it instead of starting a flow that refuses.
-        if (string.IsNullOrWhiteSpace(_settingsManager.Get<NexusAuthSettings>().OAuthClientId))
+        if (!_oauth.HasClientId)
         {
             await LoginWithApiKeyAsync(token);
             return;
@@ -312,23 +311,47 @@ public sealed class LoginManager : IDisposable, ILoginManager
     /// </remarks>
     public async Task LoginWithApiKeyAsync(CancellationToken token = default)
     {
-        var key = (await _apiKeyPrompt.PromptAsync(token))?.Trim();
-        if (string.IsNullOrEmpty(key)) return;
+        // The key is checked against Nexus Mods while the dialog is open and stored only once it
+        // passes. Storing first and verifying afterwards let an unchecked key win over a working
+        // OAuth session (a stored key beats the token) for as long as the cached user was served.
+        UserInfo? verified = null;
+        var key = (await _apiKeyPrompt.PromptAsync(async (typed, cancellationToken) =>
+        {
+            verified = null;
+            try
+            {
+                var response = await _nexusApiClient.Validate(typed.Trim(), cancellationToken);
+                verified = ApiKeyMessageFactory.ToUserInfo(response.Data);
+                return null;
+            }
+            catch (HttpRequestException e) when (e.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                _logger.LogWarning(e, "Nexus Mods rejected the API key");
+                return "Nexus Mods did not accept this API key. Check that it was copied completely.";
+            }
+            catch (OperationCanceledException e) when (!cancellationToken.IsCancellationRequested)
+            {
+                // HttpClient reports its timeout as a cancellation; nobody cancelled the dialog.
+                _logger.LogWarning(e, "Timed out verifying the API key");
+                return "Nexus Mods did not answer in time. Try again.";
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                _logger.LogWarning(e, "Unable to verify the API key");
+                return $"Could not check the API key with Nexus Mods: {e.Message}";
+            }
+        }, token))?.Trim();
 
+        if (string.IsNullOrEmpty(key) || verified is null) return;
+
+        // Publish the verified account first so the credential observer, which fires once the key
+        // lands, finds it cached instead of asking again, and so it replaces any earlier user. The
+        // semaphore makes a check still running against the old credential store its result first.
+        using var _ = await _verifySemaphore.WaitAsyncDisposable(token);
+        _cachedUserInfo.Store(verified);
+        _userInfo.OnNext(verified);
         await ApiKey.Set(_conn, key);
-
-        try
-        {
-            await Verify(token);
-        }
-        catch (Exception e) when (e is not OperationCanceledException)
-        {
-            // A key that cannot be verified would be sent with every request and re-verified at
-            // each start, so drop it and let the user try again. Only the key goes: a stored OAuth
-            // token is unaffected by a bad paste.
-            _logger.LogError(e, "Unable to verify the API key, removing it");
-            await ExciseCredentials(ApiKey.All(_conn.Db).Select(key => key.Id));
-        }
+        await AddUserToDb(verified);
     }
 
     /// <summary>

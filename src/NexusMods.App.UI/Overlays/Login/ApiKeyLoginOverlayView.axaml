@@ -31,6 +31,10 @@
                                          TextWrapping="Wrap"
                                          Theme="{StaticResource BodyMDNormalTheme}" />
                     <TextBox x:Name="ApiKeyTextBox" PasswordChar="•" />
+                    <TextBlock x:Name="ErrorText"
+                               TextWrapping="Wrap"
+                               IsVisible="False"
+                               Theme="{StaticResource BodyMDNormalTheme}" />
                 </StackPanel>
             </Border>
         </base:MessageBoxBackground.TopContent>

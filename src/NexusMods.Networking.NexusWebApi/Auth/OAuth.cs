@@ -48,13 +48,28 @@ public class OAuth
     }
 
     /// <summary>
+    /// The client id registered for this app, or throws when none is configured. A request without
+    /// one must not go out, or it would be rejected or, worse, made as another app.
+    /// </summary>
+    private string RequireClientId()
+    {
+        var clientId = _settingsManager.Get<NexusAuthSettings>().OAuthClientId;
+        if (string.IsNullOrWhiteSpace(clientId)) throw new InvalidOperationException("No OAuth client id configured");
+        return clientId;
+    }
+
+    /// <summary>
+    /// False when no OAuth client id is configured, in which case <see cref="RefreshToken"/> and
+    /// <see cref="AuthorizeRequest"/> refuse.
+    /// </summary>
+    public bool HasClientId => !string.IsNullOrWhiteSpace(_settingsManager.Get<NexusAuthSettings>().OAuthClientId);
+
+    /// <summary>
     /// Make an authorization request
     /// </summary>
     public async Task<JwtTokenReply?> AuthorizeRequest(CancellationToken cancellationToken)
     {
-        // Without a client id registered for this app, refuse rather than sign in as another app.
-        var clientId = _settingsManager.Get<NexusAuthSettings>().OAuthClientId;
-        if (string.IsNullOrWhiteSpace(clientId)) throw new InvalidOperationException("No OAuth client id configured");
+        var clientId = RequireClientId();
 
         var job = OAuthJob.Create(
             jobMonitor: _jobMonitor,
@@ -85,10 +100,11 @@ public class OAuth
     /// <returns>a new token reply</returns>
     public async Task<JwtTokenReply?> RefreshToken(string refreshToken, CancellationToken cancel)
     {
+        var clientId = RequireClientId();
         var request = new Dictionary<string, string>
         {
             { "grant_type", "refresh_token" },
-            { "client_id", _settingsManager.Get<NexusAuthSettings>().OAuthClientId },
+            { "client_id", clientId },
             { "refresh_token", refreshToken },
         };
 

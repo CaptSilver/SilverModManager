@@ -17,6 +17,14 @@ public interface INexusApiClient
     Task<Response<ValidateInfo>> Validate(CancellationToken token = default);
 
     /// <summary>
+    /// Checks a specific API key against Nexus Mods, ignoring whatever credential is stored. Used
+    /// to verify a freshly pasted key before it is stored.
+    /// </summary>
+    /// <param name="apiKey">The key to check.</param>
+    /// <param name="token">Can be used to cancel this task.</param>
+    Task<Response<ValidateInfo>> Validate(string apiKey, CancellationToken token = default);
+
+    /// <summary>
     /// Retrieves information about the current user when logged in via OAuth.
     /// </summary>
     Task<Response<OAuthUserInfo>> GetOAuthUserInfo(CancellationToken cancellationToken = default);

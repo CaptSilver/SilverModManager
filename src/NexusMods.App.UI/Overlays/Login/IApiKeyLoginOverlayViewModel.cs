@@ -11,6 +11,11 @@ public interface IApiKeyLoginOverlayViewModel : IOverlayViewModel<string>
     BindableReactiveProperty<string> ApiKey { get; }
 
     /// <summary>
+    /// Why the last key was refused; empty when there is nothing to show.
+    /// </summary>
+    BindableReactiveProperty<string> ErrorMessage { get; }
+
+    /// <summary>
     /// Disabled while the box holds nothing but whitespace.
     /// </summary>
     ReactiveCommand<Unit> CommandSave { get; }
