@@ -32,9 +32,13 @@ public interface ISynchronizerService
     /// Moves the root to a different deployment backend. The game is first reset with the backend that
     /// currently owns it, then the new choice is recorded and the last applied loadout, if any, is applied again.
     /// </summary>
+    /// <param name="chosen">
+    /// True when a person picked the backend, which marks the row chosen. False when the selection chain made the pick,
+    /// which clears an earlier mark.
+    /// </param>
     /// <returns>False when the root already uses <paramref name="backend"/> and nothing was done.</returns>
     /// <throws cref="ExecutableInUseException">Thrown while the app is running a launch of this game.</throws>
-    public Task<bool> ChangeDeploymentBackend(GameInstallation installation, GamePath root, DeploymentBackendId backend);
+    public Task<bool> ChangeDeploymentBackend(GameInstallation installation, GamePath root, DeploymentBackendId backend, bool chosen);
 
     /// <summary>
     /// Get the diff tree of the unapplied changes of a loadout.

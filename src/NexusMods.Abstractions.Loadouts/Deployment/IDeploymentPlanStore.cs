@@ -15,14 +15,21 @@ public interface IDeploymentPlanStore
     DeploymentPlan Load(IDb db, GameInstallMetadataId installation);
 
     /// <summary>
-    /// Adds a copy entry to <paramref name="tx"/> for every location root the recorded plan misses and
-    /// returns the completed plan. Roots already recorded are left alone.
+    /// Adds an entry to <paramref name="tx"/> for every location root the recorded plan misses, with the
+    /// backend <paramref name="selector"/> picks for it, and returns the completed plan. Roots already
+    /// recorded are left alone.
     /// </summary>
-    DeploymentPlan EnsureComplete(ITransaction tx, IDb db, GameInstallation installation, GameInstallMetadataId id);
+    DeploymentPlan EnsureComplete(ITransaction tx, IDb db, GameInstallation installation, GameInstallMetadataId id, IDeploymentBackendSelector selector);
 
     /// <summary>
     /// Records <paramref name="backend"/> for <paramref name="root"/>, replacing the backend of an
-    /// existing entry for that root.
+    /// existing entry for that root. <paramref name="db"/> is where the existing entry is looked up, so
+    /// a write after <see cref="EnsureComplete"/> in the same transaction finds nothing the transaction added:
+    /// pass the db that <see cref="EnsureComplete"/> read.
     /// </summary>
-    void Write(ITransaction tx, GameInstallMetadataId installation, GamePath root, DeploymentBackendId backend);
+    /// <param name="chosen">
+    /// True when a person picked the backend. False clears a mark the row already carries, so the
+    /// selection chain may move it again.
+    /// </param>
+    void Write(ITransaction tx, IDb db, GameInstallMetadataId installation, GamePath root, DeploymentBackendId backend, bool chosen);
 }

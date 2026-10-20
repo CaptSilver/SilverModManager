@@ -41,7 +41,7 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
         {
             await AddModAsync(tx, ["mods/x"], loadout, "Mods");
             await AddModAsync(tx, ["other/y"], loadout, "Other");
-            _plans.Write(tx, installation, new GamePath(LocationId.Game, "mods"), StagingBackend);
+            _plans.Write(tx, Connection.Db, installation, new GamePath(LocationId.Game, "mods"), StagingBackend, chosen: false);
             await tx.Commit();
         }
 
@@ -79,7 +79,7 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
 
         using (var tx = Connection.BeginTransaction())
         {
-            _plans.Write(tx, installation, new GamePath(LocationId.Game, "mods"), StagingBackend);
+            _plans.Write(tx, Connection.Db, installation, new GamePath(LocationId.Game, "mods"), StagingBackend, chosen: false);
             AddDiskState(tx, installation, new GamePath(LocationId.Game, "mods/deployed"), deployed);
             AddDiskState(tx, installation, new GamePath(LocationId.Game, "other/elsewhere"), elsewhere);
             await tx.Commit();
@@ -142,7 +142,7 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
         // The apply commits its plan rows while it still holds the store.
         using (var tx = Connection.BeginTransaction())
         {
-            _plans.Write(tx, installation, new GamePath(LocationId.Game, "mods"), StagingBackend);
+            _plans.Write(tx, Connection.Db, installation, new GamePath(LocationId.Game, "mods"), StagingBackend, chosen: false);
             await tx.Commit();
         }
         hold.Dispose();

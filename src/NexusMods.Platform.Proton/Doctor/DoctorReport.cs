@@ -136,16 +136,29 @@ public sealed record DoctorLock(DoctorLockStatus Status, int? Pid, string? Loado
 /// <param name="Backend">Id of the backend the root is routed to.</param>
 /// <param name="Recorded">False when no row is stored and the root is routed to copy by default.</param>
 /// <param name="Registered">Whether a backend with that id is registered in this build.</param>
-public sealed record DoctorDeploymentRoot(string Root, string Backend, bool Recorded, bool Registered)
+/// <param name="Chosen">True when a person picked the backend, so the selection chain leaves it alone.</param>
+/// <param name="Reason">Why the selection chain recorded the backend.</param>
+/// <param name="Available">
+/// The backend the chain would pick now, when it differs from the one a person chose. Unchosen rows already hold the
+/// chain's own pick, so they never carry one.
+/// </param>
+public sealed record DoctorDeploymentRoot(string Root, string Backend, bool Recorded, bool Registered, bool Chosen = false, string? Reason = null, string? Available = null)
 {
     /// <summary>
     /// The recorded roots, followed by a copy entry for each location the recorded plan does not cover, which
     /// is what the synchronizer would route there.
     /// </summary>
-    public static IReadOnlyList<DoctorDeploymentRoot> From(DeploymentPlan recorded, GameLocations locations, IReadOnlySet<DeploymentBackendId> registered)
+    /// <param name="available">
+    /// The backend the selection chain picks for a root now, or null to skip the question. Only asked for chosen
+    /// rows, since answering it writes probe files into the root.
+    /// </param>
+    public static IReadOnlyList<DoctorDeploymentRoot> From(DeploymentPlan recorded, GameLocations locations, IReadOnlySet<DeploymentBackendId> registered, Func<GamePath, DeploymentBackendId?>? available = null)
     {
+        string? Differing(DeploymentPlanRoot row)
+            => !row.Chosen || available?.Invoke(row.Root) is not { } pick || pick == row.Backend ? null : pick.Value;
+
         var roots = recorded.Roots
-            .Select(r => new DoctorDeploymentRoot(Describe(r.Root), r.Backend.Value, Recorded: true, registered.Contains(r.Backend)));
+            .Select(r => new DoctorDeploymentRoot(Describe(r.Root), r.Backend.Value, Recorded: true, registered.Contains(r.Backend), r.Chosen, r.Reason, Differing(r)));
         var implied = recorded.MissingRoots(locations)
             .Select(r => new DoctorDeploymentRoot(Describe(r), DeploymentBackendId.Copy.Value, Recorded: false, registered.Contains(DeploymentBackendId.Copy)))
             // GameLocations enumerates in hash order; sort so the report reads the same for every game.

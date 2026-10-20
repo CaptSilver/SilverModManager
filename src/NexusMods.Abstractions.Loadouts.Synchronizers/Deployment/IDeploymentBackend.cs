@@ -1,8 +1,19 @@
 using NexusMods.Abstractions.Loadouts.Deployment;
 using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 
 namespace NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+
+/// <summary>
+/// Whether a backend accepts a root, and why.
+/// </summary>
+public readonly record struct DeploymentPreflight(bool Accepted, string Reason)
+{
+    public static DeploymentPreflight Accept(string reason) => new(true, reason);
+
+    public static DeploymentPreflight Refuse(string reason) => new(false, reason);
+}
 
 /// <summary>
 /// Carries out the file-touching phases of a synchronize for the part of the game the
@@ -21,6 +32,22 @@ public interface IDeploymentBackend
     /// backends keep staged files alive in garbage collection.
     /// </summary>
     bool UsesLooseStaging { get; }
+
+    /// <summary>
+    /// Whether this backend can deploy <paramref name="root"/> on this machine right now. May create and
+    /// delete probe files under the root and the staging store, so it must not run while the game does.
+    /// </summary>
+    /// <remarks>
+    /// Environmental failures (wrong filesystem, missing permission) are a refusal with the reason, never an exception.
+    /// </remarks>
+    DeploymentPreflight Preflight(GameInstallation installation, GamePath root);
+
+    /// <summary>
+    /// Folders the game process has to be able to see for files deployed to <paramref name="root"/> to
+    /// resolve, which matters inside the Steam runtime container: a symlink into the staging store dangles
+    /// there unless the store is shared with it.
+    /// </summary>
+    IReadOnlyList<AbsolutePath> RequiredFilesystems(GameInstallation installation, GamePath root);
 
     /// <summary>
     /// Backs up original game files that are about to be replaced. Commits its own transaction, before the apply's.

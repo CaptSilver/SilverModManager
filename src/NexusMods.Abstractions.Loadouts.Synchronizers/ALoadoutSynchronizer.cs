@@ -52,6 +52,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     private readonly IReadOnlyDictionary<DeploymentBackendId, IDeploymentBackend> _backends;
     private readonly IDeploymentPlanStore _planStore;
+    private readonly IDeploymentBackendSelector _backendSelector;
 
     private readonly StringPool _fileNamePool = new();
 
@@ -85,6 +86,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Resolved from DI rather than built here: games create a synchronizer per access.
         _backends = serviceProvider.GetServices<IDeploymentBackend>().ToDictionary(b => b.Id);
         _planStore = serviceProvider.GetRequiredService<IDeploymentPlanStore>();
+        _backendSelector = serviceProvider.GetRequiredService<IDeploymentBackendSelector>();
 
         _fileHashService = fileHashService;
 
@@ -450,7 +452,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
         var gameMetadataId = loadout.InstallationId;
-        var plan = _planStore.EnsureComplete(tx, Connection.Db, loadout.InstallationInstance, gameMetadataId);
+        var plan = _planStore.EnsureComplete(tx, Connection.Db, loadout.InstallationInstance, gameMetadataId, _backendSelector);
         var groups = GroupByBackend(plan, syncTree);
         var foldersWithDeletedFiles = new List<IReadOnlyCollection<GamePath>>();
         var context = new DeploymentContext
@@ -661,7 +663,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         using var tx = Connection.BeginTransaction();
 
         var metadata = _gameRegistry.ForceGetMetadata(gameInstallation);
-        var plan = _planStore.EnsureComplete(tx, Connection.Db, gameInstallation, metadata);
+        var plan = _planStore.EnsureComplete(tx, Connection.Db, gameInstallation, metadata, _backendSelector);
         var groups = GroupByBackend(plan, syncTree);
         var foldersWithDeletedFiles = new List<IReadOnlyCollection<GamePath>>();
         var context = new DeploymentContext

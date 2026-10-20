@@ -164,6 +164,24 @@ public class DoctorReporterTests : IDisposable
         json[2].GetProperty("registered").GetBoolean().Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(true, null, null, "Game -> hardlink (chosen)")]
+    [InlineData(false, null, "copy", "Game -> hardlink, copy available")]
+    [InlineData(false, "same device", null, "Game -> hardlink; reason: same device")]
+    [InlineData(true, "picked", "copy", "Game -> hardlink (chosen), copy available; reason: picked")]
+    public void Build_DeploymentRootMarkers_AreRenderedInOrder(bool chosen, string? reason, string? available, string expected)
+    {
+        var deployment = new[] { new DoctorDeploymentRoot("Game", "hardlink", Recorded: true, Registered: true, Chosen: chosen, Reason: reason, Available: available) };
+
+        var report = Reporter().Build([Managed(SteamGame()) with { Deployment = deployment }]);
+
+        DoctorTextFormatter.Format(report).Should().Contain($"  Deployment: {expected}");
+        var json = JsonDocument.Parse(report.ToJson()).RootElement.GetProperty("installations")[0].GetProperty("deployment")[0];
+        json.GetProperty("chosen").GetBoolean().Should().Be(chosen);
+        json.GetProperty("reason").GetString().Should().Be(reason);
+        json.GetProperty("available").GetString().Should().Be(available);
+    }
+
     [Fact]
     public void Build_InstallationWithoutADeploymentSource_HasAnEmptyPlanAndNoLine()
     {

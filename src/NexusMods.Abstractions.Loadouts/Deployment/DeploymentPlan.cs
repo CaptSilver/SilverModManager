@@ -7,7 +7,9 @@ namespace NexusMods.Abstractions.Loadouts.Deployment;
 /// <summary>
 /// Sends everything under <paramref name="Root"/> to <paramref name="Backend"/>.
 /// </summary>
-public readonly record struct DeploymentPlanRoot(GamePath Root, DeploymentBackendId Backend);
+/// <param name="Chosen">Whether a person picked the backend, as opposed to the selection chain.</param>
+/// <param name="Reason">The chain's explanation for its pick, when it made one.</param>
+public readonly record struct DeploymentPlanRoot(GamePath Root, DeploymentBackendId Backend, bool Chosen = false, string? Reason = null);
 
 /// <summary>
 /// Which backend deploys which part of a game installation. A path belongs to the root with the

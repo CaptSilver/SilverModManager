@@ -46,6 +46,12 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
     /// <inheritdoc />
     public bool UsesLooseStaging => false;
 
+    /// <inheritdoc />
+    public DeploymentPreflight Preflight(GameInstallation installation, GamePath root) => DeploymentPreflight.Accept("writes plain files");
+
+    /// <inheritdoc />
+    public IReadOnlyList<AbsolutePath> RequiredFilesystems(GameInstallation installation, GamePath root) => [];
+
     private static Loadout.ReadOnly RequireLoadout(DeploymentContext context, [System.Runtime.CompilerServices.CallerMemberName] string? phase = null)
     {
         return context.Loadout ?? throw new InvalidOperationException($"{phase} needs a loadout, but the context has none");

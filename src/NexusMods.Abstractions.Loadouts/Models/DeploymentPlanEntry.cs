@@ -26,4 +26,15 @@ public partial class DeploymentPlanEntry : IModelDefinition
     /// The id of the backend, <c>DeploymentBackendId.Value</c>
     /// </summary>
     public static readonly StringAttribute Backend = new(Namespace, nameof(Backend));
+
+    /// <summary>
+    /// True when a person picked the backend. Absent on rows the selection chain recorded, including every row
+    /// written before this attribute existed.
+    /// </summary>
+    public static readonly BooleanAttribute Chosen = new(Namespace, nameof(Chosen)) { IsOptional = true };
+
+    /// <summary>
+    /// Why the selection chain recorded the backend, for the doctor report.
+    /// </summary>
+    public static readonly StringAttribute Reason = new(Namespace, nameof(Reason)) { IsOptional = true };
 }

@@ -54,4 +54,38 @@ public class DoctorDeploymentRootTests
         DoctorDeploymentRoot.From(recorded, locations, OnlyCopy)
             .Should().Equal(new DoctorDeploymentRoot("Game", "copy", Recorded: true, Registered: true));
     }
+
+    [Fact]
+    public void From_CarriesChosenAndReasonOfRecordedRows()
+    {
+        var recorded = new DeploymentPlan([
+            new DeploymentPlanRoot(new GamePath(LocationId.Game, RelativePath.Empty), DeploymentBackendId.Hardlink, Chosen: true, Reason: "picked by hand"),
+        ]);
+
+        DoctorDeploymentRoot.From(recorded, Locations(LocationId.Game), OnlyCopy)
+            .Should().Equal(new DoctorDeploymentRoot("Game", "hardlink", Recorded: true, Registered: false, Chosen: true, Reason: "picked by hand"));
+    }
+
+    [Fact]
+    public void From_AvailableIsSetOnlyForChosenRowsTheChainWouldMove()
+    {
+        var game = new GamePath(LocationId.Game, RelativePath.Empty);
+        var saves = new GamePath(LocationId.Saves, RelativePath.Empty);
+        var prefs = new GamePath(LocationId.Preferences, RelativePath.Empty);
+        var recorded = new DeploymentPlan([
+            new DeploymentPlanRoot(game, DeploymentBackendId.Copy, Chosen: true, Reason: null),
+            new DeploymentPlanRoot(saves, DeploymentBackendId.Copy, Chosen: false, Reason: "default"),
+            new DeploymentPlanRoot(prefs, DeploymentBackendId.Hardlink, Chosen: true, Reason: null),
+        ]);
+        var asked = new List<GamePath>();
+
+        var roots = DoctorDeploymentRoot.From(recorded, Locations(LocationId.Game, LocationId.Saves, LocationId.Preferences, LocationId.AppData), OnlyCopy,
+            available: root => { asked.Add(root); return DeploymentBackendId.Hardlink; });
+
+        roots.Single(r => r.Root == "Game").Available.Should().Be("hardlink");
+        roots.Single(r => r.Root == "Saves").Available.Should().BeNull("the next apply moves an unchosen row by itself");
+        roots.Single(r => r.Root == "Preferences").Available.Should().BeNull("the chain agrees with the row");
+        roots.Single(r => r.Root == "AppData").Available.Should().BeNull("an unrecorded root is not a choice either");
+        asked.Should().BeEquivalentTo([game, prefs], "the chain probes the disk, so it is asked only about chosen rows");
+    }
 }

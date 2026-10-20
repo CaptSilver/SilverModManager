@@ -6,6 +6,7 @@ using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 
 namespace NexusMods.Games.TestFramework;
@@ -25,6 +26,14 @@ public sealed class RecordingDeploymentBackend(CopyDeploymentBackend inner) : ID
     public DeploymentBackendId Id => BackendId;
 
     public bool UsesLooseStaging => false;
+
+    public DeploymentPreflight Preflight(GameInstallation installation, GamePath root)
+    {
+        Calls.Add((nameof(Preflight), root));
+        return DeploymentPreflight.Accept("records the call");
+    }
+
+    public IReadOnlyList<AbsolutePath> RequiredFilesystems(GameInstallation installation, GamePath root) => [];
 
     public List<(string Phase, GamePath Path)> Calls { get; } = [];
 

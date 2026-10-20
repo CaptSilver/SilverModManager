@@ -1,6 +1,7 @@
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Deployment;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+using NexusMods.Abstractions.Games;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -23,7 +24,9 @@ internal sealed class LoadoutManagedInstallations(
     IConnection connection,
     IGameRegistry registry,
     IDeploymentPlanStore plans,
-    IEnumerable<IDeploymentBackend> backends) : IManagedInstallations
+    IEnumerable<IDeploymentBackend> backends,
+    IDeploymentBackendSelector selector,
+    IGameLaunchSession launchSession) : IManagedInstallations
 {
     public IReadOnlyList<ManagedInstallation> List()
     {
@@ -37,7 +40,11 @@ internal sealed class LoadoutManagedInstallations(
             .Select(group => new ManagedInstallation(
                 group.Key,
                 group.Select(x => x.Loadout.Name).Order(StringComparer.Ordinal).ToArray(),
-                DoctorDeploymentRoot.From(plans.Load(db, group.First().Loadout.InstallationId), group.Key.Locations, registered)))
+                DoctorDeploymentRoot.From(plans.Load(db, group.First().Loadout.InstallationId), group.Key.Locations, registered, AvailableFor(group.Key))))
             .ToArray();
     }
+
+    // The chain probes by writing files into the game root, which a running game's folder must never see.
+    private Func<GamePath, DeploymentBackendId?>? AvailableFor(GameInstallation installation)
+        => launchSession.IsRunning(installation) ? null : root => selector.Choose(installation, root).Backend;
 }

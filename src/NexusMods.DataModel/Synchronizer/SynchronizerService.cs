@@ -145,7 +145,7 @@ public class SynchronizerService : ISynchronizerService
     }
 
     /// <inheritdoc />
-    public async Task<bool> ChangeDeploymentBackend(GameInstallation installation, GamePath root, DeploymentBackendId backend)
+    public async Task<bool> ChangeDeploymentBackend(GameInstallation installation, GamePath root, DeploymentBackendId backend, bool chosen)
     {
         await _semaphore.WaitAsync();
         try
@@ -182,7 +182,7 @@ public class SynchronizerService : ISynchronizerService
 
             using (var tx = _conn.BeginTransaction())
             {
-                plans.Write(tx, metadataId, root, backend);
+                plans.Write(tx, _conn.Db, metadataId, root, backend, chosen);
                 await tx.Commit();
             }
 

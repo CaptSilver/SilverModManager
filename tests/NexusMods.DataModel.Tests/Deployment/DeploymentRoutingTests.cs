@@ -32,7 +32,7 @@ public class DeploymentRoutingTests(ITestOutputHelper helper) : AStubbedGameIsol
     private async Task Route(GameInstallMetadataId metadata, GamePath root, DeploymentBackendId backend)
     {
         using var tx = Connection.BeginTransaction();
-        Plans.Write(tx, metadata, root, backend);
+        Plans.Write(tx, Connection.Db, metadata, root, backend, chosen: false);
         await tx.Commit();
     }
 

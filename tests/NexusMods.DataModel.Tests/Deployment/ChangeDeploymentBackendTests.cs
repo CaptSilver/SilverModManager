@@ -51,7 +51,7 @@ public class ChangeDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGa
     {
         await ApplyLoadoutWithFile();
 
-        var changed = await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, RecordingDeploymentBackend.BackendId);
+        var changed = await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, RecordingDeploymentBackend.BackendId, chosen: true);
 
         changed.Should().BeTrue();
         Recording.Calls.Should().NotContain(c => c.Phase == "Delete");
@@ -63,10 +63,10 @@ public class ChangeDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGa
     public async Task SwitchingBackToCopyResetsWithTheRecordingBackend()
     {
         await ApplyLoadoutWithFile();
-        await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, RecordingDeploymentBackend.BackendId);
+        await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, RecordingDeploymentBackend.BackendId, chosen: true);
         Recording.Calls.Clear();
 
-        var changed = await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, DeploymentBackendId.Copy);
+        var changed = await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, DeploymentBackendId.Copy, chosen: true);
 
         changed.Should().BeTrue();
         Recording.Calls.Should().Contain(("Delete", FileA));
@@ -79,7 +79,7 @@ public class ChangeDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGa
     {
         await ApplyLoadoutWithFile();
 
-        var changed = await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, DeploymentBackendId.Copy);
+        var changed = await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, DeploymentBackendId.Copy, chosen: true);
 
         changed.Should().BeFalse();
         Recording.Calls.Should().BeEmpty();
@@ -93,13 +93,37 @@ public class ChangeDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGa
         var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
         using (var tx = Connection.BeginTransaction())
         {
-            Plans.Write(tx, metadata.Id, OtherRoot, new DeploymentBackendId("nope"));
+            Plans.Write(tx, Connection.Db, metadata.Id, OtherRoot, new DeploymentBackendId("nope"), chosen: false);
             await tx.Commit();
         }
 
-        var changed = await SynchronizerService.ChangeDeploymentBackend(GameInstallation, OtherRoot, DeploymentBackendId.Copy);
+        var changed = await SynchronizerService.ChangeDeploymentBackend(GameInstallation, OtherRoot, DeploymentBackendId.Copy, chosen: true);
 
         changed.Should().BeTrue();
         await Synchronizer.Synchronize(loadout);
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task AChosenSwitchMarksTheRow()
+    {
+        await ApplyLoadoutWithFile();
+
+        await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, RecordingDeploymentBackend.BackendId, chosen: true);
+
+        Plans.Load(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation).Id).Roots
+            .Single(r => r.Root == GameRoot).Chosen.Should().BeTrue();
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task AChainDrivenSwitchLeavesTheRowUnmarked()
+    {
+        await ApplyLoadoutWithFile();
+        await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, RecordingDeploymentBackend.BackendId, chosen: true);
+
+        await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, DeploymentBackendId.Copy, chosen: false);
+
+        var root = Plans.Load(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation).Id).Roots.Single(r => r.Root == GameRoot);
+        root.Backend.Should().Be(DeploymentBackendId.Copy);
+        root.Chosen.Should().BeFalse();
     }
 }

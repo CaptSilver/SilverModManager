@@ -55,7 +55,9 @@ public static class DoctorTextFormatter
     };
 
     private static string Deployment(DoctorDeploymentRoot root)
-        => $"{root.Root} -> {root.Backend}{(root.Recorded ? "" : " (default)")}{(root.Registered ? "" : " (no such backend)")}";
+        => $"{root.Root} -> {root.Backend}{(root.Recorded ? "" : " (default)")}{(root.Chosen ? " (chosen)" : "")}"
+         + $"{(root.Available is null ? "" : $", {root.Available} available")}{(root.Reason is null ? "" : $"; reason: {root.Reason}")}"
+         + $"{(root.Registered ? "" : " (no such backend)")}";
 
     private static string Lock(DoctorLock state) => state.Status switch
     {

@@ -10,5 +10,20 @@ public readonly record struct DeploymentBackendId(string Value)
     /// </summary>
     public static readonly DeploymentBackendId Copy = new("copy");
 
+    /// <summary>
+    /// Clones files out of the loose staging store with the filesystem's copy-on-write support.
+    /// </summary>
+    public static readonly DeploymentBackendId Reflink = new("reflink");
+
+    /// <summary>
+    /// Hard-links files out of the loose staging store.
+    /// </summary>
+    public static readonly DeploymentBackendId Hardlink = new("hardlink");
+
+    /// <summary>
+    /// Places symlinks into the loose staging store.
+    /// </summary>
+    public static readonly DeploymentBackendId Symlink = new("symlink");
+
     public override string ToString() => Value;
 }
