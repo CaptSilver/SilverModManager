@@ -70,6 +70,7 @@ internal static class CleanupVerbs
             [
                 loggingSettings.MainProcessLogFilePath.ToPath(fileSystem),
                 loggingSettings.SlimProcessLogFilePath.ToPath(fileSystem),
+                loggingSettings.RunProcessLogFilePath.ToPath(fileSystem),
             ];
 
             var appDirectories = new[]

@@ -24,6 +24,17 @@ public class DataDirectoryTests
     }
 
     [Fact]
+    public void Test_RunProcessLogFilesLiveBesideTheOthers()
+    {
+        var fs = NewFileSystem();
+        var logs = fs.GetKnownPath(KnownPath.XDG_STATE_HOME).Combine("SilverModManager/Logs");
+        var settings = LoggingSettings.CreateDefault();
+
+        settings.RunProcessLogFilePath.ToPath(fs).Should().Be(logs.Combine("silvermodmanager.run.current.log"));
+        settings.RunProcessArchiveFilePath.ToPath(fs).Should().Be(logs.Combine("silvermodmanager.run.{##}.log"));
+    }
+
+    [Fact]
     public void Test_ExtractorTempFolderLivesUnderStateHome()
     {
         var fs = NewFileSystem();

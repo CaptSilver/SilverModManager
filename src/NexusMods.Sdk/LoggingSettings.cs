@@ -35,6 +35,16 @@ public record LoggingSettings : ISettings
     public ConfigurablePath SlimProcessArchiveFilePath { get; init; }
 
     /// <summary>
+    /// Gets the path to the current log file for a headless <c>run</c> process.
+    /// </summary>
+    public ConfigurablePath RunProcessLogFilePath { get; init; }
+
+    /// <summary>
+    /// Gets the template path to the archive log file for a headless <c>run</c> process.
+    /// </summary>
+    public ConfigurablePath RunProcessArchiveFilePath { get; init; }
+
+    /// <summary>
     /// Number of previous log files to store.
     /// </summary>
     public int MaxArchivedFiles { get; init; } = 10;
@@ -124,6 +134,8 @@ public record LoggingSettings : ISettings
             MainProcessArchiveFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.main.{{##}}.log"),
             SlimProcessLogFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.slim.current.log"),
             SlimProcessArchiveFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.slim.{{##}}.log"),
+            RunProcessLogFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.run.current.log"),
+            RunProcessArchiveFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.run.{{##}}.log"),
         };
     }
 

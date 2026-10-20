@@ -298,23 +298,12 @@ public class Program
         const string defaultLayout = "${processtime} [${level:uppercase=true}] (${logger}) ${message:withexception=true}";
         const string defaultHeader = "############ SilverModManager log file - ${longdate} ############";
 
-        FileTarget fileTarget;
-        if (startupMode.RunAsMain)
+        var (logFile, archiveFile) = LogFileSelection.Select(settings, startupMode);
+        var fileTarget = new FileTarget("file")
         {
-            fileTarget = new FileTarget("file")
-            {
-                FileName = settings.MainProcessLogFilePath.ToPath(fs).GetFullPath(),
-                ArchiveFileName = settings.MainProcessArchiveFilePath.ToPath(fs).GetFullPath(),
-            };
-        }
-        else
-        {
-            fileTarget = new FileTarget("file")
-            {
-                FileName = settings.SlimProcessLogFilePath.ToPath(fs).GetFullPath(),
-                ArchiveFileName = settings.SlimProcessArchiveFilePath.ToPath(fs).GetFullPath(),
-            };
-        }
+            FileName = logFile.ToPath(fs).GetFullPath(),
+            ArchiveFileName = archiveFile.ToPath(fs).GetFullPath(),
+        };
 
         fileTarget.ArchiveOldFileOnStartup = true;
         fileTarget.MaxArchiveDays = settings.MaxArchivedFiles;
