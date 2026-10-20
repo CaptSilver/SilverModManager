@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+        <ProjectReference Include="..\NexusMods.Deployment.Vfs\NexusMods.Deployment.Vfs.csproj" />
     </ItemGroup>
 
 </Project>

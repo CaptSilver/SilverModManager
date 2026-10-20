@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\NexusMods.Deployment.Fuse\NexusMods.Deployment.Fuse.csproj" />
     <ProjectReference Include="..\..\src\NexusMods.Backend\NexusMods.Backend.csproj" />
+    <ProjectReference Include="..\..\src\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
   </ItemGroup>
 
 </Project>
