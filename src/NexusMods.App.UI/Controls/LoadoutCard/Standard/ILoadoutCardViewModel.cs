@@ -33,4 +33,8 @@ public interface ILoadoutCardViewModel : IViewModelInterface
     ReactiveCommand<Unit, Unit> CloneLoadoutCommand { get; }
     
     ReactiveCommand<Unit, Unit> DeleteLoadoutCommand { get; }
+
+    ReactiveCommand<Unit, Unit> RenameLoadoutCommand { get; }
+
+    ReactiveCommand<Unit, Unit> UseFromSteamCommand { get; }
 }

@@ -111,6 +111,18 @@ public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel
                         view => view.DeleteButton)
                     .DisposeWith(d);
                 
+                // Rename loadout command
+                this.BindCommand(ViewModel,
+                        vm => vm.RenameLoadoutCommand,
+                        view => view.RenameButton)
+                    .DisposeWith(d);
+
+                // Steam launch option command
+                this.BindCommand(ViewModel,
+                        vm => vm.UseFromSteamCommand,
+                        view => view.SteamButton)
+                    .DisposeWith(d);
+
                 // Visit loadout command
                 this.BindCommand(ViewModel,
                         vm => vm.VisitLoadoutCommand,

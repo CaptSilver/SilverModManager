@@ -59,6 +59,7 @@ using NexusMods.App.UI.Pages.MyLoadouts;
 using NexusMods.App.UI.Pages.ObservableInfo;
 using NexusMods.App.UI.Pages.Settings;
 using NexusMods.App.UI.Pages.Sorting;
+using NexusMods.App.UI.Pages.SteamLaunchOption;
 using NexusMods.App.UI.Pages.TextEdit;
 using NexusMods.App.UI.Pages.Tools;
 using NexusMods.App.UI.Settings;
@@ -147,6 +148,7 @@ public static class Services
             .AddView<TopBarView, ITopBarViewModel>()
             .AddView<SpineDownloadButtonView, ISpineDownloadButtonViewModel>()
             .AddView<MessageBoxOkView, IMessageBoxOkViewModel>()
+            .AddView<SteamLaunchOptionView, ISteamLaunchOptionViewModel>()
             .AddView<MessageBoxOkCancelView, IMessageBoxOkCancelViewModel>()
             .AddView<UpdaterView, IUpdaterViewModel>()
             .AddView<LoadoutLeftMenuView, ILoadoutLeftMenuViewModel>()

@@ -33,6 +33,20 @@
                                                  ToolTip.Tip="{x:Static resources:Language.LoadoutCard_DeleteLoadoutToolTip}"
                                                  DockPanel.Dock="Right"/>
 
+                        <controls:StandardButton x:Name="SteamButton"
+                                                 ShowLabel="False"
+                                                 ShowIcon="Left"
+                                                 LeftIcon="{x:Static icons:IconValues.Steam}"
+                                                 ToolTip.Tip="Use this loadout from Steam"
+                                                 DockPanel.Dock="Right"/>
+
+                        <controls:StandardButton x:Name="RenameButton"
+                                                 ShowLabel="False"
+                                                 ShowIcon="Left"
+                                                 LeftIcon="{x:Static icons:IconValues.FileEdit}"
+                                                 ToolTip.Tip="Rename loadout"
+                                                 DockPanel.Dock="Right"/>
+
                         <controls:StandardButton x:Name="CreateCopyButton"
                                                  Text="{x:Static resources:Language.LoadoutCardViewCreateCopyButton}"
                                                  HorizontalAlignment="Stretch"/>

@@ -1,0 +1,63 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:ISteamLaunchOptionViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.SteamLaunchOption"
+    xmlns:base="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.Base"
+    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
+    mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="400"
+    x:Class="NexusMods.App.UI.Pages.SteamLaunchOption.SteamLaunchOptionView">
+
+    <Design.DataContext>
+        <local:SteamLaunchOptionDesignViewModel />
+    </Design.DataContext>
+
+    <base:MessageBoxBackground MinWidth="576" MaxWidth="640">
+        <base:MessageBoxBackground.TopContent>
+            <Border Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock
+                        x:Name="TitleText"
+                        TextWrapping="Wrap"
+                        Theme="{StaticResource HeadingXSSemiTheme}" />
+                    <TextBlock
+                        Text="Paste this into the game's Properties > Launch Options in Steam, or write it there while Steam is closed."
+                        TextWrapping="Wrap"
+                        Theme="{StaticResource BodyMDNormalTheme}" />
+                    <SelectableTextBlock
+                        x:Name="LineText"
+                        TextWrapping="Wrap"
+                        Theme="{StaticResource BodyMDNormalTheme}" />
+                    <TextBlock x:Name="WarningText"
+                               TextWrapping="Wrap"
+                               Theme="{StaticResource BodyMDNormalTheme}" />
+                    <TextBlock x:Name="CopyNoteText"
+                               TextWrapping="Wrap"
+                               Theme="{StaticResource BodyMDNormalTheme}" />
+                    <TextBlock x:Name="WriteNoteText"
+                               TextWrapping="Wrap"
+                               Theme="{StaticResource BodyMDNormalTheme}" />
+                    <TextBlock x:Name="MessageText"
+                               TextWrapping="Wrap"
+                               Theme="{StaticResource BodyMDNormalTheme}" />
+                </StackPanel>
+            </Border>
+        </base:MessageBoxBackground.TopContent>
+
+        <base:MessageBoxBackground.BottomContent>
+            <StackPanel Orientation="Horizontal"
+                        Margin="24"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Spacing="{StaticResource Spacing-2.5}">
+                <controls:StandardButton x:Name="ButtonClose" Text="Close" />
+                <controls:StandardButton x:Name="ButtonWrite" Text="Write to Steam" Type="Secondary" />
+                <controls:StandardButton x:Name="ButtonCopy" Text="Copy line" Type="Primary" Fill="Strong" />
+            </StackPanel>
+        </base:MessageBoxBackground.BottomContent>
+    </base:MessageBoxBackground>
+
+</reactive:ReactiveUserControl>

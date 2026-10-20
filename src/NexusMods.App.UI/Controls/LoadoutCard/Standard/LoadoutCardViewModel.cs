@@ -12,14 +12,21 @@ using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.App.UI.Controls.LoadoutBadge;
+using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Extensions;
+using NexusMods.App.UI.Overlays;
 using NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
 using NexusMods.App.UI.Pages;
+using NexusMods.App.UI.Pages.LoadoutPage;
+using NexusMods.App.UI.Pages.SteamLaunchOption;
+using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.Resources;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.UI.Sdk;
+using NexusMods.UI.Sdk.Dialog;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
@@ -56,6 +63,10 @@ public class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutC
             }
         );
         
+        RenameLoadoutCommand = ReactiveCommand.CreateFromTask(() => RenameLoadout(loadout));
+
+        UseFromSteamCommand = ReactiveCommand.CreateFromTask(() => ShowSteamLaunchOption(loadout));
+
         this.WhenActivated(d =>
         {
             Observable.FromAsync(() => LoadImage(loadout.InstallationInstance))
@@ -127,6 +138,8 @@ public class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutC
     public required ReactiveCommand<Unit, Unit> VisitLoadoutCommand { get; init; }
     public ReactiveCommand<Unit, Unit> CloneLoadoutCommand { get; } 
     public ReactiveCommand<Unit, Unit> DeleteLoadoutCommand { get; }
+    public ReactiveCommand<Unit, Unit> RenameLoadoutCommand { get; }
+    public ReactiveCommand<Unit, Unit> UseFromSteamCommand { get; }
     
     [Reactive] public bool IsLastLoadout { get; set; } = true;
     
@@ -179,5 +192,27 @@ public class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutC
     private Task CopyLoadout(Loadout.ReadOnly loadout)
     {
         return Task.Run(() => _loadoutManager.CopyLoadout(loadout));
+    }
+
+    private async Task RenameLoadout(Loadout.ReadOnly loadout)
+    {
+        var windowManager = _serviceProvider.GetRequiredService<IWindowManager>();
+        var result = await windowManager.ShowDialog(LoadoutDialogs.RenameLoadout(LoadoutName), DialogWindowType.Modal);
+        if (result.ButtonId != ButtonDefinitionId.Accept || string.IsNullOrWhiteSpace(result.InputText)) return;
+
+        // Uniqueness within the installation is the manager's call, so the stored name can differ from the input.
+        await Task.Run(() => _loadoutManager.RenameLoadout(loadout.LoadoutId, result.InputText).AsTask());
+    }
+
+    private async Task ShowSteamLaunchOption(Loadout.ReadOnly loadout)
+    {
+        var overlay = new SteamLaunchOptionViewModel(
+            LoadoutName,
+            loadout.InstallationInstance,
+            _serviceProvider.GetRequiredService<IProcessTracker>(),
+            _serviceProvider.GetRequiredService<ISteamLaunchOptionWriter>(),
+            _serviceProvider.GetRequiredService<IAvaloniaInterop>()
+        );
+        await _serviceProvider.GetRequiredService<IOverlayController>().EnqueueAndWait(overlay);
     }
 }

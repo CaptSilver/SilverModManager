@@ -31,6 +31,30 @@ public static class LoadoutDialogs
         );
     }
 
+    public static IDialog RenameLoadout(string loadoutName)
+    {
+        return DialogFactory.CreateStandardDialog(
+            $"Rename \"{loadoutName}\"",
+            new StandardDialogParameters()
+            {
+                Text = "Loadout names are unique per game. A name that is already taken gets a number appended.",
+                InputLabel = "New loadout name",
+                InputWatermark = "e.g. Vanilla plus",
+                InputText = loadoutName,
+            },
+            [
+                DialogStandardButtons.Cancel,
+                new DialogButtonDefinition(
+                    "Rename",
+                    ButtonDefinitionId.Accept,
+                    ButtonAction.Accept,
+                    ButtonStyling.Primary
+                ),
+            ],
+            DialogWindowSize.Small
+        );
+    }
+
     public static IDialog RenameCollection(string collectionName)
     {
         return DialogFactory.CreateStandardDialog(
