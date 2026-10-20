@@ -7,7 +7,11 @@ namespace NexusMods.Platform.Proton.Doctor;
 /// <summary>
 /// An installation with a loadout, and the names of the loadouts.
 /// </summary>
-public sealed record ManagedInstallation(GameInstallation Installation, IReadOnlyList<string> Loadouts);
+/// <param name="Deployment">The deployment plan to show, when the source of the installation has one.</param>
+public sealed record ManagedInstallation(
+    GameInstallation Installation,
+    IReadOnlyList<string> Loadouts,
+    IReadOnlyList<DoctorDeploymentRoot>? Deployment = null);
 
 /// <summary>
 /// Builds the doctor report by asking the same resolvers, runner and lock a launch would use. Read-only: the
@@ -49,7 +53,8 @@ public sealed class DoctorReporter(
             steamAppId is { } id ? DescribeProton(result.LinuxCompatabilityDataProvider!, id) : null,
             DescribeRunner(installation),
             steamAppId is { } app ? DescribeLaunchOptions(result.LinuxCompatabilityDataProvider!, app) : null,
-            DescribeLock(store, result.StoreIdentifier));
+            DescribeLock(store, result.StoreIdentifier),
+            managed.Deployment ?? []);
     }
 
     /// <summary>

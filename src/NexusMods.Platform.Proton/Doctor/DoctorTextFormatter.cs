@@ -21,6 +21,7 @@ public static class DoctorTextFormatter
             if (install.Proton is { } proton) lines.AddRange(Proton(proton));
             lines.Add($"  Runner: {Runner(install.Runner)}");
             if (install.LaunchOptions is { } options) lines.Add($"  Launch options: {LaunchOptions(options)}");
+            if (install.Deployment.Count > 0) lines.Add($"  Deployment: {string.Join(", ", install.Deployment.Select(Deployment))}");
             lines.Add($"  Launch: {Lock(install.Lock)}");
         }
         return lines;
@@ -52,6 +53,9 @@ public static class DoctorTextFormatter
         DoctorLaunchOptionsStatus.NoSpan => $"set without the launcher span: {options.Line}",
         _ => $"launcher span for loadout '{options.Loadout}': {options.Line}",
     };
+
+    private static string Deployment(DoctorDeploymentRoot root)
+        => $"{root.Root} -> {root.Backend}{(root.Recorded ? "" : " (default)")}{(root.Registered ? "" : " (no such backend)")}";
 
     private static string Lock(DoctorLock state) => state.Status switch
     {

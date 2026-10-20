@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using NexusMods.Abstractions.Loadouts.Deployment;
+using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 
 namespace NexusMods.Platform.Proton.Doctor;
@@ -37,6 +39,7 @@ public sealed record DoctorReport(IReadOnlyList<DoctorInstallation> Installation
 /// <param name="Runner">What running a Windows tool for this game would do.</param>
 /// <param name="LaunchOptions">The game's Steam launch options; null unless the game is a Steam game with a known localconfig.vdf.</param>
 /// <param name="Lock">Whether a launch of this installation is in progress.</param>
+/// <param name="Deployment">Which backend deploys each root; empty when the source of the installations had no plan to show.</param>
 public sealed record DoctorInstallation(
     string Game,
     string Store,
@@ -46,7 +49,8 @@ public sealed record DoctorInstallation(
     DoctorProton? Proton,
     DoctorRunner Runner,
     DoctorLaunchOptions? LaunchOptions,
-    DoctorLock Lock);
+    DoctorLock Lock,
+    IReadOnlyList<DoctorDeploymentRoot> Deployment);
 
 /// <summary>How the prefix lookup ended.</summary>
 public enum DoctorPrefixStatus
@@ -126,3 +130,30 @@ public enum DoctorLockStatus
 /// <param name="Phase">How far the launch had got.</param>
 /// <param name="Diagnostic">Why the lock could not be inspected, or what is odd about its state file.</param>
 public sealed record DoctorLock(DoctorLockStatus Status, int? Pid, string? Loadout, string? Phase, string? Diagnostic);
+
+/// <summary>One root of an installation and the backend that deploys it.</summary>
+/// <param name="Root">The root as <c>Location</c> or <c>Location/path</c>.</param>
+/// <param name="Backend">Id of the backend the root is routed to.</param>
+/// <param name="Recorded">False when no row is stored and the root is routed to copy by default.</param>
+/// <param name="Registered">Whether a backend with that id is registered in this build.</param>
+public sealed record DoctorDeploymentRoot(string Root, string Backend, bool Recorded, bool Registered)
+{
+    /// <summary>
+    /// The recorded roots, followed by a copy entry for each location the recorded plan does not cover, which
+    /// is what the synchronizer would route there.
+    /// </summary>
+    public static IReadOnlyList<DoctorDeploymentRoot> From(DeploymentPlan recorded, GameLocations locations, IReadOnlySet<DeploymentBackendId> registered)
+    {
+        var roots = recorded.Roots
+            .Select(r => new DoctorDeploymentRoot(Describe(r.Root), r.Backend.Value, Recorded: true, registered.Contains(r.Backend)));
+        var implied = recorded.MissingRoots(locations)
+            .Select(r => new DoctorDeploymentRoot(Describe(r), DeploymentBackendId.Copy.Value, Recorded: false, registered.Contains(DeploymentBackendId.Copy)))
+            // GameLocations enumerates in hash order; sort so the report reads the same for every game.
+            .OrderBy(r => r.Root, StringComparer.Ordinal);
+        return roots.Concat(implied).ToArray();
+    }
+
+    private static string Describe(GamePath root) => root.Path == RelativePath.Empty
+        ? root.LocationId.ToString()
+        : $"{root.LocationId}/{root.Path}";
+}

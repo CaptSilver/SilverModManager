@@ -1,4 +1,6 @@
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Loadouts.Deployment;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -17,13 +19,25 @@ public interface IManagedInstallations
 /// Finds the managed installations by walking the loadouts in the database, so the doctor verb and the
 /// support bundle describe the same set of games.
 /// </summary>
-internal sealed class LoadoutManagedInstallations(IConnection connection, IGameRegistry registry) : IManagedInstallations
+internal sealed class LoadoutManagedInstallations(
+    IConnection connection,
+    IGameRegistry registry,
+    IDeploymentPlanStore plans,
+    IEnumerable<IDeploymentBackend> backends) : IManagedInstallations
 {
-    public IReadOnlyList<ManagedInstallation> List() => Loadout.All(connection.Db)
-        .Where(loadout => loadout.IsVisible())
-        .Select(loadout => (Loadout: loadout, Found: registry.TryGetGameInstallation(loadout, out var installation) ? installation : null))
-        .Where(x => x.Found is not null)
-        .GroupBy(x => x.Found!)
-        .Select(group => new ManagedInstallation(group.Key, group.Select(x => x.Loadout.Name).Order(StringComparer.Ordinal).ToArray()))
-        .ToArray();
+    public IReadOnlyList<ManagedInstallation> List()
+    {
+        var db = connection.Db;
+        var registered = backends.Select(b => b.Id).ToHashSet();
+        return Loadout.All(db)
+            .Where(loadout => loadout.IsVisible())
+            .Select(loadout => (Loadout: loadout, Found: registry.TryGetGameInstallation(loadout, out var installation) ? installation : null))
+            .Where(x => x.Found is not null)
+            .GroupBy(x => x.Found!)
+            .Select(group => new ManagedInstallation(
+                group.Key,
+                group.Select(x => x.Loadout.Name).Order(StringComparer.Ordinal).ToArray(),
+                DoctorDeploymentRoot.From(plans.Load(db, group.First().Loadout.InstallationId), group.Key.Locations, registered)))
+            .ToArray();
+    }
 }

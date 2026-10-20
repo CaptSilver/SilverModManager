@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Loadouts.Deployment;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Protontricks;
@@ -24,6 +25,7 @@ public class ProtonServicesTests
         services.AddSingleton(Substitute.For<IProcessRunner>());
         services.AddSingleton(Substitute.For<IConnection>());
         services.AddSingleton(Substitute.For<IGameRegistry>());
+        services.AddSingleton(Substitute.For<IDeploymentPlanStore>());
         services.AddSingleton(Substitute.For<ISettingsManager>());
         services.AddProton();
 

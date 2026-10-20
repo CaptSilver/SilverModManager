@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using FluentAssertions;
+using NexusMods.Abstractions.Loadouts.Deployment;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Doctor;
 using NexusMods.Platform.Proton.Launch;
@@ -141,6 +142,35 @@ public class DoctorReporterTests : IDisposable
         install.LaunchOptions.Loadout.Should().Be("Main");
 
         install.Lock.Should().Be(new DoctorLock(DoctorLockStatus.Free, null, null, null, null));
+    }
+
+    [Fact]
+    public void Build_InstallationWithADeploymentPlan_ShowsItInTextAndJson()
+    {
+        var deployment = new[]
+        {
+            new DoctorDeploymentRoot("Game", "copy", Recorded: true, Registered: true),
+            new DoctorDeploymentRoot("Preferences", "copy", Recorded: false, Registered: true),
+            new DoctorDeploymentRoot("Saves/slots", "gone", Recorded: true, Registered: false),
+        };
+        var report = Reporter().Build([Managed(SteamGame()) with { Deployment = deployment }]);
+
+        report.Installations[0].Deployment.Should().Equal(deployment);
+        DoctorTextFormatter.Format(report).Should().Contain("  Deployment: Game -> copy, Preferences -> copy (default), Saves/slots -> gone (no such backend)");
+
+        var json = JsonDocument.Parse(report.ToJson()).RootElement.GetProperty("installations")[0].GetProperty("deployment");
+        json.GetArrayLength().Should().Be(3);
+        json[2].GetProperty("root").GetString().Should().Be("Saves/slots");
+        json[2].GetProperty("registered").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public void Build_InstallationWithoutADeploymentSource_HasAnEmptyPlanAndNoLine()
+    {
+        var report = Reporter().Build([Managed(SteamGame())]);
+
+        report.Installations[0].Deployment.Should().BeEmpty();
+        DoctorTextFormatter.Format(report).Should().NotContain(l => l.Contains("Deployment:"));
     }
 
     [Fact]
