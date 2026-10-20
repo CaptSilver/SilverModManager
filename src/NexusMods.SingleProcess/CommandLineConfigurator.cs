@@ -114,7 +114,37 @@ public class CommandLineConfigurator
 
             parentCommand.AddCommand(command);
         }
+        rootCommand.AddCommand(MakeRunHelpCommand());
         return (rootCommand, injectedTypes.ToArray());
+    }
+
+    /// <summary>
+    /// Exit code of a failed launch, the same one the launch session uses.
+    /// </summary>
+    private const int LaunchFailureExitCode = 125;
+
+    private const string RunSynopsis = "run <loadout> [--game <appid|name>] -- <command> [args...]";
+
+    /// <summary>
+    /// <c>run</c> never reaches the verb parser: the process start-up takes it before any verb is parsed. This
+    /// command only puts it in <c>--help</c>. Running it here means the start-up routing was bypassed, which
+    /// is reported rather than ignored.
+    /// </summary>
+    private static Command MakeRunHelpCommand()
+    {
+        var command = new Command("run", $"Run a command against a loadout, as from a Steam launch option: {RunSynopsis}")
+        {
+            new Argument<string>("loadout", "The name of the loadout to run"),
+            new Option<string>("--game", "The Steam app id or name of the game, when the loadout name is not unique"),
+            new Argument<string[]>("command", "The command to run, after '--'") { Arity = ArgumentArity.ZeroOrMore },
+        };
+        command.TreatUnmatchedTokensAsErrors = false;
+        command.SetHandler(context =>
+        {
+            context.Console.Error.Write($"The run command is not handled by this process. usage: silvermod {RunSynopsis}");
+            context.ExitCode = LaunchFailureExitCode;
+        });
+        return command;
     }
 
     private Option MakeOption<T>(OptionDefinition optionDefinition) where T : notnull
