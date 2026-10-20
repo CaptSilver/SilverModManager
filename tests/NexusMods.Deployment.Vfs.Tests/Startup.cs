@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Loadouts;
 using NexusMods.Backend;
-using NexusMods.Paths;
-using NexusMods.Sdk.Settings;
+using NexusMods.Games.TestFramework;
 
 namespace NexusMods.Deployment.Vfs.Tests;
 
@@ -10,8 +10,8 @@ public class Startup
     public void ConfigureServices(IServiceCollection services)
     {
         services
-            .AddFileSystem()
-            .AddSettingsManager()
-            .AddLogging();
+            .AddGameServices()
+            .AddLoadoutAbstractions()
+            .AddDefaultServicesForTesting();
     }
 }

@@ -17,6 +17,19 @@ public partial class ALoadoutSynchronizer
         );
     }
 
+    /// <summary>
+    /// The paths whose winning loadout item is a delete. <see cref="BuildSyncTree{T}"/> leaves these out of
+    /// the tree (and a winning delete also replaces the game file under it), so the tree alone cannot say
+    /// which paths the loadout wants gone. Both read the same query, so they cannot disagree about who won.
+    /// </summary>
+    public IReadOnlyList<GamePath> DeletedWinners(Loadout.ReadOnly loadout)
+    {
+        return WinningFilesQuery(Connection.Db, loadout)
+            .Where(static row => row.ItemType == "Deleted")
+            .Select(static row => new GamePath(row.Location, row.Path))
+            .ToArray();
+    }
+
     // TODO: https://github.com/Nexus-Mods/NexusMods.MnemonicDB/issues/183
     private static LoadoutSourceItemType ToItemType(string value) => value switch
     {
