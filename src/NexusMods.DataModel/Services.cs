@@ -6,6 +6,7 @@ using NexusMods.Abstractions.GC;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Abstractions.Serialization.ExpressionGenerator;
 using NexusMods.DataModel.CommandLine.Verbs;
 using NexusMods.DataModel.Diagnostics;
@@ -91,6 +92,7 @@ public static class Services
 
         // Disk State and Synchronizer
         coll.AddDiskStateEntryModel();
+        coll.AddDeploymentBackends();
         coll.AddAllSingleton<ISynchronizerService, SynchronizerService>();
 
         coll.AddSingleton<ITypeFinder>(_ => new AssemblyTypeFinder(typeof(Services).Assembly));
