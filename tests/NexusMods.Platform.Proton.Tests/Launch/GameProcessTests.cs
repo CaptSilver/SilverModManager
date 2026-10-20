@@ -314,6 +314,15 @@ public class GameProcessTests : IDisposable
     }
 
     [Fact]
+    public async Task TwoRootsNamingTheStoreRootMergeItOnce()
+    {
+        using var process = Start(Sh($"env > '{File_("env")}'", roots: ["/store", "/store"]));
+        await process.WaitAsync();
+
+        (await File.ReadAllLinesAsync(File_("env"))).Should().Contain("PRESSURE_VESSEL_FILESYSTEMS_RW=/store");
+    }
+
+    [Fact]
     public async Task PassThrough_RunsTheArgvUnchanged()
     {
         string[] argv = ["sh", "-c", "printf '%s|' \"$@\" > \"$0\"", File_("argv"), "a b", "", "$HOME", "--x=\"y\""];

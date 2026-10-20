@@ -18,7 +18,18 @@ public class LaunchPlannerTests
     ];
 
     private static LaunchPlan Compose(string[] command, string specExe, params string[] extraArgs)
-        => LaunchPlanner.Compose(command, Path_(SkyrimRoot), Path_($"{SkyrimRoot}/SkyrimSE.exe"), new LaunchSpec(Path_(specExe), extraArgs));
+        => LaunchPlanner.Compose(command, Path_(SkyrimRoot), Path_($"{SkyrimRoot}/SkyrimSE.exe"), new LaunchSpec(Path_(specExe), extraArgs), []);
+
+    [Fact]
+    public void FilesystemRootsComeFromTheDeploymentPlan()
+    {
+        var command = SteamCommand($"{SkyrimRoot}/SkyrimSE.exe");
+
+        var plan = LaunchPlanner.Compose(command, Path_(SkyrimRoot), Path_($"{SkyrimRoot}/SkyrimSE.exe"),
+            new LaunchSpec(Path_($"{SkyrimRoot}/SkyrimSE.exe"), []), ["/run/media/store"]);
+
+        plan.Process.FilesystemRoots.Should().Equal("/run/media/store");
+    }
 
     [Fact]
     public void ALoaderTakesTheLaunchersPlaceAndTheCommandIsStartedAsRewritten()

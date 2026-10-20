@@ -42,7 +42,6 @@ public sealed partial class GameProcess : IGameProcess
     private const int SigHup = 1;
     private const int SigKill = 9;
     private const int SigTerm = 15;
-    private const string FilesystemsVariable = "PRESSURE_VESSEL_FILESYSTEMS_RW";
 
     private readonly Process _process;
     private readonly IProcessTracker? _tracker;
@@ -149,18 +148,7 @@ public sealed partial class GameProcess : IGameProcess
             foreach (var (key, value) in spec.Environment) result[key] = value;
         }
 
-        if (spec.FilesystemRoots is { Count: > 0 } roots)
-        {
-            // Existing entries stay first; the container reads the list in order and the user may have set it.
-            var merged = result.TryGetValue(FilesystemsVariable, out var existing)
-                ? existing.Split(':', StringSplitOptions.RemoveEmptyEntries).ToList()
-                : [];
-            foreach (var root in roots)
-            {
-                if (!merged.Contains(root)) merged.Add(root);
-            }
-            result[FilesystemsVariable] = string.Join(':', merged);
-        }
+        if (spec.FilesystemRoots is { } roots) PressureVesselFilesystems.Merge(result, roots);
 
         return result;
     }

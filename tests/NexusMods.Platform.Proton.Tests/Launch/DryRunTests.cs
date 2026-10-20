@@ -57,7 +57,7 @@ public class DryRunTests : IDisposable
     ];
 
     private static LaunchPlan Compose(string[] command, string specExe, params string[] extraArgs)
-        => LaunchPlanner.Compose(command, Path_(GameRoot), Path_($"{GameRoot}/SkyrimSE.exe"), new LaunchSpec(Path_(specExe), extraArgs));
+        => LaunchPlanner.Compose(command, Path_(GameRoot), Path_($"{GameRoot}/SkyrimSE.exe"), new LaunchSpec(Path_(specExe), extraArgs), []);
 
     [Fact]
     public void ThePrintedCommandIsTheOneTheSubstitutionProduced()

@@ -25,8 +25,18 @@ public sealed class SymlinkDeploymentBackend(CopyDeploymentBackend copy, ILooseS
     public override DeploymentPreflight Preflight(GameInstallation installation, GamePath root)
     {
         return LinkProbe.TrySymlink(ProbeDirectory(installation), installation.Locations.ToAbsolutePath(root), out var reason)
-            ? DeploymentPreflight.Accept("symlinks work in the folder")
+            ? DeploymentPreflight.Accept(AcceptedReason(Store.Root, Store.Root.FileSystem.GetKnownPath(KnownPath.HomeDirectory)))
             : DeploymentPreflight.Refuse(reason);
+    }
+
+    // The Steam runtime container shares the home directory by default, so a store under it is visible to the game
+    // as it is; anywhere else the link dangles inside the container unless the run line adds the store to the mounts.
+    internal static string AcceptedReason(AbsolutePath storeRoot, AbsolutePath home)
+    {
+        const string works = "symlinks work in the folder";
+        return storeRoot.InFolder(home) || storeRoot == home
+            ? $"{works}; the store is under the home directory, which the Steam runtime container shares"
+            : $"{works}; store root {storeRoot} is outside the home directory: the game sees symlink targets only when launched through the run line";
     }
 
     /// <inheritdoc />

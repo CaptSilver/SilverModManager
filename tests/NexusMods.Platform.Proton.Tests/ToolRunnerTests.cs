@@ -2,6 +2,9 @@ using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using CliWrap;
 using FluentAssertions;
+using NexusMods.Abstractions.Loadouts.Deployment;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.ToolRunner;
 using NexusMods.Sdk;
@@ -35,13 +38,42 @@ public class ToolRunnerTests
             .Returns(_ => new CommandResult(7, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch));
     }
 
-    private ToolRunner.ToolRunner Runner()
+    private ToolRunner.ToolRunner Runner(IReadOnlyList<string>? filesystemRoots = null)
     {
         var protonResolver = new ProtonResolver(new EmptyEnvironment());
         return new ToolRunner.ToolRunner(
             new PrefixResolver(),
             [new SteamProtonStrategy(protonResolver)],
-            _processRunner);
+            _processRunner,
+            RegistryWithMetadata(),
+            LaunchRoots(filesystemRoots ?? []));
+    }
+
+    // Plan rows for two symlink roots, both needing the same store folder, as the deployment plan records them.
+    private static DeploymentLaunchRoots LaunchRoots(IReadOnlyList<string> roots)
+    {
+        var plans = Substitute.For<IDeploymentPlanStore>();
+        plans.Load(Arg.Any<IDb>(), Arg.Any<GameInstallMetadataId>()).Returns(new DeploymentPlan(
+        [
+            new DeploymentPlanRoot(new GamePath(LocationId.Game, RelativePath.Empty), DeploymentBackendId.Symlink),
+            new DeploymentPlanRoot(new GamePath(LocationId.Saves, RelativePath.Empty), DeploymentBackendId.Symlink),
+        ]));
+
+        var backend = Substitute.For<IDeploymentBackend>();
+        backend.Id.Returns(DeploymentBackendId.Symlink);
+        backend.RequiredFilesystems(Arg.Any<GameInstallation>(), Arg.Any<GamePath>())
+            .Returns(_ => roots.Select(r => FileSystem.Shared.FromUnsanitizedFullPath(r)).ToArray());
+
+        return new DeploymentLaunchRoots(plans, [backend], Substitute.For<IConnection>());
+    }
+
+    private static IGameRegistry RegistryWithMetadata()
+    {
+        var registry = Substitute.For<IGameRegistry>();
+        var metadata = default(GameInstallMetadata.ReadOnly);
+        registry.TryGetMetadata(Arg.Any<GameInstallation>(), out Arg.Any<GameInstallMetadata.ReadOnly>())
+            .Returns(call => { call[1] = metadata; return true; });
+        return registry;
     }
 
     private GameInstallation SteamGame(bool withProvider = true)
@@ -127,6 +159,26 @@ public class ToolRunnerTests
         plan.Environment["WINEDEBUG"].Should().Be("-all");
         plan.Environment["STEAM_COMPAT_DATA_PATH"].Should().Be("/elsewhere");
         plan.Environment["STEAM_COMPAT_CLIENT_INSTALL_PATH"].Should().Be(_steam.ToString());
+    }
+
+    [Fact]
+    public async Task RunWindowsTool_MergesRequiredFilesystemsIntoTheEnvironment()
+    {
+        var store = _fs.FromUnsanitizedFullPath("/run/media/store").ToString();
+        var env = new Dictionary<string, string> { ["PRESSURE_VESSEL_FILESYSTEMS_RW"] = "/already" };
+
+        await Runner([store]).RunWindowsTool(SteamGame(), Exe, [], env, logOutput: false, CancellationToken.None);
+
+        _commands.Should().ContainSingle().Which.EnvironmentVariables["PRESSURE_VESSEL_FILESYSTEMS_RW"]
+            .Should().Be($"/already:{store}", "two symlink roots name the store once");
+    }
+
+    [Fact]
+    public void NoRequiredFilesystemsLeavesThePressureVesselVariableUnset()
+    {
+        var plan = Runner().Plan(SteamGame(), Exe, [], null);
+
+        plan.Environment.Should().NotContainKey("PRESSURE_VESSEL_FILESYSTEMS_RW");
     }
 
     [Fact]
@@ -224,7 +276,9 @@ public class ToolRunnerTests
         var act = () => new ToolRunner.ToolRunner(
             new PrefixResolver(),
             [new SteamProtonStrategy(protonResolver), new SteamProtonStrategy(protonResolver)],
-            _processRunner);
+            _processRunner,
+            UnmanagedGames.Registry(),
+            UnmanagedGames.LaunchRoots());
 
         act.Should().Throw<ArgumentException>().WithMessage("*SteamProton*");
     }

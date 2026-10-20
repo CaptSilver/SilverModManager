@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Deployment;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Protontricks;
@@ -28,6 +29,7 @@ public class ProtonServicesTests
         services.AddSingleton(Substitute.For<IGameRegistry>());
         services.AddSingleton(Substitute.For<IDeploymentPlanStore>());
         services.AddSingleton(Substitute.For<IDeploymentBackendSelector>());
+        services.AddSingleton<DeploymentLaunchRoots>();
         services.AddSingleton(Substitute.For<IGameLaunchSession>());
         services.AddSingleton(Substitute.For<ISettingsManager>());
         services.AddProton();

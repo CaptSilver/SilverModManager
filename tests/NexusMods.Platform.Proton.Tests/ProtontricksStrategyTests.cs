@@ -54,7 +54,9 @@ public class ProtontricksStrategyTests
             new SteamProtonStrategy(new ProtonResolver(new EmptyEnvironment())),
             new ProtontricksStrategy(Protontricks()),
         ],
-        _processRunner);
+        _processRunner,
+        UnmanagedGames.Registry(),
+        UnmanagedGames.LaunchRoots());
 
     private AggregateProtontricksDependency Protontricks() => new(_processRunner);
 

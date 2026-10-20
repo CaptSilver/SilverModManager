@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using CliWrap;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Paths;
+using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 
@@ -12,7 +14,9 @@ namespace NexusMods.Platform.Proton.ToolRunner;
 public sealed class ToolRunner(
     IPrefixResolver prefixResolver,
     IEnumerable<IToolRunStrategy> strategies,
-    IProcessRunner processRunner) : IToolRunner
+    IProcessRunner processRunner,
+    IGameRegistry gameRegistry,
+    DeploymentLaunchRoots launchRoots) : IToolRunner
 {
     private readonly IToolRunStrategy[] _strategies = DistinctByKind(strategies.Where(s => s is not ILastResortToolRunStrategy));
     private readonly ILastResortToolRunStrategy[] _lastResorts = DistinctByKind(strategies.OfType<ILastResortToolRunStrategy>()).Cast<ILastResortToolRunStrategy>().ToArray();
@@ -39,7 +43,20 @@ public sealed class ToolRunner(
         if (!TryGetStrategy(installation, via, out var strategy, out var prefix, out var diagnostic))
             return ToolRunPlan.Failed(diagnostic);
 
-        return strategy.Plan(installation, prefix, exe, args, env);
+        var plan = strategy.Plan(installation, prefix, exe, args, env);
+        if (!plan.IsRunnable) return plan;
+
+        // Symlinks written by the deployment backends point into a folder the Steam container does not share
+        // unless it is listed, and a tool run through Proton starts that container like the game does. A game
+        // with no recorded metadata isn't managed, so nothing was deployed for it.
+        if (!gameRegistry.TryGetMetadata(installation, out var metadata)) return plan;
+
+        var roots = launchRoots.For(installation, metadata.Id);
+        if (roots.Count == 0) return plan;
+
+        var environment = new Dictionary<string, string>(plan.Environment);
+        PressureVesselFilesystems.Merge(environment, roots);
+        return ToolRunPlan.Runnable(plan.Strategy, plan.Argv, plan.WorkingDirectory.Value, environment);
     }
 
     /// <inheritdoc/>

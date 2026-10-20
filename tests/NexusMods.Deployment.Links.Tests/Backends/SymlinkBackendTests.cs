@@ -121,6 +121,37 @@ public class SymlinkBackendTests(ITestOutputHelper helper) : SymlinkBackendTests
     }
 
     [Fact]
+    public void AcceptedReason_ForAStoreUnderTheHomeDirectoryNeedsNoRunLine()
+    {
+        var reason = SymlinkDeploymentBackend.AcceptedReason(
+            NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/home/me/.local/share/silvermod/store"),
+            NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/home/me"));
+
+        reason.Should().Contain("symlinks work in the folder").And.Contain("under the home directory");
+        reason.Should().NotContain("run line");
+    }
+
+    [Fact]
+    public void AcceptedReason_ForAStoreOutsideTheHomeDirectoryNamesTheRootAndTheRunLine()
+    {
+        var reason = SymlinkDeploymentBackend.AcceptedReason(
+            NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/run/media/me/disk/store"),
+            NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/home/me"));
+
+        reason.Should().Be("symlinks work in the folder; store root /run/media/me/disk/store is outside the home directory: the game sees symlink targets only when launched through the run line");
+    }
+
+    [Fact]
+    public void AcceptedReason_TreatsASiblingFolderWithTheSamePrefixAsOutsideTheHomeDirectory()
+    {
+        var reason = SymlinkDeploymentBackend.AcceptedReason(
+            NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/home/me2/store"),
+            NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/home/me"));
+
+        reason.Should().Contain("outside the home directory");
+    }
+
+    [Fact]
     public void RequiredFilesystems_IsTheStoreRoot()
     {
         Symlink.RequiredFilesystems(GameInstallation, GamePathOf("")).Should().Equal(Store.Root);

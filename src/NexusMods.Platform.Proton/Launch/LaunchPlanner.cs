@@ -17,13 +17,14 @@ public static class LaunchPlanner
     /// <param name="gameRoot">The installation's game folder.</param>
     /// <param name="primaryExe">The game's own executable.</param>
     /// <param name="spec">What the run tool wants started.</param>
-    public static LaunchPlan Compose(IReadOnlyList<string> command, AbsolutePath gameRoot, AbsolutePath primaryExe, LaunchSpec spec)
+    /// <param name="filesystemRoots">Host folders the deployment backends need visible inside the Steam container.</param>
+    public static LaunchPlan Compose(IReadOnlyList<string> command, AbsolutePath gameRoot, AbsolutePath primaryExe, LaunchSpec spec, IReadOnlyList<string> filesystemRoots)
     {
         // Arguments the game needs count like a loader: a command with no exe to put them behind would start the game without them.
         var loaderResolved = !spec.Exe.Equals(primaryExe) || spec.ExtraArgs.Length > 0;
         var substitution = ExeSubstitution.Apply(command, gameRoot, spec, loaderResolved);
         if (substitution.IsRefused) throw new InvalidOperationException(substitution.Refusal);
 
-        return new LaunchPlan(new GameProcessSpec(substitution.Argv), spec, substitution);
+        return new LaunchPlan(new GameProcessSpec(substitution.Argv, FilesystemRoots: filesystemRoots), spec, substitution);
     }
 }
