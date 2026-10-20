@@ -45,8 +45,12 @@
         <PackageReference Include="Xunit.DependencyInjection.Logging" />
     </ItemGroup>
 
-    <!-- Runner and reporters, only for projects that produce a test executable -->
-    <ItemGroup Condition="'$(OutputType)' == 'Exe'">
+    <!--
+        Runner and reporters, only for projects that produce a test executable. Console helpers that
+        tests spawn (silvermod-testhost) set IsTestHostHelper: the runner generates an entry point
+        that would clash with their own Main.
+    -->
+    <ItemGroup Condition="'$(OutputType)' == 'Exe' And '$(IsTestHostHelper)' != 'true'">
         <PackageReference Include="xunit.v3.mtp-v2" />
         <PackageReference Include="GitHubActionsTestLogger" />
     </ItemGroup>

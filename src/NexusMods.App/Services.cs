@@ -64,6 +64,7 @@ public static class Services
                 .AddJobMonitor()
                 .AddNexusModsCollections()
                 .AddProton()
+                .AddHeadlessLaunch()
 
                 .AddSettings<LoggingSettings>()
                 .AddSettings<ExperimentalSettings>()

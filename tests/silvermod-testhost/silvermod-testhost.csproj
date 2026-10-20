@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Keeps tests/Directory.Build.props from adding the xunit runner, whose generated entry point clashes with Program.Main. -->
+    <IsTestHostHelper>true</IsTestHostHelper>
+    <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
+  </ItemGroup>
+
+</Project>

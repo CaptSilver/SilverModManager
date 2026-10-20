@@ -8,4 +8,9 @@
     <ProjectReference Include="..\..\src\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Launched as a child process by the lock tests; only built, never referenced. -->
+    <ProjectReference Include="..\silvermod-testhost\silvermod-testhost.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
 </Project>
