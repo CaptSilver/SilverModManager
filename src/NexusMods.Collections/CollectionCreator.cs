@@ -102,7 +102,19 @@ public static class CollectionCreator
 
                 var fileName = "Bundled Files - " + ent.AsLoadoutItemGroup().AsLoadoutItem().Name;
 
-                // Create a new library item, 
+                // Don't add duplicates: one archive entry per distinct hash.
+                var distinctFiles = ent.AsLoadoutItemGroup().Children
+                    .OfTypeLoadoutItemWithTargetPath()
+                    .OfTypeLoadoutFile()
+                    .DistinctBy(static child => child.Hash)
+                    .ToArray();
+
+                var sum = Size.Zero;
+                foreach (var child in distinctFiles) sum += child.Size;
+
+                // Create a new library item. The size has to be known up front: adding a second
+                // LibraryFile.Size to the same entity in this transaction leaves both values in the
+                // database and readers see the first one.
                 var libraryFile = new ManuallyCreatedArchive.New(tx, out var libraryFileId)
                 {
                     Source = ManuallyCreatedArchive.CreationSource.CollectionBundled,
@@ -112,8 +124,7 @@ public static class CollectionCreator
                         LibraryFile = new LibraryFile.New(tx, libraryFileId)
                         {
                             Hash = Hash.Zero,
-                            // We'll update the size later with the total size of all the files
-                            Size = Size.Zero,
+                            Size = sum,
                             FileName = fileName,
                             LibraryItem = new LibraryItem.New(tx, libraryFileId)
                             {
@@ -127,16 +138,8 @@ public static class CollectionCreator
                 // Link the mod group to the archive
                 tx.Add(item, LibraryLinkedLoadoutItem.LibraryItemId, libraryFileId);
 
-                var added = new HashSet<Hash>();
-
-                var sum = Size.Zero;
-                // Now link up all the required items
-                foreach (var child in ent.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
+                foreach (var child in distinctFiles)
                 {
-                    // Don't add duplicates
-                    if (added.Contains(child.Hash))
-                        continue;
-
                     var name = child.AsLoadoutItemWithTargetPath().AsLoadoutItem().Name;
                     _ = new LibraryArchiveFileEntry.New(tx, out var fileId)
                     {
@@ -153,11 +156,7 @@ public static class CollectionCreator
                             },
                         },
                     };
-                    sum += child.Size;
-                    added.Add(child.Hash);
                 }
-
-                tx.Add(libraryFileId, LibraryFile.Size, sum);
             }
 
         }
