@@ -41,6 +41,35 @@ public partial class BrandingGuardTests
         RepoScanGuard.AssertMatchesAllowlist(found, Allowed, "the fork must not reuse upstream's names; use ApplicationConstants or add the line to the allowlist with a reason");
     }
 
+    // The upstream project name used as a binary or package name. Namespaces, project folders,
+    // `.csproj`/`.sln` names and avares:// URIs keep the name, so the lookahead drops anything
+    // followed by a path or identifier character and the line check drops the declarations that
+    // end right after it.
+    [GeneratedRegex(@"NexusMods\.App(?![\w./\\])")]
+    private static partial Regex UpstreamBinaryName();
+
+    private static readonly string[] DeclarationMarkers =
+        ["namespace ", "using ", "x:Class=", "xmlns", "InternalsVisibleTo", "ProjectReference", "avares://"];
+
+    private static readonly (string File, string Line, string Reason)[] AllowedBinaryName =
+    [
+        ("README.md", "SilverModManager is a Linux-only fork of the [Nexus Mods App](https://github.com/Nexus-Mods/NexusMods.App) that downloads mods from [Nexus Mods](https://www.nexusmods.com).", "credits the project this is forked from"),
+        ("CONTRIBUTING.md", "SilverModManager is a Linux-only fork of the [Nexus Mods App](https://github.com/Nexus-Mods/NexusMods.App),", "credits the project this is forked from"),
+        ("src/NexusMods.Networking.ModUpdates/PerFeedCacheUpdater.cs", "/// For full info on internals, see the NexusMods.App project documentation.", "points at upstream's documentation, which is where those internals are described"),
+    ];
+
+    [Fact]
+    public void Test_NoUpstreamBinaryName()
+    {
+        var root = RepoScanGuard.FindRepoRoot();
+        var files = RepoScanGuard.EnumerateFiles(root, "src", SourceExtensions)
+            .Concat(RootFiles.Where(f => File.Exists(Path.Combine(root, f))));
+        var found = RepoScanGuard.FindLines(root, files, line =>
+            UpstreamBinaryName().IsMatch(line) && !DeclarationMarkers.Any(line.Contains));
+
+        RepoScanGuard.AssertMatchesAllowlist(found, AllowedBinaryName, "the binary and package are named after the fork; use ApplicationConstants.ProductName or add the line to the allowlist with a reason");
+    }
+
     // The accent is mapped from the neutral Zinc family. The Orange primitives are still
     // defined in PrimitiveColors.axaml, so pointing the accent back at them would restore
     // upstream's orange.
