@@ -44,7 +44,9 @@
                                           ClipToBounds="False"/>
         </Border>
 
+        <!-- Transparent so presses on empty top bar space hit this border and can drag the window -->
         <Border x:Name="TopBarBorder"
+                Background="Transparent"
                 Grid.Column="1"
                 Grid.ColumnSpan="2"
                 Grid.Row="0">
