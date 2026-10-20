@@ -80,7 +80,7 @@ public class VfsSourcesTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
             await StagedPathFor(picked).WriteAllTextAsync("staged bytes");
 
             var kernel = new FakeFuseKernel();
-            await kernel.Mount(VfsTree.Build(set.Sources), FuseMountOptions.Default(_staging), CancellationToken.None);
+            await kernel.Mount(VfsTree.Build(_staging, [], set.Sources, VfsCachePolicy.Default), FuseMountOptions.Default(_staging), CancellationToken.None);
 
             var served = kernel.Open("conflict.txt", VfsOpenFlags.Read);
             served.Ok.Should().BeTrue();

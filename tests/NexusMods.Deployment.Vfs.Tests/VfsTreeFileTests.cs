@@ -19,7 +19,7 @@ public class VfsTreeFileTests : IDisposable
     {
         var source = new VfsFileSource(RelativePath.FromUnsanitizedInput(path), VfsSourceKind.Backing, realPath, Size.From((ulong)size), Hash.From(1));
         var kernel = new FakeFuseKernel();
-        await kernel.Mount(VfsTree.Build([source]), FuseMountOptions.Default(_directory), CancellationToken.None);
+        await kernel.Mount(VfsTree.Build(_directory, [], [source], VfsCachePolicy.Default), FuseMountOptions.Default(_directory), CancellationToken.None);
         return kernel;
     }
 

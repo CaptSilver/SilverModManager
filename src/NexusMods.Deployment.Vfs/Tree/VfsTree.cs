@@ -1,3 +1,4 @@
+using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
 namespace NexusMods.Deployment.Vfs;
@@ -9,9 +10,9 @@ namespace NexusMods.Deployment.Vfs;
 /// </summary>
 public sealed class VfsTree : IVfsOperations
 {
-    // 0100444 and 040555: nobody writes through a read-only tree.
-    private const uint RegularFileMode = 0x8000 | 0x124;
-    private const uint DirectoryMode = 0x4000 | 0x16D;
+    // Served files that were not scanned (staged ones) are 0644; directories are 0755.
+    private const uint RegularFileMode = 0x8000 | 0x1A4;
+    private const uint DirectoryMode = 0x4000 | 0x1ED;
     private const ulong DirectorySize = 4096;
 
     private readonly object _gate = new();
@@ -19,27 +20,61 @@ public sealed class VfsTree : IVfsOperations
     private readonly Dictionary<ulong, VfsNode> _byIno = new();
     private readonly VfsNode _root;
     private readonly DateTimeOffset _created = DateTimeOffset.UtcNow;
+    private readonly VfsCachePolicy _policy;
 
-    private VfsTree()
+    private VfsTree(VfsCachePolicy policy)
     {
+        _policy = policy;
         _root = NewDirectory(IVfsOperations.RootInode, IVfsOperations.RootInode, "");
         _byIno[_root.Ino] = _root;
     }
 
     /// <summary>
-    /// Builds the tree from <paramref name="sources"/> in order. Directory spellings come from
-    /// the first insertion; a later source for the same name replaces the node, never its spelling.
-    /// A <see cref="VfsSourceKind.Hidden"/> source removes what is there, and does nothing if
-    /// nothing is.
+    /// Builds the tree from the game's own directory, then lays <paramref name="sources"/> over it
+    /// in order. Directory spellings come from the first insertion; a later source for the same name
+    /// replaces the node, never its spelling. A <see cref="VfsSourceKind.Hidden"/> source removes
+    /// what is there, and does nothing if nothing is.
     /// </summary>
-    public static VfsTree Build(IReadOnlyList<VfsFileSource> sources)
+    /// <param name="backingRoot">The directory <paramref name="backing"/> was scanned from; backing files are served from under it.</param>
+    /// <param name="backing">What the scanner found under <paramref name="backingRoot"/>.</param>
+    public static VfsTree Build(AbsolutePath backingRoot, IReadOnlyList<BackingEntry> backing, IReadOnlyList<VfsFileSource> sources, VfsCachePolicy policy)
     {
-        var tree = new VfsTree();
+        var tree = new VfsTree(policy);
+        foreach (var entry in backing) tree.InsertBacking(backingRoot, entry);
         foreach (var source in sources) tree.Insert(source);
         return tree;
     }
 
-    private void Insert(VfsFileSource source)
+    private void InsertBacking(AbsolutePath root, BackingEntry entry)
+    {
+        var segments = entry.Path.ToString().Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0) throw new ArgumentException("A backing entry needs a non-empty path.", nameof(entry));
+
+        if (!entry.IsDirectory)
+        {
+            Insert(new VfsFileSource(entry.Path, VfsSourceKind.Backing, root.Combine(entry.Path), entry.Size, Hash.Zero), entry);
+            return;
+        }
+
+        var directory = _root;
+        foreach (var segment in segments) directory = EnsureDirectory(directory, segment);
+    }
+
+    // The child directory called name, made if it is not there. A file standing in its place gives way, keeping its spelling.
+    private VfsNode EnsureDirectory(VfsNode parent, string segment)
+    {
+        var key = new VfsNameKey(segment);
+        if (parent.Children!.TryGetValue(key, out var child) && child.IsDirectory) return child;
+
+        var name = child?.DisplayName ?? segment;
+        if (child is not null) Unindex(child);
+        var created = NewDirectory(_inodes.GetOrAdd(parent.Ino, key), parent.Ino, name);
+        parent.Children[key] = created;
+        _byIno[created.Ino] = created;
+        return created;
+    }
+
+    private void Insert(VfsFileSource source, BackingEntry? scanned = null)
     {
         var segments = source.Path.ToString().Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments.Length == 0) throw new ArgumentException("A source needs a non-empty path.", nameof(source));
@@ -57,13 +92,7 @@ public sealed class VfsTree : IVfsOperations
             // Hiding something below a directory that is not there removes nothing.
             if (source.Kind == VfsSourceKind.Hidden) return;
 
-            // A file standing where a directory is needed gives way, keeping its spelling.
-            var name = child?.DisplayName ?? segments[i];
-            if (child is not null) Unindex(child);
-            var created = NewDirectory(_inodes.GetOrAdd(directory.Ino, key), directory.Ino, name);
-            directory.Children[key] = created;
-            _byIno[created.Ino] = created;
-            directory = created;
+            directory = EnsureDirectory(directory, segments[i]);
         }
 
         var leafKey = new VfsNameKey(segments[^1]);
@@ -85,6 +114,7 @@ public sealed class VfsTree : IVfsOperations
             DisplayName = existing?.DisplayName ?? segments[^1],
             IsDirectory = false,
             Source = source,
+            Backing = scanned,
         };
         directory.Children[leafKey] = file;
         _byIno[file.Ino] = file;
@@ -111,16 +141,33 @@ public sealed class VfsTree : IVfsOperations
     private VfsEntry EntryFor(VfsNode node)
     {
         var attr = AttrFor(node);
-        return new VfsEntry(node.Ino, attr, TimeSpan.Zero, TimeSpan.Zero);
+        return new VfsEntry(node.Ino, attr, _policy.EntryTtl, _policy.AttrTtl);
     }
 
     private VfsAttr AttrFor(VfsNode node)
     {
+        if (node.Backing is { } scanned)
+            return new VfsAttr(node.Ino, scanned.Mode, scanned.Size.Value, scanned.MTime, scanned.CTime, 1);
+
         if (!node.IsDirectory)
-            return new VfsAttr(node.Ino, RegularFileMode, node.Source!.Value.Size.Value, _created, _created, 1);
+        {
+            var source = node.Source!.Value;
+            var (mtime, ctime) = TimesOf(source);
+            return new VfsAttr(node.Ino, RegularFileMode, source.Size.Value, mtime, ctime, 1);
+        }
 
         var subdirectories = (uint)node.Children!.Values.Count(c => c.IsDirectory);
         return new VfsAttr(node.Ino, DirectoryMode, DirectorySize, _created, _created, 2 + subdirectories);
+    }
+
+    // A staged file's times are the real file's. One with no real file behind it (or one that
+    // vanished) reports when the tree was built.
+    private (DateTimeOffset MTime, DateTimeOffset CTime) TimesOf(VfsFileSource source)
+    {
+        if (source.RealPath is not { } real) return (_created, _created);
+        var info = new FileInfo(real.ToString());
+        if (!info.Exists) return (_created, _created);
+        return (info.LastWriteTimeUtc, info.LastWriteTimeUtc);
     }
 
     public VfsResult<VfsEntry> Lookup(ulong parent, string name)
@@ -129,9 +176,10 @@ public sealed class VfsTree : IVfsOperations
         {
             if (!_byIno.TryGetValue(parent, out var directory)) return VfsResult<VfsEntry>.Failure(Errno.ENOENT);
             if (!directory.IsDirectory) return VfsResult<VfsEntry>.Failure(Errno.ENOTDIR);
+            // A missing name is a negative entry (inode 0), which the kernel may cache for NegativeTtl.
             return directory.Children!.TryGetValue(new VfsNameKey(name), out var child)
                 ? VfsResult<VfsEntry>.Success(EntryFor(child))
-                : VfsResult<VfsEntry>.Failure(Errno.ENOENT);
+                : VfsResult<VfsEntry>.Success(new VfsEntry(0, default, _policy.NegativeTtl, TimeSpan.Zero));
         }
     }
 
@@ -188,7 +236,7 @@ public sealed class VfsTree : IVfsOperations
                 Ino = ino,
                 Handle = handle,
                 RealPath = realPath,
-                KeepCache = true,
+                KeepCache = _policy.KeepCache,
             });
         }
         catch (FileNotFoundException) { return VfsResult<VfsOpenFile>.Failure(Errno.ENOENT); }
@@ -202,7 +250,7 @@ public sealed class VfsTree : IVfsOperations
         if (size < 0) return VfsResult<VfsReadReply>.Failure(Errno.EINVAL);
         var length = (ulong)RandomAccess.GetLength(file.Handle);
         var available = offset >= length ? 0 : length - offset;
-        return VfsResult<VfsReadReply>.Success(new VfsReadReply(file.Handle, offset, (int)Math.Min((ulong)size, available)));
+        return VfsResult<VfsReadReply>.Success(VfsReadReply.FromHandle(file.Handle, offset, (int)Math.Min((ulong)size, available)));
     }
 
     public VfsResult Release(VfsOpenFile file)

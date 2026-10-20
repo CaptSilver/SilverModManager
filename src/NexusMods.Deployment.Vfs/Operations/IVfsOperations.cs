@@ -70,7 +70,10 @@ public sealed class VfsOpenFile
     public bool DirectIo { get; init; }
 }
 
-public readonly record struct VfsReadReply(SafeFileHandle Handle, ulong Offset, int Length);
+public readonly record struct VfsReadReply(SafeFileHandle Handle, ulong Offset, int Length)
+{
+    public static VfsReadReply FromHandle(SafeFileHandle handle, ulong offset, int length) => new(handle, offset, length);
+}
 
 public readonly record struct VfsDirEntry(string Name, VfsEntry Entry, ulong NextOffset);
 

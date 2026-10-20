@@ -13,5 +13,8 @@ internal sealed class VfsNode
     /// <summary>Set for files only.</summary>
     public VfsFileSource? Source { get; init; }
 
+    /// <summary>What the scanner saw, for a file that came from the backing directory.</summary>
+    public BackingEntry? Backing { get; init; }
+
     public Dictionary<VfsNameKey, VfsNode>? Children { get; init; }
 }
