@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.DataModel.SchemaVersions.Migrations;
 
 namespace NexusMods.DataModel.SchemaVersions;
 
@@ -11,16 +10,8 @@ public static class Services
         services.AddMigrationLogItemModel();
         services.AddTransient<MigrationService>();
 
-        // Migrations go here:
-        return services
-            .AddMigration<_0001_ConvertTimestamps>()
-            .AddMigration<_0002_NexusCollectionItem>()
-            .AddMigration<_0003_FixDuplicates>()
-            .AddMigration<_0004_RemoveGameFiles>()
-            .AddMigration<_0005_MD5Hashes>()
-            .AddMigration<_0006_DirectDownload>()
-            .AddMigration<_0007_AddSortOrderParentEntity>()
-            .AddMigration<_0008_AddCollectionId>();
+        // Migrations go here, numbered from _0001. Existing databases are at version 0 until the first one runs.
+        return services;
     }
 
     /// <summary>

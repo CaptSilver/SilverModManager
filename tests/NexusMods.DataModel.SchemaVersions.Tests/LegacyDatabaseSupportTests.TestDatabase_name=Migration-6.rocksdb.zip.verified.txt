@@ -1,9 +1,0 @@
-﻿{
-  Name: Migration-6.rocksdb.zip,
-  OldId: 5,
-  NewId: 8,
-  Loadouts: 1,
-  LoadoutItemGroups: 2,
-  Collections: 1,
-  Created: 2025-02-17 12:05:49
-}

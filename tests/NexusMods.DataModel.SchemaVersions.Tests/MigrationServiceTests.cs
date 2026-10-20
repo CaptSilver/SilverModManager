@@ -1,0 +1,22 @@
+using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using NexusMods.MnemonicDB.Abstractions;
+
+namespace NexusMods.DataModel.SchemaVersions.Tests;
+
+public class MigrationServiceTests
+{
+    [Fact]
+    public async Task Test_InitialSetupWithoutMigrationsStampsVersionZero()
+    {
+        using var folder = new OnDiskDataFolder();
+        await using var provider = folder.CreateProvider();
+
+        var migrations = provider.GetRequiredService<MigrationService>();
+        await migrations.InitialSetup();
+        await migrations.MigrateAll();
+
+        var connection = provider.GetRequiredService<IConnection>();
+        SchemaVersion.All(connection.Db).Single().CurrentVersion.Value.Should().Be(0);
+    }
+}

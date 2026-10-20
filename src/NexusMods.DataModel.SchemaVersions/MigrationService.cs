@@ -45,7 +45,7 @@ public class MigrationService
         using var tx = _connection.BeginTransaction();
         _ = new SchemaVersion.New(tx)
         {
-            CurrentVersion = _migrations.Last().Id,
+            CurrentVersion = _migrations.Count == 0 ? MigrationId.From(0) : _migrations.Last().Id,
         };
 
         // Populate the log, this isn't strictly needed but is nice for testing, to know what migrations we saw when the DB was created
