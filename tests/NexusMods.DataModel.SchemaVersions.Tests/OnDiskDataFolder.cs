@@ -16,19 +16,25 @@ internal sealed class OnDiskDataFolder : IDisposable
 {
     private readonly string _name = $"FreshDataDirectory-{Guid.NewGuid()}";
 
-    public ServiceProvider CreateProvider()
+    public static StartupMode Gui => new() { RunAsMain = true, ShowUI = true };
+    public static StartupMode Headless => new() { RunAsMain = true, ShowUI = false };
+
+    public ServiceProvider CreateProvider(StartupMode? mode = null)
     {
-        return new ServiceCollection()
+        mode ??= Gui;
+        var services = new ServiceCollection()
             .AddLogging()
-            .AddApp(startupMode: new StartupMode { RunAsMain = true, ShowUI = true })
+            .AddApp(startupMode: mode)
             .OverrideSettingsForTests<DataModelSettings>(settings => settings with
             {
                 UseInMemoryDataModel = false,
                 MnemonicDBPath = new ConfigurablePath(KnownPath.EntryDirectory, $"{_name}/MnemonicDB.rocksdb"),
                 ArchiveLocations = [new ConfigurablePath(KnownPath.EntryDirectory, $"{_name}/Archives")],
-            })
-            .RemoveLauncherShimRefresher()
-            .BuildServiceProvider();
+            });
+
+        // Only the GUI graph registers the refresher, and the helper throws when it is missing.
+        if (mode.ShowUI) services.RemoveLauncherShimRefresher();
+        return services.BuildServiceProvider();
     }
 
     public void Dispose()

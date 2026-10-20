@@ -12,9 +12,6 @@ namespace NexusMods.DataModel.SchemaVersions.Tests;
 /// </summary>
 public class FreshDataDirectoryTests
 {
-    private static bool HasSettingRow(IConnection connection, string name)
-        => Setting.All(connection.Db).Any(x => x.Name == name);
-
     [Fact]
     public async Task Test_FreshDatabaseIsStampedAndOnlyHoldsForkNames()
     {
@@ -31,11 +28,7 @@ public class FreshDataDirectoryTests
             var settings = provider.GetRequiredService<ISettingsManager>();
             settings.Set(new WelcomeSettings { HasShownWelcomeMessage = true });
 
-            // The MnemonicDB backend saves on the scheduler, so wait for the row.
-            var expected = "SilverModManager.App.UI.Settings.WelcomeSettings";
-            var deadline = DateTime.UtcNow.AddSeconds(10);
-            while (DateTime.UtcNow < deadline && !HasSettingRow(connection, expected)) await Task.Delay(50);
-            HasSettingRow(connection, expected).Should().BeTrue();
+            await SettingRows.WaitFor(connection, "SilverModManager.App.UI.Settings.WelcomeSettings");
         }
 
         await using (var provider = folder.CreateProvider())
