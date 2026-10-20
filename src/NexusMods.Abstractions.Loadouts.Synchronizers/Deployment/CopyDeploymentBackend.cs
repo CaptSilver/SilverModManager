@@ -148,61 +148,14 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
         var tx = context.Transaction;
         if (context.OverridesGroup is null)
             context.OverridesGroup = context.Synchronizer.GetOrCreateOverridesGroup(tx, loadout);
-        var overridesGroupId = context.OverridesGroup.Value;
-        var newGroup = true;
-        LoadoutItemGroup.ReadOnly? overridesGroup = null;
-        if (!overridesGroupId.InPartition(PartitionId.Temp))
-        {
-            newGroup = false;
-            overridesGroup = LoadoutItemGroup.Load(loadout.Db, overridesGroupId);
-        }
+        var overridesGroupId = LoadoutOverridesGroupId.From(context.OverridesGroup.Value);
 
         foreach (var (path, node) in nodes)
         {
             if (!node.Actions.HasFlag(Actions.IngestFromDisk))
                 continue;
 
-            // If the overrides group is not new, we need to check if the file is already in the overrides group
-            if (!newGroup)
-            {
-                var existingRecord = overridesGroup!.Value.Children
-                    .OfTypeLoadoutItemWithTargetPath()
-                    .FirstOrOptional(c => c.TargetPath == path);
-
-                if (existingRecord.HasValue)
-                {
-                    // Update the disk entry
-                    tx.Add(node.Disk.EntityId, DiskStateEntry.LastModified, new DateTimeOffset(node.Disk.LastModifiedTicks, TimeSpan.Zero));
-                    
-                    // Update the file entry
-                    tx.Add(existingRecord.Value.Id, LoadoutFile.Hash, node.Disk.Hash);
-                    tx.Add(existingRecord.Value.Id, LoadoutFile.Size, node.Disk.Size);
-                    
-                    // Skip the rest of this process
-                    continue;
-                }
-            }
-
-            // Entry was added
-            var id = tx.TempId();
-            var loadoutItem = new LoadoutItem.New(tx, id)
-            {
-                ParentId = overridesGroupId,
-                LoadoutId = loadout.Id,
-                Name = path.FileName,
-            };
-            var loadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, id)
-            {
-                LoadoutItem = loadoutItem,
-                TargetPath = path.ToGamePathParentTuple(loadout.Id),
-            };
-
-            _ = new LoadoutFile.New(tx, id)
-            {
-                LoadoutItemWithTargetPath = loadoutItemWithTargetPath,
-                Hash = node.Disk.Hash,
-                Size = node.Disk.Size,
-            };
+            OverridesGroupItems.UpsertFile(tx, loadout, overridesGroupId, path, node.Disk.Hash, node.Disk.Size);
             tx.Add(node.Disk.EntityId, DiskStateEntry.LastModified, new DateTimeOffset(node.Disk.LastModifiedTicks, TimeSpan.Zero));
         }
     }
@@ -362,43 +315,8 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             
             if (context.OverridesGroup is null)
                 context.OverridesGroup = context.Synchronizer.GetOrCreateOverridesGroup(tx, loadout);
-            var overridesGroup = context.OverridesGroup.Value;
-            
-            // If this is not a new entity, we may have a matching file in the overrides group already
-            if (!overridesGroup.InPartition(PartitionId.Temp))
-            {
-                var group = LoadoutOverridesGroup.Load(loadout.Db, overridesGroup);
-                var foundMatch = group.AsLoadoutItemGroup().Children
-                    .OfTypeLoadoutItemWithTargetPath()
-                    .TryGetFirst(p => p.TargetPath == path, out var match);
 
-                if (foundMatch)
-                {
-
-                    // A delete of a delete does nothing
-                    if (match.TryGetAsDeletedFile(out var _))
-                        continue;
-
-                    // If we found a match, we need to remove the entity itself
-                    tx.Delete(match, recursive: false);
-                    continue;
-                }
-            }
-                
-            _ = new DeletedFile.New(tx, out var id)
-            {
-                Reason = "Reified delete",
-                LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, id)
-                {
-                    TargetPath = path.ToGamePathParentTuple(loadout.Id),
-                    LoadoutItem = new LoadoutItem.New(tx, id)
-                    {
-                        Name = path.FileName,
-                        ParentId = overridesGroup,
-                        LoadoutId = loadout.Id,
-                    },
-                },
-            };
+            OverridesGroupItems.AddReifiedDelete(tx, loadout, LoadoutOverridesGroupId.From(context.OverridesGroup.Value), path);
         }
     }
 
