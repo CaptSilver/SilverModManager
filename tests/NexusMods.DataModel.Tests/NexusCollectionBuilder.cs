@@ -217,11 +217,12 @@ public abstract class ANexusCollectionTest<TTest>(ITestOutputHelper helper) : AC
 
     /// <summary>
     /// Adds a group holding a single <c>mods/{name}/info.json</c> file, which is what makes it a REDmod.
+    /// The group goes under <paramref name="parent"/> when one is given.
     /// </summary>
-    protected async Task<LoadoutItemGroupId> AddRedMod(LoadoutId loadout, string name)
+    protected async Task<LoadoutItemGroupId> AddRedMod(LoadoutId loadout, string name, LoadoutItemGroupId? parent = null)
     {
         using var tx = Connection.BeginTransaction();
-        var group = AddEmptyGroup(tx, loadout, name);
+        var group = AddEmptyGroup(tx, loadout, name, parent);
         AddFile(tx, loadout, group, new GamePath(LocationId.Game, $"mods/{name}/info.json"));
         var result = await tx.Commit();
         return LoadoutItemGroupId.From(result[group].Value);
