@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Diagnostics;
+using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Sdk.EventBus;
 using NexusMods.Abstractions.Serialization.ExpressionGenerator;
 using NexusMods.Abstractions.Serialization.Json;
@@ -92,6 +93,7 @@ public static class Services
 
             // Services
             .AddSingleton<IOverlayController, OverlayController>()
+            .AddSingleton<IApiKeyPrompt, ApiKeyPrompt>()
             .AddSingleton<IWindowNotificationService, WindowNotificationService>()
 
             // View Models
@@ -113,6 +115,7 @@ public static class Services
             .AddViewModel<ApplyControlViewModel, IApplyControlViewModel>()
             .AddViewModel<MyGamesViewModel, IMyGamesViewModel>()
             .AddViewModel<NexusLoginOverlayViewModel, INexusLoginOverlayViewModel>()
+            .AddViewModel<ApiKeyLoginOverlayViewModel, IApiKeyLoginOverlayViewModel>()
             .AddViewModel<SpineViewModel, ISpineViewModel>()
             .AddViewModel<TopBarViewModel, ITopBarViewModel>()
             .AddViewModel<SpineDownloadButtonViewModel, ISpineDownloadButtonViewModel>()
@@ -137,6 +140,7 @@ public static class Services
             .AddView<LaunchButtonView, ILaunchButtonViewModel>()
             .AddView<MyGamesView, IMyGamesViewModel>()
             .AddView<NexusLoginOverlayView, INexusLoginOverlayViewModel>()
+            .AddView<ApiKeyLoginOverlayView, IApiKeyLoginOverlayViewModel>()
             .AddView<Spine, ISpineViewModel>()
             .AddView<TopBarView, ITopBarViewModel>()
             .AddView<SpineDownloadButtonView, ISpineDownloadButtonViewModel>()

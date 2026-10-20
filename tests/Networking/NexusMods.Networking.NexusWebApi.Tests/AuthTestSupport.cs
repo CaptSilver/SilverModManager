@@ -56,9 +56,15 @@ internal static class AuthTestSupport
 
     public static OAuth CreateOAuth(IJobMonitor jobMonitor, HttpMessageHandler handler)
     {
-        var settings = Substitute.For<ISettingsManager>();
-        settings.Get<NexusAuthSettings>(Arg.Any<string?>()).Returns(new NexusAuthSettings { OAuthClientId = "test-client" });
+        var settings = CreateSettings("test-client");
         return new OAuth(jobMonitor, NullLogger<OAuth>.Instance, new HttpClient(handler), Substitute.For<IIDGenerator>(), Substitute.For<IOSInterop>(), settings);
+    }
+
+    public static ISettingsManager CreateSettings(string oauthClientId)
+    {
+        var settings = Substitute.For<ISettingsManager>();
+        settings.Get<NexusAuthSettings>(Arg.Any<string?>()).Returns(new NexusAuthSettings { OAuthClientId = oauthClientId });
+        return settings;
     }
 
     public static CredentialRoutedMessageFactory CreateRouter(IConnection conn, OAuth oauth)

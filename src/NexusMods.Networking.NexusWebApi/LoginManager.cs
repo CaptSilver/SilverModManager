@@ -10,6 +10,7 @@ using NexusMods.MnemonicDB.Abstractions.Query;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Networking.NexusWebApi.Auth;
 using NexusMods.Sdk;
+using NexusMods.Sdk.Settings;
 using NexusMods.Sdk.Threading;
 using R3;
 
@@ -26,6 +27,8 @@ public sealed class LoginManager : IDisposable, ILoginManager
     private readonly OAuth _oauth;
     private readonly NexusApiClient _nexusApiClient;
     private readonly IAuthenticatingMessageFactory _msgFactory;
+    private readonly ISettingsManager _settingsManager;
+    private readonly IApiKeyPrompt _apiKeyPrompt;
 
     private readonly BehaviorSubject<UserInfo?> _userInfo = new(initialValue: null);
 
@@ -68,9 +71,13 @@ public sealed class LoginManager : IDisposable, ILoginManager
         NexusApiClient nexusApiClient,
         IAuthenticatingMessageFactory msgFactory,
         OAuth oauth,
+        ISettingsManager settingsManager,
+        IApiKeyPrompt apiKeyPrompt,
         ILogger<LoginManager> logger)
     {
         _oauth = oauth;
+        _settingsManager = settingsManager;
+        _apiKeyPrompt = apiKeyPrompt;
         _conn = conn;
         _msgFactory = msgFactory;
         _nexusApiClient = nexusApiClient;
@@ -93,7 +100,18 @@ public sealed class LoginManager : IDisposable, ILoginManager
                 }
                 else
                 {
-                    var userInfo = await Verify(cancellationToken);
+                    UserInfo? userInfo;
+                    try
+                    {
+                        userInfo = await Verify(cancellationToken);
+                    }
+                    catch (Exception e) when (e is not OperationCanceledException)
+                    {
+                        // A pasted key can be wrong. That is not an unhandled error in a subscriber.
+                        _logger.LogWarning(e, "Unable to verify the stored credentials");
+                        userInfo = null;
+                    }
+
                     _cachedUserInfo.Store(userInfo);
                     _userInfo.OnNext(userInfo);
                 }
@@ -246,6 +264,14 @@ public sealed class LoginManager : IDisposable, ILoginManager
     /// <param name="token"></param>
     public async Task LoginAsync(CancellationToken token = default)
     {
+        // OAuth needs a client id registered for this app. Without one the key dialog is the only
+        // way in, so go straight to it instead of starting a flow that refuses.
+        if (string.IsNullOrWhiteSpace(_settingsManager.Get<NexusAuthSettings>().OAuthClientId))
+        {
+            await LoginWithApiKeyAsync(token);
+            return;
+        }
+
         JwtTokenReply? jwtToken;
         try
         {
@@ -280,13 +306,45 @@ public sealed class LoginManager : IDisposable, ILoginManager
         await tx.Commit();
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// Exceptions from the prompt propagate: a host with nobody to ask must fail loudly.
+    /// </remarks>
+    public async Task LoginWithApiKeyAsync(CancellationToken token = default)
+    {
+        var key = (await _apiKeyPrompt.PromptAsync(token))?.Trim();
+        if (string.IsNullOrEmpty(key)) return;
+
+        await ApiKey.Set(_conn, key);
+
+        try
+        {
+            await Verify(token);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // A key that cannot be verified would be sent with every request and re-verified at
+            // each start, so drop it and let the user try again. Only the key goes: a stored OAuth
+            // token is unaffected by a bad paste.
+            _logger.LogError(e, "Unable to verify the API key, removing it");
+            await ExciseCredentials(ApiKey.All(_conn.Db).Select(key => key.Id));
+        }
+    }
+
     /// <summary>
     ///  Log out of Nexus Mods
     /// </summary>
     public async Task Logout()
     {
         _cachedUserInfo.Evict();
-        var tokenEntities = JWTToken.All(_conn.Db).Select(e => e.Id).ToArray();
+
+        // The key is a stored secret, so it is excised along with the token rather than only retracted.
+        await ExciseCredentials(JWTToken.All(_conn.Db).Select(e => e.Id).Concat(ApiKey.All(_conn.Db).Select(e => e.Id)));
+    }
+
+    private async Task ExciseCredentials(IEnumerable<EntityId> entities)
+    {
+        var tokenEntities = entities.ToArray();
 
         // Retract the entities first, so the UI updates, then excise them
         using var tx = _conn.BeginTransaction();

@@ -1,6 +1,8 @@
 using System.Net;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Networking.NexusWebApi.Auth;
@@ -38,16 +40,16 @@ public class LoginManagerTests : IAsyncLifetime
         Environment.SetEnvironmentVariable(ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable, _savedEnvironmentKey);
     }
 
-    private LoginManager CreateLoginManager()
+    private LoginManager CreateLoginManager(IApiKeyPrompt? prompt = null, string oauthClientId = "", HttpStatusCode validateStatus = HttpStatusCode.OK)
     {
         var rest = Substitute.ForPartsOf<MockHttpMessageHandler>();
         rest.SendMock(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ValidateJson) }));
+            .Returns(_ => Task.FromResult(new HttpResponseMessage(validateStatus) { Content = new StringContent(ValidateJson) }));
 
         var oauth = AuthTestSupport.CreateOAuth(_jobMonitor, new MockHttpMessageHandler());
         var router = AuthTestSupport.CreateRouter(_conn, oauth);
         var apiClient = new NexusApiClient(NullLogger<NexusApiClient>.Instance, router, new HttpClient(rest), Substitute.For<IGraphQlClient>());
-        return new LoginManager(_conn, apiClient, router, oauth, NullLogger<LoginManager>.Instance);
+        return new LoginManager(_conn, apiClient, router, oauth, AuthTestSupport.CreateSettings(oauthClientId), prompt ?? Substitute.For<IApiKeyPrompt>(), NullLogger<LoginManager>.Instance);
     }
 
     [Fact]
@@ -77,5 +79,89 @@ public class LoginManagerTests : IAsyncLifetime
 
         loginManager.UserInfo.Should().NotBeNull();
         (await loginManager.GetIsUserLoggedInAsync()).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LoginWithoutAClientIdPromptsForAnApiKeyAndStoresIt()
+    {
+        var prompt = Substitute.For<IApiKeyPrompt>();
+        prompt.PromptAsync(Arg.Any<CancellationToken>()).Returns(new ValueTask<string?>("typed-key"));
+        using var loginManager = CreateLoginManager(prompt);
+
+        await loginManager.LoginAsync();
+
+        await prompt.Received(1).PromptAsync(Arg.Any<CancellationToken>());
+        ApiKey.Get(_conn.Db).Should().Be("typed-key");
+        (await loginManager.GetIsUserLoggedInAsync()).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LoginWithoutAClientIdTrimsThePastedKey()
+    {
+        var prompt = Substitute.For<IApiKeyPrompt>();
+        prompt.PromptAsync(Arg.Any<CancellationToken>()).Returns(new ValueTask<string?>("  typed-key\n"));
+        using var loginManager = CreateLoginManager(prompt);
+
+        await loginManager.LoginAsync();
+
+        ApiKey.Get(_conn.Db).Should().Be("typed-key");
+    }
+
+    [Fact]
+    public async Task CancellingTheKeyPromptLeavesTheUserSignedOut()
+    {
+        var prompt = Substitute.For<IApiKeyPrompt>();
+        prompt.PromptAsync(Arg.Any<CancellationToken>()).Returns(new ValueTask<string?>((string?)null));
+        using var loginManager = CreateLoginManager(prompt);
+
+        await loginManager.LoginAsync();
+
+        ApiKey.Get(_conn.Db).Should().BeNull();
+        (await loginManager.GetIsUserLoggedInAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task LoginWithoutAClientIdAndNoInteractivePromptFailsLoudly()
+    {
+        using var loginManager = CreateLoginManager(new NoInteractiveApiKeyPrompt());
+
+        var act = async () => await loginManager.LoginAsync();
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage("*No interactive prompt*nexus-api-key*");
+    }
+
+    [Fact]
+    public void WebApiServicesRegisterTheHeadlessPromptWhenNoUiProvidesOne()
+    {
+        var services = new ServiceCollection();
+        services.AddNexusWebApi();
+        services.Where(d => d.ServiceType == typeof(IApiKeyPrompt)).Should().ContainSingle()
+            .Which.ImplementationType.Should().Be<NoInteractiveApiKeyPrompt>();
+    }
+
+    [Fact]
+    public async Task LogoutRemovesAndExcisesTheStoredApiKey()
+    {
+        using var loginManager = CreateLoginManager();
+        await new ApiKeyMessageFactory(_conn).SetApiKey("the-key");
+
+        await loginManager.Logout();
+
+        ApiKey.Get(_conn.Db).Should().BeNull();
+        ApiKey.All(_conn.Db).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ARejectedKeyIsRemovedAndAStoredTokenIsKept()
+    {
+        var prompt = Substitute.For<IApiKeyPrompt>();
+        prompt.PromptAsync(Arg.Any<CancellationToken>()).Returns(new ValueTask<string?>("wrong-key"));
+        await AuthTestSupport.StoreToken(_conn, "stored-access", TimeSpan.FromHours(1));
+        using var loginManager = CreateLoginManager(prompt, validateStatus: HttpStatusCode.Unauthorized);
+
+        await loginManager.LoginWithApiKeyAsync();
+
+        ApiKey.All(_conn.Db).Should().BeEmpty();
+        JWTToken.All(_conn.Db).Should().ContainSingle();
     }
 }

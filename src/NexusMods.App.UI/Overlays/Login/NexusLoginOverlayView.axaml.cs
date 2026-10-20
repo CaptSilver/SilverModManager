@@ -21,6 +21,11 @@ public partial class NexusLoginOverlayView : ReactiveUserControl<INexusLoginOver
             this.BindCommand<NexusLoginOverlayView, INexusLoginOverlayViewModel, ICommand, Button>(ViewModel, vm => vm.Cancel, v => v.CancelButton)
                 .DisposeWith(d);
 
+            UseApiKeyButton.Text = NexusMods.App.UI.Resources.Language.NexusLoginOverlayView_Use_API_key_instead;
+
+            this.BindCommand<NexusLoginOverlayView, INexusLoginOverlayViewModel, ICommand, Button>(ViewModel, vm => vm.UseApiKey, v => v.UseApiKeyButton)
+                .DisposeWith(d);
+
             this.OneWayBind(ViewModel, vm => vm.Uri, view => view.UrlTextBlock.Text)
                 .DisposeWith(d);
         });

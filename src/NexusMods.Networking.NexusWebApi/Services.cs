@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.Abstractions.NexusWebApi;
@@ -33,6 +34,9 @@ public static class Services
             .AddAllSingleton<IHttpMessageFactory, CredentialRoutedMessageFactory>()
             .AddSingleton<IAuthenticatingMessageFactory>(sp => sp.GetRequiredService<CredentialRoutedMessageFactory>());
         collection.AddSingleton<OAuth>();
+
+        // Headless fallback. A UI registers its own prompt first and TryAdd leaves it alone.
+        collection.TryAddSingleton<IApiKeyPrompt, NoInteractiveApiKeyPrompt>();
         collection.AddSingleton<IIDGenerator, IDGenerator>();
 
         collection.AddJWTTokenModel();

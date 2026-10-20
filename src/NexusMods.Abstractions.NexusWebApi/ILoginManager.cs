@@ -57,6 +57,13 @@ public interface ILoginManager
     Task LoginAsync(CancellationToken token = default);
     
     /// <summary>
+    /// Asks the user for a personal API key, stores it and verifies it. Does nothing if the
+    /// user cancels the prompt, and removes the key again if Nexus rejects it.
+    /// </summary>
+    /// <param name="token"></param>
+    Task LoginWithApiKeyAsync(CancellationToken token = default);
+
+    /// <summary>
     /// Returns the user's information
     /// </summary>
     ValueTask<UserInfo?> GetUserInfoAsync(CancellationToken token = default);

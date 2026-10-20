@@ -12,14 +12,16 @@ public class NexusLoginOverlayService : IHostedService
 {
     private readonly IOverlayController _overlayController;
     private readonly IJobMonitor _jobMonitor;
+    private readonly ILoginManager _loginManager;
     private readonly CompositeDisposable _compositeDisposable;
 
     private NexusLoginOverlayViewModel? _overlayViewModel;
 
-    public NexusLoginOverlayService(IOverlayController overlayController, IJobMonitor jobMonitor)
+    public NexusLoginOverlayService(IOverlayController overlayController, IJobMonitor jobMonitor, ILoginManager loginManager)
     {
         _overlayController = overlayController;
         _jobMonitor = jobMonitor;
+        _loginManager = loginManager;
         _compositeDisposable = new CompositeDisposable();
     }
 
@@ -41,7 +43,7 @@ public class NexusLoginOverlayService : IHostedService
                     }
 
                     var job = changeSet.First(x => x.Reason == ChangeReason.Add).Current;
-                    _overlayViewModel = new NexusLoginOverlayViewModel(job);
+                    _overlayViewModel = new NexusLoginOverlayViewModel(job, _jobMonitor, _loginManager);
 
                     _overlayController.Enqueue(_overlayViewModel);
                 }

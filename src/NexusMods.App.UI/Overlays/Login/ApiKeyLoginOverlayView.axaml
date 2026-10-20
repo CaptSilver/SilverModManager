@@ -1,0 +1,49 @@
+<reactiveUi:ReactiveUserControl
+    d:DesignHeight="335"
+    d:DesignWidth="600"
+    mc:Ignorable="d"
+    x:Class="NexusMods.App.UI.Overlays.Login.ApiKeyLoginOverlayView"
+    x:TypeArguments="login:IApiKeyLoginOverlayViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:login="clr-namespace:NexusMods.App.UI.Overlays.Login"
+    xmlns:base="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.Base"
+    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls">
+
+    <Design.DataContext>
+        <login:ApiKeyLoginOverlayDesignerViewModel />
+    </Design.DataContext>
+
+    <base:MessageBoxBackground MinWidth="576" MaxWidth="576">
+        <base:MessageBoxBackground.TopContent>
+            <Border Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock x:Name="TitleText"
+                               TextWrapping="Wrap"
+                               Theme="{StaticResource HeadingXSSemiTheme}" />
+                    <TextBlock x:Name="DescriptionText"
+                               TextWrapping="Wrap"
+                               Theme="{StaticResource BodyMDNormalTheme}" />
+                    <SelectableTextBlock x:Name="KeyPageUrlText"
+                                         TextWrapping="Wrap"
+                                         Theme="{StaticResource BodyMDNormalTheme}" />
+                    <TextBox x:Name="ApiKeyTextBox" PasswordChar="•" />
+                </StackPanel>
+            </Border>
+        </base:MessageBoxBackground.TopContent>
+
+        <base:MessageBoxBackground.BottomContent>
+            <StackPanel Orientation="Horizontal"
+                        Margin="24"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Spacing="{StaticResource Spacing-2.5}">
+                <controls:StandardButton x:Name="ButtonCancel" Type="Tertiary" Fill="None" />
+                <controls:StandardButton x:Name="ButtonSave" Type="Primary" Fill="Strong" />
+            </StackPanel>
+        </base:MessageBoxBackground.BottomContent>
+    </base:MessageBoxBackground>
+</reactiveUi:ReactiveUserControl>

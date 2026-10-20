@@ -90,6 +90,11 @@
                     </Border>
                 </StackPanel>
             </Border>
+            <controls:StandardButton x:Name="UseApiKeyButton"
+                                     HorizontalAlignment="Center"
+                                     Margin="0,16,0,0"
+                                     Type="Tertiary"
+                                     Fill="None" />
         </StackPanel>
     </Border>
 </reactiveUi:ReactiveUserControl>

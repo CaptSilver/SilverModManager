@@ -2977,6 +2977,60 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Sign in with an API key.
+        /// </summary>
+        public static string ApiKeyLoginOverlayView_Title {
+            get {
+                return ResourceManager.GetString("ApiKeyLoginOverlayView_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Create a personal API key on your Nexus Mods account page, then paste it here. The key is stored on this computer and sent with your Nexus Mods requests..
+        /// </summary>
+        public static string ApiKeyLoginOverlayView_Description {
+            get {
+                return ResourceManager.GetString("ApiKeyLoginOverlayView_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Personal API key.
+        /// </summary>
+        public static string ApiKeyLoginOverlayView_Watermark {
+            get {
+                return ResourceManager.GetString("ApiKeyLoginOverlayView_Watermark", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Save.
+        /// </summary>
+        public static string ApiKeyLoginOverlayView_Save {
+            get {
+                return ResourceManager.GetString("ApiKeyLoginOverlayView_Save", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cancel.
+        /// </summary>
+        public static string ApiKeyLoginOverlayView_Cancel {
+            get {
+                return ResourceManager.GetString("ApiKeyLoginOverlayView_Cancel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Use API key instead.
+        /// </summary>
+        public static string NexusLoginOverlayView_Use_API_key_instead {
+            get {
+                return ResourceManager.GetString("NexusLoginOverlayView_Use_API_key_instead", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Browser didn&apos;t open automatically?.
         /// </summary>
         public static string NexusLoginOverlayView__BROWSER_DIDNT_OPEN {

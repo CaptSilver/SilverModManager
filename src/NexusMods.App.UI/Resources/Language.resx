@@ -188,6 +188,24 @@
     <data name="DownloadsPage_Default_Description" xml:space="preserve">
         <value>Manage your active and completed downloads</value>
     </data>
+    <data name="ApiKeyLoginOverlayView_Title" xml:space="preserve">
+        <value>Sign in with an API key</value>
+    </data>
+    <data name="ApiKeyLoginOverlayView_Description" xml:space="preserve">
+        <value>Create a personal API key on your Nexus Mods account page, then paste it here. The key is stored on this computer and sent with your Nexus Mods requests.</value>
+    </data>
+    <data name="ApiKeyLoginOverlayView_Watermark" xml:space="preserve">
+        <value>Personal API key</value>
+    </data>
+    <data name="ApiKeyLoginOverlayView_Save" xml:space="preserve">
+        <value>Save</value>
+    </data>
+    <data name="ApiKeyLoginOverlayView_Cancel" xml:space="preserve">
+        <value>Cancel</value>
+    </data>
+    <data name="NexusLoginOverlayView_Use_API_key_instead" xml:space="preserve">
+        <value>Use API key instead</value>
+    </data>
     <data name="NexusLoginOverlayView__Please_Click_Authorize" xml:space="preserve">
         <value>Please click "Authorise" on the website</value>
     </data>
