@@ -44,6 +44,22 @@ public partial class BrandingGuardTests
         RepoScanGuard.AssertMatchesAllowlist(found, Allowed, "the fork must not reuse upstream's names; use ApplicationConstants or add the line to the allowlist with a reason");
     }
 
+    // The accent is mapped from the neutral Zinc family. The Orange primitives are still
+    // defined in PrimitiveColors.axaml, so pointing the accent back at them would restore
+    // upstream's orange.
+    [GeneratedRegex("BrandPrimary.*PrimitiveOrange")]
+    private static partial Regex UpstreamAccent();
+
+    [Fact]
+    public void Test_BrandAccentIsNotUpstreamOrange()
+    {
+        var root = RepoScanGuard.FindRepoRoot();
+        var brandColors = "src/NexusMods.Themes.NexusFluentDark/Resources/Palette/Colors/BrandColors.axaml";
+        var found = RepoScanGuard.FindLines(root, [brandColors], line => UpstreamAccent().IsMatch(line));
+
+        RepoScanGuard.AssertMatchesAllowlist(found, [], "BrandPrimary* must map to the Zinc primitives, not Orange");
+    }
+
     // Locale files fall back to English for a missing key, so deleting the translation of a
     // reworded or removed string is what stops the old wording (and the upstream app name in
     // it) from showing up in that language.
