@@ -57,6 +57,12 @@ public sealed record ProcessStartupSteps
     public required Func<IServiceProvider, LaunchArgs, Task<int>> RunLaunch { get; init; }
 
     /// <summary>
+    /// Runs the launch's command unchanged when the window with the given pid owns a running launch of the
+    /// same game, and returns the command's exit code. Returns null when it does not, so the start is refused.
+    /// </summary>
+    public required Func<IServiceProvider, LaunchArgs, int, Task<int?>> TryPassThrough { get; init; }
+
+    /// <summary>
     /// The text that tells why a live headless main of this kind and pid is in the way.
     /// </summary>
     public required Func<IServiceProvider, MainKind, int, string> DescribeHeadlessMain { get; init; }
@@ -112,6 +118,23 @@ public static class ProcessStartup
         // A launch never takes over from a live main: the window or the other launch keeps the database and the game folder.
         if (startupMode.IsHeadlessRun && syncInfo.Process is { } holder)
         {
+            if (syncInfo.Kind == MainKind.Gui && launch is not null)
+            {
+                // The window started this game through Steam and owns the session; the wrapper only reports in.
+                try
+                {
+                    if (steps.TryPassThrough(services, launch, holder.Id).GetAwaiter().GetResult() is { } exitCode) return exitCode;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Could not pass the launch through to the running window");
+                    var failure = $"The launch failed: {ex.Message}";
+                    steps.WriteError(failure);
+                    steps.Notify(services, failure);
+                    return RunFailureExitCode;
+                }
+            }
+
             var refusal = syncInfo.Kind == MainKind.Gui
                 ? GuiOpenMessage
                 : steps.DescribeHeadlessMain(services, syncInfo.Kind, holder.Id);

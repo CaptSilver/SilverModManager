@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Platform.Proton;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
@@ -43,6 +44,14 @@ public static class LaunchRun
         var result = await session.RunAsync(context, () => PlanFor(tools, loadout, installation, args.Command));
         return result.ExitCode;
     }
+
+    /// <summary>
+    /// Joins the launch the window <paramref name="guiPid"/> is running: records this wrapper in the launch's
+    /// state file and runs the command unchanged. Returns the command's exit code, or null when the window
+    /// has no running launch of this game.
+    /// </summary>
+    public static Task<int?> TryPassThroughAsync(IServiceProvider services, LaunchArgs args, int guiPid) =>
+        WrapperPassThrough.TryRunAsync(args.Command, services.GetRequiredService<IEnvironmentReader>(), guiPid, services.GetRequiredService<ILogger<LaunchSession>>());
 
     private static LaunchPlan PlanFor(IToolManager tools, Loadout.ReadOnly loadout, GameInstallation installation, IReadOnlyList<string> command)
     {

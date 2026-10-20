@@ -24,6 +24,11 @@ public class ProcessStartupTests
         public int LaunchExitCode { get; set; }
         public Exception? LaunchException { get; set; }
         public List<LaunchArgs> Launches { get; } = [];
+
+        /// <summary>What joining the window's launch answers: null when it is not joinable, else the child's exit code.</summary>
+        public int? PassThroughExitCode { get; set; }
+        public Exception? PassThroughException { get; set; }
+        public List<int> PassThroughHolders { get; } = [];
         public List<(MainKind Kind, int Pid)> Described { get; } = [];
         public Func<MainKind, int, string>? Describe { get; set; }
         public bool CanConnect { get; set; } = true;
@@ -86,6 +91,13 @@ public class ProcessStartupTests
                 Launches.Add(launch);
                 if (LaunchException is not null) throw LaunchException;
                 return Task.FromResult(LaunchExitCode);
+            },
+            TryPassThrough = (_, _, holderPid) =>
+            {
+                Calls.Add("pass-through");
+                PassThroughHolders.Add(holderPid);
+                if (PassThroughException is not null) throw PassThroughException;
+                return Task.FromResult(PassThroughExitCode);
             },
             DescribeHeadlessMain = (_, kind, pid) =>
             {
@@ -570,6 +582,61 @@ public class ProcessStartupTests
         recorder.Calls.Should()
             .NotContain("claim").And.NotContain("host-start").And.NotContain("open-database").And.NotContain("run-launch")
             .And.NotContain("can-connect").And.NotContain("kill").And.NotContain("release-main");
+    }
+
+    [Fact]
+    public void RunAgainstTheWindowsOwnLaunchPassesThroughWithTheChildsExitCodeAndStartsNothing()
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234), PassThroughExitCode = 7 };
+
+        Run(recorder, Command("run")).Should().Be(7);
+
+        recorder.PassThroughHolders.Should().Equal(Environment.ProcessId);
+        recorder.Errors.Should().BeEmpty();
+        recorder.Notifications.Should().BeEmpty();
+        recorder.Calls.Should()
+            .NotContain("claim").And.NotContain("host-start").And.NotContain("open-database").And.NotContain("run-launch")
+            .And.NotContain("can-connect").And.NotContain("kill").And.NotContain("release-main");
+    }
+
+    [Fact]
+    public void RunAgainstAWindowThatDoesNotOwnThisLaunchStillRefusesWithTheOpenMessage()
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234), PassThroughExitCode = null };
+
+        Run(recorder, Command("run")).Should().Be(125);
+
+        recorder.Calls.Should().Contain("pass-through");
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(ProcessStartup.GuiOpenMessage);
+        recorder.Calls.Should().NotContain("run-launch");
+    }
+
+    [Theory]
+    [InlineData(MainKind.HeadlessRun)]
+    [InlineData(MainKind.HeadlessCli)]
+    public void RunAgainstAHeadlessMainNeverTriesToPassThrough(MainKind kind)
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), kind, 0), PassThroughExitCode = 0 };
+
+        Run(recorder, Command("run")).Should().Be(125);
+
+        recorder.Calls.Should().NotContain("pass-through");
+    }
+
+    [Fact]
+    public void APassThroughThatCannotStartTheCommandReportsItAsAFailedLaunch()
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            PassThroughException = new InvalidOperationException("no such program"),
+        };
+
+        Run(recorder, Command("run")).Should().Be(125);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Contain("no such program");
+        recorder.Notifications.Should().ContainSingle().Which.Should().Contain("no such program");
+        recorder.Calls.Should().NotContain("run-launch");
     }
 
     [Fact]
