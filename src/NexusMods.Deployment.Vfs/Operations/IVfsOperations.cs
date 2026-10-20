@@ -86,13 +86,16 @@ public readonly record struct VfsStatFs(ulong BlockSize, ulong Blocks, ulong Blo
 /// </summary>
 public enum Errno
 {
+    EPERM = 1,
     ENOENT = 2,
     EIO = 5,
+    EBADF = 9,
     EACCES = 13,
     EEXIST = 17,
     ENOTDIR = 20,
     EISDIR = 21,
     EINVAL = 22,
+    ENOSPC = 28,
     EXDEV = 18,
     ENOSYS = 38,
     EROFS = 30,

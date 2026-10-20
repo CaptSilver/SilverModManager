@@ -29,6 +29,17 @@ public sealed class VfsTree : IVfsOperations
     private StagingDirectory? _staging;
     private readonly Dictionary<string, RelativePath> _whiteouts = new(StringComparer.OrdinalIgnoreCase);
 
+    // Every spelling Lookup was asked for, per directory and folded name. The kernel caches a
+    // negative or positive entry per exact spelling, so a change has to drop all of them.
+    private const int MaxSpellingsPerName = 8;
+    private readonly Dictionary<(ulong Parent, VfsNameKey Key), List<string>> _spellings = new();
+
+    /// <summary>
+    /// Told about every change the kernel's caches would not see on their own. Null until a mount sets
+    /// it after the session is up; the mount clears it again on unmount.
+    /// </summary>
+    public IVfsInvalidationSink? Invalidation { get; set; }
+
     private VfsTree(VfsCachePolicy policy)
     {
         _policy = policy;
@@ -219,12 +230,34 @@ public sealed class VfsTree : IVfsOperations
         {
             if (!_byIno.TryGetValue(parent, out var directory)) return VfsResult<VfsEntry>.Failure(Errno.ENOENT);
             if (!directory.IsDirectory) return VfsResult<VfsEntry>.Failure(Errno.ENOTDIR);
+            RecordSpelling(parent, name);
             // A missing name is a negative entry (inode 0), which the kernel may cache for NegativeTtl.
             return directory.Children!.TryGetValue(new VfsNameKey(name), out var child)
                 ? VfsResult<VfsEntry>.Success(EntryFor(child))
                 : VfsResult<VfsEntry>.Success(new VfsEntry(0, default, _policy.NegativeTtl, TimeSpan.Zero));
         }
     }
+
+    // Callers hold the lock.
+    private void RecordSpelling(ulong parent, string name)
+    {
+        var key = (parent, new VfsNameKey(name));
+        if (!_spellings.TryGetValue(key, out var seen)) _spellings[key] = seen = new List<string>();
+        if (seen.Contains(name, StringComparer.Ordinal)) return;
+        seen.Add(name);
+        if (seen.Count > MaxSpellingsPerName) seen.RemoveAt(0);
+    }
+
+    // The name the kernel used is always dropped, even if Lookup never saw it. Callers hold the lock.
+    private void InvalidateName(ulong parent, string name)
+    {
+        if (Invalidation is not { } sink) return;
+        RecordSpelling(parent, name);
+        foreach (var spelling in _spellings[(parent, new VfsNameKey(name))].ToArray()) sink.InvalidateEntry(parent, spelling);
+    }
+
+    // Callers hold the lock.
+    private void InvalidateInode(ulong ino) => Invalidation?.InvalidateInode(ino);
 
     // Inode numbers are kept for the life of the tree, so there is no per-lookup count to release.
     public void Forget(ulong ino, ulong lookups) { }
@@ -367,6 +400,7 @@ public sealed class VfsTree : IVfsOperations
                 }
                 if (change.Mode is { } mode) File.SetUnixFileMode(real, (UnixFileMode)(mode & 0xFFF));
                 if (change.MTime is { } mtime) File.SetLastWriteTimeUtc(real, mtime.UtcDateTime);
+                if (change.Size is not null) InvalidateInode(ino);
                 return VfsResult<VfsAttr>.Success(AttrFor(node));
             }
         }
@@ -403,6 +437,7 @@ public sealed class VfsTree : IVfsOperations
                 };
                 directory.Children[key] = file;
                 _byIno[file.Ino] = file;
+                InvalidateName(directory.Ino, name);
 
                 var open = new VfsOpenFile { Ino = file.Ino, Handle = handle, RealPath = real, Writable = true, KeepCache = _policy.KeepCache };
                 return VfsResult<(VfsEntry, VfsOpenFile)>.Success((EntryFor(file), open));
@@ -430,6 +465,7 @@ public sealed class VfsTree : IVfsOperations
             var created = NewDirectory(_inodes.GetOrAdd(directory.Ino, key), directory.Ino, name, lower: false);
             directory.Children[key] = created;
             _byIno[created.Ino] = created;
+            InvalidateName(directory.Ino, name);
             return VfsResult<VfsEntry>.Success(EntryFor(created));
         }
     }
@@ -454,6 +490,7 @@ public sealed class VfsTree : IVfsOperations
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return VfsResult.Failure(ErrnoOf(ex)); }
 
             Detach(directory, node);
+            InvalidateName(directory.Ino, name);
             return VfsResult.Success;
         }
     }
@@ -478,6 +515,7 @@ public sealed class VfsTree : IVfsOperations
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return VfsResult.Failure(ErrnoOf(ex)); }
 
             Detach(directory, node);
+            InvalidateName(directory.Ino, name);
             return VfsResult.Success;
         }
     }
@@ -579,6 +617,8 @@ public sealed class VfsTree : IVfsOperations
                 node.Shadows = shadowsAfter;
                 node.Source = node.Source!.Value with { Path = newPath, RealPath = to };
             }
+            InvalidateName(fromDirectory.Ino, name);
+            InvalidateName(toDirectory.Ino, newName);
             return VfsResult.Success;
         }
     }
@@ -688,6 +728,8 @@ public sealed class VfsTree : IVfsOperations
                     node.Source = source with { Kind = VfsSourceKind.Staged, RealPath = destination, FromStaging = true };
                     node.Backing = null;
                     node.Shadows = true;
+                    // Same inode number, different file: size, times and link count under the attribute TTL are stale.
+                    InvalidateInode(node.Ino);
                 }
                 return null;
             }

@@ -11,6 +11,7 @@ public sealed class FakeFuseKernel : IFuseKernel
 {
     private readonly object _gate = new();
     private readonly List<(ulong Parent, string Name)> _lookups = new();
+    private readonly List<(string Kind, ulong Node, string? Name)> _invalidations = new();
     private IVfsOperations? _operations;
     private VfsPathWalker? _walker;
 
@@ -23,6 +24,15 @@ public sealed class FakeFuseKernel : IFuseKernel
         get { lock (_gate) return _lookups.ToArray(); }
     }
 
+    /// <summary>
+    /// What the tree asked the kernel to drop, in order: <c>("Inode", ino, null)</c> or
+    /// <c>("Entry", parent, name)</c>.
+    /// </summary>
+    public IReadOnlyList<(string Kind, ulong Node, string? Name)> Invalidations
+    {
+        get { lock (_gate) return _invalidations.ToArray(); }
+    }
+
     public Task<IFuseMount> Mount(IVfsOperations operations, FuseMountOptions options, CancellationToken token)
     {
         if (_operations is not null) throw new InvalidOperationException("The fake kernel serves one mount.");
@@ -31,7 +41,9 @@ public sealed class FakeFuseKernel : IFuseKernel
         {
             lock (_gate) _lookups.Add((parent, name));
         });
-        return Task.FromResult<IFuseMount>(new FakeFuseMount(options.MountPoint, token));
+        var mount = new FakeFuseMount(this, options.MountPoint, token);
+        if (operations is VfsTree tree) tree.Invalidation = mount;
+        return Task.FromResult<IFuseMount>(mount);
     }
 
     public VfsResult<VfsEntry> Resolve(string path) => Walker.Walk(path);
@@ -122,32 +134,45 @@ public sealed class FakeFuseKernel : IFuseKernel
         return Operations.Rename(source.Value.Parent, source.Value.Name, destination.Value.Parent, destination.Value.Name);
     }
 
-    private sealed class FakeFuseMount : IFuseMount
+    private void Record(string kind, ulong node, string? name)
+    {
+        lock (_gate) _invalidations.Add((kind, node, name));
+    }
+
+    private sealed class FakeFuseMount : IFuseMount, IVfsInvalidationSink
     {
         private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly FakeFuseKernel _kernel;
 
-        public FakeFuseMount(AbsolutePath mountPoint, CancellationToken token)
+        public FakeFuseMount(FakeFuseKernel kernel, AbsolutePath mountPoint, CancellationToken token)
         {
+            _kernel = kernel;
             MountPoint = mountPoint;
-            token.Register(() => _completion.TrySetResult());
+            token.Register(Finish);
+        }
+
+        private void Finish()
+        {
+            if (_kernel._operations is VfsTree tree && ReferenceEquals(tree.Invalidation, this)) tree.Invalidation = null;
+            _completion.TrySetResult();
         }
 
         public AbsolutePath MountPoint { get; }
         public Task Completion => _completion.Task;
 
-        // There is no kernel cache to drop.
-        public void InvalidateEntry(ulong parent, string name) { }
-        public void InvalidateInode(ulong ino) { }
+        // There is no kernel cache to drop, so the request is only written down.
+        public void InvalidateEntry(ulong parent, string name) => _kernel.Record("Entry", parent, name);
+        public void InvalidateInode(ulong ino) => _kernel.Record("Inode", ino, null);
 
         public Task Unmount(CancellationToken token)
         {
-            _completion.TrySetResult();
+            Finish();
             return Task.CompletedTask;
         }
 
         public ValueTask DisposeAsync()
         {
-            _completion.TrySetResult();
+            Finish();
             return ValueTask.CompletedTask;
         }
     }
