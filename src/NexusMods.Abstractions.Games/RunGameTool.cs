@@ -15,7 +15,13 @@ namespace NexusMods.Abstractions.Games;
 /// <summary>
 /// Marker interface for RunGameTool
 /// </summary>
-public interface IRunGameTool : ITool;
+public interface IRunGameTool : ITool
+{
+    /// <summary>
+    /// Resolves what this tool would start for the loadout, without starting it.
+    /// </summary>
+    ValueTask<LaunchSpec> GetLaunchSpec(Loadout.ReadOnly loadout, CancellationToken cancellationToken);
+}
 
 /// <summary>
 /// A tool that launches the game, using first found installation.
@@ -52,13 +58,20 @@ public class RunGameTool<T> : IRunGameTool
     /// <inheritdoc />
     public string Name => $"Run {_game.DisplayName}";
 
+    /// <inheritdoc />
+    public virtual async ValueTask<LaunchSpec> GetLaunchSpec(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
+    {
+        return new LaunchSpec(await GetGamePath(loadout), []);
+    }
+
     /// <summary/>
     public virtual async Task Execute(Loadout.ReadOnly loadout, CancellationToken cancellationToken, string[]? commandLineArgs)
     {
-        commandLineArgs ??= [];
         _logger.LogInformation("Starting {Name}", Name);
-        
-        var program = await GetGamePath(loadout);
+
+        var spec = await GetLaunchSpec(loadout, cancellationToken);
+        var program = spec.Exe;
+        commandLineArgs = [..commandLineArgs ?? [], ..spec.ExtraArgs];
         var primaryFile = loadout.InstallationInstance.Locations.ToAbsolutePath(_game.GetPrimaryFile(loadout.InstallationInstance));
 
         if (program.Equals(primaryFile))
