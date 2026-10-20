@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Loadouts.Extensions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -23,9 +24,15 @@ public class RunGameViaScriptExtenderTool<TGame> : RunGameTool<TGame> where TGam
 
     protected override ValueTask<AbsolutePath> GetGamePath(Loadout.ReadOnly loadout)
     {
-        var installationInstance = loadout.InstallationInstance;
-        var extenderPath = installationInstance.Locations.ToAbsolutePath(_scriptExtenderPath);
-        if (extenderPath.FileExists) return ValueTask.FromResult(extenderPath);
-        return base.GetGamePath(loadout);
+        // The loader only counts when the loadout puts it there. Checking the disk would pick up a
+        // loader left behind by an earlier deployment, or miss one that is about to be deployed.
+        // A deleted-file record at the same path wins over a mod's copy, so it rules the loader out.
+        var itemsAtPath = LoadoutItemWithTargetPath.FindByTargetPath(loadout.Db, _scriptExtenderPath.ToGamePathParentTuple(loadout.Id))
+            .Where(x => x.AsLoadoutItem().IsEnabled())
+            .ToArray();
+        var extenderInLoadout = itemsAtPath.Any(x => x.IsLoadoutFile()) && !itemsAtPath.Any(x => x.IsDeletedFile());
+
+        if (!extenderInLoadout) return base.GetGamePath(loadout);
+        return ValueTask.FromResult(loadout.InstallationInstance.Locations.ToAbsolutePath(_scriptExtenderPath));
     }
 }

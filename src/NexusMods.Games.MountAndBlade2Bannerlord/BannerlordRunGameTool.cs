@@ -29,20 +29,16 @@ public class BannerlordRunGameTool : RunGameTool<Bannerlord>
 
     protected override bool UseShell { get; set; } = false;
     
-    public override async Task Execute(Loadout.ReadOnly loadout, CancellationToken cancellationToken, string[]? commandLineArgs)
+    public override async ValueTask<LaunchSpec> GetLaunchSpec(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
-        commandLineArgs ??= [];
-
-        // We need to 'inject' the current set of enabled modules in addition to any existing parameters.
-        // This way, external arguments specified by outside entities are preserved.
-        var args = await GetBannerlordExeCommandlineArgs(loadout, commandLineArgs, cancellationToken);
-        var install = loadout.InstallationInstance;
-        var exe = install.Locations[LocationId.Game].Path;
+        // We need to 'inject' the current set of enabled modules, the same way the launcher would.
+        var args = await GetBannerlordExeCommandlineArgs(loadout, cancellationToken);
+        var exe = loadout.InstallationInstance.Locations[LocationId.Game].Path;
 
         if (loadout.LocateBLSE(out var blseRelativePath))
         {
             exe = exe/blseRelativePath;
-            
+
             // Note(sewer): On Linux there is no guarantee .NET Framework is
             // installed; instead, Framework stuff may be run on
             // Mono. Because BLSE interacts with low level components of the runtime,
@@ -56,9 +52,17 @@ public class BannerlordRunGameTool : RunGameTool<Bannerlord>
             exe = exe/BinFolder/Win64Configuration/BannerlordExecutable;
         }
 
-        var command = Cli.Wrap(exe.ToString())
-            .WithArguments(args)
-            .WithWorkingDirectory(exe.Parent.ToString());
+        return new LaunchSpec(exe, args);
+    }
+
+    public override async Task Execute(Loadout.ReadOnly loadout, CancellationToken cancellationToken, string[]? commandLineArgs)
+    {
+        var spec = await GetLaunchSpec(loadout, cancellationToken);
+
+        // External arguments specified by outside entities are preserved, ahead of the ones the tool adds.
+        var command = Cli.Wrap(spec.Exe.ToString())
+            .WithArguments([..commandLineArgs ?? [], ..spec.ExtraArgs])
+            .WithWorkingDirectory(spec.Exe.Parent.ToString());
 
         // Note(sewer): We use the tool runner to execute an alternative process,
         //              but because the UI expects `RunGameTool`, we override the `RunGameTool's` executor
@@ -68,7 +72,7 @@ public class BannerlordRunGameTool : RunGameTool<Bannerlord>
 
     // TODO: Refactor Bannerlord.LauncherManager so we don't have to copy (some) of the commandline logic.
     //       (Since LauncherManager has dependencies on code we don't need/want to provide).
-    private async Task<string[]> GetBannerlordExeCommandlineArgs(Loadout.ReadOnly loadout, string[] commandLineArgs, CancellationToken cancellationToken)
+    private async Task<string[]> GetBannerlordExeCommandlineArgs(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
         // Set the (automatic) load order.
         // Copied from Bannerlord.LauncherManager
@@ -80,6 +84,6 @@ public class BannerlordRunGameTool : RunGameTool<Bannerlord>
         var loadOrderCli = sortedModules.Length > 0 ? $"_MODULES_*{string.Join("*", sortedModules)}*_MODULES_" : string.Empty;
 
         // Add the new arguments
-        return commandLineArgs.Concat(["/singleplayer", loadOrderCli]).ToArray();
+        return ["/singleplayer", loadOrderCli];
     }
 }
