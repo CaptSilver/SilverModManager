@@ -600,6 +600,17 @@ public class ProcessStartupTests
     }
 
     [Fact]
+    public void DryRunAgainstALiveWindowNeverPassesThrough_SoNothingIsStarted()
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234), PassThroughExitCode = 0 };
+
+        Run(recorder, "run", "a loadout", "--dry-run", "--", "a-game").Should().Be(125);
+
+        recorder.Calls.Should().NotContain("pass-through").And.NotContain("run-launch");
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(ProcessStartup.GuiOpenMessage);
+    }
+
+    [Fact]
     public void RunAgainstAWindowThatDoesNotOwnThisLaunchStillRefusesWithTheOpenMessage()
     {
         var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234), PassThroughExitCode = null };

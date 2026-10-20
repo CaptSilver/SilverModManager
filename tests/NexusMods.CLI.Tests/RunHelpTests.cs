@@ -23,6 +23,28 @@ public class RunHelpTests(IServiceProvider provider)
     }
 
     [Fact]
+    public async Task RootHelp_ListsStatus()
+    {
+        var renderer = new LoggingRenderer();
+
+        await provider.GetRequiredService<CommandLineConfigurator>()
+            .RunAsync(["--help"], renderer, CancellationToken.None);
+
+        string.Concat(renderer.Logs.OfType<Text>().Select(t => t.Template)).Should().MatchRegex(@"(?m)^\s+status\s");
+    }
+
+    [Fact]
+    public async Task RunHelp_ShowsTheDryRunOption()
+    {
+        var renderer = new LoggingRenderer();
+
+        await provider.GetRequiredService<CommandLineConfigurator>()
+            .RunAsync(["run", "--help"], renderer, CancellationToken.None);
+
+        string.Concat(renderer.Logs.OfType<Text>().Select(t => t.Template)).Should().Contain("--dry-run");
+    }
+
+    [Fact]
     public async Task RunHelp_ShowsTheSameSynopsisAsTheArgumentParser()
     {
         var renderer = new LoggingRenderer();

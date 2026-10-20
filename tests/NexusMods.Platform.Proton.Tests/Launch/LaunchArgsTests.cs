@@ -56,6 +56,33 @@ public class LaunchArgsTests
         parsed.Command.Should().Equal("game.exe");
     }
 
+    [Theory]
+    [InlineData("L", "--dry-run", "--")]
+    [InlineData("--dry-run", "L", "--")]
+    public void ReadsTheDryRunFlagBeforeOrAfterTheName(params string[] head)
+    {
+        var parsed = Parse([.. head, "game.exe"]);
+
+        parsed.DryRun.Should().BeTrue();
+        parsed.LoadoutName.Should().Be("L");
+        parsed.Command.Should().Equal("game.exe");
+    }
+
+    [Fact]
+    public void DryRunIsOffByDefault_AndAfterTheSeparatorBelongsToTheCommand()
+    {
+        var parsed = Parse("L", "--", "game.exe", "--dry-run");
+
+        parsed.DryRun.Should().BeFalse();
+        parsed.Command.Should().Equal("game.exe", "--dry-run");
+    }
+
+    [Fact]
+    public void DryRunTwice_IsAUsageError()
+    {
+        Fail("L", "--dry-run", "--dry-run", "--", "x").Should().Contain("--dry-run").And.Contain(LaunchArgs.Synopsis);
+    }
+
     [Fact]
     public void KeepsTheNameVerbatim()
     {

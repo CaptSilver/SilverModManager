@@ -124,6 +124,48 @@ public sealed class LaunchSession
     public Task<LaunchResult> RunExternalAsync(LaunchContext context, Func<CancellationToken, Task> whileRunning, CancellationToken cancellationToken = default)
         => Run(context, resolvePlan: null, whileRunning, cancellationToken);
 
+    /// <summary>
+    /// Writes what <see cref="RunAsync(LaunchContext, Func{LaunchPlan}, CancellationToken)"/> would do to
+    /// <paramref name="output"/>, and does none of it: no lock is taken, nothing is applied and nothing is started,
+    /// so it also works while another launch holds the installation.
+    /// </summary>
+    /// <remarks>
+    /// The plan is resolved against the loadout as it stands, while a real launch applies it first, so a run tool
+    /// that looks at files the apply puts in place can resolve differently there. The output says so.
+    /// A plan that cannot be resolved fails the way a launch does, with <see cref="FailureExitCode"/>.
+    /// </remarks>
+    public LaunchResult DryRun(LaunchContext context, Func<LaunchPlan> resolvePlan, TextWriter output)
+    {
+        var game = context.Installation.Game.DisplayName;
+
+        LaunchPlan plan;
+        try
+        {
+            plan = resolvePlan();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Planning the launch of {Loadout} for {Game} failed", context.LoadoutName, game);
+            return ReportFailure($"Cannot plan the launch of {game}: {e.Message}");
+        }
+
+        output.WriteLine("Dry run: nothing was locked, applied or started.");
+        output.WriteLine($"Game: {game}");
+        output.WriteLine($"Loadout: {context.LoadoutName}");
+        output.WriteLine("Before the game starts: one synchronize applies the loadout. After it exits: one synchronize takes its changes back.");
+
+        if (plan.Resolved is { } resolved)
+            output.WriteLine(resolved.ExtraArgs.Length == 0 ? $"Run tool: {resolved.Exe}" : $"Run tool: {resolved.Exe} with arguments {string.Join(' ', resolved.ExtraArgs)}");
+        else
+            output.WriteLine("Run tool: none, the command is started as given");
+
+        output.WriteLine(plan.Substitution is { } substitution ? $"App id: {substitution.AppId ?? "none"}" : "App id: none");
+        output.WriteLine($"Command: {string.Join(' ', plan.Process.Argv)}");
+        if (plan.Process.WorkingDirectory is { } workingDirectory) output.WriteLine($"Working directory: {workingDirectory}");
+        output.WriteLine("The command was resolved against the loadout as it is now; a real launch applies the loadout first, which can change it.");
+        return new LaunchResult(0, null);
+    }
+
     private async Task<LaunchResult> Run(LaunchContext context, Func<LaunchPlan>? resolvePlan, Func<CancellationToken, Task>? whileRunning, CancellationToken cancellationToken)
     {
         if (_started) throw new InvalidOperationException("A launch session runs once.");
@@ -150,6 +192,11 @@ public sealed class LaunchSession
         }
         if (failure is null) return _result!;
 
+        return ReportFailure(failure);
+    }
+
+    private LaunchResult ReportFailure(string failure)
+    {
         _logger.LogError("{Message}", failure);
         _error.WriteLine(failure);
         _notifier.Notify(ApplicationConstants.ProductName, failure);

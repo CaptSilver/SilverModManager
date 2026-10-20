@@ -39,6 +39,30 @@ public class StartupModeTests
     }
 
     [Theory]
+    [InlineData("status", true)]
+    [InlineData("STATUS --json", true)]
+    [InlineData("", false)]
+    [InlineData("run", false)]
+    [InlineData("as-main status", false)]
+    [InlineData("loadouts list", false)]
+    public void TestIsStatus(string input, bool expected)
+    {
+        var mode = StartupMode.Parse(input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        mode.IsStatus.Should().Be(expected);
+    }
+
+    [Fact]
+    public void StatusBuildsNoHostAndShowsNoUi()
+    {
+        var mode = StartupMode.Parse(["status", "--json"]);
+
+        mode.RunAsMain.Should().BeFalse();
+        mode.ShowUI.Should().BeFalse();
+        mode.ExecuteCli.Should().BeFalse();
+        mode.Args.Should().Equal("--json");
+    }
+
+    [Theory]
     [InlineData("--help", false)]
     [InlineData("loadouts list", false)]
     [InlineData("protocol-invoke -u nxm://stardewvalley/mods/1/files/2", true)]

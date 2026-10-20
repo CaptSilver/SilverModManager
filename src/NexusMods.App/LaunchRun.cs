@@ -36,11 +36,14 @@ public static class LaunchRun
         var installation = resolution.Installation!;
         var tools = services.GetRequiredService<IToolManager>();
 
-        // The slot is what ProcessStartup ends once the database is closed.
         var session = services.GetRequiredService<LaunchSession>();
-        services.GetRequiredService<LaunchSessionSlot>().Current = session;
-
         var context = new LaunchContext(installation, loadout.LoadoutId, loadout.Name);
+
+        // A dry run takes no lock, so there is no session for the slot to end.
+        if (args.DryRun) return session.DryRun(context, () => PlanFor(tools, loadout, installation, args.Command), Console.Out).ExitCode;
+
+        // The slot is what ProcessStartup ends once the database is closed.
+        services.GetRequiredService<LaunchSessionSlot>().Current = session;
         var result = await session.RunAsync(context, () => PlanFor(tools, loadout, installation, args.Command));
         return result.ExitCode;
     }

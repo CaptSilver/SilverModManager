@@ -3,17 +3,18 @@ using System.Diagnostics.CodeAnalysis;
 namespace NexusMods.Platform.Proton.Launch;
 
 /// <summary>
-/// The arguments of <c>silvermod run &lt;loadout&gt; [--game &lt;appid|name&gt;] -- &lt;command&gt;</c>.
+/// The arguments of <c>silvermod run &lt;loadout&gt; [--game &lt;appid|name&gt;] [--dry-run] -- &lt;command&gt;</c>.
 /// </summary>
 /// <param name="LoadoutName">The loadout to run, as typed.</param>
 /// <param name="Game">The <c>--game</c> value (a Steam app id or a game name), or null.</param>
 /// <param name="Command">Everything after the first <c>--</c>, untouched.</param>
-public sealed record LaunchArgs(string LoadoutName, string? Game, IReadOnlyList<string> Command)
+/// <param name="DryRun">Print what would be launched and stop, without locking, applying or starting anything.</param>
+public sealed record LaunchArgs(string LoadoutName, string? Game, IReadOnlyList<string> Command, bool DryRun = false)
 {
     /// <summary>
     /// The one-line usage text shown with every usage error and in <c>--help</c>.
     /// </summary>
-    public const string Synopsis = "usage: silvermod run <loadout> [--game <appid|name>] -- <command> [args...]";
+    public const string Synopsis = "usage: silvermod run <loadout> [--game <appid|name>] [--dry-run] -- <command> [args...]";
 
     /// <summary>
     /// Parses the arguments that follow <c>run</c>. Only what comes before the first <c>--</c> is interpreted:
@@ -22,6 +23,7 @@ public sealed record LaunchArgs(string LoadoutName, string? Game, IReadOnlyList<
     public static bool TryParse(IReadOnlyList<string> args, [NotNullWhen(true)] out LaunchArgs? parsed, [NotNullWhen(false)] out string? error)
     {
         const string game = "--game";
+        const string dryRunFlag = "--dry-run";
         parsed = null;
 
         var separator = -1;
@@ -40,6 +42,7 @@ public sealed record LaunchArgs(string LoadoutName, string? Game, IReadOnlyList<
 
         string? name = null;
         string? gameValue = null;
+        var dryRun = false;
         for (var i = 0; i < separator; i++)
         {
             var arg = args[i];
@@ -56,6 +59,16 @@ public sealed record LaunchArgs(string LoadoutName, string? Game, IReadOnlyList<
             else if (arg.StartsWith(game + "=", StringComparison.Ordinal))
             {
                 value = arg[(game.Length + 1)..];
+            }
+            else if (arg == dryRunFlag)
+            {
+                if (dryRun)
+                {
+                    error = $"{dryRunFlag} given more than once. {Synopsis}";
+                    return false;
+                }
+                dryRun = true;
+                continue;
             }
             else if (arg.StartsWith("--", StringComparison.Ordinal))
             {
@@ -99,7 +112,7 @@ public sealed record LaunchArgs(string LoadoutName, string? Game, IReadOnlyList<
             return false;
         }
 
-        parsed = new LaunchArgs(name, gameValue, args.Skip(separator + 1).ToArray());
+        parsed = new LaunchArgs(name, gameValue, args.Skip(separator + 1).ToArray(), dryRun);
         error = null;
         return true;
     }

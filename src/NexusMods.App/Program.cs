@@ -24,6 +24,7 @@ using NexusMods.MnemonicDB.Storage.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Platform.Proton.Verbs;
 using NexusMods.ProxyConsole;
 using NexusMods.Sdk;
 using NexusMods.SingleProcess;
@@ -44,6 +45,13 @@ public class Program
     {
         MainThreadData.SetMainThread();
 
+        // Reads lock files only: no settings, logging or host, so it answers while a game or the app is running.
+        var startupMode = StartupMode.Parse(args);
+        if (startupMode.IsStatus)
+        {
+            return StatusCommand.Run(startupMode.Args, Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR"), "/proc/self/mountinfo", Console.Out, Console.Error);
+        }
+
         LoggingSettings loggingSettings;
         ExperimentalSettings experimentalSettings;
         using (var settingsHost = BuildSettingsHost())
@@ -53,7 +61,6 @@ public class Program
             experimentalSettings = settingsManager.Get<ExperimentalSettings>();
         }
 
-        var startupMode = StartupMode.Parse(args);
         var steps = CreateSteps(loggingSettings, experimentalSettings);
         return ProcessStartup.Run(startupMode, args, steps);
     }

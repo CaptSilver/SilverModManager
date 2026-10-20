@@ -115,6 +115,7 @@ public class CommandLineConfigurator
             parentCommand.AddCommand(command);
         }
         rootCommand.AddCommand(MakeRunHelpCommand());
+        rootCommand.AddCommand(MakeStatusHelpCommand());
         return (rootCommand, injectedTypes.ToArray());
     }
 
@@ -123,7 +124,7 @@ public class CommandLineConfigurator
     /// </summary>
     private const int LaunchFailureExitCode = 125;
 
-    private const string RunSynopsis = "run <loadout> [--game <appid|name>] -- <command> [args...]";
+    private const string RunSynopsis = "run <loadout> [--game <appid|name>] [--dry-run] -- <command> [args...]";
 
     /// <summary>
     /// <c>run</c> never reaches the verb parser: the process start-up takes it before any verb is parsed. This
@@ -136,6 +137,7 @@ public class CommandLineConfigurator
         {
             new Argument<string>("loadout", "The name of the loadout to run"),
             new Option<string>("--game", "The Steam app id or name of the game, when the loadout name is not unique"),
+            new Option<bool>("--dry-run", "Print the command that would be started and exit, without locking, applying or starting anything"),
             new Argument<string[]>("command", "The command to run, after '--'") { Arity = ArgumentArity.ZeroOrMore },
         };
         command.TreatUnmatchedTokensAsErrors = false;
@@ -143,6 +145,24 @@ public class CommandLineConfigurator
         {
             context.Console.Error.Write($"The run command is not handled by this process. usage: silvermod {RunSynopsis}");
             context.ExitCode = LaunchFailureExitCode;
+        });
+        return command;
+    }
+
+    /// <summary>
+    /// <c>status</c> is answered by the process start-up before any host exists, so like <c>run</c> this only
+    /// puts it in <c>--help</c>.
+    /// </summary>
+    private static Command MakeStatusHelpCommand()
+    {
+        var command = new Command("status", "Show the games launched through SilverModManager and any launch that died without cleaning up: status [--json]")
+        {
+            new Option<bool>("--json", "Print the report as JSON"),
+        };
+        command.SetHandler(context =>
+        {
+            context.Console.Error.Write("The status command is not handled by this process. usage: silvermod status [--json]");
+            context.ExitCode = 1;
         });
         return command;
     }

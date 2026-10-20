@@ -118,7 +118,8 @@ public static class ProcessStartup
         // A launch never takes over from a live main: the window or the other launch keeps the database and the game folder.
         if (startupMode.IsHeadlessRun && syncInfo.Process is { } holder)
         {
-            if (syncInfo.Kind == MainKind.Gui && launch is not null)
+            // A dry run starts nothing, and passing through would run the command.
+            if (syncInfo.Kind == MainKind.Gui && launch is { DryRun: false })
             {
                 // The window started this game through Steam and owns the session; the wrapper only reports in.
                 try

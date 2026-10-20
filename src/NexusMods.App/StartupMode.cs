@@ -37,6 +37,11 @@ public class StartupMode
     public bool IsHeadlessRun { get; set; } = false;
 
     /// <summary>
+    /// True for <c>status</c>: it only reads the launch lock files, so no host, database or sync file is involved.
+    /// </summary>
+    public bool IsStatus { get; set; } = false;
+
+    /// <summary>
     /// Whether a client that finds no main process must start one that shows the UI.
     /// Only a protocol link needs this: the user clicked a link in a browser and expects the
     /// app to come up. Every other verb (including --help) is plain terminal use and must
@@ -87,6 +92,14 @@ public class StartupMode
             mode.RunAsMain = true;
             mode.ShowUI = false;
             mode.IsHeadlessRun = true;
+            mode.Args = args[1..];
+            mode.ExecuteCli = false;
+        }
+        else if (arg.Equals("status", StringComparison.OrdinalIgnoreCase))
+        {
+            mode.RunAsMain = false;
+            mode.ShowUI = false;
+            mode.IsStatus = true;
             mode.Args = args[1..];
             mode.ExecuteCli = false;
         }
