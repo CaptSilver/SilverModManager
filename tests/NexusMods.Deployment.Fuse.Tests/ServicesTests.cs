@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Deployment.Fuse.Availability;
+using NexusMods.Deployment.Fuse.Kernel;
 using NexusMods.Deployment.Fuse.Mount;
 using NexusMods.Deployment.Vfs;
 using NexusMods.Sdk;
@@ -11,12 +12,13 @@ namespace NexusMods.Deployment.Fuse.Tests;
 public class ServicesTests
 {
     [Fact]
-    public void AddFuseDeployment_RegistersNoBackendAndNoKernel()
+    public void AddFuseDeployment_RegistersTheKernelAndNoBackend()
     {
         var services = new ServiceCollection().AddFuseDeployment();
 
         services.Should().NotContain(d => d.ServiceType == typeof(IDeploymentBackend));
-        services.Should().NotContain(d => d.ServiceType == typeof(IFuseKernel));
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IFuseKernel))
+            .Which.ImplementationType.Should().Be(typeof(LibFuseLowLevelKernel));
     }
 
     [Fact]

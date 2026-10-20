@@ -185,6 +185,14 @@ internal unsafe struct StatVfs
     private fixed int _spare[6];
 }
 
+/// <summary><c>struct fuse_forget_data</c>: one entry of a batched forget.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct FuseForgetData
+{
+    public ulong Ino;
+    public ulong NLookup;
+}
+
 /// <summary><c>struct fuse_ctx</c>: who issued the request.</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal struct FuseCtx

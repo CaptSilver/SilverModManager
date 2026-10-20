@@ -19,6 +19,10 @@ public interface IVfsOperations
     VfsResult<VfsEntry> Lookup(ulong parent, string name);
 
     void Forget(ulong ino, ulong lookups);
+
+    /// <summary>How long the kernel may trust a <see cref="GetAttr"/> or <see cref="SetAttr"/> reply.</summary>
+    TimeSpan AttrTtl { get; }
+
     VfsResult<VfsAttr> GetAttr(ulong ino);
     VfsResult<VfsAttr> SetAttr(ulong ino, VfsSetAttr change);
 

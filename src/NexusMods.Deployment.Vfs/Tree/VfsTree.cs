@@ -262,6 +262,8 @@ public sealed class VfsTree : IVfsOperations
     // Inode numbers are kept for the life of the tree, so there is no per-lookup count to release.
     public void Forget(ulong ino, ulong lookups) { }
 
+    public TimeSpan AttrTtl => _policy.AttrTtl;
+
     public VfsResult<VfsAttr> GetAttr(ulong ino)
     {
         lock (_gate)

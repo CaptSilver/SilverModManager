@@ -43,6 +43,7 @@ namespace NexusMods.Deployment.Fuse.Native;
 /// fuse_set_feature_flag              fuse_set_feature_flag              3.17.3
 /// fuse_get_feature_flag              fuse_get_feature_flag              3.17.3
 /// fuse_buf_size                      fuse_buf_size                      3.0
+/// fuse_opt_free_args                 fuse_opt_free_args                 3.0
 /// </code>
 /// <c>fuse_session_new</c> is a header macro over <c>fuse_session_new_versioned</c> from 3.17; the plain
 /// <c>fuse_session_new@@FUSE_3.0</c> export is the old ABI and is deliberately not bound. <c>fuse_session_loop_mt</c>
@@ -93,6 +94,7 @@ internal static unsafe partial class LibFuse3LowLevel
     private const string SetFeatureFlagSymbol = "fuse_set_feature_flag";
     private const string GetFeatureFlagSymbol = "fuse_get_feature_flag";
     private const string BufSizeSymbol = "fuse_buf_size";
+    private const string OptFreeArgsSymbol = "fuse_opt_free_args";
 
     /// <summary>Every exported name bound here, so a test can fail on a renamed export before the first mount.</summary>
     internal static readonly string[] EntryPoints =
@@ -130,6 +132,7 @@ internal static unsafe partial class LibFuse3LowLevel
         SetFeatureFlagSymbol,
         GetFeatureFlagSymbol,
         BufSizeSymbol,
+        OptFreeArgsSymbol,
     ];
 
     [LibraryImport(Lib, EntryPoint = SessionNewVersionedSymbol)]
@@ -232,4 +235,7 @@ internal static unsafe partial class LibFuse3LowLevel
 
     [LibraryImport(Lib, EntryPoint = BufSizeSymbol)]
     internal static partial nuint fuse_buf_size(FuseBufvec* bufv);
+
+    [LibraryImport(Lib, EntryPoint = OptFreeArgsSymbol)]
+    internal static partial void fuse_opt_free_args(FuseArgs* args);
 }

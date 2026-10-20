@@ -118,6 +118,7 @@ public class BackingAndReadTests : IDisposable
         var file = kernel.Operations.Lookup(data.Ino, "vanilla.txt").Value;
         file.EntryTtl.Should().Be(TimeSpan.FromHours(24));
         file.AttrTtl.Should().Be(TimeSpan.FromHours(24));
+        kernel.Operations.AttrTtl.Should().Be(TimeSpan.FromHours(24), "getattr replies carry the same attribute lifetime as lookups");
 
         var miss = kernel.Operations.Lookup(data.Ino, "missing.txt");
         miss.Ok.Should().BeTrue("a cached negative entry is a reply with inode 0, not an error");
@@ -140,6 +141,7 @@ public class BackingAndReadTests : IDisposable
         var file = kernel.Operations.Lookup(data.Ino, "vanilla.txt").Value;
         file.EntryTtl.Should().Be(TimeSpan.Zero);
         file.AttrTtl.Should().Be(TimeSpan.Zero);
+        kernel.Operations.AttrTtl.Should().Be(TimeSpan.Zero, "a disabled cache must not let getattr replies be trusted either");
         kernel.Operations.Lookup(data.Ino, "missing.txt").Value.EntryTtl.Should().Be(TimeSpan.Zero);
 
         var opened = kernel.Open("Data/vanilla.txt", VfsOpenFlags.Read).Value!;

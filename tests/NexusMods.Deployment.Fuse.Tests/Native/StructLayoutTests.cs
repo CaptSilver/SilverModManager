@@ -175,6 +175,13 @@ public class StructLayoutTests
         Offset<FuseCtx>("Umask").Should().Be(12);
     }
 
+    [Fact]
+    public void FuseForgetData_Layout()
+    {
+        Marshal.SizeOf<FuseForgetData>().Should().Be(16);
+        Offset<FuseForgetData>("NLookup").Should().Be(8);
+    }
+
     /// <summary>Header order of <c>struct fuse_lowlevel_ops</c>; every member is one function pointer.</summary>
     private static readonly string[] OperationsInHeaderOrder =
     [
