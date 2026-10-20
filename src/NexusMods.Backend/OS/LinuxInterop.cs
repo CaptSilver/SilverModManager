@@ -125,7 +125,7 @@ internal partial class LinuxInterop : IOSInterop
     {
         var stdOut = new StringBuilder();
         var command = Cli.Wrap("df").WithArguments([
-            path.ToNativeSeparators(_fileSystem.OS),
+            NearestExistingDirectory(path).ToNativeSeparators(_fileSystem.OS),
             "--output=source",
         ]).WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOut));
 
@@ -133,6 +133,19 @@ internal partial class LinuxInterop : IOSInterop
 
         var knownFileSystemMounts = await GetFileSystemMounts(cancellationToken: cancellationToken);
         return ParseFileSystemMount(knownFileSystemMounts, stdOut.ToString());
+    }
+
+    // df exits 1 on a path that doesn't exist, which a folder the app creates later (the archive
+    // folder on a first run) doesn't yet. It will land on the same mount as its parent.
+    internal static AbsolutePath NearestExistingDirectory(AbsolutePath path)
+    {
+        var current = path;
+        while (!current.DirectoryExists() && current != current.GetRootComponent)
+        {
+            current = current.Parent;
+        }
+
+        return current;
     }
 
     internal static FileSystemMount? ParseFileSystemMount(IReadOnlyList<FileSystemMount> knownFileSystemMounts, ReadOnlySpan<char> stdOut)
