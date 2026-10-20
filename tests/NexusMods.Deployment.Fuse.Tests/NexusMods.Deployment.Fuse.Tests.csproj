@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <XunitStartupAssembly>NexusMods.Deployment.Fuse.Tests</XunitStartupAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\NexusMods.Deployment.Fuse\NexusMods.Deployment.Fuse.csproj" />
+    <ProjectReference Include="..\..\src\NexusMods.Backend\NexusMods.Backend.csproj" />
+  </ItemGroup>
+
+</Project>
