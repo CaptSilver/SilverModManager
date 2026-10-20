@@ -60,6 +60,7 @@ using NexusMods.App.UI.Pages.ObservableInfo;
 using NexusMods.App.UI.Pages.Settings;
 using NexusMods.App.UI.Pages.Sorting;
 using NexusMods.App.UI.Pages.TextEdit;
+using NexusMods.App.UI.Pages.Tools;
 using NexusMods.App.UI.Settings;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceAttachments;
@@ -188,6 +189,8 @@ public static class Services
             .AddViewModel<MarkdownRendererViewModel, IMarkdownRendererViewModel>()
             .AddView<ChangelogPageView, IChangelogPageViewModel>()
             .AddViewModel<ChangelogPageViewModel, IChangelogPageViewModel>()
+            .AddView<ToolsPageView, IToolsPageViewModel>()
+            .AddViewModel<ToolsPageViewModel, IToolsPageViewModel>()
             .AddView<AboutPageView, IAboutPageViewModel>()
             .AddViewModel<AboutPageViewModel, IAboutPageViewModel>()
 
@@ -270,6 +273,7 @@ public static class Services
             .AddSingleton<IPageFactory, ApplyDiffPageFactory>()
             .AddSingleton<IPageFactory, SettingsPageFactory>()
             .AddSingleton<IPageFactory, ChangelogPageFactory>()
+            .AddSingleton<IPageFactory, ToolsPageFactory>()
             .AddSingleton<IPageFactory, AboutPageFactory>()
             .AddSingleton<IPageFactory, TextEditorPageFactory>()
             .AddSingleton<IPageFactory, MyLoadoutsPageFactory>()

@@ -145,6 +145,9 @@ public static class IconValues
 
     // https://pictogrammers.com/library/mdi/icon/cog/
     public static readonly IconValue Cog = new ProjektankerIcon("mdi-cog");
+
+    // https://pictogrammers.com/library/mdi/icon/wrench/
+    public static readonly IconValue Wrench = new ProjektankerIcon("mdi-wrench");
     
     // https://pictogrammers.com/library/mdi/icon/cog-outline/
     public static readonly IconValue CogOutline = new ProjektankerIcon("mdi-cog-outline");

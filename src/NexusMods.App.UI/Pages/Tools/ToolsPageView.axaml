@@ -1,0 +1,36 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:IToolsPageViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.Tools"
+    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="500"
+    x:Class="NexusMods.App.UI.Pages.Tools.ToolsPageView">
+
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="{StaticResource Spacing-4}" MaxWidth="800" HorizontalAlignment="Left">
+
+            <TextBlock Text="Tools" Theme="{StaticResource HeadingSMSemiTheme}" />
+            <StackPanel x:Name="ToolsPanel" Spacing="{StaticResource Spacing-2}" />
+
+            <Separator />
+
+            <TextBlock Text="Run a Windows program in this game's prefix"
+                       Theme="{StaticResource HeadingSMSemiTheme}" />
+            <TextBlock x:Name="PrefixText" TextWrapping="Wrap" />
+            <TextBlock x:Name="StrategyText" TextWrapping="Wrap" />
+            <TextBlock x:Name="DiagnosticText" TextWrapping="Wrap" />
+            <controls:StandardButton x:Name="RunWindowsProgramButton"
+                                     Type="Primary"
+                                     Size="Toolbar"
+                                     Fill="StrongAlt"
+                                     Text="Choose a program..."
+                                     HorizontalAlignment="Left" />
+            <TextBlock x:Name="LastRunText" TextWrapping="Wrap" />
+        </StackPanel>
+    </ScrollViewer>
+
+</reactive:ReactiveUserControl>
