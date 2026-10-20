@@ -61,6 +61,7 @@ public class Startup
                 .AddLogging(builder => builder.AddXunitOutput().SetMinimumLevel(LogLevel.Trace))
                 .AddSingleton<LocalHttpServer>()
                 .AddLogging(builder => builder.AddXUnit())
+                .ReplaceDesktopNotifier()
                 .Validate();
     }
 }

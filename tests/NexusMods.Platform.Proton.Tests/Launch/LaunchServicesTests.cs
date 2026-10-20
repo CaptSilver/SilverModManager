@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NSubstitute;
 
@@ -16,6 +17,7 @@ public class LaunchServicesTests
 
         var services = new ServiceCollection();
         services.AddSingleton(env);
+        AddDesktopNotifierDependencies(services);
         services.AddHeadlessLaunch();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
@@ -44,10 +46,30 @@ public class LaunchServicesTests
     {
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<IEnvironmentReader>());
+        AddDesktopNotifierDependencies(services);
         services.AddHeadlessLaunch();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
 
         provider.GetRequiredService<IProcessTracker>().Should().BeOfType<ProcProcessTracker>();
+    }
+
+    [Fact]
+    public void AddHeadlessLaunch_RegistersTheDesktopNotifier()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IEnvironmentReader>());
+        AddDesktopNotifierDependencies(services);
+        services.AddHeadlessLaunch();
+
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+
+        provider.GetRequiredService<IDesktopNotifier>().Should().BeOfType<DesktopNotifier>();
+    }
+
+    private static void AddDesktopNotifierDependencies(IServiceCollection services)
+    {
+        services.AddLogging();
+        services.AddSingleton(Substitute.For<IProcessRunner>());
     }
 }
