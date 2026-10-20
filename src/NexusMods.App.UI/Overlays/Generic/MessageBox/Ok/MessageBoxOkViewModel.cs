@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Loadouts.Exceptions;
 using NexusMods.App.UI.Controls.MarkdownRenderer;
 using NexusMods.App.UI.Resources;
 using R3;
@@ -16,11 +17,30 @@ public class MessageBoxOkViewModel : AOverlayViewModel<IMessageBoxOkViewModel, U
     [Reactive] public required IMarkdownRendererViewModel? MarkdownRenderer { get; set; }
     
     /// <summary>
-    /// Shows the 'Game is already Running' error when you try to synchronize and a game is already running (usually on Windows).
+    /// Shows the 'Game is already Running' error when you try to change a game that the app has launched and is still running.
     /// </summary>
     public static Task ShowGameAlreadyRunningError(IServiceProvider serviceProvider, string gameName)
     {
         return Show(serviceProvider, Language.ErrorGameAlreadyRunning_Title, string.Format(Language.ErrorGameAlreadyRunning_Description, gameName));
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/>, and when a game launched from the app is running (the guard on applying,
+    /// deleting and removing refuses with <see cref="ExecutableInUseException"/>) shows the 'Game is already
+    /// Running' error instead of letting the exception escape. Returns false when the action was refused.
+    /// </summary>
+    public static async Task<bool> RunOrExplainRunningGame(IServiceProvider serviceProvider, string gameName, Func<Task> action)
+    {
+        try
+        {
+            await action();
+            return true;
+        }
+        catch (ExecutableInUseException)
+        {
+            await ShowGameAlreadyRunningError(serviceProvider, gameName);
+            return false;
+        }
     }
 
     public static async Task Show(IServiceProvider serviceProvider, string title, string description, string? markdown = null)

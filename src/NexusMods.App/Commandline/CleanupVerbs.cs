@@ -3,6 +3,7 @@ using NexusMods.Abstractions.Cli;
 using NexusMods.Abstractions.FileExtractor;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Loadouts.Exceptions;
 using NexusMods.Sdk.Settings;
 using NexusMods.CrossPlatform;
 using NexusMods.DataModel;
@@ -38,6 +39,7 @@ internal static class CleanupVerbs
             .Select(loadout => loadout.InstallationInstance)
             .Distinct();
 
+        var refused = false;
         foreach (var installation in managedInstallations)
         {
             try
@@ -45,11 +47,19 @@ internal static class CleanupVerbs
                 await syncService.UnManage(installation, false);
                 await renderer.Text($"Reverted {installation.Game.DisplayName} to its original state");
             }
+            catch (ExecutableInUseException ex)
+            {
+                refused = true;
+                await renderer.Text("{0}", ex.Message);
+            }
             catch (Exception ex)
             {
                 await renderer.Error(ex, "Error reverting {0}: {1}", installation.Game.DisplayName, ex.Message);
             }
         }
+
+        // The app's data is what the next attempt needs to revert the game, so keep it until nothing is running.
+        if (refused) return 1;
 
         // Step 2: Delete application-specific directories
         try

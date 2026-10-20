@@ -13,6 +13,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.App.UI.Controls.LoadoutBadge;
 using NexusMods.App.UI.Extensions;
+using NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
 using NexusMods.App.UI.Pages;
 using NexusMods.App.UI.Resources;
 using NexusMods.MnemonicDB.Abstractions;
@@ -28,11 +29,13 @@ public class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutC
 {
     private readonly ILogger<LoadoutCardViewModel> _logger;
     private readonly ILoadoutManager _loadoutManager;
+    private readonly IServiceProvider _serviceProvider;
 
     public LoadoutCardViewModel(Loadout.ReadOnly loadout, IConnection conn, IServiceProvider serviceProvider)
     {
         LoadoutVal = loadout;
         _logger = serviceProvider.GetRequiredService<ILogger<LoadoutCardViewModel>>();
+        _serviceProvider = serviceProvider;
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
         var applyService = serviceProvider.GetRequiredService<ISynchronizerService>();
         LoadoutName = loadout.Name;
@@ -161,9 +164,16 @@ public class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutC
         });
     }
     
-    private Task DeleteLoadout(Loadout.ReadOnly loadout)
+    private async Task DeleteLoadout(Loadout.ReadOnly loadout)
     {
-        return Task.Run(() => _loadoutManager.DeleteLoadout(loadout));
+        var deleted = await MessageBoxOkViewModel.RunOrExplainRunningGame(
+            _serviceProvider,
+            loadout.Installation.Name,
+            () => Task.Run(() => _loadoutManager.DeleteLoadout(loadout).AsTask())
+        );
+
+        // The card stays in the list when the delete was refused.
+        if (!deleted) IsDeleting = false;
     }
 
     private Task CopyLoadout(Loadout.ReadOnly loadout)

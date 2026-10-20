@@ -46,7 +46,6 @@ public partial class HostOsCheckGuardTests
         ("src/NexusMods.Backend/ServiceExtensions.cs", "os ??= OSInformation.Shared;", "DI root for the injected IOSInformation"),
 
         // The file-lock probe only works with Windows file sharing semantics and returns false everywhere else.
-        ("src/NexusMods.DataModel/Synchronizer/SynchronizerService.cs", "if (!FileSystem.Shared.OS.IsWindows)", "file-lock probe is Windows-only and a no-op on Linux"),
     ];
 
     [GeneratedRegex(@"\.Is(Windows|Linux|OSX|MacOS|Unix)\b|OSPlatform\b|OSInformation\.Shared|FileSystem\.Shared\.OS|OperatingSystem\.Is\w+|MatchPlatform|\bon(Windows|Linux|OSX)\s*:")]

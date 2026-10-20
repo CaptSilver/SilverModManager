@@ -38,6 +38,7 @@
         <InternalsVisibleTo Include="NexusMods.DataModel.Tests" />
         <InternalsVisibleTo Include="NexusMods.App.GarbageCollection.DataModel.Tests"/>
         <InternalsVisibleTo Include="NexusMods.Games.TestFramework"/>
+        <InternalsVisibleTo Include="NexusMods.Platform.Proton"/>
     </ItemGroup>
 
     <ItemGroup>

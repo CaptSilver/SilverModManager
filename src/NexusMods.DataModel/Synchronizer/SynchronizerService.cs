@@ -26,6 +26,7 @@ public class SynchronizerService : ISynchronizerService
     private readonly IConnection _conn;
     private readonly IGameRegistry _gameRegistry;
     private readonly IJobMonitor _jobMonitor;
+    private readonly IServiceProvider _serviceProvider;
     private readonly Dictionary<GameInstallMetadataId, SynchronizerState> _gameStates;
     private readonly Dictionary<LoadoutId, SynchronizerState> _loadoutStates;
     private readonly Lazy<ILoadoutManager> _loadoutManager;
@@ -44,6 +45,7 @@ public class SynchronizerService : ISynchronizerService
         _gameStates = GameInstallMetadata.All(conn.Db).ToDictionary(e => e.GameInstallMetadataId, _ => new SynchronizerState());
         _loadoutStates = Loadout.All(conn.Db).ToDictionary(e => e.LoadoutId, _ => new SynchronizerState());
         _fileHashesService = fileHashesService;
+        _serviceProvider = serviceProvider;
         _loadoutManager = new Lazy<ILoadoutManager>(serviceProvider.GetRequiredService<ILoadoutManager>);
     }
 
@@ -83,7 +85,15 @@ public class SynchronizerService : ISynchronizerService
     }
     
     /// <inheritdoc />
-    public async Task Synchronize(LoadoutId loadoutId)
+    public Task Synchronize(LoadoutId loadoutId) => SynchronizeCore(loadoutId, refuseWhileRunning: true);
+
+    /// <summary>
+    /// Synchronizes on behalf of a launch session, which holds the running-game state itself and so
+    /// must not be refused by it. Everything else (semaphore, state locks) is the same as <see cref="Synchronize"/>.
+    /// </summary>
+    internal Task SynchronizeFromLaunchSession(LoadoutId loadoutId) => SynchronizeCore(loadoutId, refuseWhileRunning: false);
+
+    private async Task SynchronizeCore(LoadoutId loadoutId, bool refuseWhileRunning)
     {
         await _jobMonitor.Begin(new SynchronizeLoadoutJob(loadoutId),
             async ctx =>
@@ -97,7 +107,7 @@ public class SynchronizerService : ISynchronizerService
                     {
                         return Unit.Default;
                     }
-                    ThrowIfMainBinaryInUse(loadout);
+                    if (refuseWhileRunning) RunningGameGuard.ThrowIfRunning(_serviceProvider, loadout);
 
                     var loadoutState = GetOrAddLoadoutState(loadoutId);
                     using var _ = loadoutState.WithLock();
@@ -282,47 +292,5 @@ public class SynchronizerService : ISynchronizerService
             .RefCount();
 
         return statusObservable;
-    }
-    
-    private void ThrowIfMainBinaryInUse(Loadout.ReadOnly loadout)
-    {   
-        // Note(sewer):
-        // Problem: Game may already be running.
-        // Edge Cases: - User may have multiple copies of a given game running.
-        //             - Only on Windows.
-        // Solution: Check if EXE (primaryfile) is in use.
-        // Note: This doesn't account for CLI calls. I think that's fine; an external CLI user/caller
-        var game = loadout.InstallationInstance.GetGame();
-        var primaryFile = game.GetPrimaryFile(loadout.InstallationInstance).Combine(loadout.InstallationInstance.Locations[LocationId.Game].Path);
-        if (IsFileInUse(primaryFile))
-            throw new ExecutableInUseException("Game's main executable file is in use.\n" +
-                                               "This is an indicator the game may have been started outside of the App; and therefore files may be in use.\n" +
-                                               "This means that we are unable to perform a Synchronize (Apply) operation.");
-        return;
-
-        static bool IsFileInUse(AbsolutePath filePath)
-        {
-            if (!FileSystem.Shared.OS.IsWindows)
-                return false;
-
-            if (!filePath.FileExists)
-                return false;
-
-            try
-            {
-                using var fs = filePath.Open(FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-                return false;
-            }
-            catch (IOException)
-            {
-                // The file is in use by another process
-                return true;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                // The file is in use or you don't have permission
-                return true;
-            }
-        }
     }
 }

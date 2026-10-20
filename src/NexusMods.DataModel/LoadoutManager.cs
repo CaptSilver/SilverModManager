@@ -16,6 +16,7 @@ using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.DataModel.Sorting;
+using NexusMods.DataModel.Synchronizer;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.DatomIterators;
 using NexusMods.MnemonicDB.Abstractions.ElementComparers;
@@ -274,6 +275,8 @@ internal partial class LoadoutManager : ILoadoutManager
 
     public async ValueTask DeleteLoadout(LoadoutId loadoutId, GarbageCollectorRunMode gcRunMode = GarbageCollectorRunMode.DoNotRun, bool deactivateIfActive = true, CancellationToken cancellationToken = default)
     {
+        RunningGameGuard.ThrowIfRunning(_serviceProvider, Loadout.Load(_connection.Db, loadoutId));
+
         {
             using var tx1 = _connection.BeginTransaction();
             tx1.Add(loadoutId, Loadout.LoadoutKind, LoadoutKind.Deleted);
@@ -350,6 +353,8 @@ internal partial class LoadoutManager : ILoadoutManager
     {
         return _jobMonitor.Begin(new UnmanageGameJob(installation), async ctx =>
         {
+            RunningGameGuard.ThrowIfRunning(_serviceProvider, installation);
+
             var metadata = _gameRegistry.ForceGetMetadata(installation);
 
             if (GetCurrentlyActiveLoadout(installation).HasValue && cleanGameFolder) await DeactivateCurrentLoadout(installation, cancellationToken: cancellationToken);

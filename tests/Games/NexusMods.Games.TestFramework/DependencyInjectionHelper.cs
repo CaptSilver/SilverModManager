@@ -66,6 +66,7 @@ public static class DependencyInjectionHelper
             .AddRuntimeDependencies()
             .AddGenericGameSupport()
             .AddFakeProcessTracker()
+            .AddFakeGameLaunchSession()
             .AddFakeToolRunner()
             .AddSettings<LoggingSettings>()
             .AddHttpDownloader()

@@ -16,7 +16,7 @@ public interface ISynchronizerService
     /// Synchronize the loadout with the game folder, any changes in the game folder will be added to the loadout, and any
     /// new changes in the loadout will be applied to the game folder.
     /// </summary>
-    /// <throws cref="ExecutableInUseException">Thrown if the game EXE is in use, meaning that it's running.</throws>
+    /// <throws cref="ExecutableInUseException">Thrown while the app is running a launch of this game.</throws>
     public Task Synchronize(LoadoutId loadout);
     
     /// <summary>

@@ -32,6 +32,7 @@ using NexusMods.App.UI.Dialog;
 using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Extensions;
 using NexusMods.App.UI.Overlays;
+using NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
 using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Settings;
 using NexusMods.Collections;
@@ -150,7 +151,11 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                                 var removed = true;
                                 try
                                 {
-                                    await Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, filesToDelete, collections));
+                                    removed = await MessageBoxOkViewModel.RunOrExplainRunningGame(
+                                        _serviceProvider,
+                                        installation.Game.DisplayName,
+                                        () => Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, filesToDelete, collections))
+                                    );
                                 }
                                 catch (SynchronizerPreflightException e)
                                 {
@@ -159,7 +164,11 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                                     removed = await ShowRemoveFromAppOnlyDialog(installation, e.Message);
                                     if (removed)
                                     {
-                                        await Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, filesToDelete, collections, cleanGameFolder: false));
+                                        removed = await MessageBoxOkViewModel.RunOrExplainRunningGame(
+                                            _serviceProvider,
+                                            installation.Game.DisplayName,
+                                            () => Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, filesToDelete, collections, cleanGameFolder: false))
+                                        );
                                     }
                                 }
 
@@ -299,10 +308,15 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
             {
                 // Revert the loadout creation
                 vm.State = GameWidgetState.RemovingGame;
-                await Task.Run(async () => await _syncService.UnManage(installation, cleanGameFolder: false));
-                vm.State = GameWidgetState.DetectedGame;
-                
-                return;
+                var reverted = await MessageBoxOkViewModel.RunOrExplainRunningGame(
+                    _serviceProvider,
+                    installation.Game.DisplayName,
+                    () => Task.Run(async () => await _syncService.UnManage(installation, cleanGameFolder: false))
+                );
+                vm.State = reverted ? GameWidgetState.DetectedGame : GameWidgetState.ManagedGame;
+
+                // A refused revert leaves the game managed, so carry on to its library like the other answers do.
+                if (reverted) return;
             }
             if (result == clean)
             {

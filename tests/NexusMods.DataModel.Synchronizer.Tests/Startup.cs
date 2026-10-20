@@ -25,6 +25,7 @@ public class Startup
             .AddRuntimeDependencies()
             .AddGenericGameSupport()
             .AddFakeProcessTracker()
+            .AddFakeGameLaunchSession()
             .AddFakeToolRunner();
     }
 }

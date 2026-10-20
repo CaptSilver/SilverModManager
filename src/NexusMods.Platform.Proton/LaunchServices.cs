@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NexusMods.Abstractions.Games;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
@@ -16,6 +17,8 @@ public static class LaunchServices
         services.TryAddSingleton<IEnvironmentReader, ProcessEnvironmentReader>();
         services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
         services.TryAddSingleton<IDesktopNotifier, DesktopNotifier>();
+        services.TryAddSingleton<ActiveLaunchSessions>();
+        services.TryAddSingleton<IGameLaunchSession>(s => s.GetRequiredService<ActiveLaunchSessions>());
         return services.AddSingleton<IInstallationLockFactory, InstallationLockFactory>();
     }
 }
