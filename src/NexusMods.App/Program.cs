@@ -50,142 +50,83 @@ public class Program
         }
 
         var startupMode = StartupMode.Parse(args);
-        using var host = BuildHost(
-            startupMode,
-            loggingSettings,
-            experimentalSettings
-        );
-
-        var services = host.Services;
-        _logger = services.GetRequiredService<ILogger<Program>>();
-
-        // NOTE(erri120): has to come before host startup
-        CleanupUnresponsiveProcesses(services).Wait(timeout: TimeSpan.FromSeconds(10));
-
-        // Okay to do wait here, as we are in the main process thread.
-        host.StartAsync().Wait(timeout: TimeSpan.FromMinutes(5));
-
-        if (startupMode.RunAsMain)
-        {
-            var dataModelSettings = services.GetRequiredService<ISettingsManager>().Get<DataModelSettings>();
-            var fileSystem = services.GetRequiredService<IFileSystem>();
-            var osInterop = services.GetRequiredService<IOSInterop>();
-
-            var modelExists = dataModelSettings.MnemonicDBPath.ToPath(fileSystem).DirectoryExists();
-
-            // Both apps would treat a game folder managed by the other as their own, so a
-            // loadout left applied by upstream gets recorded as the game's original state.
-            if (UpstreamData.Exists(fileSystem))
-            {
-                _logger.LogWarning("Upstream Nexus Mods App data found at {Path}; unmanage shared games there first", UpstreamData.DataModelPath(fileSystem));
-            }
-
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    var archiveLocation = dataModelSettings.ArchiveLocations[0].ToPath(fileSystem);
-                    var mount = await osInterop.GetFileSystemMount(archiveLocation);
-                    if (mount is not null) _logger.LogInformation("Archives are stored at {Path} on mount {Mount}", archiveLocation, mount);
-                    else _logger.LogWarning("Failed to find file system mount for {Path}", archiveLocation);
-                }
-                catch (Exception e)
-                {
-                    _logger.LogWarning(e, "Failed to get file system mounts");
-                }
-            });
-
-            // This will startup the MnemonicDb connection
-            var migration = services.GetRequiredService<MigrationService>();
-            if (modelExists)
-            {
-                // Run the migrations
-                migration.MigrateAll().Wait();
-            }
-            else
-            {
-                // Otherwise, perform the initial setup
-                migration.InitialSetup().Wait();
-            }
-        }
-
-
-        // Start the CLI server if we are the main process.
-        var cliServer = services.GetService<CliServer>();
-        cliServer?.StartCliServerAsync().Wait(timeout: TimeSpan.FromSeconds(5));
-
-        LogMessages.RuntimeInformation(_logger, RuntimeInformation.OSDescription, RuntimeInformation.FrameworkDescription, ApplicationConstants.InstallationMethod);
-        TaskScheduler.UnobservedTaskException += (sender, eventArgs) =>
-        {
-            LogMessages.UnobservedTaskException(_logger, eventArgs.Exception, sender, sender?.GetType());
-            eventArgs.SetObserved();
-        };
-
-        RxApp.DefaultExceptionHandler = Observer.Create<Exception>(ex =>
-        {
-            LogMessages.UnobservedReactiveThrownException(_logger, ex);
-        });
-
-
-        try
-        {
-            if (startupMode.RunAsMain)
-            {
-                LogMessages.StartingProcess(_logger, Environment.ProcessPath, Environment.ProcessId, args);
-                
-                if (startupMode.ShowUI)
-                {
-                    var task = RunCliTaskAsMain(services, startupMode);
-                    Startup.Main(services, []);
-                    return task.Result;
-                }
-                else
-                {
-                    var task = RunCliTaskAsMain(services, startupMode);
-                    return task.Result;
-                }
-            }
-            else
-            {
-                var task = RunCliTaskRemotely(services, startupMode);
-                return task.Result;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unhandled exception");
-            return 1;
-        }
-        finally
-        {
-            // Wait for 15 seconds for the host to stop, otherwise kill the process
-            if (!host.StopAsync().Wait(timeout: TimeSpan.FromSeconds(15)))
-                Environment.Exit(0);
-        }
+        var steps = CreateSteps(loggingSettings, experimentalSettings);
+        return ProcessStartup.Run(startupMode, args, steps);
     }
 
-    private static async Task CleanupUnresponsiveProcesses(IServiceProvider serviceProvider)
+    private static ProcessStartupSteps CreateSteps(LoggingSettings loggingSettings, ExperimentalSettings experimentalSettings) => new()
     {
-        // NOTE(erri120): this is a hack, see https://github.com/Nexus-Mods/NexusMods.App/issues/3633
-        var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
-        var syncFile = serviceProvider.GetRequiredService<SyncFile>();
-
-        var (process, port) = syncFile.GetSyncInfo();
-        if (process is null) return;
-
-        var pid = process.Id;
-        var canConnect = await CanConnectToProcess(logger, port, timeout: TimeSpan.FromSeconds(6), services: serviceProvider);
-        if (canConnect) return;
-
-        logger.LogWarning("Unable to connect to old process with PID `{PID}` on port `{Port}`, force closing process", pid, port);
-
-        try
+        BuildHost = startupMode =>
         {
-            process.Kill(entireProcessTree: true);
+            var host = BuildHost(startupMode, loggingSettings, experimentalSettings);
+            _logger = host.Services.GetRequiredService<ILogger<Program>>();
+            return host;
+        },
+        ReadSyncInfo = services => services.GetRequiredService<SyncFile>().GetSyncInfo(),
+        CanConnect = (services, port) => CanConnectToProcess(
+            services.GetRequiredService<ILogger<Program>>(), port, timeout: TimeSpan.FromSeconds(6), services: services
+        ),
+        Kill = process => process.Kill(entireProcessTree: true),
+        OpenDatabase = OpenDatabase,
+        InstallGlobalHandlers = services =>
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            TaskScheduler.UnobservedTaskException += (sender, eventArgs) =>
+            {
+                LogMessages.UnobservedTaskException(logger, eventArgs.Exception, sender, sender?.GetType());
+                eventArgs.SetObserved();
+            };
+
+            RxApp.DefaultExceptionHandler = Observer.Create<Exception>(ex =>
+            {
+                LogMessages.UnobservedReactiveThrownException(logger, ex);
+            });
+        },
+        RunCliAsMain = (services, startupMode) => RunCliTaskAsMain(services, startupMode),
+        RunCliRemotely = (services, startupMode) => RunCliTaskRemotely(services, startupMode),
+        RunUi = services => Startup.Main(services, []),
+    };
+
+    private static void OpenDatabase(IServiceProvider services)
+    {
+        var dataModelSettings = services.GetRequiredService<ISettingsManager>().Get<DataModelSettings>();
+        var fileSystem = services.GetRequiredService<IFileSystem>();
+        var osInterop = services.GetRequiredService<IOSInterop>();
+
+        var modelExists = dataModelSettings.MnemonicDBPath.ToPath(fileSystem).DirectoryExists();
+
+        // Both apps would treat a game folder managed by the other as their own, so a
+        // loadout left applied by upstream gets recorded as the game's original state.
+        if (UpstreamData.Exists(fileSystem))
+        {
+            _logger.LogWarning("Upstream Nexus Mods App data found at {Path}; unmanage shared games there first", UpstreamData.DataModelPath(fileSystem));
         }
-        catch (Exception e)
+
+        _ = Task.Run(async () =>
         {
-            logger.LogWarning(e, "Exception killing old process `{PID}`", pid);
+            try
+            {
+                var archiveLocation = dataModelSettings.ArchiveLocations[0].ToPath(fileSystem);
+                var mount = await osInterop.GetFileSystemMount(archiveLocation);
+                if (mount is not null) _logger.LogInformation("Archives are stored at {Path} on mount {Mount}", archiveLocation, mount);
+                else _logger.LogWarning("Failed to find file system mount for {Path}", archiveLocation);
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "Failed to get file system mounts");
+            }
+        });
+
+        var migration = services.GetRequiredService<MigrationService>();
+        if (modelExists)
+        {
+            // Run the migrations
+            migration.MigrateAll().Wait();
+        }
+        else
+        {
+            // Otherwise, perform the initial setup
+            migration.InitialSetup().Wait();
         }
     }
 
@@ -305,6 +246,7 @@ public class Program
                 .AddStorageBackend<JsonStorageBackend>()
                 .AddSettings<LoggingSettings>()
                 .AddSettings<ExperimentalSettings>()
+                .AddSettings<CliSettings>()
             )
             .ConfigureLogging((_, builder) => builder
                 .ClearProviders()
