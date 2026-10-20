@@ -50,7 +50,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private readonly IGameLocationsService _gameLocationsService;
     private readonly IGameRegistry _gameRegistry;
 
-    private readonly IDeploymentBackend _copy;
+    private readonly IReadOnlyDictionary<DeploymentBackendId, IDeploymentBackend> _backends;
+    private readonly IDeploymentPlanStore _planStore;
 
     private readonly StringPool _fileNamePool = new();
 
@@ -82,7 +83,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         _gameRegistry = serviceProvider.GetRequiredService<IGameRegistry>();
 
         // Resolved from DI rather than built here: games create a synchronizer per access.
-        _copy = serviceProvider.GetServices<IDeploymentBackend>().Single(b => b.Id == DeploymentBackendId.Copy);
+        _backends = serviceProvider.GetServices<IDeploymentBackend>().ToDictionary(b => b.Id);
+        _planStore = serviceProvider.GetRequiredService<IDeploymentPlanStore>();
 
         _fileHashService = fileHashService;
 
@@ -448,7 +450,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
         var gameMetadataId = loadout.InstallationId;
-        IReadOnlyCollection<GamePath> foldersWithDeletedFiles = [];
+        var plan = _planStore.EnsureComplete(tx, Connection.Db, loadout.InstallationInstance, gameMetadataId);
+        var groups = GroupByBackend(plan, syncTree);
+        var foldersWithDeletedFiles = new List<IReadOnlyCollection<GamePath>>();
         var context = new DeploymentContext
         {
             Synchronizer = this,
@@ -469,37 +473,37 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
                 case Actions.BackupFile:
                     job?.SetStatus("Backing up files");
-                    await _copy.Backup(context, syncTree);
+                    foreach (var group in groups) await group.Backend.Backup(context, group.Nodes);
                     break;
 
                 case Actions.IngestFromDisk:
                     job?.SetStatus("Adding external changes");
-                    _copy.Ingest(context, syncTree);
+                    foreach (var group in groups) group.Backend.Ingest(context, group.Nodes);
                     break;
                 
                 case Actions.AdaptLoadout:
                     job?.SetStatus("Updating loadout");
-                    await _copy.AdaptLoadout(context, syncTree);
+                    foreach (var group in groups) await group.Backend.AdaptLoadout(context, group.Nodes);
                     break;
 
                 case Actions.DeleteFromDisk:
                     job?.SetStatus("Deleting files");
-                    foldersWithDeletedFiles = _copy.Delete(context, syncTree);
+                    foreach (var group in groups) foldersWithDeletedFiles.Add(group.Backend.Delete(context, group.Nodes));
                     break;
 
                 case Actions.ExtractToDisk:
                     job?.SetStatus("Extracting files");
-                    await _copy.Extract(context, syncTree);
+                    foreach (var group in groups) await group.Backend.Extract(context, group.Nodes);
                     break;
                 
                 case Actions.WriteIntrinsic:
                     job?.SetStatus("Writing intrinsic files");
-                    await _copy.WriteIntrinsics(context, syncTree);
+                    foreach (var group in groups) await group.Backend.WriteIntrinsics(context, group.Nodes);
                     break;
 
                 case Actions.AddReifiedDelete:
                     job?.SetStatus("Updating deleted files");
-                    _copy.AddReifiedDeletes(context, syncTree);
+                    foreach (var group in groups) group.Backend.AddReifiedDeletes(context, group.Nodes);
                     break;
 
                 case Actions.WarnOfUnableToExtract:
@@ -531,9 +535,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var newState = DiskStateEntry.FindByGame(loadout.Db, loadout.Installation);
 
         // Clean up empty directories
-        if (foldersWithDeletedFiles.Count > 0)
+        for (var i = 0; i < groups.Count; i++)
         {
-            _copy.CleanDirectories(context, foldersWithDeletedFiles, newState);
+            if (i < foldersWithDeletedFiles.Count && foldersWithDeletedFiles[i].Count > 0)
+                groups[i].Backend.CleanDirectories(context, foldersWithDeletedFiles[i], newState);
         }
 
         job?.SetStatus("Archive Cleanup");
@@ -656,8 +661,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         using var tx = Connection.BeginTransaction();
 
         var metadata = _gameRegistry.ForceGetMetadata(gameInstallation);
-
-        IReadOnlyCollection<GamePath> foldersWithDeletedFiles = [];
+        var plan = _planStore.EnsureComplete(tx, Connection.Db, gameInstallation, metadata);
+        var groups = GroupByBackend(plan, syncTree);
+        var foldersWithDeletedFiles = new List<IReadOnlyCollection<GamePath>>();
         var context = new DeploymentContext
         {
             Synchronizer = this,
@@ -675,7 +681,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                     break;
 
                 case Actions.BackupFile:
-                    await _copy.Backup(context, syncTree);
+                    foreach (var group in groups) await group.Backend.Backup(context, group.Nodes);
                     break;
                 
                 case Actions.AdaptLoadout:
@@ -694,11 +700,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                     break;
 
                 case Actions.DeleteFromDisk:
-                    foldersWithDeletedFiles = _copy.Delete(context, syncTree);
+                    foreach (var group in groups) foldersWithDeletedFiles.Add(group.Backend.Delete(context, group.Nodes));
                     break;
 
                 case Actions.ExtractToDisk:
-                    await _copy.Extract(context, syncTree);
+                    foreach (var group in groups) await group.Backend.Extract(context, group.Nodes);
                     break;
 
                 case Actions.AddReifiedDelete:
@@ -736,10 +742,58 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var newMetadata = metadata.Rebase(result.Db);
 
         // Clean up empty directories
-        if (foldersWithDeletedFiles.Count > 0)
+        var newDiskState = DiskStateEntry.FindByGame(newMetadata.Db, newMetadata);
+        for (var i = 0; i < groups.Count; i++)
         {
-            _copy.CleanDirectories(context, foldersWithDeletedFiles, DiskStateEntry.FindByGame(newMetadata.Db, newMetadata));
+            if (i < foldersWithDeletedFiles.Count && foldersWithDeletedFiles[i].Count > 0)
+                groups[i].Backend.CleanDirectories(context, foldersWithDeletedFiles[i], newDiskState);
         }
+    }
+
+    /// <summary>
+    /// The part of the sync tree one backend carries out.
+    /// </summary>
+    private sealed record BackendGroup(IDeploymentBackend Backend, IReadOnlyDictionary<GamePath, SyncNode> Nodes);
+
+    /// <summary>
+    /// Splits the tree by the backend the plan routes each path to, copy first and then by id, so phases run
+    /// in the same order every time. When one backend owns everything it gets the original dictionary.
+    /// </summary>
+    /// <remarks>
+    /// Every backend the plan names must be registered, even one with no nodes in this tree: a plan row pointing at
+    /// a missing backend means the root's files are managed by something this run cannot undo. The backup size cap
+    /// applies per group once a plan splits the tree.
+    /// </remarks>
+    private List<BackendGroup> GroupByBackend(DeploymentPlan plan, Dictionary<GamePath, SyncNode> syncTree)
+    {
+        foreach (var root in plan.Roots)
+        {
+            if (_backends.ContainsKey(root.Backend)) continue;
+            throw new InvalidOperationException(
+                $"Deployment backend '{root.Backend}' of root '{root.Root}' is not registered. " +
+                "Switch the root back with ISynchronizerService.ChangeDeploymentBackend."
+            );
+        }
+
+        var routed = new Dictionary<DeploymentBackendId, Dictionary<GamePath, SyncNode>>();
+        foreach (var (path, node) in syncTree)
+        {
+            var id = plan.BackendFor(path);
+            if (!routed.TryGetValue(id, out var nodes)) routed[id] = nodes = new Dictionary<GamePath, SyncNode>();
+            nodes.Add(path, node);
+        }
+
+        if (routed.Count <= 1)
+        {
+            var only = routed.Count == 1 ? routed.Keys.Single() : DeploymentBackendId.Copy;
+            return [new BackendGroup(_backends[only], syncTree)];
+        }
+
+        return routed
+            .OrderBy(kv => kv.Key == DeploymentBackendId.Copy ? 0 : 1)
+            .ThenBy(kv => kv.Key.Value, StringComparer.Ordinal)
+            .Select(kv => new BackendGroup(_backends[kv.Key], kv.Value))
+            .ToList();
     }
 
     private void WarnOfConflict(Dictionary<GamePath, SyncNode> tree)
