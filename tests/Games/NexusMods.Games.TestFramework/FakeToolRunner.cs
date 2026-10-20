@@ -22,7 +22,8 @@ public class FakeToolRunner : IToolRunner
         string[] Args,
         IReadOnlyDictionary<string, string>? Env,
         bool LogOutput,
-        string? ExeContents);
+        string? ExeContents,
+        ToolRunVia Via = ToolRunVia.Auto);
 
     private readonly List<Call> _calls = [];
 
@@ -50,7 +51,7 @@ public class FakeToolRunner : IToolRunner
     public int ExitCode { get; set; }
 
     /// <inheritdoc />
-    public ToolRunPlan Plan(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env)
+    public ToolRunPlan Plan(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, ToolRunVia via = ToolRunVia.Auto)
         => CanRunTools
             ? ToolRunPlan.Runnable("fake", [exe.ToString(), ..args], exe.Parent, env ?? new Dictionary<string, string>())
             : ToolRunPlan.Failed(Diagnostic);
@@ -62,12 +63,13 @@ public class FakeToolRunner : IToolRunner
         IReadOnlyList<string> args,
         IReadOnlyDictionary<string, string>? env,
         bool logOutput,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ToolRunVia via = ToolRunVia.Auto)
     {
         if (!CanRunTools) throw new InvalidOperationException(Diagnostic);
 
         var contents = exe.FileExists ? await exe.ReadAllTextAsync(cancellationToken) : null;
-        lock (_calls) _calls.Add(new Call(installation, exe, args.ToArray(), env, logOutput, contents));
+        lock (_calls) _calls.Add(new Call(installation, exe, args.ToArray(), env, logOutput, contents, via));
         return new ToolRunResult(ExitCode);
     }
 

@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x90CF20D40EA567FA
-   - Total attributes: 233
-   - Total namespaces: 75
+   - Fingerprint: 0x8F0BFDF53ECEBA72
+   - Total attributes: 238
+   - Total namespaces: 76
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -145,6 +145,11 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.SortOrder/SortOrderTypeId                                       | UInt128                 | False   | False | False     | 
 | SilverModManager.Loadouts.SortableEntry/ParentSortOrder                                   | Reference               | True    | False | False     | 
 | SilverModManager.Loadouts.SortableEntry/SortIndex                                         | Int32                   | False   | False | False     | 
+| SilverModManager.Loadouts.UserTool/Arguments                                              | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.UserTool/Exe                                                    | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.UserTool/Installation                                           | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.UserTool/Name                                                   | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.UserTool/RunVia                                                 | UInt8                   | False   | False | False     | 
 | SilverModManager.ManagedCollectionLoadoutGroup/Collection                                 | Reference               | True    | False | False     | 
 | SilverModManager.ManagedCollectionLoadoutGroup/CurrentRevisionId                          | UInt64                  | False   | False | False     | 
 | SilverModManager.ManagedCollectionLoadoutGroup/CurrentRevisionNumber                      | UInt64                  | False   | False | False     | 

@@ -33,9 +33,10 @@ public sealed class ToolRunner(
         GameInstallation installation,
         AbsolutePath exe,
         IReadOnlyList<string> args,
-        IReadOnlyDictionary<string, string>? env)
+        IReadOnlyDictionary<string, string>? env,
+        ToolRunVia via = ToolRunVia.Auto)
     {
-        if (!TryGetStrategy(installation, out var strategy, out var prefix, out var diagnostic))
+        if (!TryGetStrategy(installation, via, out var strategy, out var prefix, out var diagnostic))
             return ToolRunPlan.Failed(diagnostic);
 
         return strategy.Plan(installation, prefix, exe, args, env);
@@ -48,9 +49,10 @@ public sealed class ToolRunner(
         IReadOnlyList<string> args,
         IReadOnlyDictionary<string, string>? env,
         bool logOutput,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ToolRunVia via = ToolRunVia.Auto)
     {
-        var plan = Plan(installation, exe, args, env);
+        var plan = Plan(installation, exe, args, env, via);
         if (!plan.IsRunnable) throw new InvalidOperationException(plan.Diagnostic);
 
         var command = Cli.Wrap(plan.Argv[0])
@@ -66,11 +68,12 @@ public sealed class ToolRunner(
     /// <inheritdoc/>
     public bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic)
     {
-        return TryGetStrategy(installation, out _, out _, out diagnostic);
+        return TryGetStrategy(installation, ToolRunVia.Auto, out _, out _, out diagnostic);
     }
 
     private bool TryGetStrategy(
         GameInstallation installation,
+        ToolRunVia via,
         [NotNullWhen(true)] out IToolRunStrategy? strategy,
         [NotNullWhen(true)] out ResolvedPrefix? prefix,
         [NotNullWhen(false)] out string? diagnostic)
@@ -91,6 +94,8 @@ public sealed class ToolRunner(
             return false;
         }
 
+        if (via is not ToolRunVia.Auto) return TryGetForcedStrategy(installation, via, resolution.Prefix, out strategy, out prefix, out diagnostic);
+
         var kind = resolution.Prefix.Kind;
         strategy = _strategies.FirstOrDefault(s => s.Kind == kind);
         if (strategy is null)
@@ -110,6 +115,40 @@ public sealed class ToolRunner(
 
         strategy = lastResort;
         diagnostic = null;
+        return true;
+    }
+
+    // A forced strategy is the user's explicit choice, so when it cannot run the reason is reported as it is;
+    // quietly running something else would defeat the setting.
+    private bool TryGetForcedStrategy(
+        GameInstallation installation,
+        ToolRunVia via,
+        ResolvedPrefix resolved,
+        [NotNullWhen(true)] out IToolRunStrategy? strategy,
+        [NotNullWhen(true)] out ResolvedPrefix? prefix,
+        [NotNullWhen(false)] out string? diagnostic)
+    {
+        strategy = null;
+        prefix = null;
+
+        if (via is ToolRunVia.Native)
+        {
+            diagnostic = "A native program is started directly, not through a Wine prefix.";
+            return false;
+        }
+
+        var forced = _strategies.FirstOrDefault(s => s.Via == via);
+        if (forced is null)
+        {
+            diagnostic = $"Nothing is registered to run programs via {via}.";
+            return false;
+        }
+
+        diagnostic = forced.CheckRunnable(installation, resolved);
+        if (diagnostic is not null) return false;
+
+        strategy = forced;
+        prefix = resolved;
         return true;
     }
 }

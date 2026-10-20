@@ -21,6 +21,8 @@ public sealed class UmuStrategy(IProcessRunner processRunner) : IToolRunStrategy
 
     public CompatibilityLayerKind Kind => CompatibilityLayerKind.Heroic;
 
+    public ToolRunVia? Via => ToolRunVia.Umu;
+
     public string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix)
     {
         if (!RunnerOf(installation, prefix, out var runner, out var diagnostic)) return diagnostic;

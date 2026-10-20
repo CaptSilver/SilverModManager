@@ -1,8 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Loadouts;
+using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Protontricks;
 using NexusMods.Platform.Proton.ToolRunner;
+using NexusMods.Platform.Proton.UserTools;
 using NexusMods.Sdk;
 using NSubstitute;
 using NexusMods.Sdk.Games;
@@ -17,6 +20,7 @@ public class ProtonServicesTests
         var services = new ServiceCollection();
         services.AddSingleton<IFileSystem>(new InMemoryFileSystem(OSInformation.FakeUnix));
         services.AddSingleton(Substitute.For<IProcessRunner>());
+        services.AddSingleton(Substitute.For<IConnection>());
         services.AddProton();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions
@@ -28,6 +32,7 @@ public class ProtonServicesTests
         provider.GetRequiredService<IProtonResolver>().Should().BeOfType<ProtonResolver>();
         provider.GetRequiredService<IPrefixResolver>().Should().BeOfType<PrefixResolver>();
         provider.GetRequiredService<IToolRunner>().Should().BeOfType<ToolRunner.ToolRunner>();
+        provider.GetServices<IToolProvider>().Should().ContainSingle().Which.Should().BeOfType<UserToolProvider>();
         provider.GetServices<IToolRunStrategy>().Select(s => s.Kind).Should().BeEquivalentTo(
         [
             CompatibilityLayerKind.SteamProton,

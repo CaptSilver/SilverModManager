@@ -12,24 +12,26 @@ namespace NexusMods.DataModel;
 public class ToolManager : IToolManager
 {
     private readonly ILookup<GameId, ITool> _tools;
+    private readonly IToolProvider[] _providers;
     private readonly ILogger<ToolManager> _logger;
     private readonly ISynchronizerService _syncService;
 
     /// <summary>
     /// DI Constructor
     /// </summary>
-    public ToolManager(ILogger<ToolManager> logger, IEnumerable<ITool> tools, ISynchronizerService syncService)
+    public ToolManager(ILogger<ToolManager> logger, IEnumerable<ITool> tools, IEnumerable<IToolProvider> providers, ISynchronizerService syncService)
     {
         _logger = logger;
         _tools = tools.SelectMany(tool => tool.GameIds.Select(gameId => (gameId, tool)))
             .ToLookup(t => t.gameId, t => t.tool);
+        _providers = providers.ToArray();
         _syncService = syncService;
     }
 
     /// <inheritdoc />
     public IEnumerable<ITool> GetTools(Loadout.ReadOnly loadout)
     {
-        return _tools[loadout.Game.GameId];
+        return _tools[loadout.Game.GameId].Concat(_providers.SelectMany(p => p.GetTools(loadout)));
     }
 
     /// <inheritdoc />

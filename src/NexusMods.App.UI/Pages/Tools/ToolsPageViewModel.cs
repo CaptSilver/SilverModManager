@@ -6,6 +6,7 @@ using NexusMods.Sdk.Loadouts;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
 using NexusMods.UI.Sdk.Icons;
@@ -30,6 +31,7 @@ internal class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>, IToolsP
 
     [Reactive] public LoadoutId LoadoutId { get; set; }
     [Reactive] public IReadOnlyList<ITool> Tools { get; private set; } = [];
+    [Reactive] public IReadOnlyList<UserTool.ReadOnly> UserTools { get; private set; } = [];
     [Reactive] public bool CanRunWindowsProgram { get; private set; }
     [Reactive] public string? Diagnostic { get; private set; }
     [Reactive] public string? PrefixPath { get; private set; }
@@ -76,6 +78,7 @@ internal class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>, IToolsP
         if (LoadoutId == default)
         {
             Tools = [];
+            UserTools = [];
             ApplyRunnability(canRun: false, diagnostic: null, prefixPath: null, strategy: null);
             return;
         }
@@ -83,6 +86,7 @@ internal class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>, IToolsP
         var loadout = LoadLoadout();
         var installation = loadout.InstallationInstance;
         Tools = _toolManager.GetTools(loadout).ToArray();
+        UserTools = UserTool.FindByInstallation(_conn.Db, loadout.InstallationId).OrderBy(t => t.Name).ToArray();
 
         var canRun = _toolRunner.CanRun(installation, out var diagnostic);
         var prefix = _prefixResolver.Resolve(installation);
@@ -143,5 +147,52 @@ internal class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>, IToolsP
         if (picked.Length == 0) return;
 
         await RunToolAsync(new WindowsProgramTool(_toolRunner, loadout.Game.GameId, picked[0]), token);
+    }
+
+    public async Task AddUserTool(UserToolDraft draft)
+    {
+        Validate(draft);
+        var loadout = LoadLoadout();
+
+        using var tx = _conn.BeginTransaction();
+        _ = new UserTool.New(tx)
+        {
+            InstallationId = loadout.InstallationId,
+            Name = draft.Name.Trim(),
+            Exe = draft.Exe,
+            Arguments = draft.Arguments,
+            RunVia = draft.RunVia,
+        };
+        await tx.Commit();
+        Refresh();
+    }
+
+    public async Task UpdateUserTool(UserTool.ReadOnly tool, UserToolDraft draft)
+    {
+        Validate(draft);
+        // Writing the fields onto a removed id would bring it back without an installation, listed nowhere.
+        if (!UserTool.Load(_conn.Db, tool.Id).IsValid()) throw new ArgumentException($"'{tool.Name}' was removed.", nameof(tool));
+
+        using var tx = _conn.BeginTransaction();
+        tx.Add(tool.Id, UserTool.Name, draft.Name.Trim());
+        tx.Add(tool.Id, UserTool.Exe, draft.Exe);
+        tx.Add(tool.Id, UserTool.Arguments, draft.Arguments);
+        tx.Add(tool.Id, UserTool.RunVia, draft.RunVia);
+        await tx.Commit();
+        Refresh();
+    }
+
+    public async Task RemoveUserTool(UserTool.ReadOnly tool)
+    {
+        using var tx = _conn.BeginTransaction();
+        tx.Delete(tool.Id, recursive: false);
+        await tx.Commit();
+        Refresh();
+    }
+
+    private static void Validate(UserToolDraft draft)
+    {
+        if (string.IsNullOrWhiteSpace(draft.Name)) throw new ArgumentException("A tool needs a name.", nameof(draft));
+        if (!System.IO.Path.IsPathRooted(draft.Exe)) throw new ArgumentException($"'{draft.Exe}' is not an absolute path to a program.", nameof(draft));
     }
 }

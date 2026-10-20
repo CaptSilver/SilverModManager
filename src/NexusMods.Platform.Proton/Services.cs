@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NexusMods.Platform.Proton.Protontricks;
 using NexusMods.Platform.Proton.ToolRunner;
+using NexusMods.Platform.Proton.UserTools;
+using NexusMods.Abstractions.Loadouts;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 
@@ -27,6 +29,7 @@ public static class Services
         services.AddSingleton<AggregateProtontricksDependency>();
         services.AddSingleton<IRuntimeDependency, AggregateProtontricksDependency>();
         services.AddSingleton<IToolRunStrategy, ProtontricksStrategy>();
+        services.AddSingleton<IToolProvider, UserToolProvider>();
         return services.AddSingleton<IToolRunner, ToolRunner.ToolRunner>();
     }
 }

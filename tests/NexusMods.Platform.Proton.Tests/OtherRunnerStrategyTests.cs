@@ -334,6 +334,72 @@ public class OtherRunnerStrategyTests
         command.EnvironmentVariables["WINEPREFIX"].Should().Be("/wine/prefix");
     }
 
+    // --- a forced strategy ---
+
+    [Fact]
+    public void ForcedStrategy_OverridesTheOneThePrefixKindPicks()
+    {
+        _installed.Add("flatpak");
+        _installed.Add("/heroic/tools/wine/Wine-GE-8/bin/wine");
+        var installation = Install(CompatibilityLayerKind.HeroicFlatpak, "/heroic/Prefixes/Test Game", "/heroic/tools/wine/Wine-GE-8/bin/wine");
+
+        Runner().Plan(installation, Exe, [], null).Strategy.Should().Be("HeroicFlatpak");
+        var forced = Runner().Plan(installation, Exe, ["-x"], null, ToolRunVia.Wine);
+
+        forced.IsRunnable.Should().BeTrue();
+        forced.Strategy.Should().Be("PlainWine");
+        forced.Argv.Should().Equal("/heroic/tools/wine/Wine-GE-8/bin/wine", Exe.ToString(), "-x");
+        forced.Environment["WINEPREFIX"].Should().Be("/heroic/Prefixes/Test Game");
+    }
+
+    [Fact]
+    public void ForcedStrategyThatCannotRun_IsADiagnosticInsteadOfFallingBackToThePrefixPick()
+    {
+        _installed.Add("flatpak");
+        var installation = Install(CompatibilityLayerKind.HeroicFlatpak, "/heroic/Prefixes/Test Game", "/heroic/tools/wine/Wine-GE-8/bin/wine");
+
+        var plan = Runner().Plan(installation, Exe, [], null, ToolRunVia.Wine);
+
+        plan.IsRunnable.Should().BeFalse();
+        plan.Strategy.Should().BeNull();
+        plan.Diagnostic.Should().Contain("wine").And.Contain("not installed");
+    }
+
+    [Fact]
+    public async Task ForcedStrategy_IsTheOneRunWindowsToolStarts()
+    {
+        _installed.Add("flatpak");
+        _installed.Add("/heroic/tools/wine/Wine-GE-8/bin/wine");
+        var installation = Install(CompatibilityLayerKind.HeroicFlatpak, "/heroic/Prefixes/Test Game", "/heroic/tools/wine/Wine-GE-8/bin/wine");
+
+        await Runner().RunWindowsTool(installation, Exe, [], null, logOutput: false, CancellationToken.None, ToolRunVia.Wine);
+
+        _probes.Last().TargetFilePath.Should().Be("/heroic/tools/wine/Wine-GE-8/bin/wine");
+    }
+
+    [Fact]
+    public void ForcedNative_IsADiagnosticBecauseTheRunnerOnlyStartsWindowsPrograms()
+    {
+        var installation = Install(CompatibilityLayerKind.PlainWine, "/wine/prefix", null);
+
+        var plan = Runner().Plan(installation, Exe, [], null, ToolRunVia.Native);
+
+        plan.IsRunnable.Should().BeFalse();
+        plan.Diagnostic.Should().Contain("native");
+    }
+
+    [Fact]
+    public void ForcedStrategyWithNoRegistration_IsADiagnosticNamingIt()
+    {
+        var installation = Install(CompatibilityLayerKind.PlainWine, "/wine/prefix", null);
+        var runner = new ToolRunner.ToolRunner(new PrefixResolver(), [new PlainWineStrategy(_processRunner)], _processRunner);
+
+        var plan = runner.Plan(installation, Exe, [], null, ToolRunVia.Umu);
+
+        plan.IsRunnable.Should().BeFalse();
+        plan.Diagnostic.Should().Contain("Umu");
+    }
+
     private sealed class EmptyEnvironment : IEnvironmentReader
     {
         public string? Get(string name) => null;

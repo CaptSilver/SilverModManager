@@ -14,6 +14,11 @@ public interface IToolRunStrategy
     CompatibilityLayerKind Kind { get; }
 
     /// <summary>
+    /// The setting that forces this strategy, or null when it is only ever picked from the prefix kind.
+    /// </summary>
+    ToolRunVia? Via => null;
+
+    /// <summary>
     /// The reason a program cannot be run for the installation, or null when it can.
     /// </summary>
     string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix);

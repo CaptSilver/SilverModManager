@@ -19,6 +19,8 @@ public sealed class PlainWineStrategy(IProcessRunner processRunner) : IToolRunSt
 
     public CompatibilityLayerKind Kind => CompatibilityLayerKind.PlainWine;
 
+    public ToolRunVia? Via => ToolRunVia.Wine;
+
     public string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix)
     {
         var dependency = DependencyFor(Binary(prefix));

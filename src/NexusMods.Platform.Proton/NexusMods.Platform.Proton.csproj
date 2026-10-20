@@ -9,6 +9,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="NexusMods.Platform.Proton.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
         <ProjectReference Include="..\NexusMods.Abstractions.Games\NexusMods.Abstractions.Games.csproj" />
         <ProjectReference Include="..\NexusMods.Abstractions.Loadouts.Synchronizers\NexusMods.Abstractions.Loadouts.Synchronizers.csproj" />

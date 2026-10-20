@@ -21,6 +21,8 @@ public sealed class HeroicFlatpakStrategy(IProcessRunner processRunner) : IToolR
 
     public CompatibilityLayerKind Kind => CompatibilityLayerKind.HeroicFlatpak;
 
+    public ToolRunVia? Via => ToolRunVia.HeroicFlatpak;
+
     public string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix)
         => CheckRunner(installation, prefix) ?? (_heroic.IsInstalled() ? null : _heroic.MissingText);
 

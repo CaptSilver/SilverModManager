@@ -13,6 +13,8 @@ public sealed class SteamProtonStrategy(IProtonResolver protonResolver) : IToolR
 
     public CompatibilityLayerKind Kind => CompatibilityLayerKind.SteamProton;
 
+    public ToolRunVia? Via => ToolRunVia.SteamProton;
+
     public string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix)
         => Resolve(installation, prefix).Diagnostic;
 

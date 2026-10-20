@@ -18,6 +18,33 @@
 
             <Separator />
 
+            <TextBlock Text="Your programs" Theme="{StaticResource HeadingSMSemiTheme}" />
+            <StackPanel x:Name="UserToolsPanel" Spacing="{StaticResource Spacing-2}" />
+            <TextBox x:Name="UserToolNameBox" Watermark="Name" />
+            <DockPanel>
+                <controls:StandardButton x:Name="BrowseUserToolButton"
+                                         DockPanel.Dock="Right"
+                                         Type="Secondary"
+                                         Size="Toolbar"
+                                         Text="Browse..." />
+                <TextBox x:Name="UserToolExeBox" Watermark="Absolute path to the program" />
+            </DockPanel>
+            <TextBox x:Name="UserToolArgumentsBox" Watermark="Arguments" />
+            <ComboBox x:Name="UserToolRunViaBox" />
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                <controls:StandardButton x:Name="SaveUserToolButton"
+                                         Type="Primary"
+                                         Size="Toolbar"
+                                         Fill="StrongAlt"
+                                         Text="Add program" />
+                <controls:StandardButton x:Name="CancelUserToolEditButton"
+                                         Type="Secondary"
+                                         Size="Toolbar"
+                                         Text="Cancel" />
+            </StackPanel>
+
+            <Separator />
+
             <TextBlock Text="Run a Windows program in this game's prefix"
                        Theme="{StaticResource HeadingSMSemiTheme}" />
             <TextBlock x:Name="PrefixText" TextWrapping="Wrap" />

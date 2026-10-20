@@ -168,6 +168,122 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         toolManager.Ran.Should().BeEmpty();
     }
 
+    private static string TempExe(string name = "SSEEdit.exe")
+        => FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine($"{Guid.NewGuid()}/{name}").ToString();
+
+    [Fact]
+    public async Task AddUserTool_PersistsTheToolAndListsIt()
+    {
+        var loadout = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+        var exe = TempExe();
+
+        await vm.AddUserTool(new UserToolDraft("xEdit", exe, "-SSE", ToolRunVia.Wine));
+
+        var tool = vm.UserTools.Should().ContainSingle().Subject;
+        tool.Name.Should().Be("xEdit");
+        tool.Exe.Should().Be(exe);
+        tool.Arguments.Should().Be("-SSE");
+        tool.RunVia.Should().Be(ToolRunVia.Wine);
+        tool.InstallationId.Should().Be(loadout.InstallationId);
+    }
+
+    [Fact]
+    public async Task UserTools_SurviveRebuildingTheViewModel()
+    {
+        var loadout = await CreateLoadout();
+        var first = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        first.LoadoutId = loadout.LoadoutId;
+        await first.AddUserTool(new UserToolDraft("xEdit", TempExe(), "", ToolRunVia.Auto));
+
+        var second = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        second.LoadoutId = loadout.LoadoutId;
+
+        second.UserTools.Select(t => t.Name).Should().Equal("xEdit");
+    }
+
+    [Fact]
+    public async Task UpdateUserTool_ReplacesItsFields()
+    {
+        var loadout = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+        await vm.AddUserTool(new UserToolDraft("xEdit", TempExe(), "", ToolRunVia.Auto));
+        var newExe = TempExe("FO4Edit.exe");
+
+        await vm.UpdateUserTool(vm.UserTools.Single(), new UserToolDraft("FO4Edit", newExe, "-FO4", ToolRunVia.Umu));
+
+        var tool = vm.UserTools.Should().ContainSingle().Subject;
+        tool.Name.Should().Be("FO4Edit");
+        tool.Exe.Should().Be(newExe);
+        tool.Arguments.Should().Be("-FO4");
+        tool.RunVia.Should().Be(ToolRunVia.Umu);
+    }
+
+    [Fact]
+    public async Task UpdateUserTool_RefusesARemovedToolInsteadOfWritingItBack()
+    {
+        var loadout = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+        await vm.AddUserTool(new UserToolDraft("xEdit", TempExe(), "", ToolRunVia.Auto));
+        var removed = vm.UserTools.Single();
+        await vm.RemoveUserTool(removed);
+
+        var act = () => vm.UpdateUserTool(removed, new UserToolDraft("FO4Edit", TempExe(), "", ToolRunVia.Auto));
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        UserTool.Load(Connection.Db, removed.Id).IsValid().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemoveUserTool_DropsItFromTheListAndFromTheDatabase()
+    {
+        var loadout = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+        await vm.AddUserTool(new UserToolDraft("keep", TempExe(), "", ToolRunVia.Auto));
+        await vm.AddUserTool(new UserToolDraft("drop", TempExe(), "", ToolRunVia.Auto));
+
+        await vm.RemoveUserTool(vm.UserTools.Single(t => t.Name == "drop"));
+
+        vm.UserTools.Select(t => t.Name).Should().Equal("keep");
+        UserTool.FindByInstallation(Connection.Db, loadout.InstallationId).Select(t => t.Name).Should().Equal("keep");
+    }
+
+    [Theory]
+    [InlineData("", "/abs/prog.exe")]
+    [InlineData("  ", "/abs/prog.exe")]
+    [InlineData("name", "")]
+    [InlineData("name", "relative/prog.exe")]
+    public async Task AddUserTool_RefusesAnEmptyNameOrANonAbsoluteProgramAndStoresNothing(string name, string exe)
+    {
+        var loadout = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = loadout.LoadoutId;
+
+        var act = () => vm.AddUserTool(new UserToolDraft(name, exe, "", ToolRunVia.Auto));
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        vm.UserTools.Should().BeEmpty();
+        UserTool.FindByInstallation(Connection.Db, loadout.InstallationId).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task TheToolManager_ListsAUserToolForItsInstallationOnly()
+    {
+        var withTool = await CreateLoadout();
+        var other = await CreateLoadout();
+        var vm = CreateViewModel(new FakeToolManager(), new FakeToolRunner(), new FakeFilePicker());
+        vm.LoadoutId = withTool.LoadoutId;
+        await vm.AddUserTool(new UserToolDraft("xEdit", TempExe(), "", ToolRunVia.Native));
+        var toolManager = Provider.GetRequiredService<IToolManager>();
+
+        toolManager.GetTools(Loadout.Load(Connection.Db, withTool.LoadoutId)).Select(t => t.Name).Should().Contain("xEdit");
+        toolManager.GetTools(Loadout.Load(Connection.Db, other.LoadoutId)).Select(t => t.Name).Should().NotContain("xEdit");
+    }
+
     private sealed class StubTool(string name, GameId gameId) : ITool
     {
         public IEnumerable<GameId> GameIds => [gameId];
@@ -203,12 +319,12 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         public string? Diagnostic { get; init; }
         public string Strategy { get; init; } = "fake";
 
-        public ToolRunPlan Plan(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env)
+        public ToolRunPlan Plan(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, ToolRunVia via = ToolRunVia.Auto)
             => Diagnostic is null
                 ? ToolRunPlan.Runnable(Strategy, [exe.ToString()], exe.Parent, new Dictionary<string, string>())
                 : ToolRunPlan.Failed(Diagnostic);
 
-        public Task<ToolRunResult> RunWindowsTool(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, bool logOutput, CancellationToken cancellationToken)
+        public Task<ToolRunResult> RunWindowsTool(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, bool logOutput, CancellationToken cancellationToken, ToolRunVia via = ToolRunVia.Auto)
         {
             if (Diagnostic is not null) throw new InvalidOperationException(Diagnostic);
             Calls.Add(new Call(installation, exe));
