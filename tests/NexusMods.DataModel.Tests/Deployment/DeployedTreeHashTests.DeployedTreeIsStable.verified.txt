@@ -1,0 +1,20 @@
+﻿## 1 applied
+### Game
+Data/mod.pak	13	0a1b6f95351abda0	-
+README.txt	28	d84dcc3ac74b5f88	-
+bin/launcher	24	b81d3143f27345d4	x
+bin/originalGameFile.txt	12	673e3c493921a2d5	-
+### Preferences
+settings.ini	20	cec46ef41ae0abcf	-
+
+## 2 mod disabled
+### Game
+bin/originalGameFile.txt	12	673e3c493921a2d5	-
+### Preferences
+settings.ini	20	cec46ef41ae0abcf	-
+
+## 3 reset
+### Game
+### Preferences
+settings.ini	20	cec46ef41ae0abcf	-
+
