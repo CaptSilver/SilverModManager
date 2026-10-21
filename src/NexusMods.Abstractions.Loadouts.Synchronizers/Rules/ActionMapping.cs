@@ -82,7 +82,7 @@ public class ActionMapping
             xAB_xXX_IL => ExtractToDisk,
             xAB_xXX_IG => ExtractToDisk,
             Axx_xxx_iL => BackupFile | IngestFromDisk,
-            Axx_xxx_iI => AdaptLoadout,
+            Axx_xxx_iI => BackupFile | AdaptLoadout,
             Axx_xxx_iG => BackupFile | IngestFromDisk,
             Axx_Xxx_iL => IngestFromDisk,
             Axx_Xxx_iI => AdaptLoadout,

@@ -40,7 +40,15 @@ public class SynchronizerRuleTests
         {
             action.Should().NotHaveFlag(ExtractToDisk, "Intrinsic files should not be extracted");
             action.Should().NotHaveFlag(WarnOfUnableToExtract, "Intrinsic files should not be extracted");
-            action.Should().NotHaveFlag(BackupFile, "Intrinsic files should not be backed up");
+
+            // The only copy worth keeping is one the user had before the app first wrote the path.
+            if (action.HasFlag(BackupFile))
+            {
+                signature.Should().HaveFlag(DiskExists, "Only a file on disk can be backed up");
+                signature.Should().NotHaveFlag(PrevExists, "An intrinsic file the app has already written is regenerated, not backed up");
+                signature.Should().NotHaveFlag(DiskArchived, "A file already in the store needs no backup");
+            }
+
             action.Should().NotHaveFlag(DeleteFromDisk, "Intrinsic files should not be deleted");
 
             if (signature.HasFlag(PrevEqualsLoadout) && !signature.HasFlag(DiskEqualsLoadout))
