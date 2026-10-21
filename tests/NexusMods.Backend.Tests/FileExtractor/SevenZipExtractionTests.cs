@@ -22,6 +22,30 @@ public class SevenZipExtractionTests : AFileExtractorTest
         files.Should().OnlyContain(x => x.FileExists);
     }
 
+    // 7z restores the Unix mode stored in a .7z or .rar entry, and an archive that stores 000 left collection
+    // downloads unable to read their own extracted files. 7z-with-unix-modes.7z holds scripts/mod.reds at
+    // mode 000 and bin/run.sh at 755.
+    [Fact]
+    public async Task ExtractedFilesAreReadableWhenTheArchiveStoresNoPermissions()
+    {
+        await using var destination = TemporaryFileManager.CreateFolder();
+        await FileExtractor.ExtractAllAsync(UnixModesArchive, destination, TestContext.Current.CancellationToken);
+
+        var file = destination.Path.Combine("scripts/mod.reds");
+        (await File.ReadAllTextAsync(file.ToString(), TestContext.Current.CancellationToken)).Should().Be("func Main() {}");
+    }
+
+    [Fact]
+    public async Task ExtractionKeepsAnExecuteBitTheArchiveSet()
+    {
+        await using var destination = TemporaryFileManager.CreateFolder();
+        await FileExtractor.ExtractAllAsync(UnixModesArchive, destination, TestContext.Current.CancellationToken);
+
+        File.GetUnixFileMode(destination.Path.Combine("bin/run.sh").ToString()).Should().HaveFlag(UnixFileMode.UserExecute);
+    }
+
+    private AbsolutePath UnixModesArchive => FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-unix-modes.7z");
+
     [Theory]
     [InlineData("2024-04-16 06:10:44 D....            0            0  .", false, null, true)]
     [InlineData("2024-04-16 06:10:44 D....            0            0  ..", false, null, true)]
