@@ -21,6 +21,9 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
                     .BindToView(this, view => view.SupportedGamesItemsControl.ItemsSource)
                     .DisposeWith(d);
 
+                this.BindCommand(ViewModel, vm => vm.AddGameFolderCommand, view => view.AddGameFolderButton)
+                    .DisposeWith(d);
+
                 this.OneWayBind(ViewModel, vm => vm.LocatorProblemsNotice, view => view.LocatorProblemsNotice.Text)
                     .DisposeWith(d);
 

@@ -15,6 +15,7 @@ public class MyGamesDesignViewModel : APageViewModel<IMyGamesViewModel>, IMyGame
 {
     public ReactiveCommand<Unit, Unit> GiveFeedbackCommand => Initializers.DisabledReactiveCommand;
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand => Initializers.DisabledReactiveCommand;
+    public ReactiveCommand<Unit, Unit> AddGameFolderCommand => Initializers.DisabledReactiveCommand;
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames { get; }
     public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames { get; }
     public string? LocatorProblemsNotice => null;

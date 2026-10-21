@@ -32,6 +32,14 @@
                        Foreground="{StaticResource WarningStrongBrush}"
                        TextWrapping="Wrap" />
 
+            <controls:StandardButton x:Name="AddGameFolderButton"
+                                     Text="Add a game folder"
+                                     Type="Secondary"
+                                     Fill="Strong"
+                                     Size="Small"
+                                     HorizontalAlignment="Left"
+                                     ToolTip.Tip="Pick the folder of a game the launchers did not find" />
+
             <Border x:Name="AddGamesToGetStarted"
                     Padding="0"
                     BorderThickness="0"

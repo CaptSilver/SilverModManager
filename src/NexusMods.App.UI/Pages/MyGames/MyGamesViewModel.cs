@@ -2,6 +2,7 @@ using NexusMods.App.UI.Helpers;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Reactive.Disposables;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using DynamicData;
 using DynamicData.Binding;
@@ -73,6 +74,7 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     private ReadOnlyObservableCollection<IGameWidgetViewModel> _installedGames = new([]);
 
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand { get; }
+    public ReactiveCommand<Unit, Unit> AddGameFolderCommand { get; }
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames => _installedGames;
     public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames => _supportedGames;
 
@@ -110,6 +112,8 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
             var uri = new Uri(TrelloPublicRoadmapUrl);
             osInterop.OpenUri(uri);
         });
+
+        AddGameFolderCommand = ReactiveCommand.CreateFromTask(AddGameFolder);
 
         this.WhenActivated(d =>
             {
@@ -388,6 +392,65 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         return (await _windowManager.ShowDialog(dialog, DialogWindowType.Modal)).ButtonId;
     }
     
+    private async Task AddGameFolder()
+    {
+        var interop = _serviceProvider.GetRequiredService<IAvaloniaInterop>();
+        var picked = await interop.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Choose a game folder",
+            AllowMultiple = false,
+        });
+        if (picked.Length == 0) return;
+
+        var folder = picked[0];
+        var service = _serviceProvider.GetRequiredService<IAddGameByPath>();
+
+        GameId? chosen = null;
+        while (true)
+        {
+            // The service reads the disk and writes installs.yaml, so keep it off the UI thread.
+            var game = chosen;
+            var result = await Task.Run(() => service.Add(folder, game, prefix: null, wine: null));
+            var prompt = AddGamePrompt.For(result, folder);
+
+            if (prompt.Candidates.Count == 0)
+            {
+                await ShowRefusalDialog(prompt.Title, prompt.Markdown);
+                return;
+            }
+
+            chosen = await AskWhichGame(prompt);
+            if (chosen is null) return;
+        }
+    }
+
+    /// <summary>
+    /// Shows one button per candidate and returns the game picked, or null when the dialog was dismissed.
+    /// </summary>
+    private async Task<GameId?> AskWhichGame(AddGamePrompt prompt)
+    {
+        var markdownVm = _serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
+        markdownVm.Contents = prompt.Markdown;
+
+        var buttons = prompt.Candidates
+            .Select(candidate => new DialogButtonDefinition(candidate.Label, ButtonDefinitionId.From($"game:{candidate.Game}"), ButtonAction.Accept))
+            .Append(new DialogButtonDefinition("Cancel", ButtonDefinitionId.Cancel))
+            .ToArray();
+
+        var dialog = DialogFactory.CreateStandardDialog(
+            title: prompt.Title,
+            new StandardDialogParameters { Markdown = markdownVm },
+            buttonDefinitions: buttons
+        );
+
+        var pressed = (await _windowManager.ShowDialog(dialog, DialogWindowType.Modal)).ButtonId;
+        foreach (var candidate in prompt.Candidates)
+        {
+            if (pressed == ButtonDefinitionId.From($"game:{candidate.Game}")) return candidate.Game;
+        }
+        return null;
+    }
+
     private Task ShowCannotAddGameDialog(GameInstallation installation, string message)
     {
         return ShowRefusalDialog($"{installation.Game.DisplayName} can't be added yet", message);

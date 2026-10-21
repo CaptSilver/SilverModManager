@@ -352,6 +352,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         public AbsolutePath[] Result { get; init; } = [];
 
         public Task<AbsolutePath[]> OpenFilePickerAsync(FilePickerOpenOptions filePickerOpenOptions) => Task.FromResult(Result);
+        public Task<AbsolutePath[]> OpenFolderPickerAsync(FolderPickerOpenOptions folderPickerOpenOptions) => throw new NotSupportedException();
         public void RegisterStorageProvider(IStorageProvider storageProvider) => throw new NotSupportedException();
         public void RegisterClipboard(IClipboard clipboardProvider) => throw new NotSupportedException();
         public Task SetClipboardTextAsync(string text) => throw new NotSupportedException();
