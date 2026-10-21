@@ -1,4 +1,5 @@
 using System.Text;
+using NexusMods.Sdk;
 
 namespace NexusMods.Platform.Proton.Steam;
 
@@ -42,10 +43,18 @@ public static class SteamLaunchOptionLine
     }
 
     /// <summary>
-    /// Builds the bare launcher span for a shim and loadout.
+    /// Builds the launcher span for a shim and loadout, preceded by the assignment that sets the DLL overrides
+    /// the game needs when there are any.
     /// </summary>
-    public static string Compose(string shimPath, string loadoutName)
-        => $"{Quote(shimPath)} run {Quote(loadoutName)} -- {CommandToken}";
+    public static string Compose(string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides)
+    {
+        var prefix = WithDllOverrides("", overrides);
+        if (prefix.IsRefused) throw new ArgumentException(prefix.Refusal, nameof(overrides));
+        return Join(prefix.Line!, Span(shimPath, loadoutName), "");
+    }
+
+    private static string Span(string shimPath, string loadoutName)
+        => $"{ShellQuote(shimPath)} run {ShellQuote(loadoutName)} -- {CommandToken}";
 
     /// <summary>
     /// Splits a line around its launcher span without judging whether it is safe to edit.
@@ -58,17 +67,81 @@ public static class SteamLaunchOptionLine
 
     /// <summary>
     /// Puts the launcher span for the loadout into the line, replacing an existing span or taking the place of
-    /// <c>%command%</c>. Refuses when the user's own text would stop the shim from being the command that runs.
+    /// <c>%command%</c>, and merges <paramref name="overrides"/> into the prefix. Refuses when the user's own text
+    /// would stop the shim from being the command that runs, or holds a DLL overrides value that cannot be
+    /// rewritten safely.
     /// </summary>
-    public static Edit Rewrite(string existingLine, string shimPath, string loadoutName)
+    public static Edit Rewrite(string existingLine, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides)
     {
         var scan = Scan(existingLine);
         if (Refuse(scan) is { } refusal) return new Edit(null, refusal);
 
         var parsed = scan.ToParsed(existingLine);
-        var line = Join(parsed.Prefix, Compose(shimPath, loadoutName), parsed.Tail);
-        return new Edit(line, null);
+        var prefix = WithDllOverrides(parsed.Prefix, overrides);
+        if (prefix.IsRefused) return prefix;
+
+        return new Edit(Join(prefix.Line!, Span(shimPath, loadoutName), parsed.Tail), null);
     }
+
+    /// <summary>
+    /// Merges the overrides into every DLL overrides assignment in the prefix, leaving a word that already holds
+    /// them as it was. With none in the prefix, one is added after the leading assignments: sh only reads a
+    /// <c>KEY=value</c> word as an assignment there, and after a wrapper it would be an argument to the wrapper.
+    /// The value is always double-quoted, since an unquoted ';' is an operator.
+    /// </summary>
+    private static Edit WithDllOverrides(string prefix, IReadOnlyList<WineDllOverride> overrides)
+    {
+        if (overrides.Count == 0) return new Edit(prefix, null);
+
+        var words = new List<Word>();
+        Tokenize(prefix, words, []);
+
+        var sb = new StringBuilder();
+        var copied = 0;
+        var found = false;
+        foreach (var word in words)
+        {
+            // Env names are case-sensitive, so this is not WineParser's case-insensitive lookup.
+            if (EnvKey(word.Raw) != WineParser.WineDllOverridesEnvironmentVariableName) continue;
+            found = true;
+
+            var current = word.Value[(word.Value.IndexOf('=') + 1)..];
+            var merged = WineParser.MergeDllOverrides(current, overrides);
+            if (merged == current) continue;
+            if (merged.IndexOfAny(UnquotableCharacters) >= 0 || merged.Any(char.IsWhiteSpace))
+            {
+                return new Edit(null, $"The launch options set {WineParser.WineDllOverridesEnvironmentVariableName} to a value with " +
+                                      $"characters the app will not rewrite ({merged}). Fix it in Steam's Properties, or paste the line yourself.");
+            }
+
+            sb.Append(prefix, copied, word.Start - copied).Append(Assignment(merged));
+            copied = word.End;
+        }
+
+        if (found) return new Edit(sb.Append(prefix, copied, prefix.Length - copied).ToString(), null);
+
+        var value = WineParser.MergeDllOverrides("", overrides);
+        if (value.IndexOfAny(UnquotableCharacters) >= 0 || value.Any(char.IsWhiteSpace))
+        {
+            return new Edit(null, $"The DLL overrides ({value}) contain characters that cannot be double-quoted in a launch option.");
+        }
+
+        var leadingAssignmentsEnd = 0;
+        foreach (var word in words)
+        {
+            if (EnvKey(word.Raw) is null) break;
+            leadingAssignmentsEnd = word.End;
+        }
+
+        var before = prefix[..leadingAssignmentsEnd].Trim();
+        var after = prefix[leadingAssignmentsEnd..].Trim();
+        return new Edit(Join(before, Assignment(value), after), null);
+    }
+
+    private static readonly char[] UnquotableCharacters = ['"', '`', '$', '\\'];
+
+    private static string Assignment(string value)
+        => $"{WineParser.WineDllOverridesEnvironmentVariableName}=\"{value}\"";
 
     /// <summary>
     /// Takes the launcher span out of the line. The user's prefix keeps its <c>%command%</c>; a line that was
@@ -133,10 +206,11 @@ public static class SteamLaunchOptionLine
     }
 
     /// <summary>
-    /// POSIX single-quotes a value. An embedded quote becomes <c>'\''</c>, and a literal <c>%command%</c> is
-    /// split so Steam's textual substitution cannot hit it; the shell joins the pieces back.
+    /// POSIX single-quotes a value for a shell command line. An embedded quote becomes <c>'\''</c>, and a
+    /// literal <c>%command%</c> is split so Steam's textual substitution cannot hit it; the shell joins the
+    /// pieces back.
     /// </summary>
-    private static string Quote(string value)
+    public static string ShellQuote(string value)
         => "'" + value.Replace("'", @"'\''").Replace(CommandToken, "%comm''and%") + "'";
 
     private static string? Refuse(LineScan scan)

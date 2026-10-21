@@ -52,9 +52,15 @@ public class SteamLaunchOptionVerbTests(IConnection connection) : IDisposable
 
     private void WriteShim() => new LauncherShim(Absolute(DataHome)).Write(Absolute("/opt/silvermod/SilverModManager"));
 
-    private async Task Install(GameStore? store = null, bool withProvider = true)
+    private async Task Install(GameStore? store = null, bool withProvider = true, bool requiresWinmm = false)
     {
-        var gameData = Substitute.For<IGameData>();
+        var gameData = requiresWinmm ? Substitute.For<IGameData, IWineDllOverrideRequirements>() : Substitute.For<IGameData>();
+        if (requiresWinmm)
+        {
+            ((IWineDllOverrideRequirements)gameData).RequiredWineDllOverrides(Arg.Any<Loadout.ReadOnly>())
+                .Returns(new[] { new WineDllOverride("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]) });
+        }
+
         gameData.DisplayName.Returns($"Alpha {_unique}");
         var folder = Absolute(Path.Combine(_root, "game"));
 
@@ -106,9 +112,11 @@ public class SteamLaunchOptionVerbTests(IConnection connection) : IDisposable
                 return true;
             });
 
+        registry.ForceGetInstallation(Arg.Any<Loadout.ReadOnly>()).Returns(_ => _installation!);
+
         var environment = Substitute.For<IEnvironmentReader>();
         environment.Get("XDG_DATA_HOME").Returns(DataHome);
-        return new SteamLaunchOptionCommand(new LoadoutResolver(connection, registry, environment), new SteamLaunchOptionWriter(new LocalConfigVdfWriter(_tracker), environment, FileSystem.Shared));
+        return new SteamLaunchOptionCommand(new LoadoutResolver(connection, registry, environment), new SteamLaunchOptionWriter(new LocalConfigVdfWriter(_tracker), environment, FileSystem.Shared, registry));
     }
 
     private static string[] Lines(LoggingRenderer renderer)
@@ -131,6 +139,50 @@ public class SteamLaunchOptionVerbTests(IConnection connection) : IDisposable
         Lines(renderer)[0].Should().Be($"'{ShimFile}' run '{LoadoutName}' -- %command%");
         Output(renderer).Should().Contain("current deploy");
         File.ReadAllText(ConfigFile).Should().Be(before);
+    }
+
+    [Fact]
+    public async Task PrintsTheOverridesTheGameRequires()
+    {
+        await Install(requiresWinmm: true);
+        WriteShim();
+        WriteConfig("-novid");
+        var before = File.ReadAllText(ConfigFile);
+        var renderer = new LoggingRenderer();
+
+        var exitCode = await Command().RunAsync(renderer, LoadoutName, null, write: false);
+
+        exitCode.Should().Be(0);
+        Lines(renderer)[0].Should().Be($"WINEDLLOVERRIDES=\"winmm=n,b\" '{ShimFile}' run '{LoadoutName}' -- %command%");
+        Output(renderer).Should().Contain("It also sets WINEDLLOVERRIDES to winmm=n,b, which Alpha").And.Contain("needs for its mods.");
+        File.ReadAllText(ConfigFile).Should().Be(before);
+    }
+
+    [Fact]
+    public async Task WriteStoresTheOverridesTheGameRequires()
+    {
+        await Install(requiresWinmm: true);
+        WriteShim();
+        WriteConfig("-novid %command%");
+        var renderer = new LoggingRenderer();
+
+        var exitCode = await Command().RunAsync(renderer, LoadoutName, null, write: true);
+
+        exitCode.Should().Be(0, Output(renderer));
+        var stored = LocalConfigLaunchOptions.Read(Absolute(ConfigFile), uint.Parse(AppId)).Line;
+        stored.Should().Be($"WINEDLLOVERRIDES=\"winmm=n,b\" -novid '{ShimFile}' run '{LoadoutName}' -- %command%");
+    }
+
+    [Fact]
+    public async Task OutputOmitsTheOverridesLineForAGameThatRequiresNone()
+    {
+        await Install();
+        WriteShim();
+        var renderer = new LoggingRenderer();
+
+        await Command().RunAsync(renderer, LoadoutName, null, write: false);
+
+        Output(renderer).Should().NotContain("It also sets");
     }
 
     [Fact]

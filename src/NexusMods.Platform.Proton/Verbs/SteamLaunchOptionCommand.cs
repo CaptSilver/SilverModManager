@@ -1,6 +1,9 @@
 using NexusMods.Abstractions.Cli;
+using NexusMods.Abstractions.Games;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.ProxyConsole;
 
 namespace NexusMods.Platform.Proton.Verbs;
@@ -23,22 +26,28 @@ public sealed class SteamLaunchOptionCommand(LoadoutResolver resolver, ISteamLau
             return resolution.ExitCode;
         }
 
-        var name = resolution.Loadout!.Value.Name;
+        var loadoutValue = resolution.Loadout!.Value;
         if (write)
         {
-            return await Write(renderer, resolution.Installation!, name);
+            return await Write(renderer, resolution.Installation!, loadoutValue);
         }
 
-        await renderer.TextLine(launchOptions.ComposeLine(name));
+        await renderer.TextLine(launchOptions.ComposeLine(loadoutValue));
         await renderer.TextLine("Paste this into the game's Properties > Launch Options in Steam, or run again with --write while Steam is closed.");
         await renderer.TextLine("The line runs the current deploy of the loadout.");
+        var overrides = WineDllOverrideRequirements.For(resolution.Installation!.Game, loadoutValue);
+        if (overrides.Count > 0)
+        {
+            await renderer.TextLine($"It also sets {WineParser.WineDllOverridesEnvironmentVariableName} to {WineParser.MergeDllOverrides("", overrides)}, which {resolution.Installation.Game.DisplayName} needs for its mods.");
+        }
+
         if (launchOptions.MissingShimWarning is { } missing) await renderer.TextLine(missing);
         return 0;
     }
 
-    private async Task<int> Write(IRenderer renderer, GameInstallation installation, string loadoutName)
+    private async Task<int> Write(IRenderer renderer, GameInstallation installation, Loadout.ReadOnly loadout)
     {
-        var result = launchOptions.Write(installation, loadoutName);
+        var result = launchOptions.Write(installation, loadout);
         if (result.IsRefused)
         {
             await renderer.TextLine(result.Refusal!);

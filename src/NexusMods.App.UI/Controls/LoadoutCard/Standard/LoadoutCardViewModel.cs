@@ -208,8 +208,10 @@ public class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutC
 
     private async Task ShowSteamLaunchOption(Loadout.ReadOnly loadout)
     {
+        // The captured snapshot is stale after a rename, or once files the game's requirements depend on change.
+        loadout = loadout.Rebase();
         var overlay = new SteamLaunchOptionViewModel(
-            LoadoutName,
+            loadout,
             loadout.InstallationInstance,
             _serviceProvider.GetRequiredService<IProcessTracker>(),
             _serviceProvider.GetRequiredService<ISteamLaunchOptionWriter>(),

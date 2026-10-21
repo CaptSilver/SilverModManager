@@ -1,12 +1,17 @@
+using System.Reactive.Linq;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.App.UI.Controls.LoadoutCard;
+using NexusMods.App.UI.Overlays;
+using NexusMods.App.UI.Pages.SteamLaunchOption;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
+using NSubstitute;
 using ReactiveUI;
 using Loadout = NexusMods.Sdk.Loadouts.Loadout;
 
@@ -14,29 +19,7 @@ namespace NexusMods.UI.Tests;
 
 public class LoadoutCardSteamButtonTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private async Task<Loadout.ReadOnly> SeedLoadout(GameStore store)
-    {
-        var installation = Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First();
-        using var tx = Connection.BeginTransaction();
-        var metadata = new GameInstallMetadata.New(tx)
-        {
-            Path = installation.LocatorResult.Path.ToString(),
-            Name = installation.Game.DisplayName,
-            Store = store,
-            GameId = installation.Game.NexusModsGameId.Value,
-        };
-        var loadout = new Loadout.New(tx)
-        {
-            Name = $"Steam Button {store.Value}",
-            ShortName = "ZZZ",
-            InstallationId = metadata,
-            LoadoutKind = LoadoutKind.Default,
-            Revision = 0,
-            GameVersion = VanityVersion.From("Unknown"),
-        };
-        var result = await tx.Commit();
-        return result.Remap(loadout);
-    }
+    private Task<Loadout.ReadOnly> SeedLoadout(GameStore store) => SeedLoadoutRow(store, $"Steam Button {store.Value}");
 
     private LoadoutCardViewModel CardFor(Loadout.ReadOnly loadout) => new(loadout, Connection, Provider)
     {
@@ -57,5 +40,31 @@ public class LoadoutCardSteamButtonTests(IServiceProvider provider) : AUiTest(pr
         var card = CardFor(await SeedLoadout(GameStore.GOG));
 
         card.CanUseFromSteam.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Test_TheDialogUsesTheLoadoutsCurrentName()
+    {
+        var seeded = await SeedLoadout(GameStore.Steam);
+        var overlays = Substitute.For<IOverlayController>();
+        var card = new LoadoutCardViewModel(seeded, Connection, new OverlayProvider(Provider, overlays))
+        {
+            VisitLoadoutCommand = ReactiveCommand.Create(() => { }),
+        };
+
+        // The card was built from the snapshot taken before the rename.
+        await Provider.GetRequiredService<ILoadoutManager>().RenameLoadout(seeded.LoadoutId, "Renamed Steam Button");
+        await card.UseFromSteamCommand.Execute();
+
+        var dialog = overlays.ReceivedCalls().SelectMany(call => call.GetArguments()).OfType<SteamLaunchOptionViewModel>().Single();
+        dialog.LoadoutName.Should().Be("Renamed Steam Button");
+    }
+
+    /// <summary>
+    /// The real services, except that overlays go to a recorder instead of the (absent) window.
+    /// </summary>
+    private sealed class OverlayProvider(IServiceProvider inner, IOverlayController overlays) : IServiceProvider
+    {
+        public object? GetService(Type serviceType) => serviceType == typeof(IOverlayController) ? overlays : inner.GetService(serviceType);
     }
 }

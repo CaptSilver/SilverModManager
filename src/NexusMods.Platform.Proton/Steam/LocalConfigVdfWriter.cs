@@ -1,4 +1,5 @@
 using NexusMods.Paths;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using SteamKit2;
 
@@ -32,11 +33,11 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
 
     /// <summary>
     /// Sets the launch options of <paramref name="appId"/> so the game starts through the launcher for the
-    /// loadout, keeping the user's own prefix and tail. Refuses while Steam runs (it rewrites the file when it
-    /// exits, discarding the edit), when the file is missing or unreadable, and when the existing line cannot
-    /// be edited safely.
+    /// loadout, keeping the user's own prefix and tail and carrying the DLL overrides the game needs. Refuses
+    /// while Steam runs (it rewrites the file when it exits, discarding the edit), when the file is missing or
+    /// unreadable, and when the existing line cannot be edited safely.
     /// </summary>
-    public Result SetLauncherSpan(AbsolutePath localConfig, uint appId, string shimPath, string loadoutName)
+    public Result SetLauncherSpan(AbsolutePath localConfig, uint appId, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides)
     {
         if (processTracker.IsSteamRunning())
         {
@@ -56,7 +57,7 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
         app = GetOrAddSection(app, appId.ToString());
         var options = app.Children.FirstOrDefault(c => IsNamed(c, "LaunchOptions"));
 
-        var edit = SteamLaunchOptionLine.Rewrite(options?.Value ?? "", shimPath, loadoutName);
+        var edit = SteamLaunchOptionLine.Rewrite(options?.Value ?? "", shimPath, loadoutName, overrides);
         if (edit.IsRefused) return Refuse(edit.Refusal!);
 
         if (options is null) app.Children.Add(options = new KeyValue("LaunchOptions"));
@@ -69,13 +70,26 @@ public sealed class LocalConfigVdfWriter(IProcessTracker processTracker)
 
         var read = LocalConfigLaunchOptions.Read(localConfig, appId);
         var parsed = read.Line is null ? null : SteamLaunchOptionLine.Parse(read.Line);
-        if (read.Line != edit.Line || parsed is not { HasSpan: true } || parsed.ShimPath != shimPath || parsed.LoadoutName != loadoutName)
+        if (read.Line != edit.Line || parsed is not { HasSpan: true } || parsed.ShimPath != shimPath || parsed.LoadoutName != loadoutName || !ReadsBack(read.Line!, overrides))
         {
             File.Copy(backup.ToString(), path, overwrite: true);
             return Refuse($"Steam's {path} did not read back the launch options that were written, so the original was restored.");
         }
 
         return new Result(edit.Line, null, backup);
+    }
+
+    /// <summary>
+    /// Whether the Health Check's own reader finds every required entry in the stored line, so a line that
+    /// passes is one the Health Check accepts.
+    /// </summary>
+    private static bool ReadsBack(string line, IReadOnlyList<WineDllOverride> required)
+    {
+        if (required.Count == 0) return true;
+
+        var stored = WineParser.ParseEnvironmentVariable(WineParser.GetWineDllOverridesSection(line));
+        return required.All(entry => stored.Any(s =>
+            string.Equals(s.DllName, entry.DllName, StringComparison.OrdinalIgnoreCase) && s.OverrideTypes.SequenceEqual(entry.OverrideTypes)));
     }
 
     private static Result Refuse(string refusal) => new(null, refusal, null);

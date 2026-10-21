@@ -1,5 +1,6 @@
 using NexusMods.Platform.Proton.Steam;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.Platform.Proton.Launch;
 
@@ -11,9 +12,10 @@ namespace NexusMods.Platform.Proton.Launch;
 public interface ISteamLaunchOptionWriter
 {
     /// <summary>
-    /// The launcher span for the loadout, ready to paste into a game's launch options.
+    /// The launcher span for the loadout, ready to paste into a game's launch options. It starts with the DLL
+    /// overrides the game needs for the loadout, when it needs any.
     /// </summary>
-    string ComposeLine(string loadoutName);
+    string ComposeLine(Loadout.ReadOnly loadout);
 
     /// <summary>
     /// Set when the launcher script the line points at does not exist yet, so a pasted line would not start anything.
@@ -25,5 +27,5 @@ public interface ISteamLaunchOptionWriter
     /// runs, for games that are not Steam games, when the launcher script is missing, and when the config cannot be
     /// edited safely.
     /// </summary>
-    LocalConfigVdfWriter.Result Write(GameInstallation installation, string loadoutName);
+    LocalConfigVdfWriter.Result Write(GameInstallation installation, Loadout.ReadOnly loadout);
 }

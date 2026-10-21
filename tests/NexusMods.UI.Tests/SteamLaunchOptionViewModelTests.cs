@@ -7,7 +7,9 @@ using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Platform.Proton.Steam;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Loadouts;
 using NSubstitute;
+using Loadout = NexusMods.Sdk.Loadouts.Loadout;
 
 namespace NexusMods.UI.Tests;
 
@@ -20,38 +22,46 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
         public IProcessTracker Tracker { get; } = Substitute.For<IProcessTracker>();
         public ISteamLaunchOptionWriter Writer { get; } = Substitute.For<ISteamLaunchOptionWriter>();
         public IAvaloniaInterop Interop { get; } = Substitute.For<IAvaloniaInterop>();
+        public Loadout.ReadOnly Seeded { get; }
         public SteamLaunchOptionViewModel Vm { get; }
 
-        public Fixture(GameInstallation installation, bool steamRunning, string? shimWarning = null)
+        public Fixture(Loadout.ReadOnly loadout, GameInstallation installation, bool steamRunning, string? shimWarning = null)
         {
+            Seeded = loadout;
             Tracker.IsSteamRunning().Returns(steamRunning);
-            Writer.ComposeLine("Loadout A").Returns(Line);
+            Writer.ComposeLine(Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == loadout.LoadoutId)).Returns(Line);
             Writer.MissingShimWarning.Returns(shimWarning);
-            Vm = new SteamLaunchOptionViewModel("Loadout A", installation, Tracker, Writer, Interop);
+            Vm = new SteamLaunchOptionViewModel(loadout, installation, Tracker, Writer, Interop);
         }
+    }
+
+    private async Task<Fixture> NewFixture(bool steamRunning, string? shimWarning = null)
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Loadout A");
+        return new Fixture(loadout, Installation, steamRunning, shimWarning);
     }
 
     private GameInstallation Installation => Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First();
 
     [Fact]
-    public void Test_ShowsTheComposedLine()
+    public async Task Test_ShowsTheComposedLine()
     {
-        var f = new Fixture(Installation, steamRunning: false);
+        var f = await NewFixture(steamRunning: false);
         f.Vm.Line.Should().Be(Line);
     }
 
     [Fact]
-    public void Test_MissingLauncherScriptIsShownAsAWarning()
+    public async Task Test_MissingLauncherScriptIsShownAsAWarning()
     {
-        var f = new Fixture(Installation, steamRunning: false, shimWarning: "no script yet");
+        var f = await NewFixture(steamRunning: false, shimWarning: "no script yet");
         f.Vm.Warning.Should().Be("no script yet");
-        new Fixture(Installation, steamRunning: false).Vm.Warning.Should().BeEmpty();
+        (await NewFixture(steamRunning: false)).Vm.Warning.Should().BeEmpty();
     }
 
     [Fact]
     public async Task Test_SteamRunning_CopyWorksAndWriteExplains()
     {
-        var f = new Fixture(Installation, steamRunning: true);
+        var f = await NewFixture(steamRunning: true);
 
         f.Vm.CanWrite.Should().BeFalse();
         f.Vm.WriteNote.Should().Contain("Close Steam");
@@ -67,16 +77,16 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task Test_SteamClosed_WriteCallsTheWriterAndReportsTheOutcome()
     {
-        var f = new Fixture(Installation, steamRunning: false);
+        var f = await NewFixture(steamRunning: false);
         var backup = FileSystem.Shared.FromUnsanitizedFullPath("/tmp/localconfig.vdf.silvermod-bak");
-        f.Writer.Write(f.Vm.Installation, "Loadout A").Returns(new LocalConfigVdfWriter.Result(Line, null, backup));
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId)).Returns(new LocalConfigVdfWriter.Result(Line, null, backup));
 
         f.Vm.CanWrite.Should().BeTrue();
         f.Vm.WriteNote.Should().BeEmpty();
 
         await f.Vm.WriteAsync();
 
-        f.Writer.Received(1).Write(f.Vm.Installation, "Loadout A");
+        f.Writer.Received(1).Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId));
         f.Vm.Message.Should().Contain(Line).And.Contain("localconfig.vdf.silvermod-bak");
         await f.Interop.DidNotReceiveWithAnyArgs().SetClipboardTextAsync(default!);
     }
@@ -84,8 +94,8 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task Test_WriteRefusalTextComesFromTheWriter()
     {
-        var f = new Fixture(Installation, steamRunning: false);
-        f.Writer.Write(f.Vm.Installation, "Loadout A").Returns(new LocalConfigVdfWriter.Result(null, "an unquoted ';' before %command%", null));
+        var f = await NewFixture(steamRunning: false);
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId)).Returns(new LocalConfigVdfWriter.Result(null, "an unquoted ';' before %command%", null));
 
         await f.Vm.WriteAsync();
 
@@ -95,7 +105,7 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task Test_WriteChecksSteamAgainWhenPressed()
     {
-        var f = new Fixture(Installation, steamRunning: false);
+        var f = await NewFixture(steamRunning: false);
         f.Vm.CanWrite.Should().BeTrue();
 
         // Steam was started after the dialog opened and nothing polled yet.
@@ -109,9 +119,9 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
     }
 
     [Fact]
-    public void Test_RefreshFollowsSteamClosing()
+    public async Task Test_RefreshFollowsSteamClosing()
     {
-        var f = new Fixture(Installation, steamRunning: true);
+        var f = await NewFixture(steamRunning: true);
         f.Vm.CanWrite.Should().BeFalse();
 
         f.Tracker.IsSteamRunning().Returns(false);
@@ -123,7 +133,7 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
     [Fact]
     public async Task Test_CopySaysItChangesNothing()
     {
-        var f = new Fixture(Installation, steamRunning: false);
+        var f = await NewFixture(steamRunning: false);
         f.Vm.CopyNote.Should().Contain("changes nothing");
 
         await f.Vm.CopyAsync();
@@ -133,9 +143,9 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
     }
 
     [Fact]
-    public void Test_AppRegistersTheWriterTheDialogNeeds()
+    public async Task Test_AppRegistersTheWriterTheDialogNeeds()
     {
         var writer = Provider.GetRequiredService<ISteamLaunchOptionWriter>();
-        writer.ComposeLine("Loadout A").Should().EndWith("run 'Loadout A' -- %command%");
+        writer.ComposeLine(await SeedLoadoutRow(GameStore.Steam, "Loadout A")).Should().EndWith("run 'Loadout A' -- %command%");
     }
 }

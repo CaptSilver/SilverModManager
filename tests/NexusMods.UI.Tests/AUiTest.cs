@@ -4,9 +4,15 @@ using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Games;
+using NexusMods.Abstractions.Loadouts;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Sdk;
+using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Loadouts;
 using NexusMods.UI.Sdk;
 using NexusMods.UI.Tests.Framework;
+using Loadout = NexusMods.Sdk.Loadouts.Loadout;
 
 namespace NexusMods.UI.Tests;
 
@@ -24,6 +30,34 @@ public class AUiTest
         // Do this to trigger the AvaloniaApp constructor/initialization
         App = provider.GetRequiredService<AvaloniaApp>();
         Connection = provider.GetRequiredService<IConnection>();
+    }
+
+    /// <summary>
+    /// A loadout row on the test game's installation, recorded as installed from <paramref name="store"/>.
+    /// Nothing is applied, since the test game has no files to apply.
+    /// </summary>
+    protected async Task<Loadout.ReadOnly> SeedLoadoutRow(GameStore store, string name)
+    {
+        var installation = Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First();
+        using var tx = Connection.BeginTransaction();
+        var metadata = new GameInstallMetadata.New(tx)
+        {
+            Path = installation.LocatorResult.Path.ToString(),
+            Name = installation.Game.DisplayName,
+            Store = store,
+            GameId = installation.Game.NexusModsGameId.Value,
+        };
+        var loadout = new Loadout.New(tx)
+        {
+            Name = name,
+            ShortName = "ZZZ",
+            InstallationId = metadata,
+            LoadoutKind = LoadoutKind.Default,
+            Revision = 0,
+            GameVersion = VanityVersion.From("Unknown"),
+        };
+        var result = await tx.Commit();
+        return result.Remap(loadout);
     }
 
     protected VMWrapper<T> GetActivatedViewModel<T>()

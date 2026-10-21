@@ -130,7 +130,7 @@ public class SupportBundleWriterTests : IDisposable
         File.WriteAllText(InstallationLock.PathFor(_runtimeDir, "steam", AppId), "");
         File.WriteAllText(Path.Combine(InstallationLock.DirectoryFor(_runtimeDir), "sync"), "sync file contents");
 
-        WriteLocalConfig($"PROTON_LOG=1 API_TOKEN={Secret} {SteamLaunchOptionLine.Compose("/opt/silvermod", "Main")}");
+        WriteLocalConfig($"PROTON_LOG=1 API_TOKEN={Secret} {SteamLaunchOptionLine.Compose("/opt/silvermod", "Main", [])}");
         var bundle = await Writer(new ManagedInstallation(SteamGame(), ["Main"])).WriteAsync();
 
         var entries = Read(bundle);
@@ -152,11 +152,11 @@ public class SupportBundleWriterTests : IDisposable
     [Fact]
     public async Task WriteAsync_RedactsEnvPrefixValuesEverywhereTheLineAppears()
     {
-        WriteLocalConfig($"PROTON_LOG=1 API_TOKEN={Secret} {SteamLaunchOptionLine.Compose("/opt/silvermod", "Main")}");
+        WriteLocalConfig($"PROTON_LOG=1 API_TOKEN={Secret} {SteamLaunchOptionLine.Compose("/opt/silvermod", "Main", [])}");
         var bundle = await Writer(new ManagedInstallation(SteamGame(), ["Main"])).WriteAsync();
 
         var entries = Read(bundle);
-        var expectedLine = $"PROTON_LOG=... API_TOKEN=... {SteamLaunchOptionLine.Compose("/opt/silvermod", "Main")}";
+        var expectedLine = $"PROTON_LOG=... API_TOKEN=... {SteamLaunchOptionLine.Compose("/opt/silvermod", "Main", [])}";
 
         entries["steam-launch-options.txt"].Should().Contain("Test Game").And.Contain(AppId).And.Contain(expectedLine);
 

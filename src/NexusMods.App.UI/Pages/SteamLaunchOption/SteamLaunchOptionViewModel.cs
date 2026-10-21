@@ -6,6 +6,7 @@ using NexusMods.App.UI.Extensions;
 using NexusMods.App.UI.Overlays;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Loadouts;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
@@ -21,16 +22,18 @@ public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionVi
     private readonly IProcessTracker _processTracker;
     private readonly ISteamLaunchOptionWriter _writer;
     private readonly IAvaloniaInterop _interop;
+    private readonly Loadout.ReadOnly _loadout;
 
-    public SteamLaunchOptionViewModel(string loadoutName, GameInstallation installation, IProcessTracker processTracker, ISteamLaunchOptionWriter writer, IAvaloniaInterop interop)
+    public SteamLaunchOptionViewModel(Loadout.ReadOnly loadout, GameInstallation installation, IProcessTracker processTracker, ISteamLaunchOptionWriter writer, IAvaloniaInterop interop)
     {
-        LoadoutName = loadoutName;
+        _loadout = loadout;
+        LoadoutName = loadout.Name;
         Installation = installation;
         _processTracker = processTracker;
         _writer = writer;
         _interop = interop;
 
-        Line = writer.ComposeLine(loadoutName);
+        Line = writer.ComposeLine(loadout);
         Warning = writer.MissingShimWarning ?? "";
         ApplySteamState(processTracker.IsSteamRunning());
 
@@ -93,7 +96,7 @@ public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionVi
 
     private async Task WriteToSteam()
     {
-        var result = await Task.Run(() => _writer.Write(Installation, LoadoutName));
+        var result = await Task.Run(() => _writer.Write(Installation, _loadout));
         Message = result.IsRefused
             ? result.Refusal!
             : $"Set the launch options of {Installation.Game.DisplayName} to: {result.Line} " +
