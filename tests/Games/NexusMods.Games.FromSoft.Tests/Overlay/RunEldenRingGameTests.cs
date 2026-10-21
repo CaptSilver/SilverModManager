@@ -12,6 +12,7 @@ using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
+using NexusMods.Sdk.Settings;
 using NSubstitute;
 
 namespace NexusMods.Games.FromSoft.Tests.Overlay;
@@ -134,6 +135,54 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
         roots.Should().Contain(GameInstallation.Locations[LocationId.Me3Mods].Path.GetFullPath());
         roots.Should().Contain(GameInstallation.Locations[LocationId.Me3Host].Path.GetFullPath());
         roots.Should().Contain(LayoutOf(loadout).Upper.GetFullPath());
+    }
+
+    [Fact]
+    public async Task ModdedPlayKeepsMe3sCacheConfigDataAndStateUnderTheDataRootWhateverTheInheritedEnvironmentSays()
+    {
+        var loadout = await CreateModdedLoadout();
+        var home = ServiceProvider.GetRequiredService<ISettingsManager>().Get<FromSoftSettings>()
+            .DataRoot.ToPath(ServiceProvider.GetRequiredService<IFileSystem>()) / "EldenRing" / "1245620" / "me3-home";
+
+        await Tool.Execute(loadout, CancellationToken.None, []);
+
+        var inherited = new Dictionary<string, string>
+        {
+            ["XDG_CACHE_HOME"] = "/home/someone/.cache", ["XDG_CONFIG_HOME"] = "/home/someone/.config",
+            ["XDG_DATA_HOME"] = "/home/someone/.local/share", ["XDG_STATE_HOME"] = "/home/someone/.local/state",
+        };
+        var environment = GameProcess.BuildEnvironment(inherited, Processes.Started.Single());
+        environment["XDG_CACHE_HOME"].Should().Be((home / "cache").GetFullPath());
+        environment["XDG_CONFIG_HOME"].Should().Be((home / "config").GetFullPath());
+        environment["XDG_DATA_HOME"].Should().Be((home / "data").GetFullPath());
+        environment["XDG_STATE_HOME"].Should().Be((home / "state").GetFullPath());
+        environment["PRESSURE_VESSEL_FILESYSTEMS_RW"].Split(':').Should().Contain(home.GetFullPath());
+    }
+
+    [Fact]
+    public async Task TheRunVerbPathCarriesMe3sHomeInTheSpecToo()
+    {
+        var loadout = await CreateModdedLoadout();
+        var spec = await Tool.GetLaunchSpec(loadout, CancellationToken.None);
+
+        var plan = LaunchPlanner.Compose([], GameInstallation.Locations[LocationId.Game].Path, PrimaryExe, spec, Tool.FilesystemRootsOf(loadout), []);
+
+        plan.Process.Environment.Should().ContainKeys("XDG_CACHE_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME");
+        plan.Process.Environment!["XDG_DATA_HOME"].Should().EndWith("/EldenRing/1245620/me3-home/data");
+    }
+
+    [Fact]
+    public async Task TheMe3HomeFoldersAreCreatedBeforeTheProcessStarts()
+    {
+        var loadout = await CreateModdedLoadout();
+        var home = ServiceProvider.GetRequiredService<ISettingsManager>().Get<FromSoftSettings>()
+            .DataRoot.ToPath(ServiceProvider.GetRequiredService<IFileSystem>()) / "EldenRing" / "1245620" / "me3-home";
+        var created = false;
+        Processes.OnStart = () => created = new[] { "cache", "config", "data", "state" }.All(name => (home / name).DirectoryExists());
+
+        await Tool.Execute(loadout, CancellationToken.None, []);
+
+        created.Should().BeTrue("the container can only share me3's home folders if they exist when it starts");
     }
 
     [Fact]

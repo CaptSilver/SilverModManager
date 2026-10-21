@@ -61,8 +61,10 @@ all but one of them.
         .WithDetails("""
 This loadout has mods, and mods are loaded into Elden Ring by me3, but the loadout has no me3 files.
 
-Add the me3 Linux release (**{Release}** from the me3 releases on GitHub) to the library and install it into this
-loadout. The Windows zip does not work here.
+The app installs me3 automatically when the first mod arrives: it downloads the Linux release
+(**{Release}** from the me3 releases on GitHub), checks it against the digest GitHub publishes and installs it into this
+loadout. That has not happened here, usually because the download failed. Install me3 retries it. The Windows zip does
+not work here.
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Release")

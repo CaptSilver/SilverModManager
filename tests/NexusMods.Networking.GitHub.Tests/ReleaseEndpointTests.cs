@@ -183,6 +183,25 @@ public class ReleaseEndpointTests
         ReleaseAssets.Pick(release, ".zip", "release").Should().BeNull();
     }
 
+    [Fact]
+    public void PickWithTheLinuxTarballSuffixNeverTakesAWindowsZipOrADebugBuild()
+    {
+        var release = Release(
+            Asset("me3-windows-amd64.zip"), Asset("me3-windows-amd64-debug.zip"),
+            Asset("me3-linux-amd64-debug.tar.gz"), Asset("me3-linux-amd64.tar.gz"), Asset("me3-installer.msi")
+        );
+
+        ReleaseAssets.Pick(release, "linux-amd64.tar.gz", "me3-linux-amd64")!.Name.Should().Be("me3-linux-amd64.tar.gz");
+    }
+
+    [Fact]
+    public void PickWithTheLinuxTarballSuffixFindsNothingInAReleaseThatShipsOnlyWindowsAndDebugBuilds()
+    {
+        var release = Release(Asset("me3-windows-amd64.zip"), Asset("me3-linux-amd64-debug.tar.gz"));
+
+        ReleaseAssets.Pick(release, "linux-amd64.tar.gz", "me3-linux-amd64").Should().BeNull();
+    }
+
     private static Asset Asset(string name, string? digest = null) => new(
         Url: "u", Id: 1, Name: name, ContentType: "application/zip", State: "uploaded", Size: 1, DownloadCount: 0,
         CreatedAt: default, UpdatedAt: default, BrowserDownloadUrl: "https://example.invalid/" + name, Digest: digest

@@ -15,6 +15,11 @@ public class Me3HostMissingEmitter : IEldenRingDiagnosticEmitter
 {
     private const string Release = "me3-linux-amd64.tar.gz";
 
+    public const string InstallActionId = "install-me3";
+
+    /// <summary>The fix: downloads me3 and installs it into the loadout.</summary>
+    public static DiagnosticAction InstallAction() => new(InstallActionId, "Install me3", []);
+
     // The check reads the loadout's items, not the sync tree, so it gives the same answer without one.
     public IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
         => Diagnose(loadout, FrozenDictionary<GamePath, SyncNode>.Empty, cancellationToken);
@@ -24,6 +29,6 @@ public class Me3HostMissingEmitter : IEldenRingDiagnosticEmitter
         await Task.Yield();
 
         if (ModdedLoadout.IsModded(loadout) && !ModdedLoadout.HasHost(loadout))
-            yield return FromSoftDiagnostics.CreateMe3HostMissing(Release);
+            yield return FromSoftDiagnostics.CreateMe3HostMissing(Release) with { Actions = [InstallAction()] };
     }
 }

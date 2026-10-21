@@ -45,6 +45,11 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
     /// </summary>
     public Sha256Value? ExpectedSha256 { get; init; }
 
+    /// <summary>
+    /// Fail when GitHub reports no digest for the asset and none is pinned, instead of trusting the first download.
+    /// </summary>
+    public bool RequireAdvertisedDigest { get; init; }
+
     private IGitHubApi Api { get; }
     private HttpClient Client { get; }
     private IServiceProvider ServiceProvider { get; }
@@ -62,9 +67,10 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
         string? tag,
         string suffix,
         string? nameHint = null,
-        Sha256Value? expectedSha256 = null)
+        Sha256Value? expectedSha256 = null,
+        bool requireAdvertisedDigest = false)
     {
-        return Create(provider, provider.GetRequiredService<IGitHubApi>(), provider.GetRequiredService<HttpClient>(), repository, tag, suffix, nameHint, expectedSha256);
+        return Create(provider, provider.GetRequiredService<IGitHubApi>(), provider.GetRequiredService<HttpClient>(), repository, tag, suffix, nameHint, expectedSha256, requireAdvertisedDigest);
     }
 
     internal static IJobTask<AddGitHubReleaseAssetJob, GitHubReleaseLibraryFile.ReadOnly> Create(
@@ -75,7 +81,8 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
         string? tag,
         string suffix,
         string? nameHint,
-        Sha256Value? expectedSha256)
+        Sha256Value? expectedSha256,
+        bool requireAdvertisedDigest = false)
     {
         if (repository.Id is null && repository.Organization is null)
             throw new ArgumentException("The repository is neither an id nor a name.", nameof(repository));
@@ -87,6 +94,7 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
             Suffix = suffix,
             NameHint = nameHint,
             ExpectedSha256 = expectedSha256,
+            RequireAdvertisedDigest = requireAdvertisedDigest,
         };
         return provider.GetRequiredService<IJobMonitor>().Begin<AddGitHubReleaseAssetJob, GitHubReleaseLibraryFile.ReadOnly>(job);
     }
@@ -102,6 +110,8 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
             throw new ReleaseAssetIntegrityException($"Asset name '{asset.Name}' of release '{release.TagName}' of {Repository} is not a plain file name.");
 
         var advertised = asset.GetSha256();
+        if (RequireAdvertisedDigest && advertised is null && ExpectedSha256 is null)
+            throw new ReleaseAssetIntegrityException($"Asset '{asset.Name}' of release '{release.TagName}' of {Repository} has no SHA-256 digest, so the download cannot be verified.");
 
         var temporaryFileManager = ServiceProvider.GetRequiredService<TemporaryFileManager>();
         await using var folder = temporaryFileManager.CreateFolder();

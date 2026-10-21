@@ -63,6 +63,9 @@ public sealed class OverlayLaunchGate(
         var installation = context.Installation;
         layout.Upper.CreateDirectory();
         layout.Work.CreateDirectory();
+        // me3's home is shared into the game's container, which can only share a folder that already exists.
+        var home = EldenRingPaths.Me3Home(settings.Get<FromSoftSettings>(), fileSystem, EldenRingPaths.InstallationFolderName(installation.LocatorResult));
+        foreach (var folder in EldenRingPaths.Me3HomeFolders(home)) folder.CreateDirectory();
 
         var written = await WriteConfigurationLayer(layout, installation, cancellationToken);
         Me3HostFiles.EnsureExecutable(installation.Locations[LocationId.Me3Host].Path / Me3HostFiles.Binary);

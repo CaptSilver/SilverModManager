@@ -13,6 +13,18 @@ public static class Me3HostFiles
     public const string Launcher = "bin/win64/me3-launcher.exe";
     public const string ModHost = "bin/win64/me3_mod_host.dll";
 
+    /// <summary>The GitHub repository id of me3, which survives a rename or a transfer of the repository.</summary>
+    public const ulong RepositoryId = 540883721;
+
+    /// <summary>
+    /// The end of the Linux release's asset name. The Windows zip and the debug builds do not end with it, so asking
+    /// for this suffix can never return one of them.
+    /// </summary>
+    public const string ReleaseAssetSuffix = "linux-amd64.tar.gz";
+
+    /// <summary>Preferred part of the asset name when a release carries more than one Linux tarball.</summary>
+    public const string ReleaseAssetHint = "me3-linux-amd64";
+
     /// <summary>Everything me3 reads at run time. The binary resolves the other two out of its own folder tree.</summary>
     public static readonly string[] ReleaseFiles = [Binary, Launcher, ModHost];
 

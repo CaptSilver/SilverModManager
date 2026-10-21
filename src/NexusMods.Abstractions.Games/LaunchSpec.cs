@@ -15,4 +15,9 @@ public record LaunchSpec(AbsolutePath Exe, string[] ExtraArgs)
     /// the exe is put in the place of the game's own exe inside Steam's command.
     /// </summary>
     public bool ReplacesCommand { get; init; }
+
+    /// <summary>
+    /// Variables the started process gets on top of what it inherits. Null leaves the environment as it came.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Environment { get; init; }
 }

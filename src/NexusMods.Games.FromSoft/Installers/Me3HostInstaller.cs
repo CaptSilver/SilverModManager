@@ -23,6 +23,15 @@ public class Me3HostInstaller : ALibraryArchiveInstaller
     {
     }
 
+    /// <summary>True when the archive has every file of the Linux release, so installing it cannot be refused.</summary>
+    public static bool Accepts(LibraryArchive.ReadOnly archive)
+    {
+        var files = Me3InstallerFiles.Files(archive).Select(f => NormalizePath(f.Path)).ToHashSet(StringComparer.Ordinal);
+        return Me3HostFiles.ReleaseFiles.All(files.Contains);
+    }
+
+    private static string NormalizePath(string path) => path.StartsWith("./", StringComparison.Ordinal) ? path[2..] : path;
+
     public override ValueTask<InstallerResult> ExecuteAsync(
         LibraryArchive.ReadOnly libraryArchive,
         LoadoutItemGroup.New loadoutGroup,
@@ -31,12 +40,10 @@ public class Me3HostInstaller : ALibraryArchiveInstaller
         CancellationToken cancellationToken)
     {
         var files = Me3InstallerFiles.Files(libraryArchive);
-        string Normalize(string path) => path.StartsWith("./", StringComparison.Ordinal) ? path[2..] : path;
-
         var wanted = new List<(Me3InstallerFiles.ArchiveFile File, string Path)>();
         foreach (var path in Me3HostFiles.ReleaseFiles)
         {
-            var file = files.FirstOrDefault(f => Normalize(f.Path).Equals(path, StringComparison.Ordinal));
+            var file = files.FirstOrDefault(f => NormalizePath(f.Path).Equals(path, StringComparison.Ordinal));
             if (file.Path is null)
             {
                 return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: path == Me3HostFiles.Binary

@@ -21,6 +21,7 @@ public static class Services
             .AddSingleton<ILibraryService, LibraryService>()
             .AddSingleton<IDownloadsService, DownloadsService>()
             .AddSingleton<LibraryFileDigests>()
+            .AddSingleton<IGitHubReleaseAssetSource, GitHubReleaseAssetSource>()
             .AddLockVerbs();
     }
 }

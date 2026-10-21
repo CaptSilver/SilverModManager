@@ -59,6 +59,25 @@ public static class EldenRingPaths
     public static AbsolutePath Me3Host(FromSoftSettings settings, IFileSystem fileSystem, string storeIdentifier)
         => Me3Root(settings, fileSystem) / storeIdentifier / "me3";
 
+    /// <summary>
+    /// The folder that stands in for the user's home for me3: its cache, profiles, logs and data are kept here
+    /// instead of in <c>~/.cache/me3</c>, <c>~/.config/me3</c> and <c>~/.local/share/me3</c>.
+    /// </summary>
+    public static AbsolutePath Me3Home(FromSoftSettings settings, IFileSystem fileSystem, string storeIdentifier)
+        => Me3Root(settings, fileSystem) / storeIdentifier / "me3-home";
+
+    /// <summary>The four XDG folders inside <see cref="Me3Home"/>, which are the only places me3 may write outside the game's own folders.</summary>
+    public static AbsolutePath[] Me3HomeFolders(AbsolutePath home) => [home / "cache", home / "config", home / "data", home / "state"];
+
+    /// <summary>The XDG variables that point me3 at <see cref="Me3Home"/>.</summary>
+    public static Dictionary<string, string> Me3HomeEnvironment(AbsolutePath home) => new()
+    {
+        ["XDG_CACHE_HOME"] = (home / "cache").GetFullPath(),
+        ["XDG_CONFIG_HOME"] = (home / "config").GetFullPath(),
+        ["XDG_DATA_HOME"] = (home / "data").GetFullPath(),
+        ["XDG_STATE_HOME"] = (home / "state").GetFullPath(),
+    };
+
     /// <summary>The folder one installation's cleanup records live in, such as the links it removed from the game folder.</summary>
     public static AbsolutePath CleanupFolder(FromSoftSettings settings, IFileSystem fileSystem, string storeIdentifier)
         => Me3Root(settings, fileSystem) / storeIdentifier / "cleanup";

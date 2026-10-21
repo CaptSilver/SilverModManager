@@ -28,7 +28,7 @@ public static class LaunchPlanner
             // The run tool owns the whole command (a launcher that builds its own Proton chain), so Steam's chain is
             // kept only for the app id, which the launcher cannot otherwise know.
             var replaced = new ExeSubstitution.Result([spec.Exe.GetFullPath(), ..spec.ExtraArgs], null, ExeSubstitution.ExtractAppId(command));
-            return new LaunchPlan(new GameProcessSpec(replaced.Argv, FilesystemRoots: filesystemRoots, WineDllOverrides: wineDllOverrides), spec, replaced);
+            return new LaunchPlan(new GameProcessSpec(replaced.Argv, Environment: spec.Environment, FilesystemRoots: filesystemRoots, WineDllOverrides: wineDllOverrides), spec, replaced);
         }
 
         // Arguments the game needs count like a loader: a command with no exe to put them behind would start the game without them.
@@ -36,6 +36,6 @@ public static class LaunchPlanner
         var substitution = ExeSubstitution.Apply(command, gameRoot, spec, loaderResolved);
         if (substitution.IsRefused) throw new InvalidOperationException(substitution.Refusal);
 
-        return new LaunchPlan(new GameProcessSpec(substitution.Argv, FilesystemRoots: filesystemRoots, WineDllOverrides: wineDllOverrides), spec, substitution);
+        return new LaunchPlan(new GameProcessSpec(substitution.Argv, Environment: spec.Environment, FilesystemRoots: filesystemRoots, WineDllOverrides: wineDllOverrides), spec, substitution);
     }
 }

@@ -38,7 +38,7 @@ public class RunEldenRingGame(IServiceProvider provider, EldenRingGame game) : R
             installation.Locations[LocationId.Me3Mods].Path / Me3ModsLayout.ProfileFileName,
             host / "bin/win64");
 
-        return new LaunchSpec(bwrap, argv[1..]) { ReplacesCommand = true };
+        return new LaunchSpec(bwrap, argv[1..]) { ReplacesCommand = true, Environment = EldenRingPaths.Me3HomeEnvironment(Me3HomeOf(loadout)) };
     }
 
     /// <summary>
@@ -90,7 +90,7 @@ public class RunEldenRingGame(IServiceProvider provider, EldenRingGame game) : R
 
     /// <summary>
     /// The host folders me3's own container must be able to write to. The deployment backends report nothing for a
-    /// copy or link deployment, so the mods, the host files and the overlay's folder are named here as well.
+    /// copy or link deployment, so the mods, the host files, the overlay's folder and me3's home are named here as well.
     /// </summary>
     internal IReadOnlyList<string> FilesystemRootsOf(Loadout.ReadOnly loadout)
     {
@@ -100,9 +100,14 @@ public class RunEldenRingGame(IServiceProvider provider, EldenRingGame game) : R
             installation.Locations[LocationId.Me3Mods].Path.GetFullPath(),
             installation.Locations[LocationId.Me3Host].Path.GetFullPath(),
             LayoutOf(loadout).Upper.GetFullPath(),
+            Me3HomeOf(loadout).GetFullPath(),
         };
         return roots.ToArray();
     }
+
+    private AbsolutePath Me3HomeOf(Loadout.ReadOnly loadout)
+        => EldenRingPaths.Me3Home(provider.GetRequiredService<ISettingsManager>().Get<FromSoftSettings>(), provider.GetRequiredService<IFileSystem>(),
+            EldenRingPaths.InstallationFolderName(loadout.InstallationInstance.LocatorResult));
 
     private OverlayLayout LayoutOf(Loadout.ReadOnly loadout)
         => OverlayLayout.For(provider.GetRequiredService<ISettingsManager>().Get<FromSoftSettings>(), provider.GetRequiredService<IFileSystem>(), loadout.InstallationInstance, loadout.LoadoutId);

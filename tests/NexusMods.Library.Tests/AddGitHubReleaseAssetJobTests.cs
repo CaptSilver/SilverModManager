@@ -16,14 +16,14 @@ using Xunit;
 
 namespace NexusMods.Library.Tests;
 
-public class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvider, IConnection connection, TemporaryFileManager temporaryFileManager)
+public partial class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvider, IConnection connection, TemporaryFileManager temporaryFileManager)
 {
     private const string AssetName = "tool-linux-amd64.tar.gz";
     private static readonly byte[] Payload = Enumerable.Range(0, 4000).Select(i => (byte)(i * 13 + 5)).ToArray();
     private static readonly Sha256Value PayloadDigest = Sha256Value.From(SHA256.HashData(Payload));
     private static readonly Sha256Value OtherDigest = Sha256Value.From(SHA256.HashData("other"u8));
 
-    private sealed class PayloadHandler(byte[] payload) : HttpMessageHandler
+    internal sealed class PayloadHandler(byte[] payload) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -33,7 +33,7 @@ public class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvider, ICo
         }
     }
 
-    private sealed class StubApi(Release? release) : IGitHubApi
+    internal sealed class StubApi(Release? release) : IGitHubApi
     {
         public AuthenticationHeaderValue? AuthenticationHeader { get; set; }
         public string? Requested { get; private set; }

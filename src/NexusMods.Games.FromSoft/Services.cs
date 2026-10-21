@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.FromSoft.Build;
@@ -7,6 +8,7 @@ using NexusMods.Games.FromSoft.Diagnostics;
 using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Launch;
+using NexusMods.Games.FromSoft.Me3;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.FromSoft.Saves;
 using NexusMods.Platform.Proton.Doctor;
@@ -40,6 +42,11 @@ public static class Services
             .AddSingleton<IEldenRingDiagnosticEmitter, SaveWrittenByModdedSessionEmitter>()
             .AddSingleton<Me3VersionProbe>()
             .AddSingleton<IInstallationCheck, EldenRingInstallationCheck>();
+
+        // Providing me3 for a loadout
+        services.AddSingleton<Me3HostProvisioner>()
+            .AddSingleton<Me3AutoInstaller>()
+            .AddSingleton<IHostedService>(provider => provider.GetRequiredService<Me3AutoInstaller>());
 
         // Launch gates, in run order
         services.AddSingleton<IExecutableLocator, PathExecutableLocator>()
