@@ -235,12 +235,13 @@ public class SteamLocatorTests
     }
 
     [Fact]
-    public void Locate_FallsBackToTheAppManifestFilesModificationTimeWhenItHasNoLastUpdated()
+    public void Locate_LeavesStoreLastWriteUnknownWhenTheAppManifestHasNoUpdateTime()
     {
-        var (result, _, libraryDirectory) = LocateSingle(withProtonPrefix: false);
+        // Steam rewrites the .acf on every launch, so its modification time says nothing about when the game files
+        // were last written; with no update time the baseline reads every file instead.
+        var result = LocateSingle(withProtonPrefix: false).Result;
 
-        var manifestFile = libraryDirectory.Combine($"appmanifest_{AppId}.acf");
-        result.StoreLastWrite.Should().Be(new DateTimeOffset(manifestFile.FileInfo.LastWriteTimeUtc, TimeSpan.Zero));
+        result.StoreLastWrite.Should().BeNull();
     }
 
     private static (GameLocatorResult Result, InMemoryFileSystem HostFileSystem, AbsolutePath LibraryDirectory) LocateSingle(
@@ -327,7 +328,7 @@ public class SteamLocatorTests
             "installdir" "Game"
             "LastOwner" "76561198000000000"
             "BuildID" "{{buildId}}"
-            {{(lastUpdated is null ? "" : $"\"LastUpdated\" \"{lastUpdated}\"")}}
+            {{(lastUpdated is null ? "" : $"\"lastupdated\" \"{lastUpdated}\"")}}
             "InstalledDepots"
             {
                 "1091501"

@@ -92,15 +92,12 @@ internal class SteamLocator : IGameLocator
     }
 
     /// <summary>
-    /// The appmanifest's own update time when it has one; many manifests don't (Cyberpunk 2077's has no
-    /// LastUpdated key), and then the file's modification time, which Steam sets after the last game file
-    /// is written. The depot manifests can't stand in: they are cached before the download starts.
+    /// The appmanifest's update time (Steam writes it as <c>lastupdated</c>), or null when it has none. The .acf
+    /// file's modification time can't stand in: Steam rewrites the file on every launch. Nor can the depot
+    /// manifests: they are cached before the download starts.
     /// </summary>
     internal static DateTimeOffset? LastWriteOf(AppManifest manifest)
-    {
-        if (manifest.LastUpdated > DateTimeOffset.UnixEpoch) return manifest.LastUpdated;
-        return manifest.ManifestPath.FileExists ? new DateTimeOffset(manifest.ManifestPath.FileInfo.LastWriteTimeUtc, TimeSpan.Zero) : null;
-    }
+        => manifest.LastUpdated > DateTimeOffset.UnixEpoch ? manifest.LastUpdated : null;
 
     private class LinuxCompatibilityDataProvider : ILinuxCompatabilityDataProvider
     {

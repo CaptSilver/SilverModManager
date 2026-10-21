@@ -319,12 +319,8 @@ internal sealed class LocalVanillaBaseline
     /// with the manifest's SHA-1 and the file's size, from this store or the others; a file with no such
     /// row is read, because a row needs every hash and none is made up.
     /// <para>
-    /// The trade-off is a file replaced by one of the same size that kept an older modification time, which
-    /// goes unnoticed. The store's last write is the best bound there is (for Steam, the appmanifest's
-    /// update time, or failing that the file's own modification time, which Steam also rewrites when the
-    /// game is launched), so a same-size replacement made before the last launch goes unnoticed as well.
-    /// The depot manifest's creation time cannot stand in for it: it is when the build was published,
-    /// before the store wrote any file.
+    /// The trade-off is a file replaced by one of the same size that kept a modification time from before the
+    /// store's last write (for Steam, the appmanifest's update time), which goes unnoticed.
     /// </para>
     /// </summary>
     private (List<Hashed> Resolved, List<Candidate> ToRead) TakeStoredHashes(BaselineRequest request, List<Candidate> candidates, IDb localDb, RebuildStats stats)
