@@ -71,7 +71,7 @@ public class MountRoundTripTests(ITestOutputHelper output) : IDisposable
     {
         try
         {
-            await mounted.Mount.Unmount(new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
+            await mounted.Mount.Unmount(TestContext.Current.CancellationToken);
         }
         catch
         {
@@ -241,7 +241,7 @@ public class MountRoundTripTests(ITestOutputHelper output) : IDisposable
         {
             using (new FileStream(path, FileMode.Open, FileAccess.Read))
             {
-                var unmount = () => mounted.Mount.Unmount(new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
+                var unmount = () => mounted.Mount.Unmount(TestContext.Current.CancellationToken);
                 await unmount.Should().ThrowAsync<IOException>("fusermount3 refuses a mount with a file open");
 
                 // A refused unmount must not leave a mount nobody answers: every later request would hang.

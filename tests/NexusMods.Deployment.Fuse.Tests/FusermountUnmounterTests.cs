@@ -59,4 +59,57 @@ public class FusermountUnmounterTests
         result.ExitCode.Should().Be(1);
         result.StdErr.Should().Contain("busy");
     }
+
+    // Hands the runner's token to the test so it can tell whose cancellation reaches the process.
+    private sealed class SlowRunner(TimeSpan duration, Func<IReadOnlyList<string>, bool> hangs) : IFusermountRunner
+    {
+        public List<string[]> Calls { get; } = [];
+
+        public async Task<(int ExitCode, string StdErr)> Run(IReadOnlyList<string> args, CancellationToken token)
+        {
+            Calls.Add(args.ToArray());
+            await Task.Delay(hangs(args) ? Timeout.InfiniteTimeSpan : duration, token);
+            return (0, "");
+        }
+    }
+
+    [Fact]
+    public async Task ACancelledCaller_DoesNotAbortTheRunningUnmount()
+    {
+        var runner = new SlowRunner(TimeSpan.FromMilliseconds(300), _ => false);
+        using var caller = new CancellationTokenSource();
+        var unmount = new FusermountUnmounter(runner).Unmount(MountPoint, lazy: false, caller.Token);
+
+        await Task.Delay(50, TestContext.Current.CancellationToken);
+        await caller.CancelAsync();
+        var result = await unmount;
+
+        result.Status.Should().Be(UnmountStatus.Unmounted, "a fusermount3 killed halfway can leave the mount behind");
+        runner.Calls.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AnUnmountThatOutlastsItsDeadline_FallsBackToALazyUnmount()
+    {
+        var runner = new SlowRunner(TimeSpan.Zero, args => args[0] == "-u");
+        var unmounter = new FusermountUnmounter(runner) { Deadline = TimeSpan.FromMilliseconds(100) };
+
+        var result = await unmounter.Unmount(MountPoint, lazy: false, CancellationToken.None);
+
+        result.Status.Should().Be(UnmountStatus.Unmounted);
+        runner.Calls.Select(c => c[0]).Should().Equal("-u", "-uz");
+    }
+
+    [Fact]
+    public async Task ALazyUnmountThatOutlastsItsDeadline_IsFailedInsteadOfHanging()
+    {
+        var runner = new SlowRunner(TimeSpan.Zero, _ => true);
+        var unmounter = new FusermountUnmounter(runner) { Deadline = TimeSpan.FromMilliseconds(100) };
+
+        var result = await unmounter.Unmount(MountPoint, lazy: true, CancellationToken.None);
+
+        result.Status.Should().Be(UnmountStatus.Failed);
+        result.StdErr.Should().Contain("did not finish");
+        runner.Calls.Should().ContainSingle();
+    }
 }

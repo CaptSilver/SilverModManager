@@ -310,6 +310,8 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
 
         try
         {
+            // The unmounter bounds fusermount3 itself; this timeout bounds the busy retries and the wait for the
+            // session loop to end.
             using var timeout = new CancellationTokenSource(UnmountTimeout);
             await Unmount(timeout.Token).ConfigureAwait(false);
             return;
