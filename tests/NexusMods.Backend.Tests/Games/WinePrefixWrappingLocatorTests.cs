@@ -40,7 +40,33 @@ public class WinePrefixWrappingLocatorTests
         result.Locator.Should().BeSameAs(wrapped);
     }
 
-    private sealed class StubLocator(IGameData game) : IGameLocator
+    [Fact]
+    public void Wrap_ForwardsStoreRootStoreBuildIdAndStoreUpdatePending()
+    {
+        var fileSystem = new InMemoryFileSystem(OSInformation.FakeUnix);
+        var prefix = fileSystem.GetKnownPath(KnownPath.HomeDirectory).Combine(".wine");
+        fileSystem.CreateDirectory(prefix.Combine("drive_c"));
+        fileSystem.WriteAllText(prefix.Combine("system.reg"), "WINE REGISTRY Version 2\n");
+        fileSystem.WriteAllText(prefix.Combine("user.reg"), "WINE REGISTRY Version 2\n");
+        fileSystem.WriteAllText(prefix.Combine("userdef.reg"), "WINE REGISTRY Version 2\n");
+
+        var storeRoot = fileSystem.GetKnownPath(KnownPath.HomeDirectory).Combine("store");
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<IFileSystem>(fileSystem)
+            .BuildServiceProvider();
+
+        var wrapped = new StubLocator(Substitute.For<IGameData>(), storeRoot, "42", storeUpdatePending: true);
+        var locator = new WinePrefixWrappingLocator(services, [(_, _, _, _) => wrapped]);
+
+        var result = locator.Locate().Should().ContainSingle().Subject;
+
+        result.StoreRoot.Should().Be(storeRoot);
+        result.StoreBuildId.Should().Be("42");
+        result.StoreUpdatePending.Should().BeTrue();
+    }
+
+    private sealed class StubLocator(IGameData game, AbsolutePath? storeRoot = null, string? storeBuildId = null, bool storeUpdatePending = false) : IGameLocator
     {
         public IEnumerable<GameLocatorResult> Locate()
         {
@@ -52,6 +78,9 @@ public class WinePrefixWrappingLocatorTests
                 StoreIdentifier = "1",
                 LocatorIds = ImmutableArray<LocatorId>.Empty,
                 Locator = this,
+                StoreRoot = storeRoot,
+                StoreBuildId = storeBuildId,
+                StoreUpdatePending = storeUpdatePending,
             };
         }
     }

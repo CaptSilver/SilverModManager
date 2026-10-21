@@ -31,6 +31,21 @@ public class HeroicGOGLocatorTests
     }
 
     [Fact]
+    public void Locate_LeavesStoreRootUnset()
+    {
+        var (fileSystem, home) = NewHome();
+        var prefix = home.Combine("Games/Heroic/Prefixes/default/Game");
+        var wine = fileSystem.GetKnownPath(KnownPath.XDG_CONFIG_HOME).Combine("heroic/tools/wine/Wine-GE/bin/wine");
+        WriteHeroicConfig(fileSystem, fileSystem.GetKnownPath(KnownPath.XDG_CONFIG_HOME).Combine("heroic"), home.Combine("Games/Heroic/Game"), prefix, wine);
+
+        var result = Locate(fileSystem);
+
+        result.StoreRoot.Should().BeNull();
+        result.StoreBuildId.Should().BeNull();
+        result.StoreUpdatePending.Should().BeFalse();
+    }
+
+    [Fact]
     public void Locate_NativeLinuxBuild_ReportsLinuxWithoutCompatibilityLayer()
     {
         var (fileSystem, home) = NewHome();

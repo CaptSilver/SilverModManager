@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using GameFinder.StoreHandlers.Steam;
+using GameFinder.StoreHandlers.Steam.Models;
 using GameFinder.StoreHandlers.Steam.Services;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
@@ -79,6 +80,11 @@ internal class SteamLocator : IGameLocator
                 Locator = this,
                 LinuxCompatabilityDataProvider = linuxCompatibilityDataProvider,
                 Compatibility = isWindowsBuild ? new CompatibilityLayer(CompatibilityLayerKind.SteamProton, prefix.ConfigurationDirectory) : null,
+                StoreRoot = gameFinderGame.SteamPath,
+                StoreBuildId = gameFinderGame.AppManifest.BuildId.Value.ToString(),
+                // A settled install's manifest holds FullyInstalled alone; any other flag (update required,
+                // running, paused, files missing) means the files may not match the listed build.
+                StoreUpdatePending = gameFinderGame.AppManifest.StateFlags != StateFlags.FullyInstalled,
             };
         }
     }

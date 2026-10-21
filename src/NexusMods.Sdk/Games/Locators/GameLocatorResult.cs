@@ -81,4 +81,22 @@ public class GameLocatorResult
     /// A GOG game can be found by Heroic or inside a plain Wine prefix, and the two are launched differently.
     /// </remarks>
     public CompatibilityLayer? Compatibility { get; init; }
+
+    /// <summary>
+    /// The store client's own install directory, when the locator knows it. For Steam this is the
+    /// directory holding <c>steamapps/</c> and <c>depotcache/</c>.
+    /// </summary>
+    public AbsolutePath? StoreRoot { get; init; }
+
+    /// <summary>
+    /// The store's build identifier for the installed files (Steam's appmanifest <c>buildid</c>), or null
+    /// when the store has none.
+    /// </summary>
+    public string? StoreBuildId { get; init; }
+
+    /// <summary>
+    /// The store reports the installed files are being updated or need an update, so they may not match
+    /// the build the store lists.
+    /// </summary>
+    public bool StoreUpdatePending { get; init; }
 }
