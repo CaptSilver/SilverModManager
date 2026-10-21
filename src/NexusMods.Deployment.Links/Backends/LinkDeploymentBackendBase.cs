@@ -258,18 +258,8 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     /// <inheritdoc />
     public async Task WriteIntrinsics(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes)
     {
-        // The copy backend opens its target with O_TRUNC, which would truncate a staged file if the path
-        // is still a link from an earlier state (a mod file that became a generated one, a loadout switch).
-        foreach (var (path, node) in nodes)
-        {
-            if (!node.Actions.HasFlag(Actions.WriteIntrinsic)) continue;
-
-            // File.Delete treats a missing file as done but a missing folder as an error; the copy backend creates
-            // the folder when it writes.
-            var target = context.Locations.ToAbsolutePath(path);
-            if (target.Parent.DirectoryExists()) File.Delete(target.ToString());
-        }
-
+        // The copy backend replaces its target rather than truncating it, so a path that is still a link to a
+        // staged file is safe, and an intrinsic file can read the previous version while it renders.
         await copy.WriteIntrinsics(context, nodes);
     }
 

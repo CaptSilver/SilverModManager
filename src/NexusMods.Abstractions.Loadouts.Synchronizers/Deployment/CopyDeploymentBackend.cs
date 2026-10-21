@@ -261,6 +261,11 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
 
             var resolvedPath = context.Locations.ToAbsolutePath(path);
             resolvedPath.Parent.CreateDirectory();
+
+            // Replaced, not truncated: Create opens with O_TRUNC, which would truncate a staged file if the path is
+            // still a link from an earlier state (a mod file that became a generated one, a loadout switch).
+            // This happens after rendering so a generator can read the previous file; a missing file is fine.
+            File.Delete(resolvedPath.ToString());
             await using var stream = resolvedPath.Create();
             stream.SetLength(0);
             rendered.Position = 0;
