@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.FromSoft.Diagnostics;
+using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Sdk.Settings;
 
@@ -19,6 +21,8 @@ public static class Services
             .AddSingleton<ITool, RunEldenRingGame>();
 
         // Emitters
+        services.AddSingleton<PackageCollisionEmitter>()
+            .AddSingleton<IEldenRingDiagnosticEmitter>(provider => provider.GetRequiredService<PackageCollisionEmitter>());
 
         // Launch gates, in run order
 

@@ -1,5 +1,9 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.FromSoft.Me3;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.Games.FromSoft.EldenRing;
 
@@ -9,7 +13,15 @@ namespace NexusMods.Games.FromSoft.EldenRing;
 /// </summary>
 public class EldenRingSynchronizer : ALoadoutSynchronizer
 {
-    protected internal EldenRingSynchronizer(IServiceProvider provider) : base(provider) { }
+    private readonly Dictionary<GamePath, IIntrinsicFile> _intrinsicFiles;
+
+    protected internal EldenRingSynchronizer(IServiceProvider provider) : base(provider)
+    {
+        var profile = new Me3ProfileFile(provider.GetRequiredService<ILogger<Me3ProfileFile>>());
+        _intrinsicFiles = new Dictionary<GamePath, IIntrinsicFile> { { profile.Path, profile } };
+    }
+
+    public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout) => _intrinsicFiles;
 
     protected override IGamePathFilter GameSpecificPathFilter { get; } = GamePathFilters.Create(EldenRingPaths.IsArchiveOrMedia);
 

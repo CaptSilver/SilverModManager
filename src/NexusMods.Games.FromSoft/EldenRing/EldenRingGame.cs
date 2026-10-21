@@ -68,7 +68,9 @@ public class EldenRingGame : IGame, IGameData<EldenRingGame>
         // No FOMOD installer: Elden Ring FOMODs assume the game folder, which nothing is ever installed into.
         LibraryItemInstallers =
         [
+            new SeamlessCoopInstaller(provider),
             new Me3PackageInstaller(provider),
+            new Me3NativeInstaller(provider),
         ];
     }
 

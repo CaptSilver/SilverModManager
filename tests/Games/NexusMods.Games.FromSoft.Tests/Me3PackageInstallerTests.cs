@@ -1,61 +1,16 @@
 using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Installers;
 using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Games.TestFramework;
-using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
 
 namespace NexusMods.Games.FromSoft.Tests;
 
-public class Me3PackageInstallerTests(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<Me3PackageInstallerTests, EldenRingGame>(outputHelper)
+public class Me3PackageInstallerTests(ITestOutputHelper outputHelper) : AEldenRingInstallerTests<Me3PackageInstallerTests>(outputHelper)
 {
-    protected override IServiceCollection AddServices(IServiceCollection services)
-    {
-        return base.AddServices(services)
-            .AddFromSoftGames()
-            .AddUniversalGameLocator<EldenRingGame>(new Version("1.0"));
-    }
-
-    private async Task<(InstallerResult Result, string[] Targets)> TryInstall(LibraryArchive.ReadOnly archive)
-    {
-        var loadout = await CreateLoadout();
-        var installer = Game.LibraryItemInstallers.OfType<Me3PackageInstaller>().Single();
-
-        using var tx = Connection.BeginTransaction();
-        var libraryItem = archive.AsLibraryFile().AsLibraryItem();
-        var group = new LoadoutItemGroup.New(tx, out var groupId)
-        {
-            IsGroup = true,
-            LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = libraryItem.Name, LoadoutId = loadout },
-        };
-
-        var result = await installer.ExecuteAsync(libraryItem, group, tx, loadout, CancellationToken.None);
-        if (!result.IsSuccess) return (result, []);
-
-        var committed = await tx.Commit();
-        var targets = committed.Remap(group).Children
-            .Select(child => child.TryGetAsLoadoutItemWithTargetPath(out var item) ? (GamePath)item.TargetPath : throw new InvalidOperationException("The child should have a target path."))
-            .Select(path => $"{path.LocationId}:{path.Path}")
-            .ToArray();
-        return (result, targets);
-    }
-
-    /// <summary>An archive with the given name, so the package id the installer derives is known.</summary>
-    private async Task<LibraryArchive.ReadOnly> AddNamed(string archiveName, params string[] paths)
-    {
-        var path = TemporaryFileManager.CreateFolder().Path / archiveName;
-        await TestArchives.Write(path, paths);
-        return await RegisterLocalArchive(path);
-    }
-
-    private static string Me3Mods(string path) => $"{LocationId.Me3Mods}:{path}";
+    private Task<(InstallerResult Result, string[] Targets)> TryInstall(LibraryArchive.ReadOnly archive)
+        => TryInstall<Me3PackageInstaller>(archive);
 
     [Fact]
     public async Task ABareTreeAtTheArchiveRootIsInstalledUnderTheArchiveName()
@@ -168,5 +123,21 @@ public class Me3PackageInstallerTests(ITestOutputHelper outputHelper) : ALibrary
         var (_, targets) = await TryInstall(archive);
 
         targets.Should().NotBeEmpty().And.OnlyContain(t => t.StartsWith($"{LocationId.Me3Mods}:"));
+    }
+
+    [Theory]
+    [InlineData("natives.zip")]
+    [InlineData("Natives.zip")]
+    [InlineData("overlay.zip")]
+    [InlineData("OVERLAY.zip")]
+    public async Task AnArchiveWhoseNameIsAFolderTheLoaderGivesAMeaningIsNotSupported(string archiveName)
+    {
+        var archive = await AddNamed(archiveName, "parts/wp_a.dcx");
+
+        var (result, targets) = await TryInstall(archive);
+
+        result.IsNotSupported(out var reason).Should().BeTrue();
+        reason.Should().Contain("reserved");
+        targets.Should().BeEmpty();
     }
 }

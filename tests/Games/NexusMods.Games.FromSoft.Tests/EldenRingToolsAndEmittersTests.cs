@@ -9,7 +9,9 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.FileHashes.Emitters;
 using NexusMods.Games.FromSoft.Diagnostics;
+using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.EldenRing;
+using NexusMods.Games.FromSoft.Installers;
 using NexusMods.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Games.Generic.Diagnostics;
 using NexusMods.Sdk.Games;
@@ -69,6 +71,16 @@ public class EldenRingToolsAndEmittersTests(ITestOutputHelper helper) : AEldenRi
             typeof(NoWayToSourceFilesOnDisk),
             typeof(UndeployableLoadoutDueToMissingGameFiles),
             typeof(ProtonPrefixEmitter),
+            typeof(PackageCollisionEmitter),
             typeof(FakeEmitter));
+    }
+
+    [Fact]
+    public void TheInstallersAreTriedInTheOrderSeamlessCoopThenPackageThenNative()
+    {
+        Game.LibraryItemInstallers.Select(i => i.GetType()).Should().Equal(
+            typeof(SeamlessCoopInstaller),
+            typeof(Me3PackageInstaller),
+            typeof(Me3NativeInstaller));
     }
 }

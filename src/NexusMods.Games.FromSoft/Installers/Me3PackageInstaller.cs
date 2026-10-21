@@ -5,8 +5,6 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.FromSoft.Me3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Paths.Trees.Traits;
-using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
 
@@ -31,9 +29,8 @@ public class Me3PackageInstaller : ALibraryArchiveInstaller
         Loadout.ReadOnly loadout,
         CancellationToken cancellationToken)
     {
-        var tree = LibraryArchiveTreeExtensions.GetTree(libraryArchive);
-        var files = tree.Item.GetFiles<LibraryArchiveTree, RelativePath>().ToArray();
-        var paths = files.Select(f => f.Item.Path).ToArray();
+        var files = Me3InstallerFiles.Files(libraryArchive);
+        var paths = files.Select(f => (RelativePath)f.Path).ToArray();
 
         if (!Me3PackageLayout.TryFindRoot(paths, out var root))
         {
@@ -43,30 +40,21 @@ public class Me3PackageInstaller : ALibraryArchiveInstaller
                 : "The archive has none of the game's asset folders (parts, menu, msg, ...), so it is not a content package."));
         }
 
-        var packageId = Path.GetFileNameWithoutExtension(libraryArchive.AsLibraryFile().AsLibraryItem().Name);
+        var packageId = Me3InstallerFiles.ModId(libraryArchive);
+        if (Me3ModsLayout.IsReservedPackageId(packageId))
+        {
+            return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason:
+                $"'{packageId}' is a reserved folder name in the mods folder, so a package cannot be called that. Rename the archive and add it again."));
+        }
+
         var rootPrefix = root == RelativePath.Empty ? "" : root.Path + "/";
 
         foreach (var file in files)
         {
-            var fullPath = file.Item.Path.Path;
-            if (!fullPath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!file.Path.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase)) continue;
 
-            var relativePath = fullPath[rootPrefix.Length..];
-            _ = new LoadoutFile.New(tx, out var id)
-            {
-                LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, id)
-                {
-                    TargetPath = (loadout.Id, LocationId.Me3Mods, (RelativePath)$"{packageId}/{relativePath}"),
-                    LoadoutItem = new LoadoutItem.New(tx, id)
-                    {
-                        Name = relativePath,
-                        LoadoutId = loadout.Id,
-                        ParentId = loadoutGroup.Id,
-                    },
-                },
-                Hash = file.Item.LibraryFile.Value.Hash,
-                Size = file.Item.LibraryFile.Value.Size,
-            };
+            var relativePath = file.Path[rootPrefix.Length..];
+            Me3InstallerFiles.AddFile(tx, loadout, loadoutGroup, file, $"{packageId}/{relativePath}", relativePath);
         }
 
         return ValueTask.FromResult<InstallerResult>(new Success());
