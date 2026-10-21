@@ -22,7 +22,7 @@ public class Fallout4(IServiceProvider provider) : ACreationEngineGame<Fallout4>
     protected override GameRelease PluginRelease => GameRelease.Fallout4;
     public override GamePath PluginsFile => Fallout4KnownPaths.PluginsFile;
 
-    protected override string LocalAppDataFolderName => "Fallout4";
+    protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "Fallout4";
     protected override string MyGamesFolderName(GameLocatorResult gameLocatorResult) => "Fallout4";
 
     protected override string[] GameAliases => ["Fallout 4", "Fallout4", "FO4", "F4"];

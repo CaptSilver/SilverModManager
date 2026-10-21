@@ -77,7 +77,7 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame
     protected virtual GamePath EnginePath => new(LocationId.Game, RelativePath.Empty);
 
     /// <summary>Folder under LocalApplicationData that holds the plugin list, or null when the game has none.</summary>
-    protected virtual string? LocalAppDataFolderName => null;
+    protected virtual string? LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => null;
 
     /// <summary>Folder under My Games that holds INIs and saves, or null when the game has none.</summary>
     protected virtual string? MyGamesFolderName(GameLocatorResult gameLocatorResult) => null;
@@ -127,7 +127,7 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame
     {
         var locations = new Dictionary<LocationId, AbsolutePath> { { LocationId.Game, gameLocatorResult.Path } };
 
-        if (LocalAppDataFolderName is { } appData)
+        if (LocalAppDataFolderName(gameLocatorResult) is { } appData)
             locations[LocationId.AppData] = fileSystem.GetKnownPath(KnownPath.LocalApplicationDataDirectory) / appData;
 
         if (MyGamesFolderName(gameLocatorResult) is { } myGames)

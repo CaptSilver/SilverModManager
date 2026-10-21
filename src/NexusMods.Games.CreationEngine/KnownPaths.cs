@@ -8,6 +8,8 @@ public static class KnownPaths
     public static readonly GamePath Game = new(LocationId.Game, "");
     public static readonly GamePath Data = new(LocationId.Game, "Data");
     public static readonly GamePath SKSE64Loader = new(LocationId.Game, "skse64_loader.exe");
+    public static readonly GamePath SKSELoader = new(LocationId.Game, "skse_loader.exe");
+    public static readonly GamePath SKSEVRLoader = new(LocationId.Game, "sksevr_loader.exe");
     public static readonly GamePath F4SELoader = new(LocationId.Game, "f4se_loader.exe");
     
     /// <summary>

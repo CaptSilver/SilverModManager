@@ -10,6 +10,10 @@ public static class Services
     public static IServiceCollection AddCreationEngine(this IServiceCollection services)
     {
         services.AddBethesdaGame<SkyrimSE.SkyrimSE>(KnownPaths.SKSE64Loader);
+        services.AddBethesdaGame<SkyrimLE.SkyrimLE>(KnownPaths.SKSELoader);
+        services.AddBethesdaGame<SkyrimVR.SkyrimVR>(KnownPaths.SKSEVRLoader);
+        services.AddBethesdaGame<Enderal.Enderal>(KnownPaths.SKSELoader);
+        services.AddBethesdaGame<EnderalSE.EnderalSE>(KnownPaths.SKSE64Loader);
         services.AddBethesdaGame<Fallout4.Fallout4>(KnownPaths.F4SELoader);
 
         return services;
