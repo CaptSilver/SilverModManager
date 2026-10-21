@@ -67,23 +67,21 @@ public class Program
         }
 
         LoggingSettings loggingSettings;
-        ExperimentalSettings experimentalSettings;
         using (var settingsHost = BuildSettingsHost())
         {
             var settingsManager = settingsHost.Services.GetRequiredService<ISettingsManager>();
             loggingSettings = settingsManager.Get<LoggingSettings>();
-            experimentalSettings = settingsManager.Get<ExperimentalSettings>();
         }
 
-        var steps = CreateSteps(loggingSettings, experimentalSettings);
+        var steps = CreateSteps(loggingSettings);
         return ProcessStartup.Run(startupMode, args, steps);
     }
 
-    private static ProcessStartupSteps CreateSteps(LoggingSettings loggingSettings, ExperimentalSettings experimentalSettings) => new()
+    private static ProcessStartupSteps CreateSteps(LoggingSettings loggingSettings) => new()
     {
         BuildHost = startupMode =>
         {
-            var host = BuildHost(startupMode, loggingSettings, experimentalSettings);
+            var host = BuildHost(startupMode, loggingSettings);
             _logger = host.Services.GetRequiredService<ILogger<Program>>();
             return host;
         },
@@ -315,15 +313,12 @@ public class Program
     /// </summary>
     private static IHost BuildHost(
         StartupMode startupMode,
-        LoggingSettings loggingSettings,
-        ExperimentalSettings experimentalSettings)
+        LoggingSettings loggingSettings)
     {
         var observableTarget = new ObservableLoggingTarget();
         var host = new HostBuilder().ConfigureServices(services =>
         {
-            var s = services.AddApp(
-                startupMode: startupMode,
-                experimentalSettings: experimentalSettings).Validate();
+            var s = services.AddApp(startupMode: startupMode).Validate();
 
             if (loggingSettings.ShowExceptions)
                 s.AddSingleton<IObservableExceptionSource, ObservableLoggingTarget>(_ => observableTarget);
@@ -407,10 +402,7 @@ public class Program
             OriginalArgs = [],
         };
 
-        var host = BuildHost(startupMode,
-            LoggingSettings.CreateDefault(),
-            experimentalSettings: new ExperimentalSettings()
-        );
+        var host = BuildHost(startupMode, LoggingSettings.CreateDefault());
 
         host.StartAsync().GetAwaiter().GetResult();
 

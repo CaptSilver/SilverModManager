@@ -59,8 +59,7 @@ public static class Services
     public static IServiceCollection AddApp(
         this IServiceCollection services,
         bool addStandardGameLocators = true,
-        StartupMode? startupMode = null,
-        ExperimentalSettings? experimentalSettings = null)
+        StartupMode? startupMode = null)
     {
         services.Configure<HostOptions>(options =>
         {

@@ -83,9 +83,6 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         ISynchronizerService syncService,
         IGameRegistry gameRegistry) : base(windowManager)
     {
-        var settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
-        var experimentalSettings = settingsManager.Get<ExperimentalSettings>();
-
         var libraryDataProviders = serviceProvider.GetServices<ILibraryDataProvider>().ToArray();
 
         _collectionDownloader = serviceProvider.GetRequiredService<CollectionDownloader>();
@@ -112,11 +109,6 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         this.WhenActivated(d =>
             {
                 gameRegistry.LocateGameInstallations()
-                    .Where(game =>
-                    {
-                        if (experimentalSettings.EnableAllGames) return true;
-                        return experimentalSettings.SupportedGames.Contains(game.Game.GameId);
-                    })
                     .ToReadOnlyObservableCollection()
                     .ToObservableChangeSet()
                     .Transform(installation =>
@@ -206,11 +198,6 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
 
                 var supportedGamesAsIGame = serviceProvider
                     .GetServices<IGameData>()
-                    .Where(game =>
-                    {
-                        if (experimentalSettings.EnableAllGames) return true;
-                        return experimentalSettings.SupportedGames.Contains(game.GameId);
-                    })
                     .Cast<IGame>()
                     .Where(game => _installedGames.All(install => install.Installation?.GetGame().GameId != game.GameId)); // Exclude found games
 
