@@ -37,12 +37,26 @@ public class PluginsFile : IIntrinsicFile
     
     public async Task Write(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree)
     {
-        var plugins = await syncTree
-            .Where(p => p.Key.Parent == KnownPaths.Data && KnownCEExtensions.PluginFiles.Contains(p.Key.Extension))
-            .Where(p => p.Value.HaveLoadout)
-            .ToAsyncEnumerable()
-            .SelectAwait(MakeMetadata)
-            .ToDictionaryAsync(x => x.ModKey);
+        var plugins = new Dictionary<ModKey, Metadata>();
+        List<string> unreadable = [];
+        foreach (var entry in syncTree)
+        {
+            if (entry.Key.Parent != KnownPaths.Data || !KnownCEExtensions.PluginFiles.Contains(entry.Key.Extension)) continue;
+            if (!entry.Value.HaveLoadout) continue;
+
+            var metadata = await MakeMetadata(entry);
+            if (metadata is { } found)
+                plugins.Add(found.ModKey, found);
+            else
+                unreadable.Add(entry.Key.FileName);
+        }
+
+        // A plugin left out of Plugins.txt is disabled, so refuse rather than write a file that switches mods off.
+        if (unreadable.Count > 0)
+        {
+            unreadable.Sort(StringComparer.OrdinalIgnoreCase);
+            throw new UnreadablePluginsException(unreadable);
+        }
 
         if (plugins.Count == 0)
             return;
@@ -111,7 +125,7 @@ public class PluginsFile : IIntrinsicFile
         return metadata.ModKey;
     }
 
-    private async ValueTask<Metadata> MakeMetadata(KeyValuePair<GamePath, SyncNode> arg)
+    private async ValueTask<Metadata?> MakeMetadata(KeyValuePair<GamePath, SyncNode> arg)
     {
         var relPath = arg.Key.Path.FileName;
         Hash hash;
@@ -123,8 +137,8 @@ public class PluginsFile : IIntrinsicFile
         else
             hash = syncNode.Disk.Hash;
         
-        var modHeader = await _game.ParsePlugin(hash, relPath);
-        return new Metadata(relPath, modHeader!.ModKey, hash, modHeader);
+        var modHeader = await _game.ParseNode(syncNode, hash, relPath);
+        return modHeader is null ? null : new Metadata(relPath, modHeader.ModKey, hash, modHeader);
     }
     
 

@@ -47,13 +47,25 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
 
         // Index the plugins that will be on-disk in the game folder
         Dictionary<ModKey, (SyncNode Node, IMod Header)> pluginHeaders = new();
+        List<string> unreadable = [];
         foreach (var (key, node) in plugins)
         {
-            var header = await _game.ParsePlugin(node.Loadout.Hash, key.Path.FileName);
+            var header = await _game.ParseNode(node, node.Loadout.Hash, key.Path.FileName);
             if (header == null)
+            {
+                unreadable.Add(key.Path.FileName);
                 continue;
-            pluginHeaders[header.ModKey] = (node, header!);
+            }
+            pluginHeaders[header.ModKey] = (node, header);
         }
+
+        // Their masters can't be checked, and the plugins would be missing from the load order.
+        if (unreadable.Count > 0)
+        {
+            unreadable.Sort(StringComparer.OrdinalIgnoreCase);
+            yield return Diagnostics.CreateUnreadablePlugins(unreadable.Count, string.Join(", ", unreadable));
+        }
+        var unreadableKeys = unreadable.Select(name => ModKey.FromFileName(name)).ToHashSet();
 
         // For each on-disk plugin, check if it has all the required masters
         foreach (var header in pluginHeaders)
@@ -62,6 +74,10 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
             {
                 // If the master is already in the loadout, skip it
                 if (pluginHeaders.ContainsKey(master.Master))
+                    continue;
+
+                // An unreadable master is still in the game folder; it has its own diagnostic above
+                if (unreadableKeys.Contains(master.Master))
                     continue;
 
                 // If the master is disabled, emit a diagnostic

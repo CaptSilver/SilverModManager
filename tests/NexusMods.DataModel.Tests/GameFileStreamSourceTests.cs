@@ -36,4 +36,36 @@ public class GameFileStreamSourceTests(ITestOutputHelper helper) : AStubbedGameI
         using var reader = new StreamReader(stream!);
         (await reader.ReadToEndAsync()).Should().Be(Content);
     }
+
+    [Fact]
+    public async Task ResolvesAGameFileBeforeAnyLoadoutWasSynchronized()
+    {
+        // A loadout that was never applied (or whose game was reset) has no last synced loadout, but its
+        // diagnostics still read game files.
+        await CreateLoadout();
+        await Synchronizer.ReindexState(GameInstallation);
+
+        var source = new GameFileStreamSource(Connection, ServiceProvider);
+        var hash = Encoding.UTF8.GetBytes(Content).xxHash3();
+
+        source.Resolve(hash).Should().Be(GameInstallation.Locations.ToAbsolutePath(FilePath));
+    }
+
+    [Fact]
+    public async Task DoesNotResolveTheRecordedHashOfAFileTheGameStoreHasSinceReplaced()
+    {
+        // The loadout's game layer names the build it was created for. When the store later patches a file,
+        // the bytes that layer lists are gone from the disk, and only the new bytes can be read.
+        var loadout = await CreateLoadout();
+        await Synchronizer.Synchronize(loadout);
+
+        var file = GameInstallation.Locations.ToAbsolutePath(FilePath);
+        const string patched = "the same file after the store patched it";
+        await file.WriteAllTextAsync(patched);
+        await Synchronizer.ReindexState(GameInstallation);
+
+        var source = new GameFileStreamSource(Connection, ServiceProvider);
+        source.Resolve(Encoding.UTF8.GetBytes(Content).xxHash3()).Should().BeNull();
+        source.Resolve(Encoding.UTF8.GetBytes(patched).xxHash3()).Should().Be(file);
+    }
 }

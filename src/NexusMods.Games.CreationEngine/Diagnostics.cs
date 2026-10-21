@@ -60,5 +60,26 @@ To fix this, you’ll need to install the missing master before playing.
         )
         .Finish();
 
-  
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate UnreadablePlugins = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 3))
+        .WithTitle("Unreadable Plugins")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The headers of {PluginCount} plugin(s) could not be read: {PluginNames}")
+        .WithDetails("""
+The app could not read the plugin file(s) below, so it cannot check whether their masters are present or put them in a load order:
+
+{PluginNames}
+
+Neither the app's backups nor the game folder hold a readable copy of them. For a game file this usually means it is missing or damaged in the game folder.
+
+Verify the game files in the game store, then reopen the app.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<int>("PluginCount")
+            .AddValue<string>("PluginNames")
+        )
+        .Finish();
 }
