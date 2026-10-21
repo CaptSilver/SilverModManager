@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using NexusMods.Abstractions.GuidedInstallers;
 using NexusMods.Games.FOMOD.CoreDelegates;
 using NexusMods.Games.TestFramework;
+using NexusMods.Sdk.Jobs;
 using Xunit;
 using FomodUi = FomodInstaller.Interface.ui;
 
@@ -48,9 +50,10 @@ public class UiDelegatesTests
         public Task ContinueCalled => _continueCalled.Task.WaitAsync(Timeout);
     }
 
-    private static FomodUi.InstallerStep[] OneStep(int groups)
-    {
-        var step = new FomodUi.InstallerStep(0, "Step 1", visible: true)
+    private static FomodUi.InstallerStep[] OneStep(int groups) => Steps(count: 1, groups);
+
+    private static FomodUi.InstallerStep[] Steps(int count, int groups) => Enumerable.Range(0, count)
+        .Select(s => new FomodUi.InstallerStep(s, $"Step {s + 1}", visible: true)
         {
             optionalFileGroups = new FomodUi.GroupList
             {
@@ -63,8 +66,133 @@ public class UiDelegatesTests
                     ]))
                     .ToArray(),
             },
-        };
-        return [step];
+        })
+        .ToArray();
+
+    /// <summary>
+    /// Runs tasks on the thread pool, but holds up the thread that queues the task after
+    /// <see cref="StallNextQueue"/> until <see cref="Release"/> completes, the way the OS can
+    /// preempt a thread that just registered a continuation.
+    /// </summary>
+    private sealed class StallingScheduler : TaskScheduler
+    {
+        public readonly TaskCompletionSource Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public volatile bool StallNextQueue;
+        public volatile bool Stalled;
+
+        protected override void QueueTask(Task task)
+        {
+            ThreadPool.UnsafeQueueUserWorkItem(_ => TryExecuteTask(task), null);
+            if (!StallNextQueue) return;
+            StallNextQueue = false;
+            Stalled = true;
+            Release.Task.Wait(Timeout);
+        }
+
+        protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued) => false;
+
+        protected override IEnumerable<Task> GetScheduledTasks() => [];
+    }
+
+    [Fact]
+    public async Task TheNextStep_IsAsked_EvenWhenItArrivesBeforeThePreviousStepHasReturned()
+    {
+        var window = new ScriptedGuidedInstallerState();
+        var delegates = new UiDelegates(NullLogger<UiDelegates>.Instance, window.Create());
+        using var _ = delegates;
+        var steps = Steps(count: 2, groups: 1);
+        var lastStepAnswered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // Plays the library: it confirms a selection and moves to the next step on tasks of its own.
+        delegates.StartDialog(
+            "Test",
+            new FomodInstaller.Interface.HeaderImage(null, false, 0),
+            select: (step, _, _) => Task.Run(() => delegates.UpdateState(steps, step)),
+            cont: (_, step) =>
+            {
+                if (step == 0) Task.Run(() => delegates.UpdateState(steps, 1));
+                else lastStepAnswered.TrySetResult();
+            },
+            cancel: () => { });
+
+        // The continuation that answers step 1 is queued from inside UpdateState, which then
+        // stays stalled until step 2 was asked or the wait gives up.
+        var scheduler = new StallingScheduler();
+        var firstStep = Task.Factory.StartNew(() =>
+        {
+            scheduler.StallNextQueue = true;
+            delegates.UpdateState(steps, 0);
+        }, CancellationToken.None, TaskCreationOptions.None, scheduler);
+
+        try
+        {
+            var deadline = DateTime.UtcNow + Timeout;
+            while (window.Prompts.Single().Steps.Length < 2 && DateTime.UtcNow < deadline)
+                await Task.Delay(20);
+        }
+        finally
+        {
+            scheduler.Release.TrySetResult();
+        }
+
+        await firstStep.WaitAsync(Timeout);
+        // Without the stall the answer ran on another scheduler and the race wasn't exercised.
+        scheduler.Stalled.Should().BeTrue();
+        window.Prompts.Single().Steps.Select(s => s.Name).Should().Equal("Step 1", "Step 2");
+
+        // Step 2's answer runs on other threads; let it finish before the delegates are disposed.
+        await lastStepAnswered.Task.WaitAsync(Timeout);
+        delegates.Failure.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Blocks inside <see cref="IGuidedInstaller.RequestUserChoice"/>, so the step being set up holds
+    /// the delegates until <see cref="Unblock"/> is set.
+    /// </summary>
+    private sealed class BlockingGuidedInstaller : IGuidedInstaller
+    {
+        public readonly ManualResetEventSlim Entered = new();
+        public readonly ManualResetEventSlim Unblock = new();
+        public bool SupportsUserInteraction => false;
+        public void SetupInstaller(string name) { }
+        public void SetupInstaller(string name, string? notice) { }
+        public void CleanupInstaller() { }
+        public void Dispose() { }
+
+        public Task<UserChoice> RequestUserChoice(GuidedInstallationStep installationStep, Percent progress, CancellationToken cancellationToken)
+        {
+            Entered.Set();
+            Unblock.Wait(Timeout);
+            return Task.FromResult(new UserChoice(new UserChoice.CancelInstallation()));
+        }
+    }
+
+    [Fact]
+    public async Task AStepThatArrivesWhileAnotherIsBeingSetUp_FailsTheInstallInsteadOfBeingDropped()
+    {
+        var installer = new BlockingGuidedInstaller();
+        var delegates = new UiDelegates(NullLogger<UiDelegates>.Instance, installer);
+        using var _ = delegates;
+        var library = new FakeLibrary();
+        library.Start(delegates);
+        var steps = Steps(count: 2, groups: 1);
+
+        var firstStep = Task.Run(() => delegates.UpdateState(steps, 0));
+        try
+        {
+            installer.Entered.Wait(Timeout).Should().BeTrue();
+            delegates.UpdateState(steps, 1);
+
+            // A dropped step is never answered, and the library would wait for it forever.
+            delegates.Failure.Should().BeOfType<InvalidOperationException>().Which.Message.Should().Contain("Step 2");
+            library.Cancelled.Should().Be(1);
+        }
+        finally
+        {
+            installer.Unblock.Set();
+        }
+
+        await firstStep.WaitAsync(Timeout);
     }
 
     private static (UiDelegates Delegates, FakeLibrary Library) Create()

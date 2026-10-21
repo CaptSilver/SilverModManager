@@ -157,55 +157,12 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
             return;
         }
 
-        // NOTE(erri120): The FOMOD library we're using was designed for threading in JavaScript.
-        // A semaphore is required because the library can spawn multiple tasks on different threads
-        // that will call this method multiple times. This can lead to double-state and it's
-        // just a complete mess. This is what you get when you write a .NET library for JavaScript...
-        using var waiter = _semaphoreSlim.WaitDisposable(TimeSpan.Zero);
-        if (!waiter.HasEntered)
-        {
-            // A step dropped here is never asked and the executor waits for its answer forever, so say so.
-            _logger.LogWarning("Ignoring step {StepId} because another step is being set up", currentStepId);
-            return;
-        }
-
         var groupIdMappings = new List<KeyValuePair<int, GroupId>>();
         var optionIdMappings = new List<KeyValuePair<int, OptionId>>();
 
-        GuidedInstallationStep guidedInstallationStep;
-        try
-        {
-            guidedInstallationStep = ToGuidedInstallationStep(
-                installSteps,
-                currentStepId,
-                groupIdMappings,
-                optionIdMappings
-            );
-        }
-        catch (Exception e)
-        {
-            // NOTE: The library calls us from a task nobody observes, so a throw here would leave the executor waiting.
-            Fail(e);
-            return;
-        }
-
-        // Progress is computed as currentIndex + 1 /(all steps before the current step + future visible steps + 1).
-        // The +1 are to avoid having the bar at 0% when we're at the first step, and to account for the extra finish screen.
-        var progress = Percent.Create(
-            current: currentStepId + 1,
-            maximum: currentStepId + 1 + installSteps.Skip(currentStepId + 1).Count(step => step.visible) + 1
-        );
-
-        Task<UserChoice> request;
-        try
-        {
-            request = _guidedInstaller.RequestUserChoice(guidedInstallationStep, progress, _cancellationToken);
-        }
-        catch (Exception e)
-        {
-            Fail(e);
-            return;
-        }
+        // The answer below makes the library send its next step from another thread, which can happen
+        // before this method returns. AskStep has released the semaphore by then, so that step gets in.
+        if (AskStep(installSteps, currentStepId, groupIdMappings, optionIdMappings) is not { } request) return;
 
         request.ContinueWith(async task =>
             {
@@ -291,6 +248,63 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
                   Fail(e);
               }
             });
+    }
+
+    /// <summary>
+    /// Converts the step and asks the guided installer for it. Returns <c>null</c> when the installation
+    /// had to fail instead.
+    /// </summary>
+    private Task<UserChoice>? AskStep(
+        FomodInstaller.Interface.ui.InstallerStep[] installSteps,
+        int currentStepId,
+        List<KeyValuePair<int, GroupId>> groupIdMappings,
+        List<KeyValuePair<int, OptionId>> optionIdMappings)
+    {
+        // NOTE(erri120): The FOMOD library we're using was designed for threading in JavaScript.
+        // A semaphore is required because the library can spawn multiple tasks on different threads
+        // that will call this method multiple times. This can lead to double-state and it's
+        // just a complete mess. This is what you get when you write a .NET library for JavaScript...
+        using var waiter = _semaphoreSlim.WaitDisposable(TimeSpan.Zero);
+        if (!waiter.HasEntered)
+        {
+            // Dropping the step would leave the executor waiting for its answer forever.
+            Fail(new InvalidOperationException($"The FOMOD installer sent step `{installSteps[currentStepId].name}` while another step was being set up"));
+            return null;
+        }
+
+        GuidedInstallationStep guidedInstallationStep;
+        try
+        {
+            guidedInstallationStep = ToGuidedInstallationStep(
+                installSteps,
+                currentStepId,
+                groupIdMappings,
+                optionIdMappings
+            );
+        }
+        catch (Exception e)
+        {
+            // NOTE: The library calls us from a task nobody observes, so a throw here would leave the executor waiting.
+            Fail(e);
+            return null;
+        }
+
+        // Progress is computed as currentIndex + 1 /(all steps before the current step + future visible steps + 1).
+        // The +1 are to avoid having the bar at 0% when we're at the first step, and to account for the extra finish screen.
+        var progress = Percent.Create(
+            current: currentStepId + 1,
+            maximum: currentStepId + 1 + installSteps.Skip(currentStepId + 1).Count(step => step.visible) + 1
+        );
+
+        try
+        {
+            return _guidedInstaller.RequestUserChoice(guidedInstallationStep, progress, _cancellationToken);
+        }
+        catch (Exception e)
+        {
+            Fail(e);
+            return null;
+        }
     }
 
     private GuidedInstallationStep ToGuidedInstallationStep(
