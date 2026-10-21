@@ -2,6 +2,7 @@ using System.Text;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Steam;
 using SteamKit2;
 
 namespace NexusMods.Platform.Proton.Steam;

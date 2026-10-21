@@ -14,6 +14,7 @@
         <PackageReference Include="OneOf" />
         <PackageReference Include="Polly.Core" />
         <PackageReference Include="R3" />
+        <PackageReference Include="SteamKit2" />
         <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <PackageReference Include="TransparentValueObjects.Abstractions" />
     </ItemGroup>

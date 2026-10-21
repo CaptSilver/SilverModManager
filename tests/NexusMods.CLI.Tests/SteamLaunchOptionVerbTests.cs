@@ -14,6 +14,7 @@ using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.NexusModsApi;
 using NexusMods.Sdk.ProxyConsole;
+using NexusMods.Sdk.Steam;
 using NSubstitute;
 using Loadout = NexusMods.Sdk.Loadouts.Loadout;
 

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Steam;
 
 namespace NexusMods.Backend.Games.Locators;
 
@@ -116,11 +117,11 @@ internal class SteamLocator : IGameLocator
 
         public ValueTask<ImmutableArray<WineDllOverride>> GetWineDllOverrides(CancellationToken cancellationToken)
         {
-            var parserResult = LocalUserConfigParser.ParseConfigFile(_steamGame.AppManifest.LastOwner, SteamLocalConfigPath);
-            if (parserResult.IsFailed || !parserResult.Value.LocalAppData.TryGetValue(_steamGame.AppId, out var localAppData))
-                return new ValueTask<ImmutableArray<WineDllOverride>>(ImmutableArray<WineDllOverride>.Empty);
+            // Not GameFinder's LocalUserConfigParser: it rejects the whole file at the first non-Steam shortcut,
+            // whose app id Steam stores as a negative number.
+            var launchOptions = LocalConfigLaunchOptions.Read(SteamLocalConfigPath, _steamGame.AppId.Value).Line;
+            if (launchOptions is null) return new ValueTask<ImmutableArray<WineDllOverride>>(ImmutableArray<WineDllOverride>.Empty);
 
-            var launchOptions = localAppData.LaunchOptions;
             var section = WineParser.GetWineDllOverridesSection(launchOptions);
             var result = WineParser.ParseEnvironmentVariable(section);
             return new ValueTask<ImmutableArray<WineDllOverride>>(result);

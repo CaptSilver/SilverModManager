@@ -121,6 +121,64 @@ public class SteamLocatorTests
     }
 
     [Fact]
+    public async Task GetWineDllOverrides_ReadsTheGameEntryBesideANonSteamShortcut()
+    {
+        // Steam files a non-Steam shortcut under a negative signed id; a parser that insists every app id is
+        // an unsigned integer rejects the whole file and the game's overrides are never seen.
+        var (result, hostFileSystem, _) = LocateSingle(withProtonPrefix: true);
+        var provider = result.LinuxCompatabilityDataProvider!;
+        WriteFile(hostFileSystem, provider.SteamLocalConfigPath, $$"""
+            "UserLocalConfigStore"
+            {
+                "Software"
+                {
+                    "Valve"
+                    {
+                        "Steam"
+                        {
+                            "apps"
+                            {
+                                "-1045261181"
+                                {
+                                    "LaunchOptions" "-fullscreen"
+                                }
+                                "{{AppId}}"
+                                {
+                                    "LaunchOptions" "WINEDLLOVERRIDES=\"winmm=n,b;version=n,b\" '/opt/shim' run 'Loadout A' -- %command% --launcher-skip"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            """);
+
+        var overrides = await provider.GetWineDllOverrides(CancellationToken.None);
+
+        overrides.Select(o => o.DllName).Should().BeEquivalentTo("winmm", "version");
+    }
+
+    [Fact]
+    public async Task GetWineDllOverrides_ToleratesADifferentKeyCase()
+    {
+        var (result, hostFileSystem, _) = LocateSingle(withProtonPrefix: true);
+        var provider = result.LinuxCompatabilityDataProvider!;
+        WriteFile(hostFileSystem, provider.SteamLocalConfigPath, LocalConfig().Replace("\"apps\"", "\"Apps\"").Replace("\"Software\"", "\"software\""));
+
+        var overrides = await provider.GetWineDllOverrides(CancellationToken.None);
+
+        overrides.Should().ContainSingle().Which.DllName.Should().Be("winhttp");
+    }
+
+    [Fact]
+    public async Task GetWineDllOverrides_MissingFile_YieldsNothing()
+    {
+        var (result, _, _) = LocateSingle(withProtonPrefix: true);
+
+        (await result.LinuxCompatabilityDataProvider!.GetWineDllOverrides(CancellationToken.None)).Should().BeEmpty();
+    }
+
+    [Fact]
     public void Locate_NativeLinuxGameWithoutProtonPrefix_UsesTheHostFileSystem()
     {
         var (result, hostFileSystem, _) = LocateSingle(withProtonPrefix: false, hasNativeLinuxBuild: true);

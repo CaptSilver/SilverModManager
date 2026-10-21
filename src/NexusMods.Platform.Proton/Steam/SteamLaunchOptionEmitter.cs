@@ -10,6 +10,7 @@ using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
+using NexusMods.Sdk.Steam;
 
 namespace NexusMods.Platform.Proton.Steam;
 

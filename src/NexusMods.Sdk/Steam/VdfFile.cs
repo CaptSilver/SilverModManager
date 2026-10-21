@@ -1,9 +1,9 @@
 using NexusMods.Paths;
 using SteamKit2;
 
-namespace NexusMods.Platform.Proton.Steam;
+namespace NexusMods.Sdk.Steam;
 
-internal static class VdfFile
+public static class VdfFile
 {
     /// <summary>
     /// Parses a VDF file. Returns null when the file is missing or malformed, so callers treat both as "not configured".
