@@ -17,4 +17,9 @@ public interface IMyGamesViewModel : IPageViewModelInterface
     
     public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames { get; }
 
+    /// <summary>
+    /// What the game locators could not resolve cleanly, one line per problem, or null when there is nothing to report.
+    /// </summary>
+    public string? LocatorProblemsNotice { get; }
+
 }

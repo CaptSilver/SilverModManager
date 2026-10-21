@@ -1,4 +1,5 @@
 using NexusMods.App.UI.Helpers;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Reactive.Disposables;
 using Avalonia.Threading;
@@ -20,6 +21,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using OneOf;
 using OneOf.Types;
 using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
 using System.Reactive;
 using System.Reactive.Linq;
 using DynamicData.Aggregation;
@@ -74,6 +76,8 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames => _installedGames;
     public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames => _supportedGames;
 
+    [Reactive] public string? LocatorProblemsNotice { get; private set; }
+
     public MyGamesViewModel(
         IWindowManager windowManager,
         IServiceProvider serviceProvider,
@@ -109,7 +113,11 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
 
         this.WhenActivated(d =>
             {
-                gameRegistry.LocateGameInstallations()
+                // Locating fills in Problems, so it has to run first.
+                var installations = gameRegistry.LocateGameInstallations();
+                LocatorProblemsNotice = FormatProblems(gameRegistry.Problems);
+
+                installations
                     .ToReadOnlyObservableCollection()
                     .ToObservableChangeSet()
                     .Transform(installation =>
@@ -231,6 +239,12 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                 });
             }
         );
+    }
+
+    private static string? FormatProblems(ImmutableArray<GameLocatorProblem> problems)
+    {
+        if (problems.IsDefaultOrEmpty) return null;
+        return string.Join(Environment.NewLine, problems.Select(problem => problem.Message));
     }
 
     private OneOf<None, CreateLoadoutJob, UnmanageGameJob> GetJobRunningForGameInstallation(GameInstallation installation)

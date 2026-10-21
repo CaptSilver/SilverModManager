@@ -27,6 +27,11 @@
                     Orientation="Vertical"
                     Spacing="24">
 
+            <TextBlock x:Name="LocatorProblemsNotice"
+                       IsVisible="False"
+                       Foreground="{StaticResource WarningStrongBrush}"
+                       TextWrapping="Wrap" />
+
             <Border x:Name="AddGamesToGetStarted"
                     Padding="0"
                     BorderThickness="0"

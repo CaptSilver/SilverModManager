@@ -64,6 +64,40 @@ public class MyGamesViewModelTests(IServiceProvider provider) : AUiTest(provider
     }
 
     [Fact]
+    public async Task Test_LocatorProblemsAreShownAsANotice()
+    {
+        var registry = Substitute.For<IGameRegistry>();
+        registry.LocateGameInstallations().Returns(ImmutableArray<GameInstallation>.Empty);
+        registry.Problems.Returns(ImmutableArray.Create(
+            new GameLocatorProblem("HeroicEpicLocator", "Epic game abc is installed under both Heroic config roots"),
+            new GameLocatorProblem("LutrisLocator", "Lutris game xyz is in both Lutris roots")
+        ));
+
+        var viewModel = await OnUi(() => Task.FromResult(ActivatorUtilities.CreateInstance<MyGamesViewModel>(Provider, Provider, registry)));
+        using var _ = await OnUi(() => Task.FromResult(viewModel.Activator.Activate()));
+
+        await EventuallyOnUi(() =>
+        {
+            viewModel.LocatorProblemsNotice.Should().Contain("Epic game abc is installed under both Heroic config roots")
+                .And.Contain("Lutris game xyz is in both Lutris roots");
+        });
+    }
+
+    [Fact]
+    public async Task Test_NoLocatorProblemsShowNoNotice()
+    {
+        var registry = Substitute.For<IGameRegistry>();
+        registry.LocateGameInstallations().Returns(ImmutableArray<GameInstallation>.Empty);
+        registry.Problems.Returns(ImmutableArray<GameLocatorProblem>.Empty);
+
+        var viewModel = await OnUi(() => Task.FromResult(ActivatorUtilities.CreateInstance<MyGamesViewModel>(Provider, Provider, registry)));
+        using var _ = await OnUi(() => Task.FromResult(viewModel.Activator.Activate()));
+
+        await EventuallyOnUi(() => viewModel.InstalledGames.Should().BeEmpty());
+        viewModel.LocatorProblemsNotice.Should().BeNull();
+    }
+
+    [Fact]
     public void Test_SettingsFileWithTheRemovedToggleStillLoads()
     {
         var json = """{"EnableAllGames":true,"EnableCollectionSharing":true}""";
