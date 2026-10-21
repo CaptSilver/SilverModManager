@@ -23,6 +23,11 @@ public static class DoctorTextFormatter
             if (install.LaunchOptions is { } options) lines.Add($"  Launch options: {LaunchOptions(options)}");
             if (install.Deployment.Count > 0) lines.Add($"  Deployment: {string.Join(", ", install.Deployment.Select(DeploymentRoot))}");
             lines.Add($"  Launch: {Lock(install.Lock)}");
+            if (install.Checks.Count > 0)
+            {
+                lines.Add("  Checks:");
+                lines.AddRange(install.Checks.Select(c => $"    {c.Level.ToString().ToLowerInvariant()} {c.Id}: {c.Message}"));
+            }
         }
 
         if (report.Problems.Count > 0 && lines.Count > 0) lines.Add("");

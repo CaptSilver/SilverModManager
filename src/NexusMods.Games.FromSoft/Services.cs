@@ -5,6 +5,7 @@ using NexusMods.Games.FromSoft.Diagnostics;
 using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Overlay;
+using NexusMods.Platform.Proton.Doctor;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk.Settings;
 
@@ -28,7 +29,12 @@ public static class Services
             .AddSingleton<Me3HostMissingEmitter>()
             .AddSingleton<IEldenRingDiagnosticEmitter>(provider => provider.GetRequiredService<Me3HostMissingEmitter>())
             .AddSingleton<UpperdirAuditEmitter>()
-            .AddSingleton<IEldenRingDiagnosticEmitter>(provider => provider.GetRequiredService<UpperdirAuditEmitter>());
+            .AddSingleton<IEldenRingDiagnosticEmitter>(provider => provider.GetRequiredService<UpperdirAuditEmitter>())
+            .AddSingleton<IEldenRingDiagnosticEmitter, GameFolderArtifactsEmitter>()
+            .AddSingleton<IEldenRingDiagnosticEmitter, SpawnerEmitter>()
+            .AddSingleton<IEldenRingDiagnosticEmitter, OverlaySupportEmitter>()
+            .AddSingleton<Me3VersionProbe>()
+            .AddSingleton<IInstallationCheck, EldenRingInstallationCheck>();
 
         // Launch gates, in run order
         services.AddSingleton<IExecutableLocator, PathExecutableLocator>()

@@ -42,12 +42,14 @@ public class DoctorReporterTests : IDisposable
     private DoctorReporter Reporter(
         PrefixResolution? prefix = null,
         ProtonResolution? proton = null,
-        FakeToolRunner? runner = null)
+        FakeToolRunner? runner = null,
+        params IInstallationCheck[] checks)
         => new(
             new FakePrefixResolver(prefix ?? PrefixResolution.Resolved(new ResolvedPrefix(_prefix, CompatibilityLayerKind.SteamProton, ProtonAppId: 42))),
             new FakeProtonResolver([Proton8, Proton9], proton ?? ProtonResolution.Resolved(Proton9)),
             runner ?? new FakeToolRunner(),
-            new InstallationLockFactory(new FakeEnvironment(_runtimeDir)));
+            new InstallationLockFactory(new FakeEnvironment(_runtimeDir)),
+            checks);
 
     private GameInstallation SteamGame(string name = "Test Game", string id = AppId, bool withProvider = true)
     {
@@ -110,6 +112,62 @@ public class DoctorReporterTests : IDisposable
     }
 
     private string LockPath(string store = "steam", string id = AppId) => InstallationLock.PathFor(_runtimeDir, store, id);
+
+    private sealed class FakeCheck(Func<GameInstallation, IReadOnlyList<DoctorCheck>> check) : IInstallationCheck
+    {
+        public IReadOnlyList<DoctorCheck> Check(GameInstallation installation) => check(installation);
+    }
+
+    [Fact]
+    public void Build_InstallationCheckResults_AppearInTheEntryTextAndJson()
+    {
+        WriteLocalConfig(null);
+        var check = new FakeCheck(_ =>
+        [
+            new DoctorCheck("artifacts", DoctorCheckLevel.Fail, "dinput8.dll is in the game folder"),
+            new DoctorCheck("eac", DoctorCheckLevel.Info, "EAC state: armed"),
+        ]);
+
+        var report = Reporter(checks: check).Build([Managed(SteamGame())]);
+
+        report.Installations[0].Checks.Should().Equal(
+            new DoctorCheck("artifacts", DoctorCheckLevel.Fail, "dinput8.dll is in the game folder"),
+            new DoctorCheck("eac", DoctorCheckLevel.Info, "EAC state: armed"));
+
+        var lines = DoctorTextFormatter.Format(report);
+        lines.Should().ContainInConsecutiveOrder("  Checks:", "    fail artifacts: dinput8.dll is in the game folder", "    info eac: EAC state: armed");
+
+        var json = JsonDocument.Parse(report.ToJson()).RootElement.GetProperty("installations")[0].GetProperty("checks");
+        json.GetArrayLength().Should().Be(2);
+        json[0].GetProperty("id").GetString().Should().Be("artifacts");
+        json[0].GetProperty("level").GetString().Should().Be("fail");
+        json[0].GetProperty("message").GetString().Should().Be("dinput8.dll is in the game folder");
+        json[1].GetProperty("level").GetString().Should().Be("info");
+    }
+
+    [Fact]
+    public void Build_WithoutAContributor_HasAnEmptyChecksArrayAndNoHeading()
+    {
+        WriteLocalConfig(null);
+
+        var report = Reporter().Build([Managed(SteamGame())]);
+
+        report.Installations[0].Checks.Should().BeEmpty();
+        JsonDocument.Parse(report.ToJson()).RootElement.GetProperty("installations")[0].GetProperty("checks").GetArrayLength().Should().Be(0);
+        DoctorTextFormatter.Format(report).Should().NotContain(l => l.Contains("Checks"));
+    }
+
+    [Fact]
+    public void Build_EveryContributorIsAsked_InRegistrationOrder()
+    {
+        WriteLocalConfig(null);
+        var first = new FakeCheck(_ => [new DoctorCheck("a", DoctorCheckLevel.Ok, "one")]);
+        var second = new FakeCheck(_ => [new DoctorCheck("b", DoctorCheckLevel.Warn, "two")]);
+
+        var report = Reporter(checks: [first, second]).Build([Managed(SteamGame())]);
+
+        report.Installations[0].Checks.Select(c => c.Id).Should().Equal("a", "b");
+    }
 
     [Fact]
     public void Build_SteamGame_ReportsEveryPart()

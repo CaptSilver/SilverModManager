@@ -110,4 +110,63 @@ known. Discarding this only records that you have looked at it.
             .AddValue<string>("Change")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate GameFolderArtifacts = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 6))
+        .WithTitle("The game folder holds mod files")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("The Elden Ring game folder is not in its vanilla state")
+        .WithDetails("""
+{Finding}
+
+The app never writes to the game folder: mods are loaded from their own folder, and a modded session runs on an
+overlay. Files in the game folder come from an earlier mod manager or a manual install. While the game's anti-cheat
+launcher is there, starting the game online from Steam can load them.
+
+Remove the mod files, or verify the game's files in Steam to restore them.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Finding")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate ItemSpawnerPresent = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 7))
+        .WithTitle("An item-spawner mod is in the game folder")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{Finding}")
+        .WithDetails("""
+{Finding}
+
+Items a spawner creates mark a save as modified. Keep that save out of vanilla online play.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Finding")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate OverlaySupportMissing = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 8))
+        .WithTitle("Modded launches are not possible here")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("The sandbox a modded launch needs is not available")
+        .WithDetails("""
+{Finding}
+
+A modded launch runs the game on an overlay of its folder inside a user namespace, so the game folder itself is never
+written to. Without it the app refuses to start the game with mods.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Finding")
+        )
+        .Finish();
 }

@@ -22,8 +22,11 @@ public sealed class DoctorReporter(
     IPrefixResolver prefixResolver,
     IProtonResolver protonResolver,
     IToolRunner toolRunner,
-    IInstallationLockFactory lockFactory)
+    IInstallationLockFactory lockFactory,
+    IEnumerable<IInstallationCheck>? checks = null)
 {
+    private readonly IInstallationCheck[] _checks = checks?.ToArray() ?? [];
+
     /// <summary>The program the runner is asked to plan, so the report shows a real command line.</summary>
     public const string PlaceholderExe = "/doctor/placeholder.exe";
 
@@ -55,7 +58,10 @@ public sealed class DoctorReporter(
             DescribeRunner(installation),
             steamAppId is { } app ? DescribeLaunchOptions(result.LinuxCompatabilityDataProvider!, app) : null,
             DescribeLock(store, result.StoreIdentifier),
-            managed.Deployment ?? []);
+            managed.Deployment ?? [])
+        {
+            Checks = _checks.SelectMany(check => check.Check(installation)).ToArray(),
+        };
     }
 
     /// <summary>

@@ -30,11 +30,18 @@ public sealed record OverlayLayout(AbsolutePath Lower, AbsolutePath Root)
     /// outside every game folder, and one folder per loadout keeps a second loadout's leftovers out of this one's game.
     /// </summary>
     public static OverlayLayout For(FromSoftSettings settings, IFileSystem fileSystem, GameInstallation installation, LoadoutId loadoutId)
+        => new(EldenRingPaths.GameFolder(installation), OverlayFolder(settings, fileSystem, installation) / loadoutId.Value.Value.ToString());
+
+    /// <summary>The layouts of every loadout that has run on the installation, for a check that is not about one loadout.</summary>
+    public static IReadOnlyList<OverlayLayout> All(FromSoftSettings settings, IFileSystem fileSystem, GameInstallation installation)
     {
-        var root = EldenRingPaths.Me3Root(settings, fileSystem)
-                   / EldenRingPaths.InstallationFolderName(installation.LocatorResult)
-                   / "overlay"
-                   / loadoutId.Value.Value.ToString();
-        return new OverlayLayout(EldenRingPaths.GameFolder(installation), root);
+        var folder = OverlayFolder(settings, fileSystem, installation);
+        if (!folder.DirectoryExists()) return [];
+
+        var lower = EldenRingPaths.GameFolder(installation);
+        return folder.EnumerateDirectories(recursive: false).Select(root => new OverlayLayout(lower, root)).ToArray();
     }
+
+    private static AbsolutePath OverlayFolder(FromSoftSettings settings, IFileSystem fileSystem, GameInstallation installation)
+        => EldenRingPaths.Me3Root(settings, fileSystem) / EldenRingPaths.InstallationFolderName(installation.LocatorResult) / "overlay";
 }

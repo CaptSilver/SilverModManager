@@ -56,7 +56,14 @@ public sealed record DoctorInstallation(
     DoctorRunner Runner,
     DoctorLaunchOptions? LaunchOptions,
     DoctorLock Lock,
-    IReadOnlyList<DoctorDeploymentRoot> Deployment);
+    IReadOnlyList<DoctorDeploymentRoot> Deployment)
+{
+    /// <summary>
+    /// What the game's own checks found. Empty for a game nothing contributes checks for, so the JSON gains an
+    /// array and no existing field changes.
+    /// </summary>
+    public IReadOnlyList<DoctorCheck> Checks { get; init; } = [];
+}
 
 /// <summary>How the prefix lookup ended.</summary>
 public enum DoctorPrefixStatus
