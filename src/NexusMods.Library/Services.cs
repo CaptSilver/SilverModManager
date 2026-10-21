@@ -18,6 +18,7 @@ public static class Services
     {
         return serviceCollection
             .AddSingleton<ILibraryService, LibraryService>()
-            .AddSingleton<IDownloadsService, DownloadsService>();
+            .AddSingleton<IDownloadsService, DownloadsService>()
+            .AddSingleton<LibraryFileDigests>();
     }
 }

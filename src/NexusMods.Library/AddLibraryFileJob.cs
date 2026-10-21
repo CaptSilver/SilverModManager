@@ -60,30 +60,31 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
         return topFile;
     }
 
-    private static readonly MultiHasherBuilder<Hash, XxHash3, Xx3Hasher, Md5Value, MD5, Md5Hasher> Hasher = MultiHasherBuilder.Start()
+    private static readonly MultiHasherBuilder<Hash, XxHash3, Xx3Hasher, Md5Value, MD5, Md5Hasher, Sha256Value, SHA256, Sha256Hasher> Hasher = MultiHasherBuilder.Start()
         .AddHasher<Hash, XxHash3, Xx3Hasher>()
-        .AddHasher<Md5Value, MD5, Md5Hasher>();
+        .AddHasher<Md5Value, MD5, Md5Hasher>()
+        .AddHasher<Sha256Value, SHA256, Sha256Hasher>();
 
-    private static async ValueTask<(Hash, Optional<Md5Value>)> HashAsync(AbsolutePath filePath, bool isNestedFile, CancellationToken cancellationToken)
+    private static async ValueTask<(Hash, Optional<Md5Value>, Optional<Sha256Value>)> HashAsync(AbsolutePath filePath, bool isNestedFile, CancellationToken cancellationToken)
     {
         await using var stream = filePath.Read();
 
         if (isNestedFile)
         {
             var hash = await Xx3Hasher.HashAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-            return (hash, Optional<Md5Value>.None);
+            return (hash, Optional<Md5Value>.None, Optional<Sha256Value>.None);
         }
 
         var multiHash = await Hasher.HashAsync(stream, cancellationToken: cancellationToken);
-        return (multiHash.Hash1, multiHash.Hash2);
+        return (multiHash.Hash1, multiHash.Hash2, multiHash.Hash3);
     }
 
     private async Task<LibraryFile.New> AnalyzeFile(IJobContext<AddLibraryFileJob> context, AbsolutePath filePath, bool isNestedFile = false)
     {
         var isArchive = isNestedFile ? await CheckIfNestedArchiveAsync(filePath) : await CheckIfArchiveAsync(filePath);
 
-        var (hash, md5) = await HashAsync(filePath, isNestedFile: isNestedFile, cancellationToken: context.CancellationToken);
-        var libraryFile = CreateLibraryFile(Transaction, filePath, hash, md5);
+        var (hash, md5, sha256) = await HashAsync(filePath, isNestedFile: isNestedFile, cancellationToken: context.CancellationToken);
+        var libraryFile = CreateLibraryFile(Transaction, filePath, hash, md5, sha256);
 
         if (isArchive)
         {
@@ -144,7 +145,7 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
         return false;
     }
 
-    private static LibraryFile.New CreateLibraryFile(ITransaction tx, AbsolutePath filePath, Hash hash, Optional<Md5Value> md5)
+    private static LibraryFile.New CreateLibraryFile(ITransaction tx, AbsolutePath filePath, Hash hash, Optional<Md5Value> md5, Optional<Sha256Value> sha256)
     {
         var libraryFile = new LibraryFile.New(tx, out var id)
         {
@@ -157,6 +158,9 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
                 Name = filePath.FileName,
             },
         };
+
+        // Only top-level files carry a digest; an unset value must not be written as an all-zero one.
+        if (sha256.HasValue) tx.Add(libraryFile.Id, LibraryFile.Sha256, sha256.Value);
 
         return libraryFile;
     }

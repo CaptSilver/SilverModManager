@@ -3,8 +3,8 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xDE7954B02AF7C3C0
-   - Total attributes: 263
+   - Fingerprint: 0x414FB55BE6492ECC
+   - Total attributes: 264
    - Total namespaces: 79
    
 ## Attributes
@@ -119,6 +119,7 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Library.LibraryFile/FileName                                             | Utf8Insensitive         | False   | False | False     | 
 | SilverModManager.Library.LibraryFile/Hash                                                 | UInt64                  | True    | False | False     | 
 | SilverModManager.Library.LibraryFile/Md5                                                  | UInt128                 | True    | False | False     | 
+| SilverModManager.Library.LibraryFile/Sha256                                               | Blob                    | True    | False | False     | 
 | SilverModManager.Library.LibraryFile/Size                                                 | UInt64                  | False   | False | False     | 
 | SilverModManager.Library.LibraryItem/Name                                                 | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.LocalFile/OriginalPath                                           | Utf8                    | False   | False | False     | 

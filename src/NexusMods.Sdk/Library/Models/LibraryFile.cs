@@ -25,6 +25,12 @@ public partial class LibraryFile : IModelDefinition
     public static readonly Md5Attribute Md5 = new(Namespace, nameof(Md5)) { IsIndexed = true, IsOptional = true };
 
     /// <summary>
+    /// SHA-256 of the file. Computed when a top-level file is added; files added earlier get it on first
+    /// need. Absent means unverifiable, never a match.
+    /// </summary>
+    public static readonly Sha256Attribute Sha256 = new(Namespace, nameof(Sha256)) { IsIndexed = true, IsOptional = true };
+
+    /// <summary>
     /// Size of the file.
     /// </summary>
     public static readonly SizeAttribute Size = new(Namespace, nameof(Size));

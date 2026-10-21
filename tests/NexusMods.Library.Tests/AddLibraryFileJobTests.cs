@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using FluentAssertions;
 using Xunit;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +43,39 @@ public class AddLibraryFileJobTests(IServiceProvider serviceProvider, IConnectio
             File.SetUnixFileMode(secret.ToString(), UnixFileMode.UserRead | UnixFileMode.UserWrite);
             File.Delete(secret.ToString());
         }
+    }
+
+    [Fact]
+    public async Task AddingAFileRecordsItsSha256()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        var file = folder.Path.Combine("plain.bin");
+        var bytes = Enumerable.Range(0, 5000).Select(i => (byte)(i * 31)).ToArray();
+        await File.WriteAllBytesAsync(file.ToString(), bytes, TestContext.Current.CancellationToken);
+
+        using var tx = connection.BeginTransaction();
+        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, file);
+        var result = await tx.Commit();
+
+        var stored = result.Remap(libraryFile);
+        stored.Sha256.HasValue.Should().BeTrue();
+        stored.Sha256.Value.ToString().Should().Be(Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant());
+    }
+
+    [Fact]
+    public async Task NestedArchiveEntriesHaveNoSha256()
+    {
+        var archive = FileSystem.Shared.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-symlinks.7z");
+
+        using var tx = connection.BeginTransaction();
+        var libraryFile = await AddLibraryFileJob.Create(serviceProvider, tx, archive);
+        var result = await tx.Commit();
+
+        var stored = result.Remap(libraryFile);
+        stored.Sha256.HasValue.Should().BeTrue("the archive itself is a top-level file");
+        stored.TryGetAsLibraryArchive(out var libraryArchive).Should().BeTrue();
+        libraryArchive.Children.Should().NotBeEmpty();
+        libraryArchive.Children.Should().OnlyContain(child => !child.AsLibraryFile().Sha256.HasValue);
     }
 
     public class Startup
