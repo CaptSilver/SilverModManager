@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games.FileHashes.Models;
+using NexusMods.Abstractions.Loadouts;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.HyperDuck;
 using NexusMods.MnemonicDB;
@@ -43,6 +44,9 @@ internal sealed class RealQueryEngineHost : IDisposable
             .AddNonVanillaFileModel()
             .AddEpicGameStoreBuildModel()
             .AddLoadoutModel()
+            .AddLoadoutItemModel()
+            .AddLoadoutItemGroupModel()
+            .AddLoadoutOverridesGroupModel()
             .AddGameInstallMetadataModel()
             .AddFileHashesQueriesSql()
             .BuildServiceProvider();
