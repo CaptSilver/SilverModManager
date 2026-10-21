@@ -23,7 +23,7 @@ public sealed class LocalVanillaBaselineTests : IDisposable
     private const string GamePathString = "/games/test";
 
     private readonly ServiceHarness _harness = new();
-    private readonly string _gameRoot;
+    private string _gameRoot;
     private readonly IConnection _store;
     private readonly List<string> _opened = [];
     private Func<AbsolutePath, Stream>? _openOverride;
@@ -128,13 +128,14 @@ public sealed class LocalVanillaBaselineTests : IDisposable
     [Fact]
     public async Task FilteredPath_IsNeitherHashedNorReported()
     {
+        WriteFile("a.esm", "vanilla");
         WriteFile("config.ini", "written by the game");
 
         var result = await Build([Manifest(1, ("a.esm", "vanilla"))], isIgnored: p => p.Path.ToString() == "config.ini");
 
         result.NonVanilla.Should().BeEmpty();
-        _opened.Should().BeEmpty();
-        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().BeEmpty();
+        _opened.Should().ContainSingle().Which.Should().EndWith("a.esm");
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().ContainSingle().Which.Path.ToString().Should().Be("a.esm");
     }
 
     [Fact]
@@ -251,6 +252,108 @@ public sealed class LocalVanillaBaselineTests : IDisposable
         var manifest = SteamManifest.All(service.Local).Should().ContainSingle().Subject;
         manifest.Name.Should().Be("public");
         manifest.Files.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task GameRootBehindASymlinkedAncestor_IsWalked()
+    {
+        var real = Path.Combine(_harness.Root, "real");
+        Directory.CreateDirectory(Path.Combine(real, "lib", "game", "Data"));
+        File.WriteAllText(Path.Combine(real, "lib", "game", "Data", "a.esm"), "vanilla");
+        File.WriteAllText(Path.Combine(real, "lib", "game", "b.dll"), "mod");
+        var alias = Path.Combine(_harness.Root, "alias");
+        Directory.CreateSymbolicLink(alias, real);
+        _gameRoot = Path.Combine(alias, "lib", "game");
+
+        var result = await Build([Manifest(1, ("Data/a.esm", "vanilla"))]);
+
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().ContainSingle().Which.Path.ToString().Should().Be("Data/a.esm");
+        result.NonVanilla.Should().ContainSingle().Which.Reason.Should().Be(NonVanillaReason.NotInManifest);
+    }
+
+    [Fact]
+    public async Task GameRootThatIsItselfASymlink_IsWalked()
+    {
+        var real = Path.Combine(_harness.Root, "real-game");
+        Directory.CreateDirectory(Path.Combine(real, "Data"));
+        File.WriteAllText(Path.Combine(real, "Data", "a.esm"), "vanilla");
+        var link = Path.Combine(_harness.Root, "linked-game");
+        Directory.CreateSymbolicLink(link, real);
+        _gameRoot = link;
+
+        var result = await Build([Manifest(1, ("Data/a.esm", "vanilla"))]);
+
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().ContainSingle().Which.Path.ToString().Should().Be("Data/a.esm");
+    }
+
+    [Fact]
+    public async Task SymlinkEntryInsideTheGameFolder_IsStillSkipped()
+    {
+        WriteFile("a.esm", "vanilla");
+        var outside = Path.Combine(_harness.Root, "outside.txt");
+        File.WriteAllText(outside, "elsewhere");
+        File.CreateSymbolicLink(Path.Combine(_gameRoot, "link.txt"), outside);
+
+        var result = await Build([Manifest(1, ("a.esm", "vanilla"))]);
+
+        result.NonVanilla.Should().BeEmpty();
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task EveryFileIgnored_FailsInsteadOfRecordingAnEmptyBaseline()
+    {
+        WriteFile("a.esm", "vanilla");
+        WriteFile("Data/b.esm", "vanilla");
+
+        var act = () => Build([Manifest(1, ("a.esm", "vanilla"))], isIgnored: _ => true);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain(_gameRoot);
+        LocalBaseline.All(_store.Db).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FolderWithOnlySymlinks_FailsInsteadOfRecordingAnEmptyBaseline()
+    {
+        var outside = Path.Combine(_harness.Root, "outside.txt");
+        File.WriteAllText(outside, "elsewhere");
+        File.CreateSymbolicLink(Path.Combine(_gameRoot, "link.txt"), outside);
+
+        var act = () => Build([Manifest(1, ("a.esm", "vanilla"))]);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        LocalBaseline.All(_store.Db).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ClassifyingFarFewerFilesThanTheFolderHolds_Fails()
+    {
+        for (var i = 0; i < 20; i++) WriteFile($"ignored/{i}.bin", "x");
+        WriteFile("a.esm", "vanilla");
+
+        var act = () => Build([Manifest(1, ("a.esm", "vanilla"))], isIgnored: p => p.Path.ToString().StartsWith("ignored", StringComparison.Ordinal));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task FailedBuild_KeepsThePreviousBaseline()
+    {
+        WriteFile("a.esm", "vanilla");
+        var first = await Build([Manifest(1, ("a.esm", "vanilla"))]);
+
+        var act = () => Build([Manifest(1, ("a.esm", "vanilla"))], isIgnored: _ => true);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Id.Should().Be(first.BaselineId);
+    }
+
+    [Fact]
+    public async Task EmptyGameFolder_IsStillABaseline()
+    {
+        var result = await Build([Manifest(1, ("a.esm", "vanilla"))]);
+
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().BeEmpty();
     }
 
     private Task<BaselineBuild> Build(Manifest[] manifests, bool allCovered = true, string? versionName = "1000",

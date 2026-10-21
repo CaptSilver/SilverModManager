@@ -75,6 +75,13 @@ internal sealed class LocalVanillaBaseline
 {
     private const int HashParallelism = 4;
 
+    /// <summary>
+    /// A baseline must classify at least one file in this many of the folder's files. Ignore rules cover
+    /// runtime output and backups, which are a sliver of a game's files; this only trips when they swallow
+    /// nearly everything.
+    /// </summary>
+    private const int MinClassifiedShare = 10;
+
     private readonly IFileSystem _fileSystem;
     private readonly ILogger<LocalVanillaBaseline> _logger;
     private readonly Func<AbsolutePath, Stream> _openRead;
@@ -100,7 +107,8 @@ internal sealed class LocalVanillaBaseline
 
         var index = BuildIndex(request.Manifests);
         var nonVanilla = new List<NonVanillaEntry>();
-        var candidates = Classify(request, kind, index, nonVanilla);
+        var (candidates, walk) = Classify(request, kind, index, nonVanilla);
+        EnsurePlausible(request, walk, candidates.Count + nonVanilla.Count);
 
         var stopwatch = Stopwatch.StartNew();
         var hashed = await HashCandidates(candidates, cancellationToken);
@@ -179,9 +187,33 @@ internal sealed class LocalVanillaBaseline
         return index;
     }
 
-    private List<Candidate> Classify(BaselineRequest request, LocalBaselineKind kind, Dictionary<RelativePath, IndexEntry> index, List<NonVanillaEntry> nonVanilla)
+    /// <param name="Entries">Everything the walk met under the root, symlinks included.</param>
+    /// <param name="Files">The regular files among them, before any path was ignored.</param>
+    private readonly record struct WalkCounts(int Entries, int Files);
+
+    /// <summary>
+    /// A classification that kept next to nothing of a folder that holds files means the walk or the ignore
+    /// rule went wrong, and recording it would pass for a complete baseline that calls every file a mod
+    /// (or, with no manifests, a game that ships nothing). It throws instead and records nothing, so the
+    /// previous baseline stays and the next start tries again.
+    /// </summary>
+    private void EnsurePlausible(BaselineRequest request, WalkCounts walk, int classified)
+    {
+        // An empty folder is a game that is not installed; there is nothing to mislead anyone with.
+        if (walk.Entries == 0) return;
+        if (walk.Files > 0 && classified * MinClassifiedShare >= walk.Files) return;
+
+        _logger.LogWarning("Classified {Classified} of the {Files} files ({Entries} entries) under {Root}, not recording a baseline from it",
+            classified, walk.Files, walk.Entries, request.GameRoot);
+        throw new InvalidOperationException(
+            $"Only {classified} of the {walk.Files} files under {request.GameRoot} were classified, which cannot be a complete picture of the installation");
+    }
+
+    private (List<Candidate> Candidates, WalkCounts Walk) Classify(BaselineRequest request, LocalBaselineKind kind, Dictionary<RelativePath, IndexEntry> index, List<NonVanillaEntry> nonVanilla)
     {
         var candidates = new List<Candidate>();
+        var entries = 0;
+        var files = 0;
         var root = request.GameRoot.ToString();
         var pending = new Stack<DirectoryInfo>();
         pending.Push(new DirectoryInfo(root));
@@ -190,6 +222,7 @@ internal sealed class LocalVanillaBaseline
         {
             foreach (var info in directory.EnumerateFileSystemInfos())
             {
+                entries++;
                 // A symlink is not a file the game shipped, and following one could leave the game directory.
                 if (info.LinkTarget is not null) continue;
                 if (info is DirectoryInfo subdirectory)
@@ -199,6 +232,7 @@ internal sealed class LocalVanillaBaseline
                 }
 
                 var file = (FileInfo)info;
+                files++;
                 var path = RelativePath.FromUnsanitizedInput(Path.GetRelativePath(root, file.FullName));
                 if (request.IsIgnored(new GamePath(LocationId.Game, path))) continue;
 
@@ -221,7 +255,7 @@ internal sealed class LocalVanillaBaseline
             }
         }
 
-        return candidates;
+        return (candidates, new WalkCounts(entries, files));
     }
 
     private async Task<List<Hashed>> HashCandidates(List<Candidate> candidates, CancellationToken cancellationToken)

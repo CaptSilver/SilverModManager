@@ -99,7 +99,10 @@ internal sealed class LocalBaselineCoordinator : IDisposable
             VersionName = locator.StoreBuildId,
             Manifests = manifests,
             AllInstalledDepotsCovered = allCovered,
-            IsIgnored = path => synchronizer.GamePathFilter.ShouldFilter(path) || synchronizer.IsIgnoredBackupPath(path),
+            // Only the rule for files the synchronizer never touches: IsIgnoredBackupPath is about what is worth
+            // backing up (all of Baldur's Gate 3's install folder, the archives of the Creation Engine games), and
+            // those files are the game's own, which the baseline has to know about.
+            IsIgnored = path => synchronizer.GamePathFilter.ShouldFilter(path),
             GameId = installation.Game.NexusModsGameId.HasValue ? installation.Game.NexusModsGameId.Value : NexusModsGameId.DefaultValue,
             OperatingSystem = OperatingSystemOf(locator),
         };
@@ -130,6 +133,8 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         var locator = installation.LocatorResult;
         var current = locator.LocatorIds.Select(id => id.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (!current.SetEquals(baseline.LocatorIds)) return true;
+        // A build that classified nothing is never a finished one; one recorded before that was refused is replaced.
+        if (baseline.FilesIds.Count == 0 && !NonVanillaFile.FindByBaseline(baseline.Db, baseline.Id).Any()) return true;
         if (baseline.Kind == LocalBaselineKind.DepotManifests) return false;
         if (_manifestSource is null || locator.Store != GameStore.Steam || locator.StoreRoot is not { } storeRoot) return false;
 

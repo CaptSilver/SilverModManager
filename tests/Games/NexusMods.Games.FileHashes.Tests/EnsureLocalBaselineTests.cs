@@ -308,16 +308,46 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     {
         WriteGameFile("a.esm", "vanilla");
         WriteGameFile("saves/slot1.sav", "player data");
-        WriteGameFile("backup.bak", "backup");
         _source.Add(101, ("a.esm", "vanilla"));
-        var installation = Make(["101"],
-            filter: p => p.Path.ToString().StartsWith("saves", StringComparison.Ordinal),
-            ignoredBackup: p => p.Path.ToString() == "backup.bak");
+        var installation = Make(["101"], filter: p => p.Path.ToString().StartsWith("saves", StringComparison.Ordinal));
 
         var result = await _coordinator.Ensure(installation);
 
         result.NonVanillaCount.Should().Be(0);
         NonVanillaFile.All(_store.Db).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task PathsExcludedOnlyFromBackups_AreStillClassified()
+    {
+        // A game that keeps its install out of backups (or only its archives) still ships those files.
+        WriteGameFile("a.esm", "vanilla");
+        WriteGameFile("Data/big.bsa", "archive");
+        WriteGameFile("mod.esp", "mod");
+        _source.Add(101, ("a.esm", "vanilla"), ("Data/big.bsa", "archive"));
+        var installation = Make(["101"], ignoredBackup: _ => true);
+
+        var result = await _coordinator.Ensure(installation);
+
+        result.NonVanillaCount.Should().Be(1);
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        baseline.Files.Select(f => f.Path.ToString()).Should().BeEquivalentTo(["a.esm", "Data/big.bsa"]);
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.Path.ToString().Should().Be("mod.esp");
+    }
+
+    [Fact]
+    public async Task BaselineThatClassifiedNothing_IsRebuilt()
+    {
+        _source.Add(101, ("a.esm", "vanilla"));
+        var installation = Installation("101");
+        (await _coordinator.Ensure(installation)).Kind.Should().Be(LocalBaselineKind.DepotManifests);
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Should().BeEmpty();
+        WriteGameFile("a.esm", "vanilla");
+
+        var second = await _coordinator.Ensure(installation);
+
+        second.Rebuilt.Should().BeTrue("an empty classification is never a finished baseline");
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Should().ContainSingle();
     }
 
     private GameInstallation Installation(params string[] locatorIds) => Make(locatorIds);
