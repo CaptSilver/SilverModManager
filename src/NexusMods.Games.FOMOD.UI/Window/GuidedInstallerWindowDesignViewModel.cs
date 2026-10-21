@@ -9,6 +9,8 @@ public class GuidedInstallerWindowDesignViewModel : AViewModel<IGuidedInstallerW
 {
     public string WindowName { get; set; } = "Test FOMOD Installer";
 
+    public string? Notice { get; set; }
+
     public IGuidedInstallerStepViewModel? ActiveStepViewModel { get; set; }
 
     public ReactiveCommand<Unit, Unit> CloseCommand => Initializers.EnabledReactiveCommand;

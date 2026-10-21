@@ -23,6 +23,8 @@ public class GuidedInstallerStepViewModel : AViewModel<IGuidedInstallerStepViewM
 {
     [Reactive] public string ModName { get; set; } = string.Empty;
 
+    [Reactive] public string? Notice { get; set; }
+
     [Reactive] public bool ShowInstallationCompleteScreen { get; private set; }
     [Reactive] public GuidedInstallationStep? InstallationStep { get; set; }
 

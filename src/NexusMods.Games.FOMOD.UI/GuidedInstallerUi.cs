@@ -28,7 +28,11 @@ public sealed class GuidedInstallerUi : IGuidedInstaller
         _compositeDisposable = new CompositeDisposable();
     }
 
-    public void SetupInstaller(string windowName)
+    public bool SupportsUserInteraction => true;
+
+    public void SetupInstaller(string windowName) => SetupInstaller(windowName, notice: null);
+
+    public void SetupInstaller(string windowName, string? notice)
     {
         Debug.Assert(_window is null);
         Debug.Assert(_currentScope is null);
@@ -36,6 +40,7 @@ public sealed class GuidedInstallerUi : IGuidedInstaller
 
         var windowViewModel = _currentScope.ServiceProvider.GetRequiredService<IGuidedInstallerWindowViewModel>();
         windowViewModel.WindowName = windowName;
+        windowViewModel.Notice = notice;
 
         OnUi((windowViewModel, this), tuple =>
         {
@@ -124,6 +129,7 @@ public sealed class GuidedInstallerUi : IGuidedInstaller
 
         var activeStepViewModel = viewModel.ActiveStepViewModel;
         activeStepViewModel.ModName = viewModel.WindowName;
+        activeStepViewModel.Notice = viewModel.Notice;
         activeStepViewModel.InstallationStep = installationStep;
         activeStepViewModel.TaskCompletionSource = tcs;
         activeStepViewModel.Progress = progress;

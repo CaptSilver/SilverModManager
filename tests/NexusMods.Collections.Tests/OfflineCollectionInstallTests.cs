@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.GuidedInstallers;
 using NexusMods.Abstractions.Collections;
 using NexusMods.Abstractions.Collections.Json;
 using NexusMods.Abstractions.Library;
@@ -18,6 +19,7 @@ using NexusMods.Sdk.Hashes;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Library;
+using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.NexusModsApi;
 using Xunit;
 
@@ -29,6 +31,17 @@ namespace NexusMods.Collections.Tests;
 /// </summary>
 public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTest<OfflineCollectionInstallTests>(helper)
 {
+    // Stands in for the guided installer window. Assigned before the base constructor builds the services.
+    private readonly ScriptedGuidedInstallerState _window = new();
+
+    protected override IServiceCollection AddServices(IServiceCollection services)
+    {
+        ConfigOptions.RegisterNullGuidedInstaller = false;
+        return base.AddServices(services)
+            .AddSingleton(_window)
+            .AddTransient<IGuidedInstaller>(_ => _window.Create());
+    }
+
     // A stalled install must fail the test instead of hanging the runner.
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
 
@@ -71,7 +84,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         </config>
         """;
 
-    private static FomodOption[] Choices(string firstStepOption = "Option A") =>
+    private static FomodOption[] Choices(string firstStepOption = "Option A", string secondStepOption = "Option C") =>
     [
         new FomodOption
         {
@@ -81,11 +94,11 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         new FomodOption
         {
             name = "Step 2",
-            groups = [new FomodGroup { name = "Group 1", choices = [new FomodChoice { name = "Option C" }] }],
+            groups = [new FomodGroup { name = "Group 1", choices = [new FomodChoice { name = secondStepOption }] }],
         },
     ];
 
-    private async Task<(AbsolutePath Path, Md5Value Md5)> CreateFomodMod(AbsolutePath folder, int index)
+    private async Task<(AbsolutePath Path, Md5Value Md5)> CreateFomodMod(AbsolutePath folder, int index, bool plain)
     {
         var path = folder.Combine($"mod{index}.zip");
         await using (var stream = path.Create())
@@ -97,8 +110,15 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
                 writer.Write(content);
             }
 
-            Add("fomod/ModuleConfig.xml", string.Format(ModuleConfig, index));
-            foreach (var option in "abc") Add($"mod{index}_{option}.esp", $"mod {index} option {option}");
+            if (plain)
+            {
+                Add($"archive/pc/mod/plain{index}.archive", $"plain mod {index}");
+            }
+            else
+            {
+                Add("fomod/ModuleConfig.xml", string.Format(ModuleConfig, index));
+                foreach (var option in "abc") Add($"mod{index}_{option}.esp", $"mod {index} option {option}");
+            }
         }
 
         await using var read = path.Read();
@@ -106,7 +126,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
     }
 
     private async Task<(NexusModsCollectionLibraryFile.ReadOnly File, CollectionRevisionMetadata.ReadOnly Revision, CollectionDownload.ReadOnly[] Items)> CreateCollection(
-        (FomodOption[] Choices, string Name)[] fomodMods)
+        (FomodOption[]? Choices, string Name)[] fomodMods)
     {
         var folder = TemporaryFileManager.CreateFolder();
         var slug = CollectionSlug.From("offline");
@@ -116,7 +136,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var archives = new List<(AbsolutePath Path, Md5Value Md5)>();
         for (var i = 0; i < fomodMods.Length; i++)
         {
-            var archive = await CreateFomodMod(folder.Path, i);
+            var archive = await CreateFomodMod(folder.Path, i, plain: fomodMods[i].Choices is null);
             archives.Add(archive);
             mods.Add(new Mod
             {
@@ -130,7 +150,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
                     LogicalFilename = $"mod{i}.zip",
                     FileSize = Size.From((ulong)archive.Path.FileInfo.Size),
                 },
-                Choices = new Choices { Type = ChoicesType.fomod, Options = fomodMods[i].Choices },
+                Choices = fomodMods[i].Choices is { } choices ? new Choices { Type = ChoicesType.fomod, Options = choices } : null,
             });
         }
 
@@ -248,6 +268,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         };
         var (file, revision, items) = await CreateCollection(mods);
         var loadout = await CreateLoadout();
+        _window.SupportsUserInteraction = false; // headless: no window to fall back to
 
         var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
         var group = await AwaitJob(job);
@@ -302,6 +323,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         };
         var (file, revision, items) = await CreateCollection(mods);
         var loadout = await CreateLoadout();
+        _window.SupportsUserInteraction = false; // headless: no window to fall back to
 
         var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
         await AwaitJob(job);
@@ -331,5 +353,122 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         last.Total.Should().Be(0);
         last.Installed.Should().Be(0);
         last.IsFinished.Should().BeTrue();
+    }
+
+    private static string[] InstalledFileNames(NexusCollectionLoadoutGroup.ReadOnly group, LoadoutId loadout) => LoadoutItem.FindByLoadout(group.Db, loadout)
+        .OfTypeLoadoutItemWithTargetPath()
+        .OfTypeLoadoutFile()
+        .Select(f => ((GamePath)f.AsLoadoutItemWithTargetPath().TargetPath).FileName.ToString())
+        .Order()
+        .ToArray();
+
+    [Fact]
+    public async Task ValidSavedChoices_InstallWithoutAnyPrompt()
+    {
+        var (file, revision, items) = await CreateCollection([(Choices(), "Good mod 0"), (Choices(), "Good mod 1")]);
+        var loadout = await CreateLoadout();
+
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        await AwaitJob(job);
+
+        job.JobDefinition.FailedItems.Should().BeEmpty();
+        _window.Prompts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SavedChoicesThatDoNotApply_PromptOnceWithTheMatchingOptionsSelected_AndTheAnswerInstalls()
+    {
+        var (file, revision, items) = await CreateCollection([(Choices(), "Good mod 0"), (Choices(secondStepOption: "No such option"), "Mod with stale choices")]);
+        var loadout = await CreateLoadout();
+
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        var group = await AwaitJob(job);
+
+        job.JobDefinition.FailedItems.Should().BeEmpty();
+        var prompt = _window.Prompts.Should().ContainSingle().Which;
+        prompt.Notice.Should().Contain("Mod with stale choices").And.Contain("No such option");
+        prompt.Steps[0].Groups.Single().Options.Single(o => o.Name == "Option A").Type.Should().Be(OptionType.PreSelected);
+        prompt.Steps[0].Groups.Single().Options.Single(o => o.Name == "Option B").Type.Should().Be(OptionType.Available);
+
+        InstalledFileNames(group, loadout).Should().Equal("mod0_a.out.esp", "mod0_c.out.esp", "mod1_a.out.esp");
+    }
+
+    [Fact]
+    public async Task TwoModsNeedingPrompts_ArePromptedOneAfterTheOther_WhileAnotherModFinishes()
+    {
+        var mods = new (FomodOption[]?, string)[]
+        {
+            (Choices(secondStepOption: "No such option"), "Stale mod 0"),
+            (Choices(secondStepOption: "No such option"), "Stale mod 1"),
+            (null, "Plain mod"),
+        };
+        var (file, revision, items) = await CreateCollection(mods);
+        var loadout = await CreateLoadout();
+
+        // Keep the first window open until the plain mod has finished.
+        var release = new TaskCompletionSource();
+        _window.BeforeAnswer = _ => release.Task;
+
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        var running = AwaitJob(job);
+
+        var deadline = DateTime.UtcNow + Timeout;
+        while (job.JobDefinition.Progress.Current.Installed < 1 || _window.Prompts.Length < 1)
+        {
+            DateTime.UtcNow.Should().BeBefore(deadline, "the plain mod should finish while a window is open");
+            await Task.Delay(20);
+        }
+
+        // The other stale mod waits for the window instead of opening a second one.
+        await Task.Delay(300);
+        _window.Prompts.Should().ContainSingle();
+        job.JobDefinition.Progress.Current.Installed.Should().Be(1);
+
+        release.SetResult();
+        await running;
+
+        _window.Prompts.Should().HaveCount(2);
+        _window.MaxConcurrentPrompts.Should().Be(1);
+        job.JobDefinition.FailedItems.Should().BeEmpty();
+        job.JobDefinition.Progress.Current.Installed.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task CancellingThePrompt_SkipsThatModWithTheReason_AndTheCollectionCompletes()
+    {
+        var mods = new[]
+        {
+            (Choices(), "Good mod 0"),
+            (Choices(secondStepOption: "No such option"), "Stale mod"),
+            (Choices(), "Good mod 2"),
+        };
+        var (file, revision, items) = await CreateCollection(mods);
+        var loadout = await CreateLoadout();
+        _window.Cancel = true;
+
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        var group = await AwaitJob(job);
+
+        var failure = job.JobDefinition.FailedItems.Should().ContainSingle().Which;
+        failure.Name.Should().Be("Stale mod");
+        failure.Exception.Should().BeOfType<FomodInstallCancelledException>();
+        failure.Reason.Should().Contain("No such option");
+        InstalledFileNames(group, loadout).Should().Contain(["mod0_a.out.esp", "mod2_a.out.esp"]).And.NotContain("mod1_a.out.esp");
+    }
+
+    [Fact]
+    public async Task AGuidedInstallerWithoutUserInteraction_NeverPrompts_AndFailsTheModWithTheReason()
+    {
+        var (file, revision, items) = await CreateCollection([(Choices(), "Good mod"), (Choices(secondStepOption: "No such option"), "Stale mod")]);
+        var loadout = await CreateLoadout();
+        _window.SupportsUserInteraction = false;
+
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        await AwaitJob(job);
+
+        _window.Prompts.Should().BeEmpty();
+        var failure = job.JobDefinition.FailedItems.Should().ContainSingle().Which;
+        failure.Exception.Should().BeOfType<SavedChoicesDoNotApplyException>();
+        failure.Reason.Should().Contain("No such option");
     }
 }

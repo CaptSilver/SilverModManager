@@ -29,8 +29,14 @@
 
                     <Grid x:Name="BodyStackPanel" RowDefinitions="Auto, *">
                         <Border Grid.Row="0" x:Name="HeadingAndSubHeadingBorder">
-                            <TextBlock x:Name="StepName"
-                                       Theme="{StaticResource BodySMNormalTheme}" />
+                            <StackPanel Spacing="8">
+                                <TextBlock x:Name="NoticeTextBlock"
+                                           Theme="{StaticResource BodySMNormalTheme}"
+                                           TextWrapping="Wrap"
+                                           IsVisible="False" />
+                                <TextBlock x:Name="StepName"
+                                           Theme="{StaticResource BodySMNormalTheme}" />
+                            </StackPanel>
                         </Border>
 
                         <StackPanel Grid.Row="1" x:Name="InstallationCompleteStack" 

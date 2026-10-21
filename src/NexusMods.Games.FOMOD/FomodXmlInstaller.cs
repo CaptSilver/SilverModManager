@@ -6,6 +6,7 @@ using FomodInstaller.Scripting;
 using FomodInstaller.Scripting.XmlScript;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.GuidedInstallers;
 
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts;
@@ -68,6 +69,72 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         return await ExecuteAsync(libraryArchive, loadoutGroup, transaction, loadout, null, cancellationToken);
     }
 
+    /// <summary>
+    /// Only one guided installer window can be open at a time, so the mods of a collection that need one
+    /// take turns.
+    /// </summary>
+    private static readonly SemaphoreSlim InteractiveFallbackGate = new(1, 1);
+
+    /// <summary>
+    /// Installs with the saved <paramref name="options"/>. When they don't fit the FOMOD, the user is asked in
+    /// the guided installer, with the saved choices selected, as long as the registered guided installer
+    /// supports user interaction; otherwise <see cref="SavedChoicesDoNotApplyException"/> is thrown.
+    /// </summary>
+    /// <param name="modName">Name of the mod in the collection, shown to the user.</param>
+    /// <exception cref="FomodInstallCancelledException">The user cancelled the guided installer.</exception>
+    public async ValueTask<InstallerResult> ExecuteWithSavedChoicesAsync(
+        LibraryArchive.ReadOnly libraryArchive,
+        LoadoutItemGroup.New loadoutGroup,
+        ITransaction transaction,
+        Loadout.ReadOnly loadout,
+        FomodOption[] options,
+        string modName,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await ExecuteAsync(libraryArchive, loadoutGroup, transaction, loadout, options, cancellationToken);
+        }
+        catch (SavedChoicesDoNotApplyException savedChoicesFailure)
+        {
+            var guidedInstaller = ServiceProvider.GetRequiredService<IGuidedInstaller>();
+            if (!guidedInstaller.SupportsUserInteraction)
+            {
+                guidedInstaller.Dispose();
+                throw;
+            }
+
+            _logger.LogWarning(savedChoicesFailure, "Saved choices for `{Mod}` don't apply, asking the user", modName);
+            var notice = $"This collection's saved choices for {modName} don't match the mod's installer: {savedChoicesFailure.Details}";
+            var interactive = new InteractiveFallbackGuidedInstaller(guidedInstaller, options, notice);
+
+            // The failed run wrote nothing to the transaction, so the user's answer can go into the same one.
+            try
+            {
+                await InteractiveFallbackGate.WaitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // Nothing has taken ownership of the installer yet.
+                interactive.Dispose();
+                throw;
+            }
+
+            try
+            {
+                return await ExecuteCoreAsync(libraryArchive, loadoutGroup, transaction, loadout, interactive, cancellationToken);
+            }
+            catch (FomodInstallCancelledException)
+            {
+                throw new FomodInstallCancelledException($"Skipped: the interactive installer was cancelled. {notice}");
+            }
+            finally
+            {
+                InteractiveFallbackGate.Release();
+            }
+        }
+    }
+
     public async ValueTask<InstallerResult> ExecuteAsync(
         LibraryArchive.ReadOnly libraryArchive,
         LoadoutItemGroup.New loadoutGroup,
@@ -76,8 +143,27 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         FomodOption[]? options,
         CancellationToken cancellationToken)
     {
+        // Every execution with saved choices answers its steps from its own installer.
+        var guidedInstaller = options is null ? null : new PresetGuidedInstaller(options);
+        return await ExecuteCoreAsync(libraryArchive, loadoutGroup, transaction, loadout, guidedInstaller, cancellationToken);
+    }
+
+    /// <param name="guidedInstaller">
+    /// Answers the steps of this execution only, <c>null</c> to use the installer the delegates were created with.
+    /// </param>
+    private async ValueTask<InstallerResult> ExecuteCoreAsync(
+        LibraryArchive.ReadOnly libraryArchive,
+        LoadoutItemGroup.New loadoutGroup,
+        ITransaction transaction,
+        Loadout.ReadOnly loadout,
+        IGuidedInstaller? guidedInstaller,
+        CancellationToken cancellationToken)
+    {
         if (!libraryArchive.Children.TryGetFirst(x => x.Path.EndsWith(FomodConstants.XmlConfigRelativePath), out var xmlFile))
+        {
+            guidedInstaller?.Dispose();
             return new NotSupported(Reason: "Found no FOMOD data in the archive");
+        }
 
         // `foo/bar/baz/fomod/ModuleConfig.xml` -> `foo/bar/baz`
         // `fomod/ModuleConfig.xml` -> empty string
@@ -106,7 +192,7 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         UiDelegates? presetUiDelegates = null;
         if (_delegates is InstallerDelegates installerDelegates)
         {
-            if (options is not null)
+            if (guidedInstaller is not null)
             {
                 // NOTE(halgari) The support for passing in presets to the installer is utterly broken. So we're going to
                 // something different: we will create a new guided installer that will simply emit the user choices based on the
@@ -115,7 +201,7 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
                 // the installer's shared delegates let installs running at the same time answer each other's steps.
                 presetUiDelegates = new UiDelegates(
                     ServiceProvider.GetRequiredService<ILogger<UiDelegates>>(),
-                    new PresetGuidedInstaller(options),
+                    guidedInstaller,
                     cancellationToken
                 )
                 {
@@ -128,9 +214,9 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
                 installerDelegates.UiDelegates.CurrentFomodArchiveFiles = fomodArchiveFiles;
             }
         }
-        else if (options is not null)
+        else if (guidedInstaller is not null)
         {
-            throw new InvalidOperationException($"Saved FOMOD choices need {nameof(InstallerDelegates)}, got `{_delegates.GetType()}`");
+            throw new InvalidOperationException($"A per-execution guided installer needs {nameof(InstallerDelegates)}, got `{_delegates.GetType()}`");
         }
 
         IList<Instruction> instructions;
@@ -156,6 +242,10 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
                 ExceptionDispatchInfo.Capture(presetUiDelegates.Failure).Throw();
                 throw;
             }
+
+            // Cancelling may end the run without the executor throwing; that must not install what was gathered so far.
+            if (presetUiDelegates?.Failure is FomodInstallCancelledException cancelled)
+                ExceptionDispatchInfo.Capture(cancelled).Throw();
         }
 
         var errors = instructions.Where(instruction => instruction.type == "error").ToArray();

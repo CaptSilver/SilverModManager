@@ -14,10 +14,16 @@ public class NullGuidedInstaller : IGuidedInstaller
     }
 
     /// <inheritdoc />
+    public bool SupportsUserInteraction => false;
+
+    /// <inheritdoc />
     public void SetupInstaller(string name)
     {
         throw new NotSupportedException("Cannot setup the installer, this is a null implementation");
     }
+
+    /// <inheritdoc />
+    public void SetupInstaller(string name, string? notice) => SetupInstaller(name);
 
     /// <inheritdoc />
     public void CleanupInstaller()

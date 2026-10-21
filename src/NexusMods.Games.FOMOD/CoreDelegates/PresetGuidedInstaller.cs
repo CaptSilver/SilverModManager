@@ -28,7 +28,13 @@ public class PresetGuidedInstaller : IGuidedInstaller
     public void Dispose() { }
 
     /// <inheritdoc/>
+    public bool SupportsUserInteraction => false;
+
+    /// <inheritdoc/>
     public void SetupInstaller(string name) { }
+
+    /// <inheritdoc/>
+    public void SetupInstaller(string name, string? notice) { }
 
     /// <inheritdoc/>
     public void CleanupInstaller() { }

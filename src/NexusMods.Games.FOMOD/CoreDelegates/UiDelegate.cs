@@ -206,6 +206,7 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
 
                 if (result.IsCancelInstallation)
                 {
+                    Failure ??= new FomodInstallCancelledException("The FOMOD installation was cancelled");
                     _cancelInstaller();
 
                     // NOTE(erri120): We have to manually call this method.

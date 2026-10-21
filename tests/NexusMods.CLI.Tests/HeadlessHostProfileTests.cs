@@ -144,6 +144,7 @@ public class HeadlessHostProfileTests
 
         using var host = BuildHost(Mode("as-main"));
         host.Services.GetRequiredService<IGuidedInstaller>().Should().BeOfType<NullGuidedInstaller>();
+        host.Services.GetRequiredService<IGuidedInstaller>().SupportsUserInteraction.Should().BeFalse("a headless host has nobody to ask");
         host.Services.GetService<CliServer>().Should().BeNull();
         host.Services.GetService<SyncFile>().Should().NotBeNull();
         host.Services.GetService<ISettingsManager>()!.Get<CliSettings>().Should().NotBeNull();

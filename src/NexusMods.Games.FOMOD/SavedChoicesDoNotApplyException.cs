@@ -23,21 +23,27 @@ public sealed class SavedChoicesDoNotApplyException : Exception
     public string? OptionName { get; }
 
     /// <summary>
+    /// Where the saved choices failed and why, without the lead-in of <see cref="Exception.Message"/>.
+    /// </summary>
+    public string Details { get; }
+
+    /// <summary>
     /// Constructor.
     /// </summary>
     public SavedChoicesDoNotApplyException(string stepName, string? groupName, string? optionName, string reason)
-        : base(CreateMessage(stepName, groupName, optionName, reason))
+        : base($"The saved FOMOD choices don't apply at {CreateDetails(stepName, groupName, optionName, reason)}")
     {
         StepName = stepName;
         GroupName = groupName;
         OptionName = optionName;
+        Details = CreateDetails(stepName, groupName, optionName, reason);
     }
 
-    private static string CreateMessage(string stepName, string? groupName, string? optionName, string reason)
+    private static string CreateDetails(string stepName, string? groupName, string? optionName, string reason)
     {
         var location = $"step `{stepName}`";
         if (groupName is not null) location += $", group `{groupName}`";
         if (optionName is not null) location += $", option `{optionName}`";
-        return $"The saved FOMOD choices don't apply at {location}: {reason}";
+        return $"{location}: {reason}";
     }
 }

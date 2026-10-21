@@ -12,6 +12,8 @@ public class GuidedInstallerWindowViewModel : AViewModel<IGuidedInstallerWindowV
 {
     [Reactive] public string WindowName { get; set; } = string.Empty;
 
+    [Reactive] public string? Notice { get; set; }
+
     [Reactive]
     public IGuidedInstallerStepViewModel? ActiveStepViewModel { get; set; }
 

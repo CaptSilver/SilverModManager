@@ -1,4 +1,5 @@
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using NexusMods.App.UI;
 using NexusMods.Games.FOMOD.UI.Resources;
@@ -15,6 +16,16 @@ public partial class GuidedInstallerStepView : ReactiveUserControl<IGuidedInstal
         this.WhenActivated(disposables =>
         {
             this.OneWayBind(ViewModel, vm => vm.InstallationStep!.Name, view => view.StepName.Text)
+                .DisposeWith(disposables);
+
+            this.WhenAnyValue(view => view.ViewModel)
+                .Select(vm => vm is null ? Observable.Return<string?>(null) : vm.WhenAnyValue(x => x.Notice))
+                .Switch()
+                .SubscribeWithErrorLogging(notice =>
+                {
+                    NoticeTextBlock.Text = notice;
+                    NoticeTextBlock.IsVisible = !string.IsNullOrWhiteSpace(notice);
+                })
                 .DisposeWith(disposables);
 
             this.OneWayBind(ViewModel, vm => vm.Groups, view => view.GroupItemsControl.ItemsSource)
