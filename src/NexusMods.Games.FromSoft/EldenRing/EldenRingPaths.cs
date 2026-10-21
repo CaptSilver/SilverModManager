@@ -32,9 +32,13 @@ public static class EldenRingPaths
     /// <summary>The folder with the game's executable and archives, <c>&lt;install&gt;/Game</c>.</summary>
     public static AbsolutePath GameFolder(GameInstallation installation) => installation.Locations[LocationId.Game].Path / GameSubfolder;
 
+    /// <summary>The folder the game keeps every Steam account's saves in, inside a Proton prefix.</summary>
+    public static AbsolutePath SaveRoot(AbsolutePath prefixPath)
+        => prefixPath / "drive_c/users/steamuser/AppData/Roaming/EldenRing";
+
     /// <summary>The folder the game keeps one Steam account's saves in, inside a Proton prefix.</summary>
     public static AbsolutePath SaveFolder(AbsolutePath prefixPath, ulong steamId64)
-        => prefixPath / "drive_c/users/steamuser/AppData/Roaming/EldenRing" / steamId64.ToString();
+        => SaveRoot(prefixPath) / steamId64.ToString();
 
     /// <summary>
     /// The name of an installation's folder under <see cref="Me3Root"/>: its Steam app id, and the game's own app id

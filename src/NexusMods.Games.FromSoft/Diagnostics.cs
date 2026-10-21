@@ -169,4 +169,27 @@ written to. Without it the app refuses to start the game with mods.
             .AddValue<string>("Finding")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate SaveWrittenByModdedSession = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 9))
+        .WithTitle("A modded session changed the vanilla save")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("{Save} was changed by a modded session")
+        .WithDetails("""
+The game ran with mods and **{Save}**, the save the unmodded game uses, was not the same afterwards.
+
+{Outcome} The bytes the session wrote are in **{Backup}**.
+
+A mod that ignores the modded profile's save file is the usual cause. Steam Cloud may already have uploaded the
+changed file before it was put back; the saves page explains how to clear that.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Save")
+            .AddValue<string>("Backup")
+            .AddValue<string>("Outcome")
+        )
+        .Finish();
 }

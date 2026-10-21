@@ -69,6 +69,7 @@ public class EldenRingToolsAndEmittersTests(ITestOutputHelper helper) : AEldenRi
             typeof(GameFolderArtifactsEmitter),
             typeof(SpawnerEmitter),
             typeof(OverlaySupportEmitter),
+            typeof(SaveWrittenByModdedSessionEmitter),
             typeof(FakeEmitter));
     }
 

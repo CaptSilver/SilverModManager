@@ -4,6 +4,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.FromSoft.Diagnostics;
 using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.EldenRing;
+using NexusMods.Games.FromSoft.Launch;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Platform.Proton.Doctor;
 using NexusMods.Platform.Proton.Launch;
@@ -33,6 +34,7 @@ public static class Services
             .AddSingleton<IEldenRingDiagnosticEmitter, GameFolderArtifactsEmitter>()
             .AddSingleton<IEldenRingDiagnosticEmitter, SpawnerEmitter>()
             .AddSingleton<IEldenRingDiagnosticEmitter, OverlaySupportEmitter>()
+            .AddSingleton<IEldenRingDiagnosticEmitter, SaveWrittenByModdedSessionEmitter>()
             .AddSingleton<Me3VersionProbe>()
             .AddSingleton<IInstallationCheck, EldenRingInstallationCheck>();
 
@@ -40,7 +42,8 @@ public static class Services
         services.AddSingleton<IExecutableLocator, PathExecutableLocator>()
             .AddSingleton<ISandboxProbe, BwrapSandboxProbe>()
             .AddSingleton<IUserIds, LibcUserIds>()
-            .AddSingleton<ILaunchGate, OverlayLaunchGate>();
+            .AddSingleton<ILaunchGate, OverlayLaunchGate>()
+            .AddSingleton<ILaunchGate, VanillaSaveGate>();
 
         // Registrations owned by other folders
 
