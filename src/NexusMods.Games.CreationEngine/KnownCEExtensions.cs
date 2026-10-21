@@ -9,6 +9,9 @@ public static class KnownCEExtensions
     public static readonly Extension ESM = new Extension(".esm");
     public static readonly Extension ESP = new Extension(".esp");
     public static readonly Extension ESL = new Extension(".esl");
+    public static readonly Extension OMWAddon = new Extension(".omwaddon");
+    public static readonly Extension OMWGame = new Extension(".omwgame");
+    public static readonly Extension OMWScripts = new Extension(".omwscripts");
     
     public static readonly Extension[] PluginFiles = [ESM, ESP, ESL];
     

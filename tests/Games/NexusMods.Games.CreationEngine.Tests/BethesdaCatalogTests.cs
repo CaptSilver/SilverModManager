@@ -29,6 +29,7 @@ public class BethesdaCatalogTests
         { typeof(CreationEngine.Oblivion.Oblivion), "oblivion" },
         { typeof(CreationEngine.Fallout3.Fallout3), "fallout3" },
         { typeof(CreationEngine.FalloutNewVegas.FalloutNewVegas), "newvegas" },
+        { typeof(CreationEngine.Morrowind.Morrowind), "morrowind" },
     };
 
     private readonly IGameData[] _games;
