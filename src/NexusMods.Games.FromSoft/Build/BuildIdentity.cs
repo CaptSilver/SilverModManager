@@ -1,4 +1,3 @@
-using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Native;
@@ -28,10 +27,10 @@ public sealed record BuildChange(string Field, string Stamped, string Live);
 internal sealed record BuildField(string Name, Func<BuildIdentity, string> Get);
 
 /// <summary>
-/// Which build of Elden Ring is installed: the executable's file version and Steam's build id. Both are required;
+/// Which build of a FromSoft game is installed: the executable's file version and Steam's build id. Both are required;
 /// an identity with one of them guessed would look like agreement when the build is unknown.
 /// </summary>
-/// <param name="Exe">The file version of <c>Game/eldenring.exe</c>, such as <c>2.7.1.0</c>.</param>
+/// <param name="Exe">The file version of the game's executable, such as <c>2.7.1.0</c>.</param>
 /// <param name="SteamBuildId">The build id in Steam's app manifest.</param>
 public sealed record BuildIdentity(string Exe, string SteamBuildId)
 {
@@ -53,13 +52,16 @@ public sealed record BuildIdentity(string Exe, string SteamBuildId)
     /// </summary>
     public static BuildIdentity Identify(GameInstallation installation)
     {
-        var exe = EldenRingPaths.GameFolder(installation) / EldenRingPaths.GameExecutable;
-        var version = ReadFileVersion(exe);
+        if (installation.Game is not IFromSoftGame game)
+            throw new InvalidOperationException($"{installation.Game.DisplayName} is not a FromSoft game, so its build is not stamped.");
 
-        var manifest = $"appmanifest_{EldenRingPaths.InstallationFolderName(installation.LocatorResult)}.acf";
+        var exe = FromSoftPaths.GameFolder(game.Layout, installation) / game.Layout.GameExecutable;
+        var version = ReadFileVersion(exe, game.Layout.GameExecutable);
+
+        var manifest = $"appmanifest_{FromSoftPaths.InstallationFolderName(game.Layout, installation.LocatorResult)}.acf";
         var buildId = installation.LocatorResult.StoreBuildId;
         if (string.IsNullOrEmpty(buildId) || buildId == "0")
-            throw new InvalidOperationException($"Steam's {manifest} gives no build id for Elden Ring ({(buildId is null ? "none" : $"'{buildId}'")}), so the installed build cannot be identified.");
+            throw new InvalidOperationException($"Steam's {manifest} gives no build id for {game.DisplayName} ({(buildId is null ? "none" : $"'{buildId}'")}), so the installed build cannot be identified.");
 
         return new BuildIdentity(version, buildId);
     }
@@ -96,17 +98,17 @@ public sealed record BuildIdentity(string Exe, string SteamBuildId)
             .ToArray();
     }
 
-    private static string ReadFileVersion(AbsolutePath exe)
+    private static string ReadFileVersion(AbsolutePath exe, string executableName)
     {
         try
         {
             using var stream = exe.Read();
             return PeFileVersion.Read(stream)
-                   ?? throw new InvalidOperationException($"{EldenRingPaths.GameExecutable} carries no version resource, so the installed build cannot be identified.");
+                   ?? throw new InvalidOperationException($"{executableName} carries no version resource, so the installed build cannot be identified.");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            throw new InvalidOperationException($"Could not read {EldenRingPaths.GameExecutable} to identify the installed build: {exception.Message}", exception);
+            throw new InvalidOperationException($"Could not read {executableName} to identify the installed build: {exception.Message}", exception);
         }
     }
 }

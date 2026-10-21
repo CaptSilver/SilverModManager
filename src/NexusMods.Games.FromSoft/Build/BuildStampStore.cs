@@ -5,13 +5,13 @@ using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.Games.FromSoft.Build;
 
-/// <summary>Reads and writes the <see cref="EldenRingBuildStamp"/> of an installation.</summary>
+/// <summary>Reads and writes the <see cref="FromSoftBuildStamp"/> of an installation.</summary>
 public sealed class BuildStampStore(IConnection connection, TimeProvider time)
 {
     /// <summary>The stamped build of the installation, or null when it was never stamped.</summary>
     public BuildIdentity? Find(GameInstallMetadataId installation)
     {
-        var stamp = EldenRingBuildStamp.FindByInstallation(connection.Db, installation).FirstOrDefault();
+        var stamp = FromSoftBuildStamp.FindByInstallation(connection.Db, installation).FirstOrDefault();
         return stamp.IsValid() ? new BuildIdentity(stamp.Exe, stamp.SteamBuildId) : null;
     }
 
@@ -19,10 +19,10 @@ public sealed class BuildStampStore(IConnection connection, TimeProvider time)
     public async Task Record(GameInstallMetadataId installation, BuildIdentity identity)
     {
         using var tx = connection.BeginTransaction();
-        foreach (var old in EldenRingBuildStamp.FindByInstallation(connection.Db, installation))
+        foreach (var old in FromSoftBuildStamp.FindByInstallation(connection.Db, installation))
             tx.Delete(old.Id, recursive: false);
 
-        _ = new EldenRingBuildStamp.New(tx)
+        _ = new FromSoftBuildStamp.New(tx)
         {
             InstallationId = installation,
             Exe = identity.Exe,

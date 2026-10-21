@@ -205,7 +205,7 @@ changed file before it was put back; the saves page explains how to clear that.
         .WithSeverity(DiagnosticSeverity.Warning)
         .WithSummary("The installed build is not the one first launched through the app ({Kind})")
         .WithDetails("""
-Elden Ring's build was recorded the first time it was launched through the app. What is installed now differs:
+{Game}'s build was recorded the first time it was launched through the app. What is installed now differs:
 {Changes}.
 
 An update by Steam moves both. A reinstall or a different depot build under the same game data is reported as
@@ -214,6 +214,7 @@ repackaged. Mods and settings made for the earlier build may not match this one,
 Re-stamp once you have, to take the installed build as the new reference.
 """)
         .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Game")
             .AddValue<string>("Kind")
             .AddValue<string>("Changes")
         )

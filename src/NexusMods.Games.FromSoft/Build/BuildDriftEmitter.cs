@@ -35,6 +35,6 @@ public class BuildDriftEmitter(BuildStampStore stamps) : IFromSoftDiagnosticEmit
         if (kind == BuildChangeKind.Unchanged) yield break;
 
         var moved = string.Join("; ", BuildIdentity.Drift(stamped, live).Select(c => $"{c.Field} {c.Stamped} -> {c.Live}"));
-        yield return FromSoftDiagnostics.CreateBuildChanged(kind.ToString().ToLowerInvariant(), moved) with { Actions = [RestampAction(loadout.LoadoutId)] };
+        yield return FromSoftDiagnostics.CreateBuildChanged(loadout.InstallationInstance.Game.DisplayName, kind.ToString().ToLowerInvariant(), moved) with { Actions = [RestampAction(loadout.LoadoutId)] };
     }
 }

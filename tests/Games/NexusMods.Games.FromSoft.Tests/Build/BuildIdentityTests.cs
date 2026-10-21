@@ -1,7 +1,10 @@
+using System.Collections.Immutable;
 using FluentAssertions;
 using NexusMods.Games.FromSoft.Build;
 using NexusMods.Games.FromSoft.Tests.Fixtures;
+using NexusMods.Paths;
 using NexusMods.Sdk.Games;
+using NSubstitute;
 
 namespace NexusMods.Games.FromSoft.Tests.Build;
 
@@ -116,5 +119,102 @@ public class BuildIdentityIdentifyTests(ITestOutputHelper helper) : AEldenRingTe
         var act = () => BuildIdentity.Identify(withoutBuildId);
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*appmanifest_1245620.acf*");
+    }
+}
+
+public sealed class BuildIdentityOnAnotherLayoutTests : IDisposable
+{
+    private readonly string _root = Directory.CreateTempSubdirectory("build-identity").FullName;
+
+    public void Dispose() => Directory.Delete(_root, recursive: true);
+
+    private GameInstallation TestSoulsInstallation(string? buildId, bool withExecutable = true)
+    {
+        if (withExecutable)
+        {
+            Directory.CreateDirectory(Path.Combine(_root, "Bin"));
+            File.WriteAllBytes(Path.Combine(_root, "Bin", "testsouls.exe"), FakePe.WithVersion(new Version(1, 2, 3, 4)));
+        }
+
+        // NSubstitute does not run default interface members, so Layout is configured beside Definition.
+        var game = Substitute.For<IFromSoftGame>();
+        game.Definition.Returns(TestSoulsDefinition.Definition);
+        game.Layout.Returns(TestSoulsDefinition.Layout);
+        game.DisplayName.Returns("Test Souls");
+
+        var root = FileSystem.Shared.FromUnsanitizedFullPath(_root);
+        var locatorResult = new GameLocatorResult
+        {
+            Game = game,
+            Path = root,
+            Store = GameStore.Steam,
+            StoreIdentifier = "424242",
+            LocatorIds = ImmutableArray<LocatorId>.Empty,
+            Locator = Substitute.For<IGameLocator>(),
+            StoreBuildId = buildId,
+        };
+        var locations = GameLocations.Create(new Dictionary<LocationId, AbsolutePath> { { LocationId.Game, root } }.ToImmutableDictionary());
+        return new GameInstallation(locatorResult, locations);
+    }
+
+    [Fact]
+    public void TheVersionIsReadFromTheLayoutsExecutableInItsSubfolder()
+    {
+        BuildIdentity.Identify(TestSoulsInstallation("777")).Should().Be(new BuildIdentity("1.2.3.4", "777"));
+    }
+
+    [Fact]
+    public void AMissingBuildIdNamesTheLayoutsManifestAndTheGame()
+    {
+        var act = () => BuildIdentity.Identify(TestSoulsInstallation("0"));
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*appmanifest_424242.acf*Test Souls*")
+            .And.Message.Should().NotContain("Elden Ring");
+    }
+
+    [Fact]
+    public void AMissingExecutableNamesTheLayoutsExecutable()
+    {
+        var act = () => BuildIdentity.Identify(TestSoulsInstallation("777", withExecutable: false));
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*testsouls.exe*")
+            .And.Message.Should().NotContain("eldenring.exe");
+    }
+
+    [Fact]
+    public void AGameThatIsNotFromSoftIsRefusedNamingIt()
+    {
+        var game = Substitute.For<IGameData>();
+        game.DisplayName.Returns("Other Game");
+        var installation = TestSoulsInstallation("777");
+        var result = installation.LocatorResult;
+        installation = new GameInstallation(new GameLocatorResult
+        {
+            Game = game,
+            Path = result.Path,
+            Store = result.Store,
+            StoreIdentifier = result.StoreIdentifier,
+            LocatorIds = result.LocatorIds,
+            Locator = result.Locator,
+            StoreBuildId = result.StoreBuildId,
+        }, installation.Locations);
+
+        var act = () => BuildIdentity.Identify(installation);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("Other Game is not a FromSoft game*");
+    }
+}
+
+public class BuildStampModelTests
+{
+    [Fact]
+    public void TheStampKeepsItsPersistedAttributeNamespace()
+    {
+        FromSoftBuildStamp.Exe.Id.Namespace.Should().Be("SilverModManager.FromSoft.BuildStamp");
+        FromSoftBuildStamp.Installation.Id.Namespace.Should().Be("SilverModManager.FromSoft.BuildStamp");
+        FromSoftBuildStamp.SteamBuildId.Id.Namespace.Should().Be("SilverModManager.FromSoft.BuildStamp");
+        FromSoftBuildStamp.RecordedAt.Id.Namespace.Should().Be("SilverModManager.FromSoft.BuildStamp");
     }
 }

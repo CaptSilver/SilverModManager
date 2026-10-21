@@ -192,7 +192,7 @@ public class BuildStampTests(ITestOutputHelper helper) : AModdedEldenRingTest<Bu
 
         await Stamps.Restamp(loadout.LoadoutId);
 
-        EldenRingBuildStamp.All(Connection.Db).Should().ContainSingle();
+        FromSoftBuildStamp.All(Connection.Db).Should().ContainSingle();
     }
 
     public class OtherGameProxy : DispatchProxy

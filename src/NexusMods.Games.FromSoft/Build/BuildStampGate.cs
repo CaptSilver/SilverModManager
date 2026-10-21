@@ -1,5 +1,4 @@
 using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk.Loadouts;
 
@@ -18,7 +17,7 @@ public sealed class BuildStampGate(IConnection connection, BuildStampStore stamp
     /// <inheritdoc/>
     public async Task Prepare(LaunchContext context, CancellationToken cancellationToken)
     {
-        if (context.Installation.Game.GameId != EldenRingGame.GameId) return;
+        if (context.Installation.Game is not IFromSoftGame) return;
 
         var installation = Loadout.Load(connection.Db, context.LoadoutId).InstallationId;
         // Identified first, so an unreadable build fails the launch even when a stamp exists.

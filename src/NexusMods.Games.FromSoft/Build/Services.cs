@@ -8,13 +8,13 @@ namespace NexusMods.Games.FromSoft.Build;
 public static class Services
 {
     /// <summary>
-    /// Registers the build stamp of Elden Ring. The gate is added here, after the gates registered before this
+    /// Registers the build stamp of FromSoft games. The gate is added here, after the gates registered before this
     /// call, so it runs last.
     /// </summary>
-    public static IServiceCollection AddEldenRingBuild(this IServiceCollection services)
+    public static IServiceCollection AddFromSoftBuild(this IServiceCollection services)
     {
         services.TryAddSingleton(TimeProvider.System);
-        return services.AddEldenRingBuildStampModel()
+        return services.AddFromSoftBuildStampModel()
             .AddSingleton<BuildStampStore>()
             .AddSingleton<ILaunchGate, BuildStampGate>()
             .AddSingleton<IFromSoftDiagnosticEmitter, BuildDriftEmitter>();

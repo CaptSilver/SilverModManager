@@ -5,17 +5,17 @@ using NexusMods.Sdk.Games;
 namespace NexusMods.Games.FromSoft.Build;
 
 /// <summary>
-/// The build of Elden Ring an installation had when it was first launched through the app. A later build that
+/// The build of a FromSoft game an installation had when it was first launched through the app. A later build that
 /// differs from it is reported in the Health Check.
 /// </summary>
-public partial class EldenRingBuildStamp : IModelDefinition
+public partial class FromSoftBuildStamp : IModelDefinition
 {
     private const string Namespace = "SilverModManager.FromSoft.BuildStamp";
 
     /// <summary>The installation the stamp is for. There is at most one stamp per installation.</summary>
     public static readonly ReferenceAttribute<GameInstallMetadata> Installation = new(Namespace, nameof(Installation)) { IsIndexed = true };
 
-    /// <summary>The file version of <c>eldenring.exe</c> when stamped.</summary>
+    /// <summary>The file version of the game's executable when stamped.</summary>
     public static readonly StringAttribute Exe = new(Namespace, nameof(Exe));
 
     /// <summary>Steam's build id when stamped.</summary>

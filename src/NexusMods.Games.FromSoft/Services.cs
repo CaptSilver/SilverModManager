@@ -73,7 +73,7 @@ public static class Services
 
         // Registrations owned by other folders
         services.AddEldenRingSaves();
-        services.AddEldenRingBuild();
+        services.AddFromSoftBuild();
 
         return services;
     }
