@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.FromSoft.Cleanup;
 using NexusMods.Games.FromSoft.Diagnostics;
 using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.EldenRing;
@@ -44,6 +45,9 @@ public static class Services
             .AddSingleton<IUserIds, LibcUserIds>()
             .AddSingleton<ILaunchGate, OverlayLaunchGate>()
             .AddSingleton<ILaunchGate, VanillaSaveGate>();
+
+        // Guided cleanup of a game folder another mod manager left
+        services.AddCleanupVerbs();
 
         // Registrations owned by other folders
 

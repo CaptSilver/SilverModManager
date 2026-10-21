@@ -4,6 +4,7 @@ using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Games.FromSoft.Diagnostics;
 using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.Tests.Fixtures;
+using NexusMods.Platform.Proton.Doctor;
 using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.Games.FromSoft.Tests;
@@ -45,7 +46,7 @@ public class EldenRingCheckEmittersTests(ITestOutputHelper helper) : AModdedElde
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
         diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.FromSoft", 6));
         diagnostic.FormatDetails(ServiceProvider.GetRequiredService<IDiagnosticWriter>()).Should().Contain("dinput8.dll");
-        diagnostic.Actions.Should().BeEmpty("there is no cleanup flow to open yet");
+        diagnostic.Actions.Should().Equal(GameCleanupActions.ShowSteps());
     }
 
     [Fact]
@@ -55,7 +56,10 @@ public class EldenRingCheckEmittersTests(ITestOutputHelper helper) : AModdedElde
         File.Delete((RealGameFolder / "start_protected_game.exe").GetFullPath());
         WriteInGameFolder("dinput8.dll");
 
-        (await Diagnose<GameFolderArtifactsEmitter>(loadout)).Should().ContainSingle().Which.Severity.Should().Be(DiagnosticSeverity.Warning);
+        var diagnostic = (await Diagnose<GameFolderArtifactsEmitter>(loadout)).Should().ContainSingle().Subject;
+
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostic.Actions.Should().Equal(GameCleanupActions.ShowSteps());
     }
 
     [Fact]

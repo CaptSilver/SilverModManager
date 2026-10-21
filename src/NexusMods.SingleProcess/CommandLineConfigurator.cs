@@ -173,6 +173,9 @@ public class CommandLineConfigurator
 
         ParseArgument<T> parser = result =>
         {
+            // A flag given without a value, such as --write, is true. Only an explicit --write false is parsed.
+            if (typeof(T) == typeof(bool) && result.Tokens.Count == 0) return (T)(object)true;
+
             var service = _provider.GetService<IOptionParser<T>>();
             if (service is null) return default!;
             if (service.TryParse(result.Tokens.Single().Value, out var itm, out var error)) return itm;

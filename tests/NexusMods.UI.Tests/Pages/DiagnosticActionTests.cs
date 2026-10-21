@@ -16,6 +16,7 @@ using NexusMods.App.UI.Pages.Diagnostics;
 using NexusMods.App.UI.Pages.SteamLaunchOption;
 using NexusMods.App.UI.Windows;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Platform.Proton.Doctor;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using NSubstitute;
@@ -291,5 +292,35 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
     private sealed class OverlayProvider(IServiceProvider inner, IOverlayController overlays) : IServiceProvider
     {
         public object? GetService(Type serviceType) => serviceType == typeof(IOverlayController) ? overlays : inner.GetService(serviceType);
+    }
+
+    [Fact]
+    public async Task Test_ShowCleanupStepsOpensADialogWithTheGuidesStepsAndRunsNothing()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Cleanup");
+        var guide = Substitute.For<IGameCleanupGuide>();
+        guide.AppliesTo(Arg.Any<GameInstallation>()).Returns(true);
+        guide.Describe(Arg.Any<Loadout.ReadOnly>()).Returns(["1. Move a over b"]);
+        var windows = Answering(ButtonDefinitionId.Accept);
+        var handler = new ShowCleanupStepsActionHandler(new ServicesWith(Provider, (typeof(IEnumerable<IGameCleanupGuide>), new[] { guide })), windows);
+
+        handler.ActionId.Should().Be(GameCleanupActions.ShowStepsId);
+        await handler.ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await windows.Received(1).ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
+        guide.Received(1).Describe(Arg.Any<Loadout.ReadOnly>());
+    }
+
+    [Fact]
+    public async Task Test_ShowCleanupStepsFailsLoudlyForAGameWithoutAGuide()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Cleanup");
+        var windows = Answering(ButtonDefinitionId.Accept);
+        var handler = new ShowCleanupStepsActionHandler(new ServicesWith(Provider, (typeof(IEnumerable<IGameCleanupGuide>), Array.Empty<IGameCleanupGuide>())), windows);
+
+        var act = () => handler.ExecuteAsync(seeded.LoadoutId, []);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*no cleanup steps*");
+        await windows.DidNotReceive().ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
     }
 }

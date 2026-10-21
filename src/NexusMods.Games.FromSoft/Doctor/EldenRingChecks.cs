@@ -31,7 +31,7 @@ public static class EldenRingChecks
     private static readonly string[] Spawners = ["ermerchant.dll", "erdtools.dll", "glorious_merchant.dll"];
 
     private const string SeamlessCoopLauncher = "ersc_launcher.exe";
-    private const string OldLauncherBackup = EldenRingPaths.AntiCheatLauncher + ".erm-backup";
+    internal const string OldLauncherBackup = EldenRingPaths.AntiCheatLauncher + ".erm-backup";
 
     /// <summary>The artifacts, spawner and anti-cheat checks of one <c>Game</c> folder.</summary>
     public static IReadOnlyList<CheckResult> GameFolder(AbsolutePath gameFolder)

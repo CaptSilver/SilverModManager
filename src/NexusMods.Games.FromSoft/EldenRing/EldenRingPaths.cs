@@ -59,6 +59,10 @@ public static class EldenRingPaths
     public static AbsolutePath Me3Host(FromSoftSettings settings, IFileSystem fileSystem, string storeIdentifier)
         => Me3Root(settings, fileSystem) / storeIdentifier / "me3";
 
+    /// <summary>The folder one installation's cleanup records live in, such as the links it removed from the game folder.</summary>
+    public static AbsolutePath CleanupFolder(FromSoftSettings settings, IFileSystem fileSystem, string storeIdentifier)
+        => Me3Root(settings, fileSystem) / storeIdentifier / "cleanup";
+
     /// <summary>
     /// Whether the path is inside the <c>Game</c> folder, which the app never writes to. Compared without regard
     /// to case, as Windows would.

@@ -2,6 +2,7 @@ using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Games.FromSoft.EldenRing;
+using NexusMods.Platform.Proton.Doctor;
 
 namespace NexusMods.Games.FromSoft.Doctor;
 
@@ -10,8 +11,7 @@ namespace NexusMods.Games.FromSoft.Doctor;
 /// still carries an old launcher swap, a Warning when the launcher that would start them is gone.
 /// </summary>
 /// <remarks>
-/// There is no fix action yet: the guided cleanup of an old mod-manager install does not exist, and an action that
-/// opened nothing would be a button that does nothing.
+/// Both findings carry "Show cleanup steps", which opens the steps of the guided cleanup.
 /// </remarks>
 public class GameFolderArtifactsEmitter : AEldenRingCheckEmitter
 {
@@ -25,8 +25,8 @@ public class GameFolderArtifactsEmitter : AEldenRingCheckEmitter
 
         return artifacts.Level switch
         {
-            CheckLevel.Fail => [FromSoftDiagnostics.CreateGameFolderArtifacts(artifacts.Message)],
-            CheckLevel.Warn => [FromSoftDiagnostics.CreateGameFolderArtifacts(artifacts.Message) with { Severity = DiagnosticSeverity.Warning }],
+            CheckLevel.Fail => [FromSoftDiagnostics.CreateGameFolderArtifacts(artifacts.Message) with { Actions = [GameCleanupActions.ShowSteps()] }],
+            CheckLevel.Warn => [FromSoftDiagnostics.CreateGameFolderArtifacts(artifacts.Message) with { Severity = DiagnosticSeverity.Warning, Actions = [GameCleanupActions.ShowSteps()] }],
             _ => [],
         };
     }

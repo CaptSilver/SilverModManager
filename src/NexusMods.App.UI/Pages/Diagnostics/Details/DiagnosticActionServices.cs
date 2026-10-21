@@ -12,6 +12,7 @@ public static class DiagnosticActionServices
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, UseLoadoutFromSteamActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, RestoreFolderFromBackupActionHandler>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, ShowCleanupStepsActionHandler>());
         return services;
     }
 }
