@@ -31,7 +31,7 @@ changes made by you or a game store (such as GOG Galaxy, Steam, etc.) may render
     [UsedImplicitly] 
     internal static IDiagnosticTemplate UndeployableLoadoutDueToMissingGameFiles = DiagnosticTemplateBuilder
         .Start()
-        .WithId(new DiagnosticId(Source, number: 1))
+        .WithId(new DiagnosticId(Source, number: 2))
         .WithTitle("Missing Game Files")
         .WithSeverity(DiagnosticSeverity.Critical)
         .WithSummary("Loadout can't be applied due to {FileCount} missing game file(s) with no valid source")
@@ -60,6 +60,28 @@ The files with issues:
             .AddValue<string>("Game")
             .AddValue<string>("Store")
             .AddValue<string>("Version")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate NonVanillaGameFiles = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 3))
+        .WithTitle("Game files differ from the store's build")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("{FileCount} file(s) in the {Game} folder are not the files {Store} installed")
+        .WithDetails("""
+{FileCount} file(s) in the {Game} folder do not match the build {Store} installed. They are most likely mods or edits that were already there before this app managed the game. If the loadout is deployed with links, these are the files that get backed up before deployment.
+
+{Files}
+
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Game")
+            .AddValue<string>("Store")
+            .AddValue<int>("FileCount")
+            .AddValue<string>("Files")
         )
         .Finish();
 }

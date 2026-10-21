@@ -27,11 +27,14 @@ internal sealed class DiagnosticManager : IDiagnosticManager
     private bool _isDisposed;
     private readonly CompositeDisposable _compositeDisposable = new();
     private readonly IConnection _connection;
+    private readonly IDiagnosticEmitter[] _sharedEmitters;
 
-    public DiagnosticManager(ILogger<DiagnosticManager> logger, IConnection connection)
+    /// <param name="sharedEmitters">Emitters registered in the service collection; they run for every game, next to the game's own.</param>
+    public DiagnosticManager(ILogger<DiagnosticManager> logger, IConnection connection, IEnumerable<IDiagnosticEmitter> sharedEmitters)
     {
         _logger = logger;
         _connection = connection;
+        _sharedEmitters = sharedEmitters.ToArray();
     }
 
     public IObservable<Diagnostic[]> GetLoadoutDiagnostics(LoadoutId loadoutId)
@@ -78,7 +81,7 @@ internal sealed class DiagnosticManager : IDiagnosticManager
 
     private async Task<Diagnostic[]> GetLoadoutDiagnostics(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
-        var diagnosticEmitters = loadout.InstallationInstance.GetGame().DiagnosticEmitters;
+        var diagnosticEmitters = loadout.InstallationInstance.GetGame().DiagnosticEmitters.Concat(_sharedEmitters);
         
         var db = _connection.Db;
         var synchronizer = loadout.InstallationInstance.GetGame().Synchronizer;

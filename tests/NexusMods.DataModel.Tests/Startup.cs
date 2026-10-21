@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
@@ -34,6 +36,8 @@ public static class Startup
         var prefix = FileSystem.Shared
             .GetKnownPath(baseKnownPath)
             .Combine(baseDirectory);
+
+        container.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, RecordingLoadoutEmitter>());
 
         return container
             .AddGameServices()
