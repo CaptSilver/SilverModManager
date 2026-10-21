@@ -72,13 +72,15 @@ public class EldenRingToolsAndEmittersTests(ITestOutputHelper helper) : AEldenRi
             typeof(UndeployableLoadoutDueToMissingGameFiles),
             typeof(ProtonPrefixEmitter),
             typeof(PackageCollisionEmitter),
+            typeof(Me3HostMissingEmitter),
             typeof(FakeEmitter));
     }
 
     [Fact]
-    public void TheInstallersAreTriedInTheOrderSeamlessCoopThenPackageThenNative()
+    public void TheInstallersAreTriedInTheOrderHostThenSeamlessCoopThenPackageThenNative()
     {
         Game.LibraryItemInstallers.Select(i => i.GetType()).Should().Equal(
+            typeof(Me3HostInstaller),
             typeof(SeamlessCoopInstaller),
             typeof(Me3PackageInstaller),
             typeof(Me3NativeInstaller));

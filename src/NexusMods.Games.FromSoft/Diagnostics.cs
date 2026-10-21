@@ -49,4 +49,23 @@ all but one of them.
             .AddValue<string>("Path")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate Me3HostMissing = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 3))
+        .WithTitle("me3 is not installed")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("me3 is not installed for this loadout")
+        .WithDetails("""
+This loadout has mods, and mods are loaded into Elden Ring by me3, but the loadout has no me3 files.
+
+Add the me3 Linux release (**{Release}** from the me3 releases on GitHub) to the library and install it into this
+loadout. The Windows zip does not work here.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Release")
+        )
+        .Finish();
 }

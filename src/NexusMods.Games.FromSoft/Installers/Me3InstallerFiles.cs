@@ -29,12 +29,16 @@ internal static class Me3InstallerFiles
 
     /// <summary>Adds <paramref name="file"/> to the group, to be deployed at <paramref name="pathInMods"/> inside the mods folder.</summary>
     public static void AddFile(ITransaction tx, Loadout.ReadOnly loadout, LoadoutItemGroup.New group, ArchiveFile file, string pathInMods, string name)
+        => AddFile(tx, loadout, group, file, LocationId.Me3Mods, pathInMods, name);
+
+    /// <summary>Adds <paramref name="file"/> to the group, to be deployed at <paramref name="path"/> inside <paramref name="location"/>.</summary>
+    public static void AddFile(ITransaction tx, Loadout.ReadOnly loadout, LoadoutItemGroup.New group, ArchiveFile file, LocationId location, string path, string name)
     {
         _ = new LoadoutFile.New(tx, out var id)
         {
             LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, id)
             {
-                TargetPath = (loadout.Id, LocationId.Me3Mods, (RelativePath)pathInMods),
+                TargetPath = (loadout.Id, location, (RelativePath)path),
                 LoadoutItem = new LoadoutItem.New(tx, id)
                 {
                     Name = name,

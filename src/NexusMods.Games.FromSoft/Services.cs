@@ -22,7 +22,9 @@ public static class Services
 
         // Emitters
         services.AddSingleton<PackageCollisionEmitter>()
-            .AddSingleton<IEldenRingDiagnosticEmitter>(provider => provider.GetRequiredService<PackageCollisionEmitter>());
+            .AddSingleton<IEldenRingDiagnosticEmitter>(provider => provider.GetRequiredService<PackageCollisionEmitter>())
+            .AddSingleton<Me3HostMissingEmitter>()
+            .AddSingleton<IEldenRingDiagnosticEmitter>(provider => provider.GetRequiredService<Me3HostMissingEmitter>());
 
         // Launch gates, in run order
 
