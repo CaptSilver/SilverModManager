@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
@@ -46,7 +47,7 @@ public class GameFileStreamSource : IReadOnlyStreamSource
         {
             var metadata = GameInstallMetadata.Load(_conn.Db, option.Game);
             if (!metadata.IsValid()) continue;
-            if (!_gameRegistry.TryGetGameInstallation(metadata.LastSyncedLoadout, out var installation)) continue;
+            if (!TryGetInstallation(metadata, out var installation)) continue;
 
             var resolvedPath = installation.Locations.ToAbsolutePath(new GamePath(option.Location, option.Path));
             if (!resolvedPath.FileExists) continue;
@@ -65,6 +66,23 @@ public class GameFileStreamSource : IReadOnlyStreamSource
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Finds the installation by its metadata row. Going through the last synced loadout would fail for a
+    /// game that has not been synchronized yet, and the first synchronize is when plugins are read.
+    /// </summary>
+    private bool TryGetInstallation(GameInstallMetadata.ReadOnly metadata, [NotNullWhen(true)] out GameInstallation? installation)
+    {
+        foreach (var candidate in _gameRegistry.LocateGameInstallations())
+        {
+            if (!_gameRegistry.TryGetMetadata(candidate, out var candidateMetadata) || candidateMetadata.Id != metadata.Id) continue;
+            installation = candidate;
+            return true;
+        }
+
+        installation = null;
+        return false;
     }
 
     public SourcePriority Priority => SourcePriority.Local;

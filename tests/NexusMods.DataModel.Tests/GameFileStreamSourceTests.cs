@@ -52,6 +52,22 @@ public class GameFileStreamSourceTests(ITestOutputHelper helper) : AStubbedGameI
     }
 
     [Fact]
+    public async Task ResolvesAGameFileOfAnInstallationThatHasNeverBeenSynchronized()
+    {
+        // The first synchronize of a game writes its intrinsic files, and Plugins.txt reads the game's plugins
+        // for it, before anything records a last synced loadout.
+        await GenerateGameFiles();
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
+        metadata.Contains(GameInstallMetadata.LastSyncedLoadout).Should().BeFalse();
+        await Synchronizer.ReindexState(GameInstallation);
+
+        var source = new GameFileStreamSource(Connection, ServiceProvider);
+
+        source.Resolve(Encoding.UTF8.GetBytes(Content).xxHash3()).Should().Be(GameInstallation.Locations.ToAbsolutePath(FilePath));
+    }
+
+    [Fact]
     public async Task DoesNotResolveTheRecordedHashOfAFileTheGameStoreHasSinceReplaced()
     {
         // The loadout's game layer names the build it was created for. When the store later patches a file,
