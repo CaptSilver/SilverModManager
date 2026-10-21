@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x12B7FFD6764DDF51
-   - Total attributes: 266
-   - Total namespaces: 80
+   - Fingerprint: 0xDE7954B02AF7C3C0
+   - Total attributes: 263
+   - Total namespaces: 79
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -268,9 +268,6 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Resources.PersistedResource/Data                                         | Blob                    | False   | False | False     | 
 | SilverModManager.Resources.PersistedResource/ExpiresAt                                    | Int64                   | False   | False | False     | 
 | SilverModManager.Resources.PersistedResource/ResourceIdentifierHash                       | UInt64                  | False   | False | False     | 
-| SilverModManager.StandardGameLocators.ManuallyAddedGame/GameId                            | UInt32                  | True    | False | False     | 
-| SilverModManager.StandardGameLocators.ManuallyAddedGame/Path                              | Utf8                    | True    | False | False     | 
-| SilverModManager.StandardGameLocators.ManuallyAddedGame/Version                           | Utf8                    | False   | False | False     | 
 | SilverModManager.StardewValley.SMAPILoadoutItem/ModDatabase                               | Reference               | False   | False | False     | 
 | SilverModManager.StardewValley.SMAPILoadoutItem/Version                                   | Utf8                    | False   | False | False     | 
 | SilverModManager.StardewValley.SMAPIManifestLoadoutFile/ManifestFile                      | Null                    | True    | False | False     | 

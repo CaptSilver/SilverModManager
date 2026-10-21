@@ -161,12 +161,25 @@ public class PrefixResolverTests
     }
 
     [Fact]
-    public void ManuallyAddedGame_FailsSayingManualGamesCarryNoPrefix()
+    public void ManuallyAddedWindowsGameWithNoRecordedPrefix_FailsSayingHowToAddOne()
     {
         var resolution = Resolver.Resolve(Installation(store: GameStore.ManuallyAdded));
 
         resolution.IsFailed.Should().BeTrue();
-        resolution.Diagnostic.Should().Contain("manually added");
+        resolution.Diagnostic.Should().Contain("Test Game").And.Contain("no Wine prefix is recorded").And.Contain("installs.yaml");
+    }
+
+    [Fact]
+    public void ManuallyAddedGameWithARecordedPlainWineLayer_ResolvesToIt()
+    {
+        MakeReady(_winePrefix);
+        var installation = Installation(store: GameStore.ManuallyAdded, winePrefixPath: _winePrefix,
+            compatibility: new CompatibilityLayer(CompatibilityLayerKind.PlainWine, _winePrefix));
+
+        var resolution = Resolver.Resolve(installation);
+
+        resolution.IsResolved.Should().BeTrue();
+        resolution.Prefix.Should().Be(new ResolvedPrefix(_winePrefix, CompatibilityLayerKind.PlainWine));
     }
 
     [Fact]

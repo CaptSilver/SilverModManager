@@ -32,7 +32,9 @@ public partial class HostOsCheckGuardTests
         ("src/NexusMods.Backend/Games/Locators/SteamLocator.cs", "Platform = isWindowsBuild ? OSPlatform.Windows : OSPlatform.Linux,", "Proton runs the Windows build of the game, a native install without a prefix is Linux"),
         ("src/NexusMods.Sdk/Games/Locators/GameLocatorResult.cs", "public OSPlatform Platform { get; init; } = OSPlatform.Linux;", "target OS of the located game, native Linux unless a locator says otherwise"),
         ("src/NexusMods.Backend/Games/Locators/HeroicGOGLocator.cs", "if (game.Platform != OSPlatform.Windows || game.WineData is not { } wineData) return null;", "only Heroic's Windows builds run in a Wine or Proton prefix"),
-        ("src/NexusMods.Platform.Proton/PrefixResolver.cs", "return result.Platform == OSPlatform.Windows", "a native Linux build of the game has no prefix"),
+        ("src/NexusMods.Platform.Proton/PrefixResolver.cs", "if (result.Platform != OSPlatform.Windows)", "a native Linux build of the game has no prefix"),
+        ("src/NexusMods.Sdk/Games/UserGames/IUserGameInstallStore.cs", "public sealed record UserGameInstall(GameId Game, string Path, OSPlatform Platform, string? Prefix = null, string? Wine = null);", "which build of the game the user recorded in the folder"),
+        ("src/NexusMods.Backend/Games/UserGames/YamlUserGameInstallStore.cs", "private static readonly (string Name, OSPlatform Platform)[] Platforms = [(\"windows\", OSPlatform.Windows), (\"linux\", OSPlatform.Linux)];", "maps installs.yaml's names for the recorded game build"),
         ("src/NexusMods.Abstractions.Games/RunGameTool.cs", "return locatorResult.TargetOS.IsWindows || locatorResult.Compatibility is not null;", "a launcher or loader of the Windows build runs in the game's prefix"),
 
         // Target OS of the located game: Proton runs the Windows build, native installs are Linux.

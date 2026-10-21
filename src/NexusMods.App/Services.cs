@@ -164,6 +164,7 @@ public static class Services
             .AddRuntimeDependencies()
             .AddGames()
             .AddGameServices()
+            .AddYamlUserGameInstallStore()
             .AddGenericGameSupport()
             .AddLoadoutAbstractions()
             .AddFomod()

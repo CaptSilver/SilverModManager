@@ -31,15 +31,13 @@ public class GameLocatorRegistrationTests
     }
 
     [Fact]
-    public void AddGameServices_RegistersTheManuallyAddedLocator()
+    public void AddGameServices_RegistersTheUserInstallLocatorAndNoManuallyAddedLocator()
     {
         var services = new ServiceCollection().AddGameServices();
 
-#pragma warning disable CS0618 // ManuallyAddedLocator is obsolete but still the registered locator
         services
             .Where(descriptor => descriptor.ServiceType == typeof(IGameLocator))
             .Select(descriptor => descriptor.ImplementationType)
-            .Should().Equal(typeof(ManuallyAddedLocator));
-#pragma warning restore CS0618
+            .Should().Equal(typeof(UserInstallLocator));
     }
 }

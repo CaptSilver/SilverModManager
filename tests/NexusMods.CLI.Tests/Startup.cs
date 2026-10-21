@@ -56,6 +56,7 @@ public class Startup
                 .AddSerializationAbstractions()
                 .AddGames()
                 .AddGameServices()
+                .AddInMemoryUserGameInstallStore()
                 .AddOSInterop()
                 .AddRuntimeDependencies()
                 .RemoveRuntimeDependencyChecker()

@@ -7,6 +7,7 @@ using NexusMods.Backend.FileExtractor.Extractors;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Backend.Games;
 using NexusMods.Backend.Games.Locators;
+using NexusMods.Backend.Games.UserGames;
 using NexusMods.Backend.Jobs;
 using NexusMods.Backend.OS;
 using NexusMods.Backend.Process;
@@ -53,9 +54,15 @@ public static class ServiceExtensions
             .AddSingleton<IGameRegistry, GameRegistry>()
             .AddSingleton<IGameArtSource, SteamLibraryCacheArtSource>()
             .AddGameInstallMetadataModel()
-            .AddSingleton<IGameLocator, ManuallyAddedLocator>()
-            .AddManuallyAddedGameModel();
+            .AddSingleton<IGameLocator, UserInstallLocator>();
     }
+
+    /// <summary>
+    /// Keeps the user's recorded game installs in <c>installs.yaml</c>. Only the app host registers this;
+    /// test hosts register an in-memory store so they don't share the file.
+    /// </summary>
+    public static IServiceCollection AddYamlUserGameInstallStore(this IServiceCollection serviceCollection)
+        => serviceCollection.AddSingleton<IUserGameInstallStore, YamlUserGameInstallStore>();
 
     public static IServiceCollection AddOSInterop(this IServiceCollection serviceCollection, IOSInformation? os = null)
     {

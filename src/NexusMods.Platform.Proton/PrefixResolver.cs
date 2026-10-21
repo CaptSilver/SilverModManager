@@ -17,9 +17,6 @@ public sealed class PrefixResolver : IPrefixResolver
         var result = installation.LocatorResult;
         var gameName = installation.Game.DisplayName;
 
-        if (result.Store == GameStore.ManuallyAdded)
-            return PrefixResolution.Failed($"{gameName} was manually added, and manually added games carry no Wine prefix yet.");
-
         var steam = SteamCandidate(result);
         var other = result.Compatibility is { Kind: not CompatibilityLayerKind.SteamProton } layer ? layer : null;
 
@@ -33,9 +30,12 @@ public sealed class PrefixResolver : IPrefixResolver
         var chosen = steam ?? other;
         if (chosen is null)
         {
-            return result.Platform == OSPlatform.Windows
-                ? PrefixResolution.Failed($"{gameName} runs as a Windows build but no Wine prefix was found for it.")
-                : PrefixResolution.Native($"{gameName} is a native Linux build and has no Wine prefix.");
+            if (result.Platform != OSPlatform.Windows)
+                return PrefixResolution.Native($"{gameName} is a native Linux build and has no Wine prefix.");
+
+            return result.Store == GameStore.ManuallyAdded
+                ? PrefixResolution.Failed($"{gameName} was added by path as a Windows build, but no Wine prefix is recorded for it. Add a 'prefix' to its entry in installs.yaml.")
+                : PrefixResolution.Failed($"{gameName} runs as a Windows build but no Wine prefix was found for it.");
         }
 
         if (!ProtonPrefix.IsReady(chosen.Prefix))

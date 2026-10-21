@@ -75,6 +75,7 @@ public static class DependencyInjectionHelper
             .AddRuntimeDependencies()
             .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
+            .AddInMemoryUserGameInstallStore()
             .AddFakeProcessTracker()
             .AddFakeGameLaunchSession()
             .AddFakeToolRunner()
