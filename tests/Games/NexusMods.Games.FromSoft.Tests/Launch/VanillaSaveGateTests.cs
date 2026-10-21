@@ -57,7 +57,7 @@ public class VanillaSaveGateTests(ITestOutputHelper helper) : AModdedEldenRingTe
 
     private async Task<Diagnostic[]> Diagnose(Loadout.ReadOnly loadout)
     {
-        var emitter = ServiceProvider.GetServices<IEldenRingDiagnosticEmitter>().OfType<SaveWrittenByModdedSessionEmitter>().Single();
+        var emitter = ServiceProvider.GetServices<IFromSoftDiagnosticEmitter>().OfType<SaveWrittenByModdedSessionEmitter>().Single();
         var found = new List<Diagnostic>();
         await foreach (var diagnostic in emitter.Diagnose(loadout, FrozenDictionary<GamePath, SyncNode>.Empty, CancellationToken.None))
             found.Add(diagnostic);

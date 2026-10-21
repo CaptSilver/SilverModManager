@@ -4,8 +4,8 @@ using NexusMods.Sdk.Games;
 namespace NexusMods.Games.FromSoft.EldenRing;
 
 /// <summary>
-/// The path rules for Elden Ring, as pure functions. Everything that needs to know where the game's folder, its
-/// saves or the app's own files are asks here, so nobody else spells the names.
+/// Elden Ring's path constants, and its <see cref="FromSoftPaths"/> rules with its layout filled in. The rules
+/// themselves live in <see cref="FromSoftPaths"/>; this is the facade for code that only ever deals with Elden Ring.
 /// </summary>
 public static class EldenRingPaths
 {
@@ -30,41 +30,40 @@ public static class EldenRingPaths
     public const string ModdedSave = "ER0000_silver.sl2";
 
     /// <summary>The folder with the game's executable and archives, <c>&lt;install&gt;/Game</c>.</summary>
-    public static AbsolutePath GameFolder(GameInstallation installation) => installation.Locations[LocationId.Game].Path / GameSubfolder;
+    public static AbsolutePath GameFolder(GameInstallation installation) => FromSoftPaths.GameFolder(Layout, installation);
 
     /// <summary>The folder the game keeps every Steam account's saves in, inside a Proton prefix.</summary>
-    public static AbsolutePath SaveRoot(AbsolutePath prefixPath)
-        => prefixPath / "drive_c/users/steamuser/AppData/Roaming/EldenRing";
+    public static AbsolutePath SaveRoot(AbsolutePath prefixPath) => FromSoftPaths.SaveRoot(Layout, prefixPath);
 
     /// <summary>The folder the game keeps one Steam account's saves in, inside a Proton prefix.</summary>
     public static AbsolutePath SaveFolder(AbsolutePath prefixPath, ulong steamId64)
-        => SaveRoot(prefixPath) / steamId64.ToString();
+        => FromSoftPaths.SaveFolder(Layout, prefixPath, steamId64);
 
     /// <summary>
     /// The name of an installation's folder under <see cref="Me3Root"/>: its Steam app id, and the game's own app id
     /// for an install that did not come from Steam.
     /// </summary>
     public static string InstallationFolderName(GameLocatorResult locatorResult)
-        => locatorResult.Store == GameStore.Steam ? locatorResult.StoreIdentifier : SteamAppId.ToString();
+        => FromSoftPaths.InstallationFolderName(Layout, locatorResult);
 
     /// <summary>The folder every Elden Ring installation's host-side files live under.</summary>
     public static AbsolutePath Me3Root(FromSoftSettings settings, IFileSystem fileSystem)
-        => settings.DataRoot.ToPath(fileSystem) / "EldenRing";
+        => FromSoftPaths.DataRoot(Layout, settings, fileSystem);
 
     /// <summary>The folder mod packages and natives of one installation deploy to.</summary>
     public static AbsolutePath Me3Mods(FromSoftSettings settings, IFileSystem fileSystem, string storeIdentifier)
-        => Me3Root(settings, fileSystem) / storeIdentifier / "mods";
+        => FromSoftPaths.InstallationRoot(Layout, settings, fileSystem, storeIdentifier) / "mods";
 
     /// <summary>The folder the mod loader of one installation deploys to.</summary>
     public static AbsolutePath Me3Host(FromSoftSettings settings, IFileSystem fileSystem, string storeIdentifier)
-        => Me3Root(settings, fileSystem) / storeIdentifier / "me3";
+        => FromSoftPaths.InstallationRoot(Layout, settings, fileSystem, storeIdentifier) / "me3";
 
     /// <summary>
     /// The folder that stands in for the user's home for me3: its cache, profiles, logs and data are kept here
     /// instead of in <c>~/.cache/me3</c>, <c>~/.config/me3</c> and <c>~/.local/share/me3</c>.
     /// </summary>
     public static AbsolutePath Me3Home(FromSoftSettings settings, IFileSystem fileSystem, string storeIdentifier)
-        => Me3Root(settings, fileSystem) / storeIdentifier / "me3-home";
+        => FromSoftPaths.InstallationRoot(Layout, settings, fileSystem, storeIdentifier) / "me3-home";
 
     /// <summary>The four XDG folders inside <see cref="Me3Home"/>, which are the only places me3 may write outside the game's own folders.</summary>
     public static AbsolutePath[] Me3HomeFolders(AbsolutePath home) => [home / "cache", home / "config", home / "data", home / "state"];
@@ -80,31 +79,13 @@ public static class EldenRingPaths
 
     /// <summary>The folder one installation's cleanup records live in, such as the links it removed from the game folder.</summary>
     public static AbsolutePath CleanupFolder(FromSoftSettings settings, IFileSystem fileSystem, string storeIdentifier)
-        => Me3Root(settings, fileSystem) / storeIdentifier / "cleanup";
+        => FromSoftPaths.CleanupFolder(Layout, settings, fileSystem, storeIdentifier);
 
-    /// <summary>
-    /// Whether the path is inside the <c>Game</c> folder, which the app never writes to. Compared without regard
-    /// to case, as Windows would.
-    /// </summary>
-    public static bool IsInGameFolder(GamePath path)
-        => path.LocationId == LocationId.Game && path.Path.Path.StartsWith(GameSubfolder + "/", StringComparison.OrdinalIgnoreCase);
+    /// <summary>Whether the path is inside the <c>Game</c> folder, which the app never writes to.</summary>
+    public static bool IsInGameFolder(GamePath path) => FromSoftPaths.IsInGameFolder(Layout, path);
 
-    /// <summary>
-    /// Whether indexing skips the path: the game's archives (<c>*.bdt</c>, <c>*.bhd</c>, <c>sd/</c>, <c>movie*/</c>)
-    /// add up to tens of gigabytes that are never read. The small files beside them stay indexed, so a stray DLL or a
-    /// swapped launcher is still seen.
-    /// </summary>
-    public static bool IsArchiveOrMedia(GamePath path)
-    {
-        if (!IsInGameFolder(path)) return false;
+    /// <summary>Whether indexing skips the path; see <see cref="FromSoftPaths.IsArchiveOrMedia"/>.</summary>
+    public static bool IsArchiveOrMedia(GamePath path) => FromSoftPaths.IsArchiveOrMedia(Layout, path);
 
-        var inside = path.Path.Path.AsSpan(GameSubfolder.Length + 1);
-        if (inside.EndsWith(".bdt", StringComparison.OrdinalIgnoreCase) || inside.EndsWith(".bhd", StringComparison.OrdinalIgnoreCase)) return true;
-
-        var slash = inside.IndexOf('/');
-        if (slash < 0) return false;
-
-        var folder = inside[..slash];
-        return folder.Equals("sd", StringComparison.OrdinalIgnoreCase) || folder.StartsWith("movie", StringComparison.OrdinalIgnoreCase);
-    }
+    private static FromSoftGameLayout Layout => EldenRingGame.Definition.Layout;
 }

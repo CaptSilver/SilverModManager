@@ -12,7 +12,7 @@ namespace NexusMods.Games.FromSoft.Build;
 /// Warns when the installed build is not the one stamped at the first launch, naming each field that moved. An
 /// installation that was never launched has no stamp and nothing to compare with, so it has no diagnostic.
 /// </summary>
-public class BuildDriftEmitter(BuildStampStore stamps) : IEldenRingDiagnosticEmitter
+public class BuildDriftEmitter(BuildStampStore stamps) : IFromSoftDiagnosticEmitter
 {
     /// <summary>The id of the action that stamps the installed build. Its one argument is the loadout id.</summary>
     public const string RestampActionId = "restamp-build";

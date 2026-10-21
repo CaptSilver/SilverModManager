@@ -16,7 +16,7 @@ namespace NexusMods.Games.FromSoft.Doctor;
 /// Reports what the last modded session of the loadout left unresolved: files in its overlay that are not runtime
 /// files, files that hide a game file, and changes to the real game folder. Each carries a Discard action.
 /// </summary>
-public class UpperdirAuditEmitter(ISettingsManager settings, IFileSystem fileSystem) : IEldenRingDiagnosticEmitter
+public class UpperdirAuditEmitter(ISettingsManager settings, IFileSystem fileSystem) : IFromSoftDiagnosticEmitter
 {
     /// <summary>The id of the action that resolves a finding. The arguments are the loadout id, the finding's kind and its path.</summary>
     public const string DiscardActionId = "discard-overlay-finding";

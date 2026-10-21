@@ -13,33 +13,46 @@ using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.FromSoft.Saves;
 using NexusMods.Platform.Proton.Doctor;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Sdk.ProxyConsole;
 using NexusMods.Sdk.Settings;
 
 namespace NexusMods.Games.FromSoft;
 
 public static class Services
 {
-    /// <summary>
-    /// Registers the FromSoft games. Each block takes the lines of one kind of registration, so two changes that
-    /// add to different blocks never touch the same line.
-    /// </summary>
+    /// <summary>Registers the FromSoft base and every FromSoft game.</summary>
     public static IServiceCollection AddFromSoftGames(this IServiceCollection services)
+        => services.AddFromSoftBase().AddEldenRing();
+
+    /// <summary>Registers Elden Ring: the game, its tool and its cleanup verb.</summary>
+    public static IServiceCollection AddEldenRing(this IServiceCollection services)
     {
         services.AddGame<EldenRingGame>()
-            .AddSettings<FromSoftSettings>()
             .AddSingleton<ITool, RunEldenRingGame>();
+
+        return services.AddVerb(() => EldenRingCleanupVerb.Cleanup)
+            .AddModule("elden-ring", "Commands for the Elden Ring installation");
+    }
+
+    /// <summary>
+    /// Registers everything the FromSoft games share. Each block takes the lines of one kind of registration, so two
+    /// changes that add to different blocks never touch the same line.
+    /// </summary>
+    public static IServiceCollection AddFromSoftBase(this IServiceCollection services)
+    {
+        services.AddSettings<FromSoftSettings>();
 
         // Emitters
         services.AddSingleton<PackageCollisionEmitter>()
-            .AddSingleton<IEldenRingDiagnosticEmitter>(provider => provider.GetRequiredService<PackageCollisionEmitter>())
+            .AddSingleton<IFromSoftDiagnosticEmitter>(provider => provider.GetRequiredService<PackageCollisionEmitter>())
             .AddSingleton<Me3HostMissingEmitter>()
-            .AddSingleton<IEldenRingDiagnosticEmitter>(provider => provider.GetRequiredService<Me3HostMissingEmitter>())
+            .AddSingleton<IFromSoftDiagnosticEmitter>(provider => provider.GetRequiredService<Me3HostMissingEmitter>())
             .AddSingleton<UpperdirAuditEmitter>()
-            .AddSingleton<IEldenRingDiagnosticEmitter>(provider => provider.GetRequiredService<UpperdirAuditEmitter>())
-            .AddSingleton<IEldenRingDiagnosticEmitter, GameFolderArtifactsEmitter>()
-            .AddSingleton<IEldenRingDiagnosticEmitter, SpawnerEmitter>()
-            .AddSingleton<IEldenRingDiagnosticEmitter, OverlaySupportEmitter>()
-            .AddSingleton<IEldenRingDiagnosticEmitter, SaveWrittenByModdedSessionEmitter>()
+            .AddSingleton<IFromSoftDiagnosticEmitter>(provider => provider.GetRequiredService<UpperdirAuditEmitter>())
+            .AddSingleton<IFromSoftDiagnosticEmitter, GameFolderArtifactsEmitter>()
+            .AddSingleton<IFromSoftDiagnosticEmitter, SpawnerEmitter>()
+            .AddSingleton<IFromSoftDiagnosticEmitter, OverlaySupportEmitter>()
+            .AddSingleton<IFromSoftDiagnosticEmitter, SaveWrittenByModdedSessionEmitter>()
             .AddSingleton<Me3VersionProbe>()
             .AddSingleton<IInstallationCheck, EldenRingInstallationCheck>();
 

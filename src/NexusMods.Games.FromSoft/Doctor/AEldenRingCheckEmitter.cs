@@ -13,7 +13,7 @@ namespace NexusMods.Games.FromSoft.Doctor;
 /// An emitter that shows results of <see cref="EldenRingChecks"/>. The checks read the disk, not the sync tree, so
 /// they answer the same with or without one.
 /// </summary>
-public abstract class AEldenRingCheckEmitter : IEldenRingDiagnosticEmitter
+public abstract class AEldenRingCheckEmitter : IFromSoftDiagnosticEmitter
 {
     protected abstract IEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout);
 

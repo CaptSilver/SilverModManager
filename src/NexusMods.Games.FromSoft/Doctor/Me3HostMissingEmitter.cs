@@ -11,7 +11,7 @@ using NexusMods.Sdk.Loadouts;
 namespace NexusMods.Games.FromSoft.Doctor;
 
 /// <summary>Reports a loadout that has mods but no me3 to load them with.</summary>
-public class Me3HostMissingEmitter : IEldenRingDiagnosticEmitter
+public class Me3HostMissingEmitter : IFromSoftDiagnosticEmitter
 {
     private const string Release = "me3-linux-amd64.tar.gz";
 

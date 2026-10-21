@@ -11,9 +11,9 @@ namespace NexusMods.Games.FromSoft.Tests;
 
 public class EldenRingCheckEmittersTests(ITestOutputHelper helper) : AModdedEldenRingTest<EldenRingCheckEmittersTests>(helper)
 {
-    private async Task<Diagnostic[]> Diagnose<TEmitter>(Loadout.ReadOnly loadout) where TEmitter : IEldenRingDiagnosticEmitter
+    private async Task<Diagnostic[]> Diagnose<TEmitter>(Loadout.ReadOnly loadout) where TEmitter : IFromSoftDiagnosticEmitter
     {
-        var emitter = ServiceProvider.GetServices<IEldenRingDiagnosticEmitter>().OfType<TEmitter>().Single();
+        var emitter = ServiceProvider.GetServices<IFromSoftDiagnosticEmitter>().OfType<TEmitter>().Single();
         var found = new List<Diagnostic>();
         await foreach (var diagnostic in emitter.Diagnose(loadout, CancellationToken.None)) found.Add(diagnostic);
         return found.ToArray();

@@ -16,7 +16,7 @@ namespace NexusMods.Games.FromSoft.Doctor;
 /// that differ only in case, leave the game one file and no say in which. Two files for one place in the overlay's
 /// config layer are reported separately: the later one would silently replace the other there.
 /// </summary>
-public class PackageCollisionEmitter : IEldenRingDiagnosticEmitter
+public class PackageCollisionEmitter : IFromSoftDiagnosticEmitter
 {
     private const string CaseNote = " The paths differ only in case, and the game's file lookup does not tell them apart.";
 

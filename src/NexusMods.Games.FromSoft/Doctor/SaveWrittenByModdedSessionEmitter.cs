@@ -15,7 +15,7 @@ namespace NexusMods.Games.FromSoft.Doctor;
 /// Reports each vanilla save file a modded session changed, from the records the save gate keeps. A record stays
 /// until the saves page dismisses it.
 /// </summary>
-public class SaveWrittenByModdedSessionEmitter(ISettingsManager settings, IFileSystem fileSystem) : IEldenRingDiagnosticEmitter
+public class SaveWrittenByModdedSessionEmitter(ISettingsManager settings, IFileSystem fileSystem) : IFromSoftDiagnosticEmitter
 {
     // Reads the ledger's records, not the sync tree, so it gives the same answer without one.
     public IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)

@@ -17,6 +17,6 @@ public static class Services
         return services.AddEldenRingBuildStampModel()
             .AddSingleton<BuildStampStore>()
             .AddSingleton<ILaunchGate, BuildStampGate>()
-            .AddSingleton<IEldenRingDiagnosticEmitter, BuildDriftEmitter>();
+            .AddSingleton<IFromSoftDiagnosticEmitter, BuildDriftEmitter>();
     }
 }

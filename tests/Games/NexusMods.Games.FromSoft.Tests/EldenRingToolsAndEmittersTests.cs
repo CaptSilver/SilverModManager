@@ -22,7 +22,7 @@ namespace NexusMods.Games.FromSoft.Tests;
 
 public class EldenRingToolsAndEmittersTests(ITestOutputHelper helper) : AEldenRingTest<EldenRingToolsAndEmittersTests>(helper)
 {
-    private sealed class FakeEmitter : IEldenRingDiagnosticEmitter
+    private sealed class FakeEmitter : IFromSoftDiagnosticEmitter
     {
         [Obsolete("Replaced by the overload that takes the sync tree")]
         public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -33,7 +33,7 @@ public class EldenRingToolsAndEmittersTests(ITestOutputHelper helper) : AEldenRi
     }
 
     protected override IServiceCollection AddServices(IServiceCollection services)
-        => base.AddServices(services).AddSingleton<IEldenRingDiagnosticEmitter, FakeEmitter>();
+        => base.AddServices(services).AddSingleton<IFromSoftDiagnosticEmitter, FakeEmitter>();
 
     private ITool[] ToolsOfTheGame => ServiceProvider.GetServices<ITool>().Where(t => t.GameIds.Contains(EldenRingGame.GameId)).ToArray();
 
