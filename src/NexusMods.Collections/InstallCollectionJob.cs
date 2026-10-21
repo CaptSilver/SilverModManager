@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -42,6 +43,28 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
     public required NexusModsLibrary NexusModsLibrary { get; init; }
     public required ILogger Logger { get; init; }
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
+
+    private readonly ConcurrentQueue<FailedItem> _failedItems = new();
+
+    /// <summary>
+    /// The mods that could not be installed, with the reason. A failing mod doesn't stop the collection,
+    /// so this is how a caller learns what was skipped. Complete once the job has finished.
+    /// </summary>
+    public IReadOnlyList<FailedItem> FailedItems => _failedItems.ToArray();
+
+    /// <summary>
+    /// A mod of the collection that failed to install.
+    /// </summary>
+    /// <param name="Download">The collection item that failed.</param>
+    /// <param name="Name">Name of the mod in the collection.</param>
+    /// <param name="Exception">What went wrong.</param>
+    public record FailedItem(CollectionDownload.ReadOnly Download, string Name, Exception Exception)
+    {
+        /// <summary>
+        /// The message of <see cref="Exception"/>, for showing to the user.
+        /// </summary>
+        public string Reason => Exception.Message;
+    }
 
     /// <summary>
     /// Factory.
@@ -145,6 +168,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             catch (Exception e)
             {
                 Logger.LogError(e, "Failed to install `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
+                _failedItems.Enqueue(new FailedItem(modAndDownload.Download, modAndDownload.Mod.Name, e));
             }
         });
 

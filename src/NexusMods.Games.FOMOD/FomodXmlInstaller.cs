@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using FomodInstaller.Interface;
 using FomodInstaller.Scripting;
 using FomodInstaller.Scripting.XmlScript;
@@ -101,31 +102,61 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         await mod.InitializeWithoutLoadingScript();
 
         // NOTE(erri120): The FOMOD library calls us, so this is the only way we can pass data along.
-        var installerDelegates = _delegates as InstallerDelegates;
-        if (installerDelegates is not null)
+        var delegates = _delegates;
+        UiDelegates? presetUiDelegates = null;
+        if (_delegates is InstallerDelegates installerDelegates)
         {
             if (options is not null)
             {
                 // NOTE(halgari) The support for passing in presets to the installer is utterly broken. So we're going to
                 // something different: we will create a new guided installer that will simply emit the user choices based on the
                 // provided options.
-                var installer = new PresetGuidedInstaller(options);
-                installerDelegates.UiDelegates = new UiDelegates(ServiceProvider.GetRequiredService<ILogger<UiDelegates>>(), installer);
+                // The library reads the UI delegates on every callback, so each execution gets its own. Writing them into
+                // the installer's shared delegates let installs running at the same time answer each other's steps.
+                presetUiDelegates = new UiDelegates(
+                    ServiceProvider.GetRequiredService<ILogger<UiDelegates>>(),
+                    new PresetGuidedInstaller(options),
+                    cancellationToken
+                )
+                {
+                    CurrentFomodArchiveFiles = fomodArchiveFiles,
+                };
+                delegates = installerDelegates.WithUiDelegates(presetUiDelegates);
             }
-
-            installerDelegates.UiDelegates.CurrentFomodArchiveFiles = fomodArchiveFiles;
+            else
+            {
+                installerDelegates.UiDelegates.CurrentFomodArchiveFiles = fomodArchiveFiles;
+            }
+        }
+        else if (options is not null)
+        {
+            throw new InvalidOperationException($"Saved FOMOD choices need {nameof(InstallerDelegates)}, got `{_delegates.GetType()}`");
         }
 
-        var rawScript = await LoadScript(xmlFile.AsLibraryFile().Hash, cancellationToken);
+        IList<Instruction> instructions;
+        using (presetUiDelegates)
+        {
+            var rawScript = await LoadScript(xmlFile.AsLibraryFile().Hash, cancellationToken);
 
-        var executor = _scriptType.CreateExecutor(mod, _delegates);
-        var installScript = _scriptType.LoadScript(rawScript, true);
-        FixScript(installScript, fomodArchiveFiles, _logger);
+            var executor = _scriptType.CreateExecutor(mod, delegates);
+            var installScript = _scriptType.LoadScript(rawScript, true);
+            FixScript(installScript, fomodArchiveFiles, _logger);
 
-        var instructions = await executor.Execute(installScript, "", null);
+            using var cancellationRegistration = presetUiDelegates is null
+                ? default
+                : cancellationToken.Register(presetUiDelegates.Cancel);
 
-        // NOTE(err120): Reset the previously provided data
-        if (installerDelegates is not null) installerDelegates.UiDelegates.CurrentFomodArchiveFiles = fomodArchiveFiles;
+            try
+            {
+                instructions = await executor.Execute(installScript, "", null);
+            }
+            catch (Exception) when (presetUiDelegates?.Failure is not null)
+            {
+                // The executor only knows it was cancelled; the reason is what made us cancel it.
+                ExceptionDispatchInfo.Capture(presetUiDelegates.Failure).Throw();
+                throw;
+            }
+        }
 
         var errors = instructions.Where(instruction => instruction.type == "error").ToArray();
         if (errors.Length != 0) throw new Exception(string.Join("; ", errors.Select(err => err.source)));
@@ -212,8 +243,13 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
             {
                 ConvertInstructionCopy(transaction, instruction, loadoutGroup, loadoutId, fomodArchiveFiles, gamePath);
             }
+            else if (instruction.type == "enableallplugins")
+            {
+                // NOTE: The library appends this to every script whose files all installed. There are no plugins to
+                // enable in a loadout, so it doesn't become a loadout item.
+                _logger.LogDebug("FOMOD finished, ignoring instruction `enableallplugins`");
+            }
             // TODO: "mkdir" - not sure if we need/want this
-            // TODO: "enableallplugins"
             // "iniedit" - only supported by c# script and modscript installers atm
             // "generatefile" - only supported by c# script installers
             // "enableplugin" - supported in the fomod-installer module but doesn't seem to be emitted anywhere

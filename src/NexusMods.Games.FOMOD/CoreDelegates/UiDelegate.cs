@@ -49,6 +49,7 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
 
     private readonly ILogger<UiDelegates> _logger;
     private readonly IGuidedInstaller _guidedInstaller;
+    private readonly CancellationToken _cancellationToken;
 
     private SelectOptions _selectOptions = DummySelectOptions;
     private ContinueToNextStep _continueToNextStep = DummyContinueToNextStep;
@@ -63,13 +64,42 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
 
     public IReadOnlyDictionary<RelativePath, LibraryArchiveFileEntry.ReadOnly>? CurrentFomodArchiveFiles;
 
+    /// <summary>
+    /// Why this installation was cancelled from our side, if it was: the guided installer or the
+    /// conversion of a step failed, or <c>cancellationToken</c> fired. The executor only reports a
+    /// cancellation, so the caller reads the reason from here.
+    /// </summary>
+    public Exception? Failure { get; private set; }
+
+    /// <param name="cancellationToken">Handed to the guided installer with every step it is asked to answer.</param>
     public UiDelegates(
         ILogger<UiDelegates> logger,
-        IGuidedInstaller guidedInstaller)
+        IGuidedInstaller guidedInstaller,
+        CancellationToken cancellationToken = default)
     {
         _logger = logger;
         _guidedInstaller = guidedInstaller;
+        _cancellationToken = cancellationToken;
     }
+
+    /// <summary>
+    /// Cancels the installation because of <paramref name="reason"/>, so the executor ends instead of
+    /// waiting for a step answer that will never come. Only the first reason is kept.
+    /// </summary>
+    public void Fail(Exception reason)
+    {
+        Failure ??= reason;
+
+        // NOTE: Cancelling before the executor started the dialog has nothing to cancel yet,
+        // StartDialog checks for that.
+        _cancelInstaller();
+        EndDialog();
+    }
+
+    /// <summary>
+    /// Cancels the installation because the install's cancellation token fired.
+    /// </summary>
+    public void Cancel() => Fail(new OperationCanceledException(_cancellationToken));
 
     public void StartDialog(
         string? moduleName,
@@ -83,6 +113,8 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
         _cancelInstaller = new CancelInstaller(cancel);
 
         _guidedInstaller.SetupInstaller(moduleName ?? "FOMOD Installer");
+
+        if (_cancellationToken.IsCancellationRequested) Cancel();
     }
 
     public void EndDialog()
@@ -129,13 +161,22 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
         var groupIdMappings = new List<KeyValuePair<int, GroupId>>();
         var optionIdMappings = new List<KeyValuePair<int, OptionId>>();
 
-        var guidedInstallationStep = ToGuidedInstallationStep(
-            installSteps,
-            currentStepId,
-            groupIdMappings,
-            optionIdMappings
-        );
-
+        GuidedInstallationStep guidedInstallationStep;
+        try
+        {
+            guidedInstallationStep = ToGuidedInstallationStep(
+                installSteps,
+                currentStepId,
+                groupIdMappings,
+                optionIdMappings
+            );
+        }
+        catch (Exception e)
+        {
+            // NOTE: The library calls us from a task nobody observes, so a throw here would leave the executor waiting.
+            Fail(e);
+            return;
+        }
 
         // Progress is computed as currentIndex + 1 /(all steps before the current step + future visible steps + 1).
         // The +1 are to avoid having the bar at 0% when we're at the first step, and to account for the extra finish screen.
@@ -144,11 +185,24 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
             maximum: currentStepId + 1 + installSteps.Skip(currentStepId + 1).Count(step => step.visible) + 1
         );
 
-        _guidedInstaller
-            .RequestUserChoice(guidedInstallationStep, progress, CancellationToken.None)
-            .ContinueWith(task =>
+        Task<UserChoice> request;
+        try
+        {
+            request = _guidedInstaller.RequestUserChoice(guidedInstallationStep, progress, _cancellationToken);
+        }
+        catch (Exception e)
+        {
+            Fail(e);
+            return;
+        }
+
+        request.ContinueWith(task =>
             {
-                var result = task.Result;
+              try
+              {
+                // NOTE: A faulted or cancelled request has to end the installation, the executor
+                // would wait for the answer forever.
+                var result = task.GetAwaiter().GetResult();
 
                 if (result.IsCancelInstallation)
                 {
@@ -214,6 +268,11 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
                     // to the next step. Once again, the API is ass.
                     _continueToNextStep(forward: true, currentStepId);
                 }
+              }
+              catch (Exception e)
+              {
+                  Fail(e);
+              }
             });
     }
 

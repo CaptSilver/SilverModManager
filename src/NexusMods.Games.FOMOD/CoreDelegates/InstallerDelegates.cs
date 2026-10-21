@@ -14,7 +14,7 @@ public sealed class InstallerDelegates : ICoreDelegates
     public IPluginDelegates plugin { get; }
 
     public IUIDelegates ui => UiDelegates;
-    public UiDelegates UiDelegates;
+    public UiDelegates UiDelegates { get; }
 
     public InstallerDelegates(
         ILoggerFactory loggerFactory,
@@ -27,4 +27,18 @@ public sealed class InstallerDelegates : ICoreDelegates
             guidedInstaller
         );
     }
+
+    private InstallerDelegates(InstallerDelegates other, UiDelegates uiDelegates)
+    {
+        context = other.context;
+        plugin = other.plugin;
+        UiDelegates = uiDelegates;
+    }
+
+    /// <summary>
+    /// Creates delegates for a single execution that share the context and plugin delegates but use
+    /// <paramref name="uiDelegates"/>. The FOMOD library reads the UI delegates on every callback, so
+    /// executions running at the same time must not share one instance.
+    /// </summary>
+    public InstallerDelegates WithUiDelegates(UiDelegates uiDelegates) => new(this, uiDelegates);
 }
