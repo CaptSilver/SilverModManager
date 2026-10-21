@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="NexusMods.Platform.Proton.Tests" />
+        <InternalsVisibleTo Include="NexusMods.Games.FromSoft.Tests" />
     </ItemGroup>
 
     <ItemGroup>

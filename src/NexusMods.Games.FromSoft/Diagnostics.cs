@@ -68,4 +68,46 @@ loadout. The Windows zip does not work here.
             .AddValue<string>("Release")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate OverlayFileLeftBehind = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 4))
+        .WithTitle("A session left a file in the game's overlay")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("{Path} was left in the overlay of the game folder")
+        .WithDetails("""
+The game wrote **{Path}** into the overlay that is placed over its folder for a modded session, and the app does not
+know it as a runtime file. {Reason}
+
+The real game folder is not changed. Discard the file to start the next modded session; the app refuses to start one
+while it is there.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Path")
+            .AddValue<string>("Reason")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate GameFolderChangedInSession = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 5))
+        .WithTitle("The game folder changed during a modded session")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("{Path} in the game folder was {Change} during a modded session")
+        .WithDetails("""
+**{Path}** in the real game folder was {Change} while the game ran with mods. A modded session is meant to write
+only into its overlay, so the overlay did not hold and the game wrote to its real folder.
+
+Verify the game's files in Steam to put the folder back, and do not start another modded session until the cause is
+known. Discarding this only records that you have looked at it.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Path")
+            .AddValue<string>("Change")
+        )
+        .Finish();
 }

@@ -29,12 +29,26 @@ public class EldenRingDetectionTests(ITestOutputHelper helper) : AEldenRingTest<
     }
 
     [Fact]
-    public void ThePrimaryFileIsTheExecutableInTheGameSubfolder()
+    public void ThePrimaryFileIsTheAntiCheatLauncherSteamStarts()
     {
         var primary = GameInstallation.Locations.ToAbsolutePath(Game.GetPrimaryFile(GameInstallation));
 
-        primary.Should().Be(Install.Folder / "Game/eldenring.exe");
+        primary.Should().Be(Install.Folder / "Game/start_protected_game.exe");
         primary.FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TheVersionIsReadFromTheGamesOwnExecutableNotTheLauncher()
+    {
+        // Any file with a version resource stands in for the game's executable; the launcher stays a stub without one.
+        var standIn = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(typeof(EldenRingGame).Assembly.Location);
+        var expected = standIn.FileInfo.GetFileVersionInfo().ProductVersion;
+        File.Copy(standIn.ToString(), (Install.Folder / "Game/eldenring.exe").ToString(), overwrite: true);
+
+        var version = ((IGameData)Game).GetLocalVersion(GameInstallation);
+
+        version.HasValue.Should().BeTrue();
+        version.Value.Should().Be(expected);
     }
 
     [Fact]

@@ -23,6 +23,7 @@ public static class SteamLaunchOptionLine
     private static readonly Dictionary<string, string> KnownManagers = new(StringComparer.Ordinal)
     {
         ["fluorine-manager"] = "Fluorine",
+        ["me3"] = "me3",
     };
 
     /// <summary>

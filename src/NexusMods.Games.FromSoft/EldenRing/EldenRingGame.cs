@@ -85,7 +85,7 @@ public class EldenRingGame : IGame, IGameData<EldenRingGame>
     {
         var settings = _provider.GetRequiredService<ISettingsManager>().Get<FromSoftSettings>();
         var hostFileSystem = _provider.GetRequiredService<IFileSystem>();
-        var installationId = gameLocatorResult.Store == GameStore.Steam ? gameLocatorResult.StoreIdentifier : EldenRingPaths.SteamAppId.ToString();
+        var installationId = EldenRingPaths.InstallationFolderName(gameLocatorResult);
 
         // Saves stay unmapped: removing a loadout or un-managing the game must never be able to delete them.
         return new Dictionary<LocationId, AbsolutePath>
@@ -96,5 +96,23 @@ public class EldenRingGame : IGame, IGameData<EldenRingGame>
         }.ToImmutableDictionary();
     }
 
-    public GamePath GetPrimaryFile(GameInstallation installation) => new(LocationId.Game, $"{EldenRingPaths.GameSubfolder}/eldenring.exe");
+    /// <remarks>
+    /// The anti-cheat launcher, because that is what Steam starts: a launch that keeps Steam's command for an unmodded
+    /// loadout then finds its own exe in the slot and leaves it there, instead of starting eldenring.exe offline.
+    /// </remarks>
+    public GamePath GetPrimaryFile(GameInstallation installation) => new(LocationId.Game, $"{EldenRingPaths.GameSubfolder}/{EldenRingPaths.AntiCheatLauncher}");
+
+    /// <summary>Read from the game's own executable; the launcher carries the anti-cheat's version, not the game's.</summary>
+    public Optional<Version> GetLocalVersion(GameInstallation installation)
+    {
+        try
+        {
+            var executable = installation.Locations[LocationId.Game].Path / EldenRingPaths.GameSubfolder / EldenRingPaths.GameExecutable;
+            return executable.FileInfo.GetFileVersionInfo().ProductVersion;
+        }
+        catch (Exception)
+        {
+            return Optional<Version>.None;
+        }
+    }
 }

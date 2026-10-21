@@ -86,4 +86,63 @@ public class LaunchPlannerTests
 
         plan.Process.WineDllOverrides.Should().Equal(overrides);
     }
+
+    private const string EldenRingRoot = "/games/steamapps/common/ELDEN RING";
+
+    private static string[] SteamChainFor(string exe) =>
+    [
+        "/steam/ubuntu12_32/steam-launch-wrapper", "--", "/steam/ubuntu12_32/reaper", "SteamLaunch", "AppId=1245620",
+        "--", "/steam/pressure-vessel/bin/pressure-vessel-launch", "--", "/steam/proton", "waitforexitandrun", exe,
+    ];
+
+    private static LaunchPlan ComposeReplacing(IReadOnlyList<string> command, string[] extraArgs, IReadOnlyList<string> roots, IReadOnlyList<WineDllOverride> overrides)
+    {
+        var spec = new LaunchSpec(Path_("/usr/bin/bwrap"), extraArgs) { ReplacesCommand = true };
+        return LaunchPlanner.Compose(command, Path_(EldenRingRoot), Path_($"{EldenRingRoot}/Game/eldenring.exe"), spec, roots, overrides);
+    }
+
+    [Fact]
+    public void ASpecWithoutTheFlagKeepsTheCommandSteamHandedOver()
+    {
+        new LaunchSpec(Path_($"{SkyrimRoot}/SkyrimSE.exe"), []).ReplacesCommand.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ASpecThatReplacesTheCommandDiscardsSteamsWholeChain()
+    {
+        var plan = ComposeReplacing(SteamChainFor($"{EldenRingRoot}/Game/eldenring.exe"), ["--unshare-user", "--", "/me3", "launch"], [], []);
+
+        plan.Process.Argv.Should().Equal("/usr/bin/bwrap", "--unshare-user", "--", "/me3", "launch");
+        plan.Process.Argv.Should().NotContain(a => a.Contains("reaper") || a.Contains("pressure-vessel") || a.Contains("proton"));
+    }
+
+    [Fact]
+    public void ASpecThatReplacesTheCommandStillReadsTheAppIdFromSteamsChain()
+    {
+        var plan = ComposeReplacing(SteamChainFor($"{EldenRingRoot}/Game/eldenring.exe"), [], [], []);
+
+        plan.Substitution!.AppId.Should().Be("1245620");
+        plan.Substitution.IsRefused.Should().BeFalse();
+        plan.Substitution.Argv.Should().Equal(plan.Process.Argv);
+    }
+
+    [Fact]
+    public void ASpecThatReplacesTheCommandCarriesTheRootsAndTheOverridesThrough()
+    {
+        WineDllOverride[] overrides = [new("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn])];
+
+        var plan = ComposeReplacing(SteamChainFor($"{EldenRingRoot}/Game/eldenring.exe"), [], ["/data/mods", "/data/upper"], overrides);
+
+        plan.Process.FilesystemRoots.Should().Equal("/data/mods", "/data/upper");
+        plan.Process.WineDllOverrides.Should().Equal(overrides);
+    }
+
+    [Fact]
+    public void ASpecThatReplacesTheCommandComposesFromAnEmptySteamCommand()
+    {
+        var plan = ComposeReplacing([], ["--", "/me3"], [], []);
+
+        plan.Process.Argv.Should().Equal("/usr/bin/bwrap", "--", "/me3");
+        plan.Substitution!.AppId.Should().BeNull();
+    }
 }

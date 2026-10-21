@@ -37,30 +37,22 @@ public class EldenRingToolsAndEmittersTests(ITestOutputHelper helper) : AEldenRi
     private ITool[] ToolsOfTheGame => ServiceProvider.GetServices<ITool>().Where(t => t.GameIds.Contains(EldenRingGame.GameId)).ToArray();
 
     [Fact]
-    public async Task TheOnlyToolIsALauncherThatRefusesBecauseTheOverlayLauncherIsNotThereYet()
+    public void TheOnlyToolIsTheOverlayLauncher()
     {
-        var loadout = await CreateLoadout();
-
-        var tool = ToolsOfTheGame.Should().ContainSingle().Subject.Should().BeOfType<RunEldenRingGame>().Subject;
-
-        var launch = async () => await tool.GetLaunchSpec(loadout, CancellationToken.None);
-        (await launch.Should().ThrowAsync<InvalidOperationException>())
-            .WithMessage("Elden Ring is launched through the overlay launcher, which is not available yet");
+        ToolsOfTheGame.Should().ContainSingle().Subject.Should().BeOfType<RunEldenRingGame>();
     }
 
     [Fact]
-    public async Task NoRunToolCouldStartAFileInsideTheGameLocation()
+    public async Task NoRunToolForAnUnmoddedLoadoutResolvesAnythingButThePrimaryFile()
     {
         var loadout = await CreateLoadout();
-        var gameFolder = GameInstallation.Locations[LocationId.Game].Path;
+        var primary = GameInstallation.Locations.ToAbsolutePath(Game.GetPrimaryFile(GameInstallation));
 
         foreach (var tool in ToolsOfTheGame.OfType<IRunGameTool>())
         {
-            LaunchSpec spec;
-            try { spec = await tool.GetLaunchSpec(loadout, CancellationToken.None); }
-            catch (InvalidOperationException) { continue; }
-
-            spec.Exe.InFolder(gameFolder).Should().BeFalse($"{tool.Name} would start a file in the game folder");
+            var spec = await tool.GetLaunchSpec(loadout, CancellationToken.None);
+            spec.Exe.Should().Be(primary, $"{tool.Name} with nothing installed starts the game as Steam does");
+            spec.ExtraArgs.Should().BeEmpty();
         }
     }
 
@@ -73,6 +65,7 @@ public class EldenRingToolsAndEmittersTests(ITestOutputHelper helper) : AEldenRi
             typeof(ProtonPrefixEmitter),
             typeof(PackageCollisionEmitter),
             typeof(Me3HostMissingEmitter),
+            typeof(UpperdirAuditEmitter),
             typeof(FakeEmitter));
     }
 

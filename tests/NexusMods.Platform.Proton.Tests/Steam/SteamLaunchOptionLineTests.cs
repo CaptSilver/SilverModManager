@@ -566,4 +566,40 @@ public class SteamLaunchOptionLineTests : IDisposable
         parsed.Select(o => o.DllName).Should().Equal("dxgi", "winmm", "version");
         parsed.Skip(1).Select(o => o.ToString()).Should().Equal(Required.Select(o => o.ToString()));
     }
+
+    private const string RealMe3Line =
+        "'/home/u/.local/bin/me3' launch -p '/home/u/build/elden_ring_mods/tools/me3/erm-coop.me3' # %command%";
+
+    private const string RealMe3LineWithOverrides =
+        "WINEDLLOVERRIDES=\"d3dcompiler_47=n;dxgi=n,b\" " + RealMe3Line;
+
+    [Theory]
+    [InlineData(RealMe3Line)]
+    [InlineData(RealMe3LineWithOverrides)]
+    public void Test_FindOtherManagerRecognisesMe3(string line)
+    {
+        var manager = SteamLaunchOptionLine.FindOtherManager(line);
+
+        manager.Should().NotBeNull();
+        manager!.Name.Should().Be("me3");
+        manager.Command.Should().Be("/home/u/.local/bin/me3");
+    }
+
+    [Fact]
+    public void Test_ReplaceOfMe3sLineIsTheBareSpanWithTheCommentedTailDropped()
+    {
+        var edit = SteamLaunchOptionLine.Replace(RealMe3Line, Shim, "X", [], []);
+
+        edit.Refusal.Should().BeNull();
+        edit.Line.Should().Be($"'{Shim}' run 'X' -- %command%");
+    }
+
+    [Fact]
+    public void Test_ReplaceOfMe3sLineWithAnOverridesPrefixKeepsTheAssignment()
+    {
+        var edit = SteamLaunchOptionLine.Replace(RealMe3LineWithOverrides, Shim, "X", [], []);
+
+        edit.Refusal.Should().BeNull();
+        edit.Line.Should().Be($"WINEDLLOVERRIDES=\"d3dcompiler_47=n;dxgi=n,b\" '{Shim}' run 'X' -- %command%");
+    }
 }

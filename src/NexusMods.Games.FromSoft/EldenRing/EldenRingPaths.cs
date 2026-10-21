@@ -14,6 +14,12 @@ public static class EldenRingPaths
     /// <summary>The folder inside the Steam install folder that holds the game's files.</summary>
     public const string GameSubfolder = "Game";
 
+    /// <summary>The game's own executable, in <see cref="GameSubfolder"/>.</summary>
+    public const string GameExecutable = "eldenring.exe";
+
+    /// <summary>The anti-cheat launcher Steam starts, in <see cref="GameSubfolder"/>; it starts <see cref="GameExecutable"/>.</summary>
+    public const string AntiCheatLauncher = "start_protected_game.exe";
+
     /// <summary>The save file the game writes.</summary>
     public const string VanillaSave = "ER0000.sl2";
 
@@ -29,6 +35,13 @@ public static class EldenRingPaths
     /// <summary>The folder the game keeps one Steam account's saves in, inside a Proton prefix.</summary>
     public static AbsolutePath SaveFolder(AbsolutePath prefixPath, ulong steamId64)
         => prefixPath / "drive_c/users/steamuser/AppData/Roaming/EldenRing" / steamId64.ToString();
+
+    /// <summary>
+    /// The name of an installation's folder under <see cref="Me3Root"/>: its Steam app id, and the game's own app id
+    /// for an install that did not come from Steam.
+    /// </summary>
+    public static string InstallationFolderName(GameLocatorResult locatorResult)
+        => locatorResult.Store == GameStore.Steam ? locatorResult.StoreIdentifier : SteamAppId.ToString();
 
     /// <summary>The folder every Elden Ring installation's host-side files live under.</summary>
     public static AbsolutePath Me3Root(FromSoftSettings settings, IFileSystem fileSystem)
