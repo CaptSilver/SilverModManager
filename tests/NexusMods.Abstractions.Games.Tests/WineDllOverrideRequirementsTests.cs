@@ -26,3 +26,21 @@ public class WineDllOverrideRequirementsTests
         WineDllOverrideRequirements.For(game, default).Should().Equal(declared);
     }
 }
+
+public class LauncherSkipTests
+{
+    [Fact]
+    public void ForAGameWithoutALauncherIsEmpty()
+    {
+        GameLauncherSkip.For(Substitute.For<IGameData>()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ForAGameThatDeclaresArgumentsReturnsThem()
+    {
+        var game = Substitute.For<IGameData, IGameLauncherSkip>();
+        ((IGameLauncherSkip)game).LauncherSkipArguments.Returns(["--skip"]);
+
+        GameLauncherSkip.For(game).Should().Equal("--skip");
+    }
+}

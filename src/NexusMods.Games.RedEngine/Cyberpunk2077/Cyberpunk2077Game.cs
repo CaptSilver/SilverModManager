@@ -21,7 +21,7 @@ using NexusMods.Sdk.Loadouts;
 namespace NexusMods.Games.RedEngine.Cyberpunk2077;
 
 [UsedImplicitly]
-public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements
+public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements, IGameLauncherSkip
 {
     public static GameId GameId { get; } = GameId.From("RedEngine.Cyberpunk2077");
     public static string DisplayName => "Cyberpunk 2077";
@@ -70,7 +70,7 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOv
             new PatternBasedDependencyEmitter(PatternDefinitions.Definitions, provider),
             new NoWayToRunRedModEmitter(provider),
             new MissingRedModEmitter(),
-            new WinePrefixRequirementsEmitter(this),
+            new WinePrefixRequirementsEmitter(this, this),
             provider.GetRequiredService<ProtonPrefixEmitter>(),
         ];
 
@@ -112,4 +112,7 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOv
     ];
 
     public IReadOnlyList<WineDllOverride> RequiredWineDllOverrides(Loadout.ReadOnly loadout) => RequiredOverrides;
+
+    // Steam's %command% is REDprelauncher.exe, which opens its own window unless it is told to start the game.
+    public IReadOnlyList<string> LauncherSkipArguments { get; } = ["--launcher-skip"];
 }

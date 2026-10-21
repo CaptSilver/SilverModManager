@@ -43,6 +43,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
         var dllOverrideInstructions = await WineDiagnosticHelper.GetWineDllOverridesUpdateInstructions(
             loadout.InstallationInstance,
             WineDllOverrideRequirements.For(loadout.InstallationInstance.Game, loadout),
+            GameLauncherSkip.For(loadout.InstallationInstance.Game),
             cancellationToken
         );
         if (dllOverrideInstructions is not null)

@@ -42,7 +42,7 @@ Use [winetricks](https://github.com/Winetricks/winetricks) to install the follow
         return sb.ToString();
     }
 
-    public static async ValueTask<string?> GetWineDllOverridesUpdateInstructions(GameInstallation gameInstallation, IReadOnlyList<WineDllOverride> requiredOverrides, CancellationToken cancellationToken = default)
+    public static async ValueTask<string?> GetWineDllOverridesUpdateInstructions(GameInstallation gameInstallation, IReadOnlyList<WineDllOverride> requiredOverrides, IReadOnlyList<string> launcherSkipArguments, CancellationToken cancellationToken = default)
     {
         if (requiredOverrides.Count == 0) return null;
 
@@ -75,6 +75,7 @@ Use [winetricks](https://github.com/Winetricks/winetricks) to install the follow
 
         var dllOverridesString = WineParser.MergeDllOverrides("", requiredOverrides);
         const string variable = WineParser.WineDllOverridesEnvironmentVariableName;
+        var launcherSkip = launcherSkipArguments.Count > 0 ? " " + string.Join(' ', launcherSkipArguments) : "";
         if (locatorResultMetadata.Store == GameStore.Steam)
         {
             sb.AppendLine($"""
@@ -89,7 +90,7 @@ To do it by hand instead:
 * Update "Launch Options" to be the following:
 
 ```
-{variable}="{dllOverridesString}" %command%
+{variable}="{dllOverridesString}" %command%{launcherSkip}
 ```
 """);
         } else if (locatorResultMetadata.Store == GameStore.GOG)

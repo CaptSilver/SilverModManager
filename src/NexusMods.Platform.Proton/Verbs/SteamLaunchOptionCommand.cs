@@ -50,6 +50,11 @@ public sealed class SteamLaunchOptionCommand(LoadoutResolver resolver, ISteamLau
             await renderer.TextLine($"It also sets {WineParser.WineDllOverridesEnvironmentVariableName} to {WineParser.MergeDllOverrides("", overrides)}, which {resolution.Installation.Game.DisplayName} needs for its mods.");
         }
 
+        if (GameLauncherSkip.For(resolution.Installation.Game) is { Count: > 0 } skip)
+        {
+            await renderer.TextLine($"It also passes {string.Join(' ', skip)} so {resolution.Installation.Game.DisplayName} starts without its launcher window.");
+        }
+
         if (launchOptions.MissingShimWarning is { } missing) await renderer.TextLine(missing);
         return 0;
     }

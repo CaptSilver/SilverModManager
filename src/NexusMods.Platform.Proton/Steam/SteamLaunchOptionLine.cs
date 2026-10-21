@@ -60,13 +60,13 @@ public static class SteamLaunchOptionLine
 
     /// <summary>
     /// Builds the launcher span for a shim and loadout, preceded by the assignment that sets the DLL overrides
-    /// the game needs when there are any.
+    /// the game needs when there are any, and followed by the arguments that make the game skip its own launcher.
     /// </summary>
-    public static string Compose(string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides)
+    public static string Compose(string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments)
     {
         var prefix = WithDllOverrides("", overrides);
         if (prefix.IsRefused) throw new ArgumentException(prefix.Refusal, nameof(overrides));
-        return Join(prefix.Line!, Span(shimPath, loadoutName), "");
+        return Join(prefix.Line!, Span(shimPath, loadoutName), WithLauncherSkip("", launcherSkipArguments));
     }
 
     private static string Span(string shimPath, string loadoutName)
@@ -85,9 +85,10 @@ public static class SteamLaunchOptionLine
     /// Puts the launcher span for the loadout into the line, replacing an existing span or taking the place of
     /// <c>%command%</c>, and merges <paramref name="overrides"/> into the prefix. Refuses when the user's own text
     /// would stop the shim from being the command that runs, or holds a DLL overrides value that cannot be
-    /// rewritten safely.
+    /// rewritten safely. The <paramref name="launcherSkipArguments"/> are added to the text after
+    /// <c>%command%</c> unless it already has them.
     /// </summary>
-    public static Edit Rewrite(string existingLine, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides)
+    public static Edit Rewrite(string existingLine, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments)
     {
         var scan = Scan(existingLine);
         var manager = FindOtherManager(existingLine);
@@ -109,7 +110,7 @@ public static class SteamLaunchOptionLine
         var prefix = WithDllOverrides(parsed.Prefix, overrides);
         if (prefix.IsRefused) return prefix;
 
-        return new Edit(Join(prefix.Line!, Span(shimPath, loadoutName), parsed.Tail), null);
+        return new Edit(Join(prefix.Line!, Span(shimPath, loadoutName), WithLauncherSkip(parsed.Tail, launcherSkipArguments)), null);
     }
 
     /// <summary>
@@ -150,7 +151,7 @@ public static class SteamLaunchOptionLine
     /// commented it out. Unlike <see cref="Rewrite"/> this is only for a line the user has been shown and
     /// agreed to lose the manager from.
     /// </summary>
-    public static Edit Replace(string existingLine, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides)
+    public static Edit Replace(string existingLine, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments)
     {
         if (FindOtherManager(existingLine) is null)
         {
@@ -169,7 +170,7 @@ public static class SteamLaunchOptionLine
         if (prefix.IsRefused) return prefix;
 
         var tail = commentedOut ? "" : existingLine[end..].Trim();
-        var line = Join(prefix.Line!, Compose(shimPath, loadoutName, []), tail);
+        var line = Join(prefix.Line!, Compose(shimPath, loadoutName, [], []), WithLauncherSkip(tail, launcherSkipArguments));
         return Refuse(Scan(line)) is { } refusal ? new Edit(null, refusal) : new Edit(line, null);
     }
 
@@ -226,6 +227,38 @@ public static class SteamLaunchOptionLine
         var before = prefix[..leadingAssignmentsEnd].Trim();
         var after = prefix[leadingAssignmentsEnd..].Trim();
         return new Edit(Join(before, Assignment(value), after), null);
+    }
+
+    /// <summary>
+    /// Appends each launcher-skip argument the tail does not already hold as a word, so rewriting a line that
+    /// has them is a no-op and the user's own arguments keep their place. A comment in the tail stays last:
+    /// an argument after its '#' would never reach the game, and a word inside it is not one the game gets.
+    /// </summary>
+    private static string WithLauncherSkip(string tail, IReadOnlyList<string> launcherSkipArguments)
+    {
+        if (launcherSkipArguments.Count == 0) return tail;
+
+        var words = new List<Word>();
+        var operators = new List<Operator>();
+        Tokenize(tail, words, operators);
+
+        var hash = operators.FindIndex(o => o.Text == "#") is var index and >= 0 ? operators[index].Index : tail.Length;
+        words.RemoveAll(w => w.Start >= hash);
+
+        var result = tail[..hash].TrimEnd();
+        foreach (var argument in launcherSkipArguments)
+        {
+            // A game declares plain words; anything the shell would split or expand would not survive as one argument.
+            if (argument.Length == 0 || argument.Any(char.IsWhiteSpace) || argument.IndexOfAny(['\'', '"', '`', '$', '\\', '%', ';', '&', '|', '#']) >= 0)
+            {
+                throw new ArgumentException($"The launcher-skip argument '{argument}' is not a plain word.", nameof(launcherSkipArguments));
+            }
+
+            if (words.Any(w => w.Value == argument)) continue;
+            result = Join(result, argument, "");
+        }
+
+        return hash == tail.Length ? result : Join(result, tail[hash..], "");
     }
 
     private static readonly char[] UnquotableCharacters = ['"', '`', '$', '\\'];

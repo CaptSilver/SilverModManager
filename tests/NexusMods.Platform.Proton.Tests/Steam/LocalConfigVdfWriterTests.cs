@@ -39,7 +39,7 @@ public class LocalConfigVdfWriterTests : IDisposable
     private AbsolutePath Record => FileSystem.Shared.FromUnsanitizedFullPath(RecordFile);
 
     private LocalConfigVdfWriter.Result Replace(string expectedOldLine, string loadout = "Survival", AbsolutePath? record = null)
-        => Writer.ReplaceLaunchOptions(ConfigPath, AppId, Shim, loadout, [], expectedOldLine, record ?? Record);
+        => Writer.ReplaceLaunchOptions(ConfigPath, AppId, Shim, loadout, [], [], expectedOldLine, record ?? Record);
 
     private LocalConfigVdfWriter Writer => new(_tracker);
 
@@ -77,7 +77,7 @@ public class LocalConfigVdfWriterTests : IDisposable
     {
         WriteConfig(null);
 
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []);
 
         result.IsRefused.Should().BeFalse(result.Refusal);
         result.Line.Should().Be($"'{Shim}' run 'Survival' -- %command%");
@@ -89,10 +89,24 @@ public class LocalConfigVdfWriterTests : IDisposable
     {
         WriteConfig("MANGOHUD=1 %command% -windowed");
 
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []);
 
         result.Line.Should().Be($"MANGOHUD=1 '{Shim}' run 'Survival' -- %command% -windowed");
         ReadBack().Line.Should().Be(result.Line);
+    }
+
+    [Fact]
+    public void Test_WritesLauncherSkipAndLeavesASecondWriteUnchanged()
+    {
+        WriteConfig("%command% -windowed");
+
+        var first = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], ["--launcher-skip"]);
+        var second = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], ["--launcher-skip"]);
+
+        first.IsRefused.Should().BeFalse(first.Refusal);
+        first.Line.Should().Be($"'{Shim}' run 'Survival' -- %command% -windowed --launcher-skip");
+        second.Line.Should().Be(first.Line);
+        ReadBack().Line.Should().Be(first.Line);
     }
 
     [Fact]
@@ -100,7 +114,7 @@ public class LocalConfigVdfWriterTests : IDisposable
     {
         WriteConfig(null, includeApp: false);
 
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []);
 
         result.IsRefused.Should().BeFalse(result.Refusal);
         ReadBack().Line.Should().Be(result.Line);
@@ -111,7 +125,7 @@ public class LocalConfigVdfWriterTests : IDisposable
     {
         WriteConfig("%command%");
 
-        Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []);
+        Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []);
 
         var back = ReadBack();
         back.Other.Should().Be("-novid");
@@ -126,7 +140,7 @@ public class LocalConfigVdfWriterTests : IDisposable
         WriteConfig("-foo %command%");
         var original = File.ReadAllText(ConfigFile);
 
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []);
 
         File.ReadAllText(Backup).Should().Be(original);
         result.Backup.Should().NotBeNull();
@@ -140,7 +154,7 @@ public class LocalConfigVdfWriterTests : IDisposable
         var original = File.ReadAllText(ConfigFile);
         _tracker.IsSteamRunning().Returns(true);
 
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []);
 
         result.IsRefused.Should().BeTrue();
         result.Refusal.Should().StartWith("Steam rewrites its config on exit");
@@ -154,10 +168,10 @@ public class LocalConfigVdfWriterTests : IDisposable
         WriteConfig("cd /tmp; %command%");
         var original = File.ReadAllText(ConfigFile);
 
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []);
 
         result.IsRefused.Should().BeTrue();
-        result.Refusal.Should().Be(SteamLaunchOptionLine.Rewrite("cd /tmp; %command%", Shim, "Survival", []).Refusal);
+        result.Refusal.Should().Be(SteamLaunchOptionLine.Rewrite("cd /tmp; %command%", Shim, "Survival", [], []).Refusal);
         File.ReadAllText(ConfigFile).Should().Be(original);
         File.Exists(Backup).Should().BeFalse();
     }
@@ -165,7 +179,7 @@ public class LocalConfigVdfWriterTests : IDisposable
     [Fact]
     public void Test_RefusesMissingFile()
     {
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []);
 
         result.IsRefused.Should().BeTrue();
         result.Refusal.Should().Contain("localconfig.vdf");
@@ -177,7 +191,7 @@ public class LocalConfigVdfWriterTests : IDisposable
     {
         File.WriteAllText(ConfigFile, "not { vdf");
 
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []);
 
         result.IsRefused.Should().BeTrue();
         File.ReadAllText(ConfigFile).Should().Be("not { vdf");
@@ -188,7 +202,7 @@ public class LocalConfigVdfWriterTests : IDisposable
     {
         WriteConfig($"'{Shim}' run 'Old' -- %command%");
 
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "New", []);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "New", [], []);
 
         result.Line.Should().Be($"'{Shim}' run 'New' -- %command%");
         ReadBack().Line.Should().Be(result.Line);
@@ -199,7 +213,7 @@ public class LocalConfigVdfWriterTests : IDisposable
     {
         WriteConfig(null);
 
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Bob's \"best\" run", []);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Bob's \"best\" run", [], []);
 
         result.IsRefused.Should().BeFalse(result.Refusal);
         ReadBack().Line.Should().Be(result.Line);
@@ -212,7 +226,7 @@ public class LocalConfigVdfWriterTests : IDisposable
         WriteConfig(null);
         WineDllOverride[] required = [new("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]), new("version", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn])];
 
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", required);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", required, []);
 
         result.IsRefused.Should().BeFalse(result.Refusal);
         File.ReadAllText(ConfigFile).Should().Contain("WINEDLLOVERRIDES=\\\"winmm=n,b;version=n,b\\\"");
@@ -228,7 +242,7 @@ public class LocalConfigVdfWriterTests : IDisposable
         var before = File.ReadAllText(ConfigFile);
         WineDllOverride[] required = [new("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]), new("version", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn])];
 
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", required);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", required, []);
 
         result.IsRefused.Should().BeTrue();
         result.Refusal.Should().Contain("did not read back");
@@ -241,7 +255,7 @@ public class LocalConfigVdfWriterTests : IDisposable
         WriteConfig(FluorineLine);
         var original = File.ReadAllText(ConfigFile);
 
-        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []);
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []);
 
         result.IsRefused.Should().BeTrue();
         result.Replacement.Should().NotBeNull();
@@ -256,7 +270,7 @@ public class LocalConfigVdfWriterTests : IDisposable
     {
         WriteConfig("cd /tmp; %command%");
 
-        Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []).Replacement.Should().BeNull();
+        Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", [], []).Replacement.Should().BeNull();
     }
 
     [Fact]

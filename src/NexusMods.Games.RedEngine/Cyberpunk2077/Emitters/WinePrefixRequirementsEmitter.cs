@@ -10,7 +10,7 @@ using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
 
-public class WinePrefixRequirementsEmitter(IWineDllOverrideRequirements game) : ILoadoutDiagnosticEmitter
+public class WinePrefixRequirementsEmitter(IWineDllOverrideRequirements game, IGameLauncherSkip launcher) : ILoadoutDiagnosticEmitter
 {
     private static readonly ImmutableHashSet<string> RequiredWinetricksPackages =
     [
@@ -22,7 +22,7 @@ public class WinePrefixRequirementsEmitter(IWineDllOverrideRequirements game) : 
     {
         await Task.Yield();
 
-        var dllOverridesInstructions = await WineDiagnosticHelper.GetWineDllOverridesUpdateInstructions(loadout.InstallationInstance, game.RequiredWineDllOverrides(loadout), cancellationToken: cancellationToken);
+        var dllOverridesInstructions = await WineDiagnosticHelper.GetWineDllOverridesUpdateInstructions(loadout.InstallationInstance, game.RequiredWineDllOverrides(loadout), launcher.LauncherSkipArguments, cancellationToken: cancellationToken);
         if (dllOverridesInstructions is not null) yield return Diagnostics.CreateRequiredWineDllOverrides(dllOverridesInstructions);
 
         var winetricksInstructions = await WineDiagnosticHelper.GetWinetricksInstructions(loadout.InstallationInstance, RequiredWinetricksPackages, cancellationToken: cancellationToken);

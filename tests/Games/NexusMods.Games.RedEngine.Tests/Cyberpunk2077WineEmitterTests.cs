@@ -63,6 +63,13 @@ public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolated
         reported.Should().ContainSingle().Which.MessageData.Instructions.Should().Contain("winmm=n,b;version=n,b");
     }
 
+    [Fact]
+    public void CyberpunkDeclaresTheArgumentThatSkipsREDprelauncher()
+    {
+        ((IGameLauncherSkip)Game).LauncherSkipArguments.Should().Equal("--launcher-skip");
+        GameLauncherSkip.For(Game).Should().Equal("--launcher-skip");
+    }
+
     private void SetPrefixOverrides(params WineDllOverride[] overrides)
     {
         _provider.GetWineDllOverrides(Arg.Any<CancellationToken>())

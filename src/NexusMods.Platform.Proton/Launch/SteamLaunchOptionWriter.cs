@@ -13,7 +13,7 @@ public sealed class SteamLaunchOptionWriter(LocalConfigVdfWriter writer, IEnviro
 
     /// <inheritdoc />
     public string ComposeLine(Loadout.ReadOnly loadout)
-        => SteamLaunchOptionLine.Compose(ShimPath.ToString(), loadout.Name, WineDllOverrideRequirements.For(registry.ForceGetInstallation(loadout).Game, loadout));
+        => SteamLaunchOptionLine.Compose(ShimPath.ToString(), loadout.Name, WineDllOverrideRequirements.For(registry.ForceGetInstallation(loadout).Game, loadout), GameLauncherSkip.For(registry.ForceGetInstallation(loadout).Game));
 
     /// <inheritdoc />
     public string? MissingShimWarning => ShimPath.FileExists
@@ -26,7 +26,7 @@ public sealed class SteamLaunchOptionWriter(LocalConfigVdfWriter writer, IEnviro
         if (Locate(installation) is not { } game) return Refuse(NotSteamGame(installation));
         if (MissingShimWarning is { } missing) return Refuse(missing);
 
-        return writer.SetLauncherSpan(game.Config, game.AppId, ShimPath.ToString(), loadout.Name, WineDllOverrideRequirements.For(installation.Game, loadout));
+        return writer.SetLauncherSpan(game.Config, game.AppId, ShimPath.ToString(), loadout.Name, WineDllOverrideRequirements.For(installation.Game, loadout), GameLauncherSkip.For(installation.Game));
     }
 
     /// <inheritdoc />
@@ -35,7 +35,7 @@ public sealed class SteamLaunchOptionWriter(LocalConfigVdfWriter writer, IEnviro
         if (Locate(installation) is not { } game) return Refuse(NotSteamGame(installation));
         if (MissingShimWarning is { } missing) return Refuse(missing);
 
-        return writer.ReplaceLaunchOptions(game.Config, game.AppId, ShimPath.ToString(), loadout.Name, WineDllOverrideRequirements.For(installation.Game, loadout), confirmedOldLine, RecordFor(game.AppId));
+        return writer.ReplaceLaunchOptions(game.Config, game.AppId, ShimPath.ToString(), loadout.Name, WineDllOverrideRequirements.For(installation.Game, loadout), GameLauncherSkip.For(installation.Game), confirmedOldLine, RecordFor(game.AppId));
     }
 
     /// <inheritdoc />

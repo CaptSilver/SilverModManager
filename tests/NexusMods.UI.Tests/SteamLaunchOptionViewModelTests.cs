@@ -278,6 +278,6 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
     public async Task Test_AppRegistersTheWriterTheDialogNeeds()
     {
         var writer = Provider.GetRequiredService<ISteamLaunchOptionWriter>();
-        writer.ComposeLine(await SeedLoadoutRow(GameStore.Steam, "Loadout A")).Should().EndWith("run 'Loadout A' -- %command%");
+        writer.ComposeLine(await SeedLoadoutRow(GameStore.Steam, "Loadout A")).Should().EndWith("run 'Loadout A' -- %command% --launcher-skip");
     }
 }

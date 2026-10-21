@@ -114,7 +114,7 @@ public class DoctorReporterTests : IDisposable
     [Fact]
     public void Build_SteamGame_ReportsEveryPart()
     {
-        WriteLocalConfig(SteamLaunchOptionLine.Compose("/opt/silvermod", "Main", []));
+        WriteLocalConfig(SteamLaunchOptionLine.Compose("/opt/silvermod", "Main", [], []));
 
         var report = Reporter().Build([Managed(SteamGame(), "Main", "Second")]);
 
@@ -138,7 +138,7 @@ public class DoctorReporterTests : IDisposable
         install.LaunchOptions.Should().NotBeNull();
         install.LaunchOptions!.ConfigPath.Should().Be(_localConfig.ToString());
         install.LaunchOptions.Status.Should().Be(DoctorLaunchOptionsStatus.Span);
-        install.LaunchOptions.Line.Should().Be(SteamLaunchOptionLine.Compose("/opt/silvermod", "Main", []));
+        install.LaunchOptions.Line.Should().Be(SteamLaunchOptionLine.Compose("/opt/silvermod", "Main", [], []));
         install.LaunchOptions.Loadout.Should().Be("Main");
 
         install.Lock.Should().Be(new DoctorLock(DoctorLockStatus.Free, null, null, null, null));
@@ -209,7 +209,7 @@ public class DoctorReporterTests : IDisposable
     [Fact]
     public void Json_RoundTrips()
     {
-        WriteLocalConfig(SteamLaunchOptionLine.Compose("/opt/silvermod", "Main", []));
+        WriteLocalConfig(SteamLaunchOptionLine.Compose("/opt/silvermod", "Main", [], []));
         var report = Reporter().Build([Managed(SteamGame()), Managed(GogInWine())]);
 
         var json = report.ToJson();
@@ -382,7 +382,7 @@ public class DoctorReporterTests : IDisposable
     [Fact]
     public void Format_NamesEachSectionAndTheLockHolder()
     {
-        WriteLocalConfig(SteamLaunchOptionLine.Compose("/opt/silvermod", "Main", []));
+        WriteLocalConfig(SteamLaunchOptionLine.Compose("/opt/silvermod", "Main", [], []));
         using var holder = TestHost.StartHolder(LockPath(), seconds: 30);
         try
         {
