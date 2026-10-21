@@ -162,7 +162,7 @@ public class DeclarativeGameTests
         var installer = game.LibraryItemInstallers.Should().ContainSingle().Which.Should().BeOfType<GenericPatternMatchInstaller>().Subject;
         var target = installer.InstallFolderTargets.Should().ContainSingle().Subject;
         target.DestinationGamePath.Should().Be(new GamePath(LocationId.Game, "Data"));
-        target.KnownSourceFolderNames.Should().Equal(RelativePath.FromUnsanitizedInput("meshes"), RelativePath.FromUnsanitizedInput("textures"));
+        target.Names.Should().Equal(RelativePath.FromUnsanitizedInput("meshes"), RelativePath.FromUnsanitizedInput("textures"));
     }
 
     [Fact]

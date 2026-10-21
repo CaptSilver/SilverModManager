@@ -66,7 +66,8 @@ public abstract class AGameTest<TGame> where TGame : IGame
     {
     }
 
-    private AGameTest(IServiceProvider serviceProvider, Func<GameInstallation, bool> isGameUnderTest)
+    /// <summary>For tests that pick the installation by more than its game.</summary>
+    protected AGameTest(IServiceProvider serviceProvider, Func<GameInstallation, bool> isGameUnderTest)
     {
         ServiceProvider = serviceProvider;
 

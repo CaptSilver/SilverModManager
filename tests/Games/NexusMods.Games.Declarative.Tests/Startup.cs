@@ -34,12 +34,37 @@ public class Startup
             .AddCreationEngine()
             .AddMountAndBlade2Bannerlord()
             .AddFromSoftGames()
-            .AddDeclarativeGames(new InMemoryFileSystem(OSInformation.FakeUnix), additionalBundled: [new DefinitionSource("test/harness.yaml", Samples.Harness)])
+            .AddDeclarativeGames(new InMemoryFileSystem(OSInformation.FakeUnix), additionalBundled: [new DefinitionSource("test/harness.yaml", Samples.Harness), RoundTripDefinitions.Fixture])
             .AddUniversalGameLocator(GameId.From(Samples.HarnessId), stores: [GameStore.Unknown])
+            .AddRoundTripLocators()
             .AddLogging(builder => builder.AddXUnit())
             .AddGames()
             .AddGameServices()
             .AddLoadoutAbstractions()
             .Validate();
+    }
+}
+
+internal static class RoundTripLocators
+{
+    /// <summary>A stubbed locator for every definition the round-trip theory covers, with a few vanilla files written.</summary>
+    public static IServiceCollection AddRoundTripLocators(this IServiceCollection services)
+    {
+        // One install per plan, each in its own folder, so a case never sees what another left behind.
+        foreach (var definition in RoundTripDefinitions.All())
+        {
+            var gameId = GameId.From(definition.Id);
+            foreach (var plan in RoundTripDefinitions.Plans)
+            {
+                var folderName = RoundTripDefinitions.FolderName(definition.Id, plan);
+                services.AddSingleton<IGameLocator>(s => new UniversalStubbedGameLocator(
+                    s.GetServices<IGame>().Single(game => game.GameId == gameId),
+                    folderName,
+                    s.GetRequiredService<IFileSystem>(),
+                    s.GetRequiredService<TemporaryFileManager>(),
+                    RoundTripDefinitions.VanillaFiles(definition)));
+            }
+        }
+        return services;
     }
 }

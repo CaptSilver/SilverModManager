@@ -125,7 +125,7 @@ public sealed class DeclarativeGame : IGame
             new InstallFolderTarget
             {
                 DestinationGamePath = ParseTarget(installer.Target),
-                KnownSourceFolderNames = installer.DataMarkers.Select(marker => RelativePath.FromUnsanitizedInput(marker)).ToArray(),
+                Names = installer.DataMarkers.Select(marker => RelativePath.FromUnsanitizedInput(marker)).ToArray(),
             },
         ],
     };
