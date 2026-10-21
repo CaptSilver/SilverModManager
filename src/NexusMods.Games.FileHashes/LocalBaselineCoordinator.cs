@@ -119,6 +119,9 @@ internal sealed class LocalBaselineCoordinator : IDisposable
             VersionName = locator.StoreBuildId,
             Manifests = manifests,
             AllInstalledDepotsCovered = allCovered,
+            // Unsettled installs returned above; the flag is spelled out so the baseline never has to assume it.
+            StoreSettled = !locator.StoreUpdatePending,
+            StoreLastWrite = locator.StoreLastWrite,
             // Only the rule for files the synchronizer never touches: IsIgnoredBackupPath is about what is worth
             // backing up (all of Baldur's Gate 3's install folder, the archives of the Creation Engine games), and
             // those files are the game's own, which the baseline has to know about.

@@ -56,7 +56,7 @@ public class WinePrefixWrappingLocatorTests
             .AddSingleton<IFileSystem>(fileSystem)
             .BuildServiceProvider();
 
-        var wrapped = new StubLocator(Substitute.For<IGameData>(), storeRoot, "42", storeUpdatePending: true);
+        var wrapped = new StubLocator(Substitute.For<IGameData>(), storeRoot, "42", storeUpdatePending: true, storeLastWrite: DateTimeOffset.UnixEpoch.AddDays(5));
         var locator = new WinePrefixWrappingLocator(services, [(_, _, _, _) => wrapped]);
 
         var result = locator.Locate().Should().ContainSingle().Subject;
@@ -64,9 +64,10 @@ public class WinePrefixWrappingLocatorTests
         result.StoreRoot.Should().Be(storeRoot);
         result.StoreBuildId.Should().Be("42");
         result.StoreUpdatePending.Should().BeTrue();
+        result.StoreLastWrite.Should().Be(DateTimeOffset.UnixEpoch.AddDays(5));
     }
 
-    private sealed class StubLocator(IGameData game, AbsolutePath? storeRoot = null, string? storeBuildId = null, bool storeUpdatePending = false) : IGameLocator
+    private sealed class StubLocator(IGameData game, AbsolutePath? storeRoot = null, string? storeBuildId = null, bool storeUpdatePending = false, DateTimeOffset? storeLastWrite = null) : IGameLocator
     {
         public IEnumerable<GameLocatorResult> Locate()
         {
@@ -81,6 +82,7 @@ public class WinePrefixWrappingLocatorTests
                 StoreRoot = storeRoot,
                 StoreBuildId = storeBuildId,
                 StoreUpdatePending = storeUpdatePending,
+                StoreLastWrite = storeLastWrite,
             };
         }
     }

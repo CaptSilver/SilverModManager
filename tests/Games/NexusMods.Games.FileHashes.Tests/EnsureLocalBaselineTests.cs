@@ -457,6 +457,31 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         _source.Reads.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Rebuild_OfASettledInstallOlderThanTheStoresLastWrite_ReadsNoFile()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+        await _coordinator.Ensure(Installation("101"));
+        await ForgetClassificationVersion();
+        var opened = 0;
+        var coordinator = new LocalBaselineCoordinator(
+            () => _store,
+            new LocalVanillaBaseline(FileSystem.Shared, NullLogger<LocalVanillaBaseline>.Instance, path =>
+            {
+                Interlocked.Increment(ref opened);
+                return path.Read();
+            }),
+            _source,
+            NullLogger<LocalBaselineCoordinator>.Instance);
+
+        var result = await coordinator.Ensure(Make(["101"], storeLastWrite: DateTimeOffset.UtcNow.AddMinutes(5)));
+
+        result.Rebuilt.Should().BeTrue();
+        opened.Should().Be(0, "Steam vouches for the file and its hash is already stored");
+        LocalBaseline.All(_store.Db).Single().Files.Should().ContainSingle();
+    }
+
     /// <summary>Makes the one baseline look like it was recorded before the classification rules were versioned.</summary>
     private async Task ForgetClassificationVersion()
     {
@@ -473,6 +498,7 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         GameStore? store = null,
         bool updatePending = false,
         bool withStoreRoot = true,
+        DateTimeOffset? storeLastWrite = null,
         Func<GamePath, bool>? filter = null,
         Func<GamePath, bool>? ignoredBackup = null)
     {
@@ -496,6 +522,7 @@ public sealed class EnsureLocalBaselineTests : IDisposable
             StoreRoot = withStoreRoot ? FileSystem.Shared.FromUnsanitizedFullPath(_storeRoot) : null,
             StoreBuildId = "build-1",
             StoreUpdatePending = updatePending,
+            StoreLastWrite = storeLastWrite,
         };
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, gamePath)));
     }

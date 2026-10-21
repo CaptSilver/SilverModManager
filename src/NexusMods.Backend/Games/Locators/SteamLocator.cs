@@ -86,8 +86,20 @@ internal class SteamLocator : IGameLocator
                 // A settled install's manifest holds FullyInstalled alone; any other flag (update required,
                 // running, paused, files missing) means the files may not match the listed build.
                 StoreUpdatePending = gameFinderGame.AppManifest.StateFlags != StateFlags.FullyInstalled,
+                StoreLastWrite = LastWriteOf(gameFinderGame.AppManifest),
             };
         }
+    }
+
+    /// <summary>
+    /// The appmanifest's own update time when it has one; many manifests don't (Cyberpunk 2077's has no
+    /// LastUpdated key), and then the file's modification time, which Steam sets after the last game file
+    /// is written. The depot manifests can't stand in: they are cached before the download starts.
+    /// </summary>
+    internal static DateTimeOffset? LastWriteOf(AppManifest manifest)
+    {
+        if (manifest.LastUpdated > DateTimeOffset.UnixEpoch) return manifest.LastUpdated;
+        return manifest.ManifestPath.FileExists ? new DateTimeOffset(manifest.ManifestPath.FileInfo.LastWriteTimeUtc, TimeSpan.Zero) : null;
     }
 
     private class LinuxCompatibilityDataProvider : ILinuxCompatabilityDataProvider

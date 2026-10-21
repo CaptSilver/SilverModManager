@@ -50,6 +50,18 @@ internal sealed record BaselineRequest
     /// <summary>Paths the synchronizer leaves alone (runtime output, backups): never hashed, never reported.</summary>
     public required Func<GamePath, bool> IsIgnored { get; init; }
 
+    /// <summary>
+    /// The store reports the install as settled (Steam: fully installed, no update pending). Files are only
+    /// taken as vanilla without being read when this is true.
+    /// </summary>
+    public bool StoreSettled { get; init; }
+
+    /// <summary>
+    /// A time the store's last write to the installed files cannot be later than. Null when unknown, which
+    /// makes every file be read.
+    /// </summary>
+    public DateTimeOffset? StoreLastWrite { get; init; }
+
     public required NexusModsGameId GameId { get; init; }
 
     public required OperatingSystem OperatingSystem { get; init; }
@@ -94,9 +106,11 @@ internal sealed class LocalVanillaBaseline
     private readonly IFileSystem _fileSystem;
     private readonly ILogger<LocalVanillaBaseline> _logger;
     private readonly Func<AbsolutePath, Stream> _openRead;
+    private readonly Func<IReadOnlyList<IDb>>? _storedHashes;
 
-    public LocalVanillaBaseline(IFileSystem fileSystem, ILogger<LocalVanillaBaseline> logger, Func<AbsolutePath, Stream>? openRead = null)
+    public LocalVanillaBaseline(IFileSystem fileSystem, ILogger<LocalVanillaBaseline> logger, Func<AbsolutePath, Stream>? openRead = null, Func<IReadOnlyList<IDb>>? storedHashes = null)
     {
+        _storedHashes = storedHashes;
         _fileSystem = fileSystem;
         _logger = logger;
         _openRead = openRead ?? (path => path.Read());
@@ -120,8 +134,13 @@ internal sealed class LocalVanillaBaseline
         EnsurePlausible(request, walk, candidates.Count + nonVanilla.Count);
 
         var stopwatch = Stopwatch.StartNew();
-        var hashed = await HashCandidates(candidates, cancellationToken);
-        _logger.LogInformation("Hashed {Count} of the files under {Root} in {Elapsed}", hashed.Count, request.GameRoot, stopwatch.Elapsed);
+        var stats = new RebuildStats();
+        var (resolved, toRead) = TakeStoredHashes(request, candidates, localStore.Db, stats);
+        var hashed = await HashCandidates(toRead, stats, cancellationToken);
+        hashed.AddRange(resolved);
+        _logger.LogInformation(
+            "Baseline of {Root}: {Trusted} files trusted without reading, {Stored} taken from stored hashes, {Read} read ({Bytes} bytes), {Elapsed}",
+            request.GameRoot, stats.Trusted, resolved.Count, stats.Read, stats.BytesRead, stopwatch.Elapsed);
 
         using var tx = localStore.BeginTransaction();
         RetractPrevious(tx, localStore.Db, request);
@@ -268,7 +287,96 @@ internal sealed class LocalVanillaBaseline
         return (candidates, new WalkCounts(entries, files));
     }
 
-    private async Task<List<Hashed>> HashCandidates(List<Candidate> candidates, CancellationToken cancellationToken)
+    /// <summary>
+    /// How far past the store's last write a file's modification time may be and still count as not
+    /// modified since, for file systems that keep coarse timestamps.
+    /// </summary>
+    private static readonly TimeSpan StoreWriteTolerance = TimeSpan.FromSeconds(2);
+
+    private sealed class RebuildStats
+    {
+        private int _read;
+        private long _bytesRead;
+
+        /// <summary>Files the store vouches for, whether or not a stored hash was found for them.</summary>
+        public int Trusted { get; set; }
+
+        public int Read => _read;
+
+        public long BytesRead => Interlocked.Read(ref _bytesRead);
+
+        public void AddRead(Size size)
+        {
+            Interlocked.Increment(ref _read);
+            Interlocked.Add(ref _bytesRead, (long)size.Value);
+        }
+    }
+
+    /// <summary>
+    /// Takes a file as the manifest describes it, without reading it, when the store vouches for it: the
+    /// install is settled, the size matched (<see cref="Classify"/> only lets those through) and the file
+    /// was not modified after the store's last write. The hashes come from an existing <see cref="HashRelation"/>
+    /// with the manifest's SHA-1 and the file's size, from this store or the others; a file with no such
+    /// row is read, because a row needs every hash and none is made up.
+    /// <para>
+    /// The trade-off is a file replaced by one of the same size that kept an older modification time, which
+    /// goes unnoticed. The store's last write is the best bound there is (for Steam, the appmanifest's
+    /// update time, or failing that the file's own modification time, which Steam also rewrites when the
+    /// game is launched), so a same-size replacement made before the last launch goes unnoticed as well.
+    /// The depot manifest's creation time cannot stand in for it: it is when the build was published,
+    /// before the store wrote any file.
+    /// </para>
+    /// </summary>
+    private (List<Hashed> Resolved, List<Candidate> ToRead) TakeStoredHashes(BaselineRequest request, List<Candidate> candidates, IDb localDb, RebuildStats stats)
+    {
+        var resolved = new List<Hashed>();
+        if (!request.StoreSettled || request.StoreLastWrite is not { } lastWrite) return (resolved, candidates);
+
+        var trustedUntil = lastWrite.UtcDateTime + StoreWriteTolerance;
+        var databases = new List<IDb> { localDb };
+        if (_storedHashes?.Invoke() is { } others) databases.AddRange(others);
+
+        var toRead = new List<Candidate>();
+        foreach (var candidate in candidates)
+        {
+            if (candidate.Entry is not { } entry || candidate.ModifiedUtc > trustedUntil)
+            {
+                toRead.Add(candidate);
+                continue;
+            }
+
+            stats.Trusted++;
+            if (FindStoredHash(databases, entry.Sha1, candidate.Size) is { } hash) resolved.Add(new Hashed(candidate, hash));
+            else toRead.Add(candidate);
+        }
+
+        return (resolved, toRead);
+    }
+
+    private static MultiHash? FindStoredHash(List<IDb> databases, Sha1Value sha1, Size size)
+    {
+        foreach (var db in databases)
+        {
+            foreach (var row in HashRelation.FindBySha1(db, sha1))
+            {
+                if (row.Size != size) continue;
+                return new MultiHash
+                {
+                    Crc32 = row.Crc32,
+                    Md5 = row.Md5,
+                    Sha1 = row.Sha1,
+                    XxHash3 = row.XxHash3,
+                    XxHash64 = row.XxHash64,
+                    MinimalHash = row.MinimalHash,
+                    Size = row.Size,
+                };
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<List<Hashed>> HashCandidates(List<Candidate> candidates, RebuildStats stats, CancellationToken cancellationToken)
     {
         var results = new ConcurrentBag<Hashed>();
         var options = new ParallelOptions { MaxDegreeOfParallelism = HashParallelism, CancellationToken = cancellationToken };
@@ -277,7 +385,9 @@ internal sealed class LocalVanillaBaseline
             try
             {
                 await using var stream = _openRead(_fileSystem.FromUnsanitizedFullPath(candidate.DiskPath));
-                results.Add(new Hashed(candidate, await MultiHasher.HashStream(stream, token)));
+                var hash = await MultiHasher.HashStream(stream, token);
+                stats.AddRead(hash.Size);
+                results.Add(new Hashed(candidate, hash));
             }
             catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException)
             {

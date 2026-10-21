@@ -99,4 +99,11 @@ public class GameLocatorResult
     /// the build the store lists.
     /// </summary>
     public bool StoreUpdatePending { get; init; }
+
+    /// <summary>
+    /// A time the store's last write to the installed files cannot be later than, or null when the locator
+    /// has no such bound. For Steam, the appmanifest's update time, else the appmanifest file's own
+    /// modification time (rewritten once the last file lands, and again on later launches).
+    /// </summary>
+    public DateTimeOffset? StoreLastWrite { get; init; }
 }

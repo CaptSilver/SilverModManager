@@ -90,6 +90,7 @@ internal class WinePrefixWrappingLocator : IGameLocator
             StoreRoot = result.StoreRoot,
             StoreBuildId = result.StoreBuildId,
             StoreUpdatePending = result.StoreUpdatePending,
+            StoreLastWrite = result.StoreLastWrite,
             WinePrefixPath = result.WinePrefixPath ?? prefix,
             Compatibility = result.Compatibility ?? new CompatibilityLayer(CompatibilityLayerKind.PlainWine, prefix),
         };

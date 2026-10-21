@@ -99,7 +99,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         // Networking.Steam registers the source; without it every baseline is a snapshot.
         _baselineCoordinator = new LocalBaselineCoordinator(
             () => _local.Connection,
-            new LocalVanillaBaseline(_fileSystem, provider.GetRequiredService<ILogger<LocalVanillaBaseline>>()),
+            new LocalVanillaBaseline(_fileSystem, provider.GetRequiredService<ILogger<LocalVanillaBaseline>>(), storedHashes: () => Databases),
             provider.GetService<IDepotManifestSource>(),
             provider.GetRequiredService<ILogger<LocalBaselineCoordinator>>());
 
