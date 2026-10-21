@@ -65,6 +65,38 @@ The files with issues:
 
     [DiagnosticTemplate]
     [UsedImplicitly]
+    internal static IDiagnosticTemplate GameFilesDifferFromTheAppsFileData = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 4))
+        .WithTitle("Game File Data Mismatch")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("Loadout can't be applied: the app's file data for this build does not match {FileCount} game file(s) on disk")
+        .WithDetails("""
+The loadout is based on {Game} v{Version}. {FileCount} file(s), totalling {Size}, are in the game folder, but their contents are not what the app's file data lists for this build, and the app has no copy of the listed contents to put back. Until that is sorted out, the loadout cannot be applied.
+
+## What This Means
+The files are not missing. Either something outside the app changed them after {Store} installed them, or the app's file data for this build of {Game} is wrong about them.
+
+## Technical Details
+Each file below exists in the game folder with a hash that differs from the one the app holds for {Game} v{Version} from {Store}.
+
+The files with issues:
+
+{Files}
+
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<Size>("Size")
+            .AddValue<int>("FileCount")
+            .AddValue<string>("Files")
+            .AddValue<string>("Game")
+            .AddValue<string>("Store")
+            .AddValue<string>("Version")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
     internal static IDiagnosticTemplate NonVanillaGameFiles = DiagnosticTemplateBuilder
         .Start()
         .WithId(new DiagnosticId(Source, number: 3))

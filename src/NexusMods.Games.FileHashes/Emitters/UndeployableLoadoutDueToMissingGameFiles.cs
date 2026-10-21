@@ -27,30 +27,58 @@ public class UndeployableLoadoutDueToMissingGameFiles : ILoadoutDiagnosticEmitte
     {
         await Task.Yield();
 
-        var sb = new StringBuilder();
-
-        var totalSize = Size.Zero;
-        var count = 0;
+        // A file with no disk part is gone from the folder, and the store can restore it. One with a disk part is
+        // there with a hash the app's data for this build doesn't list, so "verify in the store" would be the
+        // wrong advice when that data is what's wrong.
+        var missing = new Group();
+        var mismatched = new Group();
 
         foreach (var (gamePath, node) in syncTree)
         {
             if (node.SourceItemType is not LoadoutSourceItemType.Game || !node.Actions.HasFlag(Actions.WarnOfUnableToExtract)) continue;
-            totalSize += node.Loadout.Size;
-            count++;
-
-            sb.AppendLine($"* `{gamePath}`");
+            (node.HaveDisk ? mismatched : missing).Add(gamePath, node);
         }
 
-        if (count > 0)
+        var game = loadout.Installation.Name;
+        var store = loadout.Installation.Store.Value;
+        var version = loadout.GameVersion.ToString();
+
+        if (missing.Count > 0)
         {
             yield return Diagnostics.CreateUndeployableLoadoutDueToMissingGameFiles(
-                Size: totalSize,
-                FileCount: count,
-                Game: loadout.InstallationInstance.Game.DisplayName,
-                Files: sb.ToString(),
-                Store: loadout.Installation.Store.Value,
-                Version: loadout.GameVersion.ToString()
+                Size: missing.Size,
+                FileCount: missing.Count,
+                Game: game,
+                Files: missing.Files.ToString(),
+                Store: store,
+                Version: version
             );
+        }
+
+        if (mismatched.Count > 0)
+        {
+            yield return Diagnostics.CreateGameFilesDifferFromTheAppsFileData(
+                Size: mismatched.Size,
+                FileCount: mismatched.Count,
+                Game: game,
+                Files: mismatched.Files.ToString(),
+                Store: store,
+                Version: version
+            );
+        }
+    }
+
+    private sealed class Group
+    {
+        public StringBuilder Files { get; } = new();
+        public Size Size { get; private set; } = Size.Zero;
+        public int Count { get; private set; }
+
+        public void Add(GamePath path, SyncNode node)
+        {
+            Size += node.Loadout.Size;
+            Count++;
+            Files.AppendLine($"* `{path}`");
         }
     }
 }
