@@ -1,4 +1,5 @@
 using NexusMods.Abstractions.Games;
+using NexusMods.Games.FromSoft.Cleanup;
 using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.FromSoft.Saves;
@@ -25,6 +26,9 @@ public interface IFromSoftGame : IGame
 
     /// <summary>What the game folder checks look for.</summary>
     GameFolderCheckRules CheckRules => Definition.CheckRules;
+
+    /// <summary>What the game-folder cleanup recognises.</summary>
+    CleanupRules Cleanup => Definition.Cleanup;
 
     /// <summary>Which files of the upper folder a modded session may write without being flagged.</summary>
     OverlayAllowlist Overlay => Definition.Overlay;

@@ -5,7 +5,7 @@ using NexusMods.Sdk.ProxyConsole;
 namespace NexusMods.Games.FromSoft.Cleanup;
 
 /// <summary>
-/// <c>elden-ring cleanup</c>: shows what is in the game folder and the steps that would restore it, and with
+/// A game's cleanup verb: shows what is in the game folder and the steps that would restore it, and with
 /// <c>--apply --yes</c> runs them and shows what changed. The renderer only prints, so the confirmation is the
 /// <c>--yes</c> of a second run that follows reading the first one's list.
 /// </summary>

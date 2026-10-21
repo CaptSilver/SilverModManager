@@ -10,8 +10,6 @@ namespace NexusMods.Games.FromSoft.Doctor;
 /// </summary>
 public static class EldenRingChecks
 {
-    internal const string OldLauncherBackup = EldenRingPaths.AntiCheatLauncher + ".erm-backup";
-
     /// <summary>The artifacts, spawner and anti-cheat checks of one <c>Game</c> folder.</summary>
     public static IReadOnlyList<CheckResult> GameFolder(AbsolutePath gameFolder)
         => FromSoftChecks.GameFolder(gameFolder, EldenRingGame.Definition.CheckRules);

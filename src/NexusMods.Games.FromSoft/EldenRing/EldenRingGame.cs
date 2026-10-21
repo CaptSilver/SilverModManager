@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using JetBrains.Annotations;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.FromSoft.Cleanup;
 using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.Installers;
 using NexusMods.Games.FromSoft.Me3;
@@ -40,6 +41,13 @@ public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGa
             ExtraArtifacts = ["ersc_launcher.exe"],
             Spawners = ["ermerchant.dll", "erdtools.dll", "glorious_merchant.dll"],
         },
+        Cleanup = CleanupRules.ModEngine2 with
+        {
+            Launcher = EldenRingPaths.AntiCheatLauncher,
+            ModsFolder = "mods",
+            Leftovers = [..CleanupRules.ModEngine2.Leftovers, SeamlessCoop.Folder, "ersc_launcher.exe"],
+        },
+        CleanupVerb = EldenRingCleanupVerb.Name,
         Overlay = OverlayAllowlist.Default with { Folders = ["mods/", $"{SeamlessCoop.Folder}/"] },
     };
 

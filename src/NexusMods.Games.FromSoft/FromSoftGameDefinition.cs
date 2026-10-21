@@ -1,3 +1,4 @@
+using NexusMods.Games.FromSoft.Cleanup;
 using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.FromSoft.Saves;
@@ -19,6 +20,12 @@ public sealed record FromSoftGameDefinition
 
     /// <summary>What the game folder checks look for: the anti-cheat launcher, mod folders and item spawners of this game.</summary>
     public GameFolderCheckRules CheckRules { get; init; } = GameFolderCheckRules.ModEngine2;
+
+    /// <summary>What the game-folder cleanup removes, restores and leaves for review.</summary>
+    public CleanupRules Cleanup { get; init; } = CleanupRules.ModEngine2;
+
+    /// <summary>The verb a user types to clean this game's folder; null when the game has none, and the cleanup guide does not apply.</summary>
+    public string? CleanupVerb { get; init; }
 
     /// <summary>What a session may write into the overlay without being flagged. Defaults to file name patterns only.</summary>
     public OverlayAllowlist Overlay { get; init; } = OverlayAllowlist.Default;

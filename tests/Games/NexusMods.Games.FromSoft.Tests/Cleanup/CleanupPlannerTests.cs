@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
 using FluentAssertions;
 using NexusMods.Games.FromSoft.Cleanup;
+using NexusMods.Games.FromSoft.EldenRing;
+using NexusMods.Games.FromSoft.Tests.Fixtures;
 
 namespace NexusMods.Games.FromSoft.Tests.Cleanup;
 
@@ -28,6 +30,9 @@ public class CleanupPlannerTests
     private static CleanupInput Input(IEnumerable<InventoryEntry> inventory, bool immutable = false, LaunchOptionChange? launchOption = null, bool updatePending = false, bool baseline = true)
         => new(Folder, inventory.OrderBy(e => e.Path, StringComparer.Ordinal).ToArray(), baseline ? Vanilla.ToHashSet(StringComparer.OrdinalIgnoreCase) : null, immutable, launchOption, updatePending);
 
+    private static CleanupPlan Build(CleanupInput input)
+        => CleanupPlanner.Build(input, EldenRingGame.Definition.Cleanup, EldenRingGame.Definition.Layout);
+
     private static List<InventoryEntry> ErmInstall()
     {
         var entries = VanillaInventory();
@@ -49,7 +54,7 @@ public class CleanupPlannerTests
     [Fact]
     public void APristineFolderHasNoSteps()
     {
-        var plan = CleanupPlanner.Build(Input(VanillaInventory().Append(File("vkd3d-proton.cache"))));
+        var plan = Build(Input(VanillaInventory().Append(File("vkd3d-proton.cache"))));
 
         plan.IsEmpty.Should().BeTrue();
         plan.IsBlocked.Should().BeFalse();
@@ -58,7 +63,7 @@ public class CleanupPlannerTests
     [Fact]
     public void AnInstallLeftByAnotherModManagerGetsItsStepsInOrder()
     {
-        var plan = CleanupPlanner.Build(Input(ErmInstall()));
+        var plan = Build(Input(ErmInstall()));
 
         plan.Steps.Select(s => (s.Kind, s.Source, s.Target)).Should().Equal(
             (CleanupStepKind.Move, "start_protected_game.exe.erm-backup", "start_protected_game.exe"),
@@ -77,7 +82,7 @@ public class CleanupPlannerTests
     {
         var inventory = VanillaInventory().Where(e => e.Path != "start_protected_game.exe").Append(File("start_protected_game.exe.erm-backup"));
 
-        var plan = CleanupPlanner.Build(Input(inventory));
+        var plan = Build(Input(inventory));
 
         plan.Steps.Select(s => (s.Kind, s.Source, s.Target)).Should().Equal(
             (CleanupStepKind.Move, "start_protected_game.exe.erm-backup", "start_protected_game.exe"));
@@ -87,7 +92,7 @@ public class CleanupPlannerTests
     [Fact]
     public void AnImmutableLauncherComesFirstAsACommandForTheUserAndBlocksTheRestore()
     {
-        var plan = CleanupPlanner.Build(Input(ErmInstall(), immutable: true));
+        var plan = Build(Input(ErmInstall(), immutable: true));
 
         plan.Steps[0].Kind.Should().Be(CleanupStepKind.UserCommand);
         plan.Steps[0].Description.Should().Contain($"sudo chattr -i '{Folder}/start_protected_game.exe'");
@@ -101,7 +106,7 @@ public class CleanupPlannerTests
     {
         var input = Input(ErmInstall(), immutable: true) with { GameFolder = "/steam/it's here/Game" };
 
-        CleanupPlanner.Build(input).Steps[0].Description.Should().Contain(@"sudo chattr -i '/steam/it'\''s here/Game/start_protected_game.exe'");
+        Build(input).Steps[0].Description.Should().Contain(@"sudo chattr -i '/steam/it'\''s here/Game/start_protected_game.exe'");
     }
 
     [Fact]
@@ -110,7 +115,7 @@ public class CleanupPlannerTests
         var inventory = VanillaInventory();
         inventory.AddRange([Dir("mods"), Dir("mods/Fov"), File("mods/Fov/a.ini"), Dir("mods/Fov/sub"), File("mods/Fov/sub/B.INI"), File("mods/Fov/readme.txt")]);
 
-        var plan = CleanupPlanner.Build(Input(inventory));
+        var plan = Build(Input(inventory));
 
         plan.Steps.Select(s => (s.Kind, s.Source, s.Target)).Should().Equal(
             (CleanupStepKind.Copy, "mods/Fov/a.ini", "overlay/mods/Fov/a.ini"),
@@ -125,7 +130,7 @@ public class CleanupPlannerTests
         var inventory = VanillaInventory();
         inventory.AddRange([Dir("mods"), Dir("mods/Fov"), File("mods/Fov/a.ini"), File("mods/notes.txt")]);
 
-        var plan = CleanupPlanner.Build(Input(inventory));
+        var plan = Build(Input(inventory));
 
         plan.Steps.Should().NotContain(s => s.Source == "mods");
         plan.Steps.Should().ContainSingle(s => s.Kind == CleanupStepKind.Review && s.Source == "mods/notes.txt");
@@ -134,7 +139,7 @@ public class CleanupPlannerTests
     [Fact]
     public void ALinkIsDeletedAsALinkAndNeverFollowed()
     {
-        var plan = CleanupPlanner.Build(Input(VanillaInventory().Append(Link("d3dcompiler_47.dll", "/reshade/d3dcompiler_47.dll"))));
+        var plan = Build(Input(VanillaInventory().Append(Link("d3dcompiler_47.dll", "/reshade/d3dcompiler_47.dll"))));
 
         var step = plan.Steps.Should().ContainSingle().Subject;
         step.Kind.Should().Be(CleanupStepKind.Delete);
@@ -149,7 +154,7 @@ public class CleanupPlannerTests
         inventory.AddRange(new[] { "ReShade2.ini", "ersc_launcher.exe", "DINPUT8.dll", "winhttp.dll", "modengine2.dll", "modengine.toml" }.Select(p => File(p)));
         inventory.AddRange([Dir("mod"), File("mod/regulation.bin"), File("crash.dmp")]);
 
-        var plan = CleanupPlanner.Build(Input(inventory));
+        var plan = Build(Input(inventory));
 
         plan.Steps.Should().OnlyContain(s => s.Kind == CleanupStepKind.Delete);
         plan.Steps.Select(s => s.Source).Should().BeEquivalentTo("ReShade2.ini", "ersc_launcher.exe", "DINPUT8.dll", "winhttp.dll", "modengine2.dll", "modengine.toml", "mod", "crash.dmp");
@@ -158,7 +163,7 @@ public class CleanupPlannerTests
     [Fact]
     public void ADumpDeepInsideAFolderOfTheGameIsDeleted()
     {
-        var plan = CleanupPlanner.Build(Input(VanillaInventory().Append(File("sd/crash.dmp"))));
+        var plan = Build(Input(VanillaInventory().Append(File("sd/crash.dmp"))));
 
         plan.Steps.Should().ContainSingle(s => s.Kind == CleanupStepKind.Delete && s.Source == "sd/crash.dmp");
     }
@@ -166,7 +171,7 @@ public class CleanupPlannerTests
     [Fact]
     public void AFileTheGameDoesNotShipIsListedForReviewAndNotActedOn()
     {
-        var plan = CleanupPlanner.Build(Input(VanillaInventory().Append(File("mystery.bin"))));
+        var plan = Build(Input(VanillaInventory().Append(File("mystery.bin"))));
 
         var step = plan.Steps.Should().ContainSingle().Subject;
         step.Kind.Should().Be(CleanupStepKind.Review);
@@ -181,7 +186,7 @@ public class CleanupPlannerTests
         var input = Input(VanillaInventory().Append(File("start_protected_game.exe.erm-backup")), baseline: true);
         input = input with { Baseline = input.Baseline!.Where(p => p != "start_protected_game.exe").ToHashSet(StringComparer.OrdinalIgnoreCase) };
 
-        var plan = CleanupPlanner.Build(input);
+        var plan = Build(input);
 
         plan.Steps.Select(s => s.Kind).Should().Equal(CleanupStepKind.Move);
     }
@@ -191,13 +196,13 @@ public class CleanupPlannerTests
     {
         var input = Input(VanillaInventory().Append(File("Data1.bdt")).Append(File("sd/sd_en.bdt")).Append(File("movie/outro.bk2")), baseline: true);
 
-        CleanupPlanner.Build(input).IsEmpty.Should().BeTrue();
+        Build(input).IsEmpty.Should().BeTrue();
     }
 
     [Fact]
     public void WithoutAFileListForTheBuildNothingIsCalledUnrecognisedAndTheUserIsTold()
     {
-        var plan = CleanupPlanner.Build(Input(VanillaInventory().Append(File("mystery.bin")), baseline: false));
+        var plan = Build(Input(VanillaInventory().Append(File("mystery.bin")), baseline: false));
 
         plan.Steps.Should().NotContain(s => s.Kind == CleanupStepKind.Review);
         plan.Steps.Should().ContainSingle(s => s.Kind == CleanupStepKind.Advice);
@@ -208,7 +213,7 @@ public class CleanupPlannerTests
     {
         var change = new LaunchOptionChange("me3 launch -- %command%", "'/shim' 'Main' %command%");
 
-        var plan = CleanupPlanner.Build(Input(ErmInstall(), launchOption: change));
+        var plan = Build(Input(ErmInstall(), launchOption: change));
 
         var last = plan.Steps[^1];
         last.Kind.Should().Be(CleanupStepKind.ReplaceLaunchOption);
@@ -220,7 +225,7 @@ public class CleanupPlannerTests
     [Fact]
     public void APendingSteamUpdateIsNoReasonToRefuseAndEndsThePlanWithAnAdvice()
     {
-        var plan = CleanupPlanner.Build(Input(ErmInstall(), updatePending: true));
+        var plan = Build(Input(ErmInstall(), updatePending: true));
 
         plan.Steps[^1].Kind.Should().Be(CleanupStepKind.Advice);
         plan.Steps[^1].Description.Should().Contain("Steam").And.Contain("update");
@@ -230,7 +235,7 @@ public class CleanupPlannerTests
     [Fact]
     public void APristineFolderWithAPendingUpdateOnlyAdvises()
     {
-        var plan = CleanupPlanner.Build(Input(VanillaInventory(), updatePending: true));
+        var plan = Build(Input(VanillaInventory(), updatePending: true));
 
         plan.Steps.Select(s => s.Kind).Should().Equal(CleanupStepKind.Advice);
     }
@@ -238,8 +243,30 @@ public class CleanupPlannerTests
     [Fact]
     public void TwoPlansOfTheSameFolderHaveTheSameSteps()
     {
-        CleanupPlanner.Build(Input(ErmInstall())).SameSteps(CleanupPlanner.Build(Input(ErmInstall()))).Should().BeTrue();
-        CleanupPlanner.Build(Input(ErmInstall())).SameSteps(CleanupPlanner.Build(Input(VanillaInventory()))).Should().BeFalse();
+        Build(Input(ErmInstall())).SameSteps(Build(Input(ErmInstall()))).Should().BeTrue();
+        Build(Input(ErmInstall())).SameSteps(Build(Input(VanillaInventory()))).Should().BeFalse();
         new CleanupPlan(ImmutableArray<CleanupStep>.Empty).IsEmpty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AGameWithoutEldenRingsRulesLeavesEldenRingsNamesAlone()
+    {
+        var inventory = VanillaInventory().Concat([Dir("SeamlessCoop"), File("ersc_launcher.exe"), File("start_protected_game.exe.erm-backup")]);
+
+        var plan = CleanupPlanner.Build(Input(inventory), CleanupRules.ModEngine2, TestSoulsDefinition.Layout);
+
+        plan.Steps.Select(s => s.Kind).Should().NotContain([CleanupStepKind.Move, CleanupStepKind.Delete]);
+        plan.Steps.Where(s => s.Kind == CleanupStepKind.Review).Select(s => s.Source)
+            .Should().BeEquivalentTo(["ersc_launcher.exe", "start_protected_game.exe.erm-backup"]);
+    }
+
+    [Fact]
+    public void AGameWithoutAModsFolderConventionKeepsAModsFolderForReview()
+    {
+        var inventory = VanillaInventory().Concat([Dir("mods"), Dir("mods/Foo"), File("mods/Foo/config.ini")]);
+
+        var plan = CleanupPlanner.Build(Input(inventory), CleanupRules.ModEngine2, TestSoulsDefinition.Layout);
+
+        plan.Steps.Select(s => s.Kind).Should().NotContain([CleanupStepKind.Copy, CleanupStepKind.Delete]);
     }
 }

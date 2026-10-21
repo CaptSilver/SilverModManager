@@ -9,7 +9,7 @@ internal static class CleanupVerbs
     {
         services.AddSingleton<CleanupService>();
         services.AddSingleton<CleanupCommand>();
-        services.AddSingleton<IGameCleanupGuide, EldenRingCleanupGuide>();
+        services.AddSingleton<IGameCleanupGuide, FromSoftCleanupGuide>();
         services.AddSingleton<IImmutableFlagProbe, IoctlImmutableFlagProbe>();
         return services;
     }

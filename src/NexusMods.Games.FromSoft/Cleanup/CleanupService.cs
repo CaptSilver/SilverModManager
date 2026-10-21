@@ -5,7 +5,6 @@ using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
@@ -57,16 +56,23 @@ public sealed class CleanupService(
     public CleanupPlan Plan(Loadout.ReadOnly loadout)
     {
         var installation = loadout.InstallationInstance;
+        var game = GameOf(installation);
         var gameFolder = GameFolderOf(loadout);
-        var launcher = gameFolder / EldenRingPaths.AntiCheatLauncher;
+        var launcherName = game.Cleanup.Launcher;
+        var immutable = false;
+        if (launcherName is not null)
+        {
+            var launcher = gameFolder / launcherName;
+            immutable = launcher.FileExists && immutableProbe.IsImmutable(launcher);
+        }
 
         return CleanupPlanner.Build(new CleanupInput(
             gameFolder.GetFullPath(),
             GameFolderInventory.Take(gameFolder),
             Baseline(loadout),
-            launcher.FileExists && immutableProbe.IsImmutable(launcher),
+            immutable,
             LaunchOptionChange(installation, loadout),
-            installation.LocatorResult.StoreUpdatePending));
+            installation.LocatorResult.StoreUpdatePending), game.Cleanup, game.Layout);
     }
 
     /// <summary>
@@ -84,7 +90,7 @@ public sealed class CleanupService(
             return Refused("The game folder has changed since the steps were shown. Plan again and confirm the new steps.");
 
         if (current.Steps.FirstOrDefault(s => s.Kind == CleanupStepKind.UserCommand) is { } command)
-            return Refused($"{EldenRingPaths.AntiCheatLauncher} is still immutable, so nothing was changed. {command.Description}");
+            return Refused($"{GameOf(loadout.InstallationInstance).Cleanup.Launcher} is still immutable, so nothing was changed. {command.Description}");
 
         if (current.Steps.FirstOrDefault(s => s.IsBlocked) is { } blocked)
             return Refused($"Nothing was changed: {blocked.BlockedReason}.");
@@ -119,9 +125,13 @@ public sealed class CleanupService(
 
     private static CleanupResult Refused(string reason) => new([], reason);
 
+    private static IFromSoftGame GameOf(GameInstallation installation)
+        => installation.Game as IFromSoftGame
+           ?? throw new InvalidOperationException($"{installation.Game.DisplayName} is not a FromSoft game, so its game folder cannot be cleaned up.");
+
     private static AbsolutePath GameFolderOf(Loadout.ReadOnly loadout)
     {
-        var gameFolder = EldenRingPaths.GameFolder(loadout.InstallationInstance);
+        var gameFolder = FromSoftPaths.GameFolder(GameOf(loadout.InstallationInstance).Layout, loadout.InstallationInstance);
         if (!gameFolder.DirectoryExists())
             throw new InvalidOperationException($"The game folder {gameFolder} does not exist, so there is nothing to clean up.");
 
@@ -131,13 +141,14 @@ public sealed class CleanupService(
     /// <summary>The paths of the game's own files relative to the <c>Game</c> folder, or null when the build is not covered.</summary>
     private IReadOnlySet<string>? Baseline(Loadout.ReadOnly loadout)
     {
+        var layout = GameOf(loadout.InstallationInstance).Layout;
         var ids = (loadout.InstallationInstance.LocatorResult.Store, loadout.LocatorIds.ToArray());
         if (!fileHashes.CoversInstalledBuild(ids)) return null;
 
         return fileHashes.GetGameFiles(ids)
             .Select(f => f.Path)
-            .Where(EldenRingPaths.IsInGameFolder)
-            .Select(p => p.Path.Path[(EldenRingPaths.GameSubfolder.Length + 1)..])
+            .Where(p => FromSoftPaths.IsInGameFolder(layout, p))
+            .Select(p => p.Path.Path[(layout.GameSubfolder.Length + 1)..])
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
@@ -198,7 +209,8 @@ public sealed class CleanupService(
             .ToArray();
         if (links.Length == 0) return;
 
-        var folder = EldenRingPaths.CleanupFolder(settings.Get<FromSoftSettings>(), fileSystem, EldenRingPaths.InstallationFolderName(installation.LocatorResult));
+        var layout = GameOf(installation).Layout;
+        var folder = FromSoftPaths.CleanupFolder(layout, settings.Get<FromSoftSettings>(), fileSystem, FromSoftPaths.InstallationFolderName(layout, installation.LocatorResult));
         var record = folder / LinksRecord;
 
         var all = new List<RemovedLink>();
