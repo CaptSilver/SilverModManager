@@ -93,12 +93,18 @@ public class SevenZipExtractor : IExtractor
             File.SetUnixFileMode(directory, Executable);
             foreach (var file in Directory.EnumerateFiles(directory))
             {
+                // An archive can carry symlinks and chmod follows them, so a link is never touched:
+                // its target may be outside the extraction folder.
+                if (new FileInfo(file).LinkTarget is not null) continue;
                 var executable = File.GetUnixFileMode(file).HasFlag(UnixFileMode.UserExecute);
                 File.SetUnixFileMode(file, executable ? Executable : RegularFile);
             }
 
             foreach (var child in Directory.EnumerateDirectories(directory))
+            {
+                if (new DirectoryInfo(child).LinkTarget is not null) continue;
                 pending.Push(child);
+            }
         }
     }
 

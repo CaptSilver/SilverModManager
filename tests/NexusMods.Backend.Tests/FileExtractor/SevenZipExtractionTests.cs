@@ -43,6 +43,28 @@ public class SevenZipExtractionTests : AFileExtractorTest
         (await File.ReadAllTextAsync(destination.Path.Combine("scripts/mod.reds").ToString(), TestContext.Current.CancellationToken)).Should().Be("func Main() {}");
     }
 
+    // An archive can carry symlinks, and chmod follows them: normalising must never change a link's target.
+    [Fact]
+    public async Task NormalizingModesLeavesSymlinkTargetsAlone()
+    {
+        await using var outside = TemporaryFileManager.CreateFolder();
+        var secretDir = outside.Path.Combine("secret");
+        secretDir.CreateDirectory();
+        var secretFile = secretDir.Combine("key");
+        await secretFile.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
+        File.SetUnixFileMode(secretFile.ToString(), UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        File.SetUnixFileMode(secretDir.ToString(), UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+        await using var extracted = TemporaryFileManager.CreateFolder();
+        File.CreateSymbolicLink(extracted.Path.Combine("linked-file").ToString(), secretFile.ToString());
+        Directory.CreateSymbolicLink(extracted.Path.Combine("linked-dir").ToString(), secretDir.ToString());
+
+        SevenZipExtractor.NormalizeModes(extracted.Path.ToString());
+
+        File.GetUnixFileMode(secretFile.ToString()).Should().Be(UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        File.GetUnixFileMode(secretDir.ToString()).Should().Be(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+    }
+
     private AbsolutePath UnixModesArchive => FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-unix-modes.7z");
 
     [Theory]
