@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.App.UI.Controls.MarkdownRenderer;
@@ -46,7 +47,10 @@ public class DiagnosticDetailsPageFactory : APageFactory<IDiagnosticDetailsViewM
             WindowManager,
             ServiceProvider.GetRequiredService<IDiagnosticWriter>(),
             ServiceProvider.GetRequiredService<IMarkdownRendererViewModel>(),
-            context.Diagnostic
+            context.Diagnostic,
+            context.LoadoutId,
+            ServiceProvider.GetServices<IDiagnosticActionHandler>(),
+            ServiceProvider.GetRequiredService<ILogger<DiagnosticDetailsViewModel>>()
         );
     }
 }

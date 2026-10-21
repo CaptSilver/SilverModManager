@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using JetBrains.Annotations;
 using NexusMods.Abstractions.Diagnostics.References;
 
@@ -47,6 +48,16 @@ public record Diagnostic
     /// Gets all data references.
     /// </summary>
     public required Dictionary<DataReferenceDescription, IDataReference> DataReferences { get; init; }
+
+    /// <summary>
+    /// Gets the fixes the diagnostic offers, shown as buttons on its details page. Emitters set it with
+    /// <c>with { Actions = ... }</c> on the diagnostic a template creates.
+    /// </summary>
+    /// <remarks>
+    /// Nothing relies on <see cref="Diagnostic"/> value equality (<see cref="DataReferences"/> already compares
+    /// by reference), so the array is compared like any other property of the record.
+    /// </remarks>
+    public ImmutableArray<DiagnosticAction> Actions { get; init; } = [];
 
     /// <summary>
     /// Gets the creation time of this diagnostics.

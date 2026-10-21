@@ -206,17 +206,5 @@ public class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutC
         await Task.Run(() => _loadoutManager.RenameLoadout(loadout.LoadoutId, result.InputText).AsTask());
     }
 
-    private async Task ShowSteamLaunchOption(Loadout.ReadOnly loadout)
-    {
-        // The captured snapshot is stale after a rename, or once files the game's requirements depend on change.
-        loadout = loadout.Rebase();
-        var overlay = new SteamLaunchOptionViewModel(
-            loadout,
-            loadout.InstallationInstance,
-            _serviceProvider.GetRequiredService<IProcessTracker>(),
-            _serviceProvider.GetRequiredService<ISteamLaunchOptionWriter>(),
-            _serviceProvider.GetRequiredService<IAvaloniaInterop>()
-        );
-        await _serviceProvider.GetRequiredService<IOverlayController>().EnqueueAndWait(overlay);
-    }
+    private Task ShowSteamLaunchOption(Loadout.ReadOnly loadout) => SteamLaunchOptionDialog.ShowAsync(_serviceProvider, loadout);
 }

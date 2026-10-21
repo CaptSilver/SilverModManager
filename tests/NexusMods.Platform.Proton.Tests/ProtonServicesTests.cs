@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Deployment;
@@ -7,6 +8,7 @@ using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Protontricks;
+using NexusMods.Platform.Proton.Steam;
 using NexusMods.Platform.Proton.ToolRunner;
 using NexusMods.Platform.Proton.UserTools;
 using NexusMods.Platform.Proton.Verbs;
@@ -35,6 +37,8 @@ public class ProtonServicesTests
         services.AddSingleton<DeploymentLaunchRoots>();
         services.AddSingleton(Substitute.For<IGameLaunchSession>());
         services.AddSingleton(Substitute.For<ISettingsManager>());
+        services.AddSingleton(Substitute.For<IToolManager>());
+        services.AddLogging();
         services.AddProton();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions
@@ -59,6 +63,7 @@ public class ProtonServicesTests
         ]);
         provider.GetServices<IToolRunStrategy>().OfType<ILastResortToolRunStrategy>().Should().ContainSingle()
             .Which.Should().BeOfType<ProtontricksStrategy>();
+        provider.GetServices<IDiagnosticEmitter>().Should().ContainSingle().Which.Should().BeOfType<SteamLaunchOptionEmitter>();
         provider.GetServices<IRuntimeDependency>().Should().ContainSingle().Which.Should().BeOfType<AggregateProtontricksDependency>();
     }
 }

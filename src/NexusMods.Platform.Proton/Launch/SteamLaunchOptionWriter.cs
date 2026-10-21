@@ -46,7 +46,7 @@ public sealed class SteamLaunchOptionWriter(LocalConfigVdfWriter writer, IEnviro
     private AbsolutePath RecordFor(uint appId)
         => LauncherShim.ResolveDataHome(environment, fileSystem).Combine("silvermod/steam-launch-options").Combine($"{appId}.replaced");
 
-    private static (AbsolutePath Config, uint AppId)? Locate(GameInstallation installation)
+    internal static (AbsolutePath Config, uint AppId)? Locate(GameInstallation installation)
     {
         var located = installation.LocatorResult;
         if (located.Store != GameStore.Steam || located.LinuxCompatabilityDataProvider is not { } provider || !uint.TryParse(located.StoreIdentifier, out var appId)) return null;

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using FluentAssertions;
+using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
@@ -88,6 +89,26 @@ public class WineDiagnosticHelperTests
 
         instructions.Should().Contain("WINEDLLOVERRIDES=\"winmm=n,b\" %command%\n");
         instructions.Should().NotContain("--launcher-skip");
+    }
+
+    [Fact]
+    public void OnlyASteamInstallationGetsTheLaunchOptionFix()
+    {
+        var provider = Substitute.For<ILinuxCompatabilityDataProvider>();
+
+        WineDiagnosticHelper.GetWineDllOverridesFixActions(SteamInstallation(provider)).Should().Equal(DiagnosticActions.UseLoadoutFromSteam());
+
+        var gog = new GameLocatorResult
+        {
+            Game = Substitute.For<IGameData>(),
+            Path = FileSystem.Shared.FromUnsanitizedFullPath("/games/test"),
+            Store = GameStore.GOG,
+            StoreIdentifier = "1",
+            LocatorIds = [],
+            Locator = Substitute.For<IGameLocator>(),
+            LinuxCompatabilityDataProvider = provider,
+        };
+        WineDiagnosticHelper.GetWineDllOverridesFixActions(new GameInstallation(gog, default)).Should().BeEmpty();
     }
 
     private static GameInstallation SteamInstallation(ILinuxCompatabilityDataProvider provider)

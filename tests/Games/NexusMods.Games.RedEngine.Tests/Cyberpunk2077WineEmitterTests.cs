@@ -61,6 +61,7 @@ public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolated
         var reported = await Overrides(emitter, loadout);
 
         reported.Should().ContainSingle().Which.MessageData.Instructions.Should().Contain("winmm=n,b;version=n,b");
+        reported.Single().Actions.Should().BeEmpty("a game from an unknown store has no Steam launch options to write");
     }
 
     [Fact]
@@ -80,5 +81,66 @@ public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolated
     {
         var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
         return diagnostics.OfType<Diagnostic<Diagnostics.RequiredWineDllOverridesMessageData>>().ToList();
+    }
+}
+
+/// <summary>
+/// On a Steam install the app's own launch line sets the overrides, so the diagnostic offers to write it.
+/// </summary>
+public class Cyberpunk2077WineEmitterSteamTests(ITestOutputHelper helper) : AIsolatedGameTest<Cyberpunk2077WineEmitterSteamTests, Cyberpunk2077Game>(helper)
+{
+    private readonly ILinuxCompatabilityDataProvider _provider = Substitute.For<ILinuxCompatabilityDataProvider>();
+
+    protected override IServiceCollection AddServices(IServiceCollection services)
+    {
+        return base.AddServices(services)
+            .AddOSInterop()
+            .AddRuntimeDependencies()
+            .AddGenericGameSupport()
+            .AddFakeToolRunner()
+            .AddSingleton<IGameLocator>(provider => new UniversalStubbedGameLocator<Cyberpunk2077Game>(
+                provider,
+                provider.GetRequiredService<IFileSystem>(),
+                provider.GetRequiredService<TemporaryFileManager>(),
+                stores: [GameStore.Steam]
+            )
+            {
+                LinuxCompatabilityDataProvider = _provider,
+                // A numeric id the stub hasher knows; Steam store ids are numeric app ids.
+                LocatorIds = [LocatorId.From("3976631895")],
+            })
+            .AddRedEngineGames();
+    }
+
+    [Fact]
+    public async Task TheOverridesDiagnosticOffersTheSteamLaunchOptionFix()
+    {
+        _provider.GetInstalledWinetricksComponents(Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ImmutableHashSet<string>>(["d3dcompiler_47", "vcrun2022"]));
+        _provider.GetWineDllOverrides(Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ImmutableArray<WineDllOverride>>(ImmutableArray<WineDllOverride>.Empty));
+        var loadout = await CreateLoadout();
+        var emitter = Game.DiagnosticEmitters.OfType<WinePrefixRequirementsEmitter>().Single();
+
+        var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
+
+        diagnostics.OfType<Diagnostic<Diagnostics.RequiredWineDllOverridesMessageData>>().Should().ContainSingle()
+            .Which.Actions.Should().Equal(DiagnosticActions.UseLoadoutFromSteam());
+    }
+
+    [Fact]
+    public async Task TheWinetricksDiagnosticHasNoFixAction()
+    {
+        _provider.GetInstalledWinetricksComponents(Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ImmutableHashSet<string>>([]));
+        _provider.GetWineDllOverrides(Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ImmutableArray<WineDllOverride>>(ImmutableArray<WineDllOverride>.Empty));
+        var loadout = await CreateLoadout();
+        var emitter = Game.DiagnosticEmitters.OfType<WinePrefixRequirementsEmitter>().Single();
+
+        var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
+
+        diagnostics.OfType<Diagnostic<Diagnostics.RequiredWinetricksPackagesMessageData>>().Should().ContainSingle()
+            .Which.Actions.Should().BeEmpty("the launch line cannot install winetricks packages");
     }
 }

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text;
+using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 
@@ -7,6 +8,13 @@ namespace NexusMods.Games.Generic;
 
 public static class WineDiagnosticHelper
 {
+    /// <summary>
+    /// The fix for a diagnostic that the app's Steam launch line would clear: on a Steam install, writing that
+    /// line sets the DLL overrides. Other stores have no such line to write.
+    /// </summary>
+    public static ImmutableArray<DiagnosticAction> GetWineDllOverridesFixActions(GameInstallation gameInstallation)
+        => gameInstallation.LocatorResult.Store == GameStore.Steam ? [DiagnosticActions.UseLoadoutFromSteam()] : [];
+
     public static async ValueTask<string?> GetWinetricksInstructions(GameInstallation gameInstallation, ImmutableHashSet<string> requiredPackages, CancellationToken cancellationToken = default)
     {
         var locatorResultMetadata = gameInstallation.LocatorResult;

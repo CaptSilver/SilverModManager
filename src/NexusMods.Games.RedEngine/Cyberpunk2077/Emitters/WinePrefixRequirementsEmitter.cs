@@ -23,7 +23,11 @@ public class WinePrefixRequirementsEmitter(IWineDllOverrideRequirements game, IG
         await Task.Yield();
 
         var dllOverridesInstructions = await WineDiagnosticHelper.GetWineDllOverridesUpdateInstructions(loadout.InstallationInstance, game.RequiredWineDllOverrides(loadout), launcher.LauncherSkipArguments, cancellationToken: cancellationToken);
-        if (dllOverridesInstructions is not null) yield return Diagnostics.CreateRequiredWineDllOverrides(dllOverridesInstructions);
+        if (dllOverridesInstructions is not null)
+        {
+            yield return Diagnostics.CreateRequiredWineDllOverrides(dllOverridesInstructions)
+                with { Actions = WineDiagnosticHelper.GetWineDllOverridesFixActions(loadout.InstallationInstance) };
+        }
 
         var winetricksInstructions = await WineDiagnosticHelper.GetWinetricksInstructions(loadout.InstallationInstance, RequiredWinetricksPackages, cancellationToken: cancellationToken);
         if (winetricksInstructions is not null) yield return Diagnostics.CreateRequiredWinetricksPackages(winetricksInstructions);

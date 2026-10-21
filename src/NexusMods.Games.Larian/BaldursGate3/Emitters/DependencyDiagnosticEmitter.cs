@@ -48,7 +48,8 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
         );
         if (dllOverrideInstructions is not null)
         {
-            yield return Diagnostics.CreateBg3SeWineDllOverride(Instructions: dllOverrideInstructions);
+            yield return Diagnostics.CreateBg3SeWineDllOverride(Instructions: dllOverrideInstructions)
+                with { Actions = WineDiagnosticHelper.GetWineDllOverridesFixActions(loadout.InstallationInstance) };
         }
 
         var diagnostics = await DiagnosePakModulesAsync(loadout, bg3LoadoutFile, cancellationToken);

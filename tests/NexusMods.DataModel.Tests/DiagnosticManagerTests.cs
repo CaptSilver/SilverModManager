@@ -112,6 +112,58 @@ public class DiagnosticManagerTests(IServiceProvider provider) : AGameTest<Cyber
         await secondRefresh!.WaitAsync(TimeSpan.FromSeconds(30));
     }
 
+    [Fact]
+    public async Task Diagnostics_CarryTheirFixActionsThroughTheManager()
+    {
+        var emitter = ScriptedEmitter();
+        var loadout = await CreateLoadout();
+        emitter.Scripts.GetOrAdd(loadout.LoadoutId, _ => new EmitterScript
+        {
+            Answer = "has a fix",
+            Actions = [new DiagnosticAction("scripted-fix", "Fix it", ["one", "two"])],
+        });
+
+        var diagnostics = await DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+
+        var action = diagnostics.Should().ContainSingle().Which.Actions.Should().ContainSingle().Subject;
+        action.Id.Should().Be("scripted-fix");
+        action.Label.Should().Be("Fix it");
+        action.Arguments.Should().Equal("one", "two");
+    }
+
+    [Fact]
+    public async Task Diagnostics_WithoutAFixHaveNoActions()
+    {
+        var emitter = ScriptedEmitter();
+        var loadout = await CreateLoadout();
+        emitter.Scripts.GetOrAdd(loadout.LoadoutId, _ => new EmitterScript { Answer = "no fix" });
+
+        var diagnostics = await DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+
+        diagnostics.Should().ContainSingle().Which.Actions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void DiagnosticActions_AreEqualWhenTheirIdLabelAndArgumentsAre()
+    {
+        var a = new DiagnosticAction("id", "Label", ["x", "y"]);
+
+        a.Should().Be(new DiagnosticAction("id", "Label", ["x", "y"]));
+        a.GetHashCode().Should().Be(new DiagnosticAction("id", "Label", ["x", "y"]).GetHashCode());
+        a.Should().NotBe(new DiagnosticAction("id", "Label", ["x"]));
+        a.Should().NotBe(new DiagnosticAction("other", "Label", ["x", "y"]));
+    }
+
+    [Fact]
+    public void TheSteamLaunchOptionAction_HasAStableId()
+    {
+        var action = DiagnosticActions.UseLoadoutFromSteam();
+
+        action.Id.Should().Be(DiagnosticActions.UseLoadoutFromSteamId);
+        action.Id.Should().Be("use-loadout-from-steam");
+        action.Label.Should().NotBeNullOrWhiteSpace();
+    }
+
     private ScriptedLoadoutEmitter ScriptedEmitter() =>
         provider.GetServices<IDiagnosticEmitter>().OfType<ScriptedLoadoutEmitter>().Should().ContainSingle().Subject;
 }
@@ -119,6 +171,7 @@ public class DiagnosticManagerTests(IServiceProvider provider) : AGameTest<Cyber
 public sealed class EmitterScript
 {
     public required string Answer { get; set; }
+    public System.Collections.Immutable.ImmutableArray<DiagnosticAction> Actions { get; init; } = [];
     public TaskCompletionSource? Gate { get; set; }
     private int _started;
     public int Started => Volatile.Read(ref _started);
@@ -151,6 +204,7 @@ public sealed class ScriptedLoadoutEmitter : ILoadoutDiagnosticEmitter
             Summary = DiagnosticMessage.From(script.Answer),
             Details = DiagnosticMessage.DefaultValue,
             DataReferences = new Dictionary<DataReferenceDescription, IDataReference>(),
+            Actions = script.Actions,
         };
     }
 }

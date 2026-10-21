@@ -15,6 +15,8 @@ public class DiagnosticDetailsDesignViewModel : APageViewModel<IDiagnosticDetail
         Contents = Details
     };
 
+    public IReadOnlyList<DiagnosticActionButton> Actions => [];
+
     public DiagnosticDetailsDesignViewModel() : base(new DesignWindowManager()) { }
 
 }

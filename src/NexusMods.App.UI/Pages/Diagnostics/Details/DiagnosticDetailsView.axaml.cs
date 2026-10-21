@@ -30,6 +30,7 @@ public partial class DiagnosticDetailsView : ReactiveUserControl<IDiagnosticDeta
     private void InitializeData(IDiagnosticDetailsViewModel vm)
     {
         MarkdownRendererViewModelViewHost.ViewModel = vm.MarkdownRendererViewModel;
+        ActionsItemsControl.ItemsSource = vm.Actions;
 
         switch (vm.Severity)
         {

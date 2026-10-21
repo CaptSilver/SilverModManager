@@ -8,6 +8,7 @@ using NexusMods.Platform.Proton.Steam;
 using NexusMods.Platform.Proton.Verbs;
 using NexusMods.Platform.Proton.ToolRunner;
 using NexusMods.Platform.Proton.UserTools;
+using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
@@ -40,6 +41,7 @@ public static class Services
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
         services.TryAddSingleton<LocalConfigVdfWriter>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, SteamLaunchOptionEmitter>());
         services.AddSingleton<IManagedInstallations, LoadoutManagedInstallations>();
         services.AddSingleton<ISupportBundleWriter, SupportBundleWriter>();
         return services.AddDoctorVerbs().AddDeploymentVerbs().AddSelftestVerbs();

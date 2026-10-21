@@ -1,12 +1,19 @@
-using System.Reactive.Disposables;
+using System.Reactive;
+using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Diagnostics;
 using NexusMods.App.UI.Controls.MarkdownRenderer;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
+using NexusMods.Sdk.Loadouts;
 using NexusMods.UI.Sdk.Icons;
 using ReactiveUI;
 
 namespace NexusMods.App.UI.Pages.Diagnostics;
+
+/// <summary>
+/// A button on the details page that runs one of the diagnostic's fix actions.
+/// </summary>
+public sealed record DiagnosticActionButton(string Label, ReactiveCommand<Unit, Unit> Command);
 
 public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewModel>, IDiagnosticDetailsViewModel
 {
@@ -14,11 +21,16 @@ public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewM
 
     public IMarkdownRendererViewModel MarkdownRendererViewModel { get; }
 
+    public IReadOnlyList<DiagnosticActionButton> Actions { get; }
+
     public DiagnosticDetailsViewModel(
         IWindowManager windowManager,
         IDiagnosticWriter diagnosticWriter,
         IMarkdownRendererViewModel markdownRendererViewModel,
-        Diagnostic diagnostic) : base(windowManager)
+        Diagnostic diagnostic,
+        LoadoutId loadoutId,
+        IEnumerable<IDiagnosticActionHandler> actionHandlers,
+        ILogger<DiagnosticDetailsViewModel> logger) : base(windowManager)
     {
         TabIcon = IconValues.Cardiology;
         TabTitle = diagnostic.Title;
@@ -30,5 +42,38 @@ public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewM
 
         MarkdownRendererViewModel = markdownRendererViewModel;
         MarkdownRendererViewModel.Contents = details;
+
+        Actions = CreateButtons(diagnostic, loadoutId, actionHandlers.ToArray(), logger);
+    }
+
+    private static IReadOnlyList<DiagnosticActionButton> CreateButtons(Diagnostic diagnostic, LoadoutId loadoutId, IDiagnosticActionHandler[] handlers, ILogger logger)
+    {
+        if (diagnostic.Actions.IsDefaultOrEmpty) return [];
+
+        var buttons = new List<DiagnosticActionButton>();
+        foreach (var action in diagnostic.Actions)
+        {
+            var handler = handlers.FirstOrDefault(h => h.ActionId == action.Id);
+            if (handler is null)
+            {
+                logger.LogWarning("Diagnostic {DiagnosticId} offers the action {ActionId}, which has no handler, so it gets no button", diagnostic.Id, action.Id);
+                continue;
+            }
+
+            var command = ReactiveCommand.CreateFromTask(async () =>
+            {
+                try
+                {
+                    await handler.ExecuteAsync(loadoutId, action.Arguments);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "The diagnostic action {ActionId} failed for loadout {LoadoutId}", action.Id, loadoutId);
+                }
+            });
+            buttons.Add(new DiagnosticActionButton(action.Label, command));
+        }
+
+        return buttons;
     }
 }

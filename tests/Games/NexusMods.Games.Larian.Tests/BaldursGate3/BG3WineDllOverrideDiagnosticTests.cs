@@ -60,6 +60,7 @@ public class BG3WineDllOverrideDiagnosticTests(ITestOutputHelper outputHelper) :
         reported.Should().ContainSingle()
             .Which.FormatDetails(ServiceProvider.GetRequiredService<IDiagnosticWriter>())
             .Should().Contain("WINEDLLOVERRIDES=\"DWrite=n,b\"");
+        reported.Single().Actions.Should().BeEmpty("a GOG install has no Steam launch options to write");
 
         SetPrefixOverrides(new WineDllOverride("DWrite", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]));
         (await ScriptExtenderOverrideDiagnostics(loadout)).Should().BeEmpty("the prefix already overrides DWrite");
@@ -85,5 +86,49 @@ public class BG3WineDllOverrideDiagnosticTests(ITestOutputHelper outputHelper) :
         var emitter = Game.DiagnosticEmitters.OfType<DependencyDiagnosticEmitter>().Single();
         var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
         return diagnostics.Where(d => d.Id == ScriptExtenderOverrideId).ToList();
+    }
+}
+
+/// <summary>
+/// On a Steam install the app's own launch line sets DWrite, so the diagnostic offers to write it.
+/// </summary>
+public class BG3WineDllOverrideSteamDiagnosticTests(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<BG3WineDllOverrideSteamDiagnosticTests, Larian.BaldursGate3.BaldursGate3>(outputHelper)
+{
+    private static readonly DiagnosticId ScriptExtenderOverrideId = new("NexusMods.Games.Larian.BaldursGate3", number: 5);
+
+    private readonly ILinuxCompatabilityDataProvider _provider = Substitute.For<ILinuxCompatabilityDataProvider>();
+
+    protected override IServiceCollection AddServices(IServiceCollection services)
+    {
+        return base.AddServices(services)
+            .AddBaldursGate3()
+            .AddDiagnosticWriter()
+            .AddSingleton<IGameLocator>(provider => new UniversalStubbedGameLocator<Larian.BaldursGate3.BaldursGate3>(
+                provider,
+                provider.GetRequiredService<IFileSystem>(),
+                provider.GetRequiredService<TemporaryFileManager>(),
+                stores: [GameStore.Steam]
+            )
+            {
+                LocatorIds = [LocatorId.From("3976631895")],
+                LinuxCompatabilityDataProvider = _provider,
+            });
+    }
+
+    [Fact]
+    public async Task TheScriptExtenderOverrideDiagnosticOffersTheSteamLaunchOptionFix()
+    {
+        var loadout = await CreateLoadout();
+        var archive = await AddFromPaths("DWrite.dll", "ScriptExtenderSettings.json");
+        await Install(typeof(BG3SEInstaller), loadout, archive);
+        Refresh(ref loadout);
+        _provider.GetWineDllOverrides(Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ImmutableArray<WineDllOverride>>(ImmutableArray<WineDllOverride>.Empty));
+
+        var emitter = Game.DiagnosticEmitters.OfType<DependencyDiagnosticEmitter>().Single();
+        var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
+
+        diagnostics.Where(d => d.Id == ScriptExtenderOverrideId).Should().ContainSingle()
+            .Which.Actions.Should().Equal(DiagnosticActions.UseLoadoutFromSteam());
     }
 }
