@@ -1,0 +1,57 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:IFromSoftSavesViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.FromSoftSaves"
+    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+    x:Class="NexusMods.App.UI.Pages.FromSoftSaves.FromSoftSavesView">
+
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="{StaticResource Spacing-4}" MaxWidth="900" HorizontalAlignment="Left">
+
+            <TextBlock Text="Saves" Theme="{StaticResource HeadingSMSemiTheme}" />
+            <TextBlock x:Name="ProblemText" TextWrapping="Wrap" />
+
+            <StackPanel x:Name="TaintedPanel" Spacing="{StaticResource Spacing-2}">
+                <TextBlock x:Name="TaintedText" TextWrapping="Wrap" />
+                <controls:StandardButton x:Name="ResolveButton"
+                                         Type="Primary"
+                                         Size="Toolbar"
+                                         Fill="StrongAlt"
+                                         Text="Resolve"
+                                         HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <ComboBox x:Name="FolderBox" />
+            <ListBox x:Name="FilesList" />
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                <controls:StandardButton x:Name="BackupButton" Type="Secondary" Size="Toolbar" Text="Backup" />
+                <controls:StandardButton x:Name="QuarantineButton" Type="Secondary" Size="Toolbar" Text="Quarantine" />
+                <controls:StandardButton x:Name="RefreshButton" Type="Secondary" Size="Toolbar" Text="Refresh" />
+            </StackPanel>
+            <TextBlock x:Name="QuarantineReasonText" TextWrapping="Wrap" />
+
+            <Separator />
+
+            <TextBlock Text="Copies" Theme="{StaticResource HeadingSMSemiTheme}" />
+            <ListBox x:Name="BackupsList" />
+            <controls:StandardButton x:Name="RestoreButton" Type="Secondary" Size="Toolbar" Text="Restore..." HorizontalAlignment="Left" />
+
+            <StackPanel x:Name="RestorePanel" Spacing="{StaticResource Spacing-2}">
+                <TextBlock x:Name="RestorePromptText" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                    <controls:StandardButton x:Name="ConfirmRestoreButton" Type="Primary" Size="Toolbar" Fill="StrongAlt" Text="Restore" />
+                    <controls:StandardButton x:Name="CancelRestoreButton" Type="Secondary" Size="Toolbar" Text="Cancel" />
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock x:Name="MessageText" TextWrapping="Wrap" />
+            <StackPanel x:Name="NotesPanel" Spacing="{StaticResource Spacing-2}" />
+        </StackPanel>
+    </ScrollViewer>
+
+</reactive:ReactiveUserControl>

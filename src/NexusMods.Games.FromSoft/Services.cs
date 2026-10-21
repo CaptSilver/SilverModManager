@@ -7,6 +7,7 @@ using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Launch;
 using NexusMods.Games.FromSoft.Overlay;
+using NexusMods.Games.FromSoft.Saves;
 using NexusMods.Platform.Proton.Doctor;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk.Settings;
@@ -50,6 +51,7 @@ public static class Services
         services.AddCleanupVerbs();
 
         // Registrations owned by other folders
+        services.AddEldenRingSaves();
 
         return services;
     }

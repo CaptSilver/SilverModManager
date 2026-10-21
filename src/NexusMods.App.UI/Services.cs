@@ -47,6 +47,7 @@ using NexusMods.App.UI.Pages.DebugControls;
 using NexusMods.App.UI.Pages.Diagnostics;
 using NexusMods.App.UI.Pages.Diff.ApplyDiff;
 using NexusMods.App.UI.Pages.Downloads;
+using NexusMods.App.UI.Pages.FromSoftSaves;
 using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Pages.LibraryPage.Collections;
 using NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
@@ -191,6 +192,8 @@ public static class Services
             .AddViewModel<MarkdownRendererViewModel, IMarkdownRendererViewModel>()
             .AddView<ChangelogPageView, IChangelogPageViewModel>()
             .AddViewModel<ChangelogPageViewModel, IChangelogPageViewModel>()
+            .AddView<FromSoftSavesView, IFromSoftSavesViewModel>()
+            .AddViewModel<FromSoftSavesViewModel, IFromSoftSavesViewModel>()
             .AddView<ToolsPageView, IToolsPageViewModel>()
             .AddViewModel<ToolsPageViewModel, IToolsPageViewModel>()
             .AddView<AboutPageView, IAboutPageViewModel>()
@@ -276,6 +279,7 @@ public static class Services
             .AddSingleton<IPageFactory, ApplyDiffPageFactory>()
             .AddSingleton<IPageFactory, SettingsPageFactory>()
             .AddSingleton<IPageFactory, ChangelogPageFactory>()
+            .AddSingleton<IPageFactory, FromSoftSavesPageFactory>()
             .AddSingleton<IPageFactory, ToolsPageFactory>()
             .AddSingleton<IPageFactory, AboutPageFactory>()
             .AddSingleton<IPageFactory, TextEditorPageFactory>()
