@@ -21,7 +21,7 @@ using NexusMods.Sdk.Loadouts;
 namespace NexusMods.Games.RedEngine.Cyberpunk2077;
 
 [UsedImplicitly]
-public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements, IGameLauncherSkip
+public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements, IGameLauncherSkip, IGameUserDataFolders
 {
     public static GameId GameId { get; } = GameId.From("RedEngine.Cyberpunk2077");
     public static string DisplayName => "Cyberpunk 2077";
@@ -72,6 +72,7 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOv
             new MissingRedModEmitter(),
             new WinePrefixRequirementsEmitter(this, this),
             provider.GetRequiredService<ProtonPrefixEmitter>(),
+            new UserDataLinkEmitter(),
         ];
 
         LibraryItemInstallers =
@@ -115,4 +116,11 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOv
 
     // Steam's %command% is REDprelauncher.exe, which opens its own window unless it is told to start the game.
     public IReadOnlyList<string> LauncherSkipArguments { get; } = ["--launcher-skip"];
+
+    // Saves stay unmapped (see GetLocations), but a broken link here is what makes the game report a corrupted
+    // profile, so Health Check still looks at it.
+    public IReadOnlyList<UserDataFolder> UserDataFolders { get; } =
+    [
+        new(KnownPath.HomeDirectory, "Saved Games/CD Projekt Red/Cyberpunk 2077"),
+    ];
 }

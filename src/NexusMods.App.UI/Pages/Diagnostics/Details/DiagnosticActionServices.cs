@@ -11,6 +11,7 @@ public static class DiagnosticActionServices
     public static IServiceCollection AddDiagnosticActionHandlers(this IServiceCollection services)
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, UseLoadoutFromSteamActionHandler>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, RestoreFolderFromBackupActionHandler>());
         return services;
     }
 }

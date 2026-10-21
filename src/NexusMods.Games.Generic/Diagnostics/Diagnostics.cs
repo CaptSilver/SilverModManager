@@ -96,4 +96,29 @@ then deploy to the save folder, except where a file of the player's own is alrea
             .AddValue<string>("Paths")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate DanglingUserDataLink = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 5))
+        .WithTitle("Save Or Settings Folder Is A Broken Link")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("{GameName} has a folder that links to a folder that no longer exists")
+        .WithDetails("""
+`{Path}` is a link to `{Target}`, which does not exist. {GameName} cannot read or write there, so it may report a
+corrupted profile and show no saves.
+
+This happens when another tool replaces the folder with a link into its own storage and is then removed. That tool
+usually keeps the original folder next to the link under a backup name.
+
+{Backups}
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+            .AddValue<string>("Path")
+            .AddValue<string>("Target")
+            .AddValue<string>("Backups")
+        )
+        .Finish();
 }

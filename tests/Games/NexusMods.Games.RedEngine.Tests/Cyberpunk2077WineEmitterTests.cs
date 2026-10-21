@@ -65,6 +65,14 @@ public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolated
     }
 
     [Fact]
+    public void CyberpunkDeclaresItsSaveFolderForTheBrokenLinkCheckWithoutMappingIt()
+    {
+        ((IGameUserDataFolders)Game).UserDataFolders.Should().Equal(
+            new UserDataFolder(KnownPath.HomeDirectory, "Saved Games/CD Projekt Red/Cyberpunk 2077"));
+        Game.DiagnosticEmitters.OfType<NexusMods.Games.Generic.Diagnostics.UserDataLinkEmitter>().Should().ContainSingle();
+    }
+
+    [Fact]
     public void CyberpunkDeclaresTheArgumentThatSkipsREDprelauncher()
     {
         ((IGameLauncherSkip)Game).LauncherSkipArguments.Should().Equal("--launcher-skip");

@@ -47,4 +47,16 @@ public static class DiagnosticActions
     /// Opens the dialog that writes the loadout's launch line into Steam's launch options.
     /// </summary>
     public static DiagnosticAction UseLoadoutFromSteam() => new(UseLoadoutFromSteamId, "Use this loadout from Steam", []);
+
+    /// <summary>
+    /// Id of the action that moves a backup folder back in place of a dangling link.
+    /// </summary>
+    public const string RestoreFolderFromBackupId = "restore-folder-from-backup";
+
+    /// <summary>
+    /// Replaces the dangling link at <paramref name="linkPath"/> with the folder <paramref name="backupPath"/>.
+    /// The handler asks the user first.
+    /// </summary>
+    public static DiagnosticAction RestoreFolderFromBackup(string linkPath, string backupPath)
+        => new(RestoreFolderFromBackupId, $"Restore {Path.GetFileName(backupPath)}", [linkPath, backupPath]);
 }

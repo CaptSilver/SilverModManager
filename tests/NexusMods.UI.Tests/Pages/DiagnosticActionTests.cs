@@ -5,6 +5,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Diagnostics.References;
+using NexusMods.Abstractions.Games;
+using NexusMods.App.UI.Dialog;
+using NexusMods.UI.Sdk.Dialog;
+using NexusMods.App.UI.Dialog.Enums;
+using NexusMods.UI.Sdk.Dialog.Enums;
 using NexusMods.App.UI.Controls.MarkdownRenderer;
 using NexusMods.App.UI.Overlays;
 using NexusMods.App.UI.Pages.Diagnostics;
@@ -151,6 +156,137 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         events.Should().Equal("opened Fix From Health Check", "refreshed");
         await manager.Received(1).RefreshAsync(seeded.LoadoutId);
     }
+
+    #region restore folder from backup
+
+    private sealed class RestoreFixture : IDisposable
+    {
+        public string Root { get; } = Directory.CreateTempSubdirectory("restore-action").FullName;
+        public string Link { get; }
+        public string Backup { get; }
+
+        public RestoreFixture()
+        {
+            Link = Path.Combine(Root, "Game");
+            Backup = Path.Combine(Root, "Game.backup-1");
+            Directory.CreateSymbolicLink(Link, Path.Combine(Root, "gone"));
+            Directory.CreateDirectory(Backup);
+            File.WriteAllText(Path.Combine(Backup, "a.dat"), "precious");
+        }
+
+        public bool LinkIsStillDangling => new DirectoryInfo(Link).LinkTarget is not null;
+        public void Dispose() => Directory.Delete(Root, recursive: true);
+    }
+
+    private sealed class ServicesWith(IServiceProvider inner, params (Type Type, object Instance)[] overrides) : IServiceProvider
+    {
+        public object? GetService(Type serviceType)
+            => overrides.FirstOrDefault(o => o.Type == serviceType).Instance ?? inner.GetService(serviceType);
+    }
+
+    private static IWindowManager Answering(ButtonDefinitionId button)
+    {
+        var windows = Substitute.For<IWindowManager>();
+        windows.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>()).Returns(new StandardDialogResult { ButtonId = button });
+        return windows;
+    }
+
+    private RestoreFolderFromBackupActionHandler RestoreHandler(IWindowManager windows, IDiagnosticManager manager, bool gameRunning = false)
+    {
+        var session = Substitute.For<IGameLaunchSession>();
+        session.IsRunning(Arg.Any<GameInstallation>()).Returns(gameRunning);
+        return RestoreHandler(windows, manager, session);
+    }
+
+    private RestoreFolderFromBackupActionHandler RestoreHandler(IWindowManager windows, IDiagnosticManager manager, IGameLaunchSession session)
+    {
+        var services = new ServicesWith(Provider, (typeof(IGameLaunchSession), session), (typeof(IOverlayController), Substitute.For<IOverlayController>()));
+        return new RestoreFolderFromBackupActionHandler(services, windows, manager);
+    }
+
+    [Fact]
+    public async Task Test_RestoreAsksFirst_ThenMovesTheBackupIntoPlaceAndRefreshes()
+    {
+        using var fixture = new RestoreFixture();
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Restore");
+        var manager = Substitute.For<IDiagnosticManager>();
+        var windows = Answering(ButtonDefinitionId.Accept);
+        var handler = RestoreHandler(windows, manager);
+
+        handler.ActionId.Should().Be(DiagnosticActions.RestoreFolderFromBackupId);
+        await handler.ExecuteAsync(seeded.LoadoutId, [fixture.Link, fixture.Backup]).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await windows.Received(1).ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
+        fixture.LinkIsStillDangling.Should().BeFalse();
+        File.ReadAllText(Path.Combine(fixture.Link, "a.dat")).Should().Be("precious");
+        await manager.Received(1).RefreshAsync(seeded.LoadoutId);
+    }
+
+    [Fact]
+    public async Task Test_RestoreDoesNothingWhenTheUserDeclines()
+    {
+        using var fixture = new RestoreFixture();
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Restore");
+        var handler = RestoreHandler(Answering(ButtonDefinitionId.Cancel), Substitute.For<IDiagnosticManager>());
+
+        await handler.ExecuteAsync(seeded.LoadoutId, [fixture.Link, fixture.Backup]).WaitAsync(TimeSpan.FromSeconds(30));
+
+        fixture.LinkIsStillDangling.Should().BeTrue();
+        File.Exists(Path.Combine(fixture.Backup, "a.dat")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Test_RestoreRefusesWhileTheGameRunsWithoutAsking()
+    {
+        using var fixture = new RestoreFixture();
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Restore");
+        var windows = Answering(ButtonDefinitionId.Accept);
+        var handler = RestoreHandler(windows, Substitute.For<IDiagnosticManager>(), gameRunning: true);
+
+        await handler.ExecuteAsync(seeded.LoadoutId, [fixture.Link, fixture.Backup]).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await windows.DidNotReceive().ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
+        fixture.LinkIsStillDangling.Should().BeTrue();
+        File.Exists(Path.Combine(fixture.Backup, "a.dat")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Test_RestoreLeavesEverythingAloneWhenThePathChangedWhileTheDialogWasOpen()
+    {
+        using var fixture = new RestoreFixture();
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Restore");
+        var windows = Substitute.For<IWindowManager>();
+        windows.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>()).Returns(_ =>
+        {
+            // The link is replaced by a real folder while the user reads the question.
+            File.Delete(fixture.Link);
+            Directory.CreateDirectory(fixture.Link);
+            return new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept };
+        });
+        var handler = RestoreHandler(windows, Substitute.For<IDiagnosticManager>());
+
+        await handler.ExecuteAsync(seeded.LoadoutId, [fixture.Link, fixture.Backup]).WaitAsync(TimeSpan.FromSeconds(30));
+
+        Directory.GetFileSystemEntries(fixture.Link).Should().BeEmpty();
+        File.ReadAllText(Path.Combine(fixture.Backup, "a.dat")).Should().Be("precious");
+    }
+
+    [Fact]
+    public async Task Test_RestoreRefusesWhenTheGameStartedWhileTheDialogWasOpen()
+    {
+        using var fixture = new RestoreFixture();
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Restore");
+        var session = Substitute.For<IGameLaunchSession>();
+        session.IsRunning(Arg.Any<GameInstallation>()).Returns(false, true);
+        var handler = RestoreHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), session);
+
+        await handler.ExecuteAsync(seeded.LoadoutId, [fixture.Link, fixture.Backup]).WaitAsync(TimeSpan.FromSeconds(30));
+
+        fixture.LinkIsStillDangling.Should().BeTrue();
+        File.ReadAllText(Path.Combine(fixture.Backup, "a.dat")).Should().Be("precious");
+    }
+
+    #endregion
 
     private sealed class OverlayProvider(IServiceProvider inner, IOverlayController overlays) : IServiceProvider
     {
