@@ -48,4 +48,14 @@ public readonly partial struct LocationId
     /// Path for game files located under Appdata/Roaming or equivalent.
     /// </summary>
     public static readonly LocationId AppDataRoaming = From("AppDataRoaming");
+
+    /// <summary>
+    /// Where Elden Ring's me3 packages and native mods are deployed, outside the game folder.
+    /// </summary>
+    public static readonly LocationId Me3Mods = From("Me3Mods");
+
+    /// <summary>
+    /// Where Elden Ring's me3 mod loader is deployed, outside the game folder.
+    /// </summary>
+    public static readonly LocationId Me3Host = From("Me3Host");
 }

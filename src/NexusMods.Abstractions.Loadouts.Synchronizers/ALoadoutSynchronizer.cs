@@ -449,6 +449,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     public async Task<Loadout.ReadOnly> RunActions(Dictionary<GamePath, SyncNode> syncTree, Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
     {
         await Preflight(loadout.InstallationInstance);
+        KeepNeverWrittenPathsOffDisk(syncTree);
         ProbeWritableRoots(syncTree, loadout.InstallationInstance.Locations);
 
         using var _ = await _lock.LockAsync();
@@ -668,6 +669,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     public async Task RunActions(Dictionary<GamePath, SyncNode> syncTree, GameInstallation gameInstallation)
     {
         await Preflight(gameInstallation);
+        KeepNeverWrittenPathsOffDisk(syncTree);
         ProbeWritableRoots(syncTree, gameInstallation.Locations);
 
         using var _ = await _lock.LockAsync();
@@ -1301,6 +1303,61 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 throw new SynchronizerPreflightException(ProtonMessages.UnwritableFolder(folder));
             }
         }
+    }
+
+    /// <summary>
+    /// Whether the synchronizer must leave the file at the given path exactly as it is: no write, delete, backup or
+    /// ingest, whichever entry point runs the actions.
+    /// </summary>
+    /// <remarks>
+    /// A loadout file that would be deployed to such a path makes the sync fail before anything runs. Every other
+    /// action on the path is dropped from the sync tree, which leaves the disk state as indexed.
+    /// <see cref="IsIgnoredBackupPath"/> is no substitute: it only decides whether a file is backed up, a new file
+    /// on an ignored path is still ingested into the loadout.
+    /// </remarks>
+    protected virtual bool IsNeverWritten(GamePath path) => false;
+
+    private const Actions DiskAndLoadoutWrites = Actions.BackupFile | Actions.IngestFromDisk | Actions.AdaptLoadout | Actions.DeleteFromDisk | Actions.ExtractToDisk;
+
+    private void KeepNeverWrittenPathsOffDisk(Dictionary<GamePath, SyncNode> syncTree)
+    {
+        List<GamePath>? cleared = null;
+
+        foreach (var path in syncTree.Keys.ToArray())
+        {
+            if (!IsNeverWritten(path)) continue;
+
+            ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(syncTree, path);
+            var fromLoadoutItem = node.SourceItemType is LoadoutSourceItemType.Loadout or LoadoutSourceItemType.Intrinsic;
+            if (fromLoadoutItem && (node.Actions & (Actions.ExtractToDisk | Actions.WriteIntrinsic | Actions.WarnOfUnableToExtract)) != 0)
+                throw new SynchronizerPreflightException(NeverWrittenMessage(path, node));
+
+            if ((node.Actions & DiskAndLoadoutWrites) == 0) continue;
+
+            var remaining = node.Actions & ~DiskAndLoadoutWrites;
+            // The warning belongs to the extract that was just dropped.
+            remaining &= ~Actions.WarnOfUnableToExtract;
+            node.Actions = remaining == 0 ? Actions.DoNothing : remaining;
+            (cleared ??= []).Add(path);
+        }
+
+        if (cleared is null) return;
+        const int listed = 10;
+        Logger.LogInformation("Leaving {Count} path(s) the synchronizer never writes as they are: {Paths}{More}",
+            cleared.Count, string.Join(", ", cleared.Take(listed)), cleared.Count > listed ? $" and {cleared.Count - listed} more" : "");
+    }
+
+    private string NeverWrittenMessage(GamePath path, SyncNode node)
+    {
+        var provider = "an intrinsic file of the game";
+        if (node.HaveLoadout && node.Loadout.HaveEntityId)
+        {
+            var item = LoadoutItem.Load(Connection.Db, node.Loadout.EntityId);
+            if (item.IsValid() && item.HasParent()) provider = $"the mod '{item.Parent.AsLoadoutItem().Name}'";
+        }
+
+        return $"Cannot apply: {provider} provides '{path.Path}', but files in the {path.LocationId} location are never written for this game. " +
+               "Every sync fails until that mod is removed from the loadout.";
     }
 
     /// <summary>
