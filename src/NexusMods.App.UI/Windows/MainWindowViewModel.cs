@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using NexusMods.App.UI.Helpers;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Input.Platform;
@@ -275,8 +277,14 @@ public class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMainWindow
 
     private Optional<(LoadoutId, WorkspaceId)> GetWorkspaceIdForGame(IWorkspaceController workspaceController, NexusModsGameId nexusModsGameId)
     {
-        if (!_serviceProvider.GetServices<IGameData>().TryGetFirst(x => x.NexusModsGameId == nexusModsGameId, out var game)) return Optional<(LoadoutId, WorkspaceId)>.None;
-        return GetWorkspaceIdForGame(workspaceController, game.GameId);
+        var game = NexusModsGameScope.ResolveNxmGame(
+            _serviceProvider.GetServices<IGameData>(),
+            nexusModsGameId,
+            gameId => GetActiveLoadoutForGame(gameId).HasValue,
+            _serviceProvider.GetRequiredService<ILogger<MainWindowViewModel>>()
+        );
+        if (!game.HasValue) return Optional<(LoadoutId, WorkspaceId)>.None;
+        return GetWorkspaceIdForGame(workspaceController, game.Value.GameId);
     }
 
     private Optional<(LoadoutId, WorkspaceId)> GetWorkspaceIdForGame(IWorkspaceController workspaceController, GameId gameId)

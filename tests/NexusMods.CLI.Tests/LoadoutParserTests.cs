@@ -2,12 +2,14 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.MnemonicDB.Abstractions;
+using DynamicData.Kernel;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.NexusModsApi;
 using Loadout = NexusMods.Sdk.Loadouts.Loadout;
 using NexusMods.Sdk.ProxyConsole;
+using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
 using NSubstitute;
 
 namespace NexusMods.CLI.Tests;
@@ -52,13 +54,14 @@ public class LoadoutParserTests(IServiceProvider provider)
             Path = "/tmp/parser-tests-" + Guid.NewGuid(),
             Name = "Parser Test Game",
             Store = GameStore.Unknown,
+            Game = ParserTestGame,
             GameId = gameId,
         };
         NewLoadout(tx, metadata, "Short Deleted", shortName, LoadoutKind.Deleted);
         var live = NewLoadout(tx, metadata, "Short Live", shortName, LoadoutKind.Default);
         var result = await tx.Commit();
 
-        var parser = ParserWithGame(connection, "parser-test-game", gameId);
+        var parser = ParserWithGame(connection, "parser-test-game", ParserTestGame, gameId);
 
         parser.TryParse($"parser-test-game/{shortName}", out var parsed, out _).Should().BeTrue();
         parsed.LoadoutId.Should().Be(result.Remap(live).LoadoutId);
@@ -68,10 +71,9 @@ public class LoadoutParserTests(IServiceProvider provider)
     /// The test host registers no games, so the short-name form needs a game parser that knows one. The parser
     /// class is internal, hence building it from the registered instance's type.
     /// </summary>
-    private IOptionParser<Loadout.ReadOnly> ParserWithGame(IConnection connection, string gameName, NexusModsGameId gameId)
+    private IOptionParser<Loadout.ReadOnly> ParserWithGame(IConnection connection, string gameName, GameId id, Optional<NexusModsGameId> nexusId)
     {
-        var game = Substitute.For<IGame>();
-        game.NexusModsGameId.Returns(gameId);
+        var game = new IdentifiedStubbedGame(id, nexusId);
 
         var gameParser = Substitute.For<IOptionParser<IGame>>();
         gameParser.TryParse(gameName, out Arg.Any<IGame>(), out Arg.Any<string>())
@@ -85,6 +87,69 @@ public class LoadoutParserTests(IServiceProvider provider)
         var parserType = provider.GetRequiredService<IOptionParser<Loadout.ReadOnly>>().GetType();
         return (IOptionParser<Loadout.ReadOnly>)ActivatorUtilities.CreateInstance(provider, parserType, connection, gameParser);
     }
+
+    [Fact]
+    public async Task ShortNameLookup_FindsTheLoadoutOfAGameWithoutANexusId()
+    {
+        var connection = provider.GetRequiredService<IConnection>();
+        var shortName = "N" + Guid.NewGuid().ToString("N")[..8];
+        var noNexusGame = GameId.From("ParserNoNexusGame-" + Guid.NewGuid());
+
+        using var tx = connection.BeginTransaction();
+        var metadata = new GameInstallMetadata.New(tx)
+        {
+            Path = "/tmp/parser-tests-" + Guid.NewGuid(),
+            Name = "Parser Game Without Nexus Id",
+            Store = GameStore.Unknown,
+            Game = noNexusGame,
+        };
+        var live = NewLoadout(tx, metadata, "No Nexus Live", shortName, LoadoutKind.Default);
+        var result = await tx.Commit();
+
+        var parser = ParserWithGame(connection, "no-nexus-game", noNexusGame, Optional<NexusModsGameId>.None);
+
+        parser.TryParse($"no-nexus-game/{shortName}", out var parsed, out _).Should().BeTrue();
+        parsed.LoadoutId.Should().Be(result.Remap(live).LoadoutId);
+    }
+
+    [Fact]
+    public async Task ShortNameLookup_DoesNotPickASiblingGameThatSharesTheNexusId()
+    {
+        var connection = provider.GetRequiredService<IConnection>();
+        var shortName = "V" + Guid.NewGuid().ToString("N")[..8];
+        var sharedNexusId = NexusModsGameId.From(uint.MaxValue - 2);
+        var sibling = GameId.From("ParserSibling-" + Guid.NewGuid());
+        var wanted = GameId.From("ParserWanted-" + Guid.NewGuid());
+
+        // The sibling goes in first, so a lookup on the shared Nexus id would take its loadout.
+        using var tx = connection.BeginTransaction();
+        var siblingMetadata = new GameInstallMetadata.New(tx)
+        {
+            Path = "/tmp/parser-tests-" + Guid.NewGuid(),
+            Name = "Sibling",
+            Store = GameStore.Unknown,
+            Game = sibling,
+            GameId = sharedNexusId,
+        };
+        var wantedMetadata = new GameInstallMetadata.New(tx)
+        {
+            Path = "/tmp/parser-tests-" + Guid.NewGuid(),
+            Name = "Wanted",
+            Store = GameStore.Unknown,
+            Game = wanted,
+            GameId = sharedNexusId,
+        };
+        NewLoadout(tx, siblingMetadata, "Sibling Loadout", shortName, LoadoutKind.Default);
+        var live = NewLoadout(tx, wantedMetadata, "Wanted Loadout", shortName, LoadoutKind.Default);
+        var result = await tx.Commit();
+
+        var parser = ParserWithGame(connection, "wanted-game", wanted, sharedNexusId);
+
+        parser.TryParse($"wanted-game/{shortName}", out var parsed, out _).Should().BeTrue();
+        parsed.LoadoutId.Should().Be(result.Remap(live).LoadoutId);
+    }
+
+    private static readonly GameId ParserTestGame = GameId.From("ParserTestGame");
 
     private static Loadout.New NewLoadout(ITransaction tx, GameInstallMetadata.New metadata, string name, string shortName, LoadoutKind kind) => new(tx)
     {

@@ -1,3 +1,4 @@
+using NexusMods.App.UI.Helpers;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reactive.Disposables;
@@ -127,7 +128,7 @@ public class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewModel>, I
 
         var collectionRevisionsObservable = CollectionRevisionMetadata
             .ObserveAll(conn)
-            .FilterImmutable(revision => revision.Collection.GameId == game.NexusModsGameId)
+            .FilterImmutable(revision => game.NexusModsGameId.IsNexusGame(revision.Collection.GameId))
             .FilterOnObservable(revision =>
             {
                 var groupObservable = collectionDownloader.GetCollectionGroupObservable(revision, loadout);

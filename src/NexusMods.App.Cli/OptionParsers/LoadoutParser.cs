@@ -53,7 +53,7 @@ internal class LoadoutParser(IConnection conn, IOptionParser<IGame> gameParser) 
             {
                 if (Loadout
                     .FindByShortName(db, shortName)
-                    .TryGetFirst(l => l.IsVisible() && l.Installation.GameId == gameValue.NexusModsGameId, out var foundLoadout))
+                    .TryGetFirst(l => l.IsVisible() && l.Installation.Game == gameValue.GameId, out var foundLoadout))
                 {
                     value = foundLoadout;
                     return true;

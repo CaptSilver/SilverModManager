@@ -44,6 +44,7 @@ using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using NexusMods.Sdk.Library;
+using NexusMods.App.UI.Helpers;
 
 namespace NexusMods.App.UI.Pages.LibraryPage;
 
@@ -229,14 +230,17 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
         );
 
         var osInterop = serviceProvider.GetRequiredService<IOSInterop>();
-        OpenNexusModsCommand = new ReactiveCommand<Unit>(execute: _ =>
+        // Games without a Nexus id have no page or collections on Nexus Mods to open.
+        var isOnNexusMods = R3.Observable.Return(game.IsOnNexusMods());
+
+        OpenNexusModsCommand = isOnNexusMods.ToReactiveCommand<Unit>(execute: _ =>
         {
             var gameDomain = _gameIdMappingCache[game.NexusModsGameId.Value];
             var gameUri = NexusModsUrlBuilder.GetGameUri(gameDomain);
             osInterop.OpenUri(gameUri);
         });
 
-        OpenNexusModsCollectionsCommand = new ReactiveCommand<Unit>(execute: _ =>
+        OpenNexusModsCollectionsCommand = isOnNexusMods.ToReactiveCommand<Unit>(execute: _ =>
         {
             var gameDomain = _gameIdMappingCache[game.NexusModsGameId.Value];
             var gameUri = NexusModsUrlBuilder.GetBrowseCollectionsUri(gameDomain);
@@ -283,7 +287,7 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
                 .AddTo(disposables);
 
             CollectionRevisionMetadata.ObserveAll(_connection)
-                .FilterImmutable(revision => revision.Collection.GameId == game.NexusModsGameId)
+                .FilterImmutable(revision => game.NexusModsGameId.IsNexusGame(revision.Collection.GameId))
                 .OnUI()
                 .Transform(ICollectionCardViewModel (revision) => new CollectionCardViewModel(
                     collectionDownloader: collectionDownloader,
@@ -1011,7 +1015,7 @@ After asking design, we're choosing to simply open the mod page for now.
                 .Where(pair => 
                 {
                     var modPage = NexusModsModPageMetadata.Load(_connection.Db, pair.modPageId);
-                    return modPage.IsValid() && modPage.Uid.GameId == currentGameId;
+                    return modPage.IsValid() && currentGameId.IsNexusGame(modPage.Uid.GameId);
                 });
             var allUpdates = modPagesWithUpdates.Select(pair => pair.updates).ToArray();
             

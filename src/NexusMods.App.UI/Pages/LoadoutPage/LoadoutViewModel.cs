@@ -165,7 +165,10 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                 canEditObservable: isSingleCollectionObservable
             );
 
-            CommandShareCollection = Adapter.IsSourceEmpty.Select(b => !b).ToReactiveCommand<Unit>(async (unit, cancellationToken) =>
+            // Sharing uploads to Nexus Mods, which a game without a Nexus id cannot do.
+            var isOnNexusMods = Loadout.Load(_connection.Db, loadoutId).InstallationInstance.Game.IsOnNexusMods();
+            var canShare = Adapter.IsSourceEmpty.Select(isEmpty => !isEmpty && isOnNexusMods);
+            CommandShareCollection = canShare.ToReactiveCommand<Unit>(async (unit, cancellationToken) =>
                 {
                     // pass in current collection status
                     var shareViewModel = new DialogShareCollectionViewModel(CollectionStatus.Value == Abstractions.NexusModsLibrary.Models.CollectionStatus.Listed);

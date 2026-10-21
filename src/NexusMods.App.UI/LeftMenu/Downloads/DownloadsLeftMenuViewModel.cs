@@ -63,6 +63,8 @@ public class DownloadsLeftMenuViewModel : AViewModel<IDownloadsLeftMenuViewModel
                 .Filter(loadout => loadout.IsVisible())
                 .Group(loadout => loadout.InstallationId)
                 .Transform(group => group.Cache.Items.First().InstallationInstance)
+                // Downloads are Nexus downloads, so a game without a Nexus id has none to list.
+                .Filter(gameInstallation => gameInstallation.Game.IsOnNexusMods())
                 .Transform(gameInstallation => CreatePerGameDownloadItem(gameInstallation, workspaceController, workspaceId, logger))
                 .DisposeMany()
                 .OnUI()
