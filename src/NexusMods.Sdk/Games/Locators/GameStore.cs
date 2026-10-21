@@ -43,6 +43,11 @@ public readonly partial struct GameStore
     public static readonly GameStore Amazon = From("Amazon");
 
     /// <summary>
+    /// Lutris, for a game that was added to it by hand rather than installed from a store it syncs with.
+    /// </summary>
+    public static readonly GameStore Lutris = From("Lutris");
+
+    /// <summary>
     /// Manually added.
     /// </summary>
     public static readonly GameStore ManuallyAdded = From("Manually Added");
