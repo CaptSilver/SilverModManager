@@ -66,7 +66,5 @@ public sealed class LauncherShim(AbsolutePath dataHome)
         return homePath.Combine(".local/share");
     }
 
-    private static string ContentFor(AbsolutePath target) => $"#!/bin/sh\nexec {ShellQuote(target.ToString())} \"$@\"\n";
-
-    private static string ShellQuote(string value) => "'" + value.Replace("'", @"'\''") + "'";
+    private static string ContentFor(AbsolutePath target) => $"#!/bin/sh\nexec {SteamLaunchOptionLine.ShellQuote(target.ToString())} \"$@\"\n";
 }

@@ -35,10 +35,16 @@ public sealed class SteamLaunchOptionWriter(LocalConfigVdfWriter writer, IEnviro
         if (Locate(installation) is not { } game) return Refuse(NotSteamGame(installation));
         if (MissingShimWarning is { } missing) return Refuse(missing);
 
-        // Beside the shim's own silvermod/bin: our data, not Steam's folder and not the database.
-        var record = LauncherShim.ResolveDataHome(environment, fileSystem).Combine("silvermod/steam-launch-options").Combine($"{game.AppId}.replaced");
-        return writer.ReplaceLaunchOptions(game.Config, game.AppId, ShimPath.ToString(), loadout.Name, WineDllOverrideRequirements.For(installation.Game, loadout), confirmedOldLine, record);
+        return writer.ReplaceLaunchOptions(game.Config, game.AppId, ShimPath.ToString(), loadout.Name, WineDllOverrideRequirements.For(installation.Game, loadout), confirmedOldLine, RecordFor(game.AppId));
     }
+
+    /// <inheritdoc />
+    public AbsolutePath? ReplacedLineRecord(GameInstallation installation)
+        => Locate(installation) is { } game ? RecordFor(game.AppId) : null;
+
+    // Beside the shim's own silvermod/bin: our data, not Steam's folder and not the database.
+    private AbsolutePath RecordFor(uint appId)
+        => LauncherShim.ResolveDataHome(environment, fileSystem).Combine("silvermod/steam-launch-options").Combine($"{appId}.replaced");
 
     private static (AbsolutePath Config, uint AppId)? Locate(GameInstallation installation)
     {

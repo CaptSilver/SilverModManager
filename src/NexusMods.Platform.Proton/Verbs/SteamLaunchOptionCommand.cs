@@ -1,6 +1,7 @@
 using NexusMods.Abstractions.Cli;
 using NexusMods.Abstractions.Games;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Platform.Proton.Steam;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -17,8 +18,14 @@ public sealed class SteamLaunchOptionCommand(LoadoutResolver resolver, ISteamLau
     // The resolver only reads the command to look for a SteamLaunch app id; there is none to find here.
     private static readonly string[] NoCommand = ["%command%"];
 
-    public async Task<int> RunAsync(IRenderer renderer, string loadout, string? game, bool write)
+    public async Task<int> RunAsync(IRenderer renderer, string loadout, string? game, bool write, string? replaceOtherManager = null)
     {
+        if (replaceOtherManager is not null && !write)
+        {
+            await renderer.TextLine("--replace-other-manager needs --write.");
+            return LaunchSession.FailureExitCode;
+        }
+
         var resolution = resolver.Resolve(new LaunchArgs(loadout, game, NoCommand));
         if (!resolution.IsResolved)
         {
@@ -29,7 +36,9 @@ public sealed class SteamLaunchOptionCommand(LoadoutResolver resolver, ISteamLau
         var loadoutValue = resolution.Loadout!.Value;
         if (write)
         {
-            return await Write(renderer, resolution.Installation!, loadoutValue);
+            return replaceOtherManager is null
+                ? await Write(renderer, resolution.Installation!, loadoutValue)
+                : await Replace(renderer, resolution.Installation!, loadoutValue, replaceOtherManager);
         }
 
         await renderer.TextLine(launchOptions.ComposeLine(loadoutValue));
@@ -51,6 +60,7 @@ public sealed class SteamLaunchOptionCommand(LoadoutResolver resolver, ISteamLau
         if (result.IsRefused)
         {
             await renderer.TextLine(result.Refusal!);
+            if (result.Replacement is { } replacement) await PrintReplacementOffer(renderer, installation, loadout, replacement);
             return LaunchSession.FailureExitCode;
         }
 
@@ -59,6 +69,44 @@ public sealed class SteamLaunchOptionCommand(LoadoutResolver resolver, ISteamLau
         await renderer.TextLine($"Set the launch options of {installation.Game.DisplayName} in {localConfig}:");
         await renderer.TextLine(result.Line!);
         await renderer.TextLine($"The previous file was kept as {result.Backup}. The line runs the current deploy of the loadout.");
+        return 0;
+    }
+
+    private async Task PrintReplacementOffer(IRenderer renderer, GameInstallation installation, Loadout.ReadOnly loadout, LocalConfigVdfWriter.Replacement replacement)
+    {
+        await renderer.TextLine($"These launch options start {replacement.ManagerName ?? "another launcher"}:");
+        await renderer.TextLine(replacement.OldLine);
+        await renderer.TextLine("Replacing them would set:");
+        await renderer.TextLine(replacement.NewLine);
+
+        var command = $"silvermod steam-launch-option --loadout {SteamLaunchOptionLine.ShellQuote(loadout.Name)}";
+        // The game is named by app id: a display name could match more than one installation.
+        if (installation.LocatorResult.StoreIdentifier is { Length: > 0 } appId) command += $" --game {SteamLaunchOptionLine.ShellQuote(appId)}";
+        command += $" --write --replace-other-manager {SteamLaunchOptionLine.ShellQuote(replacement.OldLine)}";
+        await renderer.TextLine("To replace them, run:");
+        await renderer.TextLine(command);
+
+        if (launchOptions.ReplacedLineRecord(installation) is { } record)
+        {
+            await renderer.TextLine($"The old line is written to {record} before anything changes.");
+        }
+    }
+
+    private async Task<int> Replace(IRenderer renderer, GameInstallation installation, Loadout.ReadOnly loadout, string confirmedOldLine)
+    {
+        var result = launchOptions.Replace(installation, loadout, confirmedOldLine);
+        if (result.IsRefused)
+        {
+            await renderer.TextLine(result.Refusal!);
+            return LaunchSession.FailureExitCode;
+        }
+
+        var localConfig = installation.LocatorResult.LinuxCompatabilityDataProvider!.SteamLocalConfigPath;
+        await renderer.TextLine($"Replaced the launch options of {installation.Game.DisplayName} in {localConfig}:");
+        await renderer.TextLine(result.Replacement!.OldLine);
+        await renderer.TextLine("with:");
+        await renderer.TextLine(result.Line!);
+        await renderer.TextLine($"The old line is recorded in {result.ReplacedLineRecord}. The previous file was kept as {result.Backup}. The line runs the current deploy of the loadout.");
         return 0;
     }
 }

@@ -1,3 +1,4 @@
+using NexusMods.Paths;
 using NexusMods.Platform.Proton.Steam;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -35,4 +36,9 @@ public interface ISteamLaunchOptionWriter
     /// the data home. Refuses for the same cases as <see cref="Write"/>, and when the stored line changed.
     /// </summary>
     LocalConfigVdfWriter.Result Replace(GameInstallation installation, Loadout.ReadOnly loadout, string confirmedOldLine);
+
+    /// <summary>
+    /// The file <see cref="Replace"/> appends the replaced line to, or null for a game that is not a Steam game.
+    /// </summary>
+    AbsolutePath? ReplacedLineRecord(GameInstallation installation);
 }

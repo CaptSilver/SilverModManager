@@ -285,6 +285,114 @@ public class SteamLaunchOptionVerbTests(IConnection connection) : IDisposable
         File.Exists(ConfigFile).Should().BeFalse();
     }
 
+    private const string FluorineLine =
+        "'/home/user/.local/share/fluorine/bin/fluorine-manager' -i 'Cyberpunk 2077' -p 'Default' run --headless -e 'Cyberpunk 2077' # %command%";
+
+    private string RecordFile => Path.Combine(DataHome, "silvermod", "steam-launch-options", $"{AppId}.replaced");
+
+    private string Span => $"'{ShimFile}' run '{LoadoutName}' -- %command%";
+
+    [Fact]
+    public async Task WriteOnAnotherManagersLinePrintsBothLinesAndTheCommandToReplaceIt()
+    {
+        await Install();
+        WriteShim();
+        WriteConfig(FluorineLine);
+        var before = File.ReadAllText(ConfigFile);
+        var renderer = new LoggingRenderer();
+
+        var exitCode = await Command().RunAsync(renderer, LoadoutName, null, write: true);
+
+        exitCode.Should().Be(LaunchSession.FailureExitCode);
+        var output = Output(renderer);
+        output.Should().Contain("Fluorine").And.Contain(FluorineLine).And.Contain(Span)
+            .And.Contain("--replace-other-manager").And.Contain(SteamLaunchOptionLine.ShellQuote(FluorineLine))
+            .And.Contain(RecordFile);
+        output.Should().Contain($"--loadout {SteamLaunchOptionLine.ShellQuote(LoadoutName)} --game {SteamLaunchOptionLine.ShellQuote(AppId)} --write");
+        File.ReadAllText(ConfigFile).Should().Be(before);
+        File.Exists(RecordFile).Should().BeFalse("nothing was replaced");
+    }
+
+    [Fact]
+    public async Task ReplaceOtherManagerWithoutWriteIsAnError()
+    {
+        await Install();
+        WriteShim();
+        WriteConfig(FluorineLine);
+        var before = File.ReadAllText(ConfigFile);
+        var renderer = new LoggingRenderer();
+
+        var exitCode = await Command().RunAsync(renderer, LoadoutName, null, write: false, replaceOtherManager: FluorineLine);
+
+        exitCode.Should().Be(LaunchSession.FailureExitCode);
+        Output(renderer).Should().Contain("--replace-other-manager needs --write");
+        File.ReadAllText(ConfigFile).Should().Be(before);
+    }
+
+    [Fact]
+    public async Task ReplaceOtherManagerSwapsTheLineAndNamesTheRecord()
+    {
+        await Install();
+        WriteShim();
+        WriteConfig(FluorineLine);
+        var renderer = new LoggingRenderer();
+
+        var exitCode = await Command().RunAsync(renderer, LoadoutName, null, write: true, replaceOtherManager: FluorineLine);
+
+        exitCode.Should().Be(0, Output(renderer));
+        Output(renderer).Should().Contain(RecordFile).And.Contain(ConfigFile).And.Contain(FluorineLine);
+        File.ReadAllText(RecordFile).Should().Contain("old " + FluorineLine);
+        LocalConfigLaunchOptions.Read(Absolute(ConfigFile), uint.Parse(AppId)).Line.Should().Be(Span);
+    }
+
+    [Fact]
+    public async Task ReplaceOtherManagerWithAStaleLineIsRefused()
+    {
+        await Install();
+        WriteShim();
+        WriteConfig(FluorineLine);
+        var before = File.ReadAllText(ConfigFile);
+        var renderer = new LoggingRenderer();
+
+        var exitCode = await Command().RunAsync(renderer, LoadoutName, null, write: true, replaceOtherManager: FluorineLine + " --other");
+
+        exitCode.Should().Be(LaunchSession.FailureExitCode);
+        Output(renderer).Should().Contain("no longer the line");
+        File.ReadAllText(ConfigFile).Should().Be(before);
+    }
+
+    [Fact]
+    public async Task ReplaceOtherManagerOnAPlainLineIsRefused()
+    {
+        await Install();
+        WriteShim();
+        WriteConfig("MANGOHUD=1 %command%");
+        var before = File.ReadAllText(ConfigFile);
+        var renderer = new LoggingRenderer();
+
+        var exitCode = await Command().RunAsync(renderer, LoadoutName, null, write: true, replaceOtherManager: "MANGOHUD=1 %command%");
+
+        exitCode.Should().Be(LaunchSession.FailureExitCode);
+        File.ReadAllText(ConfigFile).Should().Be(before);
+    }
+
+    [Fact]
+    public async Task ReplaceOtherManagerIsRefusedWhileSteamRuns()
+    {
+        await Install();
+        WriteShim();
+        WriteConfig(FluorineLine);
+        var before = File.ReadAllText(ConfigFile);
+        _tracker.IsSteamRunning().Returns(true);
+        var renderer = new LoggingRenderer();
+
+        var exitCode = await Command().RunAsync(renderer, LoadoutName, null, write: true, replaceOtherManager: FluorineLine);
+
+        exitCode.Should().Be(LaunchSession.FailureExitCode);
+        Output(renderer).Should().Contain("Close Steam");
+        File.ReadAllText(ConfigFile).Should().Be(before);
+    }
+
     [Fact]
     public void TheHeadlessLaunchServicesRegisterTheVerb()
     {
@@ -294,7 +402,7 @@ public class SteamLaunchOptionVerbTests(IConnection connection) : IDisposable
         using var provider = services.BuildServiceProvider();
         var verb = provider.GetServices<VerbDefinition>().Single(v => v.Name == "steam-launch-option");
 
-        verb.Options.Where(o => !o.IsInjected).Select(o => o.LongName).Should().BeEquivalentTo("loadout", "game", "write");
+        verb.Options.Where(o => !o.IsInjected).Select(o => o.LongName).Should().BeEquivalentTo("loadout", "game", "write", "replace-other-manager");
         verb.Options.Where(o => !o.IsInjected && o.LongName != "loadout").Should().OnlyContain(o => o.IsOptional);
     }
 }
