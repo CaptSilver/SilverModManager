@@ -8,6 +8,7 @@ using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.FileHashes.Emitters;
+using NexusMods.Games.FromSoft.Build;
 using NexusMods.Games.FromSoft.Diagnostics;
 using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.EldenRing;
@@ -70,6 +71,7 @@ public class EldenRingToolsAndEmittersTests(ITestOutputHelper helper) : AEldenRi
             typeof(SpawnerEmitter),
             typeof(OverlaySupportEmitter),
             typeof(SaveWrittenByModdedSessionEmitter),
+            typeof(BuildDriftEmitter),
             typeof(FakeEmitter));
     }
 

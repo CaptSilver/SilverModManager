@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x8EA9489281CE356E
-   - Total attributes: 271
-   - Total namespaces: 81
+   - Fingerprint: 0x063683B87E00C62E
+   - Total attributes: 275
+   - Total namespaces: 82
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -91,6 +91,10 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Deployment.VfsCatalogEntry/MTime                                         | Int64                   | False   | False | False     | 
 | SilverModManager.Deployment.VfsCatalogEntry/Path                                          | Utf8                    | False   | False | False     | 
 | SilverModManager.Deployment.VfsCatalogEntry/Size                                          | UInt64                  | False   | False | False     | 
+| SilverModManager.FromSoft.BuildStamp/Exe                                                  | Utf8                    | False   | False | False     | 
+| SilverModManager.FromSoft.BuildStamp/Installation                                         | Reference               | True    | False | False     | 
+| SilverModManager.FromSoft.BuildStamp/RecordedAt                                           | Int64                   | False   | False | False     | 
+| SilverModManager.FromSoft.BuildStamp/SteamBuildId                                         | Utf8                    | False   | False | False     | 
 | SilverModManager.GC.BackedUpFile/GameInstall                                              | Reference               | False   | False | False     | 
 | SilverModManager.GC.BackedUpFile/Hash                                                     | UInt64                  | False   | False | False     | 
 | SilverModManager.Games.FOMOD.EmptyDirectory/EmptyDirectory                                | UInt8                   | False   | False | False     | 

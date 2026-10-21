@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using NexusMods.Games.TestFramework.Helpers;
 
 namespace NexusMods.Games.FromSoft.Tests.Fixtures;
@@ -12,9 +13,16 @@ internal static class EldenRingInstall
     public const uint GameDepotId = 1245621;
     public const ulong GameManifestId = 8000000000000000001;
 
+    /// <summary>The build the fixture's executable reports, and Steam's build id for the same install.</summary>
+    public static readonly Version ExecutableVersion = new(2, 7, 1, 0);
+    public const ulong SteamBuildId = 15000000;
+
+    /// <summary>A real PE whose version resource says <see cref="ExecutableVersion"/>, so the build can be read from it.</summary>
+    public static byte[] Executable { get; } = FakePe.WithVersion(ExecutableVersion);
+
     public static SteamFile[] GameFiles { get; } =
     [
-        new("Game/eldenring.exe", "game executable"),
+        new("Game/eldenring.exe", Executable),
         new("Game/start_protected_game.exe", "anti-cheat launcher"),
         new("Game/regulation.bin", "regulation"),
         new("Game/Data0.bdt", "data archive"),
@@ -36,9 +44,19 @@ internal static class EldenRingInstall
 
     public static SteamInstall Install(SteamLibraryFixture library, bool dirty)
     {
-        var install = library.AddGame(AppId, "ELDEN RING", "ELDEN RING", 15000000, new SteamDepot(GameDepotId, GameManifestId, GameFiles));
+        var install = library.AddGame(AppId, "ELDEN RING", "ELDEN RING", SteamBuildId, new SteamDepot(GameDepotId, GameManifestId, GameFiles));
         if (dirty) AddLeftoversOfAnotherModManager(library, install);
         return install;
+    }
+
+    /// <summary>Rewrites the build id in the install's Steam app manifest, as Steam does when it updates the game.</summary>
+    public static void SetSteamBuildId(SteamInstall install, string buildId)
+    {
+        var path = install.AppManifest.ToString();
+        var text = File.ReadAllText(path);
+        var updated = Regex.Replace(text, "\"BuildID\"\t\t\"\\d+\"", $"\"BuildID\"\t\t\"{buildId}\"");
+        if (updated == text) throw new InvalidOperationException($"{path} has no BuildID to replace");
+        File.WriteAllText(path, updated);
     }
 
     /// <summary>
@@ -48,7 +66,7 @@ internal static class EldenRingInstall
     private static void AddLeftoversOfAnotherModManager(SteamLibraryFixture library, SteamInstall install)
     {
         SteamLibraryFixture.WriteExtra(install, "Game/start_protected_game.exe.erm-backup", "anti-cheat launcher");
-        SteamLibraryFixture.WriteExtra(install, "Game/start_protected_game.exe", "game executable");
+        SteamLibraryFixture.WriteExtra(install, "Game/start_protected_game.exe", Executable);
         SteamLibraryFixture.WriteExtra(install, "Game/mods/AdjustTheFov/config.ini", "[fov]\nvalue=1.2");
         SteamLibraryFixture.WriteExtra(install, "Game/SeamlessCoop/crashdumps/x.dmp", "dump");
 

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.FromSoft.Build;
 using NexusMods.Games.FromSoft.Cleanup;
 using NexusMods.Games.FromSoft.Diagnostics;
 using NexusMods.Games.FromSoft.Doctor;
@@ -52,6 +53,7 @@ public static class Services
 
         // Registrations owned by other folders
         services.AddEldenRingSaves();
+        services.AddEldenRingBuild();
 
         return services;
     }
