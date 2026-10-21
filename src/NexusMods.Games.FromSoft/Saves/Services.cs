@@ -5,10 +5,10 @@ namespace NexusMods.Games.FromSoft.Saves;
 
 public static class Services
 {
-    /// <summary>Registers what the saves page of Elden Ring uses.</summary>
-    public static IServiceCollection AddEldenRingSaves(this IServiceCollection services)
+    /// <summary>Registers what the saves page of the FromSoft games uses.</summary>
+    public static IServiceCollection AddFromSoftSaves(this IServiceCollection services)
     {
         services.TryAddSingleton(TimeProvider.System);
-        return services.AddSingleton<EldenRingSaves>();
+        return services.AddSingleton<FromSoftSaves>();
     }
 }

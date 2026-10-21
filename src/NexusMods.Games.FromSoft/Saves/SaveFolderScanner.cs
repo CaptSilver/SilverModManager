@@ -1,17 +1,15 @@
-using NexusMods.Games.FromSoft.EldenRing;
-
 namespace NexusMods.Games.FromSoft.Saves;
 
 /// <summary>What a file in a save folder is, going by its name.</summary>
 public enum SaveKind
 {
-    /// <summary><c>ER0000.sl2</c>, the save the game writes.</summary>
+    /// <summary>The save the game writes (<see cref="FromSoftSaveNames.Vanilla"/>).</summary>
     Vanilla,
 
-    /// <summary><c>ER0000.co2</c>, the save Seamless Co-op writes.</summary>
+    /// <summary>The save Seamless Co-op writes (<see cref="FromSoftSaveNames.SeamlessCoop"/>).</summary>
     SeamlessCoop,
 
-    /// <summary><c>ER0000_silver.sl2</c>, the save a modded session without Seamless Co-op is pointed at.</summary>
+    /// <summary>The save a modded session without Seamless Co-op is pointed at (<see cref="FromSoftSaveNames.Modded"/>).</summary>
     Modded,
 
     /// <summary>Anything else. Listed so the user sees it, never read, moved, backed up or restored.</summary>
@@ -29,25 +27,28 @@ public sealed record SaveFileEntry(string Name, string Path, SaveKind Kind, bool
 }
 
 /// <summary>
-/// Lists a save folder and says which files the module knows. Every operation on a save asks <see cref="KindOf"/>
-/// first, so a file with a name nobody here wrote (an <c>ER0000_modded</c> from an earlier tool, say) is shown and
-/// left alone.
+/// Lists a save folder and says which files the game's <see cref="FromSoftSaveNames"/> know. Every operation on a
+/// save asks <see cref="KindOf"/> first, so a file with a name nobody here wrote (an <c>ER0000_modded</c> from an
+/// earlier tool, say) is shown and left alone. A game without a modded or Seamless Co-op save never yields that kind.
 /// </summary>
-public static class SaveFolderScanner
+public sealed class SaveFolderScanner
 {
     private const string BackupSuffix = ".bak";
 
     /// <summary>The known save files, with the kind each name stands for. Names are matched exactly, as the game writes them.</summary>
-    private static readonly (string Name, SaveKind Kind)[] KnownNames =
-    [
-        (EldenRingPaths.VanillaSave, SaveKind.Vanilla),
-        (EldenRingPaths.SeamlessCoopSave, SaveKind.SeamlessCoop),
-        (EldenRingPaths.ModdedSave, SaveKind.Modded),
-    ];
+    private readonly (string Name, SaveKind Kind)[] _knownNames;
 
-    public static SaveKind KindOf(string fileName, out bool isBackup)
+    public SaveFolderScanner(FromSoftSaveNames names)
     {
-        foreach (var (name, kind) in KnownNames)
+        var known = new List<(string, SaveKind)> { (names.Vanilla, SaveKind.Vanilla) };
+        if (names.SeamlessCoop is { } coop) known.Add((coop, SaveKind.SeamlessCoop));
+        if (names.Modded is { } modded) known.Add((modded, SaveKind.Modded));
+        _knownNames = known.ToArray();
+    }
+
+    public SaveKind KindOf(string fileName, out bool isBackup)
+    {
+        foreach (var (name, kind) in _knownNames)
         {
             if (fileName == name) { isBackup = false; return kind; }
             if (fileName == name + BackupSuffix) { isBackup = true; return kind; }
@@ -58,7 +59,7 @@ public static class SaveFolderScanner
     }
 
     /// <summary>The files of the folder, known saves first and then by name. A folder that does not exist has none.</summary>
-    public static IReadOnlyList<SaveFileEntry> Scan(string folder)
+    public IReadOnlyList<SaveFileEntry> Scan(string folder)
     {
         if (!Directory.Exists(folder)) return [];
 

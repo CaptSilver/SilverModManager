@@ -9,6 +9,7 @@ using NexusMods.App.UI.Windows;
 using NexusMods.Games.FromSoft;
 using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Saves;
+using FromSoftSavesService = NexusMods.Games.FromSoft.Saves.FromSoftSaves;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
@@ -42,11 +43,35 @@ public class FromSoftSavesViewModelTests(IServiceProvider provider) : AUiTest(pr
             var settings = Substitute.For<ISettingsManager>();
             settings.Get<FromSoftSettings>().Returns(new FromSoftSettings { DataRoot = new ConfigurablePath(KnownPath.EntryDirectory, Path.GetRelativePath(AppContext.BaseDirectory, DataRoot)) });
 
-            var saves = new EldenRingSaves(settings, fileSystem, prefixes, Tracker, TimeProvider.System, NullLogger<EldenRingSaves>.Instance);
+            var saves = new FromSoftSavesService(settings, fileSystem, prefixes, Tracker, TimeProvider.System, NullLogger<FromSoftSavesService>.Instance);
             Vm = new FromSoftSavesViewModel(Substitute.For<IWindowManager>(), provider.GetRequiredService<NexusMods.MnemonicDB.Abstractions.IConnection>(), saves, NullLogger<FromSoftSavesViewModel>.Instance)
             {
-                Installation = provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First(),
+                Installation = EldenRingInstallation(provider),
             };
+        }
+
+        // The UI host locates no FromSoft game, so the located installation is rebuilt around Elden Ring's game class.
+        private static GameInstallation EldenRingInstallation(IServiceProvider provider)
+        {
+            var located = provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First();
+            var result = located.LocatorResult;
+            return new GameInstallation(new GameLocatorResult
+            {
+                Game = provider.GetRequiredService<EldenRingGame>(),
+                Path = result.Path,
+                Store = result.Store,
+                StoreIdentifier = result.StoreIdentifier,
+                LocatorIds = result.LocatorIds,
+                Locator = result.Locator,
+                Platform = result.Platform,
+                LinuxCompatabilityDataProvider = result.LinuxCompatabilityDataProvider,
+                WinePrefixPath = result.WinePrefixPath,
+                Compatibility = result.Compatibility,
+                StoreRoot = result.StoreRoot,
+                StoreBuildId = result.StoreBuildId,
+                StoreUpdatePending = result.StoreUpdatePending,
+                StoreLastWrite = result.StoreLastWrite,
+            }, located.Locations);
         }
 
         public string Write(string name, string content)
@@ -121,6 +146,19 @@ public class FromSoftSavesViewModelTests(IServiceProvider provider) : AUiTest(pr
 
         fixture.Vm.CanQuarantine.Should().BeFalse();
         fixture.Vm.QuarantineDisabledReason.Should().Contain("Only the vanilla save");
+    }
+
+    [Fact]
+    public void TheQuarantineReasonsNameTheGamesVanillaSave()
+    {
+        using var fixture = new Fixture(Provider, steamRunning: false);
+        fixture.Write("ER0000.co2", "coop");
+        fixture.Vm.RefreshCommand.Execute().Subscribe();
+
+        fixture.Vm.QuarantineDisabledReason.Should().Be("Select the vanilla save (ER0000.sl2) first.");
+
+        fixture.Vm.SelectedFile = fixture.Vm.Files.Single();
+        fixture.Vm.QuarantineDisabledReason.Should().Be("Only the vanilla save (ER0000.sl2) can be quarantined.");
     }
 
     [Fact]

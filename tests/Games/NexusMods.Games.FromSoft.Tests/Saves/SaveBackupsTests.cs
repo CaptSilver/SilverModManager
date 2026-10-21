@@ -12,7 +12,7 @@ public class SaveBackupsTests : IDisposable
 
     public void Dispose() => _fixture.Dispose();
 
-    private SaveBackups Backups => new(FileSystem.Shared.FromUnsanitizedFullPath(_fixture.DataFolder), _clock);
+    private SaveBackups Backups => new(FileSystem.Shared.FromUnsanitizedFullPath(_fixture.DataFolder), new SaveFolderScanner(EldenRingGame.Definition.SaveNames), _clock);
 
     private string Dir(string name) => Path.Combine(_fixture.DataFolder, name);
 

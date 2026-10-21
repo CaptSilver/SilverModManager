@@ -1,4 +1,5 @@
 using FluentAssertions;
+using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Saves;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -15,7 +16,7 @@ public class SaveQuarantineTests : IDisposable
 
     public SaveQuarantineTests()
     {
-        _backups = new SaveBackups(FileSystem.Shared.FromUnsanitizedFullPath(_fixture.DataFolder), new FakeTimeProvider(new DateTimeOffset(2026, 7, 14, 12, 0, 0, TimeSpan.Zero)));
+        _backups = new SaveBackups(FileSystem.Shared.FromUnsanitizedFullPath(_fixture.DataFolder), new SaveFolderScanner(EldenRingGame.Definition.SaveNames), new FakeTimeProvider(new DateTimeOffset(2026, 7, 14, 12, 0, 0, TimeSpan.Zero)));
         _quarantine = new SaveQuarantine(_backups, _tracker);
     }
 
@@ -80,9 +81,9 @@ public class SaveQuarantineTests : IDisposable
         var save = _fixture.Save("ER0000.sl2", "vanilla");
         IReadOnlyList<CloudSave> cloud =
         [
-            new("65369667", SaveFixture.Account, $"EldenRing/{SaveFixture.Account}/ER0000.sl2", 10),
-            new("65369667", SaveFixture.Account, $"EldenRing/{SaveFixture.Account}/ER0000.co2", 10),
-            new("11111111", "76561198000000099", "EldenRing/76561198000000099/ER0000.sl2", 10),
+            new("65369667", SaveFixture.Account, $"EldenRing/{SaveFixture.Account}/ER0000.sl2", 10, "Elden Ring"),
+            new("65369667", SaveFixture.Account, $"EldenRing/{SaveFixture.Account}/ER0000.co2", 10, "Elden Ring"),
+            new("11111111", "76561198000000099", "EldenRing/76561198000000099/ER0000.sl2", 10, "Elden Ring"),
         ];
 
         var result = _quarantine.Quarantine(save, cloud);
@@ -96,7 +97,7 @@ public class SaveQuarantineTests : IDisposable
     {
         var path = Path.Combine(_fixture.SaveFolder, "ER0000.sl2");
 
-        var result = _quarantine.Quarantine(path, [new("1", SaveFixture.Account, $"EldenRing/{SaveFixture.Account}/ER0000.sl2", 1)]);
+        var result = _quarantine.Quarantine(path, [new("1", SaveFixture.Account, $"EldenRing/{SaveFixture.Account}/ER0000.sl2", 1, "Elden Ring")]);
 
         result.MovedTo.Should().BeNull();
         result.Notes.Should().HaveCount(2);

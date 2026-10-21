@@ -16,7 +16,7 @@ public sealed class SaveQuarantine(SaveBackups backups, IProcessTracker processT
     /// Refuses, before anything on disk changes, while Steam runs. Otherwise copies the save to
     /// <c>quarantine-backup/</c> with the label <c>orig</c> and then moves it to <c>quarantine/</c>.
     /// </summary>
-    /// <param name="savePath">The <c>ER0000.sl2</c> of one account folder.</param>
+    /// <param name="savePath">The vanilla save of one account folder.</param>
     /// <param name="cloudSaves">What Steam Cloud holds; the entries for this account's folder and this file are reported.</param>
     public QuarantineResult Quarantine(string savePath, IReadOnlyList<CloudSave> cloudSaves)
     {
@@ -24,7 +24,7 @@ public sealed class SaveQuarantine(SaveBackups backups, IProcessTracker processT
             throw new SaveRefusedException("Close Steam before quarantining the save; it may sync the save back from Steam Cloud.");
 
         var name = Path.GetFileName(savePath);
-        if (SaveFolderScanner.KindOf(name, out var isBackup) != SaveKind.Vanilla || isBackup)
+        if (backups.Scanner.KindOf(name, out var isBackup) != SaveKind.Vanilla || isBackup)
             throw new SaveRefusedException($"Only the vanilla save can be quarantined, and {name} is not it.");
 
         var notes = new List<string>();

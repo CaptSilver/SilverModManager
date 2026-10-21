@@ -1,4 +1,5 @@
 using FluentAssertions;
+using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Saves;
 using NexusMods.Paths;
 
@@ -20,7 +21,7 @@ public class SteamCloudSavesTests : IDisposable
         File.WriteAllText(Path.Combine(folder, "remotecache.vdf"), content);
     }
 
-    private IReadOnlyList<CloudSave> Discover() => SteamCloudSaves.Discover(FileSystem.Shared.FromUnsanitizedFullPath(_fixture.SteamFolder));
+    private IReadOnlyList<CloudSave> Discover() => SteamCloudSaves.Discover(FileSystem.Shared.FromUnsanitizedFullPath(_fixture.SteamFolder), EldenRingPaths.SteamAppId, "EldenRing", "Elden Ring");
 
     [Fact]
     public void FindsTheSavesOfEveryAccount()
@@ -32,9 +33,9 @@ public class SteamCloudSavesTests : IDisposable
 
         found.Should().BeEquivalentTo(new CloudSave[]
         {
-            new("12345678", "76561197972611406", "EldenRing/76561197972611406/ER0000.sl2", 100),
-            new("65369667", "76561198025635395", "EldenRing/76561198025635395/ER0000.sl2", 29360160),
-            new("65369667", "76561198025635395", "EldenRing/76561198025635395/ER0000.sl2.bak", 29360160),
+            new("12345678", "76561197972611406", "EldenRing/76561197972611406/ER0000.sl2", 100, "Elden Ring"),
+            new("65369667", "76561198025635395", "EldenRing/76561198025635395/ER0000.sl2", 29360160, "Elden Ring"),
+            new("65369667", "76561198025635395", "EldenRing/76561198025635395/ER0000.sl2.bak", 29360160, "Elden Ring"),
         }, o => o.WithStrictOrdering());
     }
 
@@ -81,8 +82,26 @@ public class SteamCloudSavesTests : IDisposable
     [Fact]
     public void ThePurgeInstructionNamesTheAccountAndTheRemoteFile()
     {
-        var instruction = new CloudSave("65369667", "76561198025635395", "EldenRing/76561198025635395/ER0000.sl2", 1).PurgeInstruction;
+        var instruction = new CloudSave("65369667", "76561198025635395", "EldenRing/76561198025635395/ER0000.sl2", 1, "Elden Ring").PurgeInstruction;
 
         instruction.Should().Contain("65369667").And.Contain("EldenRing/76561198025635395/ER0000.sl2").And.Contain("Steam Cloud");
     }
+
+    [Fact]
+    public void ASecondGameIsFoundByItsOwnAppIdAndRemoteFolder()
+    {
+        var folder = Path.Combine(_fixture.SteamFolder, "userdata", "1111", "424242");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "remotecache.vdf"),
+            "\"424242\"\n{\n\t\"TestSouls/76561198000000001/TS0000.sl2\"\n\t{\n\t\t\"size\"\t\t\"7\"\n\t}\n}\n");
+        var steam = FileSystem.Shared.FromUnsanitizedFullPath(_fixture.SteamFolder);
+
+        SteamCloudSaves.Discover(steam, 424242, "TestSouls", "Test Souls").Should().ContainSingle().Which
+            .Should().Be(new CloudSave("1111", "76561198000000001", "TestSouls/76561198000000001/TS0000.sl2", 7, "Test Souls"));
+        SteamCloudSaves.Discover(steam, EldenRingPaths.SteamAppId, "EldenRing", "Elden Ring").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ThePurgeInstructionNamesTheGame()
+        => new CloudSave("1", "2", "TestSouls/2/TS0000.sl2", 1, "Test Souls").PurgeInstruction.Should().Contain("turn Steam Cloud off for Test Souls");
 }

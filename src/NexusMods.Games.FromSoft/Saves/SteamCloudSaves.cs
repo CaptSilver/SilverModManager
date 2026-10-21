@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Paths;
 
 namespace NexusMods.Games.FromSoft.Saves;
@@ -8,34 +7,40 @@ namespace NexusMods.Games.FromSoft.Saves;
 /// <summary>A save file Steam Cloud holds for one account, as Steam's local cache of the remote files lists it.</summary>
 /// <param name="AccountId">The Steam account's folder name under <c>userdata</c>.</param>
 /// <param name="SteamId64">The id the game's save folder is named by.</param>
-/// <param name="RelativePath">The remote path, <c>EldenRing/&lt;steam id&gt;/&lt;file&gt;</c>.</param>
-public sealed record CloudSave(string AccountId, string SteamId64, string RelativePath, long Size)
+/// <param name="RelativePath">The remote path, <c>&lt;remote folder&gt;/&lt;steam id&gt;/&lt;file&gt;</c>.</param>
+/// <param name="GameName">The game's display name, for the instruction to the user.</param>
+public sealed record CloudSave(string AccountId, string SteamId64, string RelativePath, long Size, string GameName)
 {
     public string FileName => RelativePath[(RelativePath.LastIndexOf('/') + 1)..];
 
     /// <summary>What to do in Steam so the remote copy does not come back after the local save was moved away.</summary>
     public string PurgeInstruction =>
-        $"Steam Cloud account {AccountId}: in Steam, turn Steam Cloud off for Elden Ring, then delete the remote {RelativePath} " +
+        $"Steam Cloud account {AccountId}: in Steam, turn Steam Cloud off for {GameName}, then delete the remote {RelativePath} " +
         "(Settings > Cloud > Manage), or Steam will put it back.";
 }
 
 /// <summary>
-/// Reads which Elden Ring saves Steam Cloud holds. Only reads: Steam's files are never written.
+/// Reads which saves of a FromSoft game Steam Cloud holds. Only reads: Steam's files are never written.
 /// </summary>
-public static partial class SteamCloudSaves
+public static class SteamCloudSaves
 {
     // One entry per remote file: its quoted path, then a block holding the size. Steam's cache is a VDF text file;
     // the path is all that is needed from it, so a regex does, the way the tool this was ported from reads it.
-    [GeneratedRegex("\"(EldenRing/(\\d+)/[^\"]+)\"\\s*\\{[^}]*?\"size\"\\s*\"(\\d+)\"", RegexOptions.Singleline)]
-    private static partial Regex EntryPattern();
+    // The account group is the decimal Steam id, the only account folder kind a layout has so far.
+    private static Regex EntryPattern(string remoteFolder)
+        => new($"\"({Regex.Escape(remoteFolder)}/(\\d+)/[^\"]+)\"\\s*\\{{[^}}]*?\"size\"\\s*\"(\\d+)\"", RegexOptions.Singleline);
 
     /// <summary>
     /// The cloud saves of every account under <c>userdata</c> in the Steam folder. An account whose cache cannot be
     /// read is skipped with a warning and does not stop the others, since the Steam folder may sit on a drive
     /// that is not mounted.
     /// </summary>
-    public static IReadOnlyList<CloudSave> Discover(AbsolutePath steamRoot, ILogger? logger = null)
+    /// <param name="appId">The game's Steam app id, the folder of its cache under each account.</param>
+    /// <param name="remoteFolder">The folder the game's saves have in Steam Cloud, such as <c>EldenRing</c>.</param>
+    /// <param name="gameName">The game's display name, carried into each <see cref="CloudSave"/>.</param>
+    public static IReadOnlyList<CloudSave> Discover(AbsolutePath steamRoot, uint appId, string remoteFolder, string gameName, ILogger? logger = null)
     {
+        var entryPattern = EntryPattern(remoteFolder);
         var found = new List<CloudSave>();
         var userdata = steamRoot.GetFullPath() + "/userdata";
 
@@ -53,7 +58,7 @@ public static partial class SteamCloudSaves
 
         foreach (var account in accounts)
         {
-            var cache = Path.Combine(account, EldenRingPaths.SteamAppId.ToString(), "remotecache.vdf");
+            var cache = Path.Combine(account, appId.ToString(), "remotecache.vdf");
             string text;
             try
             {
@@ -66,8 +71,8 @@ public static partial class SteamCloudSaves
                 continue;
             }
 
-            foreach (Match match in EntryPattern().Matches(text))
-                found.Add(new CloudSave(Path.GetFileName(account), match.Groups[2].Value, match.Groups[1].Value, long.Parse(match.Groups[3].Value)));
+            foreach (Match match in entryPattern.Matches(text))
+                found.Add(new CloudSave(Path.GetFileName(account), match.Groups[2].Value, match.Groups[1].Value, long.Parse(match.Groups[3].Value), gameName));
         }
 
         return found;

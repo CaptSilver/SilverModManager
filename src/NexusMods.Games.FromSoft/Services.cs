@@ -72,7 +72,7 @@ public static class Services
         services.AddCleanupVerbs();
 
         // Registrations owned by other folders
-        services.AddEldenRingSaves();
+        services.AddFromSoftSaves();
         services.AddFromSoftBuild();
 
         return services;

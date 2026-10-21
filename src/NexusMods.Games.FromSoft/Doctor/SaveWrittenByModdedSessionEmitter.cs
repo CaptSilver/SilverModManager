@@ -24,6 +24,7 @@ public class SaveWrittenByModdedSessionEmitter(ISettingsManager settings, IFileS
     public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Yield();
+        if (loadout.InstallationInstance.Game is not IFromSoftGame) yield break;
 
         var ledger = SaveLedger.For(settings.Get<FromSoftSettings>(), fileSystem, loadout.InstallationInstance);
         foreach (var record in ledger.Written)

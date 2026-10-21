@@ -9,6 +9,7 @@ using NexusMods.Games.FromSoft.Diagnostics;
 using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Launch;
+using NexusMods.Games.FromSoft.Saves;
 using NexusMods.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
@@ -320,6 +321,26 @@ public class VanillaSaveGateTests(ITestOutputHelper helper) : AModdedEldenRingTe
 
         Directory.Exists(Ledger.Session.GetFullPath()).Should().BeFalse();
         File.Exists(Ledger.File.GetFullPath()).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AnotherGameHasNoLedgerOrBackupsFolder()
+    {
+        var result = GameInstallation.LocatorResult;
+        var other = new GameInstallation(new GameLocatorResult
+        {
+            Game = DispatchProxy.Create<IGameData, OtherGameProxy>(),
+            Path = result.Path,
+            Store = result.Store,
+            StoreIdentifier = result.StoreIdentifier,
+            LocatorIds = result.LocatorIds,
+            Locator = result.Locator,
+            Platform = result.Platform,
+        }, GameInstallation.Locations);
+        var settings = ServiceProvider.GetRequiredService<ISettingsManager>();
+
+        FluentActions.Invoking(() => SaveLedger.For(settings.Get<FromSoftSettings>(), FileSystem, other)).Should().Throw<InvalidOperationException>();
+        FluentActions.Invoking(() => SaveBackups.For(settings, FileSystem, other)).Should().Throw<InvalidOperationException>();
     }
 
     [Fact]

@@ -8,7 +8,9 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.App.UI.Extensions;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
+using NexusMods.Games.FromSoft;
 using NexusMods.Games.FromSoft.Saves;
+using FromSoftSavesService = NexusMods.Games.FromSoft.Saves.FromSoftSaves;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -24,7 +26,7 @@ public class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewModel>, I
     private static readonly TimeSpan SteamPollInterval = TimeSpan.FromSeconds(2);
 
     private readonly IConnection _conn;
-    private readonly EldenRingSaves _saves;
+    private readonly FromSoftSavesService _saves;
     private readonly ILogger<FromSoftSavesViewModel> _logger;
     private SaveBackup? _pendingRestore;
     private SaveFolder? _pendingRestoreFolder;
@@ -55,7 +57,7 @@ public class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewModel>, I
     public ReactiveCommand<Unit, Unit> QuarantineCommand { get; }
     public ReactiveCommand<Unit, Unit> ResolveCommand { get; }
 
-    public FromSoftSavesViewModel(IWindowManager windowManager, IConnection conn, EldenRingSaves saves, ILogger<FromSoftSavesViewModel> logger) : base(windowManager)
+    public FromSoftSavesViewModel(IWindowManager windowManager, IConnection conn, FromSoftSavesService saves, ILogger<FromSoftSavesViewModel> logger) : base(windowManager)
     {
         _conn = conn;
         _saves = saves;
@@ -70,7 +72,8 @@ public class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewModel>, I
         });
         this.WhenAnyValue(vm => vm.Installation).Subscribe(_ => Refresh());
         this.WhenAnyValue(vm => vm.SelectedFolder).Subscribe(folder => Files = folder?.Files ?? []);
-        this.WhenAnyValue(vm => vm.SelectedFile, vm => vm.IsSteamRunning).Subscribe(_ => ApplyQuarantineState());
+        // The installation is in here because the reasons name its game's vanilla save.
+        this.WhenAnyValue(vm => vm.SelectedFile, vm => vm.IsSteamRunning, vm => vm.Installation).Subscribe(_ => ApplyQuarantineState());
 
         RefreshCommand = ReactiveCommand.Create(Refresh);
         BackupCommand = ReactiveCommand.Create(Backup, this.WhenAnyValue(vm => vm.SelectedFile, file => file is { IsKnown: true }));
@@ -134,12 +137,15 @@ public class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewModel>, I
         IsSteamRunning = _saves.IsSteamRunning();
     }
 
+    // Falls back to a generic name when no FromSoft installation is set, where the page lists nothing to act on anyway.
+    private string VanillaSaveName => Installation?.Game is IFromSoftGame game ? game.SaveNames.Vanilla : "vanilla save file";
+
     private void ApplyQuarantineState()
     {
         QuarantineDisabledReason = SelectedFile switch
         {
-            null => "Select the vanilla save (ER0000.sl2) first.",
-            { Kind: not SaveKind.Vanilla } or { IsBackup: true } => "Only the vanilla save (ER0000.sl2) can be quarantined.",
+            null => $"Select the vanilla save ({VanillaSaveName}) first.",
+            { Kind: not SaveKind.Vanilla } or { IsBackup: true } => $"Only the vanilla save ({VanillaSaveName}) can be quarantined.",
             _ when IsSteamRunning => "Close Steam first, completely including its tray icon. It may sync the save back from Steam Cloud.",
             _ => "",
         };

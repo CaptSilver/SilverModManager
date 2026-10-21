@@ -1,5 +1,5 @@
 using System.Text.Json;
-using NexusMods.Games.FromSoft.EldenRing;
+using NexusMods.Games.FromSoft.Saves;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -8,13 +8,13 @@ namespace NexusMods.Games.FromSoft.Launch;
 
 /// <summary>
 /// What the save gate knows about one save folder whose session has not been settled: the hash of
-/// <c>ER0000.sl2</c> as the session began, where the copies of the folder's save files are kept, and whether
+/// the vanilla save as the session began, where the copies of the folder's save files are kept, and whether
 /// restoring them failed. An entry without <see cref="Tainted"/> is a session that is running or whose end was
 /// never seen; a tainted one waits for the user.
 /// </summary>
 /// <param name="Folder">The save folder, one Steam account's folder inside the prefix.</param>
-/// <param name="Hash">The xxHash3 of <c>ER0000.sl2</c> when the session began, as 16 hex digits; empty when there was no such file.</param>
-/// <param name="CopyPath">The folder holding the copies of <c>ER0000.sl2</c> and <c>ER0000.sl2.bak</c> from the start of the session.</param>
+/// <param name="Hash">The xxHash3 of the vanilla save when the session began, as 16 hex digits; empty when there was no such file.</param>
+/// <param name="CopyPath">The folder holding the copies of the vanilla save and its <c>.bak</c> from the start of the session.</param>
 /// <param name="Tainted">True when the copies could not be put back and the vanilla save may hold what a mod wrote.</param>
 /// <param name="Stamp">When the session began, <c>yyyyMMddTHHmmssfffZ</c>.</param>
 public sealed record SaveLedgerEntry(string Folder, string Hash, string CopyPath, bool Tainted, string Stamp);
@@ -30,7 +30,7 @@ public sealed record SaveWrittenRecord(string Save, string Backup, bool Restored
 
 /// <summary>
 /// The save gate's state for one installation, a JSON file under the FromSoft data root:
-/// <c>&lt;root&gt;/EldenRing/&lt;installation&gt;/saves/ledger.json</c>, one <see cref="SaveLedgerEntry"/> per save folder.
+/// <c>&lt;root&gt;/&lt;game&gt;/&lt;installation&gt;/saves/ledger.json</c>, one <see cref="SaveLedgerEntry"/> per save folder.
 /// The saves page reads the same file, so the field names are fixed. Copies of a running session sit in
 /// <c>session/&lt;stamp&gt;/</c> and the bytes a mod wrote in <c>backups/</c>.
 /// </summary>
@@ -40,14 +40,17 @@ public sealed class SaveLedger(AbsolutePath root)
     private readonly Lock _lock = new();
 
     public static SaveLedger For(FromSoftSettings settings, IFileSystem fileSystem, GameInstallation installation)
-        => new(EldenRingPaths.Me3Root(settings, fileSystem) / EldenRingPaths.InstallationFolderName(installation.LocatorResult) / "saves");
+    {
+        var game = SaveBackups.FromSoftGameOf(installation);
+        return new SaveLedger(FromSoftPaths.InstallationRoot(game.Layout, settings, fileSystem, FromSoftPaths.InstallationFolderName(game.Layout, installation.LocatorResult)) / "saves");
+    }
 
     public AbsolutePath File => root / "ledger.json";
 
     /// <summary>The copies each session keeps, one folder per session stamp.</summary>
     public AbsolutePath Session => root / "session";
 
-    /// <summary>The files a modded session changed, kept as <c>ER0000.sl2.&lt;stamp&gt;-modded-session</c>.</summary>
+    /// <summary>The files a modded session changed, kept as <c>&lt;save&gt;.&lt;stamp&gt;-modded-session</c>.</summary>
     public AbsolutePath Backups => root / "backups";
 
     private AbsolutePath WrittenFile => root / "written.json";

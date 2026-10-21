@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Launch;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -22,7 +21,7 @@ public enum SaveBackupLocation
 }
 
 /// <param name="Path">The full path of the copy.</param>
-/// <param name="SaveName">The save it is a copy of, such as <c>ER0000.co2</c>.</param>
+/// <param name="SaveName">The save it is a copy of, such as <c>ER0000.co2</c> for Elden Ring.</param>
 /// <param name="Stamp">When it was taken, <c>yyyyMMdd-HHmmss</c> (a copy kept by a modded session carries that session's stamp instead).</param>
 /// <param name="Label">The text after the stamp, empty when there is none.</param>
 public sealed record SaveBackup(string Path, string SaveName, string Stamp, string Label, SaveBackupLocation Location);
@@ -32,15 +31,15 @@ public sealed record SaveBackup(string Path, string SaveName, string Stamp, stri
 public sealed record RestoreResult(string Destination, SaveBackup? PreRestoreBackup);
 
 /// <summary>
-/// Copies of an installation's saves, under <c>&lt;FromSoft data root&gt;/EldenRing/&lt;app id&gt;/saves/</c>, beside the
+/// Copies of an installation's saves, under <c>&lt;FromSoft data root&gt;/&lt;game&gt;/&lt;installation&gt;/saves/</c>, beside the
 /// ledger of the launch gate. A copy is named <c>&lt;save&gt;.&lt;yyyyMMdd-HHmmss&gt;[-label]</c>.
 /// </summary>
 /// <remarks>
 /// Only files <see cref="SaveFolderScanner"/> knows are copied or restored; anything else is refused. A restore
-/// writes to the exact save the copy was taken from: a copy of <c>ER0000_silver.sl2</c> never lands on the vanilla
+/// writes to the exact save the copy was taken from: a copy of the modded save never lands on the vanilla
 /// save, which is the file a modded session must not change.
 /// </remarks>
-public sealed partial class SaveBackups(AbsolutePath root, TimeProvider clock)
+public sealed partial class SaveBackups(AbsolutePath root, SaveFolderScanner scanner, TimeProvider clock)
 {
     private const string StampFormat = "yyyyMMdd-HHmmss";
 
@@ -49,8 +48,20 @@ public sealed partial class SaveBackups(AbsolutePath root, TimeProvider clock)
     private static partial Regex NamePattern();
 
     public static SaveBackups For(ISettingsManager settings, IFileSystem fileSystem, GameInstallation installation, TimeProvider? clock = null)
-        => new(EldenRingPaths.Me3Root(settings.Get<FromSoftSettings>(), fileSystem) / EldenRingPaths.InstallationFolderName(installation.LocatorResult) / "saves",
+    {
+        var game = FromSoftGameOf(installation);
+        return new SaveBackups(
+            FromSoftPaths.InstallationRoot(game.Layout, settings.Get<FromSoftSettings>(), fileSystem, FromSoftPaths.InstallationFolderName(game.Layout, installation.LocatorResult)) / "saves",
+            new SaveFolderScanner(game.SaveNames),
             clock ?? TimeProvider.System);
+    }
+
+    /// <summary>The installation's game, which has to be a FromSoft game: only those keep saves here.</summary>
+    internal static IFromSoftGame FromSoftGameOf(GameInstallation installation)
+        => installation.Game as IFromSoftGame
+           ?? throw new InvalidOperationException($"{installation.Game.DisplayName} is not a FromSoft game, so it has no saves folder here.");
+
+    public SaveFolderScanner Scanner => scanner;
 
     public AbsolutePath Root => root;
 
@@ -73,7 +84,7 @@ public sealed partial class SaveBackups(AbsolutePath root, TimeProvider clock)
     internal SaveBackup CopyInto(SaveBackupLocation location, string savePath, string label, string stamp)
     {
         var name = Path.GetFileName(savePath);
-        if (SaveFolderScanner.KindOf(name, out _) == SaveKind.Unknown)
+        if (scanner.KindOf(name, out _) == SaveKind.Unknown)
             throw new SaveRefusedException($"{name} is not a save file this page knows, so it was left alone.");
         if (!File.Exists(savePath)) throw new SaveRefusedException($"{name} does not exist, so there is nothing to back up.");
 
@@ -114,13 +125,13 @@ public sealed partial class SaveBackups(AbsolutePath root, TimeProvider clock)
         return found.OrderByDescending(b => b.Stamp, StringComparer.Ordinal).ThenBy(b => b.Path, StringComparer.Ordinal).ToArray();
     }
 
-    private static SaveBackup? Parse(string path, SaveBackupLocation location)
+    private SaveBackup? Parse(string path, SaveBackupLocation location)
     {
         var match = NamePattern().Match(Path.GetFileName(path));
         if (!match.Success) return null;
 
         var save = match.Groups["save"].Value;
-        return SaveFolderScanner.KindOf(save, out _) == SaveKind.Unknown
+        return scanner.KindOf(save, out _) == SaveKind.Unknown
             ? null
             : new SaveBackup(path, save, match.Groups["stamp"].Value, match.Groups["label"].Value, location);
     }
@@ -132,7 +143,7 @@ public sealed partial class SaveBackups(AbsolutePath root, TimeProvider clock)
     /// </summary>
     public RestoreResult Restore(SaveBackup backup, string saveFolder)
     {
-        if (SaveFolderScanner.KindOf(backup.SaveName, out _) == SaveKind.Unknown)
+        if (scanner.KindOf(backup.SaveName, out _) == SaveKind.Unknown)
             throw new SaveRefusedException($"{Path.GetFileName(backup.Path)} is not a copy of a save this page knows, so it was not restored.");
         if (!File.Exists(backup.Path)) throw new SaveRefusedException($"{Path.GetFileName(backup.Path)} no longer exists.");
         if (!Directory.Exists(saveFolder)) throw new SaveRefusedException($"The save folder {saveFolder} does not exist.");

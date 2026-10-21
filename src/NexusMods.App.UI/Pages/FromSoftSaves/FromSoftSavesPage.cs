@@ -2,7 +2,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Serialization.Attributes;
 using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Games.FromSoft.EldenRing;
+using NexusMods.Games.FromSoft;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.UI.Sdk.Icons;
@@ -40,7 +40,7 @@ public class FromSoftSavesPageFactory : APageFactory<IFromSoftSavesViewModel, Fr
         if (workspaceContext is not LoadoutContext loadoutContext) yield break;
 
         var loadout = Loadout.Load(_conn.Db, loadoutContext.LoadoutId);
-        if (loadout.InstallationInstance.Game.GameId != EldenRingGame.GameId) yield break;
+        if (loadout.InstallationInstance.Game is not IFromSoftGame) yield break;
 
         yield return new PageDiscoveryDetails
         {
