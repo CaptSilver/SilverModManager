@@ -198,6 +198,21 @@ public sealed class LookupsReadBothStoresTests : IDisposable
         suggestion.Value.LocatorIds.Select(id => id.Value).Should().BeEquivalentTo(["1002"]);
     }
 
+    [Fact]
+    public async Task SuggestVersionData_GameWithoutNexusId_SuggestsNothing()
+    {
+        var service = await ServiceWithCentral(async c =>
+        {
+            await HashRows.AddSteamManifest(c, 1001, ("a.esm", "central file"));
+            await HashRows.AddSteamVersionDefinition(c, "1.6.1170", 1001);
+        });
+        var onDisk = new[] { (new GamePath(LocationId.Game, "a.esm"), await HashOf("central file")) };
+
+        var suggestion = service.SuggestVersionData(Installation(GameStore.Steam, withNexusId: false), onDisk);
+
+        suggestion.HasValue.Should().BeFalse("version definitions are filed under Nexus ids, and this game has none");
+    }
+
     private async Task<FileHashesService> ServiceWithCentral(Func<IConnection, Task> fill)
     {
         var location = _harness.NewDatabaseLocation();
@@ -207,10 +222,10 @@ public sealed class LookupsReadBothStoresTests : IDisposable
         return service;
     }
 
-    private static GameInstallation Installation(GameStore store)
+    private static GameInstallation Installation(GameStore store, bool withNexusId = true)
     {
         var game = Substitute.For<IGameData>();
-        game.NexusModsGameId.Returns(HashRows.GameId);
+        game.NexusModsGameId.Returns(withNexusId ? DynamicData.Kernel.Optional.Some(HashRows.GameId) : DynamicData.Kernel.Optional<NexusModsGameId>.None);
         var locatorResult = new GameLocatorResult
         {
             Game = game,

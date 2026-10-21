@@ -24,9 +24,9 @@ public partial class VersionDefinition : IModelDefinition
     public static readonly EnumByteAttribute<OperatingSystem> OperatingSystem = new(Namespace, nameof(OperatingSystem)) { IsIndexed = true };
     
     /// <summary>
-    /// The game id this version is for
+    /// The Nexus Mods game id this version is for. Absent on a version recorded for a game that has none.
     /// </summary>
-    public static readonly NexusModsGameIdAttribute GameId = new(Namespace, nameof(GameId)) { IsIndexed = true };
+    public static readonly NexusModsGameIdAttribute GameId = new(Namespace, nameof(GameId)) { IsIndexed = true, IsOptional = true };
     
     /// <summary>
     /// The gog build ids for this version

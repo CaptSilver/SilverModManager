@@ -210,7 +210,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     {
         return DatabasesCentralFirst()
             .SelectMany(db => VersionDefinition.All(db))
-            .Where(v => v.GameId == nexusModsGameId)
+            .Where(v => VersionDefinition.GameId.TryGetValue(v, out var id) && id == nexusModsGameId)
             .ToList();
     }
 
@@ -890,6 +890,9 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     /// <inheritdoc />
     public Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files)
     {
+        // Version definitions are filed under Nexus ids, so a game without one has none to suggest.
+        if (!gameInstallation.Game.NexusModsGameId.HasValue) return Optional<VersionData>.None;
+
         var filesSet = files.ToHashSet();
 
         List<(VersionData VersionData, int Matches)> versionMatches = [];

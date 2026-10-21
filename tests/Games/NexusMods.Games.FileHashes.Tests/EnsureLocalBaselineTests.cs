@@ -14,6 +14,7 @@ using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Hashes;
+using NexusMods.Sdk.NexusModsApi;
 using NSubstitute;
 
 namespace NexusMods.Games.FileHashes.Tests;
@@ -64,6 +65,34 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         baseline.GamePath.Should().Be(installation.Locations[LocationId.Game].Path.ToString());
         baseline.VersionName.Should().Be("build-1");
         baseline.Files.Should().ContainSingle().Which.Path.ToString().Should().Be("a.esm");
+    }
+
+    [Fact]
+    public async Task FirstCall_RecordsTheGamesOwnIdAndItsNexusId()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+
+        await _coordinator.Ensure(Installation("101"));
+
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        baseline.Game.Value.Should().Be(HashRows.OwnGameId);
+        VersionDefinition.All(_store.Db).Should().ContainSingle().Which.GameId.Value.Should().Be(HashRows.GameId);
+    }
+
+    [Fact]
+    public async Task GameWithoutNexusId_BuildsABaselineThatCarriesNoNexusId()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+
+        var result = await _coordinator.Ensure(Make(["101"], withNexusId: false));
+
+        result.Rebuilt.Should().BeTrue();
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        baseline.Game.Value.Should().Be(HashRows.OwnGameId);
+        var version = VersionDefinition.All(_store.Db).Should().ContainSingle().Subject;
+        version.GameId.HasValue.Should().BeFalse("a made-up Nexus id would file the version under another game's id");
     }
 
     [Fact]
@@ -500,15 +529,16 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         bool withStoreRoot = true,
         DateTimeOffset? storeLastWrite = null,
         Func<GamePath, bool>? filter = null,
-        Func<GamePath, bool>? ignoredBackup = null)
+        Func<GamePath, bool>? ignoredBackup = null,
+        bool withNexusId = true)
     {
         var synchronizer = Substitute.For<ILoadoutSynchronizer>();
         synchronizer.GamePathFilter.Returns(filter is null ? GamePathFilters.Empty : GamePathFilters.Create(filter));
         synchronizer.IsIgnoredBackupPath(Arg.Any<GamePath>()).Returns(call => ignoredBackup?.Invoke(call.Arg<GamePath>()) ?? false);
 
-        var game = Substitute.For<IGame>();
+        var game = Substitute.For<SubstitutableGame>();
         game.Synchronizer.Returns(synchronizer);
-        game.NexusModsGameId.Returns(Optional.Some(HashRows.GameId));
+        game.NexusModsGameId.Returns(withNexusId ? Optional.Some(HashRows.GameId) : Optional<NexusModsGameId>.None);
 
         var gamePath = FileSystem.Shared.FromUnsanitizedFullPath(_gameRoot);
         var result = new GameLocatorResult

@@ -156,6 +156,9 @@ internal static class HashRows
 
     public static readonly NexusModsGameId GameId = NexusModsGameId.From(1234);
 
+    /// <summary>The game's own id, the one installations are keyed on.</summary>
+    public static readonly Sdk.Games.GameId OwnGameId = Sdk.Games.GameId.From("HashRowsGame");
+
     /// <summary>An install of <paramref name="gamePath"/> from <paramref name="store"/> and a loadout of it carrying <paramref name="locatorIds"/>.</summary>
     public static async Task<EntityId> AddLoadout(IConnection main, GameStore store, string gamePath, params string[] locatorIds)
     {

@@ -14,4 +14,4 @@ FROM mdb_LoadoutItemWithTargetPath(Db=>db) item
 JOIN mdb_LoadoutItemGroup(Db=>db) itemGroup on item.Parent = itemGroup.Id
 JOIN mdb_Loadout(Db=>db) loadout on item.Loadout = loadout.Id
 JOIN mdb_GameInstallMetadata(Db=>db) as installation on loadout.Installation = installation.Id
-WHERE installation.GameId = gameId;
+WHERE installation.Game = gameId;

@@ -126,7 +126,8 @@ internal sealed class LocalBaselineCoordinator : IDisposable
             // backing up (all of Baldur's Gate 3's install folder, the archives of the Creation Engine games), and
             // those files are the game's own, which the baseline has to know about.
             IsIgnored = path => synchronizer.GamePathFilter.ShouldFilter(path),
-            GameId = installation.Game.NexusModsGameId.HasValue ? installation.Game.NexusModsGameId.Value : NexusModsGameId.DefaultValue,
+            Game = installation.Game.GameId,
+            NexusGameId = installation.Game.NexusModsGameId,
             OperatingSystem = OperatingSystemOf(locator),
         };
 

@@ -375,7 +375,8 @@ public sealed class LocalVanillaBaselineTests : IDisposable
             Manifests = manifests,
             AllInstalledDepotsCovered = allCovered,
             IsIgnored = isIgnored ?? (_ => false),
-            GameId = HashRows.GameId,
+            Game = HashRows.OwnGameId,
+            NexusGameId = HashRows.GameId,
             OperatingSystem = OperatingSystem.Windows,
         }, connection ?? _store);
     }

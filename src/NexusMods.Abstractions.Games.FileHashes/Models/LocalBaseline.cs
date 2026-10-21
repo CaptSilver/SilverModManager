@@ -25,6 +25,12 @@ public partial class LocalBaseline : IModelDefinition
     public static readonly StringAttribute GamePath = new(Namespace, nameof(GamePath)) { IsIndexed = true };
 
     /// <summary>
+    /// The game's own id, as <see cref="GameInstallMetadata.Game"/> holds it. Absent on baselines built
+    /// before the game was recorded.
+    /// </summary>
+    public static readonly GameIdAttribute Game = new(Namespace, nameof(Game)) { IsOptional = true };
+
+    /// <summary>
     /// The installation's locator ids when the baseline was built, to tell whether it has gone stale.
     /// </summary>
     public static readonly StringsAttribute LocatorIds = new(Namespace, nameof(LocatorIds));

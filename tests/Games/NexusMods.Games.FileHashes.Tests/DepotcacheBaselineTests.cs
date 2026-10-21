@@ -74,7 +74,7 @@ public sealed class DepotcacheBaselineTests : IDisposable
         var synchronizer = Substitute.For<ILoadoutSynchronizer>();
         synchronizer.GamePathFilter.Returns(GamePathFilters.Empty);
 
-        var game = Substitute.For<IGame>();
+        var game = Substitute.For<SubstitutableGame>();
         game.Synchronizer.Returns(synchronizer);
         game.NexusModsGameId.Returns(Optional.Some(HashRows.GameId));
 

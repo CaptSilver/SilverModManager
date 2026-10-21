@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Games.FileHashes.Models;
@@ -62,7 +63,16 @@ internal sealed record BaselineRequest
     /// </summary>
     public DateTimeOffset? StoreLastWrite { get; init; }
 
-    public required NexusModsGameId GameId { get; init; }
+    /// <summary>
+    /// The game's own id, recorded on the baseline.
+    /// </summary>
+    public required GameId Game { get; init; }
+
+    /// <summary>
+    /// The game's Nexus Mods id, which a game from a store or a user definition may not have. The version
+    /// definition written for a manifest baseline carries it only when present.
+    /// </summary>
+    public Optional<NexusModsGameId> NexusGameId { get; init; }
 
     public required OperatingSystem OperatingSystem { get; init; }
 }
@@ -148,6 +158,7 @@ internal sealed class LocalVanillaBaseline
         {
             Store = request.Store,
             GamePath = request.GamePath,
+            Game = request.Game,
             LocatorIds = request.LocatorIds.ToArray(),
             Kind = kind,
             VersionName = kind == LocalBaselineKind.Snapshot ? "" : request.VersionName ?? request.Manifests[0].ManifestId.Value.ToString(),
@@ -444,16 +455,16 @@ internal sealed class LocalVanillaBaseline
             manifestIds.Add(row.Id);
         }
 
-        _ = new VersionDefinition.New(tx)
+        var version = new VersionDefinition.New(tx)
         {
             Name = request.VersionName ?? request.Manifests[0].ManifestId.Value.ToString(),
             OperatingSystem = request.OperatingSystem,
-            GameId = request.GameId,
             GOG = [],
             Steam = request.Manifests.Select(m => m.ManifestId.Value.ToString()).ToArray(),
             EpicBuildIds = [],
             SteamManifestsIds = manifestIds,
         };
+        if (request.NexusGameId.HasValue) version.GameId = request.NexusGameId.Value;
         return manifestIds.ToArray();
     }
 

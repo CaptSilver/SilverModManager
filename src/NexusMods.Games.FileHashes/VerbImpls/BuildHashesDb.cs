@@ -120,7 +120,7 @@ public class BuildHashesDb : IAsyncDisposable
         await _renderer.TextLine("Database built and exported to {0}. Final size {1}. Hash: {2}", output, hashesDbPath.FileInfo.Size, zipHash);
     }
 
-    private async Task AddVersions(AbsolutePath path)
+    internal async Task AddVersions(AbsolutePath path)
     {
         var versionsPath = path / "contrib/version_aliases.yaml";
         await using var versionsStream = versionsPath.Read();
@@ -142,6 +142,13 @@ public class BuildHashesDb : IAsyncDisposable
         foreach (var (gameName, osName, definition) in versionData)
         {
             var gameObject = Provider.GetServices<IGameData>().First(g => g.DisplayName == gameName);
+
+            // Version definitions are filed under the game's Nexus id, which this game does not have.
+            if (!gameObject.NexusModsGameId.HasValue)
+            {
+                await _renderer.TextLine("Skipping version {0} of {1}: the game has no Nexus Mods id", definition.Name, gameName);
+                continue;
+            }
 
             var os = osName switch
             {
