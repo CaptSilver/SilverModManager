@@ -39,6 +39,13 @@ public abstract class ExecutableRuntimeDependency : IRuntimeDependency
         return QueryInstallationInformationImpl(cancellationToken);
     }
 
+    /// <summary>
+    /// How long the query command may run before the dependency is reported as unavailable.
+    /// Generous, because a cold Flatpak start is slow, but finite: probes run at every start of the app and a
+    /// stalled one would otherwise stay around for good.
+    /// </summary>
+    protected virtual TimeSpan ProbeTimeout => TimeSpan.FromSeconds(10);
+
     protected abstract Command BuildQueryCommand(PipeTarget outputPipeTarget);
 
     protected abstract RuntimeDependencyInformation ToInformation(ReadOnlySpan<char> output);
@@ -49,7 +56,21 @@ public abstract class ExecutableRuntimeDependency : IRuntimeDependency
         var outputPipeTarget = PipeTarget.ToStringBuilder(sb);
         var command = BuildQueryCommand(outputPipeTarget);
 
-        var result = await ProcessRunner.RunAsync(command, cancellationToken: cancellationToken);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(ProbeTimeout);
+
+        CommandResult result;
+        try
+        {
+            // The runner kills the process when this token is cancelled.
+            result = await ProcessRunner.RunAsync(command, cancellationToken: timeout.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Our own timeout, not the caller's cancellation. Not cached: a stalled probe doesn't mean the tool is missing.
+            return Optional<RuntimeDependencyInformation>.None;
+        }
+
         if (!result.IsSuccess)
         {
             _cachedInformation = Optional<Optional<RuntimeDependencyInformation>>.None;

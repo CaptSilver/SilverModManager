@@ -34,6 +34,7 @@ public class RunCyberpunk2077GameTests(ITestOutputHelper helper) : AIsolatedGame
         // Steam locator ids are numeric build ids, and the stubbed file hasher only knows this one for Steam.
         return base.AddServices(services)
             .AddRuntimeDependencies()
+            .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddFakeToolRunner()
             .AddSingleton<IGameLocator>(provider => new UniversalStubbedGameLocator<Cyberpunk2077Game>(

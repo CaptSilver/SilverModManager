@@ -58,6 +58,7 @@ public class Startup
                 .AddGameServices()
                 .AddOSInterop()
                 .AddRuntimeDependencies()
+                .RemoveRuntimeDependencyChecker()
                 .AddSettings<LoggingSettings>()
                 .AddLogging(builder => builder.AddXunitOutput().SetMinimumLevel(LogLevel.Trace))
                 .AddSingleton<LocalHttpServer>()

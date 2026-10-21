@@ -73,6 +73,7 @@ public static class DependencyInjectionHelper
             .AddNexusModsCollections()
             .AddOSInterop()
             .AddRuntimeDependencies()
+            .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddFakeProcessTracker()
             .AddFakeGameLaunchSession()

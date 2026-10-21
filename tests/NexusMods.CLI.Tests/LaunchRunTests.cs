@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NexusMods.App;
+using NexusMods.Backend;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
@@ -30,6 +31,7 @@ public class LaunchRunTests
                     MnemonicDBPath = new ConfigurablePath(baseKnownPath, $"{baseDirectory}/MnemonicDB.rocksdb"),
                     ArchiveLocations = [new ConfigurablePath(baseKnownPath, $"{baseDirectory}/Archives")],
                 })
+                .RemoveRuntimeDependencyChecker()
                 .ReplaceDesktopNotifier())
             .Build();
     }

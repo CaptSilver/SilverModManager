@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NexusMods.Backend.FileExtractor;
 using NexusMods.Backend.FileExtractor.Extractors;
@@ -72,6 +73,18 @@ public static class ServiceExtensions
             .AddHostedService<RuntimeDependencyChecker>()
             .AddAllSingleton<IRuntimeDependency, XdgSettingsDependency>()
             .AddAllSingleton<IRuntimeDependency, UpdateDesktopDatabaseDependency>();
+    }
+
+    /// <summary>
+    /// Drops the host-start probe of the runtime dependencies. Every probe starts an external tool
+    /// (<c>flatpak run ... --version</c>, <c>xdg-settings --version</c>), which test hosts must not do on the
+    /// developer's machine. The dependencies themselves stay registered.
+    /// </summary>
+    public static IServiceCollection RemoveRuntimeDependencyChecker(this IServiceCollection serviceCollection)
+    {
+        var checkers = serviceCollection.Where(d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(RuntimeDependencyChecker)).ToArray();
+        foreach (var descriptor in checkers) serviceCollection.Remove(descriptor);
+        return serviceCollection;
     }
 
     public static IServiceCollection AddSettingsManager(this IServiceCollection serviceCollection)

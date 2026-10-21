@@ -32,6 +32,7 @@ public class AFileExtractorTest : IAsyncLifetime
                         .AddFileExtractors()
                         .AddOSInterop()
                         .AddRuntimeDependencies()
+                        .RemoveRuntimeDependencyChecker()
                         .AddSettings<LoggingSettings>();
                 }
             ).Build();

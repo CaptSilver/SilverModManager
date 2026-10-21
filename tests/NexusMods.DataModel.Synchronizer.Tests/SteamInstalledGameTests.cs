@@ -46,6 +46,7 @@ public class SteamInstalledGameTests(ITestOutputHelper helper) : ASteamInstalled
         return base.AddServices(services)
             .AddOSInterop()
             .AddRuntimeDependencies()
+            .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddFakeToolRunner()
             .AddRedEngineGames();

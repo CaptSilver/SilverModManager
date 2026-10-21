@@ -19,6 +19,7 @@ public class Startup
             .AddFileSystem()
             .AddOSInterop()
             .AddRuntimeDependencies()
+            .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddFakeProcessTracker();
     }

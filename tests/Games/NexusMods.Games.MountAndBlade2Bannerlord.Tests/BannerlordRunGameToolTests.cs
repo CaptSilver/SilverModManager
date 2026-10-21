@@ -35,6 +35,7 @@ public class BannerlordRunGameToolTests(ITestOutputHelper helper) : AIsolatedGam
             .AddDiagnosticWriter()
             .AddOSInterop()
             .AddRuntimeDependencies()
+            .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddMountAndBlade2Bannerlord()
             .AddUniversalGameLocator<Bannerlord>(new Version("1.0"))

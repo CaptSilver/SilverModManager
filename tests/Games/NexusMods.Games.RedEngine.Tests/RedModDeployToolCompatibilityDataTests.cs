@@ -32,6 +32,7 @@ public class RedModDeployToolCompatibilityDataTests : AIsolatedGameTest<RedModDe
             .AddDiagnosticWriter()
             .AddOSInterop()
             .AddRuntimeDependencies()
+            .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddFakeToolRunner()
             .AddSingleton<IGameLocator>(provider => new UniversalStubbedGameLocator<Cyberpunk2077Game>(

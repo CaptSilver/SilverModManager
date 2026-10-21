@@ -15,4 +15,14 @@ public class TestHostIsolationTests(IServiceProvider serviceProvider)
             .Select(service => service.GetType().Name)
             .Should().NotContain("LauncherShimRefresher");
     }
+
+    [Fact]
+    public void Test_TheTestHostDoesNotProbeRuntimeDependencies()
+    {
+        // The checker runs `flatpak run ... --version` and similar at host start. A test host per run would
+        // start real tools on the developer's machine, and a stalled one leaves a process behind.
+        serviceProvider.GetServices<IHostedService>()
+            .Select(service => service.GetType().Name)
+            .Should().NotContain("RuntimeDependencyChecker");
+    }
 }

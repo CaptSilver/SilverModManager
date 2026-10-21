@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.App;
+using NexusMods.Backend;
 using NexusMods.DataModel;
 using NexusMods.Games.FileHashes;
 using NexusMods.Paths;
@@ -36,6 +37,8 @@ internal sealed class OnDiskDataFolder : IDisposable
                 MnemonicDBPath = new ConfigurablePath(KnownPath.EntryDirectory, $"{_name}/MnemonicDB.rocksdb"),
                 ArchiveLocations = [new ConfigurablePath(KnownPath.EntryDirectory, $"{_name}/Archives")],
             });
+
+        services.RemoveRuntimeDependencyChecker();
 
         // Only the GUI graph registers the refresher, and the helper throws when it is missing.
         if (mode.ShowUI) services.RemoveLauncherShimRefresher();

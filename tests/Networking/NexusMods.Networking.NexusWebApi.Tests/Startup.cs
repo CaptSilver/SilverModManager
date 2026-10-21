@@ -33,6 +33,7 @@ public class Startup
             .AddNexusWebApi()
             .AddOSInterop()
             .AddRuntimeDependencies()
+            .RemoveRuntimeDependencyChecker()
             .AddSettings<LoggingSettings>()
             .AddLoadoutAbstractions()
             .AddJobMonitor()

@@ -32,6 +32,7 @@ public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolated
         return base.AddServices(services)
             .AddOSInterop()
             .AddRuntimeDependencies()
+            .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddFakeToolRunner()
             .AddSingleton<IGameLocator>(provider => new UniversalStubbedGameLocator<Cyberpunk2077Game>(
@@ -104,6 +105,7 @@ public class Cyberpunk2077WineEmitterSteamTests(ITestOutputHelper helper) : AIso
         return base.AddServices(services)
             .AddOSInterop()
             .AddRuntimeDependencies()
+            .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddFakeToolRunner()
             .AddSingleton<IGameLocator>(provider => new UniversalStubbedGameLocator<Cyberpunk2077Game>(

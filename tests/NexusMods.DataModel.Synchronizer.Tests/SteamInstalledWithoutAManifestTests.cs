@@ -30,6 +30,7 @@ public class SteamInstalledWithoutAManifestTests(ITestOutputHelper helper) : ASt
         return base.AddServices(services)
             .AddOSInterop()
             .AddRuntimeDependencies()
+            .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddFakeToolRunner()
             .AddRedEngineGames();

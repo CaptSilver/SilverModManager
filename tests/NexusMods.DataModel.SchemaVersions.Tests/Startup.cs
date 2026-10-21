@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.App;
+using NexusMods.Backend;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Settings;
@@ -38,7 +39,8 @@ public class Startup
                     ],
                 }
             )
-            .RemoveLauncherShimRefresher();
+            .RemoveLauncherShimRefresher()
+            .RemoveRuntimeDependencyChecker();
     }
 }
 

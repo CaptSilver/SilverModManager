@@ -16,6 +16,18 @@ internal class ProcessRunner : IProcessRunner
     private readonly IFileSystem _fileSystem;
     private readonly AbsolutePath _processLogsFolder;
 
+    /// <summary>
+    /// How long a cancelled command gets to react to an interrupt before its process tree is killed.
+    /// </summary>
+    /// <remarks>
+    /// The interrupt comes first because of host shims. Inside a distrobox, <c>flatpak</c> is a shell script
+    /// that forks <c>host-spawn</c>, which passes an interrupt on to the real process on the host but cannot
+    /// pass on a kill: a killed <c>host-spawn</c> leaves the host process running under
+    /// <c>flatpak-session-helper</c>, which is how abandoned <c>flatpak run</c> probes piled up. The script
+    /// holds an interrupt until its child exits, so the interrupt goes to every process in the tree.
+    /// </remarks>
+    internal TimeSpan KillGracePeriod { get; init; } = TimeSpan.FromSeconds(3);
+
     public ProcessRunner(IServiceProvider serviceProvider)
     {
         _logger = serviceProvider.GetRequiredService<ILogger<ProcessRunner>>();
@@ -60,12 +72,34 @@ internal class ProcessRunner : IProcessRunner
         if (logOutput) _logger.LogDebug("Starting command `{Command}`", command.ToString());
 
         var sw = Stopwatch.StartNew();
-        var result = await command.ExecuteAsync(cancellationToken: cancellationToken);
+
+        // CliWrap's graceful token sends SIGINT to the process alone and keeps waiting; its forceful token kills
+        // the process tree. The interrupt for the rest of the tree is sent here.
+        using var forceful = new CancellationTokenSource();
+        var execution = command.ExecuteAsync(forcefulCancellationToken: forceful.Token, gracefulCancellationToken: cancellationToken);
+        await using var interrupt = cancellationToken.Register(() => InterruptProcessTree(command, execution.ProcessId, sw.Elapsed, forceful));
+        await using var kill = forceful.Token.Register(() => _logger.LogWarning("Killing `{Command}`: still running {GracePeriod} after the interrupt", command.ToString(), KillGracePeriod));
+        var result = await execution;
         sw.Stop();
 
         if (!logOutput) return result;
         _logger.LogDebug("Command `{Command}` finished after {RunTime} seconds with exit Code {ExitCode}", command.ToString(), result.RunTime.TotalSeconds, result.ExitCode);
         return result;
+    }
+
+    private void InterruptProcessTree(Command command, int pid, TimeSpan elapsed, CancellationTokenSource forceful)
+    {
+        _logger.LogWarning("Interrupting `{Command}` (pid {Pid}) after {Elapsed}: the run was cancelled", command.ToString(), pid, elapsed);
+        try
+        {
+            ProcessTree.Interrupt(ProcessTree.Descendants(pid));
+        }
+        catch (Exception e)
+        {
+            // The kill after the grace period still ends the tree, so this is no reason to stop.
+            _logger.LogError(e, "Failed to interrupt the children of `{Command}` (pid {Pid})", command.ToString(), pid);
+        }
+        forceful.CancelAfter(KillGracePeriod);
     }
 
     private Command SetupLogging(Command command, bool logOutput)

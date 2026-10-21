@@ -25,6 +25,7 @@ public class RedModDeployToolGogInWineTests : AIsolatedGameTest<RedModDeployTool
         return base.AddServices(services)
             .AddOSInterop()
             .AddRuntimeDependencies()
+            .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddFakeToolRunner()
             .AddSingleton<IGameLocator>(provider => new UniversalStubbedGameLocator<Cyberpunk2077Game>(

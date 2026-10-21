@@ -18,6 +18,7 @@ public class Startup
             .AddFileSystem()
             .AddOSInterop()
             .AddRuntimeDependencies()
+            .RemoveRuntimeDependencyChecker()
             .AddLogging(builder => builder.AddXUnit());
     }
 }
