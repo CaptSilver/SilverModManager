@@ -124,4 +124,29 @@ public class AddGameVerbTests(ITestOutputHelper helper) : AIsolatedGameTest<AddG
         output.Should().Contain("No known game launches from");
         Store.GetAll().Should().BeEmpty();
     }
+
+    // A game's folder the user cannot list must come back as the verb's own refusal, not as a raw error.
+    [Fact]
+    public async Task AFolderThatCannotBeListedIsRefusedNamingTheFolder()
+    {
+        Assert.SkipWhen(Environment.UserName == "root" || geteuid() == 0, "root can list a folder with no permissions");
+
+        var folder = Folder("locked");
+        File.SetUnixFileMode(folder, UnixFileMode.None);
+        try
+        {
+            var (exitCode, output) = await Run("add-game", "-f", folder);
+
+            exitCode.Should().Be(1);
+            output.Should().Contain($"Could not list {folder}");
+            Store.GetAll().Should().BeEmpty();
+        }
+        finally
+        {
+            File.SetUnixFileMode(folder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("libc")]
+    private static extern uint geteuid();
 }

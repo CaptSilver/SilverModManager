@@ -37,8 +37,14 @@ public abstract record AddGameResult
     /// <summary>The folder is a Windows build and no Wine prefix was given, so it could not run. Nothing is written.</summary>
     public sealed record NeedsPrefix(IGameData Game) : AddGameResult;
 
-    /// <summary>Several games launch <paramref name="File"/> and nothing in the folder tells them apart. Nothing is written.</summary>
-    public sealed record Ambiguous(RelativePath File, IReadOnlyList<IGameData> Candidates) : AddGameResult;
+    /// <summary>Several games launch from the folder and nothing in it tells them apart. Nothing is written.</summary>
+    public sealed record Ambiguous(IReadOnlyList<AmbiguousCandidate> Candidates) : AddGameResult;
+
+    /// <summary>A game the folder could be, with the executable that game launches (games can differ in it).</summary>
+    public sealed record AmbiguousCandidate(IGameData Game, RelativePath File);
+
+    /// <summary>The folder could not be listed, so no game could be matched to it; <paramref name="Message"/> says why. Nothing is written.</summary>
+    public sealed record FolderUnreadable(AbsolutePath Folder, string Message) : AddGameResult;
 
     /// <summary>A store client or an earlier add already reports this folder. Nothing is written.</summary>
     public sealed record AlreadyDetected(IGameData Game, GameStore Store) : AddGameResult;

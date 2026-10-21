@@ -16,10 +16,21 @@ public class AddGameVerbsDescribeTests
     [Fact]
     public void AmbiguityNamesEveryCandidateAndTheGameOption()
     {
-        var result = new AddGameResult.Ambiguous("Shared.exe", [new FakeGameData("first"), new FakeGameData("second")]);
+        var result = new AddGameResult.Ambiguous([
+            new AddGameResult.AmbiguousCandidate(new FakeGameData("first"), RelativePath.FromUnsanitizedInput("First.exe")),
+            new AddGameResult.AmbiguousCandidate(new FakeGameData("second"), RelativePath.FromUnsanitizedInput("Second.exe")),
+        ]);
 
         AddGameVerbs.Describe(result, _folder).Should().Be(
-            (1, "Several games launch Shared.exe in /games/shared: first (first), second (second); pass --game <id>"));
+            (1, "Several games fit /games/shared: first (first, launches First.exe), second (second, launches Second.exe); pass --game <id>"));
+    }
+
+    [Fact]
+    public void AnUnreadableFolderNamesTheFolderAndTheError()
+    {
+        var result = new AddGameResult.FolderUnreadable(_folder, "Access to the path is denied.");
+
+        AddGameVerbs.Describe(result, _folder).Should().Be((1, "Could not list /games/shared: Access to the path is denied."));
     }
 
     [Fact]

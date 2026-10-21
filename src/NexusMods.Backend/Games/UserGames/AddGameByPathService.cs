@@ -44,13 +44,25 @@ internal sealed class AddGameByPathService : IAddGameByPath
                 return new AddGameResult.AlreadyDetected(installation.Game, installation.LocatorResult.Store);
         }
 
-        var candidates = _launchers.Value.Where(entry => FindIgnoringCase(folder, entry.File) is not null).ToList();
-        if (game is { } wanted) candidates = candidates.Where(entry => entry.Game.GameId == wanted).ToList();
-        if (candidates.Count > 1) candidates = NarrowByIdentifyingFiles(folder, candidates);
-        if (candidates.Count > 1) candidates = NarrowByStore(folder, candidates);
+        // Built before the try: only reading the given folder should come back as FolderUnreadable.
+        var launchers = _launchers.Value;
+        List<(IGameData Game, RelativePath File)> candidates;
+        try
+        {
+            EnsureListable(folder);
+            candidates = launchers.Where(entry => FindIgnoringCase(folder, entry.File) is not null).ToList();
+            if (game is { } wanted) candidates = candidates.Where(entry => entry.Game.GameId == wanted).ToList();
+            if (candidates.Count > 1) candidates = NarrowByIdentifyingFiles(folder, candidates);
+            if (candidates.Count > 1) candidates = NarrowByStore(folder, candidates);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(e, "Could not list '{Folder}'", folder);
+            return new AddGameResult.FolderUnreadable(folder, e.Message);
+        }
 
         if (candidates.Count == 0) return new AddGameResult.Unknown();
-        if (candidates.Count > 1) return new AddGameResult.Ambiguous(candidates[0].File, candidates.Select(entry => entry.Game).ToArray());
+        if (candidates.Count > 1) return new AddGameResult.Ambiguous(candidates.Select(entry => new AddGameResult.AmbiguousCandidate(entry.Game, entry.File)).ToArray());
 
         var chosen = candidates[0].Game;
         if (!chosen.HasNativeLinuxBuild && prefix is null) return new AddGameResult.NeedsPrefix(chosen);
@@ -67,6 +79,19 @@ internal sealed class AddGameByPathService : IAddGameByPath
 
         _registry.ClearCache();
         return new AddGameResult.Added(chosen);
+    }
+
+    /// <summary>
+    /// Throws when the folder is on disk but cannot be listed. The file system layer skips inaccessible
+    /// entries silently, so without this a folder the user cannot read is reported as having no known game in it.
+    /// </summary>
+    private static void EnsureListable(AbsolutePath folder)
+    {
+        // Paths that are not on the real disk (the in-memory file system) have nothing to check.
+        var path = folder.ToString();
+        if (!Directory.Exists(path)) return;
+        using var entries = Directory.EnumerateFileSystemEntries(path, "*", new EnumerationOptions { IgnoreInaccessible = false }).GetEnumerator();
+        entries.MoveNext();
     }
 
     /// <summary>

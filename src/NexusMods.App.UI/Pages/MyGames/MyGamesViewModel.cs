@@ -70,13 +70,13 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     private readonly ILoadoutManager _loadoutManager;
     private readonly IGameRegistry _gameRegistry;
 
-    private ReadOnlyObservableCollection<IViewModelInterface> _supportedGames = new([]);
+    private readonly SourceList<GameInstallation> _installations = new();
     private ReadOnlyObservableCollection<IGameWidgetViewModel> _installedGames = new([]);
 
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand { get; }
     public ReactiveCommand<Unit, Unit> AddGameFolderCommand { get; }
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames => _installedGames;
-    public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames => _supportedGames;
+    [Reactive] public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames { get; private set; } = new([]);
 
     [Reactive] public string? LocatorProblemsNotice { get; private set; }
 
@@ -117,13 +117,7 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
 
         this.WhenActivated(d =>
             {
-                // Locating fills in Problems, so it has to run first.
-                var installations = gameRegistry.LocateGameInstallations();
-                LocatorProblemsNotice = FormatProblems(gameRegistry.Problems);
-
-                installations
-                    .ToReadOnlyObservableCollection()
-                    .ToObservableChangeSet()
+                _installations.Connect()
                     .Transform(installation =>
                         {
                             var vm = _serviceProvider.GetRequiredService<IGameWidgetViewModel>();
@@ -209,40 +203,59 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                     .SubscribeWithErrorLogging()
                     .DisposeWith(d);
 
-                var supportedGamesAsIGame = serviceProvider
-                    .GetServices<IGameData>()
-                    .Cast<IGame>()
-                    .Where(game => _installedGames.All(install => install.Installation?.GetGame().GameId != game.GameId)); // Exclude found games
-
-                var miniGameWidgetViewModels = supportedGamesAsIGame
-                    .Select(game =>
-                        {
-                            var vm = _serviceProvider.GetRequiredService<IMiniGameWidgetViewModel>();
-                            vm.Game = game;
-                            vm.Name = game.DisplayName;
-                            // is this supported game installed?
-                            vm.IsFound = _installedGames.Any(install => install.Installation?.GetGame().GameId == game.GameId);
-                            vm.GameInstallations = _installedGames
-                                .Where(install => install.Installation?.GetGame().GameId == game.GameId)
-                                .Select(install => install.Installation)
-                                .NotNull()
-                                .ToArray();
-                            return vm;
-                        }
-                    )
-                    .OrderByDescending(vm => vm.IsFound)
-                    .ToList();
-
-                var comingSoonMiniGameWidget = _serviceProvider.GetRequiredService<IComingSoonMiniGameWidgetViewModel>();
-
-                // create a new ReadOnlyObservableCollection from miniGameWidgetViewModels and comingSoonMiniGameWidget
-                _supportedGames = new ReadOnlyObservableCollection<IViewModelInterface>(
-                    new ObservableCollection<IViewModelInterface>(miniGameWidgetViewModels) {
-                    // Add the coming soon widget to the end of the list
-                    comingSoonMiniGameWidget,
-                });
+                RefreshInstalledGames();
             }
         );
+    }
+
+    /// <summary>
+    /// Locates the installed games again and updates both lists. Activation and the add-a-folder command share it,
+    /// so a game added by folder shows up without leaving the page.
+    /// </summary>
+    private void RefreshInstalledGames()
+    {
+        // Locating fills in Problems, so it has to run first.
+        var installations = _gameRegistry.LocateGameInstallations();
+        LocatorProblemsNotice = FormatProblems(_gameRegistry.Problems);
+
+        // By reference: the registry hands back the same instances until its cache is cleared, and the record's
+        // value equality would hash every location of every game.
+        _installations.EditDiff(installations, ReferenceEqualityComparer.Instance);
+        SupportedGames = BuildSupportedGames(installations);
+    }
+
+    private ReadOnlyObservableCollection<IViewModelInterface> BuildSupportedGames(ImmutableArray<GameInstallation> installations)
+    {
+        var supportedGamesAsIGame = _serviceProvider
+            .GetServices<IGameData>()
+            .Cast<IGame>()
+            .Where(game => installations.All(install => install.Game.GameId != game.GameId)); // Exclude found games
+
+        var miniGameWidgetViewModels = supportedGamesAsIGame
+            .Select(game =>
+                {
+                    var vm = _serviceProvider.GetRequiredService<IMiniGameWidgetViewModel>();
+                    vm.Game = game;
+                    vm.Name = game.DisplayName;
+                    // is this supported game installed?
+                    vm.IsFound = installations.Any(install => install.Game.GameId == game.GameId);
+                    vm.GameInstallations = installations
+                        .Where(install => install.Game.GameId == game.GameId)
+                        .ToArray();
+                    return vm;
+                }
+            )
+            .OrderByDescending(vm => vm.IsFound)
+            .ToList();
+
+        var comingSoonMiniGameWidget = _serviceProvider.GetRequiredService<IComingSoonMiniGameWidgetViewModel>();
+
+        // create a new ReadOnlyObservableCollection from miniGameWidgetViewModels and comingSoonMiniGameWidget
+        return new ReadOnlyObservableCollection<IViewModelInterface>(
+            new ObservableCollection<IViewModelInterface>(miniGameWidgetViewModels) {
+            // Add the coming soon widget to the end of the list
+            comingSoonMiniGameWidget,
+        });
     }
 
     private static string? FormatProblems(ImmutableArray<GameLocatorProblem> problems)
@@ -412,6 +425,8 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
             var game = chosen;
             var result = await Task.Run(() => service.Add(folder, game, prefix: null, wine: null));
             var prompt = AddGamePrompt.For(result, folder);
+
+            if (result is AddGameResult.Added) RefreshInstalledGames();
 
             if (prompt.Candidates.Count == 0)
             {

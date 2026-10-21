@@ -88,13 +88,26 @@ public class AddGamePromptTests
     {
         var skyrim = Game("skyrim-se", "Skyrim Special Edition");
         var enderal = Game("enderal-se", "Enderal Special Edition");
-        var result = new AddGameResult.Ambiguous(RelativePath.FromUnsanitizedInput("SkyrimSE.exe"), [skyrim, enderal]);
+        var result = new AddGameResult.Ambiguous([
+            new AddGameResult.AmbiguousCandidate(skyrim, RelativePath.FromUnsanitizedInput("SkyrimSE.exe")),
+            new AddGameResult.AmbiguousCandidate(enderal, RelativePath.FromUnsanitizedInput("Enderal Launcher.exe")),
+        ]);
 
         var prompt = AddGamePrompt.For(result, Folder);
 
         prompt.Title.Should().Be("Which game is this?");
         prompt.Candidates.Select(c => c.Label).Should().Equal("Skyrim Special Edition", "Enderal Special Edition");
         prompt.Candidates.Select(c => c.Game).Should().Equal(GameId.From("skyrim-se"), GameId.From("enderal-se"));
-        prompt.Markdown.Should().Contain("SkyrimSE.exe");
+        prompt.Markdown.Should().Contain("Skyrim Special Edition launches `SkyrimSE.exe`");
+        prompt.Markdown.Should().Contain("Enderal Special Edition launches `Enderal Launcher.exe`");
+    }
+
+    [Fact]
+    public void AnUnreadableFolderNamesTheFolderAndTheError()
+    {
+        var prompt = AddGamePrompt.For(new AddGameResult.FolderUnreadable(Folder, "Access to the path is denied."), Folder);
+
+        prompt.Candidates.Should().BeEmpty();
+        prompt.Markdown.Should().Contain(Folder.ToString()).And.Contain("Access to the path is denied.");
     }
 }

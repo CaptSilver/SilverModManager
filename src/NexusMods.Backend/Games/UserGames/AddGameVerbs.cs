@@ -38,9 +38,10 @@ internal static class AddGameVerbs
     {
         AddGameResult.Added added => (0, $"Added {added.Game.DisplayName} at {folder}; it is listed in My Games"),
         AddGameResult.NeedsPrefix needs => (1, $"{needs.Game.DisplayName} is a Windows build; pass --prefix <wine prefix> so it can run"),
-        AddGameResult.Ambiguous ambiguous => (1, $"Several games launch {ambiguous.File.FileName} in {folder}: " +
-                                                 string.Join(", ", ambiguous.Candidates.Select(candidate => $"{candidate.GameId} ({candidate.DisplayName})")) +
+        AddGameResult.Ambiguous ambiguous => (1, $"Several games fit {folder}: " +
+                                                 string.Join(", ", ambiguous.Candidates.Select(candidate => $"{candidate.Game.GameId} ({candidate.Game.DisplayName}, launches {candidate.File.FileName})")) +
                                                  "; pass --game <id>"),
+        AddGameResult.FolderUnreadable unreadable => (1, $"Could not list {unreadable.Folder}: {unreadable.Message}"),
         AddGameResult.AlreadyDetected detected => (1, $"{folder} is already detected as a {detected.Store} install of {detected.Game.DisplayName}"),
         AddGameResult.Unknown => (1, $"No known game launches from {folder}"),
         AddGameResult.StoreUnavailable unavailable => (1, unavailable.Message),

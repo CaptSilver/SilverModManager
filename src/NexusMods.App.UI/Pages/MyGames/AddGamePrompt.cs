@@ -20,7 +20,7 @@ public sealed record AddGamePrompt(string Title, string Markdown, IReadOnlyList<
             AddGameResult.Added added => Plain(
                 $"{added.Game.DisplayName} added",
                 $"""
-                {added.Game.DisplayName} is recorded and will be listed under My Games the next time the page is opened.
+                {added.Game.DisplayName} is recorded and is listed under My Games.
 
                 Press **Add** on its card to start managing it. If that is refused, the reason is shown there.
                 """
@@ -38,9 +38,15 @@ public sealed record AddGamePrompt(string Title, string Markdown, IReadOnlyList<
             AddGameResult.Ambiguous ambiguous => new AddGamePrompt(
                 "Which game is this?",
                 $"""
-                Several games launch `{ambiguous.File}` and nothing in `{folder}` says which one this is. Pick the game to add it as.
+                Several games fit `{folder}` and nothing in it says which one this is. Pick the game to add it as.
+
+                {string.Join(Environment.NewLine, ambiguous.Candidates.Select(candidate => $"- {candidate.Game.DisplayName} launches `{candidate.File}`"))}
                 """,
-                ambiguous.Candidates.Select(game => new Candidate(game.DisplayName, game.GameId)).ToArray()
+                ambiguous.Candidates.Select(candidate => new Candidate(candidate.Game.DisplayName, candidate.Game.GameId)).ToArray()
+            ),
+            AddGameResult.FolderUnreadable unreadable => Plain(
+                "Couldn't read the folder",
+                $"`{unreadable.Folder}` could not be listed: {unreadable.Message}"
             ),
             AddGameResult.AlreadyDetected detected => Plain(
                 $"{detected.Game.DisplayName} is already listed",

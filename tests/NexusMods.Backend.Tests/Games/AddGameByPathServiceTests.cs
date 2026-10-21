@@ -168,9 +168,22 @@ public class AddGameByPathServiceTests
         var result = Service().Add(Folder("/games/shared", "Shared.exe"), null, null, null);
 
         var ambiguous = result.Should().BeOfType<AddGameResult.Ambiguous>().Subject;
-        ambiguous.Candidates.Should().Equal(first, second);
-        ambiguous.File.ToString().Should().Be("Shared.exe");
+        ambiguous.Candidates.Select(candidate => candidate.Game).Should().Equal(first, second);
+        ambiguous.Candidates.Select(candidate => candidate.File.ToString()).Should().Equal("Shared.exe", "Shared.exe");
         _store.Installs.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void EachAmbiguousCandidateCarriesItsOwnExecutable()
+    {
+        var first = Game("first", "First.exe");
+        var second = Game("second", "Second.exe");
+
+        var result = Service().Add(Folder("/games/both", "First.exe", "Second.exe"), null, null, null);
+
+        var ambiguous = result.Should().BeOfType<AddGameResult.Ambiguous>().Subject;
+        ambiguous.Candidates.Select(candidate => (candidate.Game, candidate.File.ToString()))
+            .Should().Equal((first, "First.exe"), (second, "Second.exe"));
     }
 
     [Fact]

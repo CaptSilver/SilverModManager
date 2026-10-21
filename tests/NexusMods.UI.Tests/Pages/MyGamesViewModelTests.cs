@@ -4,6 +4,12 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.App.UI.Controls.MiniGameWidget.Standard;
+using NexusMods.App.UI;
+using NexusMods.App.UI.Windows;
+using NexusMods.UI.Sdk.Dialog;
+using Avalonia.Platform.Storage;
+using System.Reactive.Linq;
+using ReactiveUI;
 using NexusMods.App.UI.Pages.MyGames;
 using NexusMods.App.UI.Settings;
 using NexusMods.Paths;
@@ -64,6 +70,49 @@ public class MyGamesViewModelTests(IServiceProvider provider) : AUiTest(provider
     }
 
     [Fact]
+    public async Task Test_AGameAddedByFolderIsListedWithoutReactivating()
+    {
+        var game = Provider.GetServices<IGameData>().OfType<IGame>().First();
+        var folder = FileSystem.Shared.FromUnsanitizedFullPath("/games/added-by-folder");
+
+        var registry = Substitute.For<IGameRegistry>();
+        registry.LocateGameInstallations().Returns(ImmutableArray<GameInstallation>.Empty);
+        registry.Problems.Returns(ImmutableArray<GameLocatorProblem>.Empty);
+
+        // Adding a game makes the registry report it from then on.
+        var addService = Substitute.For<IAddGameByPath>();
+        addService.Add(folder, null, null, null).Returns(_ =>
+        {
+            registry.LocateGameInstallations().Returns(ImmutableArray.Create(new GameInstallation(
+                new GameLocatorResult
+                {
+                    Game = game,
+                    Path = folder,
+                    Store = GameStore.ManuallyAdded,
+                    StoreIdentifier = "1",
+                    LocatorIds = ImmutableArray<LocatorId>.Empty,
+                    Locator = Substitute.For<IGameLocator>(),
+                },
+                GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty)
+            )));
+            return new AddGameResult.Added(game);
+        });
+
+        var interop = Substitute.For<IAvaloniaInterop>();
+        interop.OpenFolderPickerAsync(Arg.Any<FolderPickerOpenOptions>()).Returns(Task.FromResult(new[] { folder }));
+
+        var windowManager = Substitute.For<IWindowManager>();
+        var services = new ProviderWith(Provider, null, (typeof(IAddGameByPath), addService), (typeof(IAvaloniaInterop), interop));
+        var viewModel = await OnUi(() => Task.FromResult(ActivatorUtilities.CreateInstance<MyGamesViewModel>(services, services, registry, windowManager)));
+        using var _ = await OnUi(() => Task.FromResult(viewModel.Activator.Activate()));
+        await EventuallyOnUi(() => viewModel.InstalledGames.Should().BeEmpty());
+
+        await OnUi(async () => await viewModel.AddGameFolderCommand.Execute());
+
+        await EventuallyOnUi(() => viewModel.InstalledGames.Select(static w => w.Installation!.Game.GameId).Should().Equal(game.GameId));
+    }
+
+    [Fact]
     public async Task Test_LocatorProblemsAreShownAsANotice()
     {
         var registry = Substitute.For<IGameRegistry>();
@@ -108,8 +157,15 @@ public class MyGamesViewModelTests(IServiceProvider provider) : AUiTest(provider
         settings!.EnableCollectionSharing.Should().BeTrue();
     }
 
-    private sealed class ProviderWith(IServiceProvider inner, ISettingsManager settingsManager) : IServiceProvider
+    private sealed class ProviderWith(IServiceProvider inner, ISettingsManager? settingsManager, params (Type Type, object Instance)[] overrides) : IServiceProvider
     {
-        public object? GetService(Type serviceType) => serviceType == typeof(ISettingsManager) ? settingsManager : inner.GetService(serviceType);
+        public object? GetService(Type serviceType)
+        {
+            foreach (var (type, instance) in overrides)
+            {
+                if (type == serviceType) return instance;
+            }
+            return serviceType == typeof(ISettingsManager) && settingsManager is not null ? settingsManager : inner.GetService(serviceType);
+        }
     }
 }
