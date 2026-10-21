@@ -75,7 +75,14 @@ internal class SettingsManager : ISettingsManager
         }
 
         Configs = configs.ToFrozenDictionary(x => x.Type, x => x);
-        _overrides = serviceProvider.GetServices<OverrideHack>().ToFrozenDictionary(x => new SettingKey(x.SettingsType, x.Key), x => x.Method);
+        // Overrides on one setting stack in registration order, so a host profile and a test can each adjust it.
+        _overrides = serviceProvider.GetServices<OverrideHack>()
+            .GroupBy(x => new SettingKey(x.SettingsType, x.Key))
+            .ToFrozenDictionary(group => group.Key, group =>
+            {
+                var methods = group.Select(x => x.Method).ToArray();
+                return new Func<object, object>(value => methods.Aggregate(value, static (current, method) => method(current)));
+            });
         _storageBackendMappings = storageBackendMappings.ToFrozenDictionary();
         _asyncStorageBackendMappings = asyncStorageBackendMappings.ToFrozenDictionary();
     }
