@@ -15,6 +15,9 @@ public static class Services
         services.AddBethesdaGame<Enderal.Enderal>(KnownPaths.SKSELoader);
         services.AddBethesdaGame<EnderalSE.EnderalSE>(KnownPaths.SKSE64Loader);
         services.AddBethesdaGame<Fallout4.Fallout4>(KnownPaths.F4SELoader);
+        services.AddBethesdaGame<Fallout4VR.Fallout4VR>(KnownPaths.F4SEVRLoader);
+        services.AddBethesdaGame<Fallout76.Fallout76>(null);
+        services.AddBethesdaGame<Starfield.Starfield>(KnownPaths.SFSELoader);
 
         return services;
     }

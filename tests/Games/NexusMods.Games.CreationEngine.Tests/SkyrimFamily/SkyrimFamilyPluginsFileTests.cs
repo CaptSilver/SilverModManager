@@ -47,7 +47,7 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
         { typeof(CreationEngine.EnderalSE.EnderalSE), "Plugins.txt" },
     };
 
-    private ICreationEngineGame Registered(Type type) => serviceProvider.GetServices<IGame>().Cast<ICreationEngineGame>().Single(g => g.GetType() == type);
+    private ICreationEngineGame Registered(Type type) => serviceProvider.GetServices<IGame>().OfType<ICreationEngineGame>().Single(g => g.GetType() == type);
 
     // A fresh instance of the title whose plugin reads come from these bytes, so ParsePlugin runs with the
     // class's own release rather than one the test picks.

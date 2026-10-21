@@ -22,6 +22,10 @@ public class BethesdaCatalogTests
         { typeof(CreationEngine.SkyrimVR.SkyrimVR), "skyrimspecialedition" },
         { typeof(CreationEngine.Enderal.Enderal), "enderal" },
         { typeof(CreationEngine.EnderalSE.EnderalSE), "enderalspecialedition" },
+        // Fallout 4 VR has no Nexus domain of its own; its mods are on Fallout 4's.
+        { typeof(CreationEngine.Fallout4VR.Fallout4VR), "fallout4" },
+        { typeof(CreationEngine.Fallout76.Fallout76), "fallout76" },
+        { typeof(CreationEngine.Starfield.Starfield), "starfield" },
     };
 
     private readonly IGameData[] _games;

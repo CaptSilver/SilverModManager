@@ -1,0 +1,11 @@
+using NexusMods.Sdk.Games;
+
+namespace NexusMods.Games.CreationEngine.Tests.RoundTrip;
+
+public class StarfieldRoundTripTests(ITestOutputHelper helper)
+    : ABethesdaRoundTripTest<StarfieldRoundTripTests, CreationEngine.Starfield.Starfield>(helper)
+{
+    protected override Version GameVersion => new("1.15.222");
+    protected override string PrimaryExe => "Starfield.exe";
+    protected override GamePath DataPath => new(LocationId.Game, "Data");
+}
