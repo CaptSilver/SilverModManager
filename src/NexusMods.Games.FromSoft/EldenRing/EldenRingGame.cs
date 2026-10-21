@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using JetBrains.Annotations;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.Installers;
 using NexusMods.Games.FromSoft.Me3;
 using NexusMods.Games.FromSoft.Overlay;
@@ -32,6 +33,13 @@ public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGa
             SaveRootKind.RoamingAppData,
             SaveAccountFolderKind.SteamId64Decimal),
         SaveNames = new FromSoftSaveNames(EldenRingPaths.VanillaSave, EldenRingPaths.ModdedSave, EldenRingPaths.SeamlessCoopSave),
+        CheckRules = GameFolderCheckRules.ModEngine2 with
+        {
+            Launcher = EldenRingPaths.AntiCheatLauncher,
+            ModFolders = [SeamlessCoop.Folder, "mods"],
+            ExtraArtifacts = ["ersc_launcher.exe"],
+            Spawners = ["ermerchant.dll", "erdtools.dll", "glorious_merchant.dll"],
+        },
         Overlay = OverlayAllowlist.Default with { Folders = ["mods/", $"{SeamlessCoop.Folder}/"] },
     };
 

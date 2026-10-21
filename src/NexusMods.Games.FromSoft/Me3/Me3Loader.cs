@@ -5,6 +5,7 @@ using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Extensions;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.Installers;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
@@ -118,6 +119,27 @@ public sealed class Me3Loader(IServiceProvider provider, Me3LoaderOptions option
             installation.Locations[LocationId.Me3Host].Path,
             HomeOf(installation),
         ];
+
+    // Resolved here and not in the constructor, so a version probe replaced in the container is the one that runs.
+    public CheckResult? HostCheck(GameInstallation installation)
+    {
+        var binary = BinaryOf(installation);
+        var executable = Me3HostFiles.IsExecutable(binary);
+        return HostCheckResult(binary, executable, executable ? provider.GetRequiredService<Me3VersionProbe>().Read(binary) : null);
+    }
+
+    /// <param name="binary">Where the me3 binary is deployed.</param>
+    /// <param name="executable">Whether it is there and executable.</param>
+    /// <param name="version">What it printed for <c>--version</c>; null when it was not run or printed nothing.</param>
+    public static CheckResult HostCheckResult(AbsolutePath binary, bool executable, string? version)
+    {
+        if (!executable)
+            return new CheckResult("me3", CheckLevel.Warn, $"me3 is not deployed or not executable ({binary}). Only a loadout with mods needs it.");
+
+        return string.IsNullOrWhiteSpace(version)
+            ? new CheckResult("me3", CheckLevel.Warn, $"me3 at {binary} did not report a version: it failed to start, exited with an error or printed nothing.")
+            : new CheckResult("me3", CheckLevel.Ok, $"{version.Trim()} ({binary})");
+    }
 
     public AbsolutePath ConfigurationLayer(GameInstallation installation)
         => installation.Locations[LocationId.Me3Mods].Path / Me3ModsLayout.OverlayFolder;

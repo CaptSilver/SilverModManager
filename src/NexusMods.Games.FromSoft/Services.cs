@@ -54,7 +54,7 @@ public static class Services
             .AddSingleton<IFromSoftDiagnosticEmitter, OverlaySupportEmitter>()
             .AddSingleton<IFromSoftDiagnosticEmitter, SaveWrittenByModdedSessionEmitter>()
             .AddSingleton<Me3VersionProbe>()
-            .AddSingleton<IInstallationCheck, EldenRingInstallationCheck>();
+            .AddSingleton<IInstallationCheck, FromSoftInstallationCheck>();
 
         // Providing me3 for a loadout
         services.AddSingleton<Me3HostProvisioner>()

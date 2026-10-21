@@ -31,7 +31,7 @@ public class EldenRingInstallationCheckTests(ITestOutputHelper helper) : AModded
     protected override IServiceCollection AddServices(IServiceCollection services)
         => base.AddServices(services).Replace(ServiceDescriptor.Singleton(new Me3VersionProbe(_runner)));
 
-    private IInstallationCheck Check => ServiceProvider.GetServices<IInstallationCheck>().OfType<EldenRingInstallationCheck>().Single();
+    private IInstallationCheck Check => ServiceProvider.GetServices<IInstallationCheck>().OfType<FromSoftInstallationCheck>().Single();
 
     private void WriteInGameFolder(string relative)
     {

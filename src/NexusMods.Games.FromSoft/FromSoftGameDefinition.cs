@@ -1,3 +1,4 @@
+using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.FromSoft.Saves;
 
@@ -15,6 +16,9 @@ public sealed record FromSoftGameDefinition
     public required FromSoftGameLayout Layout { get; init; }
 
     public required FromSoftSaveNames SaveNames { get; init; }
+
+    /// <summary>What the game folder checks look for: the anti-cheat launcher, mod folders and item spawners of this game.</summary>
+    public GameFolderCheckRules CheckRules { get; init; } = GameFolderCheckRules.ModEngine2;
 
     /// <summary>What a session may write into the overlay without being flagged. Defaults to file name patterns only.</summary>
     public OverlayAllowlist Overlay { get; init; } = OverlayAllowlist.Default;

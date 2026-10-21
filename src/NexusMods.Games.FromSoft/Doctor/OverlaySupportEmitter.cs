@@ -9,13 +9,13 @@ namespace NexusMods.Games.FromSoft.Doctor;
 /// Reports a loadout with mods on a machine where the overlay cannot be made. A loadout without mods starts through
 /// Steam and needs no sandbox, so it is not reported.
 /// </summary>
-public class OverlaySupportEmitter(IExecutableLocator executables, ISandboxProbe probe) : AEldenRingCheckEmitter
+public class OverlaySupportEmitter(IExecutableLocator executables, ISandboxProbe probe) : AFromSoftCheckEmitter
 {
-    protected override IEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout)
+    protected override IEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, IFromSoftGame game)
     {
-        if (loadout.InstallationInstance.Game is not IFromSoftGame game || !game.Loader.IsModded(loadout)) yield break;
+        if (!game.Loader.IsModded(loadout)) yield break;
 
-        var result = EldenRingChecks.OverlaySupport(executables, probe);
+        var result = FromSoftChecks.OverlaySupport(executables, probe);
         if (result.Level == CheckLevel.Fail) yield return FromSoftDiagnostics.CreateOverlaySupportMissing(result.Message);
     }
 }

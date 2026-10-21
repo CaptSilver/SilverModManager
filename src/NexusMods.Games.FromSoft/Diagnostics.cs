@@ -121,7 +121,7 @@ known. Discarding this only records that you have looked at it.
         .WithId(new DiagnosticId(Source, number: 6))
         .WithTitle("The game folder holds mod files")
         .WithSeverity(DiagnosticSeverity.Critical)
-        .WithSummary("The Elden Ring game folder is not in its vanilla state")
+        .WithSummary("The {Game} game folder is not in its vanilla state")
         .WithDetails("""
 {Finding}
 
@@ -133,6 +133,7 @@ Remove the mod files, or verify the game's files in Steam to restore them.
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Finding")
+            .AddValue<string>("Game")
         )
         .Finish();
 

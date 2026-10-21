@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk.Games;
@@ -47,6 +48,12 @@ public interface IFromSoftModLoader
 
     /// <summary>The host folders the loader's process must be able to write to.</summary>
     IEnumerable<AbsolutePath> WritableRoots(GameInstallation installation);
+
+    /// <summary>
+    /// The loader's own doctor check, such as whether its binary is deployed and runs; null when it has none. Unlike
+    /// the other checks it may start a process.
+    /// </summary>
+    CheckResult? HostCheck(GameInstallation installation);
 
     /// <summary>The folder of files that are copied into the overlay's upper folder before every modded session.</summary>
     AbsolutePath ConfigurationLayer(GameInstallation installation);
