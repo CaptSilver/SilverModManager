@@ -413,19 +413,27 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
         var running = AwaitJob(job);
 
-        var deadline = DateTime.UtcNow + Timeout;
-        while (job.JobDefinition.Progress.Current.Installed < 1 || _window.Prompts.Length < 1)
+        try
         {
-            DateTime.UtcNow.Should().BeBefore(deadline, "the plain mod should finish while a window is open");
-            await Task.Delay(20);
+            var deadline = DateTime.UtcNow + Timeout;
+            while (job.JobDefinition.Progress.Current.Installed < 1 || _window.Prompts.Length < 1)
+            {
+                DateTime.UtcNow.Should().BeBefore(deadline, "the plain mod should finish while a window is open");
+                await Task.Delay(20);
+            }
+
+            // The other stale mod waits for the window instead of opening a second one.
+            await Task.Delay(300);
+            _window.Prompts.Should().ContainSingle();
+            job.JobDefinition.Progress.Current.Installed.Should().Be(1);
+        }
+        finally
+        {
+            // The window holds the process-wide gate for guided installers, so a failure above must
+            // still close it or every later test that needs a window waits forever.
+            release.TrySetResult();
         }
 
-        // The other stale mod waits for the window instead of opening a second one.
-        await Task.Delay(300);
-        _window.Prompts.Should().ContainSingle();
-        job.JobDefinition.Progress.Current.Installed.Should().Be(1);
-
-        release.SetResult();
         await running;
 
         _window.Prompts.Should().HaveCount(2);

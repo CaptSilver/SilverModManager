@@ -56,11 +56,17 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
     private CancelInstaller _cancelInstaller = DummyCancelInstaller;
 
     private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
-    private readonly EventWaitHandle _waitHandle = new ManualResetEvent(initialState: false);
-    private long _taskWaitingState;
 
-    private const long Ready = 0;
-    private const long WaitingForCallback = 1;
+    /// <summary>
+    /// Set while the library applies a selection we passed on; its next <see cref="UpdateState"/> confirms it.
+    /// </summary>
+    private TaskCompletionSource? _selectionApplied;
+
+    /// <summary>
+    /// How long to wait for the library to confirm a selection. It only fails to when its select task threw,
+    /// and then the installation has to fail, since continuing would install the options it had before.
+    /// </summary>
+    internal TimeSpan SelectionConfirmationTimeout { get; init; } = TimeSpan.FromMinutes(1);
 
     public IReadOnlyDictionary<RelativePath, LibraryArchiveFileEntry.ReadOnly>? CurrentFomodArchiveFiles;
 
@@ -94,6 +100,10 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
         // StartDialog checks for that.
         _cancelInstaller();
         EndDialog();
+
+        // Only after EndDialog: the step answer waiting for a selection wakes up, and must find the
+        // library's delegates already gone.
+        Interlocked.Exchange(ref _selectionApplied, null)?.TrySetCanceled();
     }
 
     /// <summary>
@@ -141,13 +151,9 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
         if (currentStepId < 0 || currentStepId >= installSteps.Length) return;
 
         // NOTE(erri120): This fuckery is explained further below when we call _selectOptions()
-        if (Interlocked.Read(ref _taskWaitingState) == WaitingForCallback)
+        if (Interlocked.Exchange(ref _selectionApplied, null) is { } selectionApplied)
         {
-            if (!_waitHandle.Set())
-            {
-                _logger.LogWarning("Unable to signal completion!");
-            }
-
+            selectionApplied.TrySetResult();
             return;
         }
 
@@ -156,7 +162,12 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
         // that will call this method multiple times. This can lead to double-state and it's
         // just a complete mess. This is what you get when you write a .NET library for JavaScript...
         using var waiter = _semaphoreSlim.WaitDisposable(TimeSpan.Zero);
-        if (!waiter.HasEntered) return;
+        if (!waiter.HasEntered)
+        {
+            // A step dropped here is never asked and the executor waits for its answer forever, so say so.
+            _logger.LogWarning("Ignoring step {StepId} because another step is being set up", currentStepId);
+            return;
+        }
 
         var groupIdMappings = new List<KeyValuePair<int, GroupId>>();
         var optionIdMappings = new List<KeyValuePair<int, OptionId>>();
@@ -196,7 +207,7 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
             return;
         }
 
-        request.ContinueWith(task =>
+        request.ContinueWith(async task =>
             {
               try
               {
@@ -249,19 +260,24 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
                         // As such, we're required to use our own synchronization. Thankfully, we can abuse the stupid
                         // behavior of the library. As explained earlier, the library expects us to call _selectOptions
                         // when the user clicks on a button. The method _selectOptions will call us back, once it has
-                        // updated its internal state. This behavior allows us to use an EventWaitHandle to "wait" for
-                        // the library to call us back.
-                        // We're also using CAS to set our state into "waiting" mode.
-                        if (Interlocked.CompareExchange(ref _taskWaitingState, WaitingForCallback, Ready) != Ready)
-                            _logger.LogWarning("Unable to CAS!");
+                        // updated its internal state. This behavior allows us to wait for the library to call us back.
+                        // Don't give up after a short wait: on a busy thread pool the library's task can start long
+                        // after we asked, and continuing before it ran installs the options it had before. The
+                        // callback only fails to come when that task threw, which the long timeout turns into a
+                        // failed install, and Fail ends the wait when the installation is cancelled. Awaiting also
+                        // frees this thread, which may be the one the library's task was queued on.
+                        var selectionApplied = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                        Volatile.Write(ref _selectionApplied, selectionApplied);
 
                         _selectOptions(currentStepId, selectedGroupId, selectedOptionIds);
-                        _waitHandle.WaitOne(TimeSpan.FromMilliseconds(200), exitContext: false);
-                        _waitHandle.Reset();
-
-                        if (Interlocked.CompareExchange(ref _taskWaitingState, Ready, WaitingForCallback) !=
-                            WaitingForCallback)
-                            _logger.LogWarning("Unable to CAS!");
+                        try
+                        {
+                            await selectionApplied.Task.WaitAsync(SelectionConfirmationTimeout, _cancellationToken);
+                        }
+                        catch (TimeoutException)
+                        {
+                            throw new TimeoutException($"The FOMOD installer didn't apply the options chosen at step `{installSteps[currentStepId].name}`");
+                        }
                     }
 
                     // NOTE(erri120): We need to explicitly call this, since our implementations
@@ -388,6 +404,5 @@ public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDis
     {
         _guidedInstaller.Dispose();
         _semaphoreSlim.Dispose();
-        _waitHandle.Dispose();
     }
 }
