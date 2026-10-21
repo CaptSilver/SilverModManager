@@ -7,6 +7,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Networking.ModUpdates;
 using NexusMods.Networking.ModUpdates.Mixins;
 using NexusMods.Networking.NexusWebApi.UpdateFilters;
+using NexusMods.Sdk.Library;
 using System.Reactive.Linq;
 using R3;
 
@@ -201,8 +202,9 @@ public class ModUpdateService : IModUpdateService, IDisposable
         var existingFileToNewerFiles = filesInLibrary
             .Select(kv =>
             {
+                var frozen = kv.Value.LibraryFiles.Any(item => UpdatePin.IsFrozen(_connection.Db, item.Id));
                 var newerFiles = RunUpdateCheck
-                    .GetNewerFilesForExistingFile(kv.Value)
+                    .GetNewerFilesForExistingFile(kv.Value, frozen)
                     .Where(newFile => newFile.IsValid())
                     .ToArray();
 

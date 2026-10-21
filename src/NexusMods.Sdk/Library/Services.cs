@@ -19,6 +19,7 @@ public static class Services
             .AddLibraryFileModel()
             .AddDownloadedFileModel()
             .AddGitHubReleaseLibraryFileModel()
+            .AddUpdatePinModel()
             .AddLocalFileModel()
             .AddLibraryArchiveModel()
             .AddLibraryArchiveFileEntryModel()

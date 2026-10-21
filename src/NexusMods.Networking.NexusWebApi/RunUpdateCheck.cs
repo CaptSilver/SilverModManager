@@ -173,24 +173,25 @@ public static class RunUpdateCheck
     /// <remarks>
     ///     The returned items are returned in descending order, from newest to oldest.
     /// </remarks>
-    public static IEnumerable<NexusModsFileMetadata.ReadOnly> GetNewerFilesForExistingFile(NexusModsFileMetadata.ReadOnly file) 
-        => GetNewerFilesForExistingFile(new ModFileMetadataMixin(file)).Select(x => ((ModFileMetadataMixin)x).Metadata);
+    public static IEnumerable<NexusModsFileMetadata.ReadOnly> GetNewerFilesForExistingFile(NexusModsFileMetadata.ReadOnly file, bool frozen = false) 
+        => GetNewerFilesForExistingFile(new ModFileMetadataMixin(file), frozen).Select(x => ((ModFileMetadataMixin)x).Metadata);
 
     /// <summary>
-    /// Returns all files which have a 'newer' date than the current one,
-    /// using fuzzy name matching to handle variations in file naming.
+    /// Returns all files which have a 'newer' date than the current one and are the same variant of the mod
+    /// (see <see cref="VariantKey"/>), so a sibling download on the same page is never an update.
     /// </summary>
+    /// <param name="file">The file to look for updates of.</param>
+    /// <param name="frozen">The file is pinned and must not move, so nothing counts as an update.</param>
     /// <remarks>
     ///     The returned items are returned in descending order, from newest to oldest.
     /// </remarks>
-    public static IEnumerable<IAmAModFile> GetNewerFilesForExistingFile(IAmAModFile file)
+    public static IEnumerable<IAmAModFile> GetNewerFilesForExistingFile(IAmAModFile file, bool frozen = false)
     {
-        // Get the normalized name for the current file
-        var normalizedName = FuzzySearch.NormalizeFileName(file.Name, file.Version);
-        
+        if (frozen) return [];
+
         // Get all other files from the same mod page
         return file.OtherFilesInSameModPage
-            .Where(otherFile => 
+            .Where(otherFile =>
                 // Must be uploaded later
                 // Note(sewer):
                 //
@@ -203,12 +204,20 @@ public static class RunUpdateCheck
                 //     interpreted as a pre-release, and an item without a suffix
                 //     may be assumed as a more recent version.
                 otherFile.UploadedAt > file.UploadedAt &&
-                // Must have matching normalized name
-                FuzzySearch.NormalizeFileName(otherFile.Name, otherFile.Version)
-                    .Equals(normalizedName, StringComparison.OrdinalIgnoreCase)
+                IsSameVariant(file, otherFile)
             )
             .OrderByDescending(x => x.UploadedAt);
     }
+
+    /// <summary>
+    /// Whether two files of one mod page are the same variant. The variant key handles the machine-written
+    /// parts of Nexus file names (timestamps, tokens, epochs); the fuzzy name stays as a second way to match
+    /// because it also folds underscores into spaces and strips version text wherever it sits in the name.
+    /// </summary>
+    private static bool IsSameVariant(IAmAModFile a, IAmAModFile b)
+        => VariantKey.Of(a.Name, a.Version) == VariantKey.Of(b.Name, b.Version)
+           || FuzzySearch.NormalizeFileName(a.Name, a.Version)
+               .Equals(FuzzySearch.NormalizeFileName(b.Name, b.Version), StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Returns all file versions of a given file, including:
@@ -216,16 +225,14 @@ public static class RunUpdateCheck
     /// - All older versions
     /// - All newer versions
     /// 
-    /// Using fuzzy name matching.
+    /// Matching by <see cref="VariantKey"/>.
     /// </summary>
     public static IEnumerable<NexusModsFileMetadata.ReadOnly> GetAllVersionsForExistingFile(NexusModsFileMetadata.ReadOnly file)
     {
         var mixin = new ModFileMetadataMixin(file);
-        var normalizedName = FuzzySearch.NormalizeFileName(file.Name, file.Version);
         // Collect matching versions, include current file, then sort by upload date
         return mixin.OtherFilesInSameModPage
-            .Where(f => FuzzySearch.NormalizeFileName(f.Name, f.Version)
-                .Equals(normalizedName, StringComparison.OrdinalIgnoreCase))
+            .Where(f => IsSameVariant(mixin, f))
             .Select(f => ((ModFileMetadataMixin)f).Metadata)
             .Append(file)
             .OrderBy(f => f.UploadedAt);
