@@ -12,6 +12,7 @@ using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Hashes;
 using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Loadouts;
 
@@ -266,10 +267,20 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             // still a link from an earlier state (a mod file that became a generated one, a loadout switch).
             // This happens after rendering so a generator can read the previous file; a missing file is fine.
             File.Delete(resolvedPath.ToString());
-            await using var stream = resolvedPath.Create();
-            stream.SetLength(0);
+            await using (var stream = resolvedPath.Create())
+            {
+                stream.SetLength(0);
+                rendered.Position = 0;
+                await rendered.CopyToAsync(stream);
+            }
+
+            // Recorded like an extracted file. Without a row holding what was just written, the next index sees
+            // a file that differs from the previous state, takes it for a change made outside the loadout and
+            // ingests it instead of writing, so every other sync would be one behind.
             rendered.Position = 0;
-            await rendered.CopyToAsync(stream);
+            var hash = await Xx3Hasher.HashAsync(rendered);
+            var writeTime = new DateTimeOffset(resolvedPath.FileInfo.LastWriteTimeUtc);
+            DeployedFileRows.Record(context.Transaction, context, path, node, hash, Size.From((ulong)rendered.Length), writeTime);
         }
     }
 

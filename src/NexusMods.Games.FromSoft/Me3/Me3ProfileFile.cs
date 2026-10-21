@@ -25,11 +25,10 @@ public class Me3ProfileFile(ILogger<Me3ProfileFile> logger, Me3Loader loader) : 
     }
 
     /// <summary>
-    /// The synchronizer hands over a file whose content is not what it last wrote: someone edited it, or it was
-    /// written by the previous apply and the disk state recorded since is older than that. Either way the file is
-    /// replaced here with the generated one, because the synchronizer only rewrites an intrinsic file whose disk
-    /// state is unchanged, which would leave the edit, or a profile one apply behind, in place. The loadout is
-    /// not changed: settings someone would tune by hand belong in the loadout.
+    /// The synchronizer hands over a file whose content is not what it last wrote: someone edited it. It is
+    /// replaced here with the generated one, because the synchronizer would only rewrite the file on the apply
+    /// after the one that noticed the edit. The loadout is not changed: settings someone would tune by hand
+    /// belong in the loadout.
     /// </summary>
     public async Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
     {

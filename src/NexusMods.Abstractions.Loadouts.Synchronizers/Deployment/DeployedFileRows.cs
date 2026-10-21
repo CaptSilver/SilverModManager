@@ -1,5 +1,7 @@
+using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 
 namespace NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
@@ -12,12 +14,19 @@ internal static class DeployedFileRows
     /// </summary>
     /// <param name="writeTime">The deployed path's modification time as the next index will read it.</param>
     internal static void Record(ITransaction tx, DeploymentContext context, GamePath path, SyncNode node, DateTimeOffset writeTime)
+        => Record(tx, context, path, node, node.Loadout.Hash, node.Loadout.Size, writeTime);
+
+    /// <summary>
+    /// Records the bytes just written to <paramref name="path"/>. A generated file has no loadout hash to take
+    /// them from, so the caller passes the hash and size of what it rendered.
+    /// </summary>
+    internal static void Record(ITransaction tx, DeploymentContext context, GamePath path, SyncNode node, Hash hash, Size size, DateTimeOffset writeTime)
     {
         if (node.HaveDisk)
         {
             var id = node.Disk.EntityId;
-            tx.Add(id, DiskStateEntry.Hash, node.Loadout.Hash);
-            tx.Add(id, DiskStateEntry.Size, node.Loadout.Size);
+            tx.Add(id, DiskStateEntry.Hash, hash);
+            tx.Add(id, DiskStateEntry.Size, size);
             tx.Add(id, DiskStateEntry.LastModified, writeTime);
         }
         else
@@ -25,8 +34,8 @@ internal static class DeployedFileRows
             _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
             {
                 Path = path.ToGamePathParentTuple(context.MetadataId),
-                Hash = node.Loadout.Hash,
-                Size = node.Loadout.Size,
+                Hash = hash,
+                Size = size,
                 LastModified = writeTime,
                 GameId = context.MetadataId,
             };

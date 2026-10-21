@@ -42,28 +42,10 @@ public class OpenMwConfigFile(IBethesdaGame game) : IIntrinsicFile
     }
 
     /// <remarks>
-    /// The synchronizer hands a changed intrinsic file to Ingest and only writes it on the sync after, and by
-    /// then the files of a mod that was just removed are gone from the tree, so Write could no longer tell that
-    /// their entries are ours. Ingest therefore drops entries for plugins the loadout no longer provides and
-    /// writes the result straight back to disk, the one change that cannot wait. It never adds or reorders
-    /// anything; the write on the next sync does that.
+    /// The file stays the user's: a hand edit is not copied into the loadout, and the next write only touches
+    /// the <c>content=</c> lines for plugins under Data Files.
     /// </remarks>
-    public async Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
-    {
-        var (owned, deployed) = PluginNames(syncTree);
-
-        using var current = new MemoryStream();
-        await stream.CopyToAsync(current);
-        var existing = current.ToArray();
-
-        var listed = OpenMwContentWriter.ContentNames(Decode(existing, out _));
-        deployed.IntersectWith(listed);
-        var pruned = Rewrite(existing, deployed, owned);
-        if (pruned.AsSpan().SequenceEqual(existing)) return;
-
-        var onDisk = loadout.InstallationInstance.Locations.ToAbsolutePath(Path);
-        await onDisk.WriteAllBytesAsync(pruned);
-    }
+    public Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx) => Task.CompletedTask;
 
     private (HashSet<string> Owned, HashSet<string> Deployed) PluginNames(Dictionary<GamePath, SyncNode> syncTree)
     {
