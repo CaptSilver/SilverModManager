@@ -1,6 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Games;
+using NexusMods.Abstractions.Loadouts;
 using NexusMods.Paths;
 using NexusMods.Sdk;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Settings;
 
 namespace NexusMods.Games.FromSoft.Tests.Fixtures;
@@ -17,6 +20,21 @@ public static class FromSoftTestServices
         var dataRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"FromSoft.{Guid.NewGuid():N}");
         return services
             .AddFromSoftGames()
+            .OverrideSettingsForTests<FromSoftSettings>(settings => settings with { DataRoot = dataRoot });
+    }
+
+    /// <summary>
+    /// Registers the FromSoft base and Test Souls, a game that is registered nowhere else, with a data root of its own.
+    /// The game has no locator beside the Steam one the fixture installs it for, and <c>AddGame</c> registers no launch
+    /// tool, so the tool is added here.
+    /// </summary>
+    public static IServiceCollection AddTestSouls(this IServiceCollection services)
+    {
+        var dataRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"FromSoft.{Guid.NewGuid():N}");
+        return services
+            .AddFromSoftBase()
+            .AddGame<TestSoulsGame>()
+            .AddSingleton<ITool, RunFromSoftGame<TestSoulsGame>>()
             .OverrideSettingsForTests<FromSoftSettings>(settings => settings with { DataRoot = dataRoot });
     }
 }

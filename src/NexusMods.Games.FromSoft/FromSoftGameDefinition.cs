@@ -1,5 +1,6 @@
 using NexusMods.Games.FromSoft.Cleanup;
 using NexusMods.Games.FromSoft.Doctor;
+using NexusMods.Games.FromSoft.Formats;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.FromSoft.Saves;
 
@@ -29,4 +30,7 @@ public sealed record FromSoftGameDefinition
 
     /// <summary>What a session may write into the overlay without being flagged. Defaults to file name patterns only.</summary>
     public OverlayAllowlist Overlay { get; init; } = OverlayAllowlist.Default;
+
+    /// <summary>The binder, compression and regulation parameters of the game's files.</summary>
+    public required FromSoftFormatTraits Formats { get; init; }
 }

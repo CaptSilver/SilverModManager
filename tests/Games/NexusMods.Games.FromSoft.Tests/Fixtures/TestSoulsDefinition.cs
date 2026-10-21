@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using NexusMods.Games.FromSoft.Formats;
 using NexusMods.Games.FromSoft.Saves;
 
 namespace NexusMods.Games.FromSoft.Tests.Fixtures;
@@ -22,5 +24,15 @@ public static class TestSoulsDefinition
     {
         Layout = Layout,
         SaveNames = new FromSoftSaveNames("TS0000.sl2", "TS0000_silver.sl2", null),
+        Formats = new FromSoftFormatTraits(
+            BinderFormat.Bnd3,
+            [DcxCompression.Dflt],
+            DcxCompression.Dflt,
+            RegulationFileName: null,
+            DcxCompression.None,
+            RegulationZstdLevel: 0,
+            RegulationZstdWindowLog: 0,
+            ImmutableArray<byte>.Empty,
+            "testsouls"),
     };
 }

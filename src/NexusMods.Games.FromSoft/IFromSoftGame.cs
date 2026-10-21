@@ -1,6 +1,7 @@
 using NexusMods.Abstractions.Games;
 using NexusMods.Games.FromSoft.Cleanup;
 using NexusMods.Games.FromSoft.Doctor;
+using NexusMods.Games.FromSoft.Formats;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.FromSoft.Saves;
 using NexusMods.Sdk.Games;
@@ -32,6 +33,9 @@ public interface IFromSoftGame : IGame
 
     /// <summary>Which files of the upper folder a modded session may write without being flagged.</summary>
     OverlayAllowlist Overlay => Definition.Overlay;
+
+    /// <summary>The file format parameters of the game's archives and regulation.</summary>
+    FromSoftFormatTraits Formats => Definition.Formats;
 
     /// <summary>Rewrites of single files of the configuration layer as they are copied into the upper folder.</summary>
     IReadOnlyList<IConfigurationLayerTransform> LayerTransforms { get; }

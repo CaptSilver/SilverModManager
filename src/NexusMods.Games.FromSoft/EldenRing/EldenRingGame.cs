@@ -5,6 +5,7 @@ using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.FromSoft.Cleanup;
 using NexusMods.Games.FromSoft.Doctor;
+using NexusMods.Games.FromSoft.Formats;
 using NexusMods.Games.FromSoft.Installers;
 using NexusMods.Games.FromSoft.Me3;
 using NexusMods.Games.FromSoft.Overlay;
@@ -49,6 +50,17 @@ public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGa
         },
         CleanupVerb = EldenRingCleanupVerb.Name,
         Overlay = OverlayAllowlist.Default with { Folders = ["mods/", $"{SeamlessCoop.Folder}/"] },
+        Formats = new FromSoftFormatTraits(
+            BinderFormat.Bnd4,
+            [DcxCompression.Kraken, DcxCompression.Dflt, DcxCompression.Zstd],
+            DcxCompression.Dflt,
+            "regulation.bin",
+            DcxCompression.Zstd,
+            RegulationZstdLevel: 15,
+            RegulationZstdWindowLog: 16,
+            // Static across every retail build; the regulation is encrypted only in the sense that the key ships with the game.
+            [..Convert.FromHexString("99BFFC366A6BC8C6F5827D093602D676C42892A01C207FB024D3AF4E493FEF99")],
+            "eldenring"),
     };
 
     public static readonly Me3LoaderOptions Me3Options = new("eldenring", [SeamlessCoop.Native]);

@@ -24,11 +24,13 @@ public abstract class AModdedEldenRingTest<TTest>(ITestOutputHelper helper, bool
 {
     public const string Password = "hunter2";
 
-    protected FakeExecutableLocator Executables { get; } = new();
-    protected FakeSandboxProbe Probe { get; } = new();
-    protected RecordingProcessFactory Processes { get; } = new();
-    protected IOSInterop OsInterop { get; } = Substitute.For<IOSInterop>();
-    protected string RuntimeDir { get; } = Directory.CreateTempSubdirectory("silvermod-eldenring-lock-").FullName;
+    private ModdedLaunchFakes Fakes { get; } = new();
+
+    protected FakeExecutableLocator Executables => Fakes.Executables;
+    protected FakeSandboxProbe Probe => Fakes.Probe;
+    protected RecordingProcessFactory Processes => Fakes.Processes;
+    protected IOSInterop OsInterop => Fakes.OsInterop;
+    protected string RuntimeDir => Fakes.RuntimeDir;
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
@@ -36,16 +38,7 @@ public abstract class AModdedEldenRingTest<TTest>(ITestOutputHelper helper, bool
             .OverrideSettingsForTests<FromSoftSettings>(settings => settings with { CoopPassword = Password })
             .ReplaceDesktopNotifier();
 
-        services.Replace(ServiceDescriptor.Singleton<IExecutableLocator>(Executables));
-        services.Replace(ServiceDescriptor.Singleton<ISandboxProbe>(Probe));
-        services.Replace(ServiceDescriptor.Singleton<IUserIds>(new FixedUserIds(1000, 1001)));
-        services.Replace(ServiceDescriptor.Singleton<IGameProcessFactory>(Processes));
-        services.Replace(ServiceDescriptor.Singleton<IOSInterop>(OsInterop));
-        services.Replace(ServiceDescriptor.Singleton<IInstallationLockFactory>(new TempLockFactory(RuntimeDir)));
-        services.Replace(ServiceDescriptor.Singleton<ILaunchSynchronizer, NoSynchronizer>());
-        services.Replace(ServiceDescriptor.Singleton<IGameLaunchSession>(provider => provider.GetRequiredService<ActiveLaunchSessions>()));
-        services.AddSingleton(provider => new ActiveLaunchSessions(provider));
-        services.AddTransient<LaunchSession>();
+        Fakes.Register(services);
         return services;
     }
 
@@ -81,61 +74,6 @@ public abstract class AModdedEldenRingTest<TTest>(ITestOutputHelper helper, bool
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
-        Directory.Delete(RuntimeDir, recursive: true);
-    }
-
-    protected sealed class FakeExecutableLocator : IExecutableLocator
-    {
-        public AbsolutePath? Bwrap { get; set; } = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/fake/bin/bwrap");
-
-        public AbsolutePath? Find(string name) => name == "bwrap" ? Bwrap : null;
-    }
-
-    protected sealed class FakeSandboxProbe : ISandboxProbe
-    {
-        public string? Failure { get; set; }
-        public int Calls { get; private set; }
-
-        public string? Probe(AbsolutePath bwrap)
-        {
-            Calls++;
-            return Failure;
-        }
-    }
-
-    private sealed record FixedUserIds(uint Uid, uint Gid) : IUserIds;
-
-    private sealed class TempLockFactory(string runtimeDir) : IInstallationLockFactory
-    {
-        public InstallationLock Create(string store, string storeId) => new(InstallationLock.PathFor(runtimeDir, store, storeId));
-    }
-
-    private sealed class NoSynchronizer : ILaunchSynchronizer
-    {
-        public Task Synchronize(LoadoutId loadoutId) => Task.CompletedTask;
-    }
-
-    /// <summary>Records what it was asked to start and "runs" it by calling <see cref="OnStart"/>.</summary>
-    protected sealed class RecordingProcessFactory : IGameProcessFactory
-    {
-        public List<GameProcessSpec> Started { get; } = [];
-        public Action? OnStart { get; set; }
-
-        public IGameProcess Start(GameProcessSpec spec, GameInstallation installation)
-        {
-            lock (Started) Started.Add(spec);
-            OnStart?.Invoke();
-            return new FinishedProcess();
-        }
-
-        public Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, CancellationToken cancellationToken) => Task.FromResult<TrackedProcess?>(null);
-
-        private sealed class FinishedProcess : IGameProcess
-        {
-            public int Pid => 4242;
-            public Task<GameProcessResult> WaitAsync(CancellationToken cancellationToken = default) => Task.FromResult(new GameProcessResult(0, null));
-            public void Terminate() { }
-            public void Dispose() { }
-        }
+        Fakes.Dispose();
     }
 }
