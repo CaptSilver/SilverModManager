@@ -9,11 +9,14 @@ using NexusMods.Sdk.Games;
 namespace NexusMods.Games.CreationEngine.Abstractions;
 
 /// <summary>
-/// A common interface for all games that use the creation engine.
+/// A Bethesda game whose plugin list Mutagen can read.
 /// </summary>
-public interface ICreationEngineGame : IGame
+public interface ICreationEngineGame : IBethesdaGame
 {
     public GamePath PluginsFile { get; }
+
+    /// <summary>How <see cref="PluginsFile"/> marks an active plugin.</summary>
+    public PluginListFormat PluginListFormat { get; }
     /// <summary>
     /// Parse a plugin file. Currently, this loads only the header of the file, in the future
     /// we can add flags to load specific groups

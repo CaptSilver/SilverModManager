@@ -30,17 +30,17 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
     {
         await Task.Yield();
         
-        var plugins = syncTree.Where(static node =>
+        var plugins = syncTree.Where(node =>
             node.Value.HaveLoadout &&
             KnownCEExtensions.Plugins.Contains(node.Key.Extension) &&
-            node.Key.Parent == KnownPaths.Data);
+            node.Key.Parent == _game.DataPath);
         
         // Index the plugins in the loadout
         Dictionary<string, LoadoutItemGroup.ReadOnly> pluginsInLoadout = new();
         foreach (var item in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath())
         {
             var path = (GamePath)item.TargetPath;
-            if (path.LocationId == LocationId.Game && path.Parent == KnownPaths.Data && KnownCEExtensions.Plugins.Contains(path.Extension))
+            if (path.LocationId == LocationId.Game && path.Parent == _game.DataPath && KnownCEExtensions.Plugins.Contains(path.Extension))
                 pluginsInLoadout[path.FileName] = item.AsLoadoutItem().Parent;
 
         }
