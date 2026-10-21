@@ -26,6 +26,7 @@ public class GameLocatorRegistrationTests
         provider.GetServices<IGameLocator>().Select(locator => locator.GetType()).Should().Equal(
             typeof(SteamLocator),
             typeof(HeroicGOGLocator),
+            typeof(HeroicEpicLocator),
             typeof(WinePrefixWrappingLocator)
         );
     }

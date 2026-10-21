@@ -10,6 +10,80 @@ namespace NexusMods.Backend.Games.Locators;
 /// </summary>
 internal sealed record HeroicConfigRoot(AbsolutePath Path, bool IsFlatpak)
 {
+    /// <summary>One game Legendary lists as installed.</summary>
+    /// <param name="Platform">Legendary's platform name (<c>Windows</c>, <c>Mac</c>), or null when the entry has none.</param>
+    public sealed record EpicInstall(string AppName, string InstallPath, string? Platform);
+
+    private AbsolutePath LegendaryConfig => Path.Combine("legendaryConfig/legendary");
+
+    /// <summary>
+    /// Legendary's metadata file for an Epic game, which carries the catalog item id.
+    /// </summary>
+    public AbsolutePath EpicMetadataFile(string appName) => LegendaryConfig.Combine($"metadata/{appName}.json");
+
+    /// <summary>
+    /// The Epic games (not their DLC) Legendary lists as installed. Empty when the file is missing, and empty
+    /// with a warning when it cannot be read, so one broken install does not hide the other's games.
+    /// </summary>
+    public ImmutableArray<EpicInstall> InstalledEpicGames(ILogger logger)
+    {
+        var file = LegendaryConfig.Combine("installed.json");
+        if (!file.FileExists) return [];
+
+        try
+        {
+            using var stream = file.Read();
+            using var document = JsonDocument.Parse(stream);
+            if (document.RootElement.ValueKind != JsonValueKind.Object) return [];
+
+            var games = ImmutableArray.CreateBuilder<EpicInstall>();
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                var entry = property.Value;
+                if (entry.ValueKind != JsonValueKind.Object) continue;
+                if (entry.TryGetProperty("is_dlc", out var dlc) && dlc.ValueKind == JsonValueKind.True) continue;
+
+                // The key is the app name; the entry repeats it, and the key wins if they ever disagree.
+                var installPath = entry.TryGetProperty("install_path", out var path) && path.ValueKind == JsonValueKind.String ? path.GetString() : null;
+                var platform = entry.TryGetProperty("platform", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
+                if (installPath is null) continue;
+                games.Add(new EpicInstall(property.Name, installPath, platform));
+            }
+
+            return games.ToImmutable();
+        }
+        catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
+        {
+            logger.LogWarning(e, "Skipping Legendary's installed Epic games list at {Path}", file);
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// The catalog item id in Legendary's metadata for <paramref name="appName"/>, or null when the file is
+    /// missing or has none.
+    /// </summary>
+    public string? EpicCatalogItemId(string appName, ILogger logger)
+    {
+        var file = EpicMetadataFile(appName);
+        if (!file.FileExists) return null;
+
+        try
+        {
+            using var stream = file.Read();
+            using var document = JsonDocument.Parse(stream);
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty("metadata", out var metadata)
+                || metadata.ValueKind != JsonValueKind.Object) return null;
+            return metadata.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String ? id.GetString() : null;
+        }
+        catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
+        {
+            logger.LogWarning(e, "Skipping Legendary's metadata for {AppName} at {Path}", appName, file);
+            return null;
+        }
+    }
+
     public AbsolutePath GameSettingsFile(string appName) => Path.Combine($"GamesConfig/{appName}.json");
 
     /// <summary>

@@ -31,6 +31,7 @@ public static class ServiceExtensions
         // Steam runs the games through Proton, so there is no Windows registry to hand to the locator.
         serviceCollection.AddSingleton<IGameLocator>(serviceProvider => new SteamLocator(serviceProvider.GetServices<IGameData>(), serviceProvider.GetRequiredService<ILoggerFactory>(), serviceProvider.GetRequiredService<IFileSystem>(), registry: null));
         serviceCollection.AddSingleton<IGameLocator, HeroicGOGLocator>();
+        serviceCollection.AddSingleton<IGameLocator, HeroicEpicLocator>();
 
         // GOG and Epic installs made through Wine live in prefixes, each with its own registry and file system overlay.
         serviceCollection.AddSingleton<IGameLocator>(serviceProvider =>
