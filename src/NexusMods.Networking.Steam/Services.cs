@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NexusMods.Abstractions.Steam;
 using NexusMods.Abstractions.Steam.Values;
 using NexusMods.Networking.Steam.CLI;
@@ -14,6 +15,7 @@ public static class Services
     public static IServiceCollection AddSteam(this IServiceCollection services)
     {
         services.AddSingleton<ISteamSession, Session>();
+        services.TryAddSingleton<IDepotManifestSource, LocalDepotManifests>();
         return services;
     }
     
