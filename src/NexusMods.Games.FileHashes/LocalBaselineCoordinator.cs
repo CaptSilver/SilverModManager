@@ -56,6 +56,25 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         return await shared.Value.WaitAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Waits for the build of this installation that is running, if any. A build that fails leaves no rows
+    /// and reports the failure to its own caller, so the waiter carries on without them.
+    /// </summary>
+    public async Task WaitForBuild(GameInstallation installation, CancellationToken cancellationToken = default)
+    {
+        var key = (installation.LocatorResult.Store, GamePathOf(installation));
+        if (!_inFlight.TryGetValue(key, out var shared)) return;
+
+        try
+        {
+            await shared.Value.WaitAsync(cancellationToken);
+        }
+        catch (Exception e) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(e, "The local baseline build of {Game} failed, going on without its rows", installation.Game.DisplayName);
+        }
+    }
+
     private async Task<LocalBaselineResult> Run((GameStore Store, string Path) key, GameInstallation installation)
     {
         try

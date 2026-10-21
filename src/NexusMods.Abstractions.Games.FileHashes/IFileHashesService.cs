@@ -89,6 +89,13 @@ public interface IFileHashesService
     public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Completes once a local baseline build for the installation that is already running has committed its
+    /// rows, or at once when none is running. Never starts a build. A build commits all of its rows at the
+    /// end, so anything that looks hashes up while one runs sees none of them and reads every file instead.
+    /// </summary>
+    public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Suggest version data for a given game installation and files.
     /// </summary>
     public Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files);

@@ -189,6 +189,9 @@ public class StubbedFileHasherService : IFileHashesService
         return Task.FromResult(new LocalBaselineResult(LocalBaselineKind.Snapshot, Rebuilt: false, NonVanillaCount: 0));
     }
 
+    // No build ever runs here.
+    public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
     public IDb Current => _current!;
 
     public IDb Local => EnsureLocal();

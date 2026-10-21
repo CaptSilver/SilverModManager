@@ -350,6 +350,51 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Should().ContainSingle();
     }
 
+    [Fact]
+    public async Task WaitForBuild_ReturnsOnlyOnceABuildInFlightHasCommitted()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        var coordinator = new LocalBaselineCoordinator(
+            () => _store,
+            new LocalVanillaBaseline(FileSystem.Shared, NullLogger<LocalVanillaBaseline>.Instance, path =>
+            {
+                entered.Set();
+                release.Wait();
+                return path.Read();
+            }),
+            _source,
+            NullLogger<LocalBaselineCoordinator>.Instance);
+        var installation = Installation("101");
+        var build = coordinator.Ensure(installation);
+        entered.Wait(TimeSpan.FromSeconds(30)).Should().BeTrue("the build has to be hashing for there to be anything to wait for");
+
+        var wait = coordinator.WaitForBuild(installation);
+        await Task.Delay(100);
+        wait.IsCompleted.Should().BeFalse("the build has not committed its rows yet");
+        LocalBaseline.All(_store.Db).Should().BeEmpty();
+
+        release.Set();
+        await wait;
+
+        LocalBaseline.All(_store.Db).Should().ContainSingle("the wait ends after the rows are committed");
+        (await build).Rebuilt.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task WaitForBuild_WithNothingInFlight_ReturnsAtOnceAndBuildsNothing()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+
+        await _coordinator.WaitForBuild(Installation("101"));
+
+        LocalBaseline.All(_store.Db).Should().BeEmpty();
+        _source.Reads.Should().BeEmpty();
+    }
+
     private GameInstallation Installation(params string[] locatorIds) => Make(locatorIds);
 
     private GameInstallation Make(

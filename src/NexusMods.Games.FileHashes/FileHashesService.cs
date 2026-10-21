@@ -693,6 +693,10 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         => _baselineCoordinator.Ensure(installation, cancellationToken);
 
     /// <inheritdoc />
+    public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default)
+        => _baselineCoordinator.WaitForBuild(installation, cancellationToken);
+
+    /// <inheritdoc />
     public IDb Current => _currentDb?.Db ?? Local;
 
     /// <inheritdoc />

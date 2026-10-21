@@ -22,9 +22,11 @@ internal class GameLocationsService : IGameLocationsService
 {
     private readonly ILogger _logger;
     private readonly IFileHashesService _fileHashesService;
+    private readonly IFullFileHasher _fullHasher;
 
     public GameLocationsService(IServiceProvider serviceProvider)
     {
+        _fullHasher = serviceProvider.GetService<IFullFileHasher>() ?? XxHash3FullFileHasher.Instance;
         _logger = serviceProvider.GetRequiredService<ILogger<GameLocationsService>>();
         _fileHashesService = serviceProvider.GetRequiredService<IFileHashesService>();
     }
@@ -35,6 +37,10 @@ internal class GameLocationsService : IGameLocationsService
         IGamePathFilter filter,
         CancellationToken outerToken = default)
     {
+        // A baseline build commits all its rows at the end; indexing meanwhile would find none and read the whole folder.
+        await _fileHashesService.WaitForLocalBaselineBuild(installation, outerToken);
+
+        var tally = new IndexTally();
         var topLevelLocations = installation.Locations.GetTopLevelLocations();
         var enumerable = topLevelLocations.Where(kv => kv.Value.DirectoryExists()).SelectMany(kv => kv.Value.EnumerateFiles()).ToAsyncEnumerable();
 
@@ -54,13 +60,17 @@ internal class GameLocationsService : IGameLocationsService
                 {
                     if (HasFileChanged(file, previousDiskStateEntry))
                     {
-                        var indexFileResult = await IndexFile(file, gamePath, token);
+                        var indexFileResult = await IndexFile(file, gamePath, tally, token);
                         modifiedFiles[gamePath] = indexFileResult;
+                    }
+                    else
+                    {
+                        tally.Unchanged();
                     }
                 }
                 else
                 {
-                    var indexFileResult = await IndexFile(file, gamePath, token);
+                    var indexFileResult = await IndexFile(file, gamePath, tally, token);
                     newFiles[gamePath] = indexFileResult;
                 }
             }
@@ -71,6 +81,7 @@ internal class GameLocationsService : IGameLocationsService
         });
 
         var removedFiles = previousDiskState.Keys.Except(seenPaths.Keys).ToFrozenSet();
+        tally.Log(_logger, installation.Game.DisplayName, newFiles.Count, modifiedFiles.Count, removedFiles.Count);
         var result = new IndexGameResult(
             NewFiles: newFiles.ToFrozenDictionary(),
             ModifiedFiles: modifiedFiles.ToFrozenDictionary(),
@@ -89,22 +100,30 @@ internal class GameLocationsService : IGameLocationsService
     private async ValueTask<IndexFileResult> IndexFile(
         AbsolutePath file,
         GamePath gamePath,
+        IndexTally tally,
         CancellationToken cancellationToken)
     {
         var fingerprint = FileFingerprint.Of(file);
 
-        var newHash = await HashFile(file, gamePath, cancellationToken);
+        var newHash = await HashFile(file, gamePath, tally, cancellationToken);
         return new IndexFileResult(gamePath, newHash, fingerprint.Size, fingerprint.LastModified);
     }
 
-    internal async ValueTask<Hash> HashFile(AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
-    {
-        var existingHash = await GetExistingHash(_fileHashesService.Databases, file, gamePath, cancellationToken);
-        if (existingHash.HasValue) return existingHash.Value;
+    internal ValueTask<Hash> HashFile(AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
+        => HashFile(file, gamePath, new IndexTally(), cancellationToken);
 
-        _logger.LogDebug("Didn't find matching hash data for file `{Path}`, falling back to a full hash", file);
-        var hash = await file.XxHash3Async(token: cancellationToken);
-        return hash;
+    private async ValueTask<Hash> HashFile(AbsolutePath file, GamePath gamePath, IndexTally tally, CancellationToken cancellationToken)
+    {
+        var lookup = await GetExistingHash(_fileHashesService.Databases, file, gamePath, cancellationToken);
+        if (lookup.Hash.HasValue)
+        {
+            tally.FromStoredHash();
+            return lookup.Hash.Value;
+        }
+
+        _logger.LogDebug("Didn't find matching hash data for file `{Path}` ({Reason}), falling back to a full hash", file, lookup.Miss);
+        tally.FullyHashed(lookup.Miss, FileFingerprint.Of(file).Size);
+        return await _fullHasher.Hash(file, cancellationToken);
     }
 
     /// <summary>
@@ -114,7 +133,7 @@ internal class GameLocationsService : IGameLocationsService
     /// resulting hashes are compared. Stores that disagree on the hash give no answer, same as rows that
     /// disagree within one store.
     /// </summary>
-    private static async ValueTask<Optional<Hash>> GetExistingHash(IReadOnlyList<IDb> hashesDbs, AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
+    internal static async ValueTask<StoredHashLookup> GetExistingHash(IReadOnlyList<IDb> hashesDbs, AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
     {
         var candidates = new List<PathHashRelation.ReadOnly>();
         foreach (var hashesDb in hashesDbs)
@@ -122,17 +141,22 @@ internal class GameLocationsService : IGameLocationsService
             candidates.AddRange(PathHashRelation.FindByPath(hashesDb, gamePath.Path));
         }
 
-        if (candidates.Count == 0) return Optional<Hash>.None;
+        if (candidates.Count == 0) return StoredHashLookup.Missed(StoredHashMiss.NoRowForPath);
 
         var size = FileFingerprint.Of(file).Size;
-        var minimalHash = await GetMinimalHash(file, cancellationToken);
+        Optional<Hash> minimalHash = Optional<Hash>.None;
 
         var foundHash = Optional<Hash>.None;
+        var sawSameSize = false;
         foreach (var pathHashRelation in candidates)
         {
             var existingHashes = pathHashRelation.Hash;
             if (existingHashes.Size != size) continue;
-            if (existingHashes.MinimalHash != minimalHash) continue;
+            sawSameSize = true;
+
+            // The three blocks a minimal hash covers are the cheap proof that the stored row still describes this file.
+            if (!minimalHash.HasValue) minimalHash = await GetMinimalHash(file, cancellationToken);
+            if (existingHashes.MinimalHash != minimalHash.Value) continue;
 
             if (!foundHash.HasValue)
             {
@@ -140,10 +164,11 @@ internal class GameLocationsService : IGameLocationsService
                 continue;
             }
 
-            if (existingHashes.XxHash3 != foundHash) return Optional<Hash>.None;
+            if (existingHashes.XxHash3 != foundHash) return StoredHashLookup.Missed(StoredHashMiss.StoresDisagree);
         }
 
-        return foundHash;
+        if (foundHash.HasValue) return StoredHashLookup.Found(foundHash.Value);
+        return StoredHashLookup.Missed(sawSameSize ? StoredHashMiss.ContentDiffers : StoredHashMiss.SizeDiffers);
     }
 
     private static async ValueTask<Hash> GetMinimalHash(AbsolutePath file, CancellationToken cancellationToken)

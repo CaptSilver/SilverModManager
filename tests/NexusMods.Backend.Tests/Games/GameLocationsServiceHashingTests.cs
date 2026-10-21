@@ -80,6 +80,69 @@ public sealed class GameLocationsServiceHashingTests : IDisposable
         result.Should().Be(realHash);
     }
 
+    [Fact]
+    public async Task Lookup_NoRowForThePath_ReportsNoRowForPath()
+    {
+        var (file, _, minimalHash) = await WriteFixture();
+        var populated = await OpenStoreWithRow(minimalHash, Sentinel);
+
+        var lookup = await GameLocationsService.GetExistingHash([populated], file, new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput("data/other.bin")), CancellationToken.None);
+
+        lookup.Hash.HasValue.Should().BeFalse();
+        lookup.Miss.Should().Be(StoredHashMiss.NoRowForPath);
+    }
+
+    [Fact]
+    public async Task Lookup_RowOfAnotherSize_ReportsSizeDiffers()
+    {
+        var (file, _, minimalHash) = await WriteFixture();
+        var populated = await OpenStoreWithRow(minimalHash, Sentinel);
+        await file.WriteAllBytesAsync([..Content, 1]);
+
+        var lookup = await GameLocationsService.GetExistingHash([populated], file, new GamePath(LocationId.Game, RelativeFile), CancellationToken.None);
+
+        lookup.Hash.HasValue.Should().BeFalse();
+        lookup.Miss.Should().Be(StoredHashMiss.SizeDiffers);
+    }
+
+    [Fact]
+    public async Task Lookup_RowOfTheSameSizeButOtherContent_ReportsContentDiffers()
+    {
+        var (file, _, minimalHash) = await WriteFixture();
+        var populated = await OpenStoreWithRow(minimalHash, Sentinel);
+        await file.WriteAllBytesAsync(Content.Select(b => (byte)(b ^ 0xFF)).ToArray());
+
+        var lookup = await GameLocationsService.GetExistingHash([populated], file, new GamePath(LocationId.Game, RelativeFile), CancellationToken.None);
+
+        lookup.Hash.HasValue.Should().BeFalse();
+        lookup.Miss.Should().Be(StoredHashMiss.ContentDiffers);
+    }
+
+    [Fact]
+    public async Task Lookup_StoresDisagreeing_ReportsStoresDisagree()
+    {
+        var (file, _, minimalHash) = await WriteFixture();
+        var first = await OpenStoreWithRow(minimalHash, Sentinel);
+        var second = await OpenStoreWithRow(minimalHash, OtherSentinel);
+
+        var lookup = await GameLocationsService.GetExistingHash([first, second], file, new GamePath(LocationId.Game, RelativeFile), CancellationToken.None);
+
+        lookup.Hash.HasValue.Should().BeFalse();
+        lookup.Miss.Should().Be(StoredHashMiss.StoresDisagree);
+    }
+
+    [Fact]
+    public async Task HashFile_RowSpelledWithDifferentCase_StillMatches()
+    {
+        var (file, realHash, minimalHash) = await WriteFixture();
+        var populated = await OpenStoreWithRow(minimalHash, Sentinel);
+
+        var result = await CreateService(populated).HashFile(file, new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput("DATA/File.BIN")), CancellationToken.None);
+
+        result.Should().Be(Sentinel);
+        result.Should().NotBe(realHash);
+    }
+
     private async Task<(AbsolutePath File, Hash XxHash3, Hash MinimalHash)> WriteFixture()
     {
         var file = _temp.CreateFile().Path;
