@@ -20,4 +20,7 @@ public interface IFromSoftGame : IGame
     FromSoftGameLayout Layout => Definition.Layout;
 
     FromSoftSaveNames SaveNames => Definition.SaveNames;
+
+    /// <summary>What loads mods into the game.</summary>
+    IFromSoftModLoader Loader { get; }
 }

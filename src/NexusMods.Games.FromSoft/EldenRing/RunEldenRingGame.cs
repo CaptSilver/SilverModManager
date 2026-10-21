@@ -20,10 +20,10 @@ public class RunEldenRingGame(IServiceProvider provider, EldenRingGame game) : R
 {
     public override async ValueTask<LaunchSpec> GetLaunchSpec(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
-        if (!ModdedLoadout.IsModded(loadout)) return await base.GetLaunchSpec(loadout, cancellationToken);
+        if (!game.Loader.IsModded(loadout)) return await base.GetLaunchSpec(loadout, cancellationToken);
 
         // The loadout is checked, not the disk: a dry run resolves the command before anything is applied.
-        if (!ModdedLoadout.HasHost(loadout))
+        if (!game.Loader.HasHost(loadout))
             throw new InvalidOperationException($"Loadout '{loadout.Name}' has mods but no me3, so there is nothing to load them with. Install the me3 Linux release into it.");
 
         var bwrap = provider.GetRequiredService<IExecutableLocator>().Find(OverlayCommand.Program)
@@ -54,7 +54,7 @@ public class RunEldenRingGame(IServiceProvider provider, EldenRingGame game) : R
     /// </remarks>
     public override async Task Execute(Loadout.ReadOnly loadout, CancellationToken cancellationToken, string[]? commandLineArgs)
     {
-        if (!ModdedLoadout.IsModded(loadout))
+        if (!game.Loader.IsModded(loadout))
         {
             await base.Execute(loadout, cancellationToken, commandLineArgs);
             return;

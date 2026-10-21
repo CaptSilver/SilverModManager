@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Library;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Installers;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Games;
@@ -37,8 +37,9 @@ public sealed class Me3HostProvisioner(IServiceProvider provider, ILogger<Me3Hos
             var connection = provider.GetRequiredService<IConnection>();
             var loadout = Loadout.Load(connection.Db, loadoutId);
             if (!loadout.IsValid()) throw new InvalidOperationException($"The loadout {loadoutId} no longer exists.");
-            if (loadout.InstallationInstance.Game is not EldenRingGame game)
-                throw new InvalidOperationException($"Loadout '{loadout.Name}' is not an Elden Ring loadout, so it has no use for me3.");
+            var game = loadout.InstallationInstance.GetGame();
+            if (!Me3Loader.Serves(game))
+                throw new InvalidOperationException($"Loadout '{loadout.Name}' is for {game.DisplayName}, which does not load mods with me3, so it has no use for it.");
             if (HasHostFile(loadout)) return;
 
             var archive = FindInLibrary(connection.Db) ?? await Fetch(connection.Db, cancellationToken);

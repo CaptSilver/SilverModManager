@@ -59,7 +59,7 @@ all but one of them.
         .WithSeverity(DiagnosticSeverity.Critical)
         .WithSummary("me3 is not installed for this loadout")
         .WithDetails("""
-This loadout has mods, and mods are loaded into Elden Ring by me3, but the loadout has no me3 files.
+This loadout has mods, and mods are loaded into {Game} by me3, but the loadout has no me3 files.
 
 The app installs me3 automatically when the first mod arrives: it downloads the Linux release
 (**{Release}** from the me3 releases on GitHub), checks it against the digest GitHub publishes and installs it into this
@@ -68,6 +68,7 @@ not work here.
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Release")
+            .AddValue<string>("Game")
         )
         .Finish();
 

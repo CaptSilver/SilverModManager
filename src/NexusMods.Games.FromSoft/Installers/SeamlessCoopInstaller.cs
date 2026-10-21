@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Me3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Library;
@@ -35,13 +36,13 @@ public class SeamlessCoopInstaller : ALibraryArchiveInstaller
     {
         var files = Me3InstallerFiles.Files(libraryArchive);
 
-        var dllSuffix = $"{Me3ModsLayout.SeamlessCoopFolder}/{Me3ModsLayout.ErscDll}";
+        var dllSuffix = $"{SeamlessCoop.Folder}/{SeamlessCoop.Dll}";
         var dll = files.FirstOrDefault(f => IsAtFolderBoundary(f.Path, dllSuffix));
         if (dll.Path is null)
             return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "The archive has no SeamlessCoop/ersc.dll, so it is not a Seamless Co-op release."));
 
-        var folder = dll.Path[..^Me3ModsLayout.ErscDll.Length];
-        var settingsPath = folder + Me3ModsLayout.ErscSettings;
+        var folder = dll.Path[..^SeamlessCoop.Dll.Length];
+        var settingsPath = folder + SeamlessCoop.Settings;
         if (!files.Any(f => f.Path.Equals(settingsPath, StringComparison.OrdinalIgnoreCase)))
             return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "The archive has SeamlessCoop/ersc.dll but no ersc_settings.ini beside it, so it is not a Seamless Co-op release."));
 
@@ -49,13 +50,13 @@ public class SeamlessCoopInstaller : ALibraryArchiveInstaller
         {
             if (!file.Path.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
             {
-                if (file.Path.EndsWith(Me3ModsLayout.ErscLauncher, StringComparison.OrdinalIgnoreCase))
+                if (file.Path.EndsWith(SeamlessCoop.Launcher, StringComparison.OrdinalIgnoreCase))
                     _logger.LogDebug("Not installing {Launcher}: me3 injects the Seamless Co-op DLL itself", file.Path);
                 continue;
             }
 
             var inFolder = file.Path[folder.Length..];
-            Me3InstallerFiles.AddFile(tx, loadout, loadoutGroup, file, Me3ModsLayout.OverlayPath($"{Me3ModsLayout.SeamlessCoopFolder}/{inFolder}"), inFolder);
+            Me3InstallerFiles.AddFile(tx, loadout, loadoutGroup, file, Me3ModsLayout.OverlayPath($"{SeamlessCoop.Folder}/{inFolder}"), inFolder);
         }
 
         return ValueTask.FromResult<InstallerResult>(new Success());

@@ -18,14 +18,6 @@ public static class Me3ModsLayout
     /// <summary>The generated profile, at the root of the mods folder.</summary>
     public const string ProfileFileName = "silver.me3";
 
-    public const string SeamlessCoopFolder = "SeamlessCoop";
-    public const string ErscDll = "ersc.dll";
-    public const string ErscSettings = "ersc_settings.ini";
-    public const string ErscLauncher = "ersc_launcher.exe";
-
-    /// <summary>The Seamless Co-op DLL inside the mods folder, which is where the installer puts it.</summary>
-    public static string ErscDllInMods => OverlayPath($"{SeamlessCoopFolder}/{ErscDll}");
-
     /// <summary>The path inside the mods folder of a file that appears at <paramref name="gameRelativePath"/> in the overlay.</summary>
     public static string OverlayPath(string gameRelativePath) => $"{OverlayFolder}/{gameRelativePath}";
 

@@ -44,7 +44,13 @@ public abstract class AFromSoftGame<TSelf> : IFromSoftGame
     public ISortOrderManager SortOrderManager => _sortOrderManager.Value;
     public IDiagnosticEmitter[] DiagnosticEmitters { get; }
 
-    protected AFromSoftGame(IServiceProvider provider, FromSoftGameDefinition definition)
+    public IFromSoftModLoader Loader { get; }
+
+    /// <param name="loader">
+    /// Builds the game's mod loader. It is called once the rest of the base is set, because a subclass field
+    /// initializer cannot see <paramref name="provider"/> and the installers need the loader before the constructor ends.
+    /// </param>
+    protected AFromSoftGame(IServiceProvider provider, FromSoftGameDefinition definition, Func<IFromSoftGame, IFromSoftModLoader> loader)
     {
         Provider = provider;
         Definition = definition;
@@ -71,20 +77,18 @@ public abstract class AFromSoftGame<TSelf> : IFromSoftGame
             ..provider.GetServices<IFromSoftDiagnosticEmitter>(),
         ];
 
+        Loader = loader(this);
         LibraryItemInstallers = CreateInstallers(provider);
     }
 
     protected abstract ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider);
 
-    /// <summary>Called last in the constructor, once <see cref="Definition"/> and everything else is set.</summary>
+    /// <summary>Called last in the constructor, once <see cref="Definition"/>, <see cref="Loader"/> and everything else is set.</summary>
     protected abstract ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider);
-
-    /// <summary>The locations the game has besides <see cref="LocationId.Game"/>.</summary>
-    protected abstract IEnumerable<KeyValuePair<LocationId, AbsolutePath>> AdditionalLocations(FromSoftSettings settings, IFileSystem hostFileSystem, string installationFolder);
 
     /// <remarks>
     /// <see cref="LocationId.Game"/> is the Steam install folder, not the game's subfolder, because the depot
-    /// manifests spell their paths relative to the install folder. The additional locations are on the host whichever
+    /// manifests spell their paths relative to the install folder. The loader's locations are on the host whichever
     /// file system is passed in, which for a Proton game is the game's view of the machine and maps nothing of the host.
     /// Saves stay unmapped: removing a loadout or un-managing the game must never be able to delete them.
     /// </remarks>
@@ -94,11 +98,7 @@ public abstract class AFromSoftGame<TSelf> : IFromSoftGame
         var hostFileSystem = Provider.GetRequiredService<IFileSystem>();
         var installationFolder = FromSoftPaths.InstallationFolderName(Definition.Layout, gameLocatorResult);
 
-        var locations = new Dictionary<LocationId, AbsolutePath> { { LocationId.Game, gameLocatorResult.Path } };
-        foreach (var (id, path) in AdditionalLocations(settings, hostFileSystem, installationFolder))
-            locations.Add(id, path);
-
-        return locations.ToImmutableDictionary();
+        return Loader.Locations(settings, hostFileSystem, installationFolder).Add(LocationId.Game, gameLocatorResult.Path);
     }
 
     /// <remarks>

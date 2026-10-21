@@ -117,7 +117,7 @@ public sealed class OverlayLaunchGate(
                 targetPath.Parent.CreateDirectory();
                 var target = targetPath.GetFullPath();
 
-                if (relative.Equals($"{Me3ModsLayout.SeamlessCoopFolder}/{Me3ModsLayout.ErscSettings}", StringComparison.OrdinalIgnoreCase))
+                if (relative.Equals($"{SeamlessCoop.Folder}/{SeamlessCoop.Settings}", StringComparison.OrdinalIgnoreCase))
                 {
                     // The password goes in only here: the deployed file and the file store keep the template. The file
                     // is created private rather than narrowed afterwards, so the password is never readable by others.
@@ -150,7 +150,8 @@ public sealed class OverlayLaunchGate(
     private bool IsModdedElden(LaunchContext context)
     {
         if (context.Installation.Game.GameId != EldenRingGame.GameId) return false;
-        return ModdedLoadout.IsModded(Loadout.Load(connection.Db, context.LoadoutId));
+        var loadout = Loadout.Load(connection.Db, context.LoadoutId);
+        return loadout.InstallationInstance.Game is IFromSoftGame game && game.Loader.IsModded(loadout);
     }
 
     private OverlayLayout LayoutOf(LaunchContext context)

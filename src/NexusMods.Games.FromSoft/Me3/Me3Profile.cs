@@ -1,5 +1,4 @@
 using System.Text;
-using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Paths;
 
 namespace NexusMods.Games.FromSoft.Me3;
@@ -19,26 +18,27 @@ public static class Me3Profile
     public const string PackageTableKey = "packages";
 
     /// <summary>
-    /// The top-level key that points a modded session at <see cref="EldenRingPaths.ModdedSave"/>. Neither the key nor
-    /// its placement after <c>profileVersion</c> has been checked against me3 0.13; nothing else writes it.
+    /// The top-level key that points a modded session at <see cref="Me3ProfileSpec.ModdedSave"/>. Neither the key nor
+    /// its placement after <c>profileVersion</c> has been checked against me3 0.13; nothing else writes it. The key is
+    /// spelled as me3's profile v1 reads it.
     /// </summary>
     public const string SaveFileKey = "savefile";
 
     /// <summary>
     /// Renders the profile.
     /// </summary>
+    /// <param name="spec">The game's name for me3, its modded save and the natives its overlay can hold.</param>
     /// <param name="relativePaths">The paths, relative to the mods folder, of the files the loadout deploys there.</param>
     /// <param name="modsFolder">The mods folder; package and native paths are absolute inside it.</param>
     /// <param name="gameFolder">
-    /// The game's <c>Game</c> folder. The Seamless Co-op DLL is named inside it, a path that exists only inside the
-    /// session's overlay.
+    /// The game's folder. An overlay native is named inside it, a path that exists only inside the session's overlay.
     /// </param>
     /// <exception cref="InvalidOperationException">A native mod's folder has no single DLL to load.</exception>
-    public static string Render(IEnumerable<string> relativePaths, AbsolutePath modsFolder, AbsolutePath gameFolder)
+    public static string Render(Me3ProfileSpec spec, IEnumerable<string> relativePaths, AbsolutePath modsFolder, AbsolutePath gameFolder)
     {
         var packages = new SortedSet<string>(StringComparer.Ordinal);
         var nativeFiles = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
-        var hasSeamlessCoop = false;
+        var overlayNatives = new HashSet<Me3OverlayNative>();
 
         foreach (var path in relativePaths)
         {
@@ -48,7 +48,10 @@ public static class Me3Profile
             var (top, rest) = (parts[0], parts[1]);
             if (top.Equals(Me3ModsLayout.OverlayFolder, StringComparison.OrdinalIgnoreCase))
             {
-                hasSeamlessCoop |= path.Equals(Me3ModsLayout.ErscDllInMods, StringComparison.OrdinalIgnoreCase);
+                foreach (var native in spec.OverlayNatives)
+                {
+                    if (path.Equals(native.TriggerPathInMods, StringComparison.OrdinalIgnoreCase)) overlayNatives.Add(native);
+                }
             }
             else if (top.Equals(Me3ModsLayout.NativesFolder, StringComparison.OrdinalIgnoreCase))
             {
@@ -64,7 +67,8 @@ public static class Me3Profile
         }
 
         var nativePaths = new List<string>();
-        if (hasSeamlessCoop) nativePaths.Add((gameFolder / Me3ModsLayout.SeamlessCoopFolder / Me3ModsLayout.ErscDll).ToString());
+        foreach (var native in spec.OverlayNatives.Where(overlayNatives.Contains))
+            nativePaths.Add((gameFolder / native.GameRelativeDllPath).ToString());
         foreach (var (id, files) in nativeFiles)
         {
             var dll = Me3NativeDll.Find(files, id)
@@ -75,11 +79,12 @@ public static class Me3Profile
         var modded = packages.Count > 0 || nativePaths.Count > 0;
         var text = new StringBuilder();
         text.Append("profileVersion = \"v1\"\n");
-        if (modded && !hasSeamlessCoop) text.Append($"{SaveFileKey} = \"{EldenRingPaths.ModdedSave}\"\n");
-        text.Append("\n[[supports]]\ngame = \"eldenring\"\n");
+        if (modded && spec.ModdedSave is not null && !overlayNatives.Any(native => native.OwnsSave))
+            text.Append($"{SaveFileKey} = \"{spec.ModdedSave}\"\n");
+        text.Append($"\n[[supports]]\ngame = \"{spec.GameName}\"\n");
 
-        foreach (var native in nativePaths)
-            text.Append($"\n[[natives]]\npath = {TomlString(native)}\n");
+        foreach (var nativePath in nativePaths)
+            text.Append($"\n[[natives]]\npath = {TomlString(nativePath)}\n");
 
         foreach (var id in packages)
             text.Append($"\n[[{PackageTableKey}]]\nid = {BasicString(id)}\npath = {TomlString($"{modsFolder}/{id}/")}\n");

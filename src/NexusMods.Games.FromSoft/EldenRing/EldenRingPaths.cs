@@ -1,3 +1,4 @@
+using NexusMods.Games.FromSoft.Me3;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 
@@ -52,11 +53,11 @@ public static class EldenRingPaths
 
     /// <summary>The folder mod packages and natives of one installation deploy to.</summary>
     public static AbsolutePath Me3Mods(FromSoftSettings settings, IFileSystem fileSystem, string storeIdentifier)
-        => FromSoftPaths.InstallationRoot(Layout, settings, fileSystem, storeIdentifier) / "mods";
+        => Me3Loader.ModsFolder(Layout, settings, fileSystem, storeIdentifier);
 
     /// <summary>The folder the mod loader of one installation deploys to.</summary>
     public static AbsolutePath Me3Host(FromSoftSettings settings, IFileSystem fileSystem, string storeIdentifier)
-        => FromSoftPaths.InstallationRoot(Layout, settings, fileSystem, storeIdentifier) / "me3";
+        => Me3Loader.HostFolder(Layout, settings, fileSystem, storeIdentifier);
 
     /// <summary>
     /// The folder that stands in for the user's home for me3: its cache, profiles, logs and data are kept here

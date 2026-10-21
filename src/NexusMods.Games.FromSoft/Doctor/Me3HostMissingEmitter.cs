@@ -4,7 +4,6 @@ using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.FromSoft.Diagnostics;
-using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 
@@ -28,7 +27,7 @@ public class Me3HostMissingEmitter : IFromSoftDiagnosticEmitter
     {
         await Task.Yield();
 
-        if (ModdedLoadout.IsModded(loadout) && !ModdedLoadout.HasHost(loadout))
-            yield return FromSoftDiagnostics.CreateMe3HostMissing(Release) with { Actions = [InstallAction()] };
+        if (loadout.InstallationInstance.Game is IFromSoftGame game && game.Loader.IsModded(loadout) && !game.Loader.HasHost(loadout))
+            yield return FromSoftDiagnostics.CreateMe3HostMissing(Release, game.DisplayName) with { Actions = [InstallAction()] };
     }
 }

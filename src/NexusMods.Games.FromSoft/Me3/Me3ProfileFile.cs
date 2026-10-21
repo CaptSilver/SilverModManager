@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -12,7 +11,7 @@ namespace NexusMods.Games.FromSoft.Me3;
 /// The <c>.me3</c> profile as a file the synchronizer writes on every apply. The loadout is the profile: there is
 /// no copy to merge with, so an edit made to the file by hand is not read back, and the next apply replaces it.
 /// </summary>
-public class Me3ProfileFile(ILogger<Me3ProfileFile> logger) : IIntrinsicFile
+public class Me3ProfileFile(ILogger<Me3ProfileFile> logger, Me3Loader loader) : IIntrinsicFile
 {
     public GamePath Path { get; } = new(LocationId.Me3Mods, Me3ModsLayout.ProfileFileName);
 
@@ -56,6 +55,6 @@ public class Me3ProfileFile(ILogger<Me3ProfileFile> logger) : IIntrinsicFile
             .Where(entry => entry.Key.LocationId == LocationId.Me3Mods && entry.Key != Path && entry.Value.HaveLoadout)
             .Select(entry => entry.Key.Path.Path);
 
-        return Me3Profile.Render(files, installation.Locations[LocationId.Me3Mods].Path, EldenRingPaths.GameFolder(installation));
+        return Me3Profile.Render(loader.ProfileSpec, files, installation.Locations[LocationId.Me3Mods].Path, FromSoftPaths.GameFolder(((IFromSoftGame)installation.Game).Layout, installation));
     }
 }

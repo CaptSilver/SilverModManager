@@ -208,7 +208,11 @@ public sealed class VanillaSaveGate(
 
     private bool IsElden(LaunchContext context) => context.Installation.Game.GameId == EldenRingGame.GameId;
 
-    private bool IsModded(LaunchContext context) => ModdedLoadout.IsModded(Loadout.Load(connection.Db, context.LoadoutId));
+    private bool IsModded(LaunchContext context)
+    {
+        var loadout = Loadout.Load(connection.Db, context.LoadoutId);
+        return loadout.InstallationInstance.Game is IFromSoftGame game && game.Loader.IsModded(loadout);
+    }
 
     private SaveLedger LedgerOf(LaunchContext context)
         => SaveLedger.For(settings.Get<FromSoftSettings>(), fileSystem, context.Installation);

@@ -93,16 +93,16 @@ public class SeamlessCoopInstallerTests(ITestOutputHelper outputHelper) : AElden
         var members = ErscRelease.Members(path);
 
         members.Should().Contain(ErscRelease.Dll).And.Contain(ErscRelease.Settings).And.Contain(ErscRelease.Launcher);
-        ErscRelease.Dll.Should().Be($"{Me3ModsLayout.SeamlessCoopFolder}/{Me3ModsLayout.ErscDll}");
-        ErscRelease.Settings.Should().Be($"{Me3ModsLayout.SeamlessCoopFolder}/{Me3ModsLayout.ErscSettings}");
-        ErscRelease.Launcher.Should().Be(Me3ModsLayout.ErscLauncher);
+        ErscRelease.Dll.Should().Be($"{SeamlessCoop.Folder}/{SeamlessCoop.Dll}");
+        ErscRelease.Settings.Should().Be($"{SeamlessCoop.Folder}/{SeamlessCoop.Settings}");
+        ErscRelease.Launcher.Should().Be(SeamlessCoop.Launcher);
     }
 
     [Fact]
     public void TheProfileNamesTheNativeAtTheOverlayPathOfTheDllTheInstallerPlaces()
     {
         var gameFolder = new InMemoryFileSystem().FromUnsanitizedFullPath("/steam/ELDEN RING/Game");
-        var profile = Me3Profile.Render([Me3ModsLayout.OverlayPath(ErscRelease.Dll)], gameFolder, gameFolder);
+        var profile = Me3Profile.Render(new Me3ProfileSpec("eldenring", EldenRingPaths.ModdedSave, [SeamlessCoop.Native]), [Me3ModsLayout.OverlayPath(ErscRelease.Dll)], gameFolder, gameFolder);
 
         profile.Should().Contain($"path = '{gameFolder / ErscRelease.Dll}'");
     }

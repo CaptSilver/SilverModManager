@@ -3,10 +3,9 @@ using JetBrains.Annotations;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.FromSoft.Installers;
+using NexusMods.Games.FromSoft.Me3;
 using NexusMods.Games.FromSoft.Saves;
-using NexusMods.Paths;
 using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
 
 namespace NexusMods.Games.FromSoft.EldenRing;
 
@@ -32,7 +31,9 @@ public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGa
         SaveNames = new FromSoftSaveNames(EldenRingPaths.VanillaSave, EldenRingPaths.ModdedSave, EldenRingPaths.SeamlessCoopSave),
     };
 
-    public EldenRingGame(IServiceProvider provider) : base(provider, Definition) { }
+    public static readonly Me3LoaderOptions Me3Options = new("eldenring", [SeamlessCoop.Native]);
+
+    public EldenRingGame(IServiceProvider provider) : base(provider, Definition, _ => new Me3Loader(provider, Me3Options, Definition)) { }
 
     protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new EldenRingSynchronizer(provider, this);
 
@@ -40,15 +41,8 @@ public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGa
     protected override ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider) =>
     [
         // First, because the release also holds a lone DLL that the native installer would take for a mod.
-        new Me3HostInstaller(provider),
+        Loader.HostInstaller(),
         new SeamlessCoopInstaller(provider),
-        new Me3PackageInstaller(provider),
-        new Me3NativeInstaller(provider),
-    ];
-
-    protected override IEnumerable<KeyValuePair<LocationId, AbsolutePath>> AdditionalLocations(FromSoftSettings settings, IFileSystem hostFileSystem, string installationFolder) =>
-    [
-        new(LocationId.Me3Mods, EldenRingPaths.Me3Mods(settings, hostFileSystem, installationFolder)),
-        new(LocationId.Me3Host, EldenRingPaths.Me3Host(settings, hostFileSystem, installationFolder)),
+        ..Loader.ModInstallers(),
     ];
 }

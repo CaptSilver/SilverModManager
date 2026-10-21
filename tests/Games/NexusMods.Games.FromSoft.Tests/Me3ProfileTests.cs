@@ -14,7 +14,9 @@ public class Me3ProfileTests
     private const string ErscDll = "overlay/SeamlessCoop/ersc.dll";
     private const string ErscIni = "overlay/SeamlessCoop/ersc_settings.ini";
 
-    private static string Render(params string[] files) => Me3Profile.Render(files, Mods(), GameFolder());
+    private static readonly Me3ProfileSpec EldenRingSpec = new("eldenring", EldenRingPaths.ModdedSave, [SeamlessCoop.Native]);
+
+    private static string Render(params string[] files) => Me3Profile.Render(EldenRingSpec, files, Mods(), GameFolder());
 
     [Fact]
     public void TheHeaderNamesTheProfileVersionAndTheGame()
@@ -124,7 +126,7 @@ public class Me3ProfileTests
     [Fact]
     public void APathWithAnApostropheIsWrittenAsAnEscapedBasicString()
     {
-        var text = Me3Profile.Render(["natives/N/n.dll", ErscDll], Mods("/data/O'Brien/mods"), GameFolder("/steam/O'Brien/Game"));
+        var text = Me3Profile.Render(EldenRingSpec, ["natives/N/n.dll", ErscDll], Mods("/data/O'Brien/mods"), GameFolder("/steam/O'Brien/Game"));
 
         text.Should().Contain("path = \"/steam/O'Brien/Game/SeamlessCoop/ersc.dll\"");
         Parse(text).NativePaths.Should().Equal("/steam/O'Brien/Game/SeamlessCoop/ersc.dll", "/data/O'Brien/mods/natives/N/n.dll");
@@ -188,6 +190,28 @@ public class Me3ProfileTests
         var text = Render("a/parts/a.dcx");
 
         text.Should().Contain($"[[{Me3Profile.PackageTableKey}]]");
+    }
+
+    [Fact]
+    public void AnotherGamesSpecNamesItsGameAndSaveAndNeverTheSeamlessCoopDll()
+    {
+        var spec = new Me3ProfileSpec("testsouls", "TS0000_silver.sl2", []);
+
+        var text = Me3Profile.Render(spec, ["natives/N/n.dll", ErscDll], Mods(), GameFolder());
+
+        text.Should().Contain("[[supports]]\ngame = \"testsouls\"\n");
+        text.Should().Contain("savefile = \"TS0000_silver.sl2\"\n");
+        text.Should().NotContain("ersc.dll");
+    }
+
+    [Fact]
+    public void ASpecWithoutAModdedSaveWritesNoSaveFileLineEvenWhenModded()
+    {
+        var spec = new Me3ProfileSpec("testsouls", null, []);
+
+        var text = Me3Profile.Render(spec, ["a/parts/a.dcx", "natives/N/n.dll"], Mods(), GameFolder());
+
+        text.Should().NotContain(Me3Profile.SaveFileKey);
     }
 
     private sealed record Parsed(string[] NativePaths, (string Id, string Path)[] Packages);
