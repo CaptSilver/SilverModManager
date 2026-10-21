@@ -28,7 +28,7 @@ namespace NexusMods.Games.CreationEngine.Abstractions;
 /// Everything built from a virtual member is lazy: a derived constructor body has not run when this
 /// constructor does, so reading an overridable member here would see unset state.
 /// </remarks>
-public abstract class ABethesdaGame<TSelf> : IBethesdaGame
+public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFiles
     where TSelf : ABethesdaGame<TSelf>, IGameData<TSelf>
 {
     private readonly Lazy<IStreamFactory> _icon;
@@ -65,6 +65,12 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame
     public IDiagnosticEmitter[] DiagnosticEmitters => _emitters.Value;
     public ILoadoutSynchronizer Synchronizer => _synchronizer.Value;
     public ISortOrderManager SortOrderManager => _sortOrderManager.Value;
+
+    /// <summary>
+    /// Files only this title's install has, for titles that launch the same executable as another one. Most
+    /// titles name none.
+    /// </summary>
+    public virtual IReadOnlyList<RelativePath> IdentifyingFiles => [];
 
     /// <summary>The executable, relative to the game folder.</summary>
     protected abstract RelativePath PrimaryExe { get; }

@@ -18,6 +18,10 @@ public class Enderal(IServiceProvider provider) : ACreationEngineGame<Enderal>(p
         SteamAppIds = [933480u],
     };
 
+    // Both Enderals launch Skyrim's executable and ship Skyrim.esm, so only these two tell an Enderal folder apart
+    // (gameenderal.cpp getLauncherName and findSteamGame, gameenderalse.cpp's findSteamGame).
+    public override IReadOnlyList<RelativePath> IdentifyingFiles => ["Enderal Launcher.exe", "Data/Enderal - Forgotten Stories.esm"];
+
     protected override RelativePath PrimaryExe => "TESV.exe";
     protected override GameRelease PluginRelease => GameRelease.EnderalLE;
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");

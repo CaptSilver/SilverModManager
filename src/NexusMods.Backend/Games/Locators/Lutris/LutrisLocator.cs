@@ -242,40 +242,7 @@ internal class LutrisLocator : IGameLocator
         }
     }
 
-    /// <summary>
-    /// The path of the file a game launches, relative to its root. A Wine game with no store service is
-    /// recognised by this file's name, and every game's root is found by looking for it. It is asked for through
-    /// a probe installation because <see cref="IGameData.GetPrimaryFile"/> needs one; games only look at the
-    /// target OS and store there, so a Windows install under Lutris answers it.
-    /// </summary>
-    private RelativePath? PrimaryFile(IGameData game)
-    {
-        try
-        {
-            var probePath = _fileSystem.GetKnownPath(KnownPath.HomeDirectory);
-            var probe = new GameLocatorResult
-            {
-                Game = game,
-                Path = probePath,
-                Store = GameStore.Lutris,
-                StoreIdentifier = "",
-                LocatorIds = [],
-                Locator = this,
-                Platform = OSPlatform.Windows,
-            };
-            var installation = new GameInstallation(probe, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, probePath)));
-            var primaryFile = game.GetPrimaryFile(installation);
-            if (primaryFile.LocationId == LocationId.Game) return primaryFile.Path;
-
-            _logger.LogWarning("{Game} launches a file outside its game folder; Lutris games will not be matched to it by name", game.DisplayName);
-            return null;
-        }
-        catch (Exception e)
-        {
-            _logger.LogWarning(e, "Cannot tell which executable {Game} launches; Lutris games will not be matched to it by name", game.DisplayName);
-            return null;
-        }
-    }
+    private RelativePath? PrimaryFile(IGameData game) => PrimaryFileProbe.Find(game, _fileSystem, this, _logger);
 
     private static string FileName(string path) => path[(path.LastIndexOfAny(['/', '\\']) + 1)..];
 }

@@ -57,7 +57,8 @@ public static class ServiceExtensions
             .AddSingleton<IGameRegistry, GameRegistry>()
             .AddSingleton<IGameArtSource, SteamLibraryCacheArtSource>()
             .AddGameInstallMetadataModel()
-            .AddSingleton<IGameLocator, UserInstallLocator>();
+            .AddSingleton<IGameLocator, UserInstallLocator>()
+            .AddAddGameVerbs();
     }
 
     /// <summary>

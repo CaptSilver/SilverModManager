@@ -9,6 +9,7 @@
         <ProjectReference Include="..\..\src\NexusMods.App.Cli\NexusMods.App.Cli.csproj" />
         <ProjectReference Include="..\..\src\NexusMods.App\NexusMods.App.csproj" />
         <ProjectReference Include="..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
+        <ProjectReference Include="..\..\src\NexusMods.Games.CreationEngine\NexusMods.Games.CreationEngine.csproj" />
         <ProjectReference Include="..\..\src\NexusMods.SingleProcess\NexusMods.SingleProcess.csproj" />
         <ProjectReference Include="..\Games\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
         <ProjectReference Include="..\Networking\NexusMods.Networking.HttpDownloader.Tests\NexusMods.Networking.HttpDownloader.Tests.csproj" />
