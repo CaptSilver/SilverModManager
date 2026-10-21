@@ -31,6 +31,9 @@ namespace NexusMods.Games.FileHashes;
 internal sealed class FileHashesService : IFileHashesService, IDisposable, IHostedService
 {
     private const string DefaultLanguage = "en-US";
+
+    /// <summary>The name SQL addresses the downloaded or embedded database by: <c>MDB_HashRelation(DbName=>'hashes')</c>.</summary>
+    private const string HashesConnectionName = "hashes";
     
     private readonly ScopedAsyncLock _lock = new();
     private readonly FileHashesServiceSettings _settings;
@@ -58,6 +61,14 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
     private readonly LocalHashesStore _local;
 
+    /// <summary>
+    /// An empty store registered as "hashes" while no downloaded or embedded database is connected, so
+    /// SQL that names it still binds. Never <see cref="_currentDb"/>, never returned by <see cref="Current"/>
+    /// and never listed in <see cref="Databases"/>; <see cref="SetCurrent"/> disposes it once a real
+    /// database takes the name.
+    /// </summary>
+    private LocalHashesStore? _placeholder;
+
     private record ConnectedDb(IDb Db, Connection Connection, DatomStore Store, Backend Backend, DatabaseInfo DatabaseInfo);
 
     public FileHashesService(
@@ -82,6 +93,17 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
         // Opened here rather than in StartAsync so `Current` and `Local` work before the hosted service has run.
         _local = new LocalHashesStore(provider, _queryEngine, _settings, _fileSystem);
+
+        // Only when nothing is on disk: with a database there, opening it is what registers the name.
+        if (!ExistingDBs().Any()) EnsureHashesNameResolves();
+    }
+
+    private void EnsureHashesNameResolves()
+    {
+        if (_currentDb is not null || _placeholder is not null) return;
+
+        _logger.LogDebug("No game hashes database is connected, registering an empty one so queries over it still run");
+        _placeholder = LocalHashesStore.OpenEmptyPlaceholder(_provider, _queryEngine, HashesConnectionName);
     }
 
     private ConnectedDb OpenDb(DatabaseInfo databaseInfo)
@@ -99,7 +121,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             };
 
             var store = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), settings, backend);
-            var connection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), store, _provider, [], readOnlyMode: true, prefix: "hashes", queryEngine: _queryEngine);
+            var connection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), store, _provider, [], readOnlyMode: true, prefix: HashesConnectionName, queryEngine: _queryEngine);
             var connectedDb = new ConnectedDb(connection.Db, connection, store, backend, databaseInfo);
 
             _databases[databaseInfo.Path] = connectedDb;
@@ -114,15 +136,20 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
     /// <summary>
     /// Makes <paramref name="next"/> the database lookups read. The query engine resolves a name to
-    /// whichever connection it finds first and never replaces one, so the previous connection has to be
-    /// disposed, but only after the new one is registered: a moment with none would fail every query by
-    /// name. Its store and backend stay open until the service is disposed, so a database a caller
-    /// already holds stays readable.
+    /// whichever connection it finds first and never replaces one, so the previous connection, or the
+    /// placeholder when that is all there was, has to be disposed, but only after the new one is
+    /// registered: a moment with none would fail every query by name. The previous database's store and
+    /// backend stay open until the service is disposed, so a database a caller already holds stays readable.
     /// </summary>
     private void SetCurrent(ConnectedDb next)
     {
         var previous = _currentDb;
         _currentDb = next;
+
+        // The real connection is registered by now, so the name never stops resolving.
+        _placeholder?.Dispose();
+        _placeholder = null;
+
         if (previous is null || ReferenceEquals(previous, next)) return;
 
         previous.Connection.Dispose();
@@ -160,14 +187,31 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     {
         return GetVersionDefinitions(nexusModsGameId)
             .Select(v => VanityVersion.From(v.Name))
+            .Distinct()
             .ToList();
     }
 
+    /// <summary>
+    /// The versions of a game in every store, the downloaded database's first. Each definition stays bound
+    /// to the store it came from, since the entity ids it holds mean nothing in the other one.
+    /// </summary>
     private List<VersionDefinition.ReadOnly> GetVersionDefinitions(NexusModsGameId nexusModsGameId)
     {
-        return VersionDefinition.All(Current)
+        return DatabasesCentralFirst()
+            .SelectMany(db => VersionDefinition.All(db))
             .Where(v => v.GameId == nexusModsGameId)
             .ToList();
+    }
+
+    /// <summary>
+    /// The stores a lookup by version name reads: the downloaded or embedded database first, because its
+    /// names are the readable ones, then the local store, which names a version after the store's own build id.
+    /// </summary>
+    private IEnumerable<IDb> DatabasesCentralFirst()
+    {
+        var central = _currentDb;
+        if (central is not null) yield return central.Db;
+        yield return Local;
     }
 
     private bool ShouldCheckForUpdate()
@@ -183,6 +227,19 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     {
         using var _ = await _lock.LockAsync();
 
+        try
+        {
+            await ConnectLatestDatabase(forceUpdate, cancellationToken);
+        }
+        finally
+        {
+            // Every early return below that connects nothing leaves "hashes" unregistered.
+            EnsureHashesNameResolves();
+        }
+    }
+
+    private async Task ConnectLatestDatabase(bool forceUpdate, CancellationToken cancellationToken)
+    {
         var existingDatabases = ExistingDBs().ToArray();
         var shouldCheckForUpdate = !_settings.SkipUpdateCheck && (forceUpdate || existingDatabases.Length == 0 || ShouldCheckForUpdate());
 
@@ -409,9 +466,10 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
         if (gameStore == GameStore.GOG)
         {
-            HashSet<GogBuild.ReadOnly> gogBuilds = [];
+            // Entity ids only identify a row inside their own store, so rows are keyed by store as well.
+            Dictionary<(IConnection Store, EntityId Id), GogBuild.ReadOnly> gogBuilds = [];
             HashSet<ProductId> gogProducts = [];
-            Dictionary<EntityId, GogManifest.ReadOnly> gogManifests = [];
+            Dictionary<(IConnection Store, EntityId Id), GogManifest.ReadOnly> gogManifests = [];
             
             // So first we find all the valid build Ids, and then assume that everything else is a product Id
             foreach (var id in locatorIds)
@@ -421,9 +479,9 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
                 var gogId = BuildId.From(parsedId);
 
-                if (GogBuild.FindByBuildId(Current, gogId).TryGetFirst(out var firstBuild))
+                if (TryFindGogBuild(gogId, out var firstBuild))
                 {
-                    gogBuilds.Add(firstBuild);
+                    gogBuilds[(firstBuild.Db.Connection, firstBuild.Id)] = firstBuild;
                     continue;
                 }
                 
@@ -432,7 +490,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             }
             
             // Now we emit all the files from the build products, and then also from any secondary products
-            foreach (var build in gogBuilds)
+            foreach (var build in gogBuilds.Values)
             {
                 foreach (var depot in build.Depots)
                 {
@@ -444,7 +502,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                     if (!(depot.Languages.Count == 0 || depot.Languages.Contains(DefaultLanguage)))
                         continue;
 
-                    gogManifests[depot.Manifest.Id] = depot.Manifest;
+                    gogManifests[(depot.Manifest.Db.Connection, depot.Manifest.Id)] = depot.Manifest;
                 }
             }
 
@@ -472,7 +530,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 
                 var manifestId = ManifestId.From(parsedId);
 
-                if (!SteamManifest.FindByManifestId(Current, manifestId).TryGetFirst(out var firstManifest))
+                if (!TryFindSteamManifest(manifestId, out var firstManifest))
                     continue;
 
                 foreach (var file in firstManifest.Files)
@@ -493,7 +551,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             {
                 var egManifestId = ManifestHash.FromUnsanitized(manifestId.Value);
                 
-                if (!EpicGameStoreBuild.FindByManifestHash(Current, egManifestId).TryGetFirst(out var firstManifest))
+                if (!TryFindEpicBuild(egManifestId, out var firstManifest))
                 {
                     _logger.LogWarning("No EGS manifest found for {ManifestId}", egManifestId.Value);
                     continue;
@@ -515,6 +573,42 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         {
             throw new NotSupportedException("No way to get game files for: " + gameStore);
         }
+    }
+
+    // File lookups ask the local store first, per id: it is written from the install's own data, so the
+    // manifest it holds for an id describes the disk better than the downloaded one. An id only the
+    // downloaded database knows is still answered by it.
+    private bool TryFindSteamManifest(ManifestId manifestId, out SteamManifest.ReadOnly manifest)
+    {
+        foreach (var db in Databases)
+        {
+            if (SteamManifest.FindByManifestId(db, manifestId).TryGetFirst(out manifest)) return true;
+        }
+
+        manifest = default;
+        return false;
+    }
+
+    private bool TryFindGogBuild(BuildId buildId, out GogBuild.ReadOnly build)
+    {
+        foreach (var db in Databases)
+        {
+            if (GogBuild.FindByBuildId(db, buildId).TryGetFirst(out build)) return true;
+        }
+
+        build = default;
+        return false;
+    }
+
+    private bool TryFindEpicBuild(ManifestHash manifestHash, out EpicGameStoreBuild.ReadOnly build)
+    {
+        foreach (var db in Databases)
+        {
+            if (EpicGameStoreBuild.FindByManifestHash(db, manifestHash).TryGetFirst(out build)) return true;
+        }
+
+        build = default;
+        return false;
     }
 
     /// <inheritdoc />
@@ -543,6 +637,22 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         LocatorIdsWithGameStore locatorIdsWithGameStore,
         out VersionDefinition.ReadOnly versionDefinition)
     {
+        // The downloaded database names versions after releases, the local store after the store's
+        // build id, so the local one only answers when the downloaded one has nothing.
+        foreach (var db in DatabasesCentralFirst())
+        {
+            if (TryGetGameVersionDefinition(db, locatorIdsWithGameStore, out versionDefinition)) return true;
+        }
+
+        versionDefinition = default;
+        return false;
+    }
+
+    private bool TryGetGameVersionDefinition(
+        IDb db,
+        LocatorIdsWithGameStore locatorIdsWithGameStore,
+        out VersionDefinition.ReadOnly versionDefinition)
+    {
         var (gameStore, locatorIds) = locatorIdsWithGameStore;
 
         versionDefinition = default(VersionDefinition.ReadOnly);
@@ -558,7 +668,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                     return false;
                 }
 
-                var hasBuild = GogBuild.FindByBuildId(Current, BuildId.From(parsedId)).TryGetFirst(out var gogBuild);
+                var hasBuild = GogBuild.FindByBuildId(db, BuildId.From(parsedId)).TryGetFirst(out var gogBuild);
                 if (hasBuild) gogBuilds.Add(gogBuild);
             }
 
@@ -568,7 +678,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 return false;
             }
 
-            var hasVersionDefinition = VersionDefinition.All(Current)
+            var hasVersionDefinition = VersionDefinition.All(db)
                 .Select(version =>
                 {
                     var matchingIdCount = gogBuilds.Count(g => version.GogBuildsIds.Contains(g));
@@ -597,7 +707,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                     return false;
                 }
 
-                var hasManifest = SteamManifest.FindByManifestId(Current, ManifestId.From(parsedId)).TryGetFirst(out var steamManifest);
+                var hasManifest = SteamManifest.FindByManifestId(db, ManifestId.From(parsedId)).TryGetFirst(out var steamManifest);
                 if (hasManifest) steamManifests.Add(steamManifest);
             }
 
@@ -607,7 +717,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 return false;
             }
             
-            var wasFound = VersionDefinition.All(Current)
+            var wasFound = VersionDefinition.All(db)
                 .Select(version =>
                 {
                     var matchingIdCount = steamManifests.Count(g => version.SteamManifestsIds.Contains(g));
@@ -626,7 +736,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         }
         else if (gameStore == GameStore.EGS)
         {
-            var versionsByManifestHash = VersionDefinition.All(Current)
+            var versionsByManifestHash = VersionDefinition.All(db)
                 .SelectMany(version =>
                     {
                         if (VersionDefinition.EpicGameStoreBuildsIds.IsIn(version)) 
@@ -660,14 +770,16 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     /// <inheritdoc />
     public bool TryGetLocatorIdsForVanityVersion(GameStore gameStore, VanityVersion version, out LocatorId[] commonIds)
     {
-        if (!VersionDefinition.FindByName(Current, version.Value).TryGetFirst(out var versionDef))
+        foreach (var db in DatabasesCentralFirst())
         {
-            commonIds = [];
-            return false;
+            if (!VersionDefinition.FindByName(db, version.Value).TryGetFirst(out var versionDef)) continue;
+
+            commonIds = GetLocatorIdsForVersionDefinition(gameStore, versionDef);
+            return true;
         }
 
-        commonIds = GetLocatorIdsForVersionDefinition(gameStore, versionDef);
-        return true;
+        commonIds = [];
+        return false;
     }
 
     public LocatorId[] GetLocatorIdsForVersionDefinition(GameStore gameStore, VersionDefinition.ReadOnly versionDefinition)
@@ -719,6 +831,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         var allDatabases = _databases.Values.Concat(_supersededDatabases).ToArray();
         foreach (var database in allDatabases) database.Store.Dispose();
         foreach (var database in allDatabases) database.Backend.Dispose();
+        _placeholder?.Dispose();
         _local.Dispose();
     }
 

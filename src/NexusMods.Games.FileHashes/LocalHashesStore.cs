@@ -9,8 +9,10 @@ using NexusMods.Paths;
 namespace NexusMods.Games.FileHashes;
 
 /// <summary>
-/// The writable store of rows this app builds from the game's own install data. Unlike the downloaded
-/// databases it is never replaced, and the query engine knows it as <see cref="ConnectionName"/>.
+/// A writable MnemonicDB store registered with the query engine under a name. Its main use is the
+/// store of rows this app builds from the game's own install data: unlike the downloaded databases it
+/// is never replaced, and the query engine knows it as <see cref="ConnectionName"/>. The same type
+/// backs <see cref="OpenEmptyPlaceholder"/>.
 /// </summary>
 internal sealed class LocalHashesStore : IDisposable
 {
@@ -23,22 +25,29 @@ internal sealed class LocalHashesStore : IDisposable
     private readonly DatomStore _store;
 
     public LocalHashesStore(IServiceProvider provider, IQueryEngine queryEngine, FileHashesServiceSettings settings, IFileSystem fileSystem)
+        : this(provider, queryEngine, ConnectionName, StoreSettings(settings, fileSystem))
     {
-        // The downloaded databases open read-only, but this one gets written to, so it needs the default backend.
-        _backend = new Backend();
+    }
 
-        var storeSettings = DatomStoreSettings.InMemory;
-        if (!settings.UseInMemoryLocalBaseline)
-        {
-            var path = settings.LocalBaselineLocation.ToPath(fileSystem);
-            path.CreateDirectory();
-            storeSettings = new DatomStoreSettings { Path = path };
-        }
+    /// <summary>
+    /// An empty in-memory store registered as <paramref name="name"/>, nothing ever written to it. SQL
+    /// that names a store the query engine does not know fails to bind, which would take every query
+    /// down with it while no downloaded database is connected. The store has to open writable because
+    /// opening a fresh store read-only skips the migration that creates the attribute schema, and a
+    /// table function over an unknown attribute fails as well.
+    /// </summary>
+    public static LocalHashesStore OpenEmptyPlaceholder(IServiceProvider provider, IQueryEngine queryEngine, string name)
+        => new(provider, queryEngine, name, DatomStoreSettings.InMemory);
+
+    private LocalHashesStore(IServiceProvider provider, IQueryEngine queryEngine, string name, DatomStoreSettings storeSettings)
+    {
+        // The downloaded databases open read-only. These open writable, the placeholder included, so they need the default backend.
+        _backend = new Backend();
 
         try
         {
             _store = new DatomStore(provider.GetRequiredService<ILogger<DatomStore>>(), storeSettings, _backend);
-            Connection = new Connection(provider.GetRequiredService<ILogger<Connection>>(), _store, provider, [], readOnlyMode: false, prefix: ConnectionName, queryEngine: queryEngine);
+            Connection = new Connection(provider.GetRequiredService<ILogger<Connection>>(), _store, provider, [], readOnlyMode: false, prefix: name, queryEngine: queryEngine);
         }
         catch
         {
@@ -46,6 +55,15 @@ internal sealed class LocalHashesStore : IDisposable
             _backend.Dispose();
             throw;
         }
+    }
+
+    private static DatomStoreSettings StoreSettings(FileHashesServiceSettings settings, IFileSystem fileSystem)
+    {
+        if (settings.UseInMemoryLocalBaseline) return DatomStoreSettings.InMemory;
+
+        var path = settings.LocalBaselineLocation.ToPath(fileSystem);
+        path.CreateDirectory();
+        return new DatomStoreSettings { Path = path };
     }
 
     public IConnection Connection { get; }

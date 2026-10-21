@@ -42,27 +42,27 @@ SELECT install.Store::file_hashes.Stores Store, loadout.id Loadout, unnest(locat
 FROM MDB_LOADOUT(Db=>db) loadout
          LEFT JOIN MDB_GAMEINSTALLMETADATA(Db=>db) install on loadout.Installation = install.id;  
     
--- gets all the paths and hashes of game files for steam loadouts
-CREATE OR REPLACE MACRO file_hashes.steam_loadout_files(db) AS TABLE
+-- gets the ids of the path rows of game files for steam loadouts, as the hash store called `store` holds them
+CREATE OR REPLACE MACRO file_hashes.steam_loadout_files(db, store) AS TABLE
 SELECT files.Loadout, files.FileId PathId FROM
     (SELECT Loadout, ManifestId, unnest(Files) FileId
      FROM file_hashes.loadout_locatorids(db) locators
-              LEFT JOIN MDB_STEAMMANIFEST(DbName=>'hashes') manifest ON manifest.ManifestId = locators.LocatorID::UBIGINT
+              LEFT JOIN MDB_STEAMMANIFEST(DbName=>store) manifest ON manifest.ManifestId = locators.LocatorID::UBIGINT
      WHERE locators.Store = 'Steam') files;
 
 
--- gets all the paths and hashes of game files for gog loadouts
-CREATE OR REPLACE MACRO file_hashes.gog_loadout_files(db) AS TABLE
+-- gets the ids of the path rows of game files for gog loadouts, as the hash store called `store` holds them
+CREATE OR REPLACE MACRO file_hashes.gog_loadout_files(db, store) AS TABLE
 WITH 
   -- GOG locatorIds can contain a mix of BuildIds and DLC ProductIds
   locatorIds AS (SELECT Loadout, LocatorId::UBIGINT LocatorId
                  FROM file_hashes.loadout_locatorids(db) locators
                  WHERE locators.Store = 'GOG'), 
   builds AS (SELECT Loadout, BuildId, ProductId BuildProductId, unnest(build.Depots) DepotId
-             FROM MDB_GOGBUILD(DBName=>"hashes") build
+             FROM MDB_GOGBUILD(DBName=>store) build
              INNER JOIN locatorIds ON build.BuildId = locatorIds.LocatorId),
   validDepots AS (SELECT Id, ProductId, Manifest ManifestId 
-                  FROM MDB_GOGDEPOT(DBName=>"hashes")
+                  FROM MDB_GOGDEPOT(DBName=>store)
                   WHERE Languages == [] OR 'en-US' in Languages),
   buildDepots AS (SELECT builds.Loadout, builds.DepotId, validDepots.ProductId DepotProductId, builds.BuildProductId, validDepots.ManifestId
                   FROM builds
@@ -78,20 +78,24 @@ WITH
                 JOIN locatorIds dlcProducts ON dlcProducts.Loadout = buildDepots.Loadout AND buildDepots.DepotProductId = dlcProducts.LocatorId),
   files AS (SELECT Loadout, unnest(manifest.Files) File
             FROM manifests
-            LEFT JOIN MDB_GOGMANIFEST(DBName=>"hashes") manifest ON manifests.ManifestId = manifest.Id)
+            LEFT JOIN MDB_GOGMANIFEST(DBName=>store) manifest ON manifests.ManifestId = manifest.Id)
 SELECT files.Loadout, files.File PathId FROM files;
 
--- gets all the paths and hashes for game files in loadouts
-CREATE MACRO file_hashes.loadout_files(db) AS TABLE
+-- gets the paths and hashes of game files in loadouts from the one hash store called `store`. Row ids only mean
+-- something inside their own store, so each store resolves its rows to values here and only the values leave.
+CREATE OR REPLACE MACRO file_hashes.hash_store_loadout_files(db, store) AS TABLE
 WITH 
        relations AS (SELECT pathRel.Id, pathRel.Path, hashRel.xxHash3 Hash, hashRel.Size 
-                  FROM MDB_PathHashRelation(DBName=>"hashes") pathRel
-                  INNER JOIN MDB_hashrelation(DBName=>"hashes") hashRel ON pathRel.Hash = hashRel.Id),
-       files AS (SELECT Loadout, PathId FROM file_hashes.gog_loadout_files(db)
+                  FROM MDB_PathHashRelation(DBName=>store) pathRel
+                  INNER JOIN MDB_hashrelation(DBName=>store) hashRel ON pathRel.Hash = hashRel.Id),
+       files AS (SELECT Loadout, PathId FROM file_hashes.gog_loadout_files(db, store)
               UNION
-              SELECT Loadout, PathId FROM file_hashes.steam_loadout_files(db))
+              SELECT Loadout, PathId FROM file_hashes.steam_loadout_files(db, store))
 SELECT files.Loadout, relations.Path, relations.Hash, relations.Size FROM files
 INNER JOIN relations ON files.PathId = relations.Id;
 
-       
-       
+-- gets all the paths and hashes for game files in loadouts, from the downloaded hash store and the local one
+CREATE MACRO file_hashes.loadout_files(db) AS TABLE
+SELECT Loadout, Path, Hash, Size FROM file_hashes.hash_store_loadout_files(db, 'hashes')
+UNION
+SELECT Loadout, Path, Hash, Size FROM file_hashes.hash_store_loadout_files(db, 'local_hashes');

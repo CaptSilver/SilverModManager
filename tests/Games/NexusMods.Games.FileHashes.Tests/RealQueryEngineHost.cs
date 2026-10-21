@@ -2,11 +2,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games.FileHashes.Models;
 using NexusMods.Hashing.xxHash3;
+using NexusMods.HyperDuck;
 using NexusMods.MnemonicDB;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Storage;
 using NexusMods.MnemonicDB.Storage.RocksDbBackend;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Hashes;
+using NexusMods.Sdk.Loadouts;
 using Connection = NexusMods.MnemonicDB.Connection;
 
 namespace NexusMods.Games.FileHashes.Tests;
@@ -21,9 +24,12 @@ internal sealed class RealQueryEngineHost : IDisposable
     private readonly ServiceProvider _provider;
     private readonly List<IDisposable> _owned = [];
 
-    public RealQueryEngineHost()
+    /// <param name="extraSql">Statements run next to the file_hashes macros, for tests that exercise the SQL engine itself.</param>
+    public RealQueryEngineHost(params string[] extraSql)
     {
-        _provider = new ServiceCollection()
+        var services = new ServiceCollection();
+        for (var i = 0; i < extraSql.Length; i++) services.AddSingleton(new AmbientSqlFragment($"test-{i}", extraSql[i]));
+        _provider = services
             .AddLogging()
             .AddMnemonicDB()
             .AddHashRelationModel()
@@ -34,6 +40,9 @@ internal sealed class RealQueryEngineHost : IDisposable
             .AddGogManifestModel()
             .AddSteamManifestModel()
             .AddEpicGameStoreBuildModel()
+            .AddLoadoutModel()
+            .AddGameInstallMetadataModel()
+            .AddFileHashesQueriesSql()
             .BuildServiceProvider();
     }
 
