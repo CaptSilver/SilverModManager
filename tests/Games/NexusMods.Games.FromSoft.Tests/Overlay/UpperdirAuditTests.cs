@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NexusMods.Games.FromSoft.EldenRing;
+using NexusMods.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Paths;
 
@@ -183,13 +184,13 @@ public class UpperdirAuditTests : IDisposable
         Lower("eldenring.exe", "exe");
         Lower("regulation.bin", "reg");
         Lower("Data0.bdt", "archive");
-        var before = await GameFolderSnapshot.Take(_layout.Lower);
+        var before = await GameFolderSnapshot.Take(_layout.Lower, EldenRingGame.Definition.Layout);
 
         Lower("new.dll", "dll");
         Lower("regulation.bin", "REG");
         File.Delete(Path.Combine(_layout.Lower.GetFullPath(), "eldenring.exe"));
         Lower("Data0.bdt", "archive changed");
-        var after = await GameFolderSnapshot.Take(_layout.Lower);
+        var after = await GameFolderSnapshot.Take(_layout.Lower, EldenRingGame.Definition.Layout);
 
         before.Entries.Select(e => e.Path).Should().Equal("eldenring.exe", "regulation.bin");
         before.Compare(after).Should().Equal(
@@ -199,13 +200,25 @@ public class UpperdirAuditTests : IDisposable
     }
 
     [Fact]
+    public async Task TheSnapshotSkipsArchivesInTheSubfolderOfTheGameItIsGiven()
+    {
+        Lower("testsouls.exe", "exe");
+        Lower("Data0.bdt", "archive");
+
+        var snapshot = await GameFolderSnapshot.Take(_layout.Lower, TestSoulsDefinition.Layout);
+
+        // "Bin" is Test Souls' subfolder, not Elden Ring's "Game": the archive filter follows the layout it is given.
+        snapshot.Entries.Select(e => e.Path).Should().Equal("testsouls.exe");
+    }
+
+    [Fact]
     public async Task TwoSnapshotsOfAnUntouchedFolderAreEqual()
     {
         Lower("eldenring.exe", "exe");
         File.CreateSymbolicLink(Path.Combine(_layout.Lower.GetFullPath(), "dxgi.dll"), "/nonexistent/ReShade64.dll");
 
-        var first = await GameFolderSnapshot.Take(_layout.Lower);
-        var second = await GameFolderSnapshot.Take(_layout.Lower);
+        var first = await GameFolderSnapshot.Take(_layout.Lower, EldenRingGame.Definition.Layout);
+        var second = await GameFolderSnapshot.Take(_layout.Lower, EldenRingGame.Definition.Layout);
 
         first.Compare(second).Should().BeEmpty();
         first.Entries.Should().Contain(e => e.Path == "dxgi.dll" && e.Hash == "link:/nonexistent/ReShade64.dll");
