@@ -58,6 +58,7 @@ public class App : Application
             var reactiveWindow = _provider.GetRequiredService<MainWindow>();
             reactiveWindow.ViewModel = _provider.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = reactiveWindow;
+            _provider.GetService<DesktopShutdownOnHostStop>()?.Attach(desktop);
 
             // Exit runs before the dispatcher stops, which is the last point where a dropped
             // D-Bus connection can still report to the UI context without aborting the process.

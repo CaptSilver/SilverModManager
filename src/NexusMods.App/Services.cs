@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.GuidedInstallers;
@@ -100,6 +101,8 @@ public static class Services
             case HostProfile.Gui:
                 // Only the window-showing process knows which executable Steam launch lines should come back to.
                 services.AddSingleProcess(Mode.Main).AddLauncherShim();
+                // The host's console lifetime swallows SIGTERM/SIGINT; the window has to be told to close.
+                services.TryAddSingleton<DesktopShutdownOnHostStop>();
                 // Steam updates games while the app is closed, so managed games are checked once at startup.
                 services.AddLocalBaselineStartupPass();
                 break;
