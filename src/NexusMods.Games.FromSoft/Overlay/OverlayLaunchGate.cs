@@ -1,8 +1,5 @@
-using System.Text;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Me3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
@@ -13,7 +10,7 @@ using NexusMods.Sdk.Settings;
 namespace NexusMods.Games.FromSoft.Overlay;
 
 /// <summary>
-/// Gets a modded Elden Ring launch ready for its overlay and looks at what the session left behind. Does nothing
+/// Gets a modded FromSoft launch ready for its overlay and looks at what the session left behind. Does nothing
 /// for another game, and nothing for a loadout without mods: that one starts through Steam as it is and is not
 /// vetoed for lacking me3.
 /// </summary>
@@ -30,7 +27,7 @@ public sealed class OverlayLaunchGate(
     /// <inheritdoc/>
     public Veto? Check(LaunchContext context)
     {
-        if (!IsModdedElden(context)) return null;
+        if (ModdedGame(context) is not { } game) return null;
 
         var installation = context.Installation;
         if (executables.Find(Bwrap) is not { } bwrap)
@@ -42,9 +39,7 @@ public sealed class OverlayLaunchGate(
         if (installation.LocatorResult.StoreUpdatePending)
             return new Veto($"Cannot start {installation.Game.DisplayName} with mods: a Steam update is waiting for it. Let the update finish in Steam first, then launch again.");
 
-        var me3 = installation.Locations[LocationId.Me3Host].Path / Me3HostFiles.Binary;
-        if (!me3.FileExists)
-            return new Veto($"Cannot start {installation.Game.DisplayName} with mods: me3 is not deployed ({me3} is missing). Install the me3 Linux release into loadout '{context.LoadoutName}' and apply it.");
+        if (game.Loader.CheckHost(installation, context.LoadoutName) is { } hostVeto) return hostVeto;
 
         var layout = LayoutOf(context);
         var pending = UpperdirAudit.PendingFindings(layout);
@@ -57,18 +52,15 @@ public sealed class OverlayLaunchGate(
     /// <inheritdoc/>
     public async Task Prepare(LaunchContext context, CancellationToken cancellationToken)
     {
-        if (!IsModdedElden(context)) return;
+        if (ModdedGame(context) is not { } game) return;
 
         var layout = LayoutOf(context);
         var installation = context.Installation;
         layout.Upper.CreateDirectory();
         layout.Work.CreateDirectory();
-        // me3's home is shared into the game's container, which can only share a folder that already exists.
-        var home = EldenRingPaths.Me3Home(settings.Get<FromSoftSettings>(), fileSystem, EldenRingPaths.InstallationFolderName(installation.LocatorResult));
-        foreach (var folder in EldenRingPaths.Me3HomeFolders(home)) folder.CreateDirectory();
+        game.Loader.PrepareHost(installation);
 
-        var written = await WriteConfigurationLayer(layout, installation, cancellationToken);
-        Me3HostFiles.EnsureExecutable(installation.Locations[LocationId.Me3Host].Path / Me3HostFiles.Binary);
+        var written = await WriteConfigurationLayer(layout, game, installation, cancellationToken);
 
         var snapshot = await GameFolderSnapshot.Take(layout.Lower, cancellationToken);
         new OverlaySessionState(written, snapshot).Save(layout);
@@ -78,10 +70,10 @@ public sealed class OverlayLaunchGate(
     /// <inheritdoc/>
     public async Task Finish(LaunchContext context)
     {
-        if (!IsModdedElden(context)) return;
+        if (ModdedGame(context) is not { } game) return;
 
         var layout = LayoutOf(context);
-        var findings = await UpperdirAudit.Run(layout);
+        var findings = await UpperdirAudit.Run(layout, game.Overlay);
 
         if (OverlaySessionState.Load(layout) is { } state)
         {
@@ -101,10 +93,10 @@ public sealed class OverlayLaunchGate(
     /// synchronizer has just deployed them, so a mod that is disabled or removed is not copied. A file written by an
     /// earlier session that is no longer in the layer is removed, or a removed mod would keep acting on the game.
     /// </summary>
-    private async Task<Dictionary<string, string>> WriteConfigurationLayer(OverlayLayout layout, GameInstallation installation, CancellationToken cancellationToken)
+    private async Task<Dictionary<string, string>> WriteConfigurationLayer(OverlayLayout layout, IFromSoftGame game, GameInstallation installation, CancellationToken cancellationToken)
     {
-        var password = settings.Get<FromSoftSettings>().CoopPassword;
-        var layer = installation.Locations[LocationId.Me3Mods].Path / Me3ModsLayout.OverlayFolder;
+        var layer = game.Loader.ConfigurationLayer(installation);
+        var transforms = game.LayerTransforms;
         var written = new Dictionary<string, string>();
 
         if (layer.DirectoryExists())
@@ -117,19 +109,10 @@ public sealed class OverlayLaunchGate(
                 targetPath.Parent.CreateDirectory();
                 var target = targetPath.GetFullPath();
 
-                if (relative.Equals($"{SeamlessCoop.Folder}/{SeamlessCoop.Settings}", StringComparison.OrdinalIgnoreCase))
-                {
-                    // The password goes in only here: the deployed file and the file store keep the template. The file
-                    // is created private rather than narrowed afterwards, so the password is never readable by others.
-                    File.Delete(target);
-                    var privateFile = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite };
-                    await using (var writer = new StreamWriter(target, new UTF8Encoding(false), privateFile))
-                        await writer.WriteAsync(SeamlessCoopSettings.Inject(await File.ReadAllTextAsync(file, cancellationToken), password).AsMemory(), cancellationToken);
-                }
+                if (transforms.FirstOrDefault(t => t.AppliesTo(relative)) is { } transform)
+                    await transform.WriteAsync(file, target, cancellationToken);
                 else
-                {
                     File.Copy(file, target, overwrite: true);
-                }
 
                 written[relative] = await UpperdirAudit.HashOf(layout, target, cancellationToken);
             }
@@ -147,11 +130,11 @@ public sealed class OverlayLaunchGate(
         return written;
     }
 
-    private bool IsModdedElden(LaunchContext context)
+    private IFromSoftGame? ModdedGame(LaunchContext context)
     {
-        if (context.Installation.Game.GameId != EldenRingGame.GameId) return false;
+        if (context.Installation.Game is not IFromSoftGame game) return null;
         var loadout = Loadout.Load(connection.Db, context.LoadoutId);
-        return loadout.InstallationInstance.Game is IFromSoftGame game && game.Loader.IsModded(loadout);
+        return game.Loader.IsModded(loadout) ? game : null;
     }
 
     private OverlayLayout LayoutOf(LaunchContext context)

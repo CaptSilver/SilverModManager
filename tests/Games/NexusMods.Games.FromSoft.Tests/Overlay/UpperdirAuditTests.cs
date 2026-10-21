@@ -1,4 +1,5 @@
 using FluentAssertions;
+using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Paths;
 
@@ -7,6 +8,7 @@ namespace NexusMods.Games.FromSoft.Tests.Overlay;
 public class UpperdirAuditTests : IDisposable
 {
     private readonly string _folder = Directory.CreateTempSubdirectory("silvermod-audit-").FullName;
+    private static readonly OverlayAllowlist EldenRing = EldenRingGame.Definition.Overlay;
     private readonly OverlayLayout _layout;
 
     public UpperdirAuditTests()
@@ -31,6 +33,34 @@ public class UpperdirAuditTests : IDisposable
     private void Lower(string relative, string content = "x") => Write(_layout.Lower, relative, content);
 
     [Fact]
+    public async Task TheDefaultAllowlistStillAllowsFilesByNamePattern()
+    {
+        Upper("SeamlessCoop/crashdumps/x.dmp");
+
+        (await UpperdirAudit.Run(_layout, OverlayAllowlist.Default)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task TheDefaultAllowlistAllowsNoWholeFolder()
+    {
+        Upper("mods/x.bin");
+        Upper("SeamlessCoop/ersc_data.bin");
+
+        (await UpperdirAudit.Run(_layout, OverlayAllowlist.Default)).Should().Equal(
+            new AuditFinding(AuditFindingKind.Unexpected, "SeamlessCoop/ersc_data.bin"),
+            new AuditFinding(AuditFindingKind.Unexpected, "mods/x.bin"));
+    }
+
+    [Fact]
+    public async Task EldenRingsAllowlistAllowsItsModFolders()
+    {
+        Upper("mods/x.bin");
+        Upper("SeamlessCoop/ersc_data.bin");
+
+        (await UpperdirAudit.Run(_layout, EldenRing)).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task TheRuntimeFilesTheGameAndItsModsWriteAreAllowed()
     {
         Upper("mods/x/config.ini");
@@ -40,7 +70,7 @@ public class UpperdirAuditTests : IDisposable
         Upper("shaders.dxvk-cache");
         Upper("GraphicsConfig.ini");
 
-        (await UpperdirAudit.Run(_layout)).Should().BeEmpty();
+        (await UpperdirAudit.Run(_layout, EldenRing)).Should().BeEmpty();
     }
 
     [Fact]
@@ -48,7 +78,7 @@ public class UpperdirAuditTests : IDisposable
     {
         Upper("stray.txt");
 
-        (await UpperdirAudit.Run(_layout)).Should().Equal(new AuditFinding(AuditFindingKind.Unexpected, "stray.txt"));
+        (await UpperdirAudit.Run(_layout, EldenRing)).Should().Equal(new AuditFinding(AuditFindingKind.Unexpected, "stray.txt"));
     }
 
     [Fact]
@@ -59,7 +89,7 @@ public class UpperdirAuditTests : IDisposable
         Lower("mods/AdjustTheFov/config.ini");
         Upper("mods/AdjustTheFov/config.ini", "changed");
 
-        var findings = await UpperdirAudit.Run(_layout);
+        var findings = await UpperdirAudit.Run(_layout, EldenRing);
 
         findings.Should().Equal(
             new AuditFinding(AuditFindingKind.ShadowedGameFile, "DLC.bdt"),
@@ -73,7 +103,7 @@ public class UpperdirAuditTests : IDisposable
         Upper("SeamlessCoop/ersc_settings.ini", "template with password");
         await RecordWritten("SeamlessCoop/ersc_settings.ini");
 
-        (await UpperdirAudit.Run(_layout)).Should().BeEmpty();
+        (await UpperdirAudit.Run(_layout, EldenRing)).Should().BeEmpty();
     }
 
     [Fact]
@@ -84,14 +114,14 @@ public class UpperdirAuditTests : IDisposable
         await RecordWritten("SeamlessCoop/ersc_settings.ini");
         Upper("SeamlessCoop/ersc_settings.ini", "edited by the game");
 
-        (await UpperdirAudit.Run(_layout)).Should().Equal(new AuditFinding(AuditFindingKind.ShadowedGameFile, "SeamlessCoop/ersc_settings.ini"));
+        (await UpperdirAudit.Run(_layout, EldenRing)).Should().Equal(new AuditFinding(AuditFindingKind.ShadowedGameFile, "SeamlessCoop/ersc_settings.ini"));
     }
 
     [Fact]
     public async Task FindingsAreKeptUntilDiscardedAndSurviveANewLayoutObject()
     {
         Upper("stray.txt");
-        await UpperdirAudit.Run(_layout);
+        await UpperdirAudit.Run(_layout, EldenRing);
 
         UpperdirAudit.PendingFindings(new OverlayLayout(_layout.Lower, _layout.Root)).Should().ContainSingle().Which.Path.Should().Be("stray.txt");
     }
@@ -103,7 +133,7 @@ public class UpperdirAuditTests : IDisposable
         Upper("DLC.bdt");
         Upper("stray.txt");
         Upper("mods/x/config.ini");
-        var findings = await UpperdirAudit.Run(_layout);
+        var findings = await UpperdirAudit.Run(_layout, EldenRing);
 
         UpperdirAudit.Discard(_layout, findings.Single(f => f.Path == "stray.txt"));
 
@@ -130,11 +160,11 @@ public class UpperdirAuditTests : IDisposable
     public async Task ARunKeepsTheGameFolderFindingsOfEarlierAndReplacesTheUpperFolderOnes()
     {
         Upper("stray.txt");
-        await UpperdirAudit.Run(_layout);
+        await UpperdirAudit.Run(_layout, EldenRing);
         UpperdirAudit.RecordGameFolderChanges(_layout, [new GameFolderSnapshot.Difference("regulation.bin", "changed")]);
         File.Delete(Path.Combine(_layout.Upper.GetFullPath(), "stray.txt"));
 
-        await UpperdirAudit.Run(_layout);
+        await UpperdirAudit.Run(_layout, EldenRing);
 
         UpperdirAudit.PendingFindings(_layout).Should().Equal(new AuditFinding(AuditFindingKind.GameFolderChanged, "regulation.bin", "changed"));
     }
@@ -144,7 +174,7 @@ public class UpperdirAuditTests : IDisposable
     {
         Directory.Delete(_layout.Upper.GetFullPath());
 
-        (await UpperdirAudit.Run(_layout)).Should().BeEmpty();
+        (await UpperdirAudit.Run(_layout, EldenRing)).Should().BeEmpty();
     }
 
     [Fact]

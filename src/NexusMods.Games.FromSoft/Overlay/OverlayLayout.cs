@@ -1,4 +1,3 @@
-using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -26,11 +25,11 @@ public sealed record OverlayLayout(AbsolutePath Lower, AbsolutePath Root)
     public AbsolutePath Findings => Root / "findings.json";
 
     /// <summary>
-    /// The layout under the FromSoft data root: <c>&lt;root&gt;/EldenRing/&lt;installation&gt;/overlay/&lt;loadout&gt;</c>. The data root is
+    /// The layout under the game's data root: <c>&lt;root&gt;/&lt;game&gt;/&lt;installation&gt;/overlay/&lt;loadout&gt;</c>. The data root is
     /// outside every game folder, and one folder per loadout keeps a second loadout's leftovers out of this one's game.
     /// </summary>
     public static OverlayLayout For(FromSoftSettings settings, IFileSystem fileSystem, GameInstallation installation, LoadoutId loadoutId)
-        => new(EldenRingPaths.GameFolder(installation), OverlayFolder(settings, fileSystem, installation) / loadoutId.Value.Value.ToString());
+        => new(FromSoftPaths.GameFolder(GameOf(installation).Layout, installation), OverlayFolder(settings, fileSystem, installation) / loadoutId.Value.Value.ToString());
 
     /// <summary>The layouts of every loadout that has run on the installation, for a check that is not about one loadout.</summary>
     public static IReadOnlyList<OverlayLayout> All(FromSoftSettings settings, IFileSystem fileSystem, GameInstallation installation)
@@ -38,10 +37,17 @@ public sealed record OverlayLayout(AbsolutePath Lower, AbsolutePath Root)
         var folder = OverlayFolder(settings, fileSystem, installation);
         if (!folder.DirectoryExists()) return [];
 
-        var lower = EldenRingPaths.GameFolder(installation);
+        var lower = FromSoftPaths.GameFolder(GameOf(installation).Layout, installation);
         return folder.EnumerateDirectories(recursive: false).Select(root => new OverlayLayout(lower, root)).ToArray();
     }
 
     private static AbsolutePath OverlayFolder(FromSoftSettings settings, IFileSystem fileSystem, GameInstallation installation)
-        => EldenRingPaths.Me3Root(settings, fileSystem) / EldenRingPaths.InstallationFolderName(installation.LocatorResult) / "overlay";
+    {
+        var layout = GameOf(installation).Layout;
+        return FromSoftPaths.InstallationRoot(layout, settings, fileSystem, FromSoftPaths.InstallationFolderName(layout, installation.LocatorResult)) / "overlay";
+    }
+
+    private static IFromSoftGame GameOf(GameInstallation installation)
+        => installation.Game as IFromSoftGame
+           ?? throw new InvalidOperationException($"{installation.Game.DisplayName} is not a FromSoft game, so it has no overlay layout.");
 }

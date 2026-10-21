@@ -1,11 +1,14 @@
 using DynamicData.Kernel;
+using Microsoft.Extensions.DependencyInjection;
 using JetBrains.Annotations;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.FromSoft.Installers;
 using NexusMods.Games.FromSoft.Me3;
+using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.FromSoft.Saves;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Settings;
 
 namespace NexusMods.Games.FromSoft.EldenRing;
 
@@ -16,7 +19,7 @@ public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGa
     public static string DisplayName => "Elden Ring";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(4333);
 
-    /// <remarks>Built from <see cref="EldenRingPaths"/> only: the base constructor reads it, and no other static of this class is set by then.</remarks>
+    /// <remarks>Built from <see cref="EldenRingPaths"/> and constants only: the base constructor reads it, and no other static of this class is set by then.</remarks>
     public static readonly FromSoftGameDefinition Definition = new()
     {
         Layout = new FromSoftGameLayout(
@@ -29,11 +32,16 @@ public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGa
             SaveRootKind.RoamingAppData,
             SaveAccountFolderKind.SteamId64Decimal),
         SaveNames = new FromSoftSaveNames(EldenRingPaths.VanillaSave, EldenRingPaths.ModdedSave, EldenRingPaths.SeamlessCoopSave),
+        Overlay = OverlayAllowlist.Default with { Folders = ["mods/", $"{SeamlessCoop.Folder}/"] },
     };
 
     public static readonly Me3LoaderOptions Me3Options = new("eldenring", [SeamlessCoop.Native]);
 
     public EldenRingGame(IServiceProvider provider) : base(provider, Definition, _ => new Me3Loader(provider, Me3Options, Definition)) { }
+
+    /// <summary>Seamless Co-op's settings file gets the co-op password when it is written for a session.</summary>
+    public override IReadOnlyList<IConfigurationLayerTransform> LayerTransforms
+        => [new SeamlessCoopSettingsTransform(Provider.GetRequiredService<ISettingsManager>())];
 
     protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new EldenRingSynchronizer(provider, this);
 

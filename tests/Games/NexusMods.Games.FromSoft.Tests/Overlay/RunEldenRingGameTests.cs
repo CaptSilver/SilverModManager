@@ -63,9 +63,13 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
 
         spec.ReplacesCommand.Should().BeTrue();
         spec.Exe.GetFullPath().Should().Be("/fake/bin/bwrap");
-        var expected = OverlayCommand.Build(LayoutOf(loadout), 1000, 1001, Me3,
-            GameInstallation.Locations[LocationId.Me3Mods].Path / Me3ModsLayout.ProfileFileName,
-            GameInstallation.Locations[LocationId.Me3Host].Path / "bin/win64");
+        var expected = OverlayCommand.Build(LayoutOf(loadout), 1000, 1001,
+        [
+            Me3.GetFullPath(),
+            ..Me3Loader.Me3Launch, (GameInstallation.Locations[LocationId.Me3Mods].Path / Me3ModsLayout.ProfileFileName).GetFullPath(),
+            ..Me3Loader.GameSelection("eldenring"),
+            ..Me3Loader.WindowsBinariesFlag, (GameInstallation.Locations[LocationId.Me3Host].Path / "bin/win64").GetFullPath(),
+        ]);
         spec.ExtraArgs.Should().Equal(expected.Skip(1));
     }
 

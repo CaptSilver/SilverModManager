@@ -1,4 +1,5 @@
 using FluentAssertions;
+using NexusMods.Games.FromSoft.Me3;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Paths;
 
@@ -11,7 +12,12 @@ public class OverlayCommandTests
     private static readonly OverlayLayout Layout = new(Path("/steam/ELDEN RING/Game"), Path("/data/EldenRing/1245620/overlay/7"));
 
     private static string[] Build() => OverlayCommand.Build(Layout, 1000, 1001,
-        Path("/data/EldenRing/1245620/me3/bin/me3"), Path("/data/EldenRing/1245620/mods/silver.me3"), Path("/data/EldenRing/1245620/me3/bin/win64"));
+    [
+        "/data/EldenRing/1245620/me3/bin/me3",
+        ..Me3Loader.Me3Launch, "/data/EldenRing/1245620/mods/silver.me3",
+        ..Me3Loader.GameSelection("eldenring"),
+        ..Me3Loader.WindowsBinariesFlag, "/data/EldenRing/1245620/me3/bin/win64",
+    ]);
 
     /// <summary>The group appears as one run of arguments, in that order.</summary>
     private static void ContainsGroup(string[] argv, params string[] group)
@@ -71,7 +77,7 @@ public class OverlayCommandTests
     [Fact]
     public void Me3LaunchesTheGeneratedProfile()
     {
-        ContainsGroup(Build(), [..OverlayCommand.Me3Launch, "/data/EldenRing/1245620/mods/silver.me3"]);
+        ContainsGroup(Build(), [..Me3Loader.Me3Launch, "/data/EldenRing/1245620/mods/silver.me3"]);
     }
 
     [Fact]
@@ -80,8 +86,8 @@ public class OverlayCommandTests
         var argv = Build();
         var afterSeparator = argv.Skip(Array.IndexOf(argv, OverlayCommand.Separator) + 1).ToArray();
 
-        ContainsGroup(afterSeparator, OverlayCommand.GameSelection);
-        ContainsGroup(afterSeparator, [..OverlayCommand.WindowsBinariesFlag, "/data/EldenRing/1245620/me3/bin/win64"]);
+        ContainsGroup(afterSeparator, Me3Loader.GameSelection("eldenring"));
+        ContainsGroup(afterSeparator, [..Me3Loader.WindowsBinariesFlag, "/data/EldenRing/1245620/me3/bin/win64"]);
     }
 
     [Fact]
@@ -91,5 +97,13 @@ public class OverlayCommandTests
         var separator = Array.IndexOf(argv, OverlayCommand.Separator);
 
         argv.Skip(separator + 1).Should().NotContain(a => a.StartsWith("/steam/ELDEN RING"));
+    }
+
+    [Fact]
+    public void AnyCommandTailIsPlacedVerbatimAfterTheSeparator()
+    {
+        var argv = OverlayCommand.Build(Layout, 1000, 1001, ["/x/loader", "run", "--game", "other"]);
+
+        argv.Skip(Array.IndexOf(argv, OverlayCommand.Separator) + 1).Should().Equal("/x/loader", "run", "--game", "other");
     }
 }

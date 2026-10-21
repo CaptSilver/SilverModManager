@@ -7,6 +7,7 @@ using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.FileHashes.Emitters;
 using NexusMods.Games.FromSoft.Diagnostics;
+using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.Generic.Diagnostics;
 using NexusMods.Paths;
 using NexusMods.Sdk;
@@ -45,6 +46,9 @@ public abstract class AFromSoftGame<TSelf> : IFromSoftGame
     public IDiagnosticEmitter[] DiagnosticEmitters { get; }
 
     public IFromSoftModLoader Loader { get; }
+
+    /// <summary>Empty unless the game has a file of its configuration layer that is written differently per session.</summary>
+    public virtual IReadOnlyList<IConfigurationLayerTransform> LayerTransforms => [];
 
     /// <param name="loader">
     /// Builds the game's mod loader. It is called once the rest of the base is set, because a subclass field

@@ -1,4 +1,5 @@
 using NexusMods.Abstractions.Games;
+using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.FromSoft.Saves;
 using NexusMods.Sdk.Games;
 
@@ -20,6 +21,12 @@ public interface IFromSoftGame : IGame
     FromSoftGameLayout Layout => Definition.Layout;
 
     FromSoftSaveNames SaveNames => Definition.SaveNames;
+
+    /// <summary>Which files of the upper folder a modded session may write without being flagged.</summary>
+    OverlayAllowlist Overlay => Definition.Overlay;
+
+    /// <summary>Rewrites of single files of the configuration layer as they are copied into the upper folder.</summary>
+    IReadOnlyList<IConfigurationLayerTransform> LayerTransforms { get; }
 
     /// <summary>What loads mods into the game.</summary>
     IFromSoftModLoader Loader { get; }

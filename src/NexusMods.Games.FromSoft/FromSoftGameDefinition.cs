@@ -1,3 +1,4 @@
+using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.FromSoft.Saves;
 
 namespace NexusMods.Games.FromSoft;
@@ -14,4 +15,7 @@ public sealed record FromSoftGameDefinition
     public required FromSoftGameLayout Layout { get; init; }
 
     public required FromSoftSaveNames SaveNames { get; init; }
+
+    /// <summary>What a session may write into the overlay without being flagged. Defaults to file name patterns only.</summary>
+    public OverlayAllowlist Overlay { get; init; } = OverlayAllowlist.Default;
 }

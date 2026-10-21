@@ -28,12 +28,6 @@ public sealed record AuditFinding(AuditFindingKind Kind, string Path, string Det
 /// </summary>
 public static class UpperdirAudit
 {
-    /// <summary>Directories whose whole content is expected: mods' own runtime files and Seamless Co-op's.</summary>
-    internal static readonly string[] AllowedFolders = ["mods/", "SeamlessCoop/"];
-
-    /// <summary>File name patterns the game and its libraries write on their own, at any depth.</summary>
-    internal static readonly string[] AllowedNames = ["*.dmp", "*.log", "vkd3d-proton.cache*", "*.dxvk-cache", "*.ini"];
-
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
     /// <summary>
@@ -43,7 +37,7 @@ public static class UpperdirAudit
     /// itself while the real folder still holds the same files. Findings about the game folder from an earlier
     /// audit are kept.
     /// </summary>
-    public static async Task<IReadOnlyList<AuditFinding>> Run(OverlayLayout layout, CancellationToken cancellationToken = default)
+    public static async Task<IReadOnlyList<AuditFinding>> Run(OverlayLayout layout, OverlayAllowlist allowlist, CancellationToken cancellationToken = default)
     {
         var written = OverlaySessionState.Load(layout)?.Written ?? new Dictionary<string, string>();
         var upper = layout.Upper.GetFullPath();
@@ -65,7 +59,7 @@ public static class UpperdirAudit
                     continue;
                 }
 
-                if (IsAllowed(relative)) continue;
+                if (IsAllowed(allowlist, relative)) continue;
                 findings.Add(new AuditFinding(AuditFindingKind.Unexpected, relative));
             }
         }
@@ -77,12 +71,12 @@ public static class UpperdirAudit
     }
 
     /// <summary>Whether a path under the upper folder is a runtime file the game or a mod is expected to write.</summary>
-    public static bool IsAllowed(string relativePath)
+    public static bool IsAllowed(OverlayAllowlist allowlist, string relativePath)
     {
-        if (AllowedFolders.Any(folder => relativePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase))) return true;
+        if (allowlist.Folders.Any(folder => relativePath.StartsWith(folder, StringComparison.OrdinalIgnoreCase))) return true;
 
         var name = relativePath[(relativePath.LastIndexOf('/') + 1)..];
-        return AllowedNames.Any(pattern => FileSystemName.MatchesSimpleExpression(pattern, name, ignoreCase: true));
+        return allowlist.Names.Any(pattern => FileSystemName.MatchesSimpleExpression(pattern, name, ignoreCase: true));
     }
 
     /// <summary>Records paths of the real game folder that changed during a session, next to the upper folder's findings.</summary>
