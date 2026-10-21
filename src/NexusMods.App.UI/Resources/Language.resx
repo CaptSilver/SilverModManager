@@ -110,6 +110,12 @@
     <data name="LaunchButtonViewModel_LaunchGame_LAUNCH" xml:space="preserve">
         <value>PLAY</value>
     </data>
+    <data name="LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM" xml:space="preserve">
+        <value>Waiting for Steam to start {0}...</value>
+    </data>
+    <data name="LaunchButtonViewModel_LaunchGame_CANCEL" xml:space="preserve">
+        <value>Cancel</value>
+    </data>
     <data name="LaunchButtonViewModel_LaunchGame_ToolTip" xml:space="preserve">
         <value>Click to launch the game</value>
     </data>

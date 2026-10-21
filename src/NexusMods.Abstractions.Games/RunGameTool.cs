@@ -9,6 +9,7 @@ using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Loadouts;
 using R3;
+using BehaviorSubject = System.Reactive.Subjects.BehaviorSubject<bool>;
 
 namespace NexusMods.Abstractions.Games;
 
@@ -21,6 +22,12 @@ public interface IRunGameTool : ITool
     /// Resolves what this tool would start for the loadout, without starting it.
     /// </summary>
     ValueTask<LaunchSpec> GetLaunchSpec(Loadout.ReadOnly loadout, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// True while a launch has handed the game to Steam and Steam has not started it yet, which is the phase
+    /// the user can still back out of. Emits the current value on subscribe and only changes after that.
+    /// </summary>
+    IObservable<bool> WaitingForSteam { get; }
 }
 
 /// <summary>
@@ -53,6 +60,12 @@ public class RunGameTool<T> : IRunGameTool
     protected virtual TimeSpan PollInterval => TimeSpan.FromMilliseconds(300);
 
     private const int ReaperGoneAfterMisses = 3;
+
+    private readonly BehaviorSubject _waitingForSteam = new(false);
+    private int _launchesWaitingForSteam;
+
+    /// <inheritdoc />
+    public IObservable<bool> WaitingForSteam => _waitingForSteam;
 
     /// <summary>
     /// Constructor
@@ -261,11 +274,55 @@ public class RunGameTool<T> : IRunGameTool
         {
             _serviceProvider.GetRequiredService<IDesktopNotifier>().Notify(
                 ApplicationConstants.ProductName,
-                $"Steam did not start {_game.DisplayName} within 5 minutes. Make sure Steam is running and signed in, then press Play again.");
+                $"Steam did not start {_game.DisplayName} within {DescribeTimeout(StartTimeout)}. Make sure Steam is running and signed in, then press Play again.");
+        }
+    }
+
+    /// <summary>
+    /// The timeout as the user reads it: whole minutes when it is a whole number of them, seconds otherwise.
+    /// </summary>
+    internal static string DescribeTimeout(TimeSpan timeout)
+    {
+        var seconds = Math.Max(1, (int)Math.Ceiling(timeout.TotalSeconds));
+        if (seconds % 60 == 0)
+        {
+            var minutes = seconds / 60;
+            return minutes == 1 ? "1 minute" : $"{minutes} minutes";
+        }
+        return seconds == 1 ? "1 second" : $"{seconds} seconds";
+    }
+
+    private void SetWaitingForSteam(int delta)
+    {
+        // Two launches can wait at once (two installations of one game), so this counts them instead of
+        // flipping a flag the first to finish would clear for the other.
+        lock (_waitingForSteam)
+        {
+            _launchesWaitingForSteam += delta;
+            if (_waitingForSteam.Value != _launchesWaitingForSteam > 0) _waitingForSteam.OnNext(_launchesWaitingForSteam > 0);
         }
     }
 
     private async Task<SteamRunOutcome> WaitForSteamGame(IGameLaunch launch, uint appId, CancellationToken cancellationToken)
+    {
+        SetWaitingForSteam(+1);
+        var waiting = true;
+        try
+        {
+            return await WaitForSteamGame(launch, appId, cancellationToken, () =>
+            {
+                if (!waiting) return;
+                waiting = false;
+                SetWaitingForSteam(-1);
+            });
+        }
+        finally
+        {
+            if (waiting) SetWaitingForSteam(-1);
+        }
+    }
+
+    private async Task<SteamRunOutcome> WaitForSteamGame(IGameLaunch launch, uint appId, CancellationToken cancellationToken, Action gameStarted)
     {
         if (await PollUntil(_processTracker.IsSteamRunning, launch, cancellationToken) is { } steamFailure) return steamFailure;
 
@@ -276,6 +333,7 @@ public class RunGameTool<T> : IRunGameTool
         if (await PollUntil(() => (reaper = _processTracker.FindReaperForApp(appId)) is not null, launch, cancellationToken) is { } reaperFailure)
             return reaperFailure;
 
+        gameStarted();
         _logger.LogDebug("Waiting for reaper {Pid} of app {AppId} to exit", reaper!.Pid, appId);
         var misses = 0;
         while (!cancellationToken.IsCancellationRequested)

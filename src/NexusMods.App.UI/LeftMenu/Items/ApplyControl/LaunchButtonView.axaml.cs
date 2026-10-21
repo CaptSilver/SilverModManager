@@ -32,6 +32,20 @@ public partial class LaunchButtonView : ReactiveUserControl<ILaunchButtonViewMod
                 .BindToUi(this, view => view.LaunchButton.Command)
                 .DisposeWith(d);
             
+            // Backing out while Steam has not started the game yet.
+            this.WhenAnyValue(view => view.ViewModel)
+                .WhereNotNull()
+                .Select(viewModel => viewModel.WhenAnyValue(vm => vm.IsWaitingForSteam))
+                .Switch()
+                .BindToUi(this, view => view.CancelButton.IsVisible)
+                .DisposeWith(d);
+
+            this.WhenAnyValue(view => view.ViewModel)
+                .WhereNotNull()
+                .Select(viewModel => viewModel.CancelCommand)
+                .BindToUi(this, view => view.CancelButton.Command)
+                .DisposeWith(d);
+
             // Set the 'play' / 'running' text.
             this.WhenAnyValue(view => view.ViewModel!.Label)
                 .BindToUi(this, view => view.LaunchText.Text)

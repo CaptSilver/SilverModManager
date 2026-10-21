@@ -30,4 +30,15 @@ public interface ILaunchButtonViewModel : IViewModelInterface
     /// </summary>
     public string Label { get; }
     public Percent? Progress { get; }
+
+    /// <summary>
+    /// True while the launch has handed the game to Steam and Steam has not started it yet. Nothing in Steam
+    /// tells us when the user backs out there, so this is the phase <see cref="CancelCommand"/> is for.
+    /// </summary>
+    public bool IsWaitingForSteam { get; }
+
+    /// <summary>
+    /// Stops waiting for Steam and releases the launch. Only available while <see cref="IsWaitingForSteam"/>.
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> CancelCommand { get; }
 }

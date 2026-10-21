@@ -1828,6 +1828,24 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Cancel.
+        /// </summary>
+        public static string LaunchButtonViewModel_LaunchGame_CANCEL {
+            get {
+                return ResourceManager.GetString("LaunchButtonViewModel_LaunchGame_CANCEL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Waiting for Steam to start {0}....
+        /// </summary>
+        public static string LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM {
+            get {
+                return ResourceManager.GetString("LaunchButtonViewModel_LaunchGame_WAITING_FOR_STEAM", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Click to launch the game.
         /// </summary>
         public static string LaunchButtonViewModel_LaunchGame_ToolTip {

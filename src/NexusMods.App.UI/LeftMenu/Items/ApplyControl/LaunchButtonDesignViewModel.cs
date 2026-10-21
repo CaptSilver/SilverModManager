@@ -27,8 +27,14 @@ public class LaunchButtonDesignViewModel : AViewModel<ILaunchButtonViewModel>, I
     [Reactive]
     public Percent? Progress { get; set; }
 
+    [Reactive]
+    public bool IsWaitingForSteam { get; set; }
+
+    public ReactiveCommand<Unit, Unit> CancelCommand { get; }
+
     public LaunchButtonDesignViewModel()
     {
+        CancelCommand = ReactiveCommand.Create(() => { IsWaitingForSteam = false; });
         Command = ReactiveCommand.CreateFromTask(async () =>
         {
             Label = "PREPARING...";

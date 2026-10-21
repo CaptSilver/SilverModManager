@@ -210,7 +210,85 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
 
         Session.Events.Should().Equal("lock", "running", "finish", "release");
         Notifier.Notifications.Should().ContainSingle()
-            .Which.Body.Should().Contain("Steam did not start").And.Contain("5 minutes");
+            .Which.Body.Should().Contain("Steam did not start").And.Contain("within 1 second").And.NotContain("5 minutes");
+    }
+
+    [Theory]
+    [InlineData(300, "5 minutes")]
+    [InlineData(60, "1 minute")]
+    [InlineData(120, "2 minutes")]
+    [InlineData(90, "90 seconds")]
+    [InlineData(30, "30 seconds")]
+    [InlineData(1, "1 second")]
+    public void DescribeTimeout_IsBuiltFromTheTimeSpan(int seconds, string expected)
+    {
+        RunGameTool<StubbedGame>.DescribeTimeout(TimeSpan.FromSeconds(seconds)).Should().Be(expected);
+    }
+
+    [Fact]
+    public void DescribeTimeout_RoundsAShortTimeoutUpToASecond()
+    {
+        RunGameTool<StubbedGame>.DescribeTimeout(TimeSpan.FromMilliseconds(80)).Should().Be("1 second");
+    }
+
+    [Fact]
+    public async Task SteamLaunch_CancelledWhileWaitingForSteam_EndsPromptlyReleasesAndPostsNothing()
+    {
+        _cancelOnOpen = false;
+        Tracker.SteamRunning = false;
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+        var tool = new RunGameTool<StubbedGame>(ServiceProvider, Game);
+        var waiting = new List<bool>();
+        using var subscription = tool.WaitingForSteam.Subscribe(w => { lock (waiting) waiting.Add(w); });
+
+        var run = Task.Run(() => tool.Execute(loadout, _cts.Token, []));
+        await WaitUntil(() => { lock (waiting) return waiting.LastOrDefault(); });
+
+        _cts.Cancel();
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Session.Events.Should().Equal("lock", "running", "finish", "release");
+        Notifier.Notifications.Should().BeEmpty();
+        lock (waiting) waiting.Last().Should().BeFalse("the launch is no longer waiting once it was cancelled");
+    }
+
+    [Fact]
+    public async Task SteamLaunch_WaitingForSteam_IsOnlyTrueUntilTheGameShowsUp()
+    {
+        _cancelOnOpen = false;
+        Tracker.SteamRunning = true;
+        var reaperPid = 0;
+        Tracker.ReaperForApp = id => id == AppId && reaperPid != 0 ? new TrackedProcess(reaperPid, "reaper") : null;
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+        var tool = new FastPollTool(ServiceProvider, Game);
+        var waiting = new List<bool>();
+        using var subscription = tool.WaitingForSteam.Subscribe(w => { lock (waiting) waiting.Add(w); });
+
+        var run = Task.Run(() => tool.Execute(loadout, CancellationToken.None, []));
+        await WaitUntil(() => { lock (waiting) return waiting.LastOrDefault(); });
+
+        reaperPid = 4242;
+        await WaitUntil(() => { lock (waiting) return !waiting.Last(); });
+
+        reaperPid = 0;
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
+        lock (waiting) waiting.Should().Equal(false, true, false);
+    }
+
+    // Polls quickly but keeps the real start timeout, so a test can take its time before the game shows up.
+    private sealed class FastPollTool(IServiceProvider provider, StubbedGame game) : RunGameTool<StubbedGame>(provider, game)
+    {
+        protected override TimeSpan PollInterval => TimeSpan.FromMilliseconds(5);
+    }
+
+    private static async Task WaitUntil(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (!condition())
+        {
+            if (DateTime.UtcNow > deadline) throw new TimeoutException("condition never held");
+            await Task.Delay(5);
+        }
     }
 
     [Fact]
