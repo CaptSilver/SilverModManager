@@ -18,4 +18,9 @@ public interface IMarkdownRendererViewModel : IViewModelInterface
     public IMdAvPlugin ImageResolverPlugin { get; }
     public IPathResolver PathResolver { get; }
     public ReactiveCommand<string, Unit> OpenLinkCommand { get; }
+
+    /// <summary>
+    /// Copies the given text, the exact contents of a code block, to the clipboard.
+    /// </summary>
+    public ReactiveCommand<string, Unit> CopyCodeCommand { get; }
 }

@@ -25,7 +25,7 @@
         https://github.com/whistyun/Markdown.Avalonia/blob/master/Markdown.Avalonia.Tight/StyleCollections/MarkdownStyleDefaultTheme.axaml
     -->
 
-    <md:MarkdownScrollViewer x:Name="MarkdownScrollViewer">
+    <md:MarkdownScrollViewer x:Name="MarkdownScrollViewer" SelectionEnabled="True">
 
         <md:MarkdownScrollViewer.Styles>
             <!-- NOTE(erri120): designs from https://www.figma.com/design/NuC2DiIdnAZQQkYUSaK514/%F0%9F%93%B1Markdown-styles?node-id=10%3A12&t=mVpreGuSrLB54ms0-1 -->
@@ -186,7 +186,7 @@
                     <Setter Property="CornerRadius" Value="4" />
                     <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
 
-                    <Style Selector="^ TextBlock">
+                    <Style Selector="^ :is(TextBlock).CodeBlock">
                         <Setter Property="FontFamily" Value="{StaticResource FontBodyCode}" />
                         <Setter Property="FontSize" Value="12" />
                         <Setter Property="LineHeight" Value="19.5" />

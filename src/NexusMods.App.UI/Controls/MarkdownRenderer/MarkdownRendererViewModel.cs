@@ -28,6 +28,7 @@ public class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>,
     public IMdAvPlugin ImageResolverPlugin { get; }
     public IPathResolver PathResolver { get; }
     public ReactiveCommand<string, Unit> OpenLinkCommand { get; }
+    public ReactiveCommand<string, Unit> CopyCodeCommand { get; }
 
     public MarkdownRendererViewModel()
     {
@@ -38,12 +39,14 @@ public class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>,
         ImageResolverPlugin = new ImageResolvePluginImpl(new ImageResolverImpl(this));
 
         OpenLinkCommand = ReactiveCommand.Create<string>(_ => { });
+        CopyCodeCommand = ReactiveCommand.Create<string>(_ => { });
     }
 
     public MarkdownRendererViewModel(
         IServiceProvider serviceProvider,
         ILogger<MarkdownRendererViewModel> logger,
-        IOSInterop osInterop)
+        IOSInterop osInterop,
+        IAvaloniaInterop avaloniaInterop)
     {
         _logger = logger;
         _remoteImagePipeline = ImagePipelines.GetMarkdownRendererRemoteImagePipeline(serviceProvider);
@@ -56,6 +59,8 @@ public class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>,
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return;
             osInterop.OpenUri(uri);
         });
+
+        CopyCodeCommand = ReactiveCommand.CreateFromTask<string>(code => avaloniaInterop.SetClipboardTextAsync(code));
     }
 
     private Task<Stream?> FetchRemoteImage(Uri uri, CancellationToken cancellationToken = default)
