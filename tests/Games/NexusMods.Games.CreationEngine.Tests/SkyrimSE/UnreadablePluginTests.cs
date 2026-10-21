@@ -54,20 +54,8 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
 
     private static GamePath DataPath(string fileName) => new(LocationId.Game, "Data/" + fileName);
 
-    private async Task<byte[]> PluginBytes(string fileName, params string[] masters)
-    {
-        var mod = new SkyrimMod(ModKey.FromFileName(fileName), SkyrimRelease.SkyrimSE);
-        foreach (var master in masters)
-            mod.ModHeader.MasterReferences.Add(new MasterReference { Master = ModKey.FromFileName(master) });
-
-        await using var temp = TemporaryFileManager.CreateFile();
-        mod.WriteToBinary(temp.Path.ToString(), new BinaryWriteParameters
-        {
-            ModKey = ModKeyOption.NoCheck,
-            MastersListContent = MastersListContentOption.NoCheck,
-        });
-        return await temp.Path.ReadAllBytesAsync();
-    }
+    private static Task<byte[]> PluginBytes(string fileName, params string[] masters)
+        => Task.FromResult(SkyrimPluginFile.Bytes(fileName, masters));
 
     /// <summary>A loadout plugin whose bytes the file store has.</summary>
     private async Task<(GamePath Path, SyncNode Node)> StoredPlugin(string fileName, params string[] masters)

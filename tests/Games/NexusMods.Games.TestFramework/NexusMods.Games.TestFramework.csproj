@@ -10,6 +10,7 @@
         <ProjectReference Include="..\..\..\src\NexusMods.Games.RedEngine\NexusMods.Games.RedEngine.csproj" />
         <ProjectReference Include="..\..\..\src\NexusMods.Networking.HttpDownloader\NexusMods.Networking.HttpDownloader.csproj" />
         <ProjectReference Include="..\..\..\src\NexusMods.Networking.NexusWebApi\NexusMods.Networking.NexusWebApi.csproj" />
+        <ProjectReference Include="..\..\..\src\NexusMods.Networking.Steam\NexusMods.Networking.Steam.csproj" />
         <ProjectReference Include="..\..\..\src\NexusMods.App.UI\NexusMods.App.UI.csproj" />
         <ProjectReference Include="..\..\..\src\NexusMods.Collections\NexusMods.Collections.csproj" />
         <ProjectReference Include="..\..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
@@ -20,6 +21,11 @@
 
     <ItemGroup>
         <PackageReference Include="Verify.XunitV3"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The manifest writer is shared with the Steam networking tests rather than copied. -->
+        <Compile Include="..\..\Networking\NexusMods.Networking.Steam.Tests\DepotManifestFixture.cs" Link="Helpers\DepotManifestFixture.cs" />
     </ItemGroup>
 
     <ItemGroup>

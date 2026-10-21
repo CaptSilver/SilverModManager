@@ -32,6 +32,7 @@
     <ItemGroup>
         <InternalsVisibleTo Include="NexusMods.Backend.Tests"/>
         <InternalsVisibleTo Include="NexusMods.CrossPlatform.Tests"/>
+        <InternalsVisibleTo Include="NexusMods.Games.TestFramework"/>
     </ItemGroup>
 
     <ItemGroup>

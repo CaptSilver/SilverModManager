@@ -162,13 +162,19 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
     /// </summary>
     protected virtual AbsolutePath StagingStoreLocation => default;
 
+    /// <summary>
+    /// Whether the graph gets the stubbed file hashes service instead of the real one. Read while the
+    /// service graph is built, from the base constructor.
+    /// </summary>
+    protected virtual bool UseStubbedFileHashService => true;
+
     protected virtual IServiceCollection AddServices(IServiceCollection services)
     {
         if (ConfigOptions.RegisterNullGuidedInstaller)
             services.AddSingleton<IGuidedInstaller, NullGuidedInstaller>();
         
         return services
-            .AddDefaultServicesForTesting(TemporaryFilesPrefix, stagingStore: StagingStoreLocation)
+            .AddDefaultServicesForTesting(TemporaryFilesPrefix, UseStubbedFileHashService, StagingStoreLocation)
             .AddFomod()
             .AddLogging(builder => builder.AddXUnit())
             .AddGames()
@@ -561,8 +567,15 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
         }
     }
 
+    /// <summary>
+    /// Runs first in <see cref="InitializeAsync"/>, before the game installations are located: where a test
+    /// puts the files its locators will find.
+    /// </summary>
+    protected virtual ValueTask PrepareGameInstall() => ValueTask.CompletedTask;
+
     public async ValueTask InitializeAsync()
     {
+        await PrepareGameInstall();
         await _host.Services.GetRequiredService<IFileHashesService>().GetFileHashesDb();
 
         await _host.StartAsync();
@@ -576,9 +589,15 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
         Game = (TGame)GameInstallation.Game;
     }
 
-    public ValueTask DisposeAsync()
+    /// <summary>
+    /// The host's shutdown, which <see cref="DisposeAsync"/> starts without waiting for. A test that deletes
+    /// folders the host writes to waits for it first.
+    /// </summary>
+    protected Task HostShutdown { get; private set; } = Task.CompletedTask;
+
+    public virtual ValueTask DisposeAsync()
     {
-        _ = Task.Run(async () =>
+        HostShutdown = Task.Run(async () =>
         {
             // NOTE(erri120): forcing this method to complete within max 10 seconds
             await _host.StopAsync(cancellationToken: new CancellationToken(canceled: true)).WaitAsync(timeout: TimeSpan.FromSeconds(1));

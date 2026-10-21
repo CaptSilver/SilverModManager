@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\NexusMods.Games.FileHashes\NexusMods.Games.FileHashes.csproj" />
+    <ProjectReference Include="..\..\..\src\NexusMods.Networking.Steam\NexusMods.Networking.Steam.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The manifest writer is shared with the Steam networking tests rather than copied. -->
+    <Compile Include="..\..\Networking\NexusMods.Networking.Steam.Tests\DepotManifestFixture.cs" Link="DepotManifestFixture.cs" />
   </ItemGroup>
 </Project>
