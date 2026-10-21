@@ -39,14 +39,16 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
 
         using (var tx = Connection.BeginTransaction())
         {
-            await AddModAsync(tx, ["mods/x"], loadout, "Mods");
-            await AddModAsync(tx, ["other/y"], loadout, "Other");
+            // Paths no other test in this class uses: the class shares one database, and another test's
+            // loadout holding the same content would keep it live after this loadout is deleted.
+            await AddModAsync(tx, ["mods/valid-only"], loadout, "Mods");
+            await AddModAsync(tx, ["other/valid-only"], loadout, "Other");
             _plans.Write(tx, Connection.Db, installation, new GamePath(LocationId.Game, "mods"), StagingBackend, chosen: false);
             await tx.Commit();
         }
 
-        var modsHash = Hash("mods/x");
-        var otherHash = Hash("other/y");
+        var modsHash = Hash("mods/valid-only");
+        var otherHash = Hash("other/valid-only");
         var orphanHash = Hash("orphan");
         await _fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("orphan", new MemoryStream(Encoding.UTF8.GetBytes("orphan"))), orphanHash, Size.FromLong(6))]);
 
