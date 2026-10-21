@@ -67,6 +67,39 @@ public class WinePrefixWrappingLocatorTests
         result.StoreLastWrite.Should().Be(DateTimeOffset.UnixEpoch.AddDays(5));
     }
 
+    [Fact]
+    public void Locate_OneWrappedLocatorThrows_KeepsTheResultsOfTheOthers()
+    {
+        // The wrapped locators read through the prefix's overlay, which can sit on a drive that is gone.
+        var fileSystem = new InMemoryFileSystem(OSInformation.FakeUnix);
+        var prefix = fileSystem.GetKnownPath(KnownPath.HomeDirectory).Combine(".wine");
+        fileSystem.CreateDirectory(prefix.Combine("drive_c"));
+        fileSystem.WriteAllText(prefix.Combine("system.reg"), "WINE REGISTRY Version 2\n");
+        fileSystem.WriteAllText(prefix.Combine("user.reg"), "WINE REGISTRY Version 2\n");
+        fileSystem.WriteAllText(prefix.Combine("userdef.reg"), "WINE REGISTRY Version 2\n");
+
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<IFileSystem>(fileSystem)
+            .BuildServiceProvider();
+
+        var working = new StubLocator(Substitute.For<IGameData>());
+        var locator = new WinePrefixWrappingLocator(services, [
+            (_, _, _, _) => throw new IOException("No such device"),
+            (_, _, _, _) => new ThrowingLocator(),
+            (_, _, _, _) => working,
+        ]);
+
+        var results = locator.Locate();
+
+        results.Should().ContainSingle().Which.Locator.Should().BeSameAs(working);
+    }
+
+    private sealed class ThrowingLocator : IGameLocator
+    {
+        public IEnumerable<GameLocatorResult> Locate() => throw new IOException("No such device");
+    }
+
     private sealed class StubLocator(IGameData game, AbsolutePath? storeRoot = null, string? storeBuildId = null, bool storeUpdatePending = false, DateTimeOffset? storeLastWrite = null) : IGameLocator
     {
         public IEnumerable<GameLocatorResult> Locate()
