@@ -239,7 +239,8 @@ public class BuildHashesDb : IAsyncDisposable
         {
             var manifestPath = path / "json" / "stores" / "steam" / "manifests" / (manifestInfo.ManifestId + ".json");
             await using var manifestStream = manifestPath.Read();
-            var parsedManifest = (await JsonSerializer.DeserializeAsync<Manifest>(manifestStream, _jsonOptions))!;
+            var parsedManifest = (await JsonSerializer.DeserializeAsync<Manifest>(manifestStream, _jsonOptions))
+                                 ?? throw new InvalidDataException($"`{manifestPath}` holds the JSON literal null instead of a manifest");
 
             var pathIds = new List<EntityId>();
             bool hasFailures = false;
@@ -402,7 +403,8 @@ public class BuildHashesDb : IAsyncDisposable
             try
             {
                 await using var fs = file.Read();
-                var parsed = JsonSerializer.Deserialize<T>(fs, _jsonOptions)!;
+                var parsed = JsonSerializer.Deserialize<T>(fs, _jsonOptions)
+                             ?? throw new InvalidDataException($"`{file}` holds the JSON literal null");
                 dict[file.GetFileNameWithoutExtension()] = parsed;
             }
             catch (Exception ex)
@@ -433,11 +435,13 @@ public class BuildHashesDb : IAsyncDisposable
                 await using var fs = file.Read();
                 if (file.FileName.EndsWith("_metadata.json"))
                 {
-                    metadata[itemId] = (await JsonSerializer.DeserializeAsync<Build>(fs, _jsonOptions))!;
+                    metadata[itemId] = (await JsonSerializer.DeserializeAsync<Build>(fs, _jsonOptions))
+                                       ?? throw new InvalidDataException($"`{file}` holds the JSON literal null instead of build metadata");
                 }
                 if (file.FileName.EndsWith("_files.json"))
                 {
-                    files[itemId] = (await JsonSerializer.DeserializeAsync<BuildFile[]>(fs, _jsonOptions))!;
+                    files[itemId] = (await JsonSerializer.DeserializeAsync<BuildFile[]>(fs, _jsonOptions))
+                                    ?? throw new InvalidDataException($"`{file}` holds the JSON literal null instead of a file list");
                 }
             }
         }
@@ -507,7 +511,8 @@ public class BuildHashesDb : IAsyncDisposable
             try
             {
                 await using var fs = file.Read();
-                var parsedHash = (await JsonSerializer.DeserializeAsync<MultiHash>(fs, _jsonOptions))!;
+                var parsedHash = (await JsonSerializer.DeserializeAsync<MultiHash>(fs, _jsonOptions))
+                                 ?? throw new InvalidDataException($"`{file}` holds the JSON literal null instead of a hash");
 
                 _ = new HashRelation.New(tx)
                 {

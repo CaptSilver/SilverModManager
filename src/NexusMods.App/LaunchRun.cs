@@ -29,12 +29,12 @@ public static class LaunchRun
             // Steam starts the launch option without a terminal to print to.
             services.GetRequiredService<ILogger<LaunchSession>>().LogError("{Message}", resolution.Error);
             Console.Error.WriteLine(resolution.Error);
-            services.GetRequiredService<IDesktopNotifier>().Notify(ApplicationConstants.ProductName, resolution.Error!);
+            services.GetRequiredService<IDesktopNotifier>().Notify(ApplicationConstants.ProductName, resolution.Error);
             return resolution.ExitCode;
         }
 
-        var loadout = resolution.Loadout!.Value;
-        var installation = resolution.Installation!;
+        var loadout = resolution.Loadout.Value;
+        var installation = resolution.Installation;
 
         var session = services.GetRequiredService<LaunchSession>();
         var wineDllOverrides = WineDllOverrideRequirements.For(installation.Game, loadout);

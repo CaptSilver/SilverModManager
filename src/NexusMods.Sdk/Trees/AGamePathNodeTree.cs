@@ -80,7 +80,8 @@ public abstract class AGamePathNodeTree<TValue>
     /// Returns all the files in a specific location
     /// </summary>
     /// <param name="path"></param>
-    public KeyedBox<RelativePath, GamePathNode<TValue>> this[GamePath path] => _trees[path.LocationId].FindByPathFromChild(path.Path)!;
+    public KeyedBox<RelativePath, GamePathNode<TValue>> this[GamePath path] => _trees[path.LocationId].FindByPathFromChild(path.Path)
+                                                                                         ?? throw new KeyNotFoundException($"The tree has no node for `{path}`");
 
     /// <summary>
     /// Attempts to get a value from the tree, returns false if the value does not exist.

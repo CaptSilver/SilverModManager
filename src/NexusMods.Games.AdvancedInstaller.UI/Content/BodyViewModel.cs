@@ -399,7 +399,8 @@ public class BodyViewModel : AViewModel<IBodyViewModel>, IBodyViewModel
             previewTreeUpdater.AddOrUpdate(treeEntries);
         }
 
-        return previewTreeUpdater.Lookup(targetFolder).ValueOrDefault()!;
+        return previewTreeUpdater.Lookup(targetFolder).ValueOrDefault()
+               ?? throw new InvalidOperationException($"The preview tree has no entry for the install location `{targetFolder}`");
     }
 
     /// <summary>

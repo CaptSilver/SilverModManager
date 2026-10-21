@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using NexusMods.Abstractions.Games;
 using NexusMods.MnemonicDB.Abstractions;
@@ -15,6 +16,8 @@ public sealed record LoadoutResolution(Loadout.ReadOnly? Loadout, GameInstallati
     /// <summary>
     /// Whether a loadout was found.
     /// </summary>
+    [MemberNotNullWhen(true, nameof(Loadout), nameof(Installation))]
+    [MemberNotNullWhen(false, nameof(Error))]
     public bool IsResolved => Error is null;
 
     internal static LoadoutResolution Found(Loadout.ReadOnly loadout, GameInstallation installation) => new(loadout, installation, null);
@@ -42,8 +45,7 @@ public sealed class LoadoutResolver(IConnection connection, IGameRegistry regist
     public LoadoutResolution Resolve(LaunchArgs args)
     {
         var installations = registry.LocateGameInstallations();
-        var scoped = Scope(args, installations, out var scopeError);
-        if (scoped is null) return LoadoutResolution.Failed(scopeError!);
+        if (!TryScope(args, installations, out var scoped, out var scopeError)) return LoadoutResolution.Failed(scopeError);
 
         var wanted = args.LoadoutName.Trim();
         var db = connection.Db;
@@ -81,8 +83,13 @@ public sealed class LoadoutResolver(IConnection connection, IGameRegistry regist
         }
     }
 
-    private IReadOnlyList<GameInstallation>? Scope(LaunchArgs args, IReadOnlyList<GameInstallation> installations, out string? error)
+    private bool TryScope(
+        LaunchArgs args,
+        IReadOnlyList<GameInstallation> installations,
+        [NotNullWhen(true)] out IReadOnlyList<GameInstallation>? scoped,
+        [NotNullWhen(false)] out string? error)
     {
+        scoped = null;
         error = null;
 
         var fromEnvironment = environment.Get(SteamAppIdVariable)?.Trim();
@@ -91,20 +98,32 @@ public sealed class LoadoutResolver(IConnection connection, IGameRegistry regist
         if (appId is not null)
         {
             var bySteam = installations.Where(i => IsSteamApp(i, appId)).ToArray();
-            if (bySteam.Length > 0) return bySteam;
+            if (bySteam.Length > 0)
+            {
+                scoped = bySteam;
+                return true;
+            }
 
             error = $"No installed game has the Steam app id {appId}, which Steam passed in " +
                     (appId == fromEnvironment ? $"{SteamAppIdVariable}." : "the launch command.");
-            return null;
+            return false;
         }
 
-        if (args.Game is not { } game) return installations;
+        if (args.Game is not { } game)
+        {
+            scoped = installations;
+            return true;
+        }
 
         var byGame = ByGame(installations, game);
-        if (byGame.Count > 0) return byGame;
+        if (byGame.Count > 0)
+        {
+            scoped = byGame;
+            return true;
+        }
 
         error = NoGameMatch(game);
-        return null;
+        return false;
     }
 
     /// <summary>

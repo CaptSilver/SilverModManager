@@ -343,4 +343,19 @@ public class LoginManagerTests : IAsyncLifetime
         await http.DidNotReceive().SendMock(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>());
         JWTToken.All(_conn.Db).Should().ContainSingle().Which.AccessToken.Should().Be("stale-access");
     }
+
+    [Fact]
+    public async Task ARefreshThatRepliesWithJsonNullLeavesTheStoredTokenAndReportsNoCredential()
+    {
+        await AuthTestSupport.StoreToken(_conn, "stale-access", TimeSpan.FromHours(-1));
+        var http = Substitute.ForPartsOf<MockHttpMessageHandler>();
+        http.SendMock(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("null") }));
+        var oauth = AuthTestSupport.CreateOAuth(_jobMonitor, http);
+        var factory = new OAuth2MessageFactory(_conn, oauth, NullLogger<OAuth2MessageFactory>.Instance);
+
+        (await factory.IsAuthenticated()).Should().BeFalse("the token endpoint returned no token to store");
+
+        JWTToken.All(_conn.Db).Should().ContainSingle().Which.AccessToken.Should().Be("stale-access");
+    }
 }

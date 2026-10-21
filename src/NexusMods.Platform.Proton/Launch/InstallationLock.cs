@@ -149,7 +149,7 @@ public sealed partial class InstallationLock : IDisposable
 
     private int TryFlock()
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(LockPath)!);
+        Directory.CreateDirectory(ParentOf(LockPath));
 
         var fd = open(LockPath, O_RDWR | O_CREAT | O_CLOEXEC, 0b110_000_000);
         if (fd < 0) throw new IOException($"Cannot open {LockPath}", new Win32Exception(Marshal.GetLastPInvokeError()));
@@ -168,7 +168,7 @@ public sealed partial class InstallationLock : IDisposable
     /// </summary>
     private void Rewrite(Action<Dictionary<string, string>> change)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
+        Directory.CreateDirectory(ParentOf(StatePath));
         var temp = $"{StatePath}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
         try
         {
@@ -227,6 +227,9 @@ public sealed partial class InstallationLock : IDisposable
     }
 
     private static string SingleLine(string value) => value.ReplaceLineEndings(" ");
+
+    private static string ParentOf(string path) =>
+        Path.GetDirectoryName(path) ?? throw new InvalidOperationException($"`{path}` has no parent directory to create");
 
     private static string Sanitise(string part) =>
         string.Create(part.Length, part, static (span, source) =>

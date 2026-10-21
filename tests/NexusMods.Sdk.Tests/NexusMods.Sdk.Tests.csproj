@@ -5,6 +5,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <ProjectReference Include="..\..\src\NexusMods.Sdk\NexusMods.Sdk.csproj" />
   </ItemGroup>
 

@@ -27,10 +27,9 @@ public class GameFileStreamSource : IReadOnlyStreamSource
 
     public async ValueTask<Stream?> OpenAsync(Hash hash, CancellationToken cancellationToken = default)
     {
-        var path = Resolve(hash);
-        if (path == null)
+        if (Resolve(hash) is not { } path)
             return null;
-        return path!.Value.Open(mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read);
+        return path.Open(mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read);
     }
 
     public bool Exists(Hash hash)

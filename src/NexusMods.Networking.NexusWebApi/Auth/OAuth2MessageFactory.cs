@@ -46,10 +46,16 @@ public class OAuth2MessageFactory : BaseHttpMessageFactory, IAuthenticatingMessa
         _logger.LogDebug("Refreshing expired OAuth token");
 
         var newToken = await _auth.RefreshToken(token.RefreshToken, cancellationToken);
+        if (newToken is null)
+        {
+            _logger.LogError("The OAuth token endpoint replied to a refresh with no token");
+            return null;
+        }
+
         var db = _conn.Db;
         using var tx = _conn.BeginTransaction();
 
-        var newTokenEntity = JWTToken.Create(db, tx, newToken!);
+        var newTokenEntity = JWTToken.Create(db, tx, newToken);
         if (!newTokenEntity.HasValue)
         {
             _logger.LogError("Invalid new token in OAuth2MessageFactory");

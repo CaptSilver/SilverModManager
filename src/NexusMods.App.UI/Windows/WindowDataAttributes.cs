@@ -33,7 +33,8 @@ public partial class WindowDataAttributes : IModelDefinition
             get
             {
                 var options = Db.Connection.ServiceProvider.GetRequiredService<JsonSerializerOptions>();
-                return JsonSerializer.Deserialize<WindowData>(Data, options)!;
+                return JsonSerializer.Deserialize<WindowData>(Data, options)
+                       ?? throw new InvalidDataException("The stored window data is the JSON literal null");
             }
         }
     }

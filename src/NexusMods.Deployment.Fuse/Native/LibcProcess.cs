@@ -25,6 +25,7 @@ internal static unsafe partial class LibcProcess
         var buffer = stackalloc byte[PathMax];
         if (realpath(path, buffer) == IntPtr.Zero)
             throw new IOException($"realpath(`{path}`) failed with errno {Marshal.GetLastPInvokeError()}");
-        return Marshal.PtrToStringUTF8((IntPtr)buffer)!;
+        return Marshal.PtrToStringUTF8((IntPtr)buffer)
+               ?? throw new IOException($"realpath(`{path}`) returned no path");
     }
 }

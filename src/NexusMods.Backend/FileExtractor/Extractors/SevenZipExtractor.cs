@@ -341,7 +341,7 @@ public class SevenZipExtractor : IExtractor
     private static string FindSystem7zOnLinux()
     {
         string[] potentialBinaryNames = ["7z", "7zz", "7zzs"];
-        var pathDirectories = Environment.GetEnvironmentVariable("PATH")!.Split(':');
+        var pathDirectories = (Environment.GetEnvironmentVariable("PATH") ?? throw new InvalidOperationException("PATH is not set, cannot look for the system 7z binary")).Split(':');
 
         foreach (var pathDir in pathDirectories)
         foreach (var binaryName in potentialBinaryNames)

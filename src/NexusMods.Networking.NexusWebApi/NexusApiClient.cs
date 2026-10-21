@@ -172,10 +172,11 @@ public class NexusApiClient : INexusApiClient
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException(response.ReasonPhrase, null, response.StatusCode);
 
-        var data = await response.Content.ReadFromJsonAsync(typeInfo, token);
+        var data = await response.Content.ReadFromJsonAsync(typeInfo, token)
+                   ?? throw new InvalidDataException($"{message.RequestUri} replied with the JSON literal null");
         return new Response<T>
         {
-            Data = data!,
+            Data = data,
             Metadata = ParseHeaders(response),
             StatusCode = response.StatusCode,
         };

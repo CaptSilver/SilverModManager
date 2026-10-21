@@ -42,14 +42,12 @@ public class CDNPool
             }
         }
 
-        var newServer = _currentServer;
-        if (_currentServer == null)
-        {
-            if (!_servers.TryDequeue(out newServer))
-                throw new Exception("No servers available");
-            _currentServer = newServer;
-        }
-        return newServer!;
+        if (_currentServer is { } current) return current;
+
+        if (!_servers.TryDequeue(out var newServer))
+            throw new Exception("No servers available");
+        _currentServer = newServer;
+        return newServer;
     }
     
     internal void FailServer()

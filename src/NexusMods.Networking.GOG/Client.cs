@@ -402,8 +402,8 @@ internal class Client : IClient
 
         await using var responseStream = await result.Content.ReadAsStreamAsync(token);
         await using var deflateStream = new ZLibStream(responseStream, CompressionMode.Decompress);
-        var buildDetails = JsonSerializer.Deserialize<BuildDetails>(deflateStream, _jsonSerializerOptions);
-        return buildDetails!;
+        return JsonSerializer.Deserialize<BuildDetails>(deflateStream, _jsonSerializerOptions)
+               ?? throw new InvalidDataException($"The manifest for build {build.BuildId} is the JSON literal null");
     }
     
     /// <summary>
@@ -424,7 +424,7 @@ internal class Client : IClient
                 try
                 {
                     var depot = await JsonSerializer.DeserializeAsync<DepotResponse>(depotDeflateStream, _jsonSerializerOptions, token);
-                    return depot!.Depot;
+                    return (depot ?? throw new InvalidDataException($"The depot manifest {id} is the JSON literal null")).Depot;
                 }
                 catch (JsonException ex)
                 {

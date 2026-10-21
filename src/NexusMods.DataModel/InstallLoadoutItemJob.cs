@@ -95,7 +95,7 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
         }
 
         // TODO(erri120): rename this entity to something unique, like "LoadoutItemInstalledFromLibrary"
-        var loadoutGroup = result!;
+        var loadoutGroup = result;
         _ = new LibraryLinkedLoadoutItem.New(Transaction, loadoutGroup.Id)
         {
             LoadoutItemGroup = loadoutGroup,

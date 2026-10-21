@@ -15,6 +15,7 @@ internal class AuthData
     
     public static AuthData Load(byte[] data)
     {
-        return JsonSerializer.Deserialize<AuthData>(Encoding.UTF8.GetString(data))!;
+        return JsonSerializer.Deserialize<AuthData>(Encoding.UTF8.GetString(data))
+               ?? throw new InvalidDataException("The stored Steam auth data is the JSON literal null");
     }
 }

@@ -56,8 +56,8 @@ public static class Services
 
             // TryParseJsonFile logs why parsing failed; this logs what it costs. Every lookup then
             // goes through the fallback cache, which is slower but correct, so the app stays usable.
-            var didParse = LocalMappingCache.TryParseJsonFile(logger, out var gameIdToDomain, out var gameDomainToId);
-            if (didParse) logger.LogInformation("Loaded local mapping cache data with {Count} entries", gameDomainToId!.Count);
+            if (LocalMappingCache.TryParseJsonFile(logger, out var gameIdToDomain, out var gameDomainToId))
+                logger.LogInformation("Loaded local mapping cache data with {Count} entries", gameDomainToId.Count);
             else logger.LogError("Failed to parse local mapping cache data, all mapping requests will be handled by the fallback cache");
 
             var fallbackCache = serviceProvider.GetRequiredService<GameDomainToGameIdMappingCache>();

@@ -18,8 +18,9 @@ public sealed class ProcProcessTracker(string procRoot) : IProcessTracker
         var gameDir = RealPath(installation.Locations[LocationId.Game].Path.ToString());
         var prefixes = PrefixesOf(installation.LocatorResult);
         var compatDataDirs = prefixes
-            .Where(p => Path.GetFileName(p) == "pfx" && Path.GetDirectoryName(p) is not null)
-            .Select(p => Path.GetDirectoryName(p)!)
+            .Where(p => Path.GetFileName(p) == "pfx")
+            .Select(Path.GetDirectoryName)
+            .OfType<string>()
             .ToHashSet();
 
         return Scan().Where(p => RunsFromGameDir(p) || UsesPrefix(p) || WineRunsFromGameDir(p)).Select(p => p.Process).ToList();

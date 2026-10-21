@@ -48,8 +48,8 @@ internal static class ExtractedLinks
 
     private static Decision Judge(string link, string lexicalRoot, string realRoot)
     {
-        var target = new FileInfo(link).LinkTarget!;
-        var directory = Path.GetDirectoryName(link)!;
+        var target = new FileInfo(link).LinkTarget ?? throw new InvalidOperationException($"`{link}` is not a symbolic link");
+        var directory = Path.GetDirectoryName(link) ?? throw new InvalidOperationException($"`{link}` has no parent directory");
 
         if (!IsInside(Path.GetFullPath(target, directory), lexicalRoot)) return new Decision(null, $"it points outside the extraction folder (`{target}`)");
 

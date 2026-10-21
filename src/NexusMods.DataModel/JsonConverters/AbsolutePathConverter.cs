@@ -23,7 +23,7 @@ public class AbsolutePathConverter : JsonConverter<AbsolutePath>
     /// <inheritdoc />
     public override AbsolutePath Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        return _fileSystem.FromUnsanitizedFullPath(reader.GetString()!);
+        return _fileSystem.FromUnsanitizedFullPath(reader.GetString() ?? throw new JsonException("Expected a string for an absolute path, got null"));
     }
 
     /// <inheritdoc />

@@ -74,9 +74,9 @@ public class Session : ISteamSession
             configurator.WithHttpClientFactory(_ => new HttpClient());
         });
         _steamClient = new SteamClient(steamConfiguration);
-        _steamUser = _steamClient.GetHandler<SteamUser>()!;
-        _steamApps = _steamClient.GetHandler<SteamApps>()!;
-        _steamContent = _steamClient.GetHandler<SteamContent>()!;
+        _steamUser = RequireHandler<SteamUser>(_steamClient);
+        _steamApps = RequireHandler<SteamApps>(_steamClient);
+        _steamContent = RequireHandler<SteamContent>(_steamClient);
         _cdnClient = new Client(_steamClient);
         _cdnPool = new CDNPool(this);
         
@@ -188,6 +188,10 @@ public class Session : ISteamSession
             );
         }
     }
+
+    // SteamClient registers these handlers itself; a missing one means the SteamKit version changed its defaults.
+    private static T RequireHandler<T>(SteamClient client) where T : ClientMsgHandler =>
+        client.GetHandler<T>() ?? throw new InvalidOperationException($"SteamClient has no {typeof(T).Name} handler registered");
 
     /// <summary>
     /// Wraps an async action in a synchronous action.

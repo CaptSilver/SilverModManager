@@ -84,7 +84,7 @@ public class AbstractClassConverterGenerator<T> : JsonConverter<T>
         if (readAhead.GetString() != "$type")
             throw new JsonException("Expected $type as first property on object");
         readAhead.Read();
-        var typeName = readAhead.GetString()!;
+        var typeName = readAhead.GetString() ?? throw new JsonException("Expected a string value for $type");
         if (_registry.TryGetValue(typeName, out var type))
         {
             return (T?)JsonSerializer.Deserialize(ref reader, type, options);
