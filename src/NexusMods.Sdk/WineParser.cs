@@ -86,6 +86,93 @@ public static class WineParser
         return [..results];
     }
 
+    /// <summary>
+    /// Merges <paramref name="required"/> into an existing WINEDLLOVERRIDES value. The user's
+    /// entries keep their order and spelling; a required DLL that is already listed has its types
+    /// replaced in place, and the ones that are missing are appended in the order given. The result
+    /// has no duplicate DLL names, no leading or trailing ';', and merging it again changes nothing.
+    /// </summary>
+    /// <remarks>
+    /// A replaced section is re-spelled by <see cref="WineDllOverride.ToString"/>, so <c>winmm.dll=b</c>
+    /// becomes <c>winmm=n,b</c>, and a disabled entry is written as <c>name=</c>, which is how
+    /// <see cref="ParseEnvironmentVariable"/> reads it. When a section lists several DLLs
+    /// (<c>a,winmm=b</c>) only the required name is cut out (<c>a=b</c>) and the rest is kept as
+    /// typed, including type letters the parser does not know. Sections without '=' are dropped,
+    /// as the parser ignores them.
+    /// </remarks>
+    public static string MergeDllOverrides(ReadOnlySpan<char> existingValue, IReadOnlyList<WineDllOverride> required)
+    {
+        var placed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var sections = new List<string>();
+
+        foreach (var splitRange in existingValue.Split(';'))
+        {
+            var section = existingValue[splitRange];
+
+            var index = section.LastIndexOf('=');
+            if (index == -1) continue;
+
+            var namesSpan = section[..index];
+            var typesText = section[index..]; // includes the '='
+
+            var keptNames = new List<string>();
+            var touchesRequired = false;
+            var hasOtherNames = false;
+            WineDllOverride? replacement = null;
+
+            foreach (var nameRange in namesSpan.Split(','))
+            {
+                var rawName = namesSpan[nameRange];
+                var name = FixDllName(rawName);
+
+                var match = FindRequired(required, name);
+                if (match is null)
+                {
+                    keptNames.Add(rawName.ToString());
+                    hasOtherNames = true;
+                    continue;
+                }
+
+                touchesRequired = true;
+
+                // Only a section that lists nothing but required names is rewritten where it stands;
+                // otherwise the required entry is appended below so the user's other names keep their text.
+                if (!placed.Contains(match.Value.DllName)) replacement ??= match;
+            }
+
+            if (!touchesRequired)
+            {
+                sections.Add(section.ToString());
+                continue;
+            }
+
+            if (hasOtherNames)
+            {
+                sections.Add(string.Join(',', keptNames) + typesText.ToString());
+                continue;
+            }
+
+            if (replacement is { } inPlace && placed.Add(inPlace.DllName)) sections.Add(inPlace.ToString());
+        }
+
+        foreach (var entry in required)
+        {
+            if (placed.Add(entry.DllName)) sections.Add(entry.ToString());
+        }
+
+        return string.Join(';', sections);
+    }
+
+    private static WineDllOverride? FindRequired(IReadOnlyList<WineDllOverride> required, ReadOnlySpan<char> name)
+    {
+        foreach (var entry in required)
+        {
+            if (name.Equals(entry.DllName, StringComparison.OrdinalIgnoreCase)) return entry;
+        }
+
+        return null;
+    }
+
     private static ReadOnlySpan<char> FixDllName(ReadOnlySpan<char> input)
     {
         var index = input.LastIndexOf(".dll", StringComparison.OrdinalIgnoreCase);
@@ -123,7 +210,7 @@ public static class WineParser
     /// </summary>
     public static ReadOnlySpan<char> GetWineDllOverridesSection(ReadOnlySpan<char> input)
     {
-        const string prefix = "WINEDLLOVERRIDES=";
+        const string prefix = WineDllOverridesEnvironmentVariableName + "=";
 
         var index = input.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
         if (index == -1) return ReadOnlySpan<char>.Empty;
