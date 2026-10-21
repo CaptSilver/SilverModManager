@@ -23,16 +23,32 @@ public sealed class SteamLaunchOptionWriter(LocalConfigVdfWriter writer, IEnviro
     /// <inheritdoc />
     public LocalConfigVdfWriter.Result Write(GameInstallation installation, Loadout.ReadOnly loadout)
     {
-        var located = installation.LocatorResult;
-        if (located.Store != GameStore.Steam || located.LinuxCompatabilityDataProvider is not { } provider || !uint.TryParse(located.StoreIdentifier, out var appId))
-        {
-            return Refuse($"{installation.Game.DisplayName} is not a Steam game with a known Steam installation, so there are no launch options to write.");
-        }
-
+        if (Locate(installation) is not { } game) return Refuse(NotSteamGame(installation));
         if (MissingShimWarning is { } missing) return Refuse(missing);
 
-        return writer.SetLauncherSpan(provider.SteamLocalConfigPath, appId, ShimPath.ToString(), loadout.Name, WineDllOverrideRequirements.For(installation.Game, loadout));
+        return writer.SetLauncherSpan(game.Config, game.AppId, ShimPath.ToString(), loadout.Name, WineDllOverrideRequirements.For(installation.Game, loadout));
     }
+
+    /// <inheritdoc />
+    public LocalConfigVdfWriter.Result Replace(GameInstallation installation, Loadout.ReadOnly loadout, string confirmedOldLine)
+    {
+        if (Locate(installation) is not { } game) return Refuse(NotSteamGame(installation));
+        if (MissingShimWarning is { } missing) return Refuse(missing);
+
+        // Beside the shim's own silvermod/bin: our data, not Steam's folder and not the database.
+        var record = LauncherShim.ResolveDataHome(environment, fileSystem).Combine("silvermod/steam-launch-options").Combine($"{game.AppId}.replaced");
+        return writer.ReplaceLaunchOptions(game.Config, game.AppId, ShimPath.ToString(), loadout.Name, WineDllOverrideRequirements.For(installation.Game, loadout), confirmedOldLine, record);
+    }
+
+    private static (AbsolutePath Config, uint AppId)? Locate(GameInstallation installation)
+    {
+        var located = installation.LocatorResult;
+        if (located.Store != GameStore.Steam || located.LinuxCompatabilityDataProvider is not { } provider || !uint.TryParse(located.StoreIdentifier, out var appId)) return null;
+        return (provider.SteamLocalConfigPath, appId);
+    }
+
+    private static string NotSteamGame(GameInstallation installation)
+        => $"{installation.Game.DisplayName} is not a Steam game with a known Steam installation, so there are no launch options to write.";
 
     private static LocalConfigVdfWriter.Result Refuse(string refusal) => new(null, refusal, null);
 }

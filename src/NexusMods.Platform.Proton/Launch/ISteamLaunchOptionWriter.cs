@@ -28,4 +28,11 @@ public interface ISteamLaunchOptionWriter
     /// edited safely.
     /// </summary>
     LocalConfigVdfWriter.Result Write(GameInstallation installation, Loadout.ReadOnly loadout);
+
+    /// <summary>
+    /// Swaps another manager's launch line for the launcher span when the stored line is still
+    /// <paramref name="confirmedOldLine"/>, the one the user was shown. The old line is kept in a record file in
+    /// the data home. Refuses for the same cases as <see cref="Write"/>, and when the stored line changed.
+    /// </summary>
+    LocalConfigVdfWriter.Result Replace(GameInstallation installation, Loadout.ReadOnly loadout, string confirmedOldLine);
 }

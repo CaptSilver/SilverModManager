@@ -14,9 +14,32 @@ public class LocalConfigVdfWriterTests : IDisposable
     private const uint AppId = 1091500;
 
     private readonly string _root = Directory.CreateTempSubdirectory("silvermod-localconfig-").FullName;
+    // Apart from the config's directory, which one test makes read-only.
+    private readonly string _data = Directory.CreateTempSubdirectory("silvermod-data-").FullName;
     private readonly IProcessTracker _tracker = Substitute.For<IProcessTracker>();
 
-    public void Dispose() => Directory.Delete(_root, recursive: true);
+    public void Dispose()
+    {
+        // The read-only tests chmod directories; put them back so the tree can be deleted.
+        foreach (var directory in Directory.EnumerateDirectories(_data, "*", SearchOption.AllDirectories).Append(_data).Append(_root))
+        {
+            File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+        Directory.Delete(_root, recursive: true);
+        Directory.Delete(_data, recursive: true);
+    }
+
+    private const string FluorineLine =
+        "'/home/user/.local/share/fluorine/bin/fluorine-manager' -i 'Cyberpunk 2077' -p 'Default' run --headless -e 'Cyberpunk 2077' # %command%";
+
+    private const string OtherManagerLine = "'/opt/tools/other-launcher' run # %command%";
+
+    private string RecordFile => System.IO.Path.Combine(_data, "steam-launch-options", $"{AppId}.replaced");
+
+    private AbsolutePath Record => FileSystem.Shared.FromUnsanitizedFullPath(RecordFile);
+
+    private LocalConfigVdfWriter.Result Replace(string expectedOldLine, string loadout = "Survival", AbsolutePath? record = null)
+        => Writer.ReplaceLaunchOptions(ConfigPath, AppId, Shim, loadout, [], expectedOldLine, record ?? Record);
 
     private LocalConfigVdfWriter Writer => new(_tracker);
 
@@ -210,5 +233,148 @@ public class LocalConfigVdfWriterTests : IDisposable
         result.IsRefused.Should().BeTrue();
         result.Refusal.Should().Contain("did not read back");
         File.ReadAllText(ConfigFile).Should().Be(before);
+    }
+
+    [Fact]
+    public void Test_WriteRefusalOfAnotherManagersLineCarriesTheReplacement()
+    {
+        WriteConfig(FluorineLine);
+        var original = File.ReadAllText(ConfigFile);
+
+        var result = Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []);
+
+        result.IsRefused.Should().BeTrue();
+        result.Replacement.Should().NotBeNull();
+        result.Replacement!.ManagerName.Should().Be("Fluorine");
+        result.Replacement.OldLine.Should().Be(FluorineLine);
+        result.Replacement.NewLine.Should().Be($"'{Shim}' run 'Survival' -- %command%");
+        File.ReadAllText(ConfigFile).Should().Be(original);
+    }
+
+    [Fact]
+    public void Test_WriteRefusalOfAnUnrelatedLineOffersNoReplacement()
+    {
+        WriteConfig("cd /tmp; %command%");
+
+        Writer.SetLauncherSpan(ConfigPath, AppId, Shim, "Survival", []).Replacement.Should().BeNull();
+    }
+
+    [Fact]
+    public void Test_ReplaceSwapsTheLineWhenTheOldLineMatches()
+    {
+        WriteConfig(FluorineLine);
+        var original = File.ReadAllText(ConfigFile);
+
+        var result = Replace(FluorineLine);
+
+        result.IsRefused.Should().BeFalse(result.Refusal);
+        result.Line.Should().Be($"'{Shim}' run 'Survival' -- %command%");
+        result.Replacement!.OldLine.Should().Be(FluorineLine);
+        result.ReplacedLineRecord.Should().Be(Record);
+        var back = ReadBack();
+        back.Line.Should().Be(result.Line);
+        back.Other.Should().Be("-novid");
+        back.Persona.Should().Be("Tester");
+        back.Played.Should().Be("1700000000");
+        File.ReadAllText(Backup).Should().Be(original);
+        result.Backup!.Value.ToString().Should().Be(Backup);
+    }
+
+    [Fact]
+    public void Test_ReplaceRefusesWhenTheLineChangedSinceItWasShown()
+    {
+        WriteConfig(FluorineLine);
+        var original = File.ReadAllText(ConfigFile);
+
+        var result = Replace(FluorineLine.Replace("Default", "Defaulu"));
+
+        result.IsRefused.Should().BeTrue();
+        result.Refusal.Should().StartWith("The launch options are no longer the line that was shown.").And.Contain(FluorineLine);
+        File.ReadAllText(ConfigFile).Should().Be(original);
+        File.Exists(Backup).Should().BeFalse();
+        File.Exists(RecordFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Test_ReplaceRefusesAPlainUserLine()
+    {
+        WriteConfig("MANGOHUD=1 %command%");
+        var original = File.ReadAllText(ConfigFile);
+
+        var result = Replace("MANGOHUD=1 %command%");
+
+        result.IsRefused.Should().BeTrue();
+        result.Refusal.Should().Contain("not another manager's line");
+        File.ReadAllText(ConfigFile).Should().Be(original);
+        File.Exists(RecordFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Test_ReplaceAppendsOneBlockPerReplacementToTheRecord()
+    {
+        WriteConfig(FluorineLine);
+        Replace(FluorineLine).IsRefused.Should().BeFalse();
+        WriteConfig(OtherManagerLine);
+        Replace(OtherManagerLine, "Second").IsRefused.Should().BeFalse();
+
+        var blocks = File.ReadAllText(RecordFile).Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        blocks.Should().HaveCount(2);
+        blocks[0].Split('\n').Should().SatisfyRespectively(
+            l => l.Should().StartWith("replaced "),
+            l => l.Should().Be($"config {ConfigFile}"),
+            l => l.Should().Be($"app {AppId}"),
+            l => l.Should().Be($"old {FluorineLine}"),
+            l => l.Should().Be($"new '{Shim}' run 'Survival' -- %command%"));
+        blocks[0].Split('\n')[0].Should().MatchRegex(@"^replaced \d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$");
+        blocks[1].Should().Contain($"old {OtherManagerLine}").And.Contain("run 'Second'");
+    }
+
+    [Fact]
+    public void Test_ReplaceWritesTheRecordBeforeTouchingSteamsFolder()
+    {
+        WriteConfig(FluorineLine);
+        var before = File.ReadAllBytes(ConfigFile);
+        File.SetUnixFileMode(_root, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+
+        var result = Replace(FluorineLine);
+
+        result.IsRefused.Should().BeTrue();
+        result.Refusal.Should().Contain("backup copy");
+        File.ReadAllText(RecordFile).Should().Contain($"old {FluorineLine}");
+        File.Exists(Backup).Should().BeFalse();
+        File.ReadAllBytes(ConfigFile).Should().Equal(before);
+    }
+
+    [Fact]
+    public void Test_ReplaceRefusesWhenTheRecordCannotBeWritten()
+    {
+        WriteConfig(FluorineLine);
+        var before = File.ReadAllBytes(ConfigFile);
+        var locked = Directory.CreateDirectory(System.IO.Path.Combine(_data, "locked"));
+        File.SetUnixFileMode(locked.FullName, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        var record = FileSystem.Shared.FromUnsanitizedFullPath(System.IO.Path.Combine(locked.FullName, "steam-launch-options", "x.replaced"));
+
+        var result = Replace(FluorineLine, record: record);
+
+        result.IsRefused.Should().BeTrue();
+        result.Refusal.Should().Contain("record");
+        File.ReadAllBytes(ConfigFile).Should().Equal(before);
+        File.Exists(Backup).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Test_ReplaceRefusesWhileSteamRuns()
+    {
+        WriteConfig(FluorineLine);
+        var original = File.ReadAllText(ConfigFile);
+        _tracker.IsSteamRunning().Returns(true);
+
+        var result = Replace(FluorineLine);
+
+        result.IsRefused.Should().BeTrue();
+        result.Refusal.Should().StartWith("Steam rewrites its config on exit");
+        File.ReadAllText(ConfigFile).Should().Be(original);
+        File.Exists(RecordFile).Should().BeFalse();
     }
 }
