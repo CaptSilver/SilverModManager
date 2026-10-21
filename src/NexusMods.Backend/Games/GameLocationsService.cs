@@ -97,9 +97,9 @@ internal class GameLocationsService : IGameLocationsService
         return new IndexFileResult(gamePath, newHash, fingerprint.Size, fingerprint.LastModified);
     }
 
-    private async ValueTask<Hash> HashFile(AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
+    internal async ValueTask<Hash> HashFile(AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
     {
-        var existingHash = await GetExistingHash(hashesDb: _fileHashesService.Current, file, gamePath, cancellationToken);
+        var existingHash = await GetExistingHash(_fileHashesService.Databases, file, gamePath, cancellationToken);
         if (existingHash.HasValue) return existingHash.Value;
 
         _logger.LogDebug("Didn't find matching hash data for file `{Path}`, falling back to a full hash", file);
@@ -107,16 +107,28 @@ internal class GameLocationsService : IGameLocationsService
         return hash;
     }
 
-    private static async ValueTask<Optional<Hash>> GetExistingHash(IDb hashesDb, AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
+    /// <summary>
+    /// Looks the file up in every hashes store, not only <see cref="IFileHashesService.Current"/>: the rows for the installed build
+    /// may live in the store the app writes itself, and skipping it would mean fully hashing files the app has
+    /// already hashed. Entity ids differ between stores, so each store is matched on its own and only the
+    /// resulting hashes are compared. Stores that disagree on the hash give no answer, same as rows that
+    /// disagree within one store.
+    /// </summary>
+    private static async ValueTask<Optional<Hash>> GetExistingHash(IReadOnlyList<IDb> hashesDbs, AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
     {
-        var pathHashRelations = PathHashRelation.FindByPath(hashesDb, gamePath.Path);
-        if (pathHashRelations.Count == 0) return Optional<Hash>.None;
+        var candidates = new List<PathHashRelation.ReadOnly>();
+        foreach (var hashesDb in hashesDbs)
+        {
+            candidates.AddRange(PathHashRelation.FindByPath(hashesDb, gamePath.Path));
+        }
+
+        if (candidates.Count == 0) return Optional<Hash>.None;
 
         var size = FileFingerprint.Of(file).Size;
         var minimalHash = await GetMinimalHash(file, cancellationToken);
 
         var foundHash = Optional<Hash>.None;
-        foreach (var pathHashRelation in pathHashRelations)
+        foreach (var pathHashRelation in candidates)
         {
             var existingHashes = pathHashRelation.Hash;
             if (existingHashes.Size != size) continue;
