@@ -12,6 +12,8 @@ public class SteamLaunchOptionDesignViewModel : AOverlayViewModel<ISteamLaunchOp
     public string CopyNote => "Copying changes nothing in Steam. Paste the line into the game's Properties > Launch Options yourself.";
     public bool IsSteamRunning => true;
     public bool CanWrite => false;
+    public bool CanCloseAndWrite => true;
+    public bool IsWaitingForSteam => false;
     public string WriteNote => "Close Steam completely, including its tray icon, to write the launch option.";
     public string Message => "";
     public string OtherManagerName => "Fluorine";
@@ -21,5 +23,7 @@ public class SteamLaunchOptionDesignViewModel : AOverlayViewModel<ISteamLaunchOp
     public ReactiveCommand<Unit, Unit> CopyCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> WriteCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> ReplaceCommand { get; } = ReactiveCommand.Create(() => { });
+    public ReactiveCommand<Unit, Unit> CloseAndWriteCommand { get; } = ReactiveCommand.Create(() => { });
+    public ReactiveCommand<Unit, Unit> CancelWaitCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> CloseCommand { get; } = ReactiveCommand.Create(() => { });
 }

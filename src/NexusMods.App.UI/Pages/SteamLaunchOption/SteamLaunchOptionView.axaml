@@ -68,6 +68,8 @@
                         Spacing="{StaticResource Spacing-2.5}">
                 <controls:StandardButton x:Name="ButtonClose" Text="Close" />
                 <controls:StandardButton x:Name="ButtonReplace" Text="Replace it" Type="Secondary" IsVisible="False" />
+                <controls:StandardButton x:Name="ButtonCancelWait" Text="Cancel" Type="Secondary" IsVisible="False" />
+                <controls:StandardButton x:Name="ButtonCloseAndWrite" Text="Close Steam and write" Type="Secondary" IsVisible="False" />
                 <controls:StandardButton x:Name="ButtonWrite" Text="Write to Steam" Type="Secondary" />
                 <controls:StandardButton x:Name="ButtonCopy" Text="Copy line" Type="Primary" Fill="Strong" />
             </StackPanel>

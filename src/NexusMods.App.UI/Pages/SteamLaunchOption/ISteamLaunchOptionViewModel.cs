@@ -35,6 +35,16 @@ public interface ISteamLaunchOptionViewModel : IOverlayViewModel<Unit>
     bool CanWrite { get; }
 
     /// <summary>
+    /// Whether Close Steam and write can be pressed: Steam runs and no write is under way.
+    /// </summary>
+    bool CanCloseAndWrite { get; }
+
+    /// <summary>
+    /// True from the moment Steam has been asked to exit until it has, or the wait ends.
+    /// </summary>
+    bool IsWaitingForSteam { get; }
+
+    /// <summary>
     /// Asks the user to close Steam while it runs, empty otherwise.
     /// </summary>
     string WriteNote { get; }
@@ -69,6 +79,16 @@ public interface ISteamLaunchOptionViewModel : IOverlayViewModel<Unit>
     ReactiveCommand<Unit, Unit> CopyCommand { get; }
 
     ReactiveCommand<Unit, Unit> WriteCommand { get; }
+
+    /// <summary>
+    /// Asks Steam to exit, waits for it, writes the launch option, and starts Steam again.
+    /// </summary>
+    ReactiveCommand<Unit, Unit> CloseAndWriteCommand { get; }
+
+    /// <summary>
+    /// Stops waiting for Steam to exit. Nothing is written.
+    /// </summary>
+    ReactiveCommand<Unit, Unit> CancelWaitCommand { get; }
 
     /// <summary>
     /// Swaps <see cref="OldLine"/> for <see cref="NewLine"/> in Steam's config.

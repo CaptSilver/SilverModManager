@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.App.UI.Overlays;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Platform.Proton.Steam;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 
@@ -18,12 +20,22 @@ public static class SteamLaunchOptionDialog
     {
         // A captured snapshot is stale after a rename, or once files the game's requirements depend on change.
         loadout = loadout.Rebase();
+        var processTracker = serviceProvider.GetRequiredService<IProcessTracker>();
+        var osInterop = serviceProvider.GetRequiredService<IOSInterop>();
+        // The same steam:// URLs the app already hands to the OS to start a game through Steam.
+        var closeAndWrite = SteamCloseAndWrite.Create(
+            processTracker.IsSteamRunning,
+            () => processTracker.FindByName("steamwebhelper").Count > 0,
+            () => osInterop.OpenUri(new Uri("steam://exit")),
+            () => osInterop.OpenUri(new Uri("steam://open/main"))
+        );
         var overlay = new SteamLaunchOptionViewModel(
             loadout,
             loadout.InstallationInstance,
-            serviceProvider.GetRequiredService<IProcessTracker>(),
+            processTracker,
             serviceProvider.GetRequiredService<ISteamLaunchOptionWriter>(),
-            serviceProvider.GetRequiredService<IAvaloniaInterop>()
+            serviceProvider.GetRequiredService<IAvaloniaInterop>(),
+            closeAndWrite
         );
         await serviceProvider.GetRequiredService<IOverlayController>().EnqueueAndWait(overlay);
     }

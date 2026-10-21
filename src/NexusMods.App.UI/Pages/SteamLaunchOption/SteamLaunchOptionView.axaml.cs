@@ -36,6 +36,21 @@ public partial class SteamLaunchOptionView : ReactiveUserControl<ISteamLaunchOpt
 
             this.BindCommand(ViewModel, vm => vm.CopyCommand, view => view.ButtonCopy).DisposeWith(d);
             this.BindCommand(ViewModel, vm => vm.WriteCommand, view => view.ButtonWrite).DisposeWith(d);
+            this.BindCommand(ViewModel, vm => vm.CloseAndWriteCommand, view => view.ButtonCloseAndWrite).DisposeWith(d);
+            this.BindCommand(ViewModel, vm => vm.CancelWaitCommand, view => view.ButtonCancelWait).DisposeWith(d);
+
+            // Close-and-write takes the place of Write while Steam runs; Cancel shows only during the wait.
+            this.WhenAnyValue(view => view.ViewModel)
+                .WhereNotNull()
+                .Select(vm => vm.WhenAnyValue(x => x.IsSteamRunning, x => x.IsWaitingForSteam, (running, waiting) => (running, waiting)))
+                .Switch()
+                .Subscribe(state =>
+                {
+                    ButtonCloseAndWrite.IsVisible = state.running && !state.waiting;
+                    ButtonWrite.IsVisible = !state.running && !state.waiting;
+                    ButtonCancelWait.IsVisible = state.waiting;
+                })
+                .DisposeWith(d);
             this.OneWayBind(ViewModel, vm => vm.OldLine, view => view.OldLineText.Text).DisposeWith(d);
             this.OneWayBind(ViewModel, vm => vm.NewLine, view => view.NewLineText.Text).DisposeWith(d);
             this.WhenAnyValue(view => view.ViewModel!.OtherManagerName)

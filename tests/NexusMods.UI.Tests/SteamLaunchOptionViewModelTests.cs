@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.App.UI;
+using NexusMods.App.UI.Overlays;
 using NexusMods.App.UI.Pages.SteamLaunchOption;
 using NexusMods.Abstractions.Games;
 using NexusMods.Paths;
@@ -25,13 +26,38 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
         public Loadout.ReadOnly Seeded { get; }
         public SteamLaunchOptionViewModel Vm { get; }
 
+        // A Steam that closes on request and stays closed, unless it is made to ignore the request.
+        public bool Running { get; set; }
+        public bool HoldsPolls { get; set; }
+        public bool IgnoresExitRequest { get; set; }
+        public int ExitRequests { get; private set; }
+        public int Starts { get; private set; }
+
         public Fixture(Loadout.ReadOnly loadout, GameInstallation installation, bool steamRunning, string? shimWarning = null)
         {
             Seeded = loadout;
-            Tracker.IsSteamRunning().Returns(steamRunning);
+            Running = steamRunning;
+            Tracker.IsSteamRunning().Returns(_ => Running);
             Writer.ComposeLine(Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == loadout.LoadoutId)).Returns(Line);
             Writer.MissingShimWarning.Returns(shimWarning);
-            Vm = new SteamLaunchOptionViewModel(loadout, installation, Tracker, Writer, Interop);
+            var exitRequested = false;
+            var closeAndWrite = new SteamCloseAndWrite(
+                Tracker.IsSteamRunning,
+                () => false,
+                () => { ExitRequests++; exitRequested = true; },
+                () => { Starts++; Running = true; },
+                (_, token) =>
+                {
+                    token.ThrowIfCancellationRequested();
+                    // A held poll never finishes by itself, so a test can look at the dialog mid-wait.
+                    if (HoldsPolls) return new TaskCompletionSource().Task.WaitAsync(token);
+                    if (exitRequested && !IgnoresExitRequest) Running = false;
+                    return Task.CompletedTask;
+                },
+                TimeSpan.FromSeconds(1),
+                TimeSpan.FromSeconds(5),
+                TimeSpan.FromSeconds(5));
+            Vm = new SteamLaunchOptionViewModel(loadout, installation, Tracker, Writer, Interop, closeAndWrite);
         }
     }
 
@@ -260,6 +286,211 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
         f.Vm.RefreshSteamState();
         f.Vm.CanWrite.Should().BeTrue();
         f.Vm.WriteNote.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Test_CloseAndWriteIsOfferedOnlyWhileSteamRuns()
+    {
+        var running = await NewFixture(steamRunning: true);
+        running.Vm.CanCloseAndWrite.Should().BeTrue();
+
+        var closed = await NewFixture(steamRunning: false);
+        closed.Vm.CanCloseAndWrite.Should().BeFalse();
+        closed.Vm.CanWrite.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Test_CloseAndWriteClosesSteamWritesAndStartsItAgain()
+    {
+        var f = await NewFixture(steamRunning: true);
+        var backup = FileSystem.Shared.FromUnsanitizedFullPath("/tmp/localconfig.vdf.silvermod-bak");
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId))
+            .Returns(_ =>
+            {
+                f.Running.Should().BeFalse("the line is written only once Steam is gone");
+                return new LocalConfigVdfWriter.Result(Line, null, backup);
+            });
+
+        await f.Vm.CloseAndWriteAsync();
+
+        f.ExitRequests.Should().Be(1);
+        f.Writer.Received(1).Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId));
+        f.Starts.Should().Be(1);
+        f.Vm.Message.Should().Contain(Line).And.Contain("Steam is starting again");
+        f.Vm.IsWaitingForSteam.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Test_CloseAndWriteWritesNothingWhenSteamDoesNotClose()
+    {
+        var f = await NewFixture(steamRunning: true);
+        f.IgnoresExitRequest = true;
+
+        await f.Vm.CloseAndWriteAsync();
+
+        f.Writer.DidNotReceiveWithAnyArgs().Write(default!, default!);
+        f.Starts.Should().Be(0);
+        f.Vm.Message.Should().Contain("didn't close").And.Contain("nothing was written");
+        // Steam still runs, so Write to Steam is not on screen; the message must not send the user looking for it.
+        f.Vm.Message.Should().NotContain("Write to Steam");
+        f.Vm.IsWaitingForSteam.Should().BeFalse();
+        f.Vm.CanCloseAndWrite.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Test_CancellingTheWaitWritesNothing()
+    {
+        var f = await NewFixture(steamRunning: true);
+        f.HoldsPolls = true;
+
+        var closing = f.Vm.CloseAndWriteAsync();
+        f.Vm.CancelWait();
+        await closing;
+
+        f.Writer.DidNotReceiveWithAnyArgs().Write(default!, default!);
+        f.Starts.Should().Be(0);
+        f.Vm.Message.Should().Contain("Cancelled");
+        f.Vm.IsWaitingForSteam.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Test_WriteIsHeldBackWhileTheCloseAndWriteRuns()
+    {
+        var f = await NewFixture(steamRunning: true);
+        f.HoldsPolls = true;
+
+        var closing = f.Vm.CloseAndWriteAsync();
+        f.Vm.IsWaitingForSteam.Should().BeTrue();
+        f.Vm.Message.Should().Contain("Waiting for Steam to close");
+        f.Vm.CanCloseAndWrite.Should().BeFalse();
+
+        // Steam closes by hand mid-wait: a second write path must not open next to the running one.
+        f.Running = false;
+        f.Vm.RefreshSteamState();
+        f.Vm.CanWrite.Should().BeFalse();
+
+        f.Vm.CancelWait();
+        await closing;
+    }
+
+    [Fact]
+    public async Task Test_CloseAndWriteLeavesSteamClosedWhenAnotherManagersLineNeedsReplacing()
+    {
+        var f = await NewFixture(steamRunning: true);
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId)).Returns(AnotherManagersRefusal(FluorineReplacement()));
+
+        await f.Vm.CloseAndWriteAsync();
+
+        f.Starts.Should().Be(0);
+        f.Vm.CanReplace.Should().BeTrue();
+        f.Vm.OtherManagerName.Should().Be("Fluorine");
+        f.Vm.Message.Should().Contain("belong to Fluorine").And.Contain("left closed");
+    }
+
+    [Fact]
+    public async Task Test_CloseAndWriteReportsARefusalAndStartsSteamAgain()
+    {
+        var f = await NewFixture(steamRunning: true);
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId)).Returns(new LocalConfigVdfWriter.Result(null, "an unquoted ';' before %command%", null));
+
+        await f.Vm.CloseAndWriteAsync();
+
+        f.Starts.Should().Be(1);
+        f.Vm.Message.Should().Contain("an unquoted ';' before %command%");
+    }
+
+    [Fact]
+    public async Task Test_OpenDialogFollowsSteamBeingClosedByHand()
+    {
+        var f = await NewFixture(steamRunning: true);
+        f.Vm.CanWrite.Should().BeFalse();
+        using var _ = await OnUi(() => Task.FromResult(f.Vm.Activator.Activate()));
+
+        f.Running = false;
+
+        // The dialog polls on a timer, so the button turns on without anyone pressing anything.
+        await EventuallyOnUi(() =>
+        {
+            f.Vm.CanWrite.Should().BeTrue();
+            f.Vm.CanCloseAndWrite.Should().BeFalse();
+        }, maxTimeout: TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task Test_CancelGoesAwayOnceTheWriteStarts()
+    {
+        var f = await NewFixture(steamRunning: true);
+        bool? waitingDuringWrite = null;
+        string? messageDuringWrite = null;
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId))
+            .Returns(_ =>
+            {
+                waitingDuringWrite = f.Vm.IsWaitingForSteam;
+                messageDuringWrite = f.Vm.Message;
+                return new LocalConfigVdfWriter.Result(Line, null, FileSystem.Shared.FromUnsanitizedFullPath("/tmp/localconfig.vdf.silvermod-bak"));
+            });
+
+        await f.Vm.CloseAndWriteAsync();
+
+        // Cancelling can no longer stop anything once the file is being written.
+        waitingDuringWrite.Should().BeFalse();
+        messageDuringWrite.Should().NotContain("Waiting for Steam");
+    }
+
+    [Fact]
+    public async Task Test_ClosingTheDialogWhileWaitingWritesNothing()
+    {
+        var f = await NewFixture(steamRunning: true);
+        f.Vm.Controller = Substitute.For<IOverlayController>();
+        f.HoldsPolls = true;
+
+        var closing = f.Vm.CloseAndWriteAsync();
+        f.Vm.Close();
+        await closing.WaitAsync(TimeSpan.FromSeconds(10));
+
+        f.Writer.DidNotReceiveWithAnyArgs().Write(default!, default!);
+        f.Starts.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Test_CloseAndWriteShowsAWriteThatThrows()
+    {
+        var f = await NewFixture(steamRunning: true);
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId))
+            .Returns<LocalConfigVdfWriter.Result>(_ => throw new IOException("disk full"));
+
+        await f.Vm.CloseAndWriteAsync();
+
+        f.Vm.Message.Should().Contain("disk full");
+        f.Starts.Should().Be(1);
+        f.Vm.IsWaitingForSteam.Should().BeFalse();
+        f.Vm.CanCloseAndWrite.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Test_WriteShowsAWriteThatThrows()
+    {
+        var f = await NewFixture(steamRunning: false);
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId))
+            .Returns<LocalConfigVdfWriter.Result>(_ => throw new IOException("disk full"));
+
+        await f.Vm.WriteAsync();
+
+        f.Vm.Message.Should().Contain("disk full");
+    }
+
+    [Fact]
+    public async Task Test_ReplaceShowsAReplaceThatThrows()
+    {
+        var f = await NewFixture(steamRunning: false);
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId)).Returns(AnotherManagersRefusal(FluorineReplacement()));
+        f.Writer.Replace(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId), FluorineLine)
+            .Returns<LocalConfigVdfWriter.Result>(_ => throw new IOException("disk full"));
+
+        await f.Vm.WriteAsync();
+        await f.Vm.ReplaceAsync();
+
+        f.Vm.Message.Should().Contain("disk full");
     }
 
     [Fact]

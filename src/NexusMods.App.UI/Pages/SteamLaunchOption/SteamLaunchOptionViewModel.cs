@@ -23,10 +23,13 @@ public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionVi
     private readonly IProcessTracker _processTracker;
     private readonly ISteamLaunchOptionWriter _writer;
     private readonly IAvaloniaInterop _interop;
+    private readonly SteamCloseAndWrite _closeAndWrite;
+    private CancellationTokenSource? _waitForSteam;
+    private bool _isBusy;
     private readonly Loadout.ReadOnly _loadout;
     private bool _replacementPending;
 
-    public SteamLaunchOptionViewModel(Loadout.ReadOnly loadout, GameInstallation installation, IProcessTracker processTracker, ISteamLaunchOptionWriter writer, IAvaloniaInterop interop)
+    public SteamLaunchOptionViewModel(Loadout.ReadOnly loadout, GameInstallation installation, IProcessTracker processTracker, ISteamLaunchOptionWriter writer, IAvaloniaInterop interop, SteamCloseAndWrite closeAndWrite)
     {
         _loadout = loadout;
         LoadoutName = loadout.Name;
@@ -34,6 +37,7 @@ public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionVi
         _processTracker = processTracker;
         _writer = writer;
         _interop = interop;
+        _closeAndWrite = closeAndWrite;
 
         Line = writer.ComposeLine(loadout);
         Warning = writer.MissingShimWarning ?? "";
@@ -42,6 +46,8 @@ public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionVi
         CopyCommand = ReactiveCommand.CreateFromTask(CopyAsync);
         WriteCommand = ReactiveCommand.CreateFromTask(WriteAsync, this.WhenAnyValue(vm => vm.CanWrite));
         ReplaceCommand = ReactiveCommand.CreateFromTask(ReplaceAsync, this.WhenAnyValue(vm => vm.CanReplace));
+        CloseAndWriteCommand = ReactiveCommand.CreateFromTask(CloseAndWriteAsync, this.WhenAnyValue(vm => vm.CanCloseAndWrite));
+        CancelWaitCommand = ReactiveCommand.Create(CancelWait, this.WhenAnyValue(vm => vm.IsWaitingForSteam));
         CloseCommand = ReactiveCommand.Create(() => Complete(Unit.Default));
 
         // The user may close Steam with the dialog open, so keep the Write button in step with the process table.
@@ -63,6 +69,8 @@ public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionVi
     public string CopyNote => "Copying changes nothing in Steam. Paste the line into the game's Properties > Launch Options yourself.";
     [Reactive] public bool IsSteamRunning { get; private set; }
     [Reactive] public bool CanWrite { get; private set; }
+    [Reactive] public bool CanCloseAndWrite { get; private set; }
+    [Reactive] public bool IsWaitingForSteam { get; private set; }
     [Reactive] public string WriteNote { get; private set; } = "";
     [Reactive] public string Message { get; private set; } = "";
     [Reactive] public string OtherManagerName { get; private set; } = "";
@@ -72,6 +80,8 @@ public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionVi
     public ReactiveCommand<Unit, Unit> CopyCommand { get; }
     public ReactiveCommand<Unit, Unit> WriteCommand { get; }
     public ReactiveCommand<Unit, Unit> ReplaceCommand { get; }
+    public ReactiveCommand<Unit, Unit> CloseAndWriteCommand { get; }
+    public ReactiveCommand<Unit, Unit> CancelWaitCommand { get; }
     public ReactiveCommand<Unit, Unit> CloseCommand { get; }
 
     public void RefreshSteamState() => ApplySteamState(_processTracker.IsSteamRunning());
@@ -104,12 +114,100 @@ public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionVi
 
     private async Task WriteToSteam()
     {
-        var result = await Task.Run(() => _writer.Write(Installation, _loadout));
+        try
+        {
+            var result = await Task.Run(() => _writer.Write(Installation, _loadout));
+            Message = DescribeWrite(result);
+        }
+        catch (Exception ex)
+        {
+            Message = DescribeFailure("write", ex);
+        }
+    }
+
+    // The writer reports the failures it expects as refusals. Anything else would otherwise reach only the log.
+    private static string DescribeFailure(string verb, Exception ex) => $"Could not {verb} the launch option: {ex.Message}";
+
+    private string DescribeWrite(LocalConfigVdfWriter.Result result)
+    {
         ShowReplacement(result.Replacement);
-        Message = result.IsRefused
+        return result.IsRefused
             ? result.Refusal!
             : $"Set the launch options of {Installation.Game.DisplayName} to: {result.Line} " +
               $"The previous file was kept as {result.Backup}. The line runs the current deploy of the loadout.";
+    }
+
+    /// <summary>
+    /// Asks Steam to exit, writes the launch option once it has, and starts Steam again.
+    /// </summary>
+    public async Task CloseAndWriteAsync()
+    {
+        if (_isBusy) return;
+
+        using var cts = new CancellationTokenSource();
+        _waitForSteam = cts;
+        SetBusy(true);
+        try
+        {
+            var outcome = await _closeAndWrite.RunAsync(
+                () =>
+                {
+                    // Steam is gone and the file is about to change, so Cancel has nothing left to stop.
+                    IsWaitingForSteam = false;
+                    Message = "Writing the launch option…";
+                    return Task.Run(() => _writer.Write(Installation, _loadout));
+                },
+                // A line that needs Replace confirmed is written with Steam closed, so it must not come back first.
+                restartSteam: result => !(result.IsRefused && result.Replacement is not null),
+                cts.Token,
+                onWaiting: () =>
+                {
+                    IsWaitingForSteam = true;
+                    Message = "Waiting for Steam to close…";
+                });
+
+            Message = outcome.Outcome switch
+            {
+                SteamCloseOutcome.TimedOut => "Steam didn't close in time, so nothing was written. Check Steam for a prompt that keeps it open, or close it completely (including the tray icon), then try again.",
+                SteamCloseOutcome.Cancelled => "Cancelled, nothing was written. Steam may still be closing.",
+                _ => outcome.Value is { } written ? DescribeWrite(written) + DescribeRestart(written, outcome.SteamRestarted) : "",
+            };
+        }
+        catch (Exception ex)
+        {
+            Message = DescribeFailure("write", ex);
+        }
+        finally
+        {
+            _waitForSteam = null;
+            IsWaitingForSteam = false;
+            SetBusy(false);
+        }
+    }
+
+    private static string DescribeRestart(LocalConfigVdfWriter.Result result, bool restarted)
+    {
+        if (restarted) return " Steam is starting again.";
+        return result.IsRefused && result.Replacement is not null
+            ? " Steam was left closed so Replace can be written; start it yourself afterwards."
+            : "";
+    }
+
+    public void CancelWait() => _waitForSteam?.Cancel();
+
+    /// <summary>
+    /// Stops a wait for Steam too, so nothing is written behind a dialog that is no longer there.
+    /// </summary>
+    public override void Close()
+    {
+        CancelWait();
+        base.Close();
+    }
+
+    private void SetBusy(bool busy)
+    {
+        _isBusy = busy;
+        RefreshSteamState();
     }
 
     public Task ReplaceAsync()
@@ -128,7 +226,14 @@ public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionVi
     {
         // Send the line the user was shown, so a line changed underneath is refused instead of overwritten.
         var shown = OldLine;
-        var result = await Task.Run(() => _writer.Replace(Installation, _loadout, shown));
+        LocalConfigVdfWriter.Result result;
+        try { result = await Task.Run(() => _writer.Replace(Installation, _loadout, shown)); }
+        catch (Exception ex)
+        {
+            Message = DescribeFailure("replace", ex);
+            return;
+        }
+
         if (result.IsRefused)
         {
             // A fresh replacement means the line changed; the next press confirms the current one.
@@ -149,14 +254,16 @@ public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionVi
         OtherManagerName = replacement is null ? "" : replacement.ManagerName ?? "another launcher";
         OldLine = replacement?.OldLine ?? "";
         NewLine = replacement?.NewLine ?? "";
-        CanReplace = _replacementPending && !IsSteamRunning;
+        CanReplace = _replacementPending && !IsSteamRunning && !_isBusy;
     }
 
     private void ApplySteamState(bool running)
     {
         IsSteamRunning = running;
-        CanWrite = !running;
-        CanReplace = _replacementPending && !running;
+        // Closing Steam by hand mid-wait must not open a second write path next to the one already running.
+        CanWrite = !running && !_isBusy;
+        CanCloseAndWrite = running && !_isBusy;
+        CanReplace = _replacementPending && !running && !_isBusy;
         WriteNote = running ? CloseSteamText : "";
     }
 }
