@@ -42,8 +42,10 @@ Use [winetricks](https://github.com/Winetricks/winetricks) to install the follow
         return sb.ToString();
     }
 
-    public static async ValueTask<string?> GetWineDllOverridesUpdateInstructions(GameInstallation gameInstallation, WineDllOverride[] requiredOverrides, CancellationToken cancellationToken = default)
+    public static async ValueTask<string?> GetWineDllOverridesUpdateInstructions(GameInstallation gameInstallation, IReadOnlyList<WineDllOverride> requiredOverrides, CancellationToken cancellationToken = default)
     {
+        if (requiredOverrides.Count == 0) return null;
+
         var locatorResultMetadata = gameInstallation.LocatorResult;
 
         var linuxCompatibilityDataProvider = locatorResultMetadata.LinuxCompatabilityDataProvider;
@@ -71,10 +73,15 @@ Use [winetricks](https://github.com/Winetricks/winetricks) to install the follow
 
         var sb = new StringBuilder();
 
-        var dllOverridesString = requiredOverrides.Select(x => x.ToString()).Aggregate((a, b) => $"{a};{b}");
+        var dllOverridesString = WineParser.MergeDllOverrides("", requiredOverrides);
+        const string variable = WineParser.WineDllOverridesEnvironmentVariableName;
         if (locatorResultMetadata.Store == GameStore.Steam)
         {
             sb.AppendLine($"""
+Open the loadout card's "Use this loadout from Steam" and write the line while Steam is closed, or run `silvermod steam-launch-option --loadout <name> --write`. The line it writes sets `{variable}` to `{dllOverridesString}`.
+
+To do it by hand instead:
+
 * Open Steam
 * Right-click the game
 * Click on "Properties..."
@@ -82,8 +89,8 @@ Use [winetricks](https://github.com/Winetricks/winetricks) to install the follow
 * Update "Launch Options" to be the following:
 
 ```
-WINEDLLOVERRIDES="{dllOverridesString}" %command%
-```                  
+{variable}="{dllOverridesString}" %command%
+```
 """);
         } else if (locatorResultMetadata.Store == GameStore.GOG)
         {
@@ -95,21 +102,21 @@ WINEDLLOVERRIDES="{dllOverridesString}" %command%
 * Update the environment variables:
 
 ```
-WINEDLLOVERRIDES="{dllOverridesString}"
+{variable}="{dllOverridesString}"
 ```
 """);
         }
         else
         {
             sb.AppendLine($"""
-Update the `WINEDLLOVERRIDES` environment variable to be the following:
+Update the `{variable}` environment variable to be the following:
 
 ```
 {dllOverridesString}
 ```
 """);
         }
-        
+
         return sb.ToString();
     }
 }

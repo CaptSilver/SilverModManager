@@ -2,6 +2,7 @@ using System.Text;
 using FluentAssertions;
 using NexusMods.Abstractions.Diagnostics;
 
+using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
@@ -32,6 +33,17 @@ public class Cyberpunk2077DiagnosticTests(ITestOutputHelper outputHelper) : ACyb
     /// </summary>
     public static IEnumerable<object[]> PathBasedDiagnosticArgs 
         => PatternDefinitions.Definitions.Select(t => new object[] { t.DependencyName });
+
+    [Fact]
+    public async Task CyberpunkDeclaresTheWineDllOverridesItsHealthCheckAsksFor()
+    {
+        var loadout = await CreateLoadout();
+
+        var requirements = Game.Should().BeAssignableTo<IWineDllOverrideRequirements>().Subject;
+
+        requirements.RequiredWineDllOverrides(loadout).Select(o => o.ToString())
+            .Should().Equal("winmm=n,b", "version=n,b");
+    }
 
     [Fact]
     public void CyberpunkGameExposesPatternBasedDiagnostics()

@@ -13,13 +13,15 @@ using NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
 using NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder;
 using NexusMods.Games.RedEngine.ModInstallers;
 using NexusMods.Paths;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.IO;
+using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.Games.RedEngine.Cyberpunk2077;
 
 [UsedImplicitly]
-public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>
+public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements
 {
     public static GameId GameId { get; } = GameId.From("RedEngine.Cyberpunk2077");
     public static string DisplayName => "Cyberpunk 2077";
@@ -68,7 +70,7 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>
             new PatternBasedDependencyEmitter(PatternDefinitions.Definitions, provider),
             new NoWayToRunRedModEmitter(provider),
             new MissingRedModEmitter(),
-            new WinePrefixRequirementsEmitter(),
+            new WinePrefixRequirementsEmitter(this),
             provider.GetRequiredService<ProtonPrefixEmitter>(),
         ];
 
@@ -101,4 +103,13 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>
     }
 
     public GamePath GetPrimaryFile(GameInstallation installation) => new(LocationId.Game, "bin/x64/Cyberpunk2077.exe");
+
+    // https://wiki.redmodding.org/cyberpunk-2077-modding/for-mod-users/users-modding-cyberpunk-2077/modding-on-linux
+    private static readonly WineDllOverride[] RequiredOverrides =
+    [
+        new("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]),
+        new("version", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]),
+    ];
+
+    public IReadOnlyList<WineDllOverride> RequiredWineDllOverrides(Loadout.ReadOnly loadout) => RequiredOverrides;
 }

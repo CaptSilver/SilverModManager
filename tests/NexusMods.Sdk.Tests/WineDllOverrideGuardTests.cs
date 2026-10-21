@@ -14,19 +14,9 @@ public class WineDllOverrideGuardTests
     private const string WineParserFile = "src/NexusMods.Sdk/WineParser.cs";
     private const string WineDllOverrideFile = "src/NexusMods.Sdk/WineDllOverride.cs";
 
-    private static readonly (string File, string Line, string Reason)[] AllowedVariableNames =
-    [
-        ("src/NexusMods.Games.Generic/WineDiagnosticHelper.cs", "WINEDLLOVERRIDES=\"{dllOverridesString}\" %command%", "instruction text; the games declare their overrides and the helper spells the variable through WineParser"),
-        ("src/NexusMods.Games.Generic/WineDiagnosticHelper.cs", "WINEDLLOVERRIDES=\"{dllOverridesString}\"", "instruction text; the games declare their overrides and the helper spells the variable through WineParser"),
-        ("src/NexusMods.Games.Generic/WineDiagnosticHelper.cs", "Update the `WINEDLLOVERRIDES` environment variable to be the following:", "instruction text; the games declare their overrides and the helper spells the variable through WineParser"),
-        ("src/NexusMods.Games.Larian/BaldursGate3/Diagnostics.cs", "`WINEDLLOVERRIDES=\"DWrite=n,b\" %command%`", "instruction text; the games declare their overrides and the helper spells the variable through WineParser"),
-    ];
+    private static readonly (string File, string Line, string Reason)[] AllowedVariableNames = [];
 
-    private static readonly (string File, string Line, string Reason)[] AllowedNativeOverrides =
-    [
-        ("src/NexusMods.Games.RedEngine/Cyberpunk2077/Emitters/WinePrefixRequirementsEmitter.cs", "new(\"winmm\", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]),", "moves to Cyberpunk2077Game"),
-        ("src/NexusMods.Games.RedEngine/Cyberpunk2077/Emitters/WinePrefixRequirementsEmitter.cs", "new(\"version\", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]),", "moves to Cyberpunk2077Game"),
-    ];
+    private static readonly (string File, string Line, string Reason)[] AllowedNativeOverrides = [];
 
     [Fact]
     public void Test_TheWineDllOverridesVariableNameIsSpelledOnlyInWineParser()

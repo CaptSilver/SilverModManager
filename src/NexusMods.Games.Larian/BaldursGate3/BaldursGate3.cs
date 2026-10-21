@@ -11,12 +11,14 @@ using NexusMods.Games.Larian.BaldursGate3.Emitters;
 using NexusMods.Games.Larian.BaldursGate3.Installers;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.IO;
+using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.Games.Larian.BaldursGate3;
 
-public class BaldursGate3 : IGame, IGameData<BaldursGate3>
+public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequirements
 {
     public static GameId GameId { get; } = GameId.From("Larian.BaldursGate3");
     public static string DisplayName => "Baldur's Gate 3";
@@ -120,4 +122,16 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>
         // Use launcher to allow choosing between DirectX11 and Vulkan on GOG, Steam already always starts the launcher
         return new GamePath(LocationId.Game, "Launcher/LariLauncher.exe");
     }
+
+    // BG3SE ships bin/DWrite.dll, which replaces a system DLL that Wine would otherwise load itself.
+    // It is Wine that needs the override, so it applies to every store.
+    public IReadOnlyList<WineDllOverride> RequiredWineDllOverrides(Loadout.ReadOnly loadout)
+    {
+        return ScriptExtenderFile.Find(loadout).HasValue ? ScriptExtenderOverrides : [];
+    }
+
+    private static readonly WineDllOverride[] ScriptExtenderOverrides =
+    [
+        new("DWrite", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]),
+    ];
 }

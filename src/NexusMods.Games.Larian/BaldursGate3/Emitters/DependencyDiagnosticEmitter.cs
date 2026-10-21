@@ -5,10 +5,12 @@ using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Diagnostics.References;
 using NexusMods.Abstractions.Diagnostics.Values;
+using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Extensions;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
+using NexusMods.Games.Generic;
 using NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Games.Larian.BaldursGate3.Utils.PakParsing;
@@ -35,13 +37,17 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
 
     public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var bg3LoadoutFile = GetScriptExtenderLoadoutFile(loadout);
-        
-        // BG3SE WINEDLLOVERRIDE diagnostic
-        if (bg3LoadoutFile.HasValue && loadout.Installation.Store == GameStore.Steam)
+        var bg3LoadoutFile = ScriptExtenderFile.Find(loadout);
+
+        // The script extender's DWrite.dll only loads under Wine when it is overridden; the diagnostic clears once the prefix has it.
+        var dllOverrideInstructions = await WineDiagnosticHelper.GetWineDllOverridesUpdateInstructions(
+            loadout.InstallationInstance,
+            WineDllOverrideRequirements.For(loadout.InstallationInstance.Game, loadout),
+            cancellationToken
+        );
+        if (dllOverrideInstructions is not null)
         {
-            // yield return Diagnostics.
-            yield return Diagnostics.CreateBg3SeWineDllOverrideSteam(Template: "text");
+            yield return Diagnostics.CreateBg3SeWineDllOverride(Instructions: dllOverrideInstructions);
         }
 
         var diagnostics = await DiagnosePakModulesAsync(loadout, bg3LoadoutFile, cancellationToken);
@@ -156,19 +162,6 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
 #endregion Diagnosers
 
 #region Helpers
-
-    private static Optional<LoadoutFile.ReadOnly> GetScriptExtenderLoadoutFile(Loadout.ReadOnly loadout)
-    {
-        return LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemGroup()
-            .Where(g => g.AsLoadoutItem().IsEnabled())
-            .SelectMany(group => group.Children.OfTypeLoadoutItemWithTargetPath()
-                .OfTypeLoadoutFile()
-                .Where(file => file.AsLoadoutItemWithTargetPath().TargetPath.Item2 == Bg3Constants.BG3SEGamePath.LocationId &&
-                               file.AsLoadoutItemWithTargetPath().TargetPath.Item3 == Bg3Constants.BG3SEGamePath.Path
-                )
-            ).FirstOrOptional(_ => true);
-    }
-
 
     private static async IAsyncEnumerable<ValueTuple<LoadoutFile.ReadOnly, Outcome<LspkPackageFormat.PakMetaData>>> GetAllPakMetadata(
         LoadoutFile.ReadOnly[] pakLoadoutFiles,

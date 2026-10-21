@@ -102,25 +102,25 @@ internal static partial class Diagnostics
         )
         .Finish();
     
-    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate Bg3SeWineDllOverrideSteamTemplate = DiagnosticTemplateBuilder
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate Bg3SeWineDllOverrideTemplate = DiagnosticTemplateBuilder
         .Start()
         .WithId(new DiagnosticId(Source, number: 5))
-        .WithTitle("BG3SE Wine DLL Override required for Steam")
+        .WithTitle("BG3SE Wine DLL Override required")
         .WithSeverity(DiagnosticSeverity.Suggestion)
-        .WithSummary("BG3SE Requires WINEDLLOVERRIDE Environment variable to be set")
+        .WithSummary("BG3SE requires Wine's DLL override variable to be set")
         .WithDetails("""
-                     In Linux Wine environments, the BG3 Script Extender (BG3SE) requires WINEDLLOVERRIDE environment to contain `"DWrite=n,b"` to work correctly.
-                     Please ensure you have this set correctly in your BG3 Steam properties, under Launch Options:
-                     `WINEDLLOVERRIDES="DWrite=n,b" %command%`
-                     
-                     
+                     In Linux Wine environments, the BG3 Script Extender (BG3SE) requires Wine's DLL override variable to contain `"DWrite=n,b"` to work correctly.
+
+                     ## How to Resolve
+                     {Instructions}
+
                      ## Details:
                      BG3SE adds `DWrite.dll` file to the game folder, which replaces a Windows system dll normally located in windows system folders. 
                      On windows the game will automatically load the dll file from the game folder if present, preferring that over the system one.
-                     On Wine, to achieve the same effect, you need to set the WINEDLLOVERRIDE environment variable to tell Wine to load the game's DWrite.dll instead of the system one.
+                     On Wine, to achieve the same effect, you need to set Wine's DLL override variable to tell Wine to load the game's DWrite.dll instead of the system one.
                      """
-        
+
         )
-        .WithMessageData(messageBuilder => messageBuilder.AddValue<string>("Template"))
+        .WithMessageData(messageBuilder => messageBuilder.AddValue<string>("Instructions"))
         .Finish();
 }

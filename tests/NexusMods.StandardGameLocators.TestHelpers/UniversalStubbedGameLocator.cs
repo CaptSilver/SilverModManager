@@ -34,6 +34,11 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
     /// </summary>
     public AbsolutePath? WinePrefixPath { get; set; }
 
+    /// <summary>
+    /// The compatibility data reported for the located game, or null for one without a prefix to read.
+    /// </summary>
+    public ILinuxCompatabilityDataProvider? LinuxCompatabilityDataProvider { get; set; }
+
     public UniversalStubbedGameLocator(
         IServiceProvider serviceProvider,
         IFileSystem fileSystem,
@@ -72,6 +77,7 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
                 StoreIdentifier = LocatorIds[0].Value,
                 Platform = Platform,
                 WinePrefixPath = WinePrefixPath,
+                LinuxCompatabilityDataProvider = LinuxCompatabilityDataProvider,
             };
         }
     }
