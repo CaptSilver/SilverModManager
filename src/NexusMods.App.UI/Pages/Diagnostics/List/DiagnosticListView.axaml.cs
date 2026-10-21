@@ -42,6 +42,12 @@ public partial class DiagnosticListView : ReactiveUserControl<IDiagnosticListVie
                     )
                     .DisposeWith(disposable);
                 
+                this.BindCommand(ViewModel, vm => vm.RefreshCommand, view => view.RefreshButton)
+                    .DisposeWith(disposable);
+
+                this.OneWayBind(ViewModel, vm => vm.IsRefreshing, view => view.RefreshButton.Text, isRefreshing => isRefreshing ? "Refreshing..." : "Refresh")
+                    .DisposeWith(disposable);
+
                 this.BindCommand(ViewModel, vm => vm.CopySupportBundleCommand, view => view.SupportBundleButton)
                     .DisposeWith(disposable);
 

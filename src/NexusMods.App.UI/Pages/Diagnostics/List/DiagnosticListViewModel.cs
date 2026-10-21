@@ -38,6 +38,17 @@ internal class DiagnosticListViewModel : APageViewModel<IDiagnosticListViewModel
 
     public ReactiveCommand<Unit, Unit> CopySupportBundleCommand { get; }
 
+    public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
+
+    private readonly ObservableAsPropertyHelper<bool> _isRefreshing;
+    public bool IsRefreshing => _isRefreshing.Value;
+
+    /// <summary>
+    /// How long window activations have to stay quiet before the diagnostics are refreshed; alt-tabbing
+    /// through the window produces several in a row.
+    /// </summary>
+    private static readonly TimeSpan ActivationDebounce = TimeSpan.FromMilliseconds(500);
+
 
     private const DiagnosticFilter AllFilter = DiagnosticFilter.Critical | DiagnosticFilter.Warnings | DiagnosticFilter.Suggestions;
 
@@ -52,6 +63,10 @@ internal class DiagnosticListViewModel : APageViewModel<IDiagnosticListViewModel
         ISupportBundleWriter supportBundleWriter,
         IAvaloniaInterop interop) : base(windowManager)
     {
+        // The manager joins a refresh that is already running, so a second request is harmless.
+        RefreshCommand = ReactiveCommand.CreateFromTask(() => diagnosticManager.RefreshAsync(LoadoutId));
+        _isRefreshing = RefreshCommand.IsExecuting.ToProperty(this, vm => vm.IsRefreshing);
+
         CopySupportBundleCommand = ReactiveCommand.CreateFromTask(() => CopySupportBundle(supportBundleWriter, interop));
 
         TabIcon = IconValues.Cardiology;
@@ -75,8 +90,27 @@ internal class DiagnosticListViewModel : APageViewModel<IDiagnosticListViewModel
                         .GetLoadoutDiagnostics(loadoutId)
                         .OnUI()
                         .BindToVM(this, vm => vm.Diagnostics);
+
+                    // Whatever the diagnostics read outside the database may have changed since they last ran.
+                    RefreshCommand.Execute().SubscribeWithErrorLogging();
                 })
                 .SubscribeWithErrorLogging()
+                .DisposeWith(disposable);
+
+            // A fix made in another program shows up when the user comes back. The window manager raises
+            // ActiveWindow changes without changing the value in the usual one-window case, so the window's
+            // own IsActive is what reports the return.
+            var activeWindow = windowManager.WhenAnyValue(manager => manager.ActiveWindow);
+            var switchedWindow = activeWindow.Skip(1).Select(_ => System.Reactive.Unit.Default);
+            var regainedFocus = activeWindow
+                .Select(window => window.WhenAnyValue(w => w.IsActive).Skip(1))
+                .Switch()
+                .Where(isActive => isActive)
+                .Select(_ => System.Reactive.Unit.Default);
+
+            switchedWindow.Merge(regainedFocus)
+                .Throttle(ActivationDebounce)
+                .Subscribe(_ => RefreshCommand.Execute().SubscribeWithErrorLogging())
                 .DisposeWith(disposable);
 
             // filter diagnostics

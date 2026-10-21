@@ -38,6 +38,7 @@ public static class Startup
             .Combine(baseDirectory);
 
         container.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, RecordingLoadoutEmitter>());
+        container.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, ScriptedLoadoutEmitter>());
 
         return container
             .AddGameServices()

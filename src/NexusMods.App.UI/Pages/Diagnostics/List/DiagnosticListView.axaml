@@ -54,6 +54,7 @@
                                    Icon="{x:Static icons:IconValues.PictogramHealth}"/> 
 
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="{StaticResource Spacing-2.5}" Margin="0,0,0,8">
+                <controls:StandardButton x:Name="RefreshButton" Text="Refresh" Type="Secondary" />
                 <controls:StandardButton x:Name="SupportBundleButton" Text="Copy support bundle" Type="Secondary" />
                 <TextBlock x:Name="SupportBundleText"
                            VerticalAlignment="Center"

@@ -23,6 +23,17 @@ public interface IDiagnosticListViewModel : IPageViewModelInterface
     public DiagnosticFilter Filter { get; set; }
 
     /// <summary>
+    /// Runs the diagnostics for <see cref="LoadoutId"/> again. The page also does this by itself when it
+    /// opens and when the window is activated, so a fix made outside the app shows up without a click.
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
+
+    /// <summary>
+    /// Whether a refresh is running.
+    /// </summary>
+    public bool IsRefreshing { get; }
+
+    /// <summary>
     /// Writes a support bundle and puts its path on the clipboard.
     /// </summary>
     public ReactiveCommand<Unit, Unit> CopySupportBundleCommand { get; }

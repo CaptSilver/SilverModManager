@@ -1,6 +1,6 @@
 using System.Collections.Frozen;
 using System.Reactive.Linq;
-using DynamicData;
+using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Diagnostics;
@@ -22,7 +22,7 @@ internal sealed class DiagnosticManager : IDiagnosticManager
     private readonly ILogger<DiagnosticManager> _logger;
 
     private static readonly object Lock = new();
-    private readonly SourceCache<ConnectableObservable<Diagnostic[]>, LoadoutId> _observableCache = new(_ => throw new NotSupportedException());
+    private readonly Dictionary<LoadoutId, LoadoutDiagnostics> _loadouts = [];
 
     private bool _isDisposed;
     private readonly CompositeDisposable _compositeDisposable = new();
@@ -39,44 +39,107 @@ internal sealed class DiagnosticManager : IDiagnosticManager
 
     public IObservable<Diagnostic[]> GetLoadoutDiagnostics(LoadoutId loadoutId)
     {
-        ObjectDisposedException.ThrowIf(_isDisposed, typeof(DiagnosticManager));
-
         lock (Lock)
         {
-            var existingObservable = _observableCache.Lookup(loadoutId);
-            if (existingObservable.HasValue) return existingObservable.Value.AsSystemObservable();
-
-            var connectableObservable = LoadoutQueries2.RevisionsWithChildUpdates(_connection, loadoutId)
-                .ToObservable()
-                .Debounce(TimeSpan.FromMilliseconds(250))
-                .SelectAwait(async (_, cancellationToken) =>
-                    {
-                        var db = _connection.Db;
-                        var loadout = Loadout.Load(db, loadoutId);
-                        if (!loadout.IsValid()) return [];
-
-                        try
-                        {
-                            return await GetLoadoutDiagnostics(loadout, cancellationToken);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            return [];
-                        }
-                        catch (Exception e)
-                        {
-                            _logger.LogError(e, "Exception while diagnosing loadout {Loadout}", loadout.Name);
-                            return [];
-                        }
-                    },
-                    AwaitOperation.Switch
-                )
-                .Replay(bufferSize: 1);
-            
-            _compositeDisposable.Add(connectableObservable.Connect());
-            _observableCache.Edit(updater => updater.AddOrUpdate(connectableObservable, loadoutId));
-            return connectableObservable.AsSystemObservable();
+            return GetOrCreate(loadoutId).Diagnostics;
         }
+    }
+
+    public Task RefreshAsync(LoadoutId loadoutId)
+    {
+        LoadoutDiagnostics entry;
+        TaskCompletionSource pending;
+        lock (Lock)
+        {
+            entry = GetOrCreate(loadoutId);
+            if (entry.PendingRefresh is { } running) return running.Task;
+
+            pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            entry.PendingRefresh = pending;
+            entry.PendingRefreshAfterRun = Volatile.Read(ref entry.RunsStarted.Value);
+        }
+
+        // Sent outside the lock: the pipeline publishes a result while holding its own gate, and the
+        // publish takes the lock, so pushing into the pipeline with the lock held can deadlock.
+        entry.RefreshRequests.OnNext(Unit.Default);
+        return pending.Task;
+    }
+
+    /// <summary>Must be called with <see cref="Lock"/> held.</summary>
+    private LoadoutDiagnostics GetOrCreate(LoadoutId loadoutId)
+    {
+        ObjectDisposedException.ThrowIf(_isDisposed, typeof(DiagnosticManager));
+        if (_loadouts.TryGetValue(loadoutId, out var existing)) return existing;
+
+        var refreshRequests = new R3.Subject<Unit>();
+        var runsStarted = new StrongBox<int>();
+        var results = LoadoutQueries2.RevisionsWithChildUpdates(_connection, loadoutId)
+            .ToObservable()
+            .Debounce(TimeSpan.FromMilliseconds(250))
+            .Select(_ => Unit.Default)
+            .Merge(refreshRequests)
+            .Select(_ => Interlocked.Increment(ref runsStarted.Value))
+            .SelectAwait(async (run, cancellationToken) => (Run: run, Diagnostics: await DiagnoseLoadout(loadoutId, cancellationToken)), AwaitOperation.Switch)
+            .Replay(bufferSize: 1);
+
+        var entry = new LoadoutDiagnostics(results.Select(result => result.Diagnostics).AsSystemObservable(), refreshRequests, runsStarted);
+
+        // Subscribed ahead of every outside subscriber, and the replay stores a value before it notifies,
+        // so a refresh completes only once its result can be read back from GetLoadoutDiagnostics. Only a
+        // run that started after the refresh was asked for counts; a run that a newer one cancelled never
+        // publishes, which leaves the refresh waiting for the newer run.
+        _compositeDisposable.Add(results.Subscribe(result =>
+        {
+            lock (Lock)
+            {
+                if (entry.PendingRefresh is not { } pending || result.Run <= entry.PendingRefreshAfterRun) return;
+                pending.TrySetResult();
+                entry.PendingRefresh = null;
+            }
+        }));
+
+        // Safe under the lock only because the first revision goes through the debounce timer, so nothing
+        // is published from inside Connect.
+        _compositeDisposable.Add(results.Connect());
+        _compositeDisposable.Add(refreshRequests);
+        _loadouts.Add(loadoutId, entry);
+        return entry;
+    }
+
+    private async ValueTask<Diagnostic[]> DiagnoseLoadout(LoadoutId loadoutId, CancellationToken cancellationToken)
+    {
+        var db = _connection.Db;
+        var loadout = Loadout.Load(db, loadoutId);
+        if (!loadout.IsValid()) return [];
+
+        try
+        {
+            return await GetLoadoutDiagnostics(loadout, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return [];
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Exception while diagnosing loadout {Loadout}", loadout.Name);
+            return [];
+        }
+    }
+
+    private sealed class LoadoutDiagnostics(IObservable<Diagnostic[]> diagnostics, R3.Subject<Unit> refreshRequests, StrongBox<int> runsStarted)
+    {
+        public IObservable<Diagnostic[]> Diagnostics { get; } = diagnostics;
+        public R3.Subject<Unit> RefreshRequests { get; } = refreshRequests;
+
+        /// <summary>Numbers each run as it starts, so a refresh can tell a run it asked for from one already under way.</summary>
+        public StrongBox<int> RunsStarted { get; } = runsStarted;
+
+        /// <summary>The refresh whose result has not been published yet; guarded by <see cref="DiagnosticManager.Lock"/>.</summary>
+        public TaskCompletionSource? PendingRefresh { get; set; }
+
+        /// <summary>The last run that had started when <see cref="PendingRefresh"/> was asked for; guarded by <see cref="DiagnosticManager.Lock"/>.</summary>
+        public int PendingRefreshAfterRun { get; set; }
     }
 
     private async Task<Diagnostic[]> GetLoadoutDiagnostics(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
@@ -182,8 +245,9 @@ internal sealed class DiagnosticManager : IDiagnosticManager
 
         lock (Lock)
         {
+            // Nothing will publish again, so a caller still waiting on a refresh would wait forever.
+            foreach (var entry in _loadouts.Values) entry.PendingRefresh?.TrySetCanceled();
             _compositeDisposable.Dispose();
-            _observableCache.Dispose();
         }
     }
 }
