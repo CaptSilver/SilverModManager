@@ -54,26 +54,13 @@ public abstract class AGameTest<TGame> where TGame : IGame
     /// Constructor.
     /// </summary>
     /// <param name="serviceProvider"></param>
-    protected AGameTest(IServiceProvider serviceProvider) : this(serviceProvider, installation => installation.Game is TGame)
-    {
-    }
-
-    /// <summary>
-    /// For a game with no class of its own, such as one built from a definition: the installation is
-    /// the one whose game has <paramref name="gameId"/>.
-    /// </summary>
-    protected AGameTest(IServiceProvider serviceProvider, GameId gameId) : this(serviceProvider, installation => installation.Game.GameId == gameId)
-    {
-    }
-
-    /// <summary>For tests that pick the installation by more than its game.</summary>
-    protected AGameTest(IServiceProvider serviceProvider, Func<GameInstallation, bool> isGameUnderTest)
+    protected AGameTest(IServiceProvider serviceProvider)
     {
         ServiceProvider = serviceProvider;
 
         GameRegistry = serviceProvider.GetRequiredService<IGameRegistry>();
 
-        GameInstallation = GameRegistry.LocateGameInstallations().First(isGameUnderTest);
+        GameInstallation = GameRegistry.LocateGameInstallations().First(g => g.Game is TGame);
         Game = (TGame)GameInstallation.Game;
 
         FileSystem = serviceProvider.GetRequiredService<IFileSystem>();

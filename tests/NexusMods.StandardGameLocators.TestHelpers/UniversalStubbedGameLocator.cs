@@ -6,11 +6,8 @@ using NexusMods.Sdk.Games;
 
 namespace NexusMods.StandardGameLocators.TestHelpers;
 
-/// <summary>
-/// Locates one game instance in a temporary folder. <see cref="UniversalStubbedGameLocator{TGame}"/>
-/// is the form for a game that has a class of its own.
-/// </summary>
-public class UniversalStubbedGameLocator : IGameLocator, IDisposable
+public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
+    where TGame : IGame
 {
     private readonly TemporaryPath _path;
 
@@ -20,7 +17,7 @@ public class UniversalStubbedGameLocator : IGameLocator, IDisposable
     /// game's Documents and AppData locations land in the prefix, as for a game installed through Wine.
     /// </summary>
     private readonly AbsolutePath _locatedPath;
-    private readonly IGame _game;
+    private readonly TGame _game;
     private readonly GameStore[] _stores;
 
     public LocatorId[] LocatorIds { get; set; } = [LocatorId.From("StubbedGameState.zip")];
@@ -42,11 +39,8 @@ public class UniversalStubbedGameLocator : IGameLocator, IDisposable
     /// </summary>
     public ILinuxCompatabilityDataProvider? LinuxCompatabilityDataProvider { get; set; }
 
-    /// <param name="game">The game to locate.</param>
-    /// <param name="folderName">Name of the temporary game folder.</param>
     public UniversalStubbedGameLocator(
-        IGame game,
-        string folderName,
+        IServiceProvider serviceProvider,
         IFileSystem fileSystem,
         TemporaryFileManager fileManager,
         Dictionary<RelativePath, byte[]>? gameFiles = null,
@@ -54,17 +48,16 @@ public class UniversalStubbedGameLocator : IGameLocator, IDisposable
         IFileSystem? locationsFileSystem = null)
     {
         _stores = stores ?? [GameStore.Unknown];
-        _path = fileManager.CreateFolder(folderName);
+        _path = fileManager.CreateFolder(typeof(TGame).Name);
         _locatedPath = locationsFileSystem is null
             ? _path.Path
             : locationsFileSystem.FromUnsanitizedFullPath(_path.Path.GetFullPath());
-        _game = game;
+        _game = serviceProvider.GetRequiredService<TGame>();
 
         if (gameFiles is null) return;
         foreach (var gameFile in gameFiles)
         {
             var gameFilePath = _path.Path.Combine(gameFile.Key);
-            gameFilePath.Parent.CreateDirectory();
             using var stream = fileSystem.CreateFile(gameFilePath);
             stream.Write(gameFile.Value, 0, gameFile.Value.Length);
         }
@@ -92,20 +85,5 @@ public class UniversalStubbedGameLocator : IGameLocator, IDisposable
     public void Dispose()
     {
         _path.Dispose();
-    }
-}
-
-public class UniversalStubbedGameLocator<TGame> : UniversalStubbedGameLocator
-    where TGame : IGame
-{
-    public UniversalStubbedGameLocator(
-        IServiceProvider serviceProvider,
-        IFileSystem fileSystem,
-        TemporaryFileManager fileManager,
-        Dictionary<RelativePath, byte[]>? gameFiles = null,
-        GameStore[]? stores = null,
-        IFileSystem? locationsFileSystem = null)
-        : base(serviceProvider.GetRequiredService<TGame>(), typeof(TGame).Name, fileSystem, fileManager, gameFiles, stores, locationsFileSystem)
-    {
     }
 }
