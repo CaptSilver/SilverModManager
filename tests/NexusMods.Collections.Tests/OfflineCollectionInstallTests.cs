@@ -13,6 +13,7 @@ using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Games.FOMOD;
 using NexusMods.Games.TestFramework;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Hashes;
@@ -126,7 +127,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
     }
 
     private async Task<(NexusModsCollectionLibraryFile.ReadOnly File, CollectionRevisionMetadata.ReadOnly Revision, CollectionDownload.ReadOnly[] Items)> CreateCollection(
-        (FomodOption[]? Choices, string Name)[] fomodMods)
+        (FomodOption[]? Choices, string Name)[] fomodMods, int[]? optionalIndexes = null)
     {
         var folder = TemporaryFileManager.CreateFolder();
         var slug = CollectionSlug.From("offline");
@@ -199,7 +200,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
             {
                 ArrayIndex = i,
                 CollectionRevisionId = revision,
-                IsOptional = false,
+                IsOptional = optionalIndexes?.Contains(i) ?? false,
                 Name = mods[i].Name,
             };
 
@@ -362,6 +363,170 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         .Select(f => ((GamePath)f.AsLoadoutItemWithTargetPath().TargetPath).FileName.ToString())
         .Order()
         .ToArray();
+
+    [Fact]
+    public async Task Reinstall_ReplacesTheGroup_AndInstallsTheSavedChoicesAgain()
+    {
+        var mods = Enumerable.Range(0, 3).Select(i => (Choices(), $"Fomod mod {i}")).ToArray();
+        var (file, revision, items) = await CreateCollection(mods);
+        var loadout = await CreateLoadout();
+        var group = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+        var expected = InstalledFileNames(group, loadout);
+
+        // Simulates an install that went wrong: one mod ended up without its files.
+        var brokenMod = group.GetCollectionItems().First();
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Delete(brokenMod.Id, recursive: true);
+            await tx.Commit();
+        }
+        // The group handle holds the database it was loaded from, so reload it to see the deletion.
+        InstalledFileNames(NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id), loadout).Should().NotEqual(expected);
+
+        var job = await CollectionReinstaller.Reinstall(ServiceProvider, NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id));
+        var newGroup = await AwaitJob(job);
+
+        newGroup.Id.Should().NotBe(group.Id);
+        NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id).IsValid().Should().BeFalse("the old group is removed");
+        NexusCollectionLoadoutGroup.All(Connection.Db)
+            .Count(g => g.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadout)
+            .Should().Be(1);
+        InstalledFileNames(newGroup, loadout).Should().Equal(expected);
+        job.JobDefinition.FailedItems.Should().BeEmpty();
+
+        // Removing the group must leave everything a later reinstall or uninstall needs in the library.
+        CollectionRevisionMetadata.Load(Connection.Db, revision.Id).IsValid().Should().BeTrue();
+        NexusModsCollectionLibraryFile.Load(Connection.Db, file.Id).IsValid().Should().BeTrue();
+        CollectionDownloader.IsFullyDownloaded(items, Connection.Db).Should().BeTrue();
+    }
+
+    private int GroupCount(LoadoutId loadout) => NexusCollectionLoadoutGroup.All(Connection.Db)
+        .Count(g => g.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadout);
+
+    [Fact]
+    public async Task Reinstall_WhenAnArchiveIsGoneFromTheLibrary_RefusesAndKeepsTheGroup()
+    {
+        var mods = Enumerable.Range(0, 2).Select(i => (Choices(), $"Fomod mod {i}")).ToArray();
+        var (file, revision, items) = await CreateCollection(mods);
+        var loadout = await CreateLoadout();
+        var group = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+
+        // The archive is no longer found by its hash, as after deleting it from the library.
+        items[0].TryGetAsCollectionDownloadExternal(out var external).Should().BeTrue();
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var datom in Connection.Db.Datoms(LibraryFile.Md5, external.Md5))
+                tx.Retract(datom.E, LibraryFile.Md5, external.Md5);
+            await tx.Commit();
+        }
+
+        var calledBack = false;
+        var act = async () => await CollectionReinstaller.Reinstall(ServiceProvider, NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id),
+            beforeRemove: () => { calledBack = true; return ValueTask.CompletedTask; });
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage("*Fomod mod 0*");
+        calledBack.Should().BeFalse();
+        NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id).IsValid().Should().BeTrue();
+        GroupCount(loadout).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Reinstall_WhileAnInstallOfTheCollectionIsRunning_RefusesAndKeepsTheGroup()
+    {
+        var mods = new (FomodOption[]?, string)[]
+        {
+            (Choices(), "Good mod 0"),
+            (Choices(secondStepOption: "No such option"), "Stale mod"),
+        };
+        var (file, revision, items) = await CreateCollection(mods);
+        var loadout = await CreateLoadout();
+
+        // The stale mod falls back to the window, which stays open and keeps the install running.
+        var release = new TaskCompletionSource();
+        _window.BeforeAnswer = _ => release.Task;
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        var running = AwaitJob(job);
+
+        try
+        {
+            var deadline = DateTime.UtcNow + Timeout;
+            while (_window.Prompts.Length < 1)
+            {
+                DateTime.UtcNow.Should().BeBefore(deadline, "the stale mod should open a window");
+                await Task.Delay(20);
+            }
+
+            var group = CollectionDownloader.GetCollectionGroup(revision, loadout, Connection.Db);
+            group.HasValue.Should().BeTrue();
+
+            var act = async () => await CollectionReinstaller.Reinstall(ServiceProvider, group.Value);
+            await act.Should().ThrowAsync<InvalidOperationException>();
+            NexusCollectionLoadoutGroup.Load(Connection.Db, group.Value.Id).IsValid().Should().BeTrue();
+        }
+        finally
+        {
+            // The open window holds the process-wide guided installer gate; later tests wait on it.
+            release.TrySetResult();
+        }
+
+        await running;
+        GroupCount(loadout).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Reinstall_OfAGroupThatWasAlreadyRemoved_RefusesAndInstallsNothing()
+    {
+        var mods = Enumerable.Range(0, 2).Select(i => (Choices(), $"Fomod mod {i}")).ToArray();
+        var (file, revision, items) = await CreateCollection(mods);
+        var loadout = await CreateLoadout();
+        var group = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+
+        // A second click, or a second tab of the same collection, holds the handle of the group the first one removed.
+        await AwaitJob(await CollectionReinstaller.Reinstall(ServiceProvider, group));
+        var newGroup = CollectionDownloader.GetCollectionGroup(revision, loadout, Connection.Db).Value;
+
+        var act = async () => await CollectionReinstaller.Reinstall(ServiceProvider, group);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        GroupCount(loadout).Should().Be(1);
+        NexusCollectionLoadoutGroup.Load(Connection.Db, newGroup.Id).IsValid().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Reinstall_CallsBeforeRemoveWhileTheOldGroupStillExists()
+    {
+        var mods = Enumerable.Range(0, 2).Select(i => (Choices(), $"Fomod mod {i}")).ToArray();
+        var (file, revision, items) = await CreateCollection(mods);
+        var loadout = await CreateLoadout();
+        var group = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+
+        bool? existedDuringCallback = null;
+        var job = await CollectionReinstaller.Reinstall(ServiceProvider, group, beforeRemove: () =>
+        {
+            existedDuringCallback = NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id).IsValid();
+            return ValueTask.CompletedTask;
+        });
+        await AwaitJob(job);
+
+        existedDuringCallback.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Reinstall_InstallsTheOptionalModsThatWereInstalledBefore_AndNoOthers()
+    {
+        var mods = Enumerable.Range(0, 3).Select(i => (Choices(), $"Fomod mod {i}")).ToArray();
+        var (file, revision, required) = await CreateCollection(mods, optionalIndexes: [1, 2]);
+        var loadout = await CreateLoadout();
+        var optional = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional);
+        var installedOptional = optional.Single(i => i.ArrayIndex == 1);
+
+        var group = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, [..required, installedOptional]));
+        InstalledFileNames(group, loadout).Should().Contain("mod1_a.out.esp").And.NotContain("mod2_a.out.esp");
+
+        var newGroup = await AwaitJob(await CollectionReinstaller.Reinstall(ServiceProvider, NexusCollectionLoadoutGroup.Load(Connection.Db, group.Id)));
+
+        InstalledFileNames(newGroup, loadout).Should().Contain("mod1_a.out.esp").And.NotContain("mod2_a.out.esp");
+    }
 
     [Fact]
     public async Task ValidSavedChoices_InstallWithoutAnyPrompt()

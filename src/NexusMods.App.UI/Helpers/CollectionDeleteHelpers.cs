@@ -70,21 +70,7 @@ public static class CollectionDeleteHelpers
         
         if (group.TryGetAsNexusCollectionLoadoutGroup(out var nexusCollectionGroup))
         {
-            // Replace installed nexus collection pages with the collection download pages
-            var pageData = new PageData
-            {
-                FactoryId = CollectionDownloadPageFactory.StaticId,
-                Context = new CollectionDownloadPageContext()
-                {
-                    TargetLoadout = group.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId,
-                    CollectionRevisionMetadataId = nexusCollectionGroup.RevisionId,
-                },
-            };
-            
-            await Dispatcher.UIThread.InvokeAsync(() =>
-                workspaceController.ReplacePages<CollectionLoadoutPageContext>(
-                    context => context.GroupId == CollectionGroupId.From(group.Id), pageData)
-            );
+            await ReplaceInstalledPagesWithDownloadPageAsync(nexusCollectionGroup, workspaceController);
         } 
         else
         {
@@ -97,6 +83,31 @@ public static class CollectionDeleteHelpers
 
         await loadoutManager.RemoveCollection(collectionId);
         notificationService.ShowToast(Language.ToastNotification_Collection_removed);
+    }
+
+    /// <summary>
+    /// Replaces the open pages of an installed Nexus collection with its collection download page,
+    /// so no tab is left pointing at a group that is about to be removed.
+    /// </summary>
+    public static async Task ReplaceInstalledPagesWithDownloadPageAsync(
+        NexusCollectionLoadoutGroup.ReadOnly nexusCollectionGroup,
+        IWorkspaceController workspaceController)
+    {
+        var group = nexusCollectionGroup.AsCollectionGroup();
+        var pageData = new PageData
+        {
+            FactoryId = CollectionDownloadPageFactory.StaticId,
+            Context = new CollectionDownloadPageContext()
+            {
+                TargetLoadout = group.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId,
+                CollectionRevisionMetadataId = nexusCollectionGroup.RevisionId,
+            },
+        };
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+            workspaceController.ReplacePages<CollectionLoadoutPageContext>(
+                context => context.GroupId == CollectionGroupId.From(group.Id), pageData)
+        );
     }
 
     /// <summary>

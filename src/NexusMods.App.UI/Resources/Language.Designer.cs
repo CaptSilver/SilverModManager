@@ -529,6 +529,60 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Reinstall Collection.
+        /// </summary>
+        public static string CollectionLoadoutView_ReinstallCollection {
+            get {
+                return ResourceManager.GetString("CollectionLoadoutView_ReinstallCollection", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reinstall.
+        /// </summary>
+        public static string CollectionLoadoutView_ReinstallCollection_Confirmation_Button {
+            get {
+                return ResourceManager.GetString("CollectionLoadoutView_ReinstallCollection_Confirmation_Button", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The mods of "{0}" will be removed from the loadout and installed again from the downloaded files.
+        /// </summary>
+        public static string CollectionLoadoutView_ReinstallCollection_Confirmation_Message {
+            get {
+                return ResourceManager.GetString("CollectionLoadoutView_ReinstallCollection_Confirmation_Message", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reinstall collection?.
+        /// </summary>
+        public static string CollectionLoadoutView_ReinstallCollection_Confirmation_Title {
+            get {
+                return ResourceManager.GetString("CollectionLoadoutView_ReinstallCollection_Confirmation_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Couldn't reinstall the collection: {0}.
+        /// </summary>
+        public static string CollectionLoadoutView_ReinstallCollection_Failed {
+            get {
+                return ResourceManager.GetString("CollectionLoadoutView_ReinstallCollection_Failed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove this collection's mods and install them again from the downloaded files.
+        /// </summary>
+        public static string CollectionLoadoutView_ReinstallCollection_ToolTip {
+            get {
+                return ResourceManager.GetString("CollectionLoadoutView_ReinstallCollection_ToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Uninstall Collection.
         /// </summary>
         public static string CollectionLoadoutView_UninstallCollection {

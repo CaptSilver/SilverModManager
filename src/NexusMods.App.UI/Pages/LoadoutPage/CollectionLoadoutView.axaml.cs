@@ -68,6 +68,10 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 .AddTo(disposables);
             this.BindCommand(ViewModel, vm => vm.CommandMakeLocalEditableCopy, view => view.MakeEditableLocalCopy)
                 .AddTo(disposables);
+            this.BindCommand(ViewModel, vm => vm.CommandReinstallCollection, view => view.ReinstallCollectionMenuItem)
+                .AddTo(disposables);
+            this.OneWayBind(ViewModel, vm => vm.IsLocalCollection, view => view.ReinstallCollectionMenuItem.IsVisible, static isLocal => !isLocal)
+                .AddTo(disposables);
             this.BindCommand(ViewModel, vm => vm.CommandViewCollectionDownloadPage, view => view.ViewCollectionDownloadMenuItem)
                 .AddTo(disposables);
 

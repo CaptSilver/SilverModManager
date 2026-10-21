@@ -14,6 +14,7 @@ using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Extensions;
 using NexusMods.App.UI.Helpers;
 using NexusMods.App.UI.Pages.CollectionDownload;
+using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.Collections;
@@ -120,6 +121,59 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
             configureAwait: false
         );
 
+        var canReinstall = !IsLocalCollection && IsReadOnly;
+        CommandReinstallCollection = _isInstalling.Select(isInstalling => canReinstall && !isInstalling).ToReactiveCommand<Unit>(
+            executeAsync: async (_, _) =>
+            {
+                var dialog = DialogFactory.CreateStandardDialog(
+                    Language.CollectionLoadoutView_ReinstallCollection_Confirmation_Title,
+                    new StandardDialogParameters()
+                    {
+                        Text = string.Format(Language.CollectionLoadoutView_ReinstallCollection_Confirmation_Message, TabTitle),
+                    },
+                    [
+                        DialogStandardButtons.Cancel,
+                        new DialogButtonDefinition(
+                            Language.CollectionLoadoutView_ReinstallCollection_Confirmation_Button,
+                            ButtonDefinitionId.Accept,
+                            ButtonAction.Accept,
+                            ButtonStyling.Primary
+                        ),
+                    ]
+                );
+                var result = await WindowManager.ShowDialog(dialog, DialogWindowType.Modal);
+                if (result.ButtonId != ButtonDefinitionId.Accept) return;
+
+                // This page closes partway through, so every outcome is reported as a toast rather than left to the command.
+                try
+                {
+                    var job = await CollectionReinstaller.Reinstall(
+                        serviceProvider,
+                        nexusCollectionGroup,
+                        // The download page shows the install progress, so the open tabs move there before the group goes away.
+                        beforeRemove: async () => await CollectionDeleteHelpers.ReplaceInstalledPagesWithDownloadPageAsync(nexusCollectionGroup, GetWorkspaceController())
+                    );
+
+                    var newGroup = await job;
+                    if (CollectionDownloader.IsFullyInstalled(job.JobDefinition.Items, newGroup.AsCollectionGroup(), connection.Db))
+                        toastNotificationService.ShowToast(Language.ToastNotification_Collection_installed, ToastNotificationVariant.Success);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Cancelled from the download page, which shows it.
+                }
+                catch (Exception e)
+                {
+                    toastNotificationService.ShowToast(
+                        string.Format(Language.CollectionLoadoutView_ReinstallCollection_Failed, e.Message),
+                        ToastNotificationVariant.Failure
+                    );
+                }
+            },
+            awaitOperation: AwaitOperation.Drop,
+            configureAwait: false
+        );
+
         CommandViewCollectionDownloadPage = ReactiveUI.ReactiveCommand.Create<NavigationInformation, System.Reactive.Unit>
         (
             info =>
@@ -206,6 +260,13 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
 
             if (revisionMetadata.HasValue)
             {
+                var revisionId = revisionMetadata.Value.Id;
+                serviceProvider.GetRequiredService<IJobMonitor>()
+                    .HasActiveJob<InstallCollectionJob>(job => job.RevisionMetadata.Id == revisionId && job.TargetLoadout == pageContext.LoadoutId)
+                    .OnUI()
+                    .Subscribe(isInstalling => _isInstalling.Value = isInstalling)
+                    .AddTo(disposables);
+
                 ImagePipelines
                     .CreateObservable(revisionMetadata.Value.CollectionId, tilePipeline)
                     .ObserveOnUIThreadDispatcher()
@@ -261,6 +322,9 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
     public bool IsLocalCollection { get; }
     public bool IsReadOnly { get; }
 
+    // Reinstalling while an install of this collection runs would remove the group under it.
+    private readonly R3.ReactiveProperty<bool> _isInstalling = new(false);
+
     public string Name { get; }
     public ulong EndorsementCount { get; }
     public ulong TotalDownloads { get; }
@@ -285,5 +349,6 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
     public ReactiveCommand<Unit> CommandDeleteCollection { get; }
     
     public ReactiveCommand<Unit> CommandMakeLocalEditableCopy { get; }
+    public ReactiveCommand<Unit> CommandReinstallCollection { get; }
     public ReactiveUI.ReactiveCommand<NavigationInformation, System.Reactive.Unit> CommandViewCollectionDownloadPage { get; }
 }

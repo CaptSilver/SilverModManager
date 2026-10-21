@@ -65,6 +65,11 @@ public interface ICollectionLoadoutViewModel : IPageViewModelInterface
     R3.ReactiveCommand<R3.Unit> CommandDeleteCollection { get; }
     
     R3.ReactiveCommand<R3.Unit> CommandMakeLocalEditableCopy { get; }
+
+    /// <summary>
+    /// Removes the collection's mods and installs them again from the library. Only runs for Nexus collections.
+    /// </summary>
+    R3.ReactiveCommand<R3.Unit> CommandReinstallCollection { get; }
     
     ReactiveCommand<NavigationInformation, Unit> CommandViewCollectionDownloadPage { get; }
 }

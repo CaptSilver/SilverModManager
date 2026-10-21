@@ -46,6 +46,14 @@
                                                        Value="{x:Static icons:IconValues.Downloading}" />
                                 </MenuItem.Icon>
                             </navigation:NavigationMenuItem>
+                            <MenuItem Header="{x:Static resources:Language.CollectionLoadoutView_ReinstallCollection}"
+                                      x:Name="ReinstallCollectionMenuItem"
+                                      ToolTip.Tip="{x:Static resources:Language.CollectionLoadoutView_ReinstallCollection_ToolTip}">
+                                <MenuItem.Icon>
+                                    <icons:UnifiedIcon Size="16"
+                                                       Value="{x:Static icons:IconValues.Refresh}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
                             <MenuItem Header="{x:Static resources:Language.CollectionLoadoutView_UninstallCollection}"
                                       x:Name="RemoveCollectionMenuItem"
                                       ToolTip.Tip="{x:Static resources:Language.CollectionLoadoutView_UninstallCollection_ToolTip}">
