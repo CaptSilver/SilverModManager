@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x6B01A41A4FFAF47D
-   - Total attributes: 251
-   - Total namespaces: 78
+   - Fingerprint: 0x74CB3C56988BB2D3
+   - Total attributes: 263
+   - Total namespaces: 80
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -94,6 +94,18 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.GC.BackedUpFile/GameInstall                                              | Reference               | False   | False | False     | 
 | SilverModManager.GC.BackedUpFile/Hash                                                     | UInt64                  | False   | False | False     | 
 | SilverModManager.Games.FOMOD.EmptyDirectory/EmptyDirectory                                | UInt8                   | False   | False | False     | 
+| SilverModManager.Games.FileHashes.LocalBaseline/BuiltAt                                   | Int64                   | False   | False | False     | 
+| SilverModManager.Games.FileHashes.LocalBaseline/Files                                     | Reference               | False   | True  | False     | 
+| SilverModManager.Games.FileHashes.LocalBaseline/GamePath                                  | Utf8                    | True    | False | False     | 
+| SilverModManager.Games.FileHashes.LocalBaseline/Kind                                      | UInt8                   | False   | False | False     | 
+| SilverModManager.Games.FileHashes.LocalBaseline/LocatorIds                                | Utf8                    | False   | True  | False     | 
+| SilverModManager.Games.FileHashes.LocalBaseline/Manifests                                 | Reference               | False   | True  | False     | 
+| SilverModManager.Games.FileHashes.LocalBaseline/Store                                     | Ascii                   | True    | False | False     | 
+| SilverModManager.Games.FileHashes.LocalBaseline/VersionName                               | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.FileHashes.NonVanillaFile/Baseline                                 | Reference               | True    | False | False     | 
+| SilverModManager.Games.FileHashes.NonVanillaFile/Path                                     | Utf8Insensitive         | True    | False | False     | 
+| SilverModManager.Games.FileHashes.NonVanillaFile/Reason                                   | UInt8                   | False   | False | False     | 
+| SilverModManager.Games.FileHashes.NonVanillaFile/Size                                     | UInt64                  | False   | False | False     | 
 | SilverModManager.Games.RedEngine.Cyberpunk2077.RedModInfoFile/Name                        | Utf8                    | False   | False | False     | 
 | SilverModManager.Games.RedEngine.Cyberpunk2077.RedModInfoFile/Version                     | Utf8                    | False   | False | False     | 
 | SilverModManager.Games.RedEngine.Cyberpunk2077.RedModSortOrder/Marker                     | Null                    | False   | False | False     | 

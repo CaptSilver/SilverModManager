@@ -39,6 +39,8 @@ internal sealed class RealQueryEngineHost : IDisposable
             .AddGogDepotModel()
             .AddGogManifestModel()
             .AddSteamManifestModel()
+            .AddLocalBaselineModel()
+            .AddNonVanillaFileModel()
             .AddEpicGameStoreBuildModel()
             .AddLoadoutModel()
             .AddGameInstallMetadataModel()

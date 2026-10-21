@@ -20,6 +20,8 @@ public static class Services
             .AddGogDepotModel()
             .AddGogManifestModel()
             .AddSteamManifestModel()
+            .AddLocalBaselineModel()
+            .AddNonVanillaFileModel()
             .AddEpicGameStoreBuildModel()
             .AddFileHashesQueriesSql()
             .AddSingleton<IFileHashesService, FileHashesService>()

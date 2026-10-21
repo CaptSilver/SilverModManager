@@ -1,4 +1,5 @@
 using OperatingSystem = NexusMods.Abstractions.Games.FileHashes.Values.OperatingSystem;
+using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Games.FileHashes.Models;
 using NexusMods.Abstractions.GOG.Values;
 using NexusMods.Abstractions.Steam.Values;
@@ -86,6 +87,40 @@ internal static class HashRows
             SteamManifestsIds = manifests,
         };
         await tx.Commit();
+    }
+
+    /// <summary>
+    /// A baseline of the installation at <paramref name="gamePath"/> holding <paramref name="files"/> as vanilla,
+    /// with their hash rows, and <paramref name="nonVanilla"/> paths it found modified. Everything is in <paramref name="store"/>.
+    /// </summary>
+    public static async Task<EntityId> AddLocalBaseline(IConnection store, GameStore gameStore, string gamePath, LocalBaselineKind kind,
+        (string Path, string Content)[] files, params string[] nonVanilla)
+    {
+        var hashes = await HashAll(files);
+        using var tx = store.BeginTransaction();
+        var pathIds = AddPaths(tx, hashes);
+        var baseline = new LocalBaseline.New(tx)
+        {
+            Store = gameStore,
+            GamePath = gamePath,
+            LocatorIds = [],
+            Kind = kind,
+            VersionName = "",
+            BuiltAt = DateTimeOffset.UnixEpoch,
+            FilesIds = pathIds,
+        };
+        foreach (var path in nonVanilla)
+        {
+            _ = new NonVanillaFile.New(tx)
+            {
+                BaselineId = baseline.Id,
+                Path = RelativePath.FromUnsanitizedInput(path),
+                Reason = NonVanillaReason.HashDiffers,
+                Size = Size.From(1),
+            };
+        }
+        var result = await tx.Commit();
+        return result[baseline.Id];
     }
 
     public static readonly NexusModsGameId GameId = NexusModsGameId.From(1234);

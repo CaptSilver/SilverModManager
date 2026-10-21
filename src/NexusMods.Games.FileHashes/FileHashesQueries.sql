@@ -81,21 +81,63 @@ WITH
             LEFT JOIN MDB_GOGMANIFEST(DBName=>store) manifest ON manifests.ManifestId = manifest.Id)
 SELECT files.Loadout, files.File PathId FROM files;
 
+-- every path row of the hash store called `store`, resolved to its path, hash and size
+CREATE OR REPLACE MACRO file_hashes.store_path_hashes(store) AS TABLE
+SELECT pathRel.Id, pathRel.Path, hashRel.xxHash3 Hash, hashRel.Size
+FROM MDB_PathHashRelation(DBName=>store) pathRel
+INNER JOIN MDB_hashrelation(DBName=>store) hashRel ON pathRel.Hash = hashRel.Id;
+
 -- gets the paths and hashes of game files in loadouts from the one hash store called `store`. Row ids only mean
 -- something inside their own store, so each store resolves its rows to values here and only the values leave.
 CREATE OR REPLACE MACRO file_hashes.hash_store_loadout_files(db, store) AS TABLE
 WITH 
-       relations AS (SELECT pathRel.Id, pathRel.Path, hashRel.xxHash3 Hash, hashRel.Size 
-                  FROM MDB_PathHashRelation(DBName=>store) pathRel
-                  INNER JOIN MDB_hashrelation(DBName=>store) hashRel ON pathRel.Hash = hashRel.Id),
+       relations AS (SELECT Id, Path, Hash, Size FROM file_hashes.store_path_hashes(store)),
        files AS (SELECT Loadout, PathId FROM file_hashes.gog_loadout_files(db, store)
               UNION
               SELECT Loadout, PathId FROM file_hashes.steam_loadout_files(db, store))
 SELECT files.Loadout, relations.Path, relations.Hash, relations.Size FROM files
 INNER JOIN relations ON files.PathId = relations.Id;
 
--- gets all the paths and hashes for game files in loadouts, from the downloaded hash store and the local one
-CREATE MACRO file_hashes.loadout_files(db) AS TABLE
-SELECT Loadout, Path, Hash, Size FROM file_hashes.hash_store_loadout_files(db, 'hashes')
+-- The local baseline of each loadout's installation. The local store cannot reference the main store's
+-- entities, so the baseline carries the installation as values and is matched on (Store, Path).
+CREATE OR REPLACE MACRO file_hashes.loadout_baselines(db) AS TABLE
+SELECT loadout.id Loadout, baseline.Id BaselineId
+FROM MDB_LOADOUT(Db=>db) loadout
+         INNER JOIN MDB_GAMEINSTALLMETADATA(Db=>db) install ON loadout.Installation = install.id
+         INNER JOIN MDB_LOCALBASELINE(DbName=>'local_hashes') baseline ON baseline.Store = install.Store AND baseline.GamePath = install.Path;
+
+-- gets the paths and hashes of the files each loadout's local baseline classified as vanilla
+CREATE OR REPLACE MACRO file_hashes.local_baseline_files(db) AS TABLE
+WITH
+       files AS (SELECT Loadout, unnest(baseline.Files) PathId
+                 FROM file_hashes.loadout_baselines(db) baselines
+                          INNER JOIN MDB_LOCALBASELINE(DbName=>'local_hashes') baseline ON baseline.Id = baselines.BaselineId)
+SELECT files.Loadout, relations.Path, relations.Hash, relations.Size FROM files
+INNER JOIN file_hashes.store_path_hashes('local_hashes') relations ON files.PathId = relations.Id;
+
+-- the paths a loadout's local baseline has an opinion on: the ones it found vanilla and the ones it found modified
+CREATE OR REPLACE MACRO file_hashes.local_baseline_paths(db) AS TABLE
+SELECT files.Loadout, relations.Path
+FROM (SELECT Loadout, unnest(baseline.Files) PathId
+      FROM file_hashes.loadout_baselines(db) baselines
+               INNER JOIN MDB_LOCALBASELINE(DbName=>'local_hashes') baseline ON baseline.Id = baselines.BaselineId) files
+         INNER JOIN file_hashes.store_path_hashes('local_hashes') relations ON files.PathId = relations.Id
 UNION
-SELECT Loadout, Path, Hash, Size FROM file_hashes.hash_store_loadout_files(db, 'local_hashes');
+SELECT baselines.Loadout, nonVanilla.Path
+FROM file_hashes.loadout_baselines(db) baselines
+         INNER JOIN MDB_NONVANILLAFILE(DbName=>'local_hashes') nonVanilla ON nonVanilla.Baseline = baselines.BaselineId;
+
+-- gets all the paths and hashes for game files in loadouts, from the downloaded hash store, the local one
+-- and the loadout's local baseline. Where the baseline classified a path, only its own row survives, so a
+-- file it found modified has no row and a hash taken from disk is not contradicted by the downloaded store.
+-- Paths compare as strings, case-sensitively.
+CREATE MACRO file_hashes.loadout_files(db) AS TABLE
+WITH
+       stored AS (SELECT Loadout, Path, Hash, Size FROM file_hashes.hash_store_loadout_files(db, 'hashes')
+                  UNION
+                  SELECT Loadout, Path, Hash, Size FROM file_hashes.hash_store_loadout_files(db, 'local_hashes')),
+       classified AS (SELECT Loadout, Path FROM file_hashes.local_baseline_paths(db))
+SELECT Loadout, Path, Hash, Size FROM stored
+WHERE NOT EXISTS (SELECT 1 FROM classified WHERE classified.Loadout = stored.Loadout AND classified.Path = stored.Path)
+UNION
+SELECT Loadout, Path, Hash, Size FROM file_hashes.local_baseline_files(db);

@@ -111,6 +111,8 @@ public static class DependencyInjectionHelper
                 .AddGogDepotModel()
                 .AddGogManifestModel()
                 .AddSteamManifestModel()
+                .AddLocalBaselineModel()
+                .AddNonVanillaFileModel()
                 .AddEpicGameStoreBuildModel()
                 .AddFileHashesQueriesSql()
                 .AddHashRelationModel()

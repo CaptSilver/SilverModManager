@@ -1,3 +1,4 @@
+using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
@@ -80,6 +81,86 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         var rows = LoadoutFiles(loadout);
 
         rows.Select(r => r.Path.ToString()).Should().BeEquivalentTo(["a.esm", "b.esm"]);
+    }
+
+    [Fact]
+    public async Task LoadoutFiles_IncludesASnapshotBaselineMatchedByStoreAndPath()
+    {
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.Snapshot,
+            [("a.esm", "one"), ("b.esm", "two")]);
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test");
+
+        var rows = LoadoutFiles(loadout);
+
+        rows.Select(r => r.Path.ToString()).Should().BeEquivalentTo(["a.esm", "b.esm"]);
+    }
+
+    [Fact]
+    public async Task LoadoutFiles_BaselineForAnotherPath_IsNotReturned()
+    {
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/elsewhere", LocalBaselineKind.Snapshot,
+            [("a.esm", "one"), ("b.esm", "two")]);
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test");
+
+        LoadoutFiles(loadout).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task LoadoutFiles_BaselineForAnotherStore_IsNotReturned()
+    {
+        await HashRows.AddLocalBaseline(_local, GameStore.GOG, "/games/test", LocalBaselineKind.Snapshot, [("a.esm", "one")]);
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test");
+
+        LoadoutFiles(loadout).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task LoadoutFiles_PathReportedNonVanilla_IsRemovedEvenWhenTheCentralStoreKnowsIt()
+    {
+        await HashRows.AddSteamManifest(_central, 1001, ("x.esm", "vanilla x"), ("y.esm", "vanilla y"));
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.DepotManifests,
+            [], "x.esm");
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
+
+        var rows = LoadoutFiles(loadout);
+
+        rows.Select(r => r.Path.ToString()).Should().BeEquivalentTo(["y.esm"], "the baseline found x.esm modified, so it has no Layer 0 row");
+    }
+
+    [Fact]
+    public async Task LoadoutFiles_PathInASnapshotBaseline_TakesTheLocalHashOverTheCentralOne()
+    {
+        await HashRows.AddSteamManifest(_central, 1001, ("y.esm", "central y"));
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.Snapshot,
+            [("y.esm", "local y")]);
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
+
+        var rows = LoadoutFiles(loadout);
+
+        rows.Should().ContainSingle().Which.Hash.Should().Be(await HashOf("local y"));
+    }
+
+    [Fact]
+    public async Task LoadoutFiles_PathReportedNonVanilla_IsRemovedFromTheLocalManifestRowsToo()
+    {
+        // A depot-manifest baseline's manifest lists the modified file as well, with the vanilla hash.
+        await HashRows.AddSteamManifest(_local, 1001, ("x.esm", "vanilla x"), ("y.esm", "vanilla y"));
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.DepotManifests,
+            [("y.esm", "vanilla y")], "x.esm");
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
+
+        LoadoutFiles(loadout).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["y.esm"]);
+    }
+
+    [Fact]
+    public async Task LoadoutFiles_BaselineOfAnotherInstallation_LeavesCentralRowsAlone()
+    {
+        await HashRows.AddSteamManifest(_central, 1001, ("x.esm", "vanilla x"));
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/elsewhere", LocalBaselineKind.DepotManifests,
+            [], "x.esm");
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
+
+        LoadoutFiles(loadout).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["x.esm"]);
     }
 
     [Fact]
