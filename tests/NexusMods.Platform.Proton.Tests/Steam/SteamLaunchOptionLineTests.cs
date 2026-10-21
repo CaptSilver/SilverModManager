@@ -192,6 +192,116 @@ public class SteamLaunchOptionLineTests : IDisposable
         edit.Refusal.Should().Contain("'#'");
     }
 
+    private const string RealFluorineLine =
+        "'/home/bazzite/.local/share/fluorine/bin/fluorine-manager' -i 'Cyberpunk 2077 - NCR' -p 'Default' run --headless -e 'Cyberpunk 2077' # %command%";
+
+    [Fact]
+    public void Test_FindOtherManagerRecognisesFluorine()
+    {
+        var manager = SteamLaunchOptionLine.FindOtherManager(RealFluorineLine);
+
+        manager.Should().NotBeNull();
+        manager!.Name.Should().Be("Fluorine");
+        manager.Command.Should().EndWith("/fluorine-manager");
+    }
+
+    [Fact]
+    public void Test_FindOtherManagerCallsAnUnknownCommandBeforeAHashUnrecognised()
+    {
+        var manager = SteamLaunchOptionLine.FindOtherManager("'/opt/x/launcher' --foo # %command%");
+
+        manager.Should().NotBeNull();
+        manager!.Name.Should().BeNull();
+        manager.Command.Should().Be("/opt/x/launcher");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("%command%")]
+    [InlineData("MANGOHUD=1 %command%")]
+    [InlineData("~/lsfg %command%")]
+    [InlineData("WINEDLLOVERRIDES=\"dsound=n,b\" SteamDeck=0 ~/fgmod/fgmod ~/lsfg %command%")]
+    [InlineData("'/home/user/.local/share/silvermod/bin/silvermod' run 'X' -- %command%")]
+    [InlineData("%command% # note")]
+    [InlineData("FOO='a # b' %command%")]
+    [InlineData("'/opt/x/tool' 'arg # 1' %command%")]
+    [InlineData("FOO=a#b %command%")]
+    [InlineData("'/opt/x/tool' -e 'a#b' %command%")]
+    [InlineData("FOO=1 # %command%")]
+    [InlineData("# '/x/fluorine-manager' %command%")]
+    [InlineData("'/x/fluorine-manager' -i 'G'")]
+    public void Test_FindOtherManagerIsNullForOrdinaryLines(string line)
+    {
+        SteamLaunchOptionLine.FindOtherManager(line).Should().BeNull();
+    }
+
+    [Fact]
+    public void Test_ReplaceKeepsTheEnvAssignmentsAndDropsTheManager()
+    {
+        var edit = SteamLaunchOptionLine.Replace("MANGOHUD=1 " + RealFluorineLine, Shim, "X", Required);
+
+        edit.Refusal.Should().BeNull();
+        edit.Line.Should().Be($"MANGOHUD=1 WINEDLLOVERRIDES=\"{RequiredValue}\" '{Shim}' run 'X' -- %command%");
+    }
+
+    [Fact]
+    public void Test_ReplaceOfTheRealFluorineLineIsTheBareSpan()
+    {
+        var edit = SteamLaunchOptionLine.Replace(RealFluorineLine, Shim, "X", []);
+
+        edit.Refusal.Should().BeNull();
+        edit.Line.Should().Be(SteamLaunchOptionLine.Compose(Shim, "X", []));
+    }
+
+    [Fact]
+    public void Test_ReplaceDropsACommentedTailAndKeepsALiveOne()
+    {
+        SteamLaunchOptionLine.Replace(RealFluorineLine + " -windowed", Shim, "X", []).Line
+            .Should().Be($"'{Shim}' run 'X' -- %command%");
+
+        SteamLaunchOptionLine.Replace("'/x/fluorine-manager' run %command% -windowed", Shim, "X", []).Line
+            .Should().Be($"'{Shim}' run 'X' -- %command% -windowed");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("MANGOHUD=1 ~/lsfg %command%")]
+    [InlineData("'/x/fluorine-manager' -i 'G'")]
+    public void Test_ReplaceRefusesALineWithNoOtherManager(string line)
+    {
+        var edit = SteamLaunchOptionLine.Replace(line, Shim, "X", []);
+
+        edit.Line.Should().BeNull();
+        edit.Refusal.Should().Be("nothing of another manager to replace; the ordinary write applies");
+    }
+
+    [Fact]
+    public void Test_ReplaceRefusesAnOperatorInAKeptTail()
+    {
+        var edit = SteamLaunchOptionLine.Replace("'/x/fluorine-manager' run %command% ; echo hi", Shim, "X", []);
+
+        edit.Line.Should().BeNull();
+        edit.Refusal.Should().Contain("';'").And.Contain("after %command%");
+    }
+
+    [Fact]
+    public void Test_RewriteRefusesAKnownManagerUsedAsAWrapper()
+    {
+        var edit = SteamLaunchOptionLine.Rewrite("'/x/fluorine-manager' run %command%", Shim, "X", []);
+
+        edit.Line.Should().BeNull();
+        edit.Refusal.Should().Be("The launch options start Fluorine (/x/fluorine-manager), which manages the game itself. " +
+                                 "Two managers cannot both run it; replace the line to use this loadout.");
+    }
+
+    [Fact]
+    public void Test_RefusalOfAnotherManagersLineNamesTheReplacePath()
+    {
+        var edit = SteamLaunchOptionLine.Rewrite(RealFluorineLine, Shim, "X", []);
+
+        edit.Refusal.Should().Contain("'#'").And.Contain("Fluorine").And.Contain("--replace-other-manager");
+    }
+
     [Fact]
     public void Test_RemoveDropsOnlyTheSpan()
     {

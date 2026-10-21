@@ -17,6 +17,15 @@ public static class SteamLaunchOptionLine
     private const string ShimFileName = "silvermod";
 
     /// <summary>
+    /// Launchers known to run the game themselves, by command file name. Only names seen in a real launch
+    /// options line belong here.
+    /// </summary>
+    private static readonly Dictionary<string, string> KnownManagers = new(StringComparer.Ordinal)
+    {
+        ["fluorine-manager"] = "Fluorine",
+    };
+
+    /// <summary>
     /// A launch options line split around the launcher span.
     /// </summary>
     /// <param name="Prefix">Text before the span (or before <c>%command%</c> when the span is absent).</param>
@@ -41,6 +50,13 @@ public static class SteamLaunchOptionLine
         /// </summary>
         public bool IsRefused => Refusal is not null;
     }
+
+    /// <summary>
+    /// Another mod manager's command in a launch options line.
+    /// </summary>
+    /// <param name="Name">The manager's display name, or null when the command is not one we know.</param>
+    /// <param name="Command">The unquoted command word.</param>
+    public sealed record OtherManager(string? Name, string Command);
 
     /// <summary>
     /// Builds the launcher span for a shim and loadout, preceded by the assignment that sets the DLL overrides
@@ -74,13 +90,87 @@ public static class SteamLaunchOptionLine
     public static Edit Rewrite(string existingLine, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides)
     {
         var scan = Scan(existingLine);
-        if (Refuse(scan) is { } refusal) return new Edit(null, refusal);
+        var manager = FindOtherManager(existingLine);
+        if (Refuse(scan) is { } refusal)
+        {
+            return new Edit(null, manager is null
+                ? refusal
+                : $"{refusal} These launch options appear to belong to {manager.Name ?? "another launcher"}; " +
+                  "the dialog's Replace and `--replace-other-manager` can replace them.");
+        }
+
+        if (manager is not null)
+        {
+            return new Edit(null, $"The launch options start {manager.Name ?? "another launcher"} ({manager.Command}), " +
+                                  "which manages the game itself. Two managers cannot both run it; replace the line to use this loadout.");
+        }
 
         var parsed = scan.ToParsed(existingLine);
         var prefix = WithDllOverrides(parsed.Prefix, overrides);
         if (prefix.IsRefused) return prefix;
 
         return new Edit(Join(prefix.Line!, Span(shimPath, loadoutName), parsed.Tail), null);
+    }
+
+    /// <summary>
+    /// Finds another manager's command in the line: a known manager's file name, or any command that is
+    /// followed by a <c>#</c> before <c>%command%</c>, which comments Steam's command out so the manager must be
+    /// running the game itself. A line without <c>%command%</c> has no command word (Steam appends it to the
+    /// game's command as arguments), and a wrapper that takes <c>%command%</c> as an argument is not a manager.
+    /// </summary>
+    public static OtherManager? FindOtherManager(string line)
+    {
+        var words = new List<Word>();
+        var operators = new List<Operator>();
+        Tokenize(line, words, operators);
+
+        var commandIndex = words.FindIndex(w => w.Raw == CommandToken);
+        if (commandIndex < 0) return null;
+
+        var first = words.FindIndex(w => EnvKey(w.Raw) is null);
+        if (first < 0 || first >= commandIndex) return null;
+
+        var command = words[first];
+        var hash = operators.FirstOrDefault(o => o.Text == "#") is { Text: not null } comment ? comment.Index : -1;
+
+        // Tokenize keeps producing words inside a comment, so a command after the '#' is not a command.
+        if (hash >= 0 && hash < command.Start) return null;
+
+        var scan = Scan(line);
+        if (scan.Shim is not null && scan.SpanStart == command.Start) return null;
+
+        if (KnownManagers.TryGetValue(Path.GetFileName(command.Value), out var name)) return new OtherManager(name, command.Value);
+        return hash >= 0 && hash < words[commandIndex].Start ? new OtherManager(null, command.Value) : null;
+    }
+
+    /// <summary>
+    /// Replaces another manager's command (see <see cref="FindOtherManager"/>) with the launcher span, keeping
+    /// the leading environment assignments, which cannot be told apart from the user's own, and merging
+    /// <paramref name="overrides"/> into them. Text after <c>%command%</c> is kept unless the manager had
+    /// commented it out. Unlike <see cref="Rewrite"/> this is only for a line the user has been shown and
+    /// agreed to lose the manager from.
+    /// </summary>
+    public static Edit Replace(string existingLine, string shimPath, string loadoutName, IReadOnlyList<WineDllOverride> overrides)
+    {
+        if (FindOtherManager(existingLine) is null)
+        {
+            return new Edit(null, "nothing of another manager to replace; the ordinary write applies");
+        }
+
+        var words = new List<Word>();
+        var operators = new List<Operator>();
+        Tokenize(existingLine, words, operators);
+
+        var command = words.First(w => EnvKey(w.Raw) is null);
+        var end = words.First(w => w.Raw == CommandToken).End;
+        var commentedOut = operators.Any(o => o.Text == "#" && o.Index < end);
+
+        var prefix = WithDllOverrides(existingLine[..command.Start].Trim(), overrides);
+        if (prefix.IsRefused) return prefix;
+
+        var tail = commentedOut ? "" : existingLine[end..].Trim();
+        var line = Join(prefix.Line!, Compose(shimPath, loadoutName, []), tail);
+        return Refuse(Scan(line)) is { } refusal ? new Edit(null, refusal) : new Edit(line, null);
     }
 
     /// <summary>
