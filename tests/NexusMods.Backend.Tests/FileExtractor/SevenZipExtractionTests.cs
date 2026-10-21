@@ -65,6 +65,57 @@ public class SevenZipExtractionTests : AFileExtractorTest
         File.GetUnixFileMode(secretDir.ToString()).Should().Be(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
     }
 
+    // 7z-with-symlinks.7z holds link-abs (absolute), link-escape and link-dotdot (../ out of the root) and
+    // sub/deep-escape (../../ out of sub), all aimed outside the extraction folder, plus link-file, link-chain
+    // and link-sub-file (links to files inside it) and link-dir (a link to the folder sub). Nothing that
+    // leaves the folder may survive, and links inside it become plain files or disappear.
+    [Fact]
+    public async Task ExtractedArchiveHasNoSymlinks()
+    {
+        await using var outside = TemporaryFileManager.CreateFolder();
+        var secret = outside.Path.Combine("outside-secret.txt");
+        await secret.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
+
+        var destination = outside.Path.Combine("extracted");
+        destination.CreateDirectory();
+        await FileExtractor.ExtractAllAsync(SymlinksArchive, destination, TestContext.Current.CancellationToken);
+
+        var root = destination.ToString();
+        var entries = Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories).ToArray();
+        entries.Where(e => new FileInfo(e).LinkTarget is not null).Should().BeEmpty();
+
+        var relative = entries.Select(e => Path.GetRelativePath(root, e)).Order().ToArray();
+        relative.Should().Equal("link-chain", "link-file", "link-sub-file", "real.txt", "sub", Path.Combine("sub", "inner.txt"));
+
+        string Read(string path) => File.ReadAllText(Path.Combine(root, path));
+        Read("link-file").Should().Be("real content");
+        Read("link-chain").Should().Be("real content");
+        Read("link-sub-file").Should().Be("inner content");
+        Read("real.txt").Should().Be("real content");
+
+        File.ReadAllText(secret.ToString()).Should().Be("private");
+    }
+
+    // 7z-with-unreadable-link-target.7z stores hidden.txt and the folder locked at mode 000 and link-hidden, a
+    // link to hidden.txt. Modes have to be fixed before the links are swept, or the sweep can neither list
+    // locked nor copy hidden.txt over the link.
+    [Fact]
+    public async Task LinkToAFileStoredAsUnreadableBecomesACopy()
+    {
+        await using var destination = TemporaryFileManager.CreateFolder();
+        await FileExtractor.ExtractAllAsync(UnreadableLinkTargetArchive, destination, TestContext.Current.CancellationToken);
+
+        string Read(string path) => File.ReadAllText(destination.Path.Combine(path).ToString());
+        new FileInfo(destination.Path.Combine("link-hidden").ToString()).LinkTarget.Should().BeNull();
+        Read("link-hidden").Should().Be("hidden content");
+        Read("hidden.txt").Should().Be("hidden content");
+        Read("locked/inner.txt").Should().Be("locked content");
+    }
+
+    private AbsolutePath UnreadableLinkTargetArchive => FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-unreadable-link-target.7z");
+
+    private AbsolutePath SymlinksArchive =>FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-symlinks.7z");
+
     private AbsolutePath UnixModesArchive => FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-unix-modes.7z");
 
     [Theory]

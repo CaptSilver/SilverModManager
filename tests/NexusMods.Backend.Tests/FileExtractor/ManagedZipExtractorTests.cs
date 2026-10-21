@@ -11,6 +11,14 @@ namespace NexusMods.Backend.Tests.FileExtractor;
 
 public class ManagedZipExtractorTests
 {
+    // The default folder is shared with the tests that get their manager from the service provider, and
+    // disposing a manager deletes its folder, so each test here gets its own.
+    private static TemporaryFileManager CreateTemporaryFileManager()
+    {
+        var prefix = FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine($"NexusMods.Backend.Tests-{Guid.NewGuid()}");
+        return new TemporaryFileManager(FileSystem.Shared, prefix);
+    }
+
     [Theory]
     [InlineData("unicode-names.zip", "こんにちわ.txt")]
     [InlineData("unicode-extra-data.zip", "こんにちわ.txt")]
@@ -23,13 +31,46 @@ public class ManagedZipExtractorTests
         archivePath.FileExists.Should().BeTrue();
 
         var extractor = new ManagedZipExtractor(NullLogger<ManagedZipExtractor>.Instance);
-        using var temporaryFileManager = new TemporaryFileManager(FileSystem.Shared);
+        using var temporaryFileManager = CreateTemporaryFileManager();
 
         await using var destinationPath = temporaryFileManager.CreateFolder();
         await extractor.ExtractAllAsync(new NativeFileStreamFactory(archivePath), destinationPath, TestContext.Current.CancellationToken);
 
         var files = destinationPath.Path.EnumerateFiles().ToArray();
         files.Where(f => f.FileName == expectedFileName).Should().ContainSingle();
+    }
+
+    // A zip entry can be marked as a Unix symlink, its data being the link target. The managed extractor
+    // writes entry data to a regular file and never creates links, so the target is just file content.
+    [Fact]
+    public async Task SymlinkEntriesAreWrittenAsRegularFiles()
+    {
+        using var temporaryFileManager = CreateTemporaryFileManager();
+        await using var outside = temporaryFileManager.CreateFolder();
+        var secret = outside.Path.Combine("outside-secret.txt");
+        await secret.WriteAllTextAsync("private", TestContext.Current.CancellationToken);
+
+        var archive = new MemoryStream();
+        await using (var output = new ZipOutputStream(archive))
+        {
+            output.IsStreamOwner = false;
+            const int symlinkMode = 0xA000 | 0x1FF;
+            var entry = new ZipEntry("link") { HostSystem = (int)HostSystemID.Unix, ExternalFileAttributes = symlinkMode << 16 };
+            await output.PutNextEntryAsync(entry, TestContext.Current.CancellationToken);
+            await output.WriteAsync(Encoding.UTF8.GetBytes(secret.ToString()), TestContext.Current.CancellationToken);
+            await output.CloseEntryAsync(TestContext.Current.CancellationToken);
+        }
+        archive.Position = 0;
+
+        var destination = outside.Path.Combine("extracted");
+        destination.CreateDirectory();
+        var extractor = new ManagedZipExtractor(NullLogger<ManagedZipExtractor>.Instance);
+        await extractor.ExtractAllAsync(new MemoryStreamFactory("link.zip", archive), destination, TestContext.Current.CancellationToken);
+
+        var extracted = destination.Combine("link").ToString();
+        new FileInfo(extracted).LinkTarget.Should().BeNull();
+        File.ReadAllText(extracted).Should().Be(secret.ToString());
+        File.ReadAllText(secret.ToString()).Should().Be("private");
     }
 
     private static async Task CreateZipFile()

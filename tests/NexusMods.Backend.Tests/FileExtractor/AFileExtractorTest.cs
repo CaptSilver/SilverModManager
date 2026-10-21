@@ -25,6 +25,9 @@ public class AFileExtractorTest : IAsyncLifetime
                         .AddJobMonitor()
                         .AddSingleton<TimeProvider>(_ => TimeProvider.System)
                         .AddFileSystem()
+                        // Every test builds its own host, and disposing the manager deletes its folder: sharing one
+                        // folder lets a finishing test delete the files of another that is still running.
+                        .AddSingleton<TemporaryFileManager>(_ => new TemporaryFileManager(NexusMods.Paths.FileSystem.Shared, prefix))
                         .AddSettingsManager()
                         .AddFileExtractors()
                         .AddOSInterop()

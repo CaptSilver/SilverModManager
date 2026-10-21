@@ -66,7 +66,13 @@ public class SevenZipExtractor : IExtractor
 
         var trimmablePathsInArchive = await GetTrimmablePathsInArchive(source, cancellationToken: cancellationToken);
         await ExtractArchive(source, destination, cancellationToken: cancellationToken);
-        NormalizeModes(destination.ToNativeSeparators(_osInformation));
+
+        // Modes first, since the link sweep has to list every folder and copy link targets that the archive
+        // may have stored at 000; NormalizeModes never touches a link. Then the links go, before anything
+        // else reads the result.
+        var root = destination.ToNativeSeparators(_osInformation);
+        NormalizeModes(root);
+        ExtractedLinks.Sanitize(root, _logger);
 
         if (trimmablePathsInArchive.Count == 0) return;
         FixPaths(trimmablePathsInArchive, destination);
@@ -236,8 +242,15 @@ public class SevenZipExtractor : IExtractor
         return (temporaryFile.Path, temporaryFile);
     }
 
+    // 7z 21.03 refuses to create a link whose target is absolute or contains "..", and reports each one on
+    // stderr in this form while exiting with code 2. There is no switch that stops it creating the
+    // remaining links (-snld only allows the dangerous ones), so ExtractedLinks sweeps the result.
+    private const string DangerousLinkError = "ERROR: Dangerous link path was ignored";
+
     private async ValueTask ExtractArchive(AbsolutePath source, AbsolutePath destination, CancellationToken cancellationToken)
     {
+        var errors = new List<string>();
+
         // NOTE(erri120): Using "-bsp1" to redirect the progress line to stdout
         var process = Cli
             .Wrap(_exePath)
@@ -247,9 +260,24 @@ public class SevenZipExtractor : IExtractor
                 // TODO: progress reporting
                 _ = TryParseExtractCommandOutput(line, out var percentage);
             }))
-            .WithValidation(CommandResultValidation.ZeroExitCode);
+            .WithStandardErrorPipe(PipeTarget.ToDelegate(line =>
+            {
+                if (!string.IsNullOrWhiteSpace(line)) errors.Add(line);
+            }))
+            .WithValidation(CommandResultValidation.None);
 
-        await _processRunner.RunAsync(process, logOutput: true, cancellationToken: cancellationToken);
+        var result = await _processRunner.RunAsync(process, logOutput: true, cancellationToken: cancellationToken);
+        if (result.ExitCode == 0) return;
+
+        // An archive whose only problem is links it was not allowed to create still extracts: the links are
+        // dropped and the rest of the mod is usable.
+        if (errors.Count > 0 && errors.All(e => e.StartsWith(DangerousLinkError, StringComparison.Ordinal)))
+        {
+            foreach (var error in errors) _logger.LogWarning("Dropped a symlink from `{Archive}`: {Error}", source.FileName, error);
+            return;
+        }
+
+        throw new FileExtractionException($"7z exited with code {result.ExitCode} extracting `{source.FileName}`: {string.Join(" | ", errors)}");
     }
 
     private static bool TryParseExtractCommandOutput(ReadOnlySpan<char> line, out int percentage)
