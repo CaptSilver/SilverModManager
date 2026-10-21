@@ -351,6 +351,68 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
+    public async Task DepotBaselineBuiltUnderOlderClassificationRules_IsRebuilt()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        WriteGameFile("Data/big.bsa", "archive");
+        _source.Add(101, ("a.esm", "vanilla"), ("Data/big.bsa", "archive"));
+
+        // An earlier build skipped archives, so the manifest-listed .bsa is in neither the vanilla files nor the report.
+        await _coordinator.Ensure(Make(["101"], filter: path => path.Extension == new Extension(".bsa")));
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Select(f => f.Path.ToString()).Should().BeEquivalentTo(["a.esm"]);
+        await ForgetClassificationVersion();
+
+        var result = await _coordinator.Ensure(Installation("101"));
+
+        result.Rebuilt.Should().BeTrue("a baseline without the current rule version cannot be trusted");
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Files.Select(f => f.Path.ToString())
+            .Should().BeEquivalentTo(["a.esm", "Data/big.bsa"]);
+    }
+
+    [Fact]
+    public async Task DepotBaselineBuiltUnderTheCurrentRules_IsKept()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+        await _coordinator.Ensure(Installation("101"));
+
+        var result = await _coordinator.Ensure(Installation("101"));
+
+        result.Rebuilt.Should().BeFalse();
+        LocalBaseline.All(_store.Db).Single().ClassificationVersion.Value.Should().Be(LocalVanillaBaseline.ClassificationVersion);
+    }
+
+    [Fact]
+    public async Task SnapshotBuiltUnderOlderClassificationRules_IsKept()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        await _coordinator.Ensure(Make(["101"], store: GameStore.GOG));
+        await ForgetClassificationVersion();
+
+        // A rebuild now would take the mod the app deployed since for one of the game's own files.
+        WriteGameFile("Data/mod.esp", "deployed");
+        var result = await _coordinator.Ensure(Make(["101"], store: GameStore.GOG));
+
+        result.Rebuilt.Should().BeFalse("a snapshot takes the folder as it stands, mods included");
+        LocalBaseline.All(_store.Db).Single().Files.Select(f => f.Path.ToString()).Should().BeEquivalentTo(["a.esm"]);
+    }
+
+    [Fact]
+    public async Task PartialBaselineBuiltUnderOlderClassificationRules_IsKept()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+        await _coordinator.Ensure(Installation("101", "999"));
+        await ForgetClassificationVersion();
+
+        WriteGameFile("Data/mod.esp", "deployed");
+        var result = await _coordinator.Ensure(Installation("101", "999"));
+
+        result.Rebuilt.Should().BeFalse("a partial baseline takes every file no manifest lists as vanilla, mods included");
+        LocalBaseline.All(_store.Db).Single().Files.Select(f => f.Path.ToString()).Should().BeEquivalentTo(["a.esm"]);
+    }
+
+    [Fact]
     public async Task WaitForBuild_ReturnsOnlyOnceABuildInFlightHasCommitted()
     {
         WriteGameFile("a.esm", "vanilla");
@@ -393,6 +455,15 @@ public sealed class EnsureLocalBaselineTests : IDisposable
 
         LocalBaseline.All(_store.Db).Should().BeEmpty();
         _source.Reads.Should().BeEmpty();
+    }
+
+    /// <summary>Makes the one baseline look like it was recorded before the classification rules were versioned.</summary>
+    private async Task ForgetClassificationVersion()
+    {
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        using var tx = _store.BeginTransaction();
+        tx.Retract(baseline.Id, LocalBaseline.ClassificationVersion, baseline.ClassificationVersion.Value);
+        await tx.Commit();
     }
 
     private GameInstallation Installation(params string[] locatorIds) => Make(locatorIds);

@@ -76,6 +76,15 @@ internal sealed class LocalVanillaBaseline
     private const int HashParallelism = 4;
 
     /// <summary>
+    /// Stamped on every baseline built. Bump it whenever <see cref="Classify"/> or the ignore rules change what
+    /// ends up vanilla or non-vanilla: <see cref="LocalBaselineCoordinator"/> rebuilds a depot-manifest baseline
+    /// carrying a lower number, or none. A baseline without one predates versioning and may predate the rule
+    /// that classifies the paths a game keeps out of backups (the Creation Engine archives, all of Baldur's
+    /// Gate 3), which left those files in neither list and showed them as external changes.
+    /// </summary>
+    internal const int ClassificationVersion = 1;
+
+    /// <summary>
     /// A baseline must classify at least one file in this many of the folder's files. Ignore rules cover
     /// runtime output and backups, which are a sliver of a game's files; this only trips when they swallow
     /// nearly everything.
@@ -124,6 +133,7 @@ internal sealed class LocalVanillaBaseline
             Kind = kind,
             VersionName = kind == LocalBaselineKind.Snapshot ? "" : request.VersionName ?? request.Manifests[0].ManifestId.Value.ToString(),
             BuiltAt = DateTimeOffset.UtcNow,
+            ClassificationVersion = ClassificationVersion,
             FilesIds = [],
         };
 

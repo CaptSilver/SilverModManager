@@ -19,7 +19,8 @@ namespace NexusMods.Games.FileHashes;
 /// A baseline describes the files for the locator ids the installation had when it was built, so it is
 /// kept for as long as they are the same. The one exception is a Steam baseline that lacks depot manifests:
 /// it is rebuilt once a manifest for one of the installed depots shows up in the depotcache that was
-/// not there at the last build.
+/// not there at the last build. A depot-manifest baseline is also rebuilt when it was built under older
+/// classification rules (<see cref="LocalVanillaBaseline.ClassificationVersion"/>).
 /// </para>
 /// </summary>
 internal sealed class LocalBaselineCoordinator : IDisposable
@@ -154,7 +155,12 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         if (!current.SetEquals(baseline.LocatorIds)) return true;
         // A build that classified nothing is never a finished one; one recorded before that was refused is replaced.
         if (baseline.FilesIds.Count == 0 && !NonVanillaFile.FindByBaseline(baseline.Db, baseline.Id).Any()) return true;
-        if (baseline.Kind == LocalBaselineKind.DepotManifests) return false;
+        // Under older classification rules a file those rules skipped is in neither list, so the loadout shows
+        // it as an external change (and a clean-up would delete it). Only a depot-manifest baseline is rebuilt
+        // for that: it checks every file against its manifest, so mods deployed since land as non-vanilla. A
+        // snapshot or partial baseline would take those mods for the game's own files.
+        if (baseline.Kind == LocalBaselineKind.DepotManifests)
+            return baseline.ClassificationVersion is not { HasValue: true } built || built.Value < LocalVanillaBaseline.ClassificationVersion;
         if (_manifestSource is null || locator.Store != GameStore.Steam || locator.StoreRoot is not { } storeRoot) return false;
 
         // A manifest Steam cached after the build completes it. Only a file newer than the build counts: one

@@ -45,6 +45,13 @@ public partial class LocalBaseline : IModelDefinition
     public static readonly TimestampAttribute BuiltAt = new(Namespace, nameof(BuiltAt));
 
     /// <summary>
+    /// The version of the rules that decided which files are vanilla, ignored or non-vanilla when the baseline
+    /// was built. Absent on baselines built before the rules were versioned. A baseline built under older
+    /// rules cannot be trusted, since a file the old rules skipped is in neither list.
+    /// </summary>
+    public static readonly Int32Attribute ClassificationVersion = new(Namespace, nameof(ClassificationVersion)) { IsOptional = true };
+
+    /// <summary>
     /// Every file classified as vanilla. The hash rows are in the same store.
     /// </summary>
     public static readonly ReferencesAttribute<PathHashRelation> Files = new(Namespace, nameof(Files));
