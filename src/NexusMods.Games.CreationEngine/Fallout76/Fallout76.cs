@@ -28,8 +28,4 @@ public class Fallout76(IServiceProvider provider) : ABethesdaGame<Fallout76>(pro
     protected override string MyGamesFolderName(GameLocatorResult gameLocatorResult) => "Fallout 76";
 
     protected override string[] GameAliases => ["Fallout 76", "Fallout76", "FO76"];
-
-    // There is no script extender. The installer turns an empty list into a pattern that matches every
-    // path, so this one is written never to match.
-    protected override string[] EngineFiles => [@"^no-engine-files-here$"];
 }

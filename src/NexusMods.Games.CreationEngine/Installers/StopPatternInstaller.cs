@@ -151,9 +151,15 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
 
     /// <summary>
     /// Combines regex patters into a single regex that ors them together.
+    /// An empty list matches nothing.
     /// </summary>
     private Regex CombineRegexes(params string[] patterns)
     {
+        // Joining zero patterns gives an empty regex, which matches every string. "(?!)" is a lookahead
+        // that can never succeed, so a game with no engine files sends nothing to the engine folder.
+        if (patterns.Length == 0)
+            return new Regex("(?!)", RegexOptions.Compiled);
+
         var combined = string.Join("|", patterns.Select(p => $"(?:{p})"));
         return new Regex(combined, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     }

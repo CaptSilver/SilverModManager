@@ -25,10 +25,6 @@ public class TestBethesdaGame(IServiceProvider provider) : ABethesdaGame<TestBet
     protected override RelativePath PrimaryExe => "Test.exe";
     protected override string[] GameAliases => ["Test Bethesda"];
     protected override string DataFolderName => "Data Files";
-
-    // StopPatternInstaller turns an empty EngineFiles list into a regex that matches every path and sends
-    // everything to the engine folder, so a title that has no engine files still has to give it a pattern.
-    protected override string[] EngineFiles => [@"^no-engine-files-here$"];
 }
 
 /// <summary>A title that keeps its saves in the game folder and its engine files in Bin.</summary>
@@ -79,6 +75,10 @@ public class BethesdaBaseTests(ITestOutputHelper helper)
         (await InstallLayout("meshes/x.nif")).Should().Equal("Game/Data Files/meshes/x.nif");
         (await InstallLayout("Data Files/y.esp")).Should().Equal("Game/Data Files/y.esp");
     }
+
+    [Fact]
+    public async Task AGameWithNoEngineFilesSendsPlainFilesToData() =>
+        (await InstallLayout("readme.txt", "loader.exe")).Should().Equal("Game/Data Files/loader.exe", "Game/Data Files/readme.txt");
 
     [Fact]
     public void OnlyTheProtonPrefixCheckIsEmitted() => Game.DiagnosticEmitters.Select(e => e.GetType()).Should().Equal(typeof(ProtonPrefixEmitter));
