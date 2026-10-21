@@ -41,6 +41,8 @@ public partial class HostOsCheckGuardTests
         ("src/NexusMods.Games.StardewValley/Installers/SMAPIInstaller.cs", "var isUnix = targetOS.IsUnix();", "SMAPI ships different launchers for the Windows and Linux builds"),
         ("src/NexusMods.Games.StardewValley/WebAPI/SMAPIWebApi.cs", "return os.IsWindows ? Platform.Windows : Platform.Linux;", "SMAPI web API platform, which should be the game's target OS; the Stardew emitters wrongly pass the host IOSInformation"),
 
+        ("src/NexusMods.Games.FileHashes/LocalBaselineCoordinator.cs", "=> locator.TargetOS.IsWindows ? OperatingSystem.Windows : locator.TargetOS.IsOSX ? OperatingSystem.MacOS : OperatingSystem.Linux;", "the baseline's version row records the OS of the game build that was installed"),
+
         // Real IO on the host filesystem.
         ("src/NexusMods.Games.FileHashes/FileHashesService.cs", "sourceDirName: extractionDirectory.Path.ToNativeSeparators(OSInformation.Shared),", "native separators for Directory.Move"),
         ("src/NexusMods.Games.FileHashes/FileHashesService.cs", "destDirName: finalDirectory.ToNativeSeparators(OSInformation.Shared)", "native separators for Directory.Move"),

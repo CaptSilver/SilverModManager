@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.EpicGameStore.Values;
 using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Games.FileHashes.Models;
+using NexusMods.Abstractions.Steam;
 using NexusMods.Abstractions.GOG.Values;
 using NexusMods.Sdk.Settings;
 using NexusMods.Abstractions.Steam.Values;
@@ -60,6 +61,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     private readonly IQueryEngine _queryEngine;
 
     private readonly LocalHashesStore _local;
+    private readonly LocalBaselineCoordinator _baselineCoordinator;
 
     /// <summary>
     /// An empty store registered as "hashes" while no downloaded or embedded database is connected, so
@@ -93,6 +95,13 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
         // Opened here rather than in StartAsync so `Current` and `Local` work before the hosted service has run.
         _local = new LocalHashesStore(provider, _queryEngine, _settings, _fileSystem);
+
+        // Networking.Steam registers the source; without it every baseline is a snapshot.
+        _baselineCoordinator = new LocalBaselineCoordinator(
+            () => _local.Connection,
+            new LocalVanillaBaseline(_fileSystem, provider.GetRequiredService<ILogger<LocalVanillaBaseline>>()),
+            provider.GetService<IDepotManifestSource>(),
+            provider.GetRequiredService<ILogger<LocalBaselineCoordinator>>());
 
         // Only when nothing is on disk: with a database there, opening it is what registers the name.
         if (!ExistingDBs().Any()) EnsureHashesNameResolves();
@@ -620,6 +629,10 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     }
 
     /// <inheritdoc />
+    public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default)
+        => _baselineCoordinator.Ensure(installation, cancellationToken);
+
+    /// <inheritdoc />
     public IDb Current => _currentDb?.Db ?? Local;
 
     /// <inheritdoc />
@@ -840,6 +853,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         foreach (var database in allDatabases) database.Store.Dispose();
         foreach (var database in allDatabases) database.Backend.Dispose();
         _placeholder?.Dispose();
+        _baselineCoordinator.Dispose();
         _local.Dispose();
     }
 

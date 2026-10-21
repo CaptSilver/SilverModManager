@@ -15,6 +15,7 @@ using NexusMods.Sdk;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.IO;
+using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.NexusModsApi;
 
 namespace NexusMods.StandardGameLocators.TestHelpers;
@@ -159,6 +160,20 @@ public class StubbedFileHasherService : IFileHashesService
                 Hash = file.Hash.XxHash3,
             };
         }
+    }
+
+    /// <summary>
+    /// The installations <see cref="EnsureLocalBaseline"/> was asked about, with the number of loadouts that
+    /// existed at the time of the call.
+    /// </summary>
+    public List<(GameInstallation Installation, int LoadoutCount)> BaselineRequests { get; } = [];
+
+    // Nothing is hashed: the stubbed state stands in for the whole vanilla file list.
+    public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default)
+    {
+        var loadoutCount = Loadout.All(_provider.GetRequiredService<IConnection>().Db).Count();
+        lock (BaselineRequests) BaselineRequests.Add((installation, loadoutCount));
+        return Task.FromResult(new LocalBaselineResult(LocalBaselineKind.Snapshot, Rebuilt: false, NonVanillaCount: 0));
     }
 
     public IDb Current => _current!;

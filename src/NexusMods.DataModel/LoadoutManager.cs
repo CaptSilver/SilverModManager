@@ -81,6 +81,9 @@ internal partial class LoadoutManager : ILoadoutManager
             // than one that was never added.
             await installation.GetGame().Synchronizer.Preflight(installation);
 
+            // The first synchronize reads the vanilla file list, so it has to exist before the loadout does.
+            await _fileHashesService.EnsureLocalBaseline(installation, ctx.CancellationToken);
+
             // Prime the hash database to make sure it's loaded
             await _fileHashesService.GetFileHashesDb();
 

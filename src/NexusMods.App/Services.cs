@@ -101,6 +101,8 @@ public static class Services
             case HostProfile.Gui:
                 // Only the window-showing process knows which executable Steam launch lines should come back to.
                 services.AddSingleProcess(Mode.Main).AddLauncherShim();
+                // Steam updates games while the app is closed, so managed games are checked once at startup.
+                services.AddLocalBaselineStartupPass();
                 break;
             case HostProfile.Designer:
                 // The designer has no CLI server and no sync file: it must not touch the real instance's.

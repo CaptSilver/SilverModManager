@@ -29,5 +29,13 @@ public static class Services
             .AddSettings<FileHashesServiceSettings>()
             .AddHashRelationModel();
     }
-    
+
+    /// <summary>
+    /// Updates the local baselines of managed games in the background after startup. Left out of
+    /// <see cref="AddFileHashes"/> so that only the process showing the window runs it.
+    /// </summary>
+    public static IServiceCollection AddLocalBaselineStartupPass(this IServiceCollection services)
+    {
+        return services.AddSingleton<IHostedService, LocalBaselineStartupPass>();
+    }
 }

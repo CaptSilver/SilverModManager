@@ -73,10 +73,26 @@ public interface IFileHashesService
     public LocatorId[] GetLocatorIdsForVersionDefinition(GameStore gameStore, VersionDefinition.ReadOnly versionDefinition);
 
     /// <summary>
+    /// Makes sure the local store holds a vanilla file list for the installation that matches the files
+    /// the store (Steam) says are installed, building one when it is missing or stale. A baseline is
+    /// rebuilt only when the installation's locator ids changed, or when a depot manifest that was
+    /// missing at the last build has been cached since.
+    /// </summary>
+    public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Suggest version data for a given game installation and files.
     /// </summary>
     public Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files);
 }
+
+/// <summary>
+/// What <see cref="IFileHashesService.EnsureLocalBaseline"/> found or built.
+/// </summary>
+/// <param name="Kind">Where the baseline's file list came from.</param>
+/// <param name="Rebuilt">False when the existing baseline was kept, or when nothing was built because the store is mid-update.</param>
+/// <param name="NonVanillaCount">Files that differ from, or are missing in, the depot manifests.</param>
+public sealed record LocalBaselineResult(LocalBaselineKind Kind, bool Rebuilt, int NonVanillaCount);
 
 /// <summary>
 /// Tuple of many <see cref="LocatorId"/> and <see cref="Sdk.VanityVersion"/>.

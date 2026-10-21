@@ -149,6 +149,20 @@ public class HeadlessHostProfileTests
         host.Services.GetService<ISettingsManager>()!.Get<CliSettings>().Should().NotBeNull();
     }
 
+    [Theory]
+    [InlineData("as-main", false)]
+    [InlineData("run", false)]
+    [InlineData("as-main-ui", true)]
+    public void OnlyTheGuiProfileRegistersTheBaselineStartupPass(string input, bool registered)
+    {
+        var hostedServices = Describe(Mode(input.Split(' ')))
+            .Where(d => d.ServiceType == typeof(IHostedService))
+            .Select(d => d.ImplementationType?.Name);
+
+        if (registered) hostedServices.Should().Contain("LocalBaselineStartupPass");
+        else hostedServices.Should().NotContain("LocalBaselineStartupPass");
+    }
+
     [Fact]
     public void GuiGraphKeepsTheCliServerAndNxmRegistration()
     {
