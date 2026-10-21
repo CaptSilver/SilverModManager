@@ -41,7 +41,8 @@ public class GameFileStreamSource : IReadOnlyStreamSource
     public AbsolutePath? Resolve(Hash hash)
     {
         var options = _conn.Query<(EntityId Game, LocationId Location, RelativePath Path, DateTimeOffset LastModified, Hash Hash, Size Size)>(
-            $"select Game, Path.Item1, Path.Item2, Path.Item3, LastModified, Hash, Size from mdb_DiskStateEntry(Db=>{_conn}) WHERE Hash = {hash} ORDER BY LastModified DESC");
+            // Path is (owning game, location, relative path); the owning game is already the Game column.
+            $"select Game, Path.Item2, Path.Item3, LastModified, Hash, Size from mdb_DiskStateEntry(Db=>{_conn}) WHERE Hash = {hash} ORDER BY LastModified DESC");
         foreach (var option in options)
         {
             var metadata = GameInstallMetadata.Load(_conn.Db, option.Game);
