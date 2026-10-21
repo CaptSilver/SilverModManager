@@ -10,8 +10,11 @@ using Mutagen.Bethesda.Skyrim;
 using Size = NexusMods.Paths.Size;
 using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Loadouts.Deployment;
 using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.CreationEngine.Emitters;
 using NexusMods.Games.TestFramework;
@@ -213,6 +216,37 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
         await NewPluginsFile().Write(stream, loadout, tree);
 
         Encoding.UTF8.GetString(stream.ToArray()).Should().Contain("*Patched.esp");
+    }
+
+    [Fact]
+    public async Task WritingIntrinsics_PluginsFileRefuses_KeepsThePreviousPluginsTxt()
+    {
+        var readable = await StoredPlugin("Readable.esp");
+        var loadout = await EnsureLoadout();
+        var pluginsTxt = GameInstallation.Locations.ToAbsolutePath(Creation.PluginsFile);
+        pluginsTxt.Parent.CreateDirectory();
+        const string previous = "*Readable.esp\n*GoneA.esp\n";
+        await pluginsTxt.WriteAllTextAsync(previous);
+
+        var tree = Tree(readable, MissingPlugin("GoneA.esp", 0xA1)).ToDictionary();
+        tree[Creation.PluginsFile] = new SyncNode { SourceItemType = LoadoutSourceItemType.Intrinsic, Actions = Actions.WriteIntrinsic };
+
+        var backend = ServiceProvider.GetServices<IDeploymentBackend>().Single(b => b.Id == DeploymentBackendId.Copy);
+        using var tx = Connection.BeginTransaction();
+        var context = new DeploymentContext
+        {
+            Synchronizer = (ALoadoutSynchronizer)Synchronizer,
+            Installation = GameInstallation,
+            MetadataId = loadout.InstallationId,
+            SyncTree = tree,
+            Loadout = loadout,
+            Transaction = tx,
+        };
+
+        var act = async () => await backend.WriteIntrinsics(context, tree);
+
+        await act.Should().ThrowAsync<UnreadablePluginsException>();
+        (await pluginsTxt.ReadAllTextAsync()).Should().Be(previous, "an empty Plugins.txt disables every plugin");
     }
 
     private sealed class PlainWriter : IDiagnosticWriter

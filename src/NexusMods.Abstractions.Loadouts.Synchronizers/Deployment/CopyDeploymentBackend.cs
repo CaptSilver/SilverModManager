@@ -241,11 +241,17 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             if (node.SourceItemType != LoadoutSourceItemType.Intrinsic) throw new Exception("WriteIntrinsic should only be called on intrinsic files");
 
             var instance = intrinsicFiles[path];
+            // Rendered in memory first: a file that refuses to write must leave the previous one in place,
+            // not an empty file (an empty Plugins.txt disables every plugin).
+            using var rendered = new MemoryStream();
+            await instance.Write(rendered, loadout, context.SyncTree);
+
             var resolvedPath = context.Locations.ToAbsolutePath(path);
             resolvedPath.Parent.CreateDirectory();
             await using var stream = resolvedPath.Create();
             stream.SetLength(0);
-            await instance.Write(stream, loadout, context.SyncTree);
+            rendered.Position = 0;
+            await rendered.CopyToAsync(stream);
         }
     }
 
