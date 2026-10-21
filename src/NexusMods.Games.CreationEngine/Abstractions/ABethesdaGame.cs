@@ -92,6 +92,8 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame
 
     public virtual IReadOnlyList<GamePath> ProtectedFolders => [new GamePath(LocationId.Preferences, "Saves")];
 
+    public virtual bool IsProtectedPath(GamePath path) => ProtectedFolders.Any(path.InFolder);
+
     protected virtual ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider) =>
     [
         FomodXmlInstaller.Create(provider, DataPath),

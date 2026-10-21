@@ -8,9 +8,9 @@ namespace NexusMods.Games.CreationEngine;
 
 public class BethesdaSynchronizer(IServiceProvider provider, IBethesdaGame game) : ALoadoutSynchronizer(provider)
 {
-    // Evaluated on every path so a game's ProtectedFolders can depend on state its constructor sets.
+    // Evaluated on every path so a game's protected paths can depend on state its constructor sets.
     protected override IGamePathFilter GameSpecificPathFilter { get; } =
-        GamePathFilters.Create(path => game.ProtectedFolders.Any(path.InFolder));
+        GamePathFilters.Create(game.IsProtectedPath);
 
     public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout) => game.IntrinsicFiles(loadout, provider);
 

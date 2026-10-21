@@ -6,6 +6,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Backend;
 using NexusMods.Games.FOMOD;
 using NexusMods.Games.TestFramework;
+using NexusMods.Games.CreationEngine.Tests.Morrowind.OpenMw;
 using NexusMods.Sdk;
 using NexusMods.StandardGameLocators.TestHelpers;
 
@@ -21,6 +22,7 @@ public class Startup
             .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"))
             .AddFomod()
             .AddCreationEngine()
+            .AddTempOpenMwConfigRoots()
             .AddLogging(builder => builder.AddXUnit())
             .AddGames()
             .AddGameServices()

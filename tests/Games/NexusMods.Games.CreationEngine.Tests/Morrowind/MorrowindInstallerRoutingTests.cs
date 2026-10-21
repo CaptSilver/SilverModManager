@@ -1,4 +1,7 @@
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Games.CreationEngine.Morrowind.OpenMw;
+using NexusMods.Games.CreationEngine.Tests.Morrowind.OpenMw;
 using Xunit;
 
 namespace NexusMods.Games.CreationEngine.Tests.Morrowind;
@@ -8,6 +11,14 @@ public class MorrowindInstallerRoutingTests(ITestOutputHelper helper)
     : ABethesdaInstallerRoutingTest<MorrowindInstallerRoutingTests, CreationEngine.Morrowind.Morrowind>(helper)
 {
     protected override Version GameVersion => new("1.6.0.1820");
+
+    protected override IServiceCollection AddServices(IServiceCollection services) =>
+        base.AddServices(services).AddTempOpenMwConfigRoots();
+
+    // Locating Morrowind looks for openmw.cfg, which must not find the developer's own.
+    [Fact]
+    public void OpenMwConfigRootsAreTempFolders() =>
+        ServiceProvider.GetRequiredService<IOpenMwConfigRoots>().Should().BeOfType<TempOpenMwConfigRoots>();
 
     [Fact]
     public async Task APluginInDataFilesLandsInDataFiles() =>

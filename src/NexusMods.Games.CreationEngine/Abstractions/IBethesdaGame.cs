@@ -19,6 +19,12 @@ public interface IBethesdaGame : IGame
     IReadOnlyList<GamePath> ProtectedFolders { get; }
 
     /// <summary>
+    /// Whether the synchronizer must leave a path alone. Defaults to being inside a protected folder; a game
+    /// overrides it when it needs an exception inside one (a folder of which only one file is managed).
+    /// </summary>
+    bool IsProtectedPath(GamePath path);
+
+    /// <summary>
     /// The files the app generates for this game. Takes the loadout because whether a game has an intrinsic
     /// file can depend on the locations of the installation, and the deployment backend resolves every offered
     /// path through those locations, so a file whose location is absent must not be offered.

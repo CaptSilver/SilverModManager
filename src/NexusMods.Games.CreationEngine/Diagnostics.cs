@@ -82,4 +82,29 @@ Verify the game files in the game store, then reopen the app.
             .AddValue<string>("PluginNames")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate OpenMwConfigAmbiguous = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 4))
+        .WithTitle("Two OpenMW configs found")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("Found an openmw.cfg in both {NativePath} and {FlatpakPath}")
+        .WithDetails("""
+Both of these folders hold an openmw.cfg:
+
+{NativePath}
+
+{FlatpakPath}
+
+The app writes the mod load order into the config OpenMW reads, and cannot tell which of the two you use, so it will not write to either.
+
+Remove or rename the openmw.cfg of the OpenMW you do not use, then reopen the app.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("NativePath")
+            .AddValue<string>("FlatpakPath")
+        )
+        .Finish();
 }

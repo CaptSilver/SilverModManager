@@ -21,6 +21,7 @@ public static class Services
         services.AddBethesdaGame<Oblivion.Oblivion>(KnownPaths.OBSELoader);
         services.AddBethesdaGame<Fallout3.Fallout3>(KnownPaths.FOSELoader);
         services.AddBethesdaGame<FalloutNewVegas.FalloutNewVegas>(KnownPaths.NVSELoader);
+        services.AddSingleton<Morrowind.OpenMw.IOpenMwConfigRoots, Morrowind.OpenMw.OpenMwConfigRoots>();
         services.AddBethesdaGame<Morrowind.Morrowind>(null);
         services.AddBethesdaGame<OblivionRemastered.OblivionRemastered>(KnownPaths.OBSE64Loader);
 
