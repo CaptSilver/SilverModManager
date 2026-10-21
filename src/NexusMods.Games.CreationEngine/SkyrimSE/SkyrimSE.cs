@@ -22,9 +22,12 @@ public class SkyrimSE(IServiceProvider provider) : ACreationEngineGame<SkyrimSE>
     protected override GameRelease PluginRelease => GameRelease.SkyrimSE;
     public override GamePath PluginsFile => new(LocationId.AppData, "Plugins.txt");
 
-    protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "Skyrim Special Edition";
-    // The GOG build keeps its My Games folder apart from Steam's.
-    protected override string MyGamesFolderName(GameLocatorResult gameLocatorResult)
+    // The GOG build keeps both its plugin list and its My Games folder apart from Steam's: gameskyrimse.cpp
+    // builds both paths from gameDirectoryName(), which adds the " GOG" suffix for the GOG variant.
+    protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => DirectoryName(gameLocatorResult);
+    protected override string MyGamesFolderName(GameLocatorResult gameLocatorResult) => DirectoryName(gameLocatorResult);
+
+    private static string DirectoryName(GameLocatorResult gameLocatorResult)
         => gameLocatorResult.Store == GameStore.GOG ? "Skyrim Special Edition GOG" : "Skyrim Special Edition";
 
     protected override string[] GameAliases => ["Skyrim Special Edition", "SkyrimSE", "SSE"];

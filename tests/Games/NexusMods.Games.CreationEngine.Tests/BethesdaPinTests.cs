@@ -112,10 +112,11 @@ public class BethesdaPinTests(IServiceProvider serviceProvider)
     }
 
     [Fact]
-    public void OnlySkyrimSEGivesItsPreferencesFolderAGogPostfix()
+    public void OnlySkyrimSEGivesItsFoldersAGogPostfix()
     {
         Locate(GameOf<CreationEngine.SkyrimSE.SkyrimSE>(), GameStore.GOG)[LocationId.Preferences].FileName.Should().Be("Skyrim Special Edition GOG");
-        Locate(GameOf<CreationEngine.SkyrimSE.SkyrimSE>(), GameStore.GOG)[LocationId.AppData].FileName.Should().Be("Skyrim Special Edition");
+        Locate(GameOf<CreationEngine.SkyrimSE.SkyrimSE>(), GameStore.GOG)[LocationId.AppData].FileName.Should().Be("Skyrim Special Edition GOG");
+        Locate(GameOf<CreationEngine.SkyrimSE.SkyrimSE>(), GameStore.Steam)[LocationId.AppData].FileName.Should().Be("Skyrim Special Edition");
         Locate(GameOf<CreationEngine.Fallout4.Fallout4>(), GameStore.GOG)[LocationId.Preferences].FileName.Should().Be("Fallout4");
     }
 }
