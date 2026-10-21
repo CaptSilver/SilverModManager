@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using NexusMods.Sdk;
+using NSubstitute;
 using NexusMods.Platform.Proton.Launch;
 
 namespace NexusMods.Platform.Proton.Tests.Launch;
@@ -19,10 +21,10 @@ public class WrapperPassThroughTests : IDisposable
 
     private string LockPath(string appId = "1091500") => InstallationLock.PathFor(_runtimeDir, "steam", appId);
 
-    private Process HoldWithState(int pid, LaunchPhase phase, string appId = "1091500", string wineDllOverrides = "")
+    private Process HoldWithState(int pid, LaunchPhase phase, string appId = "1091500", string wineDllOverrides = "", RecordedLaunch? recordedLaunch = null)
     {
         var holder = TestHost.StartHolder(LockPath(appId), seconds: 30);
-        new InstallationLock(LockPath(appId)).WriteState(pid, "my loadout", phase, wineDllOverrides);
+        new InstallationLock(LockPath(appId)).WriteState(pid, "my loadout", phase, wineDllOverrides, recordedLaunch);
         return holder;
     }
 
@@ -157,6 +159,135 @@ public class WrapperPassThroughTests : IDisposable
             state.Pid.Should().Be(GuiPid);
             state.Phase.Should().Be(LaunchPhase.Running);
             state.Values[LaunchSession.WrapperKey].Should().Be(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+        finally { holder.Kill(); }
+    }
+
+    // A stand-in for the game's exe: Steam's command names a .exe under the game folder, and these record what they were started with.
+    private string GameRoot => Path.Combine(_runtimeDir, "game");
+
+    private string FakeExe(string relative, string outputName)
+    {
+        var path = Path.Combine(GameRoot, relative);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, $"#!/bin/sh\nprintf '%s|' \"$@\" > \"{File_(outputName)}\"\n");
+        File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        return path;
+    }
+
+    [Fact]
+    public async Task TryRun_PutsTheRecordedExeAndArgumentsInTheLauncherSlot()
+    {
+        var launcher = FakeExe("bin/x64/REDprelauncher.exe", "launcher-argv");
+        FakeExe("bin/x64/Cyberpunk2077.exe", "game-argv");
+        var recorded = new RecordedLaunch(GameRoot, "bin/x64/Cyberpunk2077.exe", ["-modded"]);
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running, wineDllOverrides: "winmm=n,b", recordedLaunch: recorded);
+        try
+        {
+            var exitCode = await TryRun([launcher, "--launcher-skip"]);
+
+            exitCode.Should().Be(0);
+            File.Exists(File_("launcher-argv")).Should().BeFalse("the launcher is replaced, not run");
+            (await File.ReadAllTextAsync(File_("game-argv"))).Should().Be("-modded|--launcher-skip|");
+        }
+        finally { holder.Kill(); }
+    }
+
+    [Fact]
+    public async Task TryRun_KeepsTheDllOverridesWhenItSubstitutesTheExe()
+    {
+        var launcher = FakeExe("Game.exe", "ignored");
+        var recorded = new RecordedLaunch(GameRoot, "Game.exe", ["-modded"]);
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running, wineDllOverrides: "winmm=n,b", recordedLaunch: recorded);
+        try
+        {
+            var script = Path.Combine(GameRoot, "Game.exe");
+            File.WriteAllText(script, $"#!/bin/sh\nprintf '%s|%s' \"$WINEDLLOVERRIDES\" \"$*\" > \"{File_("env")}\"\n");
+
+            var exitCode = await TryRun([launcher]);
+
+            exitCode.Should().Be(0);
+            (await File.ReadAllTextAsync(File_("env"))).Should().Be("winmm=n,b|-modded");
+        }
+        finally { holder.Kill(); }
+    }
+
+    [Fact]
+    public async Task TryRun_RunsTheCommandUnchangedForAStateFileFromAnOlderBuild()
+    {
+        // Older builds recorded no exe or arguments, only the overrides.
+        var launcher = FakeExe("bin/x64/REDprelauncher.exe", "launcher-argv");
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running, wineDllOverrides: "winmm=n,b");
+        try
+        {
+            var exitCode = await TryRun([launcher, "--launcher-skip"]);
+
+            exitCode.Should().Be(0);
+            (await File.ReadAllTextAsync(File_("launcher-argv"))).Should().Be("--launcher-skip|");
+        }
+        finally { holder.Kill(); }
+    }
+
+    [Fact]
+    public async Task TryRun_RefusesACommandWithNoExeToSubstituteInsteadOfRunningItUnchanged()
+    {
+        var recorded = new RecordedLaunch(GameRoot, "Game.exe", ["-modded"]);
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running, recordedLaunch: recorded);
+        var notifier = Substitute.For<IDesktopNotifier>();
+        try
+        {
+            var exitCode = await WrapperPassThrough.TryRunAsync(
+                ["sh", "-c", "touch \"$0\"", File_("ran")], SteamEnvironment(), GuiPid, NullLogger.Instance, BasicEnvironment, notifier);
+
+            exitCode.Should().Be(LaunchSession.FailureExitCode);
+            File.Exists(File_("ran")).Should().BeFalse();
+            notifier.Received(1).Notify(Arg.Any<string>(), Arg.Is<string>(m => m.Contains("no .exe under the game folder")));
+            new InstallationLock(LockPath()).ReadState()!.Values.Should().NotContainKey(LaunchSession.WrapperKey);
+        }
+        finally { holder.Kill(); }
+    }
+
+    [Fact]
+    public async Task TryRun_RefusesAStateFileWithMalformedRecordedArguments()
+    {
+        var launcher = FakeExe("Game.exe", "ran");
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running, recordedLaunch: new RecordedLaunch(GameRoot, "Game.exe", ["-modded"]));
+        var notifier = Substitute.For<IDesktopNotifier>();
+        try
+        {
+            new InstallationLock(LockPath()).WriteWrapperKey("ExtraArgs", "-modded");
+
+            var exitCode = await WrapperPassThrough.TryRunAsync([launcher], SteamEnvironment(), GuiPid, NullLogger.Instance, BasicEnvironment, notifier);
+
+            exitCode.Should().Be(LaunchSession.FailureExitCode);
+            File.Exists(File_("ran")).Should().BeFalse();
+            notifier.Received(1).Notify(Arg.Any<string>(), Arg.Is<string>(m => m.Contains("not a list of strings")));
+        }
+        finally { holder.Kill(); }
+    }
+
+    [Fact]
+    public void RecordedLaunch_RoundTripsThroughTheStateFile_IncludingArgumentsWithSpaces()
+    {
+        var recorded = new RecordedLaunch("/games/My Game", "bin/Game.exe", ["-a b", "-c\"d", ""]);
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running, recordedLaunch: recorded);
+        try
+        {
+            new InstallationLock(LockPath()).ReadState()!.RecordedLaunch.Should().Be(recorded);
+        }
+        finally { holder.Kill(); }
+    }
+
+    [Fact]
+    public void WriteState_ClearsAnEarlierRecordedLaunchWhenGivenNone()
+    {
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running, recordedLaunch: new RecordedLaunch("/g", "Game.exe", ["-x"]));
+        try
+        {
+            var stateLock = new InstallationLock(LockPath());
+            stateLock.WriteState(GuiPid, "my loadout", LaunchPhase.Finishing, "");
+
+            stateLock.ReadState()!.RecordedLaunch.Should().BeNull();
         }
         finally { holder.Kill(); }
     }

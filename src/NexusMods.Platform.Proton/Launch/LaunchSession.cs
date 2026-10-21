@@ -169,6 +169,18 @@ public sealed class LaunchSession
 
     private static string WineOverridesOf(LaunchContext context) => string.Join(';', context.WineDllOverrides);
 
+    private static RecordedLaunch? RecordedLaunchOf(LaunchContext context)
+    {
+        if (context.RunSpec is not { } spec) return null;
+
+        var root = context.Installation.Locations[LocationId.Game].Path.GetFullPath();
+        var exe = Path.GetRelativePath(root, spec.Exe.GetFullPath());
+        // A wrapper joins this path onto the game folder, so one that leads out of it would start something else.
+        if (exe.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(exe))
+            throw new InvalidOperationException($"The run tool's executable {spec.Exe} is not inside the game folder {root}");
+        return new RecordedLaunch(root, exe, spec.ExtraArgs);
+    }
+
     private async Task<LaunchResult> Run(LaunchContext context, Func<LaunchPlan>? resolvePlan, Func<CancellationToken, Task>? whileRunning, CancellationToken cancellationToken)
     {
         if (_started) throw new InvalidOperationException("A launch session runs once.");
@@ -241,7 +253,7 @@ public sealed class LaunchSession
         var prepared = new List<ILaunchGate>();
         try
         {
-            _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Preparing, WineOverridesOf(context));
+            _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Preparing, WineOverridesOf(context), RecordedLaunchOf(context));
             await _synchronizer.Synchronize(context.LoadoutId);
             foreach (var gate in _gates)
             {
@@ -268,7 +280,7 @@ public sealed class LaunchSession
                     LogPlan(plan, game);
                     if (BeginRunning())
                     {
-                        _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context));
+                        _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context));
                         using var process = _processFactory.Start(plan.Process, context.Installation);
                         AttachProcess(process);
                         try
@@ -284,7 +296,7 @@ public sealed class LaunchSession
                 }
                 else if (BeginRunning())
                 {
-                    _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context));
+                    _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context), RecordedLaunchOf(context));
                     try
                     {
                         await whileRunning!(cancellationToken);
@@ -478,7 +490,7 @@ public sealed class LaunchSession
 
         try
         {
-            _lock!.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Finishing, WineOverridesOf(context));
+            _lock!.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Finishing, WineOverridesOf(context), RecordedLaunchOf(context));
         }
         catch (Exception e)
         {

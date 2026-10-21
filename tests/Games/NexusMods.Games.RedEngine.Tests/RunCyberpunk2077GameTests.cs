@@ -63,7 +63,7 @@ public class RunCyberpunk2077GameTests(ITestOutputHelper helper) : AIsolatedGame
     }
 
     [Fact]
-    public async Task Execute_StillPassesModdedInTheSteamUrl()
+    public async Task Execute_OpensTheSteamUrlWithoutModded()
     {
         var loadout = await CreateLoadout();
 
@@ -71,11 +71,11 @@ public class RunCyberpunk2077GameTests(ITestOutputHelper helper) : AIsolatedGame
 
         var appId = GameInstallation.LocatorResult.StoreIdentifier;
         _openedUris.Should().ContainSingle()
-            .Which.Should().Be(new Uri($"steam://run/{appId}//-modded/"));
+            .Which.Should().Be(new Uri($"steam://run/{appId}"));
     }
 
     [Fact]
-    public async Task Execute_PutsModdedAfterTheCallersArguments()
+    public async Task Execute_RecordsModdedInTheLaunchSessionInsteadOfTheUrl()
     {
         var loadout = await CreateLoadout();
 
@@ -83,6 +83,8 @@ public class RunCyberpunk2077GameTests(ITestOutputHelper helper) : AIsolatedGame
 
         var appId = GameInstallation.LocatorResult.StoreIdentifier;
         _openedUris.Should().ContainSingle()
-            .Which.Should().Be(new Uri($"steam://run/{appId}//-caller -modded/"));
+            .Which.Should().Be(new Uri($"steam://run/{appId}"));
+        var spec = ServiceProvider.GetRequiredService<FakeGameLaunchSession>().BegunWith.Should().ContainSingle().Which;
+        spec!.ExtraArgs.Should().Equal("-modded");
     }
 }

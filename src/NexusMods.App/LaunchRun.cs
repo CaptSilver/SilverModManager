@@ -51,11 +51,11 @@ public static class LaunchRun
 
     /// <summary>
     /// Joins the launch the window <paramref name="guiPid"/> is running: records this wrapper in the launch's
-    /// state file and runs the command unchanged. Returns the command's exit code, or null when the window
-    /// has no running launch of this game.
+    /// state file and runs the command with the exe and arguments the window recorded. Returns the command's
+    /// exit code, or null when the window has no running launch of this game.
     /// </summary>
     public static Task<int?> TryPassThroughAsync(IServiceProvider services, LaunchArgs args, int guiPid) =>
-        WrapperPassThrough.TryRunAsync(args.Command, services.GetRequiredService<IEnvironmentReader>(), guiPid, services.GetRequiredService<ILogger<LaunchSession>>());
+        WrapperPassThrough.TryRunAsync(args.Command, services.GetRequiredService<IEnvironmentReader>(), guiPid, services.GetRequiredService<ILogger<LaunchSession>>(), notifier: services.GetRequiredService<IDesktopNotifier>());
 
     private static LaunchPlan PlanFor(IServiceProvider services, Loadout.ReadOnly loadout, GameInstallation installation, IReadOnlyList<string> command, IReadOnlyList<WineDllOverride> wineDllOverrides)
     {

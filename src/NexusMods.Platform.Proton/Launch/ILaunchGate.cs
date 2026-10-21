@@ -1,3 +1,4 @@
+using NexusMods.Abstractions.Games;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.Games;
@@ -14,7 +15,11 @@ namespace NexusMods.Platform.Proton.Launch;
 /// The overrides the game needs for this loadout. They go into the state file so a Steam wrapper that joins
 /// the launch can set them without opening the database.
 /// </param>
-public sealed record LaunchContext(GameInstallation Installation, LoadoutId LoadoutId, string LoadoutName, IReadOnlyList<WineDllOverride> WineDllOverrides);
+/// <param name="RunSpec">
+/// What the loadout's run tool wants started, for a launch whose game Steam starts. Its exe and arguments go into
+/// the state file for the same reason. Null when the command is left as it is.
+/// </param>
+public sealed record LaunchContext(GameInstallation Installation, LoadoutId LoadoutId, string LoadoutName, IReadOnlyList<WineDllOverride> WineDllOverrides, LaunchSpec? RunSpec = null);
 
 /// <summary>
 /// A gate's reason for refusing a launch.

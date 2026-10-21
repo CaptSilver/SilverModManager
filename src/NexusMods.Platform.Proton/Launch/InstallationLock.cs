@@ -101,12 +101,28 @@ public sealed partial class InstallationLock : IDisposable
     /// The game's required overrides as a <c>WINEDLLOVERRIDES</c> value, empty for none. Written on every call so
     /// an earlier launch's value never outlives it.
     /// </param>
-    public void WriteState(int pid, string loadout, LaunchPhase phase, string wineDllOverrides) => Rewrite(values =>
+    /// <param name="recordedLaunch">
+    /// The exe and arguments a joining wrapper should start, or null when the window leaves the command alone.
+    /// Like the overrides, written on every call.
+    /// </param>
+    public void WriteState(int pid, string loadout, LaunchPhase phase, string wineDllOverrides, RecordedLaunch? recordedLaunch = null) => Rewrite(values =>
     {
         values["pid"] = pid.ToString(CultureInfo.InvariantCulture);
         values["loadout"] = SingleLine(loadout);
         values["phase"] = phase.ToString().ToLowerInvariant();
         values[WineDllOverridesKey] = SingleLine(wineDllOverrides);
+        if (recordedLaunch is null)
+        {
+            values.Remove(RecordedLaunch.GameRootKey);
+            values.Remove(RecordedLaunch.ExeKey);
+            values.Remove(RecordedLaunch.ExtraArgsKey);
+        }
+        else
+        {
+            values[RecordedLaunch.GameRootKey] = SingleLine(recordedLaunch.GameRoot);
+            values[RecordedLaunch.ExeKey] = SingleLine(recordedLaunch.Exe);
+            values[RecordedLaunch.ExtraArgsKey] = recordedLaunch.SerialiseArgs();
+        }
     });
 
     /// <summary>

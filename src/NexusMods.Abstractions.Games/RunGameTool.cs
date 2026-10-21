@@ -97,7 +97,7 @@ public class RunGameTool<T> : IRunGameTool
             var locatorResult = loadout.InstallationInstance.LocatorResult;
             if (locatorResult.Store == GameStore.Steam)
             {
-                await RunThroughSteam(loadout, locatorResult.StoreIdentifier, cancellationToken, commandLineArgs);
+                await RunThroughSteam(loadout, locatorResult.StoreIdentifier, spec, cancellationToken);
                 return;
             }
 
@@ -234,24 +234,18 @@ public class RunGameTool<T> : IRunGameTool
         Cancelled,
     }
 
-    private async Task RunThroughSteam(Loadout.ReadOnly loadout, string storeId, CancellationToken cancellationToken, string[] commandLineArgs)
+    private async Task RunThroughSteam(Loadout.ReadOnly loadout, string storeId, LaunchSpec spec, CancellationToken cancellationToken)
     {
         if (!uint.TryParse(storeId, out var appId))
             throw new InvalidOperationException($"'{storeId}' is not a Steam app id");
 
-        // Build the Steam URL with optional command line arguments
+        // Never put arguments in this URL: Steam stops to ask the user to confirm them. The exe substitution and
+        // extra arguments go into the launch session instead, and the app's Steam launch option applies them.
         // https://developer.valvesoftware.com/wiki/Steam_browser_protocol
         var steamUrl = $"steam://run/{storeId}";
-        if (commandLineArgs is { Length: > 0 })
-        {
-            var encodedArgs = commandLineArgs
-                .Select(Uri.EscapeDataString)
-                .Aggregate((a, b) => $"{a} {b}");
-            steamUrl += $"//{encodedArgs}/";
-        }
 
         var outcome = SteamRunOutcome.Cancelled;
-        using (var launch = _launchSessions.BeginSession(loadout))
+        using (var launch = _launchSessions.BeginSession(loadout, spec))
         {
             // The URI opens only once the session has the lock and the loadout is applied, so Steam never
             // starts the game against a half-applied folder.

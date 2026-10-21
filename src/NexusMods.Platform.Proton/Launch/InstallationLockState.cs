@@ -25,4 +25,11 @@ public sealed record InstallationLockState(
     /// </summary>
     public IReadOnlyList<WineDllOverride> WineDllOverrides =>
         WineParser.ParseEnvironmentVariable(Values.GetValueOrDefault(InstallationLock.WineDllOverridesKey, ""));
+
+    /// <summary>
+    /// The exe and arguments the window wants the game started with. Null for a file written without them,
+    /// as older builds did.
+    /// </summary>
+    /// <exception cref="InvalidDataException">The file has them but they are malformed.</exception>
+    public RecordedLaunch? RecordedLaunch => Launch.RecordedLaunch.From(Values);
 }

@@ -85,20 +85,21 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
     }
 
     [Fact]
-    public async Task ExtraArgs_ReachTheSteamUrlAfterTheCallersArguments()
+    public async Task ExtraArgs_NeverReachTheSteamUrl()
     {
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
         var tool = new ArgsTool(ServiceProvider, Game, ["-extra"]);
 
         await tool.Execute(loadout, _cts.Token, ["-caller"]);
 
+        // Steam asks the user to confirm any arguments it is handed in the URL.
         var appId = GameInstallation.LocatorResult.StoreIdentifier;
         _openedUris.Should().ContainSingle()
-            .Which.Should().Be(new Uri($"steam://run/{appId}//-caller -extra/"));
+            .Which.Should().Be(new Uri($"steam://run/{appId}"));
     }
 
     [Fact]
-    public async Task ExtraArgs_AloneStillReachTheSteamUrl()
+    public async Task ExtraArgs_AloneDoNotReachTheSteamUrl()
     {
         var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
         var tool = new ArgsTool(ServiceProvider, Game, ["-extra"]);
@@ -107,7 +108,21 @@ public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunG
 
         var appId = GameInstallation.LocatorResult.StoreIdentifier;
         _openedUris.Should().ContainSingle()
-            .Which.Should().Be(new Uri($"steam://run/{appId}//-extra/"));
+            .Which.Should().Be(new Uri($"steam://run/{appId}"));
+    }
+
+    [Fact]
+    public async Task ExtraArgs_AreHandedToTheLaunchSessionForTheSteamWrapper()
+    {
+        var loadout = await LoadoutManager.CreateLoadout(GameInstallation, Guid.NewGuid().ToString());
+        var tool = new ArgsTool(ServiceProvider, Game, ["-extra"]);
+
+        await tool.Execute(loadout, _cts.Token, null);
+
+        var spec = ServiceProvider.GetRequiredService<FakeGameLaunchSession>().BegunWith.Should().ContainSingle().Which;
+        spec.Should().NotBeNull();
+        spec!.Exe.Should().Be(GameInstallation.Locations.ToAbsolutePath(Game.GetPrimaryFile(GameInstallation)));
+        spec.ExtraArgs.Should().Equal("-extra");
     }
 
     private sealed class LauncherTool(IServiceProvider provider, StubbedGame game, string[]? extraArgs = null) : RunGameTool<StubbedGame>(provider, game)

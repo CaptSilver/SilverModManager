@@ -540,6 +540,44 @@ public class LaunchSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task AnExternalLaunchWithARunSpec_RecordsTheGameFolderRelativeExeAndArgumentsWhileRunningAndFinishing()
+    {
+        var exe = _installation.Locations[LocationId.Game].Path.Combine("bin/x64/Game.exe");
+        var context = _context with { RunSpec = new LaunchSpec(exe, ["-modded"]) };
+        var expected = new RecordedLaunch(_runtimeDir, "bin/x64/Game.exe", ["-modded"]);
+        var recorded = new List<RecordedLaunch?>();
+        AddGate("a").OnFinish = () => recorded.Add(ReadRecorded());
+
+        await NewSession().RunExternalAsync(context, _ =>
+        {
+            recorded.Add(ReadRecorded());
+            return Task.CompletedTask;
+        });
+
+        recorded.Should().Equal(expected, expected);
+    }
+
+    [Fact]
+    public async Task AnExternalLaunchWithoutARunSpec_RecordsNoLaunch()
+    {
+        RecordedLaunch? recorded = new RecordedLaunch("stale", "stale.exe", []);
+
+        await NewSession().RunExternalAsync(_context, _ =>
+        {
+            recorded = ReadRecorded();
+            return Task.CompletedTask;
+        });
+
+        recorded.Should().BeNull();
+    }
+
+    private RecordedLaunch? ReadRecorded()
+    {
+        using var reader = new InstallationLock(LockPath);
+        return reader.ReadState()?.RecordedLaunch;
+    }
+
+    [Fact]
     public async Task AnExternalLaunch_IsRunningInEveryPhaseUntilReleased()
     {
         var session = NewSession();

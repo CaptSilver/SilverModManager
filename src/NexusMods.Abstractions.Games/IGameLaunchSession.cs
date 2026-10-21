@@ -20,7 +20,13 @@ public interface IGameLaunchSession
     /// Prepares a launch of <paramref name="loadout"/>. Nothing happens until <see cref="IGameLaunch.RunAsync"/>.
     /// The caller disposes the launch once it is done with it, which releases the installation lock.
     /// </summary>
-    IGameLaunch BeginSession(Loadout.ReadOnly loadout);
+    /// <param name="loadout">The loadout to apply.</param>
+    /// <param name="runSpec">
+    /// What the loadout's run tool wants started, when the caller hands the game to a store client that starts
+    /// it from its own command. The session records it where the client's launch wrapper can find it, because
+    /// the client's start request cannot carry it (Steam asks the user to confirm arguments given in the URL).
+    /// </param>
+    IGameLaunch BeginSession(Loadout.ReadOnly loadout, LaunchSpec? runSpec = null);
 }
 
 /// <summary>

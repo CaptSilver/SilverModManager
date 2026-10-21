@@ -31,11 +31,20 @@ public class FakeGameLaunchSession : IGameLaunchSession
     /// </summary>
     public GameLaunchException? Refusal { get; set; }
 
+    /// <summary>
+    /// The run specs the sessions were begun with, in order.
+    /// </summary>
+    public List<LaunchSpec?> BegunWith { get; } = [];
+
     /// <inheritdoc />
     public bool IsRunning(GameInstallation installation) => Running;
 
     /// <inheritdoc />
-    public IGameLaunch BeginSession(Loadout.ReadOnly loadout) => new FakeGameLaunch(this);
+    public IGameLaunch BeginSession(Loadout.ReadOnly loadout, LaunchSpec? runSpec = null)
+    {
+        lock (BegunWith) BegunWith.Add(runSpec);
+        return new FakeGameLaunch(this);
+    }
 
     private sealed class FakeGameLaunch(FakeGameLaunchSession owner) : IGameLaunch
     {
