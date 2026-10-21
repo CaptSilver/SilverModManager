@@ -24,24 +24,23 @@ public class SevenZipExtractionTests : AFileExtractorTest
 
     // 7z restores the Unix mode stored in a .7z or .rar entry, and an archive that stores 000 left collection
     // downloads unable to read their own extracted files. 7z-with-unix-modes.7z holds scripts/mod.reds at
-    // mode 000 and bin/run.sh at 755.
+    // 000, bin/run.sh at 755 and config/private.ini at 600 inside a 700 folder; the stored mode is ignored
+    // apart from the execute bit.
     [Fact]
-    public async Task ExtractedFilesAreReadableWhenTheArchiveStoresNoPermissions()
+    public async Task ExtractedFilesGetDefaultModesWhateverTheArchiveStores()
     {
         await using var destination = TemporaryFileManager.CreateFolder();
         await FileExtractor.ExtractAllAsync(UnixModesArchive, destination, TestContext.Current.CancellationToken);
 
-        var file = destination.Path.Combine("scripts/mod.reds");
-        (await File.ReadAllTextAsync(file.ToString(), TestContext.Current.CancellationToken)).Should().Be("func Main() {}");
-    }
+        UnixFileMode Mode(string path) => File.GetUnixFileMode(destination.Path.Combine(path).ToString());
+        var regular = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+        var executable = regular | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
 
-    [Fact]
-    public async Task ExtractionKeepsAnExecuteBitTheArchiveSet()
-    {
-        await using var destination = TemporaryFileManager.CreateFolder();
-        await FileExtractor.ExtractAllAsync(UnixModesArchive, destination, TestContext.Current.CancellationToken);
-
-        File.GetUnixFileMode(destination.Path.Combine("bin/run.sh").ToString()).Should().HaveFlag(UnixFileMode.UserExecute);
+        Mode("scripts/mod.reds").Should().Be(regular);
+        Mode("config/private.ini").Should().Be(regular);
+        Mode("bin/run.sh").Should().Be(executable);
+        Mode("config").Should().Be(executable);
+        (await File.ReadAllTextAsync(destination.Path.Combine("scripts/mod.reds").ToString(), TestContext.Current.CancellationToken)).Should().Be("func Main() {}");
     }
 
     private AbsolutePath UnixModesArchive => FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-unix-modes.7z");

@@ -66,22 +66,22 @@ public class SevenZipExtractor : IExtractor
 
         var trimmablePathsInArchive = await GetTrimmablePathsInArchive(source, cancellationToken: cancellationToken);
         await ExtractArchive(source, destination, cancellationToken: cancellationToken);
-        MakeOwnerAccessible(destination.ToNativeSeparators(_osInformation));
+        NormalizeModes(destination.ToNativeSeparators(_osInformation));
 
         if (trimmablePathsInArchive.Count == 0) return;
         FixPaths(trimmablePathsInArchive, destination);
     }
 
-    private const UnixFileMode OwnerFile = UnixFileMode.UserRead | UnixFileMode.UserWrite;
-    private const UnixFileMode OwnerDirectory = OwnerFile | UnixFileMode.UserExecute;
+    private const UnixFileMode RegularFile = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+    private const UnixFileMode Executable = RegularFile | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
 
     /// <summary>
-    /// 7z restores the Unix mode stored in the archive, and archives made by some Windows tools store
-    /// 000, which leaves extracted files the app can't read back to hash. Adds owner read and write to
-    /// every file and owner read, write and execute to every directory; bits the archive set, such as
-    /// a script's execute bit, are kept.
+    /// 7z restores the Unix mode stored in the archive, and what archives store is unreliable: some
+    /// store 000, which left extracted files the app couldn't read back to hash. The stored mode is
+    /// ignored apart from the owner execute bit: files become 0644, or 0755 when the archive marked
+    /// them executable (Linux-native tools and scripts need it), and directories become 0755.
     /// </summary>
-    internal static void MakeOwnerAccessible(string root)
+    internal static void NormalizeModes(string root)
     {
         if (!Directory.Exists(root)) return;
 
@@ -90,18 +90,16 @@ public class SevenZipExtractor : IExtractor
         while (pending.TryPop(out var directory))
         {
             // A directory has to be fixed before it can be listed.
-            AddMode(directory, OwnerDirectory);
+            File.SetUnixFileMode(directory, Executable);
             foreach (var file in Directory.EnumerateFiles(directory))
-                AddMode(file, OwnerFile);
+            {
+                var executable = File.GetUnixFileMode(file).HasFlag(UnixFileMode.UserExecute);
+                File.SetUnixFileMode(file, executable ? Executable : RegularFile);
+            }
+
             foreach (var child in Directory.EnumerateDirectories(directory))
                 pending.Push(child);
         }
-    }
-
-    private static void AddMode(string path, UnixFileMode required)
-    {
-        var mode = File.GetUnixFileMode(path);
-        if ((mode & required) != required) File.SetUnixFileMode(path, mode | required);
     }
 
     [SuppressMessage("ReSharper", "RedundantNameQualifier")]
