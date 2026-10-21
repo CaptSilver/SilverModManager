@@ -32,6 +32,7 @@ public static class ServiceExtensions
         serviceCollection.AddSingleton<IGameLocator>(serviceProvider => new SteamLocator(serviceProvider.GetServices<IGameData>(), serviceProvider.GetRequiredService<ILoggerFactory>(), serviceProvider.GetRequiredService<IFileSystem>(), registry: null));
         serviceCollection.AddSingleton<IGameLocator, HeroicGOGLocator>();
         serviceCollection.AddSingleton<IGameLocator, HeroicEpicLocator>();
+        serviceCollection.AddSingleton<IGameLocator, HeroicAmazonLocator>();
 
         // GOG and Epic installs made through Wine live in prefixes, each with its own registry and file system overlay.
         serviceCollection.AddSingleton<IGameLocator>(serviceProvider =>

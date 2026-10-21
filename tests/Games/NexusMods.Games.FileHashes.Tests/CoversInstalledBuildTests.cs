@@ -73,6 +73,16 @@ public sealed class CoversInstalledBuildTests : IDisposable
         service.CoversInstalledBuild((GameStore.Steam, [LocatorId.From("1002")])).Should().BeFalse();
     }
 
+    [Fact]
+    public async Task AmazonInstallsAreNotCoveredAndHaveNoFileList()
+    {
+        var service = await ServiceWithCentral(c => HashRows.AddSteamManifest(c, 1001, ("a.esm", "a")));
+        LocatorIdsWithGameStore amazon = (GameStore.Amazon, [LocatorId.From("1.2.3")]);
+
+        service.CoversInstalledBuild(amazon).Should().BeFalse("no store data describes an Amazon build");
+        service.Invoking(s => s.GetGameFiles(amazon).ToArray()).Should().Throw<NotSupportedException>();
+    }
+
     private async Task<FileHashesService> ServiceWithCentral(Func<IConnection, Task> fill)
     {
         var location = _harness.NewDatabaseLocation();

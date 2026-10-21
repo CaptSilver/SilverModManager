@@ -38,6 +38,11 @@ public readonly partial struct GameStore
     public static readonly GameStore EGS = From("Epic Games Store");
 
     /// <summary>
+    /// Amazon Games.
+    /// </summary>
+    public static readonly GameStore Amazon = From("Amazon");
+
+    /// <summary>
     /// Manually added.
     /// </summary>
     public static readonly GameStore ManuallyAdded = From("Manually Added");

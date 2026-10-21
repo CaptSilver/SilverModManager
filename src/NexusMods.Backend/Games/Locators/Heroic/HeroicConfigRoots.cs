@@ -14,6 +14,10 @@ internal sealed record HeroicConfigRoot(AbsolutePath Path, bool IsFlatpak)
     /// <param name="Platform">Legendary's platform name (<c>Windows</c>, <c>Mac</c>), or null when the entry has none.</param>
     public sealed record EpicInstall(string AppName, string InstallPath, string? Platform);
 
+    /// <summary>One game Nile lists as installed.</summary>
+    /// <param name="Version">Nile's version string for the install, or null when the entry has none.</param>
+    public sealed record AmazonInstall(string ProductId, string InstallPath, string? Version);
+
     private AbsolutePath LegendaryConfig => Path.Combine("legendaryConfig/legendary");
 
     /// <summary>
@@ -81,6 +85,42 @@ internal sealed record HeroicConfigRoot(AbsolutePath Path, bool IsFlatpak)
         {
             logger.LogWarning(e, "Skipping Legendary's metadata for {AppName} at {Path}", appName, file);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// The Amazon games Nile lists as installed. Empty when the file is missing (a Heroic without an Amazon
+    /// login has none), and empty with a warning when it cannot be read, so one broken install does not hide
+    /// the other's games.
+    /// </summary>
+    public ImmutableArray<AmazonInstall> InstalledAmazonGames(ILogger logger)
+    {
+        var file = Path.Combine("nile_config/nile/installed.json");
+        if (!file.FileExists) return [];
+
+        try
+        {
+            using var stream = file.Read();
+            using var document = JsonDocument.Parse(stream);
+            if (document.RootElement.ValueKind != JsonValueKind.Array) return [];
+
+            var games = ImmutableArray.CreateBuilder<AmazonInstall>();
+            foreach (var entry in document.RootElement.EnumerateArray())
+            {
+                if (entry.ValueKind != JsonValueKind.Object) continue;
+                var id = entry.TryGetProperty("id", out var i) && i.ValueKind == JsonValueKind.String ? i.GetString() : null;
+                var installPath = entry.TryGetProperty("path", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
+                var version = entry.TryGetProperty("version", out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+                if (id is null || installPath is null) continue;
+                games.Add(new AmazonInstall(id, installPath, version));
+            }
+
+            return games.ToImmutable();
+        }
+        catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
+        {
+            logger.LogWarning(e, "Skipping Nile's installed Amazon games list at {Path}", file);
+            return [];
         }
     }
 

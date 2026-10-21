@@ -27,6 +27,7 @@ public class GameLocatorRegistrationTests
             typeof(SteamLocator),
             typeof(HeroicGOGLocator),
             typeof(HeroicEpicLocator),
+            typeof(HeroicAmazonLocator),
             typeof(WinePrefixWrappingLocator)
         );
     }

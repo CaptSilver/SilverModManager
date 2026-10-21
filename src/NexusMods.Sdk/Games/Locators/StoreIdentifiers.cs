@@ -35,4 +35,10 @@ public record StoreIdentifiers(GameId GameId)
     /// and you'll find the Item ID in the table at the top as well as in the URL.
     /// </remarks>
     public ImmutableArray<string> EGSCatalogItemId { get; init; } = ImmutableArray<string>.Empty;
+
+    /// <summary>
+    /// All Amazon product IDs for the game, the <c>amzn1.adg.product.…</c> ids Amazon Games and Nile list
+    /// installed games under.
+    /// </summary>
+    public ImmutableArray<string> AmazonProductIds { get; init; } = ImmutableArray<string>.Empty;
 }
