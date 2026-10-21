@@ -36,12 +36,9 @@ public class Fallout4InstallerRoutingTests(ITestOutputHelper helper)
     public async Task AFolderNamedAfterTheGameIsSteppedInto(string folder) =>
         (await InstallLayout($"{folder}/meshes/a.nif")).Should().Equal("Game/Data/meshes/a.nif");
 
-    // StopPatternInstaller builds the archive pattern as \.{ext} while Extension.ToString() already carries
-    // the dot, so the pattern reads \..bsa$ and never matches an archive. These pin what happens today: the
-    // wrapper folder is kept instead of being stripped.
     [Theory]
     [InlineData("Wrapper/Mod.bsa")]
     [InlineData("Wrapper/Mod.ba2")]
-    public async Task ALoneArchiveInAWrapperFolderKeepsTheWrapper(string entry) =>
-        (await InstallLayout(entry)).Should().Equal($"Game/Data/{entry}");
+    public async Task ALoneArchiveInAWrapperFolderIsSteppedInto(string entry) =>
+        (await InstallLayout(entry)).Should().Equal($"Game/Data/{Path.GetFileName(entry)}");
 }

@@ -135,7 +135,7 @@ public class StopPatternInstaller(IServiceProvider serviceProvider) : ALibraryAr
             patterns.Add($"\\{ext.ToString()}$");
         
         foreach (var ext in ArchiveLikeExtensions)
-            patterns.Add($"\\.{ext.ToString()}$");
+            patterns.Add($"\\{ext.ToString()}$");
         
         foreach (var dir in TopLevelDirs)
             patterns.Add($"(^|/)({dir})(/|$)");
