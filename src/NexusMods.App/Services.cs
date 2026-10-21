@@ -224,6 +224,7 @@ public static class Services
         Games.StardewValley.Services.AddStardewValley(services);
         Games.Larian.BaldursGate3.Services.AddBaldursGate3(services);
         Games.CreationEngine.Services.AddCreationEngine(services);
+        Games.Declarative.Services.AddDeclarativeGames(services, FileSystem.Shared, loadUserDefinitions: false);
         Games.MountAndBlade2Bannerlord.Services.AddMountAndBlade2Bannerlord(services);
         Games.FromSoft.Services.AddFromSoftGames(services);
         return services;

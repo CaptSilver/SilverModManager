@@ -14,6 +14,7 @@
         <ProjectReference Include="..\NexusMods.Backend\NexusMods.Backend.csproj" />
         <ProjectReference Include="..\NexusMods.Games.AdvancedInstaller.UI\NexusMods.Games.AdvancedInstaller.UI.csproj" />
         <ProjectReference Include="..\NexusMods.Games.CreationEngine\NexusMods.Games.CreationEngine.csproj" />
+        <ProjectReference Include="..\NexusMods.Games.Declarative\NexusMods.Games.Declarative.csproj" />
         <ProjectReference Include="..\NexusMods.Games.FromSoft\NexusMods.Games.FromSoft.csproj" />
         <ProjectReference Include="..\NexusMods.Games.FOMOD.UI\NexusMods.Games.FOMOD.UI.csproj" />
         <ProjectReference Include="..\NexusMods.Games.FOMOD\NexusMods.Games.FOMOD.csproj" />

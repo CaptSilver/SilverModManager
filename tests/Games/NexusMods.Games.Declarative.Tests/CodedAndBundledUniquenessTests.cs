@@ -14,9 +14,12 @@ public class CodedAndBundledUniquenessTests(IEnumerable<IGameData> codedGames, G
 {
     private const uint SkyrimSpecialEditionSteamId = 489830;
 
-    private GameIdentity[] Coded => codedGames.Select(game => new GameIdentity(game.GetType().Name, game.GameId, game.StoreIdentifiers)).ToArray();
+    private GameIdentity[] Coded => codedGames.Where(game => game is not DeclarativeGame).Select(game => new GameIdentity(game.GetType().Name, game.GameId, game.StoreIdentifiers)).ToArray();
 
-    private GameIdentity[] Bundled => catalog.Definitions.Select(loaded => new GameIdentity(loaded.Source, loaded.Definition.GetGameId(), loaded.Definition.ToStoreIdentifiers())).ToArray();
+    /// <summary>Test resources are added to the catalog under a <c>test/</c> name; what ships is embedded under <c>games/</c>.</summary>
+    private static bool IsEmbedded(LoadedDefinition loaded) => loaded.Source.StartsWith("games/", StringComparison.Ordinal);
+
+    private GameIdentity[] Bundled => catalog.Definitions.Where(IsEmbedded).Select(loaded => new GameIdentity(loaded.Source, loaded.Definition.GetGameId(), loaded.Definition.ToStoreIdentifiers())).ToArray();
 
     [Fact]
     public void CodedGamesAreRegistered() => Coded.Select(game => game.Label).Should().Contain("SkyrimSE");

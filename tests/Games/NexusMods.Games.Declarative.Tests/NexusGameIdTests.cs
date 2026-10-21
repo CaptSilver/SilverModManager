@@ -33,7 +33,9 @@ public class NexusGameIdTests(GameDefinitionCatalog catalog)
     {
         var games = LoadVendoredGames();
 
+        // Only what ships, embedded under games/; test resources are named test/ and may use ids Nexus doesn't list.
         var wrong = catalog.Definitions
+            .Where(loaded => loaded.Source.StartsWith("games/", StringComparison.Ordinal))
             .Where(loaded => loaded.Definition.Nexus is not null)
             .Where(loaded => !games[loaded.Definition.Nexus!.Domain].Contains(loaded.Definition.Nexus.Id))
             .Select(loaded => $"{loaded.Source}: {loaded.Definition.Nexus!.Domain} {loaded.Definition.Nexus.Id}");

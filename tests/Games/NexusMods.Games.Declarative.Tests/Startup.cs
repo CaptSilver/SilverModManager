@@ -6,6 +6,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Backend;
 using NexusMods.Games.CreationEngine;
 using NexusMods.Games.Declarative;
+using NexusMods.Games.Declarative.Catalog;
 using NexusMods.Games.FromSoft;
 using NexusMods.Games.Larian.BaldursGate3;
 using NexusMods.Games.MountAndBlade2Bannerlord;
@@ -14,6 +15,7 @@ using NexusMods.Games.StardewValley;
 using NexusMods.Games.TestFramework;
 using NexusMods.Paths;
 using NexusMods.Sdk;
+using NexusMods.Sdk.Games;
 using NexusMods.StandardGameLocators.TestHelpers;
 
 namespace NexusMods.Games.Declarative.Tests;
@@ -32,7 +34,8 @@ public class Startup
             .AddCreationEngine()
             .AddMountAndBlade2Bannerlord()
             .AddFromSoftGames()
-            .AddDeclarativeGames(new InMemoryFileSystem(OSInformation.FakeUnix))
+            .AddDeclarativeGames(new InMemoryFileSystem(OSInformation.FakeUnix), additionalBundled: [new DefinitionSource("test/harness.yaml", Samples.Harness)])
+            .AddUniversalGameLocator(GameId.From(Samples.HarnessId), stores: [GameStore.Unknown])
             .AddLogging(builder => builder.AddXUnit())
             .AddGames()
             .AddGameServices()

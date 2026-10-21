@@ -48,4 +48,25 @@ internal static class Samples
           Game: { root: install }
         {{extra}}
         """;
+
+    /// <summary>
+    /// An Oblivion-like game for the harness. It declares no store ids, so it can never clash with a
+    /// bundled definition, and its Nexus id is one no coded or bundled game uses.
+    /// </summary>
+    public const string HarnessId = "harness-oblivion";
+
+    public const string Harness = """
+        id: harness-oblivion
+        name: Harness Oblivion
+        nexus: { domain: oblivion, id: 900001 }
+        stores: { manualOnly: true }
+        primaryExe: Oblivion.exe
+        locations:
+          Game: { root: install }
+          AppData: { root: "%LOCALAPPDATA%", path: Oblivion }
+          Preferences: { root: "%MYGAMES%", path: Oblivion }
+        installer:
+          dataMarkers: [meshes, textures]
+          target: Game/Data
+        """;
 }
