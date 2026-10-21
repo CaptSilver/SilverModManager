@@ -212,6 +212,21 @@ public partial class NexusModsLibrary
         return nexusJob;
     }
 
+    /// <summary>
+    /// Creates a download job for a file known only by its id and game, as a lock file names it. The mod page the file
+    /// belongs to is looked up first, because the download links are addressed by mod and file.
+    /// </summary>
+    public async Task<IJobTask<NexusModsDownloadJob, AbsolutePath>> CreateDownloadJob(
+        AbsolutePath destination,
+        NexusModsGameId nexusModsGameId,
+        FileId fileId,
+        Optional<(NXMKey, DateTime)> nxmData = default,
+        CancellationToken cancellationToken = default)
+    {
+        var modFile = (await _graphQlClient.QueryModFile(fileId, nexusModsGameId, cancellationToken)).AssertHasData();
+        return await CreateDownloadJob(destination, nexusModsGameId, ModId.From((uint)modFile.ModId), fileId, nxmData, cancellationToken);
+    }
+
     public async Task<IJobTask<NexusModsDownloadJob, AbsolutePath>> CreateDownloadJob(
         AbsolutePath destination,
         NexusModsFileMetadata.ReadOnly fileMetadata,

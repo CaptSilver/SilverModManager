@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Downloads;
 using NexusMods.Abstractions.Library;
+using NexusMods.Library.Lock;
 
 namespace NexusMods.Library;
 
@@ -19,6 +20,7 @@ public static class Services
         return serviceCollection
             .AddSingleton<ILibraryService, LibraryService>()
             .AddSingleton<IDownloadsService, DownloadsService>()
-            .AddSingleton<LibraryFileDigests>();
+            .AddSingleton<LibraryFileDigests>()
+            .AddLockVerbs();
     }
 }
