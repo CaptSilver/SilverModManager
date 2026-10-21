@@ -299,7 +299,8 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         using var subscription = job.JobDefinition.Progress.Changes.Subscribe(snapshots.Add);
         await AwaitJob(job);
 
-        var seen = snapshots.ToArray();
+        // The job starts on the thread pool, so subscribing can still replay the empty snapshot from before it began.
+        var seen = snapshots.SkipWhile(s => ReferenceEquals(s, CollectionInstallProgress.Snapshot.Empty)).ToArray();
         seen.Select(s => s.Installed).Should().BeInAscendingOrder();
         seen.Should().OnlyContain(s => s.Total == 6 && s.Installed + s.Failed.Count + s.Installing.Count <= s.Total);
         seen.SelectMany(s => s.Installing).Distinct().Should().BeEquivalentTo(mods.Select(m => m.Item2));
