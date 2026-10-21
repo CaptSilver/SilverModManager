@@ -35,14 +35,20 @@ internal class GameLocationsService : IGameLocationsService
         GameInstallation installation,
         FrozenDictionary<GamePath, DiskStateEntry.ReadOnly> previousDiskState,
         IGamePathFilter filter,
-        CancellationToken outerToken = default)
+        CancellationToken outerToken = default,
+        Action<long, long>? progress = null)
     {
         // A baseline build commits all its rows at the end; indexing meanwhile would find none and read the whole folder.
         await _fileHashesService.WaitForLocalBaselineBuild(installation, outerToken);
 
         var tally = new IndexTally();
         var topLevelLocations = installation.Locations.GetTopLevelLocations();
-        var enumerable = topLevelLocations.Where(kv => kv.Value.DirectoryExists()).SelectMany(kv => kv.Value.EnumerateFiles()).ToAsyncEnumerable();
+        // Listed up front so the total is known while the files are hashed.
+        var files = topLevelLocations.Where(kv => kv.Value.DirectoryExists()).SelectMany(kv => kv.Value.EnumerateFiles()).ToList();
+        var enumerable = files.ToAsyncEnumerable();
+        var totalFiles = files.Count;
+        long filesDone = 0;
+        progress?.Invoke(0, totalFiles);
 
         var seenPaths = new ConcurrentDictionary<GamePath, bool>();
         var newFiles = new ConcurrentDictionary<GamePath, IndexFileResult>();
@@ -77,6 +83,10 @@ internal class GameLocationsService : IGameLocationsService
             catch (Exception e)
             {
                 _logger.LogWarning(e, "Exception indexing file `{Path}`", file);
+            }
+            finally
+            {
+                progress?.Invoke(Interlocked.Increment(ref filesDone), totalFiles);
             }
         });
 

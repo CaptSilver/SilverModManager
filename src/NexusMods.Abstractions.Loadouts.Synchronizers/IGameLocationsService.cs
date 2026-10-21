@@ -27,11 +27,13 @@ public record IndexGameResult(
 [PublicAPI]
 public interface IGameLocationsService
 {
+    /// <param name="progress">Called with the files looked at so far and the number of files found, as the folder is walked.</param>
     Task<IndexGameResult> IndexGame(
         GameInstallation installation,
         FrozenDictionary<GamePath, DiskStateEntry.ReadOnly> previousDiskState,
         IGamePathFilter filter,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken = default,
+        Action<long, long>? progress = null
     );
 
     // Task RemoveEmptyDirectories(GameInstallation installation, CancellationToken cancellationToken = default);

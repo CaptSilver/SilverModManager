@@ -45,6 +45,12 @@ public partial class ApplyControlView : ReactiveUserControl<IApplyControlViewMod
                 
                 this.OneWayBind(ViewModel, vm => vm.ProcessingText, v => v.ProgressBarControl.ProgressTextFormat)
                     .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.IsProgressIndeterminate, v => v.ProgressBarControl.IsIndeterminate)
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.ProgressFraction, v => v.ProgressBarControl.Value)
+                    .DisposeWith(disposables);
             }
         );
     }

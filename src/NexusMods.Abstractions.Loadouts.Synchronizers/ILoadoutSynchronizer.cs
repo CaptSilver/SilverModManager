@@ -39,7 +39,7 @@ public interface ILoadoutSynchronizer
     /// <summary>
     /// Builds a sync tree from a loadout and the current state of the game folder.
     /// </summary>
-    Task<Dictionary<GamePath, SyncNode>> BuildSyncTree(Loadout.ReadOnly loadoutTree);
+    Task<Dictionary<GamePath, SyncNode>> BuildSyncTree(Loadout.ReadOnly loadoutTree, SynchronizeLoadoutJob? job = null);
 
     /// <summary>
     /// Builds a sync tree from the latest stored disk state and the previous disk state.
@@ -130,7 +130,7 @@ public interface ILoadoutSynchronizer
     /// <returns>A tree of all the files with associated <see cref="FileChangeType"/></returns>
     FileDiffTree LoadoutToDiskDiff(Loadout.ReadOnly loadout, List<PathPartPair> previousState, List<PathPartPair> lastScannedState);
 
-    Task<Sdk.Games.GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation);
+    Task<Sdk.Games.GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation, SynchronizeLoadoutJob? job = null);
     ValueTask BuildProcessRun(Loadout.ReadOnly loadout, Sdk.Games.GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken);
 
     /// <summary>

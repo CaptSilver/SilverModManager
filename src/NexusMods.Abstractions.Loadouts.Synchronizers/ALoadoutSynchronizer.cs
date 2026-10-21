@@ -320,9 +320,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <inheritdoc />
-    public async Task<Dictionary<GamePath, SyncNode>> BuildSyncTree(Loadout.ReadOnly loadout)
+    public async Task<Dictionary<GamePath, SyncNode>> BuildSyncTree(Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
     {
-        var metadata = await ReindexState(loadout.InstallationInstance);
+        var metadata = await ReindexState(loadout.InstallationInstance, job);
 
         var currentItems = GetDiskStateForGame(metadata);
         var prevItems = ((ILoadoutSynchronizer)this).GetPreviouslyAppliedDiskState(metadata);
@@ -482,37 +482,37 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                     break;
 
                 case Actions.BackupFile:
-                    job?.SetStatus("Backing up files");
+                    job?.SetStatus(SyncPhases.BackingUp);
                     foreach (var group in groups) await group.Backend.Backup(context, group.Nodes);
                     break;
 
                 case Actions.IngestFromDisk:
-                    job?.SetStatus("Adding external changes");
+                    job?.SetStatus(SyncPhases.IngestingChanges);
                     foreach (var group in groups) group.Backend.Ingest(context, group.Nodes);
                     break;
                 
                 case Actions.AdaptLoadout:
-                    job?.SetStatus("Updating loadout");
+                    job?.SetStatus(SyncPhases.UpdatingLoadout);
                     foreach (var group in groups) await group.Backend.AdaptLoadout(context, group.Nodes);
                     break;
 
                 case Actions.DeleteFromDisk:
-                    job?.SetStatus("Deleting files");
+                    job?.SetStatus(SyncPhases.Deleting);
                     foreach (var group in groups) foldersWithDeletedFiles.Add(group.Backend.Delete(context, group.Nodes));
                     break;
 
                 case Actions.ExtractToDisk:
-                    job?.SetStatus("Extracting files");
+                    job?.SetStatus(SyncPhases.Deploying);
                     foreach (var group in groups) await group.Backend.Extract(context, group.Nodes);
                     break;
                 
                 case Actions.WriteIntrinsic:
-                    job?.SetStatus("Writing intrinsic files");
+                    job?.SetStatus(SyncPhases.WritingIntrinsics);
                     foreach (var group in groups) await group.Backend.WriteIntrinsics(context, group.Nodes);
                     break;
 
                 case Actions.AddReifiedDelete:
-                    job?.SetStatus("Updating deleted files");
+                    job?.SetStatus(SyncPhases.UpdatingDeletedFiles);
                     foreach (var group in groups) group.Backend.AddReifiedDeletes(context, group.Nodes);
                     break;
 
@@ -533,7 +533,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             }
         }
 
-        job?.SetStatus("Recording changes");
+        job?.SetStatus(SyncPhases.RecordingChanges);
         
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastSyncedLoadout, loadout.Id);
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransaction, EntityId.From(tx.ThisTxId.Value));
@@ -554,7 +554,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // The collector sweeps the staging store, which waits for every hold.
         stagingHold.Dispose();
 
-        job?.SetStatus("Archive Cleanup");
+        job?.SetStatus(SyncPhases.CleaningUp);
         await _garbageCollectorRunner.RunAsync();
 
 
@@ -956,8 +956,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             }
         }
 
-        job?.SetStatus("Collecting files");
-        var tree = await BuildSyncTree(loadout);
+        job?.SetStatus(SyncPhases.Collecting);
+        var tree = await BuildSyncTree(loadout, job);
         ProcessSyncTree(tree);
         loadout = await RunActions(tree, loadout, job);
 
@@ -1092,15 +1092,15 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <summary>
     /// Reindex the state of the game, running a transaction if changes are found
     /// </summary>
-    public async Task<GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation)
-    {        
+    public async Task<GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation, SynchronizeLoadoutJob? job = null)
+    {
         using var _ = await _lock.LockAsync();
 
         var metadata = _gameRegistry.ForceGetMetadata(installation);
         using var tx = Connection.BeginTransaction();
 
         // Index the state
-        var changed = await ReindexState(metadata, installation, tx);
+        var changed = await ReindexState(metadata, installation, tx, job);
 
         if (!metadata.Contains(Sdk.Games.GameInstallMetadata.InitialDiskStateTransaction))
         {
@@ -1150,7 +1150,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <summary>
     /// Reindex the state of the game
     /// </summary>
-    private async Task<bool> ReindexState(GameInstallMetadata.ReadOnly metadata, GameInstallation installation, ITransaction tx)
+    private async Task<bool> ReindexState(GameInstallMetadata.ReadOnly metadata, GameInstallation installation, ITransaction tx, SynchronizeLoadoutJob? job)
     {
         var previousState = GetDiskState(metadata);
 
@@ -1158,7 +1158,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             installation: installation,
             previousDiskState: previousState,
             filter: Synchronizers.GamePathFilters.Create(path => GamePathFilter.ShouldFilter(path) && !IsTrackedProtectedFile(previousState, path)),
-            cancellationToken: CancellationToken.None
+            cancellationToken: CancellationToken.None,
+            progress: job is null ? null : (done, total) => job.ReportProgress(SyncPhases.Collecting, done, total)
         );
 
         foreach (var (gamePath, result) in indexGameResult.NewFiles)

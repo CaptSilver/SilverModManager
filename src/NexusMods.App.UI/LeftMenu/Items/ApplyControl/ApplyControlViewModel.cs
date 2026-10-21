@@ -47,6 +47,8 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
     [Reactive] public string ApplyButtonText { get; private set; } = Language.ApplyControlViewModel__APPLY;
 
     [Reactive] public string ProcessingText { get; private set; } = "";
+    [Reactive] public double ProgressFraction { get; private set; }
+    [Reactive] public bool IsProgressIndeterminate { get; private set; } = true;
     [Reactive] public bool IsLaunchButtonEnabled { get; private set; } = true;
 
     public ILaunchButtonViewModel LaunchButtonViewModel { get; }
@@ -146,12 +148,18 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
                     .QueryWhenChanged(jobs =>
                         {
                             if (jobs.Items.FirstOrDefault()?.Definition is SynchronizeLoadoutJob sJob && sJob.LoadoutId == loadoutId)
-                                return sJob.StatusMessage.AsSystemObservable();
-                            return new BindableReactiveProperty<string>(value: "").AsSystemObservable();
+                                return sJob.Progress.AsSystemObservable();
+                            return new BindableReactiveProperty<SyncProgress>().AsSystemObservable();
                         }
                     ).Switch()
                     .OnUI()
-                    .Subscribe(status => ProcessingText = status)
+                    .Subscribe(progress =>
+                        {
+                            ProcessingText = progress.Text;
+                            ProgressFraction = progress.Fraction ?? 0;
+                            IsProgressIndeterminate = progress.Fraction is null;
+                        }
+                    )
                     .DisposeWith(disposables);
             }
         );

@@ -157,8 +157,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         {
             if (!node.Actions.HasFlag(Actions.DeleteFromDisk)) continue;
 
-            if (itemIndex % 1000f == 0)
-                context.Job?.SetStatus($"({itemIndex}/{deleteFileCount}) Deleting files");
+            context.Job?.ReportProgress(SyncPhases.Deleting, itemIndex, deleteFileCount);
             itemIndex++;
 
             var deployed = context.Locations.ToAbsolutePath(path);
@@ -188,6 +187,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
             }
         }
 
+        context.Job?.ReportProgress(SyncPhases.Deleting, deleteFileCount, deleteFileCount);
         return foldersWithDeletedFiles;
     }
 
@@ -217,8 +217,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         var itemIndex = 0;
         foreach (var (path, node) in extract)
         {
-            if (itemIndex++ % 1000 == 0)
-                context.Job?.SetStatus($"({itemIndex}/{extract.Count}) Extracting files");
+            context.Job?.ReportProgress(SyncPhases.Deploying, itemIndex++, extract.Count);
 
             var hash = node.Loadout.Hash;
             var storeFile = storeFiles[hash];
@@ -252,6 +251,8 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
             // The time the next index will read, which for a symlink is the staged file's.
             DeployedFileRows.Record(context.Transaction, context, path, node, FileFingerprint.Of(target).LastModified);
         }
+
+        context.Job?.ReportProgress(SyncPhases.Deploying, extract.Count, extract.Count);
     }
 
     /// <inheritdoc />

@@ -72,17 +72,27 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
         // Backup the files that are new or changed
         var archivedFiles = new ConcurrentBag<ArchivedFileEntry>();
         var pinnedFileHashes = new ConcurrentBag<Hash>();
-        await Parallel.ForEachAsync(nodes, async (item, _) =>
+
+        var backupNodes = nodes.Where(static item => item.Value.Actions.HasFlag(Actions.BackupFile)).ToList();
+        long filesChecked = 0;
+        var totalFiles = backupNodes.Count;
+        var totalBytes = backupNodes.Sum(static item => (long)item.Value.Disk.Size.Value);
+        context.Job?.ReportProgress(SyncPhases.BackingUp, 0, totalFiles, 0, totalBytes);
+        // Bytes only advance once a file is archived, so a file already in the store counts as done right away.
+        long bytesAccountedFor = 0;
+
+        await Parallel.ForEachAsync(backupNodes, async (item, _) =>
             {
                 var (gamePath, node) = item;
-                if (!node.Actions.HasFlag(Actions.BackupFile))
-                    return;
 
                 var path = installation.Locations.ToAbsolutePath(gamePath);
                 Debug.Assert(node.HaveDisk, "Node must have a disk entry to backup");
-                
+
                 if (await _fileStore.HaveFile(node.Disk.Hash))
+                {
+                    context.Job?.ReportProgress(SyncPhases.BackingUp, Interlocked.Increment(ref filesChecked), totalFiles, Interlocked.Add(ref bytesAccountedFor, (long)node.Disk.Size.Value), totalBytes);
                     return;
+                }
                 
                 var archivedFile = new ArchivedFileEntry
                 {
@@ -97,11 +107,14 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
                 // This check does not work as intended because the winning files is going to be a Loadout one, not a game one.
                 // if (node.SourceItemType == LoadoutSourceItemType.Game)
                 pinnedFileHashes.Add(archivedFile.Hash);
+                context.Job?.ReportProgress(SyncPhases.BackingUp, Interlocked.Increment(ref filesChecked), totalFiles, Interlocked.Read(ref bytesAccountedFor), totalBytes);
             }
         );
 
         // PERFORMANCE: We deduplicate above with the HaveFile call.
+        // The archive is written in one pass that reports nothing, so the bytes it covers are counted when it is done.
         await _fileStore.BackupFiles(archivedFiles, deduplicate: false);
+        context.Job?.ReportProgress(SyncPhases.BackingUp, totalFiles, totalFiles, totalBytes, totalBytes);
 
         // Pin the files to avoid garbage collection.
         using var tx = _connection.BeginTransaction();
@@ -167,8 +180,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             if (!node.Actions.HasFlag(Actions.DeleteFromDisk))
                 continue;
 
-            if (itemIndex % 1000f == 0)
-                context.Job?.SetStatus($"({itemIndex}/{deleteFileCount}) Deleting files");
+            context.Job?.ReportProgress(SyncPhases.Deleting, itemIndex, deleteFileCount);
             itemIndex++;
 
             var resolvedPath = context.Locations.ToAbsolutePath(path);
@@ -183,6 +195,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             }
         }
 
+        context.Job?.ReportProgress(SyncPhases.Deleting, deleteFileCount, deleteFileCount);
         return foldersWithDeletedFiles;
     }
 
@@ -226,7 +239,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
         void UpdateStatus((int Current, int Max) progress)
         {
             var (current, max) = progress;
-            context.Job?.SetStatus($"({current}/{max}) Extracting files");
+            context.Job?.ReportProgress(SyncPhases.Deploying, current, max);
         }
     }
 

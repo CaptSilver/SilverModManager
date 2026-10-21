@@ -23,6 +23,8 @@ public class ApplyControlDesignViewModel : AViewModel<IApplyControlViewModel>, I
     public string ApplyButtonText { get; } = Language.ApplyControlViewModel__APPLY;
 
     public string ProcessingText { get; } = "PROCESSING TEXT";
+    public double ProgressFraction { get; } = 0.4;
+    public bool IsProgressIndeterminate { get; } = false;
 
     public ApplyControlDesignViewModel()
     {

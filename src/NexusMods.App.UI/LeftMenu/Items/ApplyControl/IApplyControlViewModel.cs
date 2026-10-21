@@ -22,4 +22,14 @@ public interface IApplyControlViewModel : IViewModelInterface
     string ApplyButtonText { get; }
     
     string ProcessingText { get; }
+
+    /// <summary>
+    /// How far the current phase of an apply has got, in [0, 1]. Meaningless while <see cref="IsProgressIndeterminate"/>.
+    /// </summary>
+    double ProgressFraction { get; }
+
+    /// <summary>
+    /// Whether the current phase cannot say how much is left.
+    /// </summary>
+    bool IsProgressIndeterminate { get; }
 }
