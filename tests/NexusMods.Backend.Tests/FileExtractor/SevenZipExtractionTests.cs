@@ -1,3 +1,5 @@
+using System.Formats.Tar;
+using System.IO.Compression;
 using FluentAssertions;
 using NexusMods.Backend.FileExtractor.Extractors;
 using NexusMods.Hashing.xxHash3;
@@ -110,6 +112,93 @@ public class SevenZipExtractionTests : AFileExtractorTest
         Read("link-hidden").Should().Be("hidden content");
         Read("hidden.txt").Should().Be("hidden content");
         Read("locked/inner.txt").Should().Be("locked content");
+    }
+
+    // A .tar.gz is two layers: 7z strips the gzip and leaves a .tar, which has to be opened as well or the
+    // caller sees a single tar file instead of the archive's members.
+    [Fact]
+    public async Task ATarGzIsExtractedToItsMembersNotToTheInnerTar()
+    {
+        await using var scratch = TemporaryFileManager.CreateFolder();
+        var archive = scratch.Path.Combine("release.tar.gz");
+        WriteTarGz(archive, ("./bin/me3", UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute), ("bin/win64/me3_mod_host.dll", UnixFileMode.UserRead | UnixFileMode.UserWrite));
+
+        (await FileExtractor.CanExtract(archive.Read())).Should().BeTrue("the gzip signature is recognised");
+
+        var destination = scratch.Path.Combine("extracted");
+        destination.CreateDirectory();
+        await FileExtractor.ExtractAllAsync(archive, destination, TestContext.Current.CancellationToken);
+
+        var relative = destination.EnumerateFiles().Select(f => f.RelativeTo(destination).ToString()).Order().ToArray();
+        relative.Should().Equal("bin/me3", "bin/win64/me3_mod_host.dll");
+        File.ReadAllText(destination.Combine("bin/me3").ToString()).Should().Be("bin/me3");
+        File.GetUnixFileMode(destination.Combine("bin/me3").ToString()).HasFlag(UnixFileMode.UserExecute).Should().BeTrue("the stored execute bit survives");
+    }
+
+    // 7z names the inner tar after the archive, so a download saved without the .tar.gz suffix gives a tar with
+    // some other name. It is still a tar and still has to be opened.
+    [Fact]
+    public async Task ATarGzSavedWithoutItsSuffixIsStillExtractedToItsMembers()
+    {
+        await using var scratch = TemporaryFileManager.CreateFolder();
+        var archive = scratch.Path.Combine("release");
+        WriteTarGz(archive, ("bin/me3", UnixFileMode.UserRead | UnixFileMode.UserWrite), ("bin/win64/me3_mod_host.dll", UnixFileMode.UserRead | UnixFileMode.UserWrite));
+
+        var destination = scratch.Path.Combine("extracted");
+        destination.CreateDirectory();
+        await FileExtractor.ExtractAllAsync(archive, destination, TestContext.Current.CancellationToken);
+
+        destination.EnumerateFiles().Select(f => f.RelativeTo(destination).ToString()).Order()
+            .Should().Equal("bin/me3", "bin/win64/me3_mod_host.dll");
+    }
+
+    // The tar is opened from outside the destination, so a member that has the tar's own name is kept.
+    [Fact]
+    public async Task AMemberNamedLikeTheInnerTarIsKept()
+    {
+        await using var scratch = TemporaryFileManager.CreateFolder();
+        var archive = scratch.Path.Combine("release.tar.gz");
+        WriteTarGz(archive, ("release.tar", UnixFileMode.UserRead | UnixFileMode.UserWrite), ("bin/me3", UnixFileMode.UserRead | UnixFileMode.UserWrite));
+
+        var destination = scratch.Path.Combine("extracted");
+        destination.CreateDirectory();
+        await FileExtractor.ExtractAllAsync(archive, destination, TestContext.Current.CancellationToken);
+
+        destination.EnumerateFiles().Select(f => f.RelativeTo(destination).ToString()).Order()
+            .Should().Equal("bin/me3", "release.tar");
+        File.ReadAllText(destination.Combine("release.tar").ToString()).Should().Be("release.tar");
+    }
+
+    // A gzip of one ordinary file has no tar inside it, so the file itself is the result.
+    [Fact]
+    public async Task AGzipOfAPlainFileExtractsThatFile()
+    {
+        await using var scratch = TemporaryFileManager.CreateFolder();
+        var archive = scratch.Path.Combine("notes.txt.gz");
+        await using (var stream = archive.Create())
+        await using (var gzip = new GZipStream(stream, CompressionLevel.Optimal))
+            await gzip.WriteAsync("hello"u8.ToArray(), TestContext.Current.CancellationToken);
+
+        var destination = scratch.Path.Combine("extracted");
+        destination.CreateDirectory();
+        await FileExtractor.ExtractAllAsync(archive, destination, TestContext.Current.CancellationToken);
+
+        File.ReadAllText(destination.Combine("notes.txt").ToString()).Should().Be("hello");
+    }
+
+    private static void WriteTarGz(AbsolutePath path, params (string Name, UnixFileMode Mode)[] entries)
+    {
+        using var stream = path.Create();
+        using var gzip = new GZipStream(stream, CompressionLevel.Optimal);
+        using var tar = new TarWriter(gzip, TarEntryFormat.Ustar);
+        foreach (var (name, mode) in entries)
+        {
+            tar.WriteEntry(new UstarTarEntry(TarEntryType.RegularFile, name)
+            {
+                Mode = mode,
+                DataStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(name.TrimStart('.', '/'))),
+            });
+        }
     }
 
     private AbsolutePath UnreadableLinkTargetArchive => FileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("Resources/7z-with-unreadable-link-target.7z");

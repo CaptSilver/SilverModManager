@@ -24,8 +24,8 @@ namespace NexusMods.Backend.FileExtractor.Extractors;
 /// </remarks>
 public class SevenZipExtractor : IExtractor
 {
-    private static readonly FileType[] SupportedTypesCached = [FileType._7Z, FileType.RAR_NEW, FileType.RAR_OLD, FileType.ZIP];
-    private static readonly Extension[] SupportedExtensionsCached = [KnownExtensions._7z, KnownExtensions.Rar, KnownExtensions.Zip, KnownExtensions._7zip];
+    private static readonly FileType[] SupportedTypesCached = [FileType._7Z, FileType.RAR_NEW, FileType.RAR_OLD, FileType.ZIP, FileType.GZ];
+    private static readonly Extension[] SupportedExtensionsCached = [KnownExtensions._7z, KnownExtensions.Rar, KnownExtensions.Zip, KnownExtensions._7zip, new Extension(".gz"), new Extension(".tgz")];
 
     /// <inheritdoc />
     public FileType[] SupportedSignatures => SupportedTypesCached;
@@ -67,6 +67,13 @@ public class SevenZipExtractor : IExtractor
         var trimmablePathsInArchive = await GetTrimmablePathsInArchive(source, cancellationToken: cancellationToken);
         await ExtractArchive(source, destination, cancellationToken: cancellationToken);
 
+        using var innerTar = await TakeInnerTar(source, destination, cancellationToken);
+        if (innerTar is not null)
+        {
+            trimmablePathsInArchive = await GetTrimmablePathsInArchive(innerTar.Value.Path, cancellationToken: cancellationToken);
+            await ExtractArchive(innerTar.Value.Path, destination, cancellationToken: cancellationToken);
+        }
+
         // Modes first, since the link sweep has to list every folder and copy link targets that the archive
         // may have stored at 000; NormalizeModes never touches a link. Then the links go, before anything
         // else reads the result.
@@ -76,6 +83,41 @@ public class SevenZipExtractor : IExtractor
 
         if (trimmablePathsInArchive.Count == 0) return;
         FixPaths(trimmablePathsInArchive, destination);
+    }
+
+    /// <summary>
+    /// 7z strips one layer at a time, so a .tar.gz comes out as a single tar file and not its members. When a
+    /// gzip source produced nothing but a tar, the tar is moved out of the destination and returned for
+    /// extracting in its place. It is recognised by its header, not its name: 7z names it after the archive,
+    /// and a download saved without the .tar.gz suffix gives a tar with some other name.
+    /// </summary>
+    private async ValueTask<TemporaryPath?> TakeInnerTar(AbsolutePath source, AbsolutePath destination, CancellationToken cancellationToken)
+    {
+        if (!await HasBytesAt(source, offset: 0, GzipMagic, cancellationToken)) return null;
+
+        var entries = Directory.GetFileSystemEntries(destination.ToNativeSeparators(_osInformation));
+        if (entries.Length != 1 || !File.Exists(entries[0])) return null;
+
+        var tar = destination.Combine(Path.GetFileName(entries[0]));
+        if (!await HasBytesAt(tar, TarMagicOffset, TarMagic, cancellationToken)) return null;
+
+        var moved = _temporaryFileManager.CreateFile(ext: new Extension(".tar"));
+        File.Move(entries[0], moved.Path.ToNativeSeparators(_osInformation), overwrite: true);
+        return moved;
+    }
+
+    private static readonly byte[] GzipMagic = [0x1F, 0x8B];
+
+    // POSIX and GNU tar headers both carry "ustar" at this offset.
+    private const int TarMagicOffset = 257;
+    private static readonly byte[] TarMagic = "ustar"u8.ToArray();
+
+    private static async ValueTask<bool> HasBytesAt(AbsolutePath path, int offset, byte[] expected, CancellationToken cancellationToken)
+    {
+        await using var stream = path.Read();
+        var buffer = new byte[offset + expected.Length];
+        var read = await stream.ReadAtLeastAsync(buffer, buffer.Length, throwOnEndOfStream: false, cancellationToken);
+        return read == buffer.Length && buffer.AsSpan(offset).SequenceEqual(expected);
     }
 
     private const UnixFileMode RegularFile = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
