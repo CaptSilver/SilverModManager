@@ -34,6 +34,9 @@ public interface IFromSoftModLoader
     /// <summary>Whether the loadout has the loader itself, enabled.</summary>
     bool HasHost(Loadout.ReadOnly loadout);
 
+    /// <summary>What a launch throws when the loadout has mods but not the loader: names the loader and says how to get it into the loadout.</summary>
+    string MissingHostMessage(string loadoutName);
+
     /// <summary>A veto when the loader's files are not deployed for a modded launch; null when the launch can go ahead.</summary>
     Veto? CheckHost(GameInstallation installation, string loadoutName);
 

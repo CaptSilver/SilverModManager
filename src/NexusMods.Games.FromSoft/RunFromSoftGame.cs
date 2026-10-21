@@ -24,7 +24,7 @@ public class RunFromSoftGame<TGame>(IServiceProvider provider, TGame game) : Run
 
         // The loadout is checked, not the disk: a dry run resolves the command before anything is applied.
         if (!game.Loader.HasHost(loadout))
-            throw new InvalidOperationException($"Loadout '{loadout.Name}' has mods but no me3, so there is nothing to load them with. Install the me3 Linux release into it.");
+            throw new InvalidOperationException(game.Loader.MissingHostMessage(loadout.Name));
 
         var bwrap = provider.GetRequiredService<IExecutableLocator>().Find(OverlayCommand.Program)
                     ?? throw new InvalidOperationException("bwrap was not found on PATH. It runs the game with an overlay over its folder, so a loadout with mods cannot start without it; install bubblewrap.");

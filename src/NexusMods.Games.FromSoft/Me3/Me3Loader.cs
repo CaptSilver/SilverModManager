@@ -83,6 +83,9 @@ public sealed class Me3Loader(IServiceProvider provider, Me3LoaderOptions option
 
     private static AbsolutePath BinaryOf(GameInstallation installation) => installation.Locations[LocationId.Me3Host].Path / Me3HostFiles.Binary;
 
+    public string MissingHostMessage(string loadoutName)
+        => $"Loadout '{loadoutName}' has mods but no me3, so there is nothing to load them with. Install the me3 Linux release into it.";
+
     public Veto? CheckHost(GameInstallation installation, string loadoutName)
     {
         var me3 = BinaryOf(installation);

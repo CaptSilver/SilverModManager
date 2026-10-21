@@ -5,6 +5,8 @@ using NexusMods.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Loadouts;
+using NSubstitute;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
@@ -31,6 +33,21 @@ public class TestSoulsLaunchTests(ITestOutputHelper helper) : AModdedTestSoulsTe
         spec.ExtraArgs.Skip(start).Should().Equal(
             me3, "launch", "-p", (mods / Me3ModsLayout.ProfileFileName).GetFullPath(),
             "-g", "testsouls", "--windows-binaries-dir", (host / "bin/win64").GetFullPath());
+    }
+
+    [Fact]
+    public async Task TheMissingHostMessageComesFromTheLoader()
+    {
+        var loadout = await CreateModdedLoadout();
+        var loader = Substitute.For<IFromSoftModLoader>();
+        loader.IsModded(Arg.Any<Loadout.ReadOnly>()).Returns(true);
+        loader.HasHost(Arg.Any<Loadout.ReadOnly>()).Returns(false);
+        loader.MissingHostMessage(loadout.Name).Returns("install the other loader");
+        var game = new TestSoulsGame(ServiceProvider, _ => loader);
+
+        var act = async () => await new RunFromSoftGame<TestSoulsGame>(ServiceProvider, game).GetLaunchSpec(loadout, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Be("install the other loader");
     }
 
     [Fact]

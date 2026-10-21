@@ -18,10 +18,15 @@ public class TestSoulsGame : AFromSoftGame<TestSoulsGame>, IGameData<TestSoulsGa
     public static string DisplayName => "Test Souls";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Optional<Sdk.NexusModsApi.NexusModsGameId>.None;
 
-    public static readonly FromSoftGameDefinition Definition = TestSoulsDefinition.Definition;
+    /// <remarks><c>new</c> on purpose, as for Elden Ring: the static is read by tests that have no game instance.</remarks>
+    public new static readonly FromSoftGameDefinition Definition = TestSoulsDefinition.Definition;
 
     public TestSoulsGame(IServiceProvider provider)
-        : base(provider, Definition, _ => new Me3Loader(provider, new Me3LoaderOptions("testsouls", []), Definition)) { }
+        : this(provider, _ => new Me3Loader(provider, new Me3LoaderOptions("testsouls", []), Definition)) { }
+
+    /// <summary>For tests that need the game to run through a loader of their own.</summary>
+    public TestSoulsGame(IServiceProvider provider, Func<IFromSoftGame, IFromSoftModLoader> loader)
+        : base(provider, Definition, loader) { }
 
     protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new TestSoulsSynchronizer(provider, this);
 

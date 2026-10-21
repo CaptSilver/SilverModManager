@@ -101,6 +101,22 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
     }
 
     [Fact]
+    public async Task TheMissingHostMessageIsExactlyMe3sOwn()
+    {
+        var loadout = await CreateLoadout();
+        var path = TemporaryFileManager.CreateFolder().Path / "Weapons.zip";
+        await TestArchives.Write(path, "parts/wp_a.dcx");
+        var archive = await RegisterLocalArchive(path);
+        await LoadoutManager.InstallItem(archive.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId,
+            installer: Game.LibraryItemInstallers.OfType<NexusMods.Games.FromSoft.Installers.Me3PackageInstaller>().Single());
+
+        var act = async () => await Tool.GetLaunchSpec(Refresh(loadout), CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Be(
+            $"Loadout '{loadout.Name}' has mods but no me3, so there is nothing to load them with. Install the me3 Linux release into it.");
+    }
+
+    [Fact]
     public async Task ModdedWithoutBwrapThrowsAPlainMessage()
     {
         var loadout = await CreateModdedLoadout();

@@ -22,8 +22,12 @@ public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGa
     public static string DisplayName => "Elden Ring";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(4333);
 
-    /// <remarks>Built from <see cref="EldenRingPaths"/> and constants only: the base constructor reads it, and no other static of this class is set by then.</remarks>
-    public static readonly FromSoftGameDefinition Definition = new()
+    /// <remarks>
+    /// <c>new</c> on purpose: the base's instance <see cref="AFromSoftGame{TSelf}.Definition"/> is this same object, but the
+    /// static is also read by the doctor checks, where there is no game instance.
+    /// Built from <see cref="EldenRingPaths"/> and constants only: the base constructor reads it, and no other static of this class is set by then.
+    /// </remarks>
+    public new static readonly FromSoftGameDefinition Definition = new()
     {
         Layout = new FromSoftGameLayout(
             EldenRingPaths.SteamAppId,
