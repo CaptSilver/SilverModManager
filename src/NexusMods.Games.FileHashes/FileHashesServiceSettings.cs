@@ -40,10 +40,17 @@ public record FileHashesServiceSettings : ISettings
     public TimeSpan HashDatabaseUpdateInterval { get; init; } = TimeSpan.FromMinutes(30);
     
     /// <summary>
-    /// Never contact GitHub: open the newest database on disk, or extract the embedded one when
-    /// there is none. A launch that has to start quickly and work offline sets this.
+    /// Never download the central game hashes database: open the newest one on disk, or extract the
+    /// embedded one when there is none. The local baseline covers Steam installs and the embedded
+    /// database, built from the self-hosted release at build time, supplies version names, so turning
+    /// this off only makes the app fetch a fresher release from the configured URLs. The
+    /// <c>game-hashes-db update</c> verb downloads regardless.
     /// </summary>
-    public bool SkipUpdateCheck { get; init; }
+    /// <remarks>
+    /// The name is the persisted key of the settings file, so it stays. A settings file saved
+    /// by an earlier build holds <c>false</c> and keeps it.
+    /// </remarks>
+    public bool SkipUpdateCheck { get; init; } = true;
 
     /// <summary>
     /// The URL to the Github API to get the latest release.
@@ -77,6 +84,7 @@ public record FileHashesServiceSettings : ISettings
         {
             HashDatabaseLocation = new ConfigurablePath(KnownPath.XDG_DATA_HOME, $"{ApplicationConstants.DataDirectoryName}/FileHashesDatabase"),
             LocalBaselineLocation = DefaultLocalBaselineLocation,
+            SkipUpdateCheck = true,
         };
     }
 }

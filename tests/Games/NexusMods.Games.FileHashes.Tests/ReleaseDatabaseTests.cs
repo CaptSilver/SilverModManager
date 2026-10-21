@@ -38,6 +38,8 @@ public sealed class ReleaseDatabaseTests : IDisposable
         {
             HashDatabaseLocation = new ConfigurablePath(KnownPath.TempDirectory, Path.GetRelativePath(Path.GetTempPath(), _databaseLocation)),
             LocalBaselineLocation = new ConfigurablePath(KnownPath.TempDirectory, Path.GetRelativePath(Path.GetTempPath(), Path.Combine(_root, "local-baseline"))),
+            // Downloads are off by default; the tests that reach the network turn them on here.
+            SkipUpdateCheck = false,
         };
     }
 
@@ -191,9 +193,9 @@ public sealed class ReleaseDatabaseTests : IDisposable
             return [];
         }), _settings with { SkipUpdateCheck = true });
 
-        await service.CheckForUpdate(forceUpdate: true);
+        await service.CheckForUpdate();
 
-        requests.Should().BeEmpty("skipping the update check means no manifest or database request, even when forced");
+        requests.Should().BeEmpty("skipping the update check means no manifest or database request");
         _logger.Errors.Should().BeEmpty();
         service.Invoking(s => s.Current).Should().NotThrow("the embedded database is extracted and opened");
     }
@@ -219,6 +221,86 @@ public sealed class ReleaseDatabaseTests : IDisposable
         requests.Should().BeEmpty();
         _logger.Errors.Should().BeEmpty();
         second.Invoking(s => s.Current).Should().NotThrow();
+    }
+
+    [Fact]
+    public async Task DefaultSettings_NeverRequestTheReleaseManifest()
+    {
+        new FileHashesServiceSettings().SkipUpdateCheck.Should().BeTrue("a settings file without the key must not turn downloads on");
+        var settings = FileHashesServiceSettings.CreateDefault(new ServiceCollection().BuildServiceProvider()) with
+        {
+            HashDatabaseLocation = _settings.HashDatabaseLocation,
+            LocalBaselineLocation = _settings.LocalBaselineLocation,
+        };
+        var requests = new List<Uri>();
+        using var service = CreateService(new StubHandler(request =>
+        {
+            requests.Add(request.RequestUri!);
+            return [];
+        }), settings);
+
+        await service.CheckForUpdate();
+
+        requests.Should().BeEmpty();
+        service.Invoking(s => s.Current).Should().NotThrow();
+        service.Databases.Should().HaveCount(2, "the embedded database is connected beside the local store");
+        _logger.Messages.Should().Contain(m => m.Contains("disabled by settings"));
+    }
+
+    [Fact]
+    public async Task ForceUpdate_DownloadsWhenUpdatesAreOffByDefault()
+    {
+        var requests = new List<Uri>();
+        var zip = BuildZip(("db/data.bin", "aa"));
+        var manifest = await ManifestFor(zip);
+        manifest.CreatedAt = new DateTimeOffset(2100, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var tampered = BuildZip(("db/data.bin", "bb"));
+        using var service = CreateService(new StubHandler(request =>
+        {
+            requests.Add(request.RequestUri!);
+            return request.RequestUri!.AbsolutePath.EndsWith("manifest.json", StringComparison.Ordinal)
+                ? JsonSerializer.SerializeToUtf8Bytes(manifest, AppJsonOptions)
+                : tampered;
+        }), _settings with { SkipUpdateCheck = true });
+
+        await service.CheckForUpdate(forceUpdate: true);
+
+        requests.Select(r => Path.GetFileName(r.AbsolutePath)).Should().Equal("manifest.json", "game_hashes_db.zip");
+    }
+
+    [Fact]
+    public async Task StartAsync_UnreadableNewestDatabase_WithDownloadsOff_MakesNoRequest()
+    {
+        CreateExistingDatabase();
+        var requests = new List<Uri>();
+        using var service = CreateService(new StubHandler(request =>
+        {
+            requests.Add(request.RequestUri!);
+            return [];
+        }), _settings with { SkipUpdateCheck = true });
+
+        await service.StartAsync(CancellationToken.None);
+
+        requests.Should().BeEmpty();
+        service.Databases.Should().HaveCount(2, "the embedded database replaces the one that would not open");
+    }
+
+    [Fact]
+    public async Task StartAsync_UnreadableNewestDatabase_IsNotOpenedAgainAfterTheEmbeddedOneIsExtracted()
+    {
+        // The unreadable database is newer than both the embedded one and the release, so it would win
+        // the newest-on-disk comparison if extracting the embedded database put it back in the running.
+        CreateExistingDatabase();
+        var manifest = await ManifestFor(BuildZip(("db/data.bin", "aa")));
+        manifest.CreatedAt = ReleaseTime.AddDays(-2);
+        using var service = CreateService(new StubHandler(request =>
+            request.RequestUri!.AbsolutePath.EndsWith("manifest.json", StringComparison.Ordinal)
+                ? JsonSerializer.SerializeToUtf8Bytes(manifest, AppJsonOptions)
+                : []));
+
+        await service.Invoking(s => s.StartAsync(CancellationToken.None)).Should().NotThrowAsync();
+
+        service.Databases.Should().HaveCount(2, "the embedded database replaces the one that would not open");
     }
 
     [Fact]
@@ -349,12 +431,14 @@ public sealed class ReleaseDatabaseTests : IDisposable
     private sealed class CapturingLogger : ILogger<FileHashesService>
     {
         public List<string> Errors { get; } = [];
+        public List<string> Messages { get; } = [];
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
         public bool IsEnabled(LogLevel logLevel) => true;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
+            Messages.Add(formatter(state, exception));
             if (logLevel >= LogLevel.Error) Errors.Add(formatter(state, exception));
         }
     }

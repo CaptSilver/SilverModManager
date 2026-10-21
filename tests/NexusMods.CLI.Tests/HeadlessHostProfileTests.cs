@@ -21,7 +21,7 @@ public class HeadlessHostProfileTests
 {
     private static StartupMode Mode(params string[] args) => StartupMode.Parse(args);
 
-    private static IHost BuildHost(StartupMode mode)
+    private static IHost BuildHost(StartupMode mode, IFileSystem? fileSystem = null)
     {
         const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"HeadlessHostProfileTests-{Guid.NewGuid()}";
@@ -30,6 +30,7 @@ public class HeadlessHostProfileTests
             .ConfigureServices(services => services
                 .AddApp(addStandardGameLocators: false, startupMode: mode)
                 .Validate()
+                .AddSingleton(fileSystem ?? NexusMods.Paths.FileSystem.Shared)
                 .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with { UseInMemoryLocalBaseline = true, })
                 .OverrideSettingsForTests<DataModelSettings>(settings => settings with
                 {
@@ -202,14 +203,70 @@ public class HeadlessHostProfileTests
         Describe(mode).Should().NotContain(d => d.ServiceType == typeof(SyncFile));
     }
 
-    [Theory]
-    [InlineData("as-main", true)]
-    [InlineData("run", true)]
-    [InlineData("as-main-ui", false)]
-    public void HashDatabaseUpdateCheckIsSkippedOnlyHeadless(string input, bool expected)
+    // The settings backend reads $XDG_DATA_HOME/SilverModManager/Configs, so every host gets a data
+    // directory of its own and a test's settings file never reaches another test or the real one.
+    private static (IFileSystem FileSystem, string DataHome) IsolatedDataHome(string? settingsJson)
     {
-        using var host = BuildHost(Mode(input));
+        var dataHome = Directory.CreateTempSubdirectory("headless-host-data-").FullName;
+        if (settingsJson is not null)
+        {
+            var configs = Path.Combine(dataHome, ApplicationConstants.DataDirectoryName, "Configs");
+            Directory.CreateDirectory(configs);
+            File.WriteAllText(Path.Combine(configs, $"{FileHashesServiceSettings.SettingsId}.json"), settingsJson);
+        }
 
-        host.Services.GetRequiredService<ISettingsManager>().Get<FileHashesServiceSettings>().SkipUpdateCheck.Should().Be(expected);
+        var fileSystem = NexusMods.Paths.FileSystem.Shared.CreateOverlayFileSystem(
+            new Dictionary<AbsolutePath, AbsolutePath>(),
+            new Dictionary<KnownPath, AbsolutePath>
+            {
+                { KnownPath.XDG_DATA_HOME, NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(dataHome) },
+            });
+        return (fileSystem, dataHome);
+    }
+
+    private static bool SkipUpdateCheckOf(string input, string? savedSettings)
+    {
+        var (fileSystem, dataHome) = IsolatedDataHome(savedSettings);
+        try
+        {
+            using var host = BuildHost(Mode(input), fileSystem);
+            return host.Services.GetRequiredService<ISettingsManager>().Get<FileHashesServiceSettings>().SkipUpdateCheck;
+        }
+        finally
+        {
+            Directory.Delete(dataHome, recursive: true);
+        }
+    }
+
+    // What an install that predates the flipped default has on disk.
+    private const string SavedDownloadChoice = """
+        {
+          "SkipUpdateCheck": false,
+          "HashDatabaseUpdateInterval": "00:30:00",
+          "ReleaseFilePath": "game-hashes-release.json"
+        }
+        """;
+
+    [Theory]
+    [InlineData("as-main")]
+    [InlineData("run")]
+    public void HeadlessProfilesNeverDownloadTheHashDatabase(string input)
+    {
+        SkipUpdateCheckOf(input, SavedDownloadChoice).Should().BeTrue("a game launch must not download even when the user opted in");
+    }
+
+    [Fact]
+    public void GuiKeepsTheSavedDownloadChoice()
+    {
+        SkipUpdateCheckOf("as-main-ui", SavedDownloadChoice).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("as-main")]
+    [InlineData("run")]
+    [InlineData("as-main-ui")]
+    public void FreshInstallSkipsTheDownloadInEveryProfile(string input)
+    {
+        SkipUpdateCheckOf(input, savedSettings: null).Should().BeTrue();
     }
 }

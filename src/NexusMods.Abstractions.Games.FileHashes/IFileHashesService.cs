@@ -41,6 +41,10 @@ public interface IFileHashesService
     /// <summary>
     /// Force an update of the file hashes database
     /// </summary>
+    /// <param name="forceUpdate">
+    /// Fetch the latest release now, even when downloads are turned off in the settings. Without it the
+    /// check honours the settings and the update interval.
+    /// </param>
     public Task CheckForUpdate(bool forceUpdate = false);
 
     /// <summary>

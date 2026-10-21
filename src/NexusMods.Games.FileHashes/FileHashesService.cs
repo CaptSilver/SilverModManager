@@ -179,7 +179,9 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     /// <inheritdoc />
     public async Task CheckForUpdate(bool forceUpdate = false)
     {
-        await CheckForUpdateCore(forceUpdate);
+        // Only a caller asking for a refresh by hand overrides the setting. The same flag also means
+        // "re-check now" to the internal callers, which must keep honouring it.
+        await CheckForUpdateCore(forceUpdate, explicitRequest: forceUpdate);
     }
 
     /// <inheritdoc />
@@ -223,13 +225,16 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     }
 
 
-    private async Task CheckForUpdateCore(bool forceUpdate, CancellationToken cancellationToken = default)
+    /// <param name="forceUpdate">Check for a newer release even when the last check is recent.</param>
+    /// <param name="explicitRequest">The user asked for the download, so <see cref="FileHashesServiceSettings.SkipUpdateCheck"/> does not apply.</param>
+    /// <param name="unreadable">A database that failed to open and must not be tried again.</param>
+    private async Task CheckForUpdateCore(bool forceUpdate, CancellationToken cancellationToken = default, bool explicitRequest = false, AbsolutePath? unreadable = null)
     {
         using var _ = await _lock.LockAsync();
 
         try
         {
-            await ConnectLatestDatabase(forceUpdate, cancellationToken);
+            await ConnectLatestDatabase(forceUpdate, explicitRequest, unreadable, cancellationToken);
         }
         finally
         {
@@ -238,10 +243,13 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         }
     }
 
-    private async Task ConnectLatestDatabase(bool forceUpdate, CancellationToken cancellationToken)
+    private async Task ConnectLatestDatabase(bool forceUpdate, bool explicitRequest, AbsolutePath? unreadable, CancellationToken cancellationToken)
     {
-        var existingDatabases = ExistingDBs().ToArray();
-        var shouldCheckForUpdate = !_settings.SkipUpdateCheck && (forceUpdate || existingDatabases.Length == 0 || ShouldCheckForUpdate());
+        DatabaseInfo[] Readable() => ExistingDBs().Where(info => info.Path != unreadable).ToArray();
+
+        var existingDatabases = Readable();
+        var downloadAllowed = explicitRequest || !_settings.SkipUpdateCheck;
+        var shouldCheckForUpdate = downloadAllowed && (forceUpdate || existingDatabases.Length == 0 || ShouldCheckForUpdate());
 
         if (!shouldCheckForUpdate && existingDatabases.TryGetFirst(out var latestDatabase))
         {
@@ -266,7 +274,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                     return;
                 }
 
-                if (_settings.SkipUpdateCheck) _logger.LogInformation("Update check skipped, using the embedded game hashes database");
+                if (!downloadAllowed) _logger.LogInformation("Central game hashes database download is disabled by settings, using the embedded database");
                 else _logger.LogWarning("Failed to fetch latest release manifest, defaulting to embedded game hashes database which may be out-of-date");
                 SetCurrent(OpenDb(embeddedDatabaseInfo.Value));
                 return;
@@ -275,7 +283,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             Debug.Assert(latestReleaseManifest is not null, "should've returned if we didn't have a manifest");
             if (embeddedDatabaseInfo.HasValue)
             {
-                existingDatabases = ExistingDBs().ToArray();
+                existingDatabases = Readable();
                 Debug.Assert(existingDatabases.Length >= 1, $"should have at least one database but found {existingDatabases.Length}");
             }
         }
@@ -845,21 +853,23 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             databaseInfo.Path.DeleteDirectory(true);
         }
 
-        var forceUpdate = false;
+        AbsolutePath? unreadable = null;
         try
         {
             if (existingDatabases.TryGetFirst(out var latestDatabase))
             {
+                unreadable = latestDatabase.Path;
                 SetCurrent(OpenDb(latestDatabase));
+                unreadable = null;
             }
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to open latest database, forcing update");
-            forceUpdate = true;
+            // Recovery re-checks for a release when downloads are allowed; with them off it falls back to the embedded database.
+            _logger.LogError(e, "Failed to open latest database, replacing it");
         }
 
-        await CheckForUpdateCore(forceUpdate: forceUpdate, cancellationToken);
+        await CheckForUpdateCore(forceUpdate: unreadable is not null, cancellationToken, unreadable: unreadable);
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
