@@ -16,7 +16,7 @@ internal class SteamLocator : IGameLocator
 {
     private readonly ILogger _logger;
     private readonly IFileSystem _fileSystem;
-    private readonly SteamHandler _handler;
+    private readonly GameFinder.RegistryUtils.IRegistry? _registry;
     private readonly FrozenDictionary<uint, IGameData> _registeredGames;
 
     private static readonly GameStore Store = GameStore.Steam;
@@ -26,11 +26,7 @@ internal class SteamLocator : IGameLocator
         _logger = loggerFactory.CreateLogger<SteamLocator>();
         _fileSystem = fileSystem;
 
-        _handler = new SteamHandler(
-            fileSystem: fileSystem,
-            registry: registry,
-            logger: loggerFactory.CreateLogger<SteamHandler>()
-        );
+        _registry = registry;
 
         _registeredGames = games
             .SelectMany(game => game.StoreIdentifiers.SteamAppIds, (game, storeIdentifier) => new KeyValuePair<uint, IGameData>(storeIdentifier, game))
@@ -39,14 +35,8 @@ internal class SteamLocator : IGameLocator
 
     public IEnumerable<GameLocatorResult> Locate()
     {
-        foreach (var result in _handler.FindAllGames())
+        foreach (var gameFinderGame in FindAllGames())
         {
-            if (result.TryPickT1(out var errorMessage, out var gameFinderGame))
-            {
-                _logger.LogWarning("Error locating games: {ErrorMessage}", errorMessage.Message);
-                continue;
-            }
-
             var storeIdentifier = gameFinderGame.AppId.Value;
             _logger.LogDebug("Found game '{GameName}' with store identifier '{StoreIdentifier}'", gameFinderGame.Name, storeIdentifier);
 
@@ -90,6 +80,81 @@ internal class SteamLocator : IGameLocator
             };
         }
     }
+
+    /// <summary>
+    /// Walks every library folder in <c>libraryfolders.vdf</c>, as GameFinder's <c>SteamHandler.FindAllGames</c> does,
+    /// but keeps a library that cannot be read from taking the others with it. The handler is an iterator, so one
+    /// exception ends the whole enumeration. A library on a drive that is unplugged behind an automount fails with
+    /// an <see cref="IOException"/> such as ENODEV rather than reporting that the path is missing.
+    /// </summary>
+    private IEnumerable<SteamGame> FindAllGames()
+    {
+        AbsolutePath steamPath;
+        LibraryFoldersManifest libraryFolders;
+        try
+        {
+            if (!SteamLocationFinder.TryFindSteam(_fileSystem, _registry, _logger, out steamPath)) return [];
+
+            var libraryFoldersFilePath = SteamLocationFinder.GetLibraryFoldersFilePath(steamPath);
+            var parsed = LibraryFoldersManifestParser.ParseManifestFile(libraryFoldersFilePath);
+            if (parsed.IsFailed)
+            {
+                _logger.LogWarning("Failed to parse library folders file '{FilePath}': {Errors}", libraryFoldersFilePath, parsed.Errors);
+                return [];
+            }
+
+            libraryFolders = parsed.Value;
+        }
+        catch (Exception e) when (IsStorageFailure(e))
+        {
+            _logger.LogWarning(e, "Could not read Steam's library folders");
+            return [];
+        }
+
+        return libraryFolders.SelectMany(library => ReadLibrary(steamPath, library));
+    }
+
+    private IEnumerable<SteamGame> ReadLibrary(AbsolutePath steamPath, LibraryFolder library)
+    {
+        try
+        {
+            if (!_fileSystem.DirectoryExists(library.Path))
+            {
+                _logger.LogWarning("Steam library folder at '{Path}' doesn't exist", library.Path);
+                return [];
+            }
+
+            var games = new List<SteamGame>();
+            foreach (var manifestPath in library.EnumerateAppManifestFilePaths().ToArray())
+            {
+                // One unreadable manifest must not hide the rest of the library.
+                try
+                {
+                    var manifest = AppManifestParser.ParseManifestFile(manifestPath);
+                    if (manifest.IsFailed)
+                    {
+                        _logger.LogWarning("Failed to parse app manifest file '{Path}': {Errors}", manifestPath, manifest.Errors);
+                        continue;
+                    }
+
+                    games.Add(new SteamGame { SteamPath = steamPath, AppManifest = manifest.Value, LibraryFolder = library });
+                }
+                catch (Exception e) when (IsStorageFailure(e))
+                {
+                    _logger.LogWarning(e, "Skipping unreadable app manifest '{Path}'", manifestPath);
+                }
+            }
+
+            return games;
+        }
+        catch (Exception e) when (IsStorageFailure(e))
+        {
+            _logger.LogWarning(e, "Skipping Steam library folder '{Path}', which could not be read", library.Path);
+            return [];
+        }
+    }
+
+    private static bool IsStorageFailure(Exception e) => e is IOException or UnauthorizedAccessException;
 
     /// <summary>
     /// The appmanifest's update time (Steam writes it as <c>lastupdated</c>), or null when it has none. The .acf
