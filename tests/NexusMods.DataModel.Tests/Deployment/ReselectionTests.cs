@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Loadouts.Deployment;
+using NexusMods.StandardGameLocators.TestHelpers;
 using NexusMods.Abstractions.Loadouts.Exceptions;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
@@ -76,6 +78,22 @@ public class ReselectionTests(ITestOutputHelper helper) : AppliedGameTest<Resele
         var game = Plan.Roots.Single(r => r.Root == GameRoot);
         game.Backend.Should().Be(DeploymentBackendId.Copy);
         game.Chosen.Should().BeTrue();
+        Identity(ModFile).Should().Be(before, "a reset would have deleted the file and extracted it again");
+        (await DescribeGameFolder()).Should().Be(applied);
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task AnUncoveredBuildKeepsItsBackendAndTheApplyStillRuns()
+    {
+        var (loadout, applied) = await AppliedWithCopy();
+        var before = Identity(ModFile);
+        Selector.UseChain = true;
+        ((StubbedFileHasherService)ServiceProvider.GetRequiredService<IFileHashesService>()).CoversEveryBuild = false;
+
+        var act = () => SynchronizerService.Synchronize(loadout.LoadoutId);
+
+        await act.Should().NotThrowAsync("the move is skipped, the apply goes ahead with the backend the root has");
+        Plan.Roots.Should().OnlyContain(r => r.Backend == DeploymentBackendId.Copy, "moving would have reset the folder by a vanilla list that does not cover the build");
         Identity(ModFile).Should().Be(before, "a reset would have deleted the file and extracted it again");
         (await DescribeGameFolder()).Should().Be(applied);
     }

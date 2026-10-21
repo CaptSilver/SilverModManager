@@ -2,7 +2,10 @@ using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Loadouts.Deployment;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.StandardGameLocators.TestHelpers;
 using NexusMods.Games.TestFramework;
 using NexusMods.Paths;
 using NexusMods.Sdk.FileStore;
@@ -56,6 +59,21 @@ public class ChangeDeploymentBackendTests(ITestOutputHelper helper) : AStubbedGa
         changed.Should().BeTrue();
         Recording.Calls.Should().NotContain(c => c.Phase == "Delete");
         Recording.Calls.Should().Contain(("Extract", FileA));
+        File.ReadAllText(OnDisk(FileA).GetFullPath()).Should().Be("a content");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task SwitchingBackendOnAnUncoveredBuildIsRefusedAndLeavesTheFolderAndRowAlone()
+    {
+        await ApplyLoadoutWithFile();
+        ((StubbedFileHasherService)ServiceProvider.GetRequiredService<IFileHashesService>()).CoversEveryBuild = false;
+        var backendBefore = Plans.Load(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation).GameInstallMetadataId).BackendFor(GameRoot);
+
+        var act = async () => await SynchronizerService.ChangeDeploymentBackend(GameInstallation, GameRoot, RecordingDeploymentBackend.BackendId, chosen: true);
+
+        await act.Should().ThrowAsync<SynchronizerPreflightException>();
+        Recording.Calls.Should().BeEmpty();
+        Plans.Load(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation).GameInstallMetadataId).BackendFor(GameRoot).Should().Be(backendBefore);
         File.ReadAllText(OnDisk(FileA).GetFullPath()).Should().Be("a content");
     }
 

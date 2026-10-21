@@ -123,6 +123,37 @@ internal static class HashRows
         return result[baseline.Id];
     }
 
+    /// <summary>
+    /// A baseline of the given kind that owns the manifest <paramref name="manifestId"/>, the way a build from
+    /// depot manifests links them. Without <paramref name="files"/> it classified nothing.
+    /// </summary>
+    public static async Task AddBaselineOwningManifest(IConnection store, LocalBaselineKind kind, ulong manifestId, params (string Path, string Content)[] files)
+    {
+        var hashes = await HashAll(files);
+        using var tx = store.BeginTransaction();
+        var pathIds = AddPaths(tx, hashes);
+        var manifest = new SteamManifest.New(tx)
+        {
+            AppId = AppId.From(1u),
+            DepotId = DepotId.From(2u),
+            ManifestId = ManifestId.From(manifestId),
+            Name = "public",
+            FilesIds = pathIds,
+        };
+        _ = new LocalBaseline.New(tx)
+        {
+            Store = GameStore.Steam,
+            GamePath = "/games/test",
+            LocatorIds = [manifestId.ToString()],
+            Kind = kind,
+            VersionName = "",
+            BuiltAt = DateTimeOffset.UnixEpoch,
+            FilesIds = pathIds,
+            ManifestsIds = [manifest.Id],
+        };
+        await tx.Commit();
+    }
+
     public static readonly NexusModsGameId GameId = NexusModsGameId.From(1234);
 
     /// <summary>An install of <paramref name="gamePath"/> from <paramref name="store"/> and a loadout of it carrying <paramref name="locatorIds"/>.</summary>

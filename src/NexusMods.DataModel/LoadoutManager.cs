@@ -23,6 +23,7 @@ using NexusMods.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.MnemonicDB.Abstractions.Internals;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Library;
@@ -280,6 +281,15 @@ internal partial class LoadoutManager : ILoadoutManager
     {
         RunningGameGuard.ThrowIfRunning(_serviceProvider, Loadout.Load(_connection.Db, loadoutId));
 
+        // Refuse before the loadout is hidden: a refusal later on would leave it hidden but not deleted.
+        if (deactivateIfActive)
+        {
+            var toDelete = Loadout.Load(_connection.Db, loadoutId);
+            var deleteMetadata = GameInstallMetadata.Load(_connection.Db, toDelete.InstallationId);
+            if (GameInstallMetadata.LastSyncedLoadout.TryGetValue(deleteMetadata, out var activeId) && activeId == loadoutId.Value)
+                EnsureBuildCovered(toDelete.InstallationInstance);
+        }
+
         {
             using var tx1 = _connection.BeginTransaction();
             tx1.Add(loadoutId, Loadout.LoadoutKind, LoadoutKind.Deleted);
@@ -330,6 +340,9 @@ internal partial class LoadoutManager : ILoadoutManager
 
         if (!metadata.Contains(GameInstallMetadata.LastSyncedLoadout)) return;
 
+        // Before the synchronize below, which writes: a refused reset should leave everything as it was.
+        EnsureBuildCovered(installation);
+
         // Synchronize the last applied loadout, so we don't lose any changes
         await synchronizer.Synchronize(Loadout.Load(_connection.Db, metadata.LastSyncedLoadout));
 
@@ -342,6 +355,33 @@ internal partial class LoadoutManager : ILoadoutManager
         }
 
         await synchronizer.ResetToOriginalGameState(installation, locatorIds);
+    }
+
+    private static void EnsureBuildCovered(GameInstallation installation)
+    {
+        installation.GetGame().Synchronizer.EnsureBuildCovered(installation, installation.LocatorResult.LocatorIds.Distinct().ToArray());
+    }
+
+    public async Task CleanGameFolder(Loadout.ReadOnly loadout)
+    {
+        var installation = loadout.InstallationInstance;
+        EnsureBuildCovered(installation);
+
+        loadout = loadout.Rebase();
+        using (var tx = _connection.BeginTransaction())
+        {
+            // Remove items from External Changes
+            if (LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var overridesGroup))
+            {
+                foreach (var entry in overridesGroup.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
+                    tx.Delete(entry.Id, recursive: false);
+            }
+
+            await tx.Commit();
+        }
+
+        // Apply clean state to game folder
+        await installation.GetGame().Synchronizer.Synchronize(Loadout.Load(_connection.Db, loadout.LoadoutId));
     }
 
     public Optional<LoadoutId> GetCurrentlyActiveLoadout(GameInstallation installation)

@@ -58,6 +58,14 @@ public interface IFileHashesService
     public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore);
 
     /// <summary>
+    /// Whether the vanilla file list for these locator ids is the store's own description of every part of the
+    /// installed build. False when any id resolves to nothing, so <see cref="GetGameFiles"/> would silently leave
+    /// that part out and which paths it holds is unknown. A manifest in the local store counts only when a
+    /// baseline built from depot manifests that classified files owns it; a snapshot never does.
+    /// </summary>
+    public bool CoversInstalledBuild(LocatorIdsWithGameStore locatorIdsWithGameStore);
+
+    /// <summary>
     /// Tries to get a vanity version based on the locator IDs.
     /// </summary>
     public bool TryGetVanityVersion(LocatorIdsWithGameStore locatorIdsWithGameStore, out VanityVersion version);

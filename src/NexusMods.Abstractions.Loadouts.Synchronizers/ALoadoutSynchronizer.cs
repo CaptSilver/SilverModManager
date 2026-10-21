@@ -1321,10 +1321,20 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return new();
     }
 
+    /// <inheritdoc />
+    public void EnsureBuildCovered(GameInstallation installation, LocatorId[] locatorIds)
+    {
+        if (_fileHashService.CoversInstalledBuild((installation.LocatorResult.Store, locatorIds))) return;
+
+        throw new SynchronizerPreflightException(
+            $"{installation.Game.DisplayName}'s installed build is not in the app's game file data yet, so the app cannot tell the game's own files from added ones and will not clean the folder. Existing files are kept as External Changes.");
+    }
+
     public async Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds)
     {
         // Same reasoning as in Synchronize: the re-index below writes before RunActions would refuse.
         await Preflight(installation);
+        EnsureBuildCovered(installation, locatorIds);
 
         var gameState = _fileHashService.GetGameFiles((installation.LocatorResult.Store, locatorIds));
         var metadata = await ReindexState(installation);

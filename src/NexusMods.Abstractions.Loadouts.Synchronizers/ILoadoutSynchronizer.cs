@@ -133,7 +133,19 @@ public interface ILoadoutSynchronizer
     Task<Sdk.Games.GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation);
     ValueTask BuildProcessRun(Loadout.ReadOnly loadout, Sdk.Games.GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Resets the game folder to the vanilla file list of <paramref name="locatorIds"/>, deleting every indexed file
+    /// outside it. Throws <see cref="SynchronizerPreflightException"/> without touching anything when
+    /// <see cref="EnsureBuildCovered"/> does.
+    /// </summary>
     Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds);
+
+    /// <summary>
+    /// Throws <see cref="SynchronizerPreflightException"/> when the file hashes data does not describe every part of
+    /// the build with these locator ids. The vanilla file list is all that tells the game's own files from added
+    /// ones, so anything that deletes files by it (a reset, cleaning the folder) must pass this first.
+    /// </summary>
+    void EnsureBuildCovered(GameInstallation installation, LocatorId[] locatorIds);
 
     /// <summary>
     /// Returns true if the path should be ignored by the synchronizer when backing up or restoring files. This does not mean

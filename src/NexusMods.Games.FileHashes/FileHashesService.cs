@@ -592,6 +592,66 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         }
     }
 
+    /// <inheritdoc />
+    public bool CoversInstalledBuild(LocatorIdsWithGameStore locatorIdsWithGameStore)
+    {
+        var (gameStore, locatorIds) = locatorIdsWithGameStore;
+        if (locatorIds.Length == 0) return false;
+
+        if (gameStore == GameStore.Steam)
+        {
+            return locatorIds.All(id => ulong.TryParse(id.Value, out var parsed)
+                && TryFindSteamManifest(ManifestId.From(parsed), out var manifest)
+                && IsFromTheStoresOwnData(manifest));
+        }
+
+        if (gameStore == GameStore.GOG) return CoversGogBuild(locatorIds);
+
+        if (gameStore == GameStore.EGS)
+        {
+            return locatorIds.All(id => TryFindEpicBuild(ManifestHash.FromUnsanitized(id.Value), out var build)
+                && !IsInLocalStore(build.Db));
+        }
+
+        return false;
+    }
+
+    // Same split GetGameFiles makes: ids that are builds, and the rest taken as products of those builds.
+    private bool CoversGogBuild(LocatorId[] locatorIds)
+    {
+        List<GogBuild.ReadOnly> builds = [];
+        List<ProductId> others = [];
+        foreach (var id in locatorIds)
+        {
+            if (!ulong.TryParse(id.Value, out var parsed)) return false;
+            if (TryFindGogBuild(BuildId.From(parsed), out var build)) builds.Add(build);
+            else others.Add(ProductId.From(parsed));
+        }
+
+        // The local store never holds GOG rows the app wrote itself, so a hit there is not the store's own data.
+        if (builds.Count == 0 || builds.Any(b => IsInLocalStore(b.Db))) return false;
+        return others.All(product => builds.Any(b => b.ProductId == product || b.Depots.Any(d => d.ProductId == product)));
+    }
+
+    private bool IsInLocalStore(IDb db) => ReferenceEquals(db.Connection, _local.Connection);
+
+    // A manifest in the downloaded database comes from the store. One in the local store counts only through a
+    // baseline built from depot manifests that classified files: a snapshot is whatever was on disk, and a
+    // baseline that classified nothing says nothing about the folder.
+    private bool IsFromTheStoresOwnData(SteamManifest.ReadOnly manifest)
+    {
+        if (!IsInLocalStore(manifest.Db)) return true;
+
+        foreach (var baseline in LocalBaseline.All(manifest.Db))
+        {
+            if (!baseline.ManifestsIds.Contains(manifest.Id)) continue;
+            if (baseline.Kind == LocalBaselineKind.Snapshot) continue;
+            if (baseline.FilesIds.Count > 0 || NonVanillaFile.FindByBaseline(manifest.Db, baseline.Id).Any()) return true;
+        }
+
+        return false;
+    }
+
     // File lookups ask the local store first, per id: it is written from the install's own data, so the
     // manifest it holds for an id describes the disk better than the downloaded one. An id only the
     // downloaded database knows is still answered by it.

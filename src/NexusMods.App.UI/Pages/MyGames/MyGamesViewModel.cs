@@ -292,6 +292,7 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         // Check if there are external changes
         var changeEntries = await GetExternalChangesItems(loadout);
         vm.State = GameWidgetState.ManagedGame;
+        var buildCovered = BuildIsCovered(installation);
         
         // Offer to clean them up
         if (changeEntries.Length > 0)
@@ -301,7 +302,8 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                 doNothing,
                 clean,
                 changeEntries,
-                installation
+                installation,
+                buildCovered
             );
             
             if (result == revert)
@@ -321,7 +323,15 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
             if (result == clean)
             {
                 vm.State = GameWidgetState.AddingGame;
-                await CleanGameFolder(installation, loadout);
+                try
+                {
+                    await _loadoutManager.CleanGameFolder(loadout);
+                }
+                catch (SynchronizerPreflightException e)
+                {
+                    // Nothing was deleted; the files stay as External Changes and the game stays managed.
+                    await ShowRefusalDialog($"Can't clean the {installation.Game.DisplayName} folder", e.Message);
+                }
                 vm.State = GameWidgetState.ManagedGame;
             }
             
@@ -345,42 +355,49 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         ButtonDefinitionId doNothing,
         ButtonDefinitionId clean,
         LoadoutItemWithTargetPath.ReadOnly[] changeEntries,
-        GameInstallation installation)
+        GameInstallation installation,
+        bool buildCovered)
     {
+        var prompt = CleanFolderPrompt.For(buildCovered, changeEntries.Length, installation.Game.DisplayName);
         var markdownVm = _serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
-        markdownVm.Contents = $"""
-            We found {changeEntries.Length} files in the game folder that aren’t part of a clean install. To avoid conflicts with mods, **we recommend starting with a clean folder**.
-            #### Important
-            If you keep existing files (not recommended):
-            - The existing files will be placed in **External Changes**.
-            - Files in External Changes **override any mods you install later**.
-            - If you stop managing this game or uninstall the app, those **files will be permanently removed**.
-            """;
-        
+        markdownVm.Contents = prompt.Markdown;
+
+        var keep = new DialogButtonDefinition("Keep existing files", doNothing, ButtonAction.Reject);
         var dialog = DialogFactory.CreateStandardDialog(
-            title: $"Your {installation.Game.DisplayName} folder isn't a clean install",
+            title: prompt.Title,
             new StandardDialogParameters()
             {
                 Markdown = markdownVm,
             },
-            buttonDefinitions:
-            [
-                new DialogButtonDefinition("Cancel", revert),
-                new DialogButtonDefinition("Keep existing files", doNothing, ButtonAction.Reject),
-                new DialogButtonDefinition("Clean folder", clean, ButtonAction.Accept, ButtonStyling.Primary),
-            ]
+            buttonDefinitions: prompt.OffersClean
+                ?
+                [
+                    new DialogButtonDefinition("Cancel", revert),
+                    keep,
+                    new DialogButtonDefinition("Clean folder", clean, ButtonAction.Accept, ButtonStyling.Primary),
+                ]
+                :
+                [
+                    new DialogButtonDefinition("Cancel", revert),
+                    keep,
+                ]
         );
         
         return (await _windowManager.ShowDialog(dialog, DialogWindowType.Modal)).ButtonId;
     }
     
-    private async Task ShowCannotAddGameDialog(GameInstallation installation, string message)
+    private Task ShowCannotAddGameDialog(GameInstallation installation, string message)
+    {
+        return ShowRefusalDialog($"{installation.Game.DisplayName} can't be added yet", message);
+    }
+
+    private async Task ShowRefusalDialog(string title, string message)
     {
         var markdownVm = _serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
         markdownVm.Contents = message;
 
         var dialog = DialogFactory.CreateStandardDialog(
-            title: $"{installation.Game.DisplayName} can't be added yet",
+            title: title,
             new StandardDialogParameters { Markdown = markdownVm },
             buttonDefinitions: [new DialogButtonDefinition("OK", ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Primary)]
         );
@@ -416,25 +433,17 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         return (await _windowManager.ShowDialog(dialog, DialogWindowType.Modal)).ButtonId == ButtonDefinitionId.Accept;
     }
 
-    private async Task CleanGameFolder(GameInstallation installation, Loadout.ReadOnly loadout)
+    private bool BuildIsCovered(GameInstallation installation)
     {
-        var db = _connection.Db;
-        var tx = _connection.BeginTransaction();
-        var changeEntries = await GetExternalChangesItems(loadout.Rebase()); 
-        
-        // Remove items from External Changes mod
-        foreach (var entry in changeEntries)
+        try
         {
-            tx.Delete(entry.Id, recursive: false);
+            installation.GetGame().Synchronizer.EnsureBuildCovered(installation, installation.LocatorResult.LocatorIds.Distinct().ToArray());
+            return true;
         }
-        await tx.Commit();
-
-        loadout = loadout.Rebase();
-        var game = installation.GetGame();
-        var syncer = game.Synchronizer;
-        
-        // Apply clean state to game folder
-        await syncer.Synchronize(Loadout.Load(db, loadout));
+        catch (SynchronizerPreflightException)
+        {
+            return false;
+        }
     }
 
     private async Task<Loadout.ReadOnly> ManageGame(GameInstallation installation)

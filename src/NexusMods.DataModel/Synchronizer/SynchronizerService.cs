@@ -192,6 +192,22 @@ public class SynchronizerService : ISynchronizerService
             }
         }
 
+        if (moves.Count > 0 && _loadoutManager.Value.GetCurrentlyActiveLoadout(installation).HasValue)
+        {
+            // A move resets the game with the old backend first, and a reset is only safe when the vanilla file list
+            // covers the build. The game stays on the backend it has; the apply goes ahead with it.
+            try
+            {
+                var synchronizer = installation.GetGame().Synchronizer;
+                synchronizer.EnsureBuildCovered(installation, installation.LocatorResult.LocatorIds.Distinct().ToArray());
+            }
+            catch (SynchronizerPreflightException e)
+            {
+                _logger.LogWarning("Not moving the deployment roots of {Game} to another backend: {Reason}", installation.Game.DisplayName, e.Message);
+                return;
+            }
+        }
+
         // The apply this is part of puts the files back.
         if (moves.Count > 0) await MoveRoots(installation, moves, reapplyLastLoadout: false);
     }

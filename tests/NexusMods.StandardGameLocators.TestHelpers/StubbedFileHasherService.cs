@@ -163,6 +163,19 @@ public class StubbedFileHasherService : IFileHashesService
     }
 
     /// <summary>
+    /// Set to false to make the service answer as if the central database had no rows for any build, the way
+    /// it does for a game version released after the database was built.
+    /// </summary>
+    public bool CoversEveryBuild { get; set; } = true;
+
+    // The ids GetGameFiles can answer: the stubbed states and the Steam id the stubbed Steam games use.
+    public bool CoversInstalledBuild(LocatorIdsWithGameStore locatorIdsWithGameStore)
+    {
+        var (_, locatorIds) = locatorIdsWithGameStore;
+        return CoversEveryBuild && locatorIds.Length > 0 && locatorIds.All(id => _versionFiles.ContainsKey(id) || id == "3976631895");
+    }
+
+    /// <summary>
     /// The installations <see cref="EnsureLocalBaseline"/> was asked about, with the number of loadouts that
     /// existed at the time of the call.
     /// </summary>
