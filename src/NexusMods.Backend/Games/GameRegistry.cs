@@ -5,6 +5,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 
@@ -91,38 +92,87 @@ internal class GameRegistry : IGameRegistry
     public bool TryGetGameInstallation(Loadout.ReadOnly loadout, [NotNullWhen(true)] out GameInstallation? gameInstallation)
     {
         var metadata = loadout.Installation;
-        foreach (var installation in LocateGameInstallations())
-        {
-            if (installation.Game.NexusModsGameId != metadata.GameId) continue;
-            if (installation.LocatorResult.Store != metadata.Store) continue;
+        gameInstallation = null;
 
-            gameInstallation = installation;
+        // Rows no migration could key (a game this build never knew) have no game to find.
+        if (!GameInstallMetadata.Game.TryGetValue(metadata, out var gameId)) return false;
+
+        var candidates = LocateGameInstallations()
+            .Where(installation => installation.Game.GameId == gameId && installation.LocatorResult.Store == metadata.Store)
+            .ToArray();
+
+        switch (candidates.Length)
+        {
+            case 0:
+                return false;
+            case 1:
+                gameInstallation = candidates[0];
+                return true;
+        }
+
+        // Several installs of one game from one store: the stored folder says which one the loadout is on.
+        foreach (var candidate in candidates)
+        {
+            if (!InstallPaths.AreSameFolder(metadata.Path, InstallFolder(candidate))) continue;
+            gameInstallation = candidate;
             return true;
         }
 
-        gameInstallation = null;
+        _logger.LogWarning("Loadout `{Loadout}` is on `{Path}`, which none of the {Count} installs of {Game} from {Store} is at", loadout.Name, metadata.Path, candidates.Length, candidates[0].Game.DisplayName, metadata.Store);
         return false;
     }
 
     public bool TryGetMetadata(GameInstallation installation, out GameInstallMetadata.ReadOnly result)
     {
-        // TODO: use game id instead of nexus mods game id
-        var gameId = installation.Game.NexusModsGameId;
-        if (!gameId.HasValue)
-        {
-            result = default(GameInstallMetadata.ReadOnly);
-            return false;
-        }
+        result = default(GameInstallMetadata.ReadOnly);
 
-        var allMetadata = GameInstallMetadata.FindByGameId(_connection.Db, gameId.Value);
-        foreach (var metadata in allMetadata)
+        var gameId = installation.Game.GameId;
+        var store = installation.LocatorResult.Store;
+        var rows = GameInstallMetadata.FindByGame(_connection.Db, gameId)
+            .Where(row => row.Store == store)
+            .ToArray();
+
+        // A single row is the install even if its folder changed: Steam moves games between libraries and the
+        // loadouts on the row have to follow. It is only another install's row when that other install is
+        // located right now, at the folder the row names.
+        var ownRows = rows.Where(row => !IsClaimedByAnotherInstall(row, installation)).ToArray();
+
+        if (ownRows.Length == 1)
         {
-            if (metadata.Store != installation.LocatorResult.Store) continue;
-            result = metadata;
+            result = ownRows[0];
             return true;
         }
 
-        result = default(GameInstallMetadata.ReadOnly);
+        foreach (var row in ownRows)
+        {
+            if (!InstallPaths.AreSameFolder(row.Path, InstallFolder(installation))) continue;
+            result = row;
+            return true;
+        }
+
         return false;
+    }
+
+    private bool IsClaimedByAnotherInstall(GameInstallMetadata.ReadOnly row, GameInstallation installation)
+    {
+        var store = installation.LocatorResult.Store;
+        var folder = InstallFolder(installation);
+
+        foreach (var other in LocateGameInstallations())
+        {
+            if (ReferenceEquals(other, installation) || other.Equals(installation)) continue;
+            if (other.Game.GameId != installation.Game.GameId || other.LocatorResult.Store != store) continue;
+            if (InstallPaths.AreSameFolder(row.Path, InstallFolder(other)) && !InstallPaths.AreSameFolder(row.Path, folder)) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The folder a metadata row records for an install: its game location, as written by the loadout manager.
+    /// </summary>
+    private static AbsolutePath InstallFolder(GameInstallation installation)
+    {
+        return installation.Locations.TryGetValue(LocationId.Game, out var descriptor) ? descriptor.Path : installation.LocatorResult.Path;
     }
 }

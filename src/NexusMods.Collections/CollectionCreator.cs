@@ -422,7 +422,9 @@ public static class CollectionCreator
     {
         Debug.Assert(group.IsValid());
 
-        var gameId = group.AsLoadoutItem().Loadout.Installation.GameId;
+        var installation = group.AsLoadoutItem().Loadout.Installation;
+        if (!Sdk.Games.GameInstallMetadata.GameId.TryGetValue(installation, out var gameId))
+            throw new InvalidOperationException($"{installation.Name} has no Nexus Mods id, so a Nexus collection cannot be made for it");
         var gameDomain = mappingCache[gameId];
 
         var collectionMods = new List<CollectionMod>();

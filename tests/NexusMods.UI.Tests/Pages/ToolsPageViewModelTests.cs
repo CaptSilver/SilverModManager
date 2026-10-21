@@ -35,6 +35,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
         {
             Store = installation.LocatorResult.Store,
             Path = installation.Locations[LocationId.Game].Path.ToString(),
+            Game = installation.Game.GameId,
             GameId = installation.Game.NexusModsGameId.Value,
             Name = installation.Game.DisplayName,
         };

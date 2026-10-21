@@ -34,6 +34,7 @@ public class LoadoutCardRenameTests(IServiceProvider provider) : AUiTest(provide
             Path = installation.LocatorResult.Path.ToString(),
             Name = installation.Game.DisplayName,
             Store = installation.LocatorResult.Store,
+            Game = installation.Game.GameId,
             GameId = installation.Game.NexusModsGameId.Value,
         };
         var loadouts = names.Select(name => new Loadout.New(tx)

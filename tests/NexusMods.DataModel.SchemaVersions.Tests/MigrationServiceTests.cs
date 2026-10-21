@@ -7,7 +7,7 @@ namespace NexusMods.DataModel.SchemaVersions.Tests;
 public class MigrationServiceTests
 {
     [Fact]
-    public async Task Test_InitialSetupWithoutMigrationsStampsVersionZero()
+    public async Task Test_InitialSetupStampsTheNewestMigration()
     {
         using var folder = new OnDiskDataFolder();
         await using var provider = folder.CreateProvider();
@@ -17,6 +17,6 @@ public class MigrationServiceTests
         await migrations.MigrateAll();
 
         var connection = provider.GetRequiredService<IConnection>();
-        SchemaVersion.All(connection.Db).Single().CurrentVersion.Value.Should().Be(0);
+        SchemaVersion.All(connection.Db).Single().CurrentVersion.Should().Be(provider.GetServices<MigrationDefinition>().Max(m => m.Id));
     }
 }

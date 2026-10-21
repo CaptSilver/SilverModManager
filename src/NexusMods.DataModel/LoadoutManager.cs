@@ -63,9 +63,12 @@ internal partial class LoadoutManager : ILoadoutManager
             {
                 Store = installation.LocatorResult.Store,
                 Path = installation.Locations[LocationId.Game].Path.ToString(),
-                GameId = installation.Game.NexusModsGameId.Value,
+                Game = installation.Game.GameId,
                 Name = installation.Game.DisplayName,
             };
+
+            // A game without a Nexus id simply has none stored.
+            if (installation.Game.NexusModsGameId.HasValue) newMetadata.GameId = installation.Game.NexusModsGameId.Value;
 
             var metadataResult = await metadataTx.Commit();
             metadata = metadataResult.Remap(newMetadata);

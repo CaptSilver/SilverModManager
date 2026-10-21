@@ -11,6 +11,8 @@ public static class Services
         services.AddTransient<MigrationService>();
 
         // Migrations go here, numbered from _0001. Existing databases are at version 0 until the first one runs.
+        services.AddMigration<_0001_KeyInstallsByGameId>();
+
         return services;
     }
 

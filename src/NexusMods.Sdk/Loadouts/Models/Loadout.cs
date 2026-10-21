@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.Attributes;
@@ -70,14 +71,21 @@ public partial class Loadout : IModelDefinition
 
     public partial struct ReadOnly
     {
-        public IGameData Game
+        public IGameData Game => TryGetGame(out var game)
+            ? game
+            : throw new InvalidOperationException($"Loadout `{Name}` is on an installation whose game is not known to this build");
+
+        /// <summary>
+        /// Finds the game this loadout is for by the game's own id. Fails for an installation that has no game id
+        /// (written before installations were keyed by it, and not recognised since) or whose game is not registered.
+        /// </summary>
+        public bool TryGetGame([NotNullWhen(true)] out IGameData? game)
         {
-            get
-            {
-                var gameId = Installation.GameId;
-                var games = Db.Connection.ServiceProvider.GetServices<IGameData>();
-                return games.First(game => game.NexusModsGameId == gameId);
-            }
+            game = null;
+            if (!GameInstallMetadata.Game.TryGetValue(Installation, out var gameId)) return false;
+
+            game = Db.Connection.ServiceProvider.GetServices<IGameData>().FirstOrDefault(candidate => candidate.GameId == gameId);
+            return game is not null;
         }
 
         /// <summary>

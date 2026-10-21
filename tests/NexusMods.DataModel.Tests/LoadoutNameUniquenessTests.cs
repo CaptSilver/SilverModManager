@@ -141,6 +141,7 @@ public class LoadoutNameUniquenessTests(ITestOutputHelper helper) : ACyberpunkIs
             Path = $"/tmp/another-installation-{Guid.NewGuid()}",
             Name = GameInstallation.Game.DisplayName,
             Store = otherStore,
+            Game = GameInstallation.Game.GameId,
             GameId = GameInstallation.Game.NexusModsGameId.Value,
         };
         var loadout = new Loadout.New(tx)

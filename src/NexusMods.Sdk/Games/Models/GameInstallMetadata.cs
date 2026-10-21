@@ -14,11 +14,8 @@ public partial class GameInstallMetadata : IModelDefinition
 {
     private const string Namespace = "SilverModManager.Loadouts.GameMetadata";
 
-    // TODO: replace nexus mods game id with actual game id
-    /// <summary>
-    /// The game's unique id.
-    /// </summary>
-    public static readonly NexusModsGameIdAttribute GameId = new(Namespace, nameof(GameId)) { IsIndexed = true };
+    // The first attribute is the one All() and the other model-wide lookups key on, so it has to be
+    // one every row has: the id attributes below are optional.
 
     /// <summary>
     /// The name of the store the game is from
@@ -29,6 +26,22 @@ public partial class GameInstallMetadata : IModelDefinition
     /// The path to the game's installation directory.
     /// </summary>
     public static readonly StringAttribute Path = new(Namespace, nameof(Path)) { IsIndexed = true };
+
+    /// <summary>
+    /// The game's own id. Installations and the loadouts on them are found by this, not by the Nexus id:
+    /// not every game has a Nexus id, and some games share one (Skyrim SE and Skyrim VR).
+    /// </summary>
+    /// <remarks>
+    /// Optional only because rows written before this attribute existed lack it. A migration fills it in for
+    /// the games the app knew then; a row it cannot place stays without one and matches no game.
+    /// </remarks>
+    public static readonly GameIdAttribute Game = new(Namespace, nameof(Game)) { IsIndexed = true, IsOptional = true };
+
+    /// <summary>
+    /// The game's id on Nexus Mods, for the parts of the app that talk to Nexus. Absent for a game that
+    /// has none.
+    /// </summary>
+    public static readonly NexusModsGameIdAttribute GameId = new(Namespace, nameof(GameId)) { IsIndexed = true, IsOptional = true };
 
     // TODO: remove
     /// <summary>

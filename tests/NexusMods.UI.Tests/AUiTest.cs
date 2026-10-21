@@ -45,6 +45,7 @@ public class AUiTest
             Path = installation.LocatorResult.Path.ToString(),
             Name = installation.Game.DisplayName,
             Store = store,
+            Game = installation.Game.GameId,
             GameId = installation.Game.NexusModsGameId.Value,
         };
         var loadout = new Loadout.New(tx)
