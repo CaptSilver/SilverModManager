@@ -98,6 +98,7 @@ public static class DependencyInjectionHelper
             .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with
             {
                 HashDatabaseLocation = new ConfigurablePath(baseKnownPath, $"{baseDirectory}/FileHashes"),
+                UseInMemoryLocalBaseline = true,
             })
             .AddSettingsManager()
             .AddFileExtractors();

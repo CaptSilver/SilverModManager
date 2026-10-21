@@ -4,6 +4,7 @@ using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Settings;
 using NexusMods.StandardGameLocators.TestHelpers;
+using NexusMods.Games.FileHashes;
 
 namespace NexusMods.DataModel.SchemaVersions.Tests;
 
@@ -26,6 +27,7 @@ public class Startup
 
         container
             .AddApp(startupMode: mode)
+            .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with { UseInMemoryLocalBaseline = true, })
             .OverrideSettingsForTests<DataModelSettings>(settings => settings with
                 {
                     UseInMemoryDataModel = true,

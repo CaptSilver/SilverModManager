@@ -30,6 +30,7 @@ public class HeadlessHostProfileTests
             .ConfigureServices(services => services
                 .AddApp(addStandardGameLocators: false, startupMode: mode)
                 .Validate()
+                .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with { UseInMemoryLocalBaseline = true, })
                 .OverrideSettingsForTests<DataModelSettings>(settings => settings with
                 {
                     UseInMemoryDataModel = true,

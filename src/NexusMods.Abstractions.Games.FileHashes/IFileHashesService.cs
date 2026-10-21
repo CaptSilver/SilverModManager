@@ -16,9 +16,22 @@ namespace NexusMods.Abstractions.Games.FileHashes;
 public interface IFileHashesService
 {
     /// <summary>
-    /// The current file hashes database, will throw an error if not initialized via GetFileHashesDb first.
+    /// The current file hashes database. While no downloaded or embedded database is connected this is
+    /// <see cref="Local"/>, so it always returns something readable.
     /// </summary>
     public IDb Current { get; }
+
+    /// <summary>
+    /// The store this app writes itself, from the game's own install data. Always open, and read live:
+    /// every access returns the database as of the latest committed transaction.
+    /// </summary>
+    public IDb Local { get; }
+
+    /// <summary>
+    /// Every store a lookup has to consult: the local one first, then the downloaded or embedded database
+    /// when one is connected. Entity ids are never compared across these.
+    /// </summary>
+    public IReadOnlyList<IDb> Databases { get; }
 
     /// <summary>
     /// Get the file hashes database, downloading it if necessary

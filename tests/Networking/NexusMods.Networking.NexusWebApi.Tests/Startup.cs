@@ -41,6 +41,7 @@ public class Startup
             .AddFileExtractors()
             .AddFileHashes()
             .AddDataModel() // this is required because we're also using NMA integration
+            .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with { UseInMemoryLocalBaseline = true, })
             .OverrideSettingsForTests<DataModelSettings>(settings => settings with
             {
                 UseInMemoryDataModel = true,

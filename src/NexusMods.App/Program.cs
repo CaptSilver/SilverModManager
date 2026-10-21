@@ -16,6 +16,7 @@ using NexusMods.App.Commandline;
 using NexusMods.App.UI;
 using NexusMods.App.UI.Settings;
 using NexusMods.Backend;
+using NexusMods.Games.FileHashes;
 using NexusMods.CrossPlatform;
 using NexusMods.DataModel;
 using NexusMods.DataModel.SchemaVersions;
@@ -330,6 +331,7 @@ public class Program
             if (startupMode.IsAvaloniaDesigner)
             {
                 s.OverrideSettingsForTests<DataModelSettings>(settings => settings with { UseInMemoryDataModel = true, });
+                s.OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with { UseInMemoryLocalBaseline = true, });
             }
         })
         .ConfigureLogging((_, builder) => AddLogging(observableTarget, builder, loggingSettings, startupMode))

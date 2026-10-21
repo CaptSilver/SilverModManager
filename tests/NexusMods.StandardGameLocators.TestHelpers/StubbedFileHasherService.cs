@@ -24,6 +24,8 @@ public class StubbedFileHasherService : IFileHashesService
     private readonly IServiceProvider _provider;
     private DatomStore _datomStore;
     private Connection _connection;
+    private DatomStore? _localStore;
+    private Connection? _localConnection;
     private IDb? _current;
     private readonly IFileStore _fileStore;
     private readonly TemporaryFileManager _temporaryFileManager;
@@ -37,8 +39,23 @@ public class StubbedFileHasherService : IFileHashesService
         _versionFiles = new Dictionary<LocatorId, EntityId[]>();
     }
 
+    // Writable and empty, registered as "local_hashes" so queries that name the local store bind in graphs
+    // that never use the real service.
+    private IDb EnsureLocal()
+    {
+        if (_localConnection is null)
+        {
+            var backend = new MnemonicDB.Storage.RocksDbBackend.Backend();
+            _localStore = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), DatomStoreSettings.InMemory, backend);
+            _localConnection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), _localStore, _provider, [], prefix: "local_hashes", queryEngine: _provider.GetRequiredService<IQueryEngine>());
+        }
+
+        return _localConnection.Db;
+    }
+
     private async Task SetupDb()
     {
+        EnsureLocal();
         var backend = new MnemonicDB.Storage.RocksDbBackend.Backend();
         var settings = DatomStoreSettings.InMemory;
         _datomStore = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), settings, backend);
@@ -145,6 +162,10 @@ public class StubbedFileHasherService : IFileHashesService
     }
 
     public IDb Current => _current!;
+
+    public IDb Local => EnsureLocal();
+
+    public IReadOnlyList<IDb> Databases => [Local, Current];
 
     public bool TryGetVanityVersion(LocatorIdsWithGameStore locatorIdsWithGameStore, out VanityVersion version)
     {

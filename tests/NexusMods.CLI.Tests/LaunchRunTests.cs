@@ -8,6 +8,7 @@ using NexusMods.Sdk;
 using NexusMods.Sdk.Settings;
 using NexusMods.StandardGameLocators.TestHelpers;
 using NexusMods.DataModel;
+using NexusMods.Games.FileHashes;
 
 namespace NexusMods.CLI.Tests;
 
@@ -22,6 +23,7 @@ public class LaunchRunTests
             .ConfigureServices(services => services
                 .AddApp(addStandardGameLocators: false, startupMode: StartupMode.Parse(["run", "x", "--", "y"]))
                 .Validate()
+                .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with { UseInMemoryLocalBaseline = true, })
                 .OverrideSettingsForTests<DataModelSettings>(settings => settings with
                 {
                     UseInMemoryDataModel = true,

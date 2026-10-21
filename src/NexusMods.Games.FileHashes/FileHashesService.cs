@@ -38,6 +38,13 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonSerializerOptions;
     private readonly Dictionary<AbsolutePath, ConnectedDb> _databases;
+
+    /// <summary>
+    /// Databases <see cref="SetCurrent"/> replaced: their connections are already disposed, their stores
+    /// and backends wait for <see cref="Dispose"/>. Kept out of <see cref="_databases"/> so reopening
+    /// the same path registers a new connection instead of returning the dead one.
+    /// </summary>
+    private readonly List<ConnectedDb> _supersededDatabases = [];
     private readonly IServiceProvider _provider;
     private readonly AbsolutePath _hashDatabaseLocation;
 
@@ -49,7 +56,9 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     private readonly ILogger<FileHashesService> _logger;
     private readonly IQueryEngine _queryEngine;
 
-    private record ConnectedDb(IDb Db, DatomStore Store, Backend Backend, DatabaseInfo DatabaseInfo);
+    private readonly LocalHashesStore _local;
+
+    private record ConnectedDb(IDb Db, Connection Connection, DatomStore Store, Backend Backend, DatabaseInfo DatabaseInfo);
 
     public FileHashesService(
         ILogger<FileHashesService> logger,
@@ -70,6 +79,9 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
         _hashDatabaseLocation = _settings.HashDatabaseLocation.ToPath(_fileSystem);
         _hashDatabaseLocation.CreateDirectory();
+
+        // Opened here rather than in StartAsync so `Current` and `Local` work before the hosted service has run.
+        _local = new LocalHashesStore(provider, _queryEngine, _settings, _fileSystem);
     }
 
     private ConnectedDb OpenDb(DatabaseInfo databaseInfo)
@@ -88,7 +100,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
             var store = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), settings, backend);
             var connection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), store, _provider, [], readOnlyMode: true, prefix: "hashes", queryEngine: _queryEngine);
-            var connectedDb = new ConnectedDb(connection.Db, store, backend, databaseInfo);
+            var connectedDb = new ConnectedDb(connection.Db, connection, store, backend, databaseInfo);
 
             _databases[databaseInfo.Path] = connectedDb;
             return connectedDb;
@@ -98,6 +110,24 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             _logger.LogError(ex, "Error opening database at {Path}", databaseInfo.Path);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Makes <paramref name="next"/> the database lookups read. The query engine resolves a name to
+    /// whichever connection it finds first and never replaces one, so the previous connection has to be
+    /// disposed, but only after the new one is registered: a moment with none would fail every query by
+    /// name. Its store and backend stay open until the service is disposed, so a database a caller
+    /// already holds stays readable.
+    /// </summary>
+    private void SetCurrent(ConnectedDb next)
+    {
+        var previous = _currentDb;
+        _currentDb = next;
+        if (previous is null || ReferenceEquals(previous, next)) return;
+
+        previous.Connection.Dispose();
+        _databases.Remove(previous.DatabaseInfo.Path);
+        _supersededDatabases.Add(previous);
     }
 
     internal record struct DatabaseInfo(AbsolutePath Path, DateTimeOffset CreationTime);
@@ -158,7 +188,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
         if (!shouldCheckForUpdate && existingDatabases.TryGetFirst(out var latestDatabase))
         {
-            _currentDb = OpenDb(latestDatabase);
+            SetCurrent(OpenDb(latestDatabase));
             return;
         }
 
@@ -181,7 +211,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
                 if (_settings.SkipUpdateCheck) _logger.LogInformation("Update check skipped, using the embedded game hashes database");
                 else _logger.LogWarning("Failed to fetch latest release manifest, defaulting to embedded game hashes database which may be out-of-date");
-                _currentDb = OpenDb(embeddedDatabaseInfo.Value);
+                SetCurrent(OpenDb(embeddedDatabaseInfo.Value));
                 return;
             }
 
@@ -201,7 +231,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
         if (latestReleaseManifest is null || existingDatabases[0].CreationTime.ToUnixTimeSeconds() >= latestReleaseManifest.CreatedAt.ToUnixTimeSeconds())
         {
-            _currentDb = OpenDb(existingDatabases[0]);
+            SetCurrent(OpenDb(existingDatabases[0]));
             return;
         }
 
@@ -211,11 +241,11 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         {
             // Without this, a first run (or a call that skipped StartAsync) leaves no database connected.
             _logger.LogWarning("Failed to add the latest game hashes database, using the existing one which may be out-of-date");
-            _currentDb = OpenDb(existingDatabases[0]);
+            SetCurrent(OpenDb(existingDatabases[0]));
             return;
         }
 
-        _currentDb = OpenDb(releaseDatabaseInfo.Value);
+        SetCurrent(OpenDb(releaseDatabaseInfo.Value));
     }
 
     private async ValueTask<Manifest?> FetchLatestReleaseManifest(AbsolutePath storagePath, CancellationToken cancellationToken)
@@ -488,7 +518,13 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     }
 
     /// <inheritdoc />
-    public IDb Current => _currentDb?.Db ?? throw new InvalidOperationException("No database connected");
+    public IDb Current => _currentDb?.Db ?? Local;
+
+    /// <inheritdoc />
+    public IDb Local => _local.Connection.Db;
+
+    /// <inheritdoc />
+    public IReadOnlyList<IDb> Databases => _currentDb is null ? [Local] : [Local, _currentDb.Db];
 
     /// <inheritdoc />
     public bool TryGetVanityVersion(LocatorIdsWithGameStore locatorIdsWithGameStore, out VanityVersion version)
@@ -532,7 +568,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 return false;
             }
 
-            var hasVersionDefinition = VersionDefinition.All(_currentDb!.Db)
+            var hasVersionDefinition = VersionDefinition.All(Current)
                 .Select(version =>
                 {
                     var matchingIdCount = gogBuilds.Count(g => version.GogBuildsIds.Contains(g));
@@ -571,7 +607,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 return false;
             }
             
-            var wasFound = VersionDefinition.All(_currentDb!.Db)
+            var wasFound = VersionDefinition.All(Current)
                 .Select(version =>
                 {
                     var matchingIdCount = steamManifests.Count(g => version.SteamManifestsIds.Contains(g));
@@ -590,7 +626,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         }
         else if (gameStore == GameStore.EGS)
         {
-            var versionsByManifestHash = VersionDefinition.All(_currentDb!.Db)
+            var versionsByManifestHash = VersionDefinition.All(Current)
                 .SelectMany(version =>
                     {
                         if (VersionDefinition.EpicGameStoreBuildsIds.IsIn(version)) 
@@ -679,11 +715,11 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     /// <inheritdoc/>
     public void Dispose()
     {
-        foreach (var connection in _databases.Values)
-        {
-            connection.Backend.Dispose();
-            connection.Store.Dispose();
-        }
+        foreach (var database in _databases.Values) database.Connection.Dispose();
+        var allDatabases = _databases.Values.Concat(_supersededDatabases).ToArray();
+        foreach (var database in allDatabases) database.Store.Dispose();
+        foreach (var database in allDatabases) database.Backend.Dispose();
+        _local.Dispose();
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -701,7 +737,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         {
             if (existingDatabases.TryGetFirst(out var latestDatabase))
             {
-                _currentDb = OpenDb(latestDatabase);
+                SetCurrent(OpenDb(latestDatabase));
             }
         }
         catch (Exception e)

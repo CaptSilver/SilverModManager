@@ -38,6 +38,7 @@ public class Startup
                 .AddLibrary()
                 .AddLibraryModels()
                 .AddJobMonitor()
+                .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with { UseInMemoryLocalBaseline = true, })
                 .OverrideSettingsForTests<DataModelSettings>(settings => settings with
                 {
                     UseInMemoryDataModel = true,

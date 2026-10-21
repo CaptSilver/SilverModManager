@@ -37,6 +37,7 @@ public sealed class ReleaseDatabaseTests : IDisposable
         _settings = new FileHashesServiceSettings
         {
             HashDatabaseLocation = new ConfigurablePath(KnownPath.TempDirectory, Path.GetRelativePath(Path.GetTempPath(), _databaseLocation)),
+            LocalBaselineLocation = new ConfigurablePath(KnownPath.TempDirectory, Path.GetRelativePath(Path.GetTempPath(), Path.Combine(_root, "local-baseline"))),
         };
     }
 

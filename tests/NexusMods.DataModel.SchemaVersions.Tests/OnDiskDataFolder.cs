@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.App;
 using NexusMods.DataModel;
+using NexusMods.Games.FileHashes;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Settings;
@@ -25,6 +26,10 @@ internal sealed class OnDiskDataFolder : IDisposable
         var services = new ServiceCollection()
             .AddLogging()
             .AddApp(startupMode: mode)
+            .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with
+            {
+                LocalBaselineLocation = new ConfigurablePath(KnownPath.EntryDirectory, $"{_name}/LocalVanillaBaseline"),
+            })
             .OverrideSettingsForTests<DataModelSettings>(settings => settings with
             {
                 UseInMemoryDataModel = false,

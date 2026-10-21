@@ -10,6 +10,7 @@ using NexusMods.Sdk.Settings;
 using NexusMods.StandardGameLocators.TestHelpers;
 using NexusMods.UI.Tests.Framework;
 using Xunit.DependencyInjection.Logging;
+using NexusMods.Games.FileHashes;
 
 namespace NexusMods.UI.Tests;
 
@@ -30,6 +31,7 @@ public class Startup
                     ExecuteCli = false,
                     RunAsMain = true,
                 })
+                .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with { UseInMemoryLocalBaseline = true, })
                 .OverrideSettingsForTests<DataModelSettings>(settings => settings with
                 {
                     UseInMemoryDataModel = true,
