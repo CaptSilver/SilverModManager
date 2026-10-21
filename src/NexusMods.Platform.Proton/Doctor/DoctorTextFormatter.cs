@@ -9,9 +9,9 @@ public static class DoctorTextFormatter
 {
     public static IReadOnlyList<string> Format(DoctorReport report)
     {
-        if (report.Installations.Count == 0) return ["No managed games. Create a loadout for a game first."];
-
         var lines = new List<string>();
+        if (report.Installations.Count == 0) lines.Add("No managed games. Create a loadout for a game first.");
+
         foreach (var install in report.Installations)
         {
             if (lines.Count > 0) lines.Add("");
@@ -24,6 +24,9 @@ public static class DoctorTextFormatter
             if (install.Deployment.Count > 0) lines.Add($"  Deployment: {string.Join(", ", install.Deployment.Select(DeploymentRoot))}");
             lines.Add($"  Launch: {Lock(install.Lock)}");
         }
+
+        if (report.Problems.Count > 0 && lines.Count > 0) lines.Add("");
+        foreach (var problem in report.Problems) lines.Add($"Locator problem: {problem}");
         return lines;
     }
 

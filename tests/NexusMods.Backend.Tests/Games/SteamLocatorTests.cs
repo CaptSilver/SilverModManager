@@ -424,6 +424,43 @@ public class SteamLocatorTests
         }
     }
 
+    [Fact]
+    public void Locate_TwoGamesWithTheSameSteamId_MatchesTheFirstAndReportsBoth()
+    {
+        var fileSystem = new InMemoryFileSystem(OSInformation.FakeUnix);
+        var steamDirectory = fileSystem.GetKnownPath(KnownPath.HomeDirectory).Combine(".steam/steam");
+        var libraryDirectory = steamDirectory.Combine("steamapps");
+        const uint otherAppId = 2222;
+
+        WriteFile(fileSystem, steamDirectory.Combine("steam.sh"), "");
+        WriteFile(fileSystem, steamDirectory.Combine("config/libraryfolders.vdf"), LibraryFolders(steamDirectory));
+        WriteFile(fileSystem, libraryDirectory.Combine("libraryfolders.vdf"), LibraryFolders(steamDirectory));
+        WriteFile(fileSystem, libraryDirectory.Combine($"appmanifest_{AppId}.acf"), AppManifest("1", "4"));
+        WriteFile(fileSystem, libraryDirectory.Combine($"appmanifest_{otherAppId}.acf"), AppManifest("1", "4", appId: otherAppId));
+        WriteFile(fileSystem, libraryDirectory.Combine("common/Game/game.exe"), "");
+        WriteFile(fileSystem, libraryDirectory.Combine($"common/Game{otherAppId}/game.exe"), "");
+
+        var first = NamedGame("First", 1, AppId);
+        var second = NamedGame("Second", 2, AppId);
+        var other = NamedGame("Other", 3, otherAppId);
+
+        var problems = new CollectingProblemSink();
+        var locator = new SteamLocator([first, second, other], NullLoggerFactory.Instance, fileSystem, registry: null);
+        var results = locator.Locate(problems).ToArray();
+
+        results.Select(r => r.Game).Should().Equal([first, other], "the first game registered for an id wins and the rest of the library is still located");
+        var problem = problems.Problems.Should().ContainSingle().Subject;
+        problem.Message.Should().Contain("First").And.Contain("Second").And.Contain(AppId.ToString());
+    }
+
+    private static IGameData NamedGame(string name, uint gameId, uint steamAppId)
+    {
+        var game = Substitute.For<IGameData>();
+        game.DisplayName.Returns(name);
+        game.StoreIdentifiers.Returns(new StoreIdentifiers(GameId.From(gameId)) { SteamAppIds = [steamAppId] });
+        return game;
+    }
+
     private static (GameLocatorResult Result, InMemoryFileSystem HostFileSystem, AbsolutePath LibraryDirectory) LocateSingle(
         bool withProtonPrefix,
         bool emptyCompatdata = false,

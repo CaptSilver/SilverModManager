@@ -42,6 +42,42 @@ public class GameRegistryTests
         registry.LocateGameInstallations().Select(i => i.LocatorResult.StoreIdentifier).Should().Equal("first-2");
     }
 
+    [Fact]
+    public void Problems_ReportedDuringALocate_AreVisibleAfterIt()
+    {
+        var registry = CreateRegistry(new ReportingLocator("first"), new ReportingLocator("second"));
+
+        registry.Problems.Should().BeEmpty("nothing has been located yet");
+        registry.LocateGameInstallations();
+
+        registry.Problems.Select(p => p.Message).Should().Equal("first: problem 1", "second: problem 1");
+        registry.Problems.Select(p => p.Locator).Should().Equal("first", "second");
+    }
+
+    [Fact]
+    public void Problems_AfterClearCache_StayUntilTheNextLocateReplacesThem()
+    {
+        var registry = CreateRegistry(new ReportingLocator("only"));
+        registry.LocateGameInstallations();
+
+        registry.ClearCache();
+        registry.Problems.Select(p => p.Message).Should().Equal("only: problem 1");
+
+        registry.LocateGameInstallations();
+        registry.Problems.Select(p => p.Message).Should().Equal("only: problem 2");
+    }
+
+    [Fact]
+    public void Problems_ALocatorThatThrows_IsRecordedAndTheOthersStillRun()
+    {
+        var registry = CreateRegistry(new ThrowingLocator(), new ReportingLocator("last"));
+
+        registry.LocateGameInstallations();
+
+        registry.Problems.Select(p => p.Message).Should().Contain("last: problem 1");
+        registry.Problems.Should().Contain(p => p.Locator == nameof(ThrowingLocator) && p.Message.Contains("No such device"));
+    }
+
     private static GameRegistry CreateRegistry(params IGameLocator[] locators)
     {
         var services = new ServiceCollection().AddLogging().AddSingleton(Substitute.For<IConnection>());
@@ -87,5 +123,18 @@ public class GameRegistryTests
     private sealed class ThrowingLocator : IGameLocator
     {
         public IEnumerable<GameLocatorResult> Locate() => throw new IOException("No such device");
+    }
+
+    private sealed class ReportingLocator(string name) : IGameLocator
+    {
+        private int _calls;
+
+        public IEnumerable<GameLocatorResult> Locate() => [];
+
+        public IEnumerable<GameLocatorResult> Locate(IGameLocatorProblemSink problems)
+        {
+            problems.Report(name, $"{name}: problem {++_calls}");
+            return [];
+        }
     }
 }

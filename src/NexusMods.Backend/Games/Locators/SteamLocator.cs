@@ -1,4 +1,3 @@
-using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using GameFinder.StoreHandlers.Steam;
@@ -17,7 +16,7 @@ internal class SteamLocator : IGameLocator
     private readonly ILogger _logger;
     private readonly IFileSystem _fileSystem;
     private readonly GameFinder.RegistryUtils.IRegistry? _registry;
-    private readonly FrozenDictionary<uint, IGameData> _registeredGames;
+    private readonly StoreIdMap<uint> _registeredGames;
 
     private static readonly GameStore Store = GameStore.Steam;
 
@@ -28,19 +27,25 @@ internal class SteamLocator : IGameLocator
 
         _registry = registry;
 
-        _registeredGames = games
-            .SelectMany(game => game.StoreIdentifiers.SteamAppIds, (game, storeIdentifier) => new KeyValuePair<uint, IGameData>(storeIdentifier, game))
-            .ToFrozenDictionary();
+        _registeredGames = StoreIdMap.Build(games, game => game.StoreIdentifiers.SteamAppIds, "Steam app", nameof(SteamLocator), _logger);
     }
 
-    public IEnumerable<GameLocatorResult> Locate()
+    public IEnumerable<GameLocatorResult> Locate() => LocateGames();
+
+    public IEnumerable<GameLocatorResult> Locate(IGameLocatorProblemSink problems)
+    {
+        _registeredGames.ReportTo(problems);
+        return LocateGames();
+    }
+
+    private IEnumerable<GameLocatorResult> LocateGames()
     {
         foreach (var gameFinderGame in FindAllGames())
         {
             var storeIdentifier = gameFinderGame.AppId.Value;
             _logger.LogDebug("Found game '{GameName}' with store identifier '{StoreIdentifier}'", gameFinderGame.Name, storeIdentifier);
 
-            if (!_registeredGames.TryGetValue(storeIdentifier, out var game)) continue;
+            if (!_registeredGames.Games.TryGetValue(storeIdentifier, out var game)) continue;
 
             var locatorIds = gameFinderGame.AppManifest.InstalledDepots
                 .Select(x => LocatorId.From(x.Value.ManifestId.Value.ToString()))

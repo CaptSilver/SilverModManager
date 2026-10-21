@@ -14,6 +14,12 @@ public interface IGameRegistry
     ImmutableArray<GameInstallation> LocateGameInstallations();
 
     /// <summary>
+    /// What the locators reported during the latest locate. <see cref="ClearCache"/> keeps them; the next locate
+    /// replaces them.
+    /// </summary>
+    ImmutableArray<GameLocatorProblem> Problems { get; }
+
+    /// <summary>
     /// Clears the game installation cache.
     /// </summary>
     void ClearCache();

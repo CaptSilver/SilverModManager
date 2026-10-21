@@ -29,6 +29,8 @@ internal class GameRegistry : IGameRegistry
         _locators = new Lazy<IGameLocator[]>(() => serviceProvider.GetServices<IGameLocator>().ToArray());
     }
 
+    public ImmutableArray<GameLocatorProblem> Problems { get; private set; } = [];
+
     public void ClearCache()
     {
         _cachedInstallations = Optional<ImmutableArray<GameInstallation>>.None;
@@ -43,13 +45,14 @@ internal class GameRegistry : IGameRegistry
             if (_cachedInstallations.HasValue) return _cachedInstallations.Value;
 
             var results = new List<GameInstallation>();
+            var problems = new ProblemSink();
 
             _logger.LogDebug("Using {Count} game locators", _locators.Value.Length);
             foreach (var locator in _locators.Value)
             {
                 try
                 {
-                    foreach (var locatorResult in locator.Locate())
+                    foreach (var locatorResult in locator.Locate(problems))
                     {
                         try
                         {
@@ -72,16 +75,19 @@ internal class GameRegistry : IGameRegistry
                         catch (Exception e)
                         {
                             _logger.LogError(e, "Exception while locating a game with locator {Locator}", locator.GetType());
+                            problems.Report(locator.GetType().Name, $"Failed to resolve the locations of '{locatorResult.Game.DisplayName}' at '{locatorResult.Path}': {e.Message}");
                         }
                     }
                 }
                 catch (Exception e)
                 {
                     _logger.LogError(e, "Exception while locating games with locator {Locator}", locator.GetType());
+                    problems.Report(locator.GetType().Name, $"Failed to locate games: {e.Message}");
                 }
             }
 
             var installations = results.ToImmutableArray();
+            Problems = problems.Problems;
             _cachedInstallations = installations;
 
             _logger.LogInformation("Found {Count} game installations", installations.Length);
@@ -174,5 +180,19 @@ internal class GameRegistry : IGameRegistry
     private static AbsolutePath InstallFolder(GameInstallation installation)
     {
         return installation.Locations.TryGetValue(LocationId.Game, out var descriptor) ? descriptor.Path : installation.LocatorResult.Path;
+    }
+
+    private sealed class ProblemSink : IGameLocatorProblemSink
+    {
+        private readonly List<GameLocatorProblem> _problems = [];
+
+        public ImmutableArray<GameLocatorProblem> Problems => [.. _problems];
+
+        // Locators built once per Wine prefix report the same clash once per prefix.
+        public void Report(string locator, string message)
+        {
+            var problem = new GameLocatorProblem(locator, message);
+            if (!_problems.Contains(problem)) _problems.Add(problem);
+        }
     }
 }

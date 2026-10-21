@@ -1,4 +1,3 @@
-using System.Collections.Frozen;
 using System.Collections.Immutable;
 using GameFinder.StoreHandlers.EGS;
 using Microsoft.Extensions.Logging;
@@ -11,7 +10,7 @@ internal class EGSLocator : IGameLocator
 {
     private readonly ILogger _logger;
     private readonly EGSHandler _handler;
-    private readonly FrozenDictionary<string, IGameData> _registeredGames;
+    private readonly StoreIdMap<string> _registeredGames;
 
     private static readonly GameStore Store = GameStore.EGS;
 
@@ -21,12 +20,18 @@ internal class EGSLocator : IGameLocator
 
         _handler = new EGSHandler(registry, fileSystem);
 
-        _registeredGames = games
-            .SelectMany(game => game.StoreIdentifiers.EGSCatalogItemId, (game, storeIdentifier) => new KeyValuePair<string, IGameData>(storeIdentifier, game))
-            .ToFrozenDictionary();
+        _registeredGames = StoreIdMap.Build(games, game => game.StoreIdentifiers.EGSCatalogItemId, "Epic catalog item", nameof(EGSLocator), _logger);
     }
 
-    public IEnumerable<GameLocatorResult> Locate()
+    public IEnumerable<GameLocatorResult> Locate() => LocateGames();
+
+    public IEnumerable<GameLocatorResult> Locate(IGameLocatorProblemSink problems)
+    {
+        _registeredGames.ReportTo(problems);
+        return LocateGames();
+    }
+
+    private IEnumerable<GameLocatorResult> LocateGames()
     {
         foreach (var result in _handler.FindAllGames())
         {
@@ -39,7 +44,7 @@ internal class EGSLocator : IGameLocator
             var storeIdentifier = gameFinderGame.CatalogItemId.Value;
             _logger.LogDebug("Found game '{GameName}' with store identifier '{StoreIdentifier}'", gameFinderGame.DisplayName, storeIdentifier);
 
-            if (!_registeredGames.TryGetValue(storeIdentifier, out var game)) continue;
+            if (!_registeredGames.Games.TryGetValue(storeIdentifier, out var game)) continue;
 
             var path = gameFinderGame.InstallLocation;
             var locatorIds = gameFinderGame.ManifestHash.Select(LocatorId.From).ToImmutableArray();

@@ -1,4 +1,3 @@
-using System.Collections.Frozen;
 using System.Collections.Immutable;
 using GameFinder.StoreHandlers.GOG;
 using Microsoft.Extensions.Logging;
@@ -11,7 +10,7 @@ internal class GOGLocator : IGameLocator
 {
     private readonly ILogger _logger;
     private readonly GOGHandler _handler;
-    private readonly FrozenDictionary<long, IGameData> _registeredGames;
+    private readonly StoreIdMap<long> _registeredGames;
 
     private static readonly GameStore Store = GameStore.GOG;
 
@@ -24,12 +23,18 @@ internal class GOGLocator : IGameLocator
             fileSystem: fileSystem
         );
 
-        _registeredGames = games
-            .SelectMany(game => game.StoreIdentifiers.GOGProductIds, (game, storeIdentifier) => new KeyValuePair<long, IGameData>(storeIdentifier, game))
-            .ToFrozenDictionary();
+        _registeredGames = StoreIdMap.Build(games, game => game.StoreIdentifiers.GOGProductIds, "GOG product", nameof(GOGLocator), _logger);
     }
 
-    public IEnumerable<GameLocatorResult> Locate()
+    public IEnumerable<GameLocatorResult> Locate() => LocateGames();
+
+    public IEnumerable<GameLocatorResult> Locate(IGameLocatorProblemSink problems)
+    {
+        _registeredGames.ReportTo(problems);
+        return LocateGames();
+    }
+
+    private IEnumerable<GameLocatorResult> LocateGames()
     {
         var gameFinderGames = new List<GOGGame>();
 
@@ -49,7 +54,7 @@ internal class GOGLocator : IGameLocator
             var storeIdentifier = gameFinderGame.Id.Value;
             _logger.LogDebug("Found game '{GameName}' with store identifier '{StoreIdentifier}'", gameFinderGame.Name, storeIdentifier);
 
-            if (!_registeredGames.TryGetValue(storeIdentifier, out var game)) continue;
+            if (!_registeredGames.Games.TryGetValue(storeIdentifier, out var game)) continue;
 
             var path = gameFinderGame.Path;
 

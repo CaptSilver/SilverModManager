@@ -31,7 +31,9 @@ internal class WinePrefixWrappingLocator : IGameLocator
         );
     }
 
-    public IEnumerable<GameLocatorResult> Locate()
+    public IEnumerable<GameLocatorResult> Locate() => Locate(NoProblemSink.Instance);
+
+    public IEnumerable<GameLocatorResult> Locate(IGameLocatorProblemSink problems)
     {
         var allPrefix = new List<AWinePrefix>();
 
@@ -58,7 +60,7 @@ internal class WinePrefixWrappingLocator : IGameLocator
                 try
                 {
                     var locator = factory(_serviceProvider, _loggerFactory, overlayFileSystem, registry);
-                    results.AddRange(locator.Locate().Select(result => WithPrefix(result, winePrefix)));
+                    results.AddRange(locator.Locate(problems).Select(result => WithPrefix(result, winePrefix)));
                 }
                 catch (Exception e)
                 {
@@ -94,5 +96,12 @@ internal class WinePrefixWrappingLocator : IGameLocator
             WinePrefixPath = result.WinePrefixPath ?? prefix,
             Compatibility = result.Compatibility ?? new CompatibilityLayer(CompatibilityLayerKind.PlainWine, prefix),
         };
+    }
+
+    private sealed class NoProblemSink : IGameLocatorProblemSink
+    {
+        public static readonly NoProblemSink Instance = new();
+
+        public void Report(string locator, string message) { }
     }
 }

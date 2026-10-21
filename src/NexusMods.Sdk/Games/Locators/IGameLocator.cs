@@ -15,6 +15,12 @@ public interface IGameLocator
     IEnumerable<GameLocatorResult> Locate();
 
     /// <summary>
+    /// Locates all registered games and reports what it could not resolve cleanly to <paramref name="problems"/>.
+    /// A locator with nothing to report can leave this alone.
+    /// </summary>
+    IEnumerable<GameLocatorResult> Locate(IGameLocatorProblemSink problems) => Locate();
+
+    /// <summary>
     /// Tries to locate a single game.
     /// </summary>
     bool TryLocate(IGameData game, [NotNullWhen(true)] out GameLocatorResult? locatorResult)

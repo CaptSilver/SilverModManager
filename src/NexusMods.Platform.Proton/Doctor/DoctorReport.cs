@@ -13,6 +13,12 @@ namespace NexusMods.Platform.Proton.Doctor;
 public sealed record DoctorReport(IReadOnlyList<DoctorInstallation> Installations)
 {
     /// <summary>
+    /// What the game locators reported during the latest locate, one sentence each: ids two games claim,
+    /// a game installed twice. Empty when they had nothing to report.
+    /// </summary>
+    public IReadOnlyList<string> Problems { get; init; } = [];
+
+    /// <summary>
     /// The options the <c>--json</c> form is written and read with.
     /// </summary>
     public static JsonSerializerOptions JsonOptions { get; } = new(JsonSerializerDefaults.Web)
