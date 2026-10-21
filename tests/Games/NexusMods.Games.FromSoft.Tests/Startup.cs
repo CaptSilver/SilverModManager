@@ -6,6 +6,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Backend;
 using NexusMods.Games.FOMOD;
 using NexusMods.Games.FromSoft.EldenRing;
+using NexusMods.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Games.TestFramework;
 using NexusMods.Sdk;
 using NexusMods.StandardGameLocators.TestHelpers;
@@ -21,7 +22,7 @@ public class Startup
             .AddDefaultServicesForTesting()
             .AddUniversalGameLocator<EldenRingGame>(new Version("1.0"))
             .AddFomod()
-            .AddFromSoftGames()
+            .AddFromSoftGamesWithOwnDataRoot()
             .AddLogging(builder => builder.AddXUnit())
             .AddGames()
             .AddGameServices()

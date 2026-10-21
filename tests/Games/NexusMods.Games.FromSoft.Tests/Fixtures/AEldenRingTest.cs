@@ -10,7 +10,11 @@ namespace NexusMods.Games.FromSoft.Tests.Fixtures;
 public abstract class AEldenRingTest<TTest>(ITestOutputHelper helper, bool dirtyGameFolder = false)
     : ASteamInstalledGameTest<TTest, EldenRingGame>(helper)
 {
-    protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services).AddFromSoftGames();
+    protected override IServiceCollection AddServices(IServiceCollection services)
+        => UseDefaultDataRoot ? base.AddServices(services).AddFromSoftGames() : base.AddServices(services).AddFromSoftGamesWithOwnDataRoot();
+
+    /// <summary>True for a test of where the data root is by default; such a test must not sync, since the default is shared.</summary>
+    protected virtual bool UseDefaultDataRoot => false;
 
     protected override SteamInstall InstallGame(SteamLibraryFixture library) => EldenRingInstall.Install(library, dirtyGameFolder);
 

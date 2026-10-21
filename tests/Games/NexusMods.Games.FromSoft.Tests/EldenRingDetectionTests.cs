@@ -10,6 +10,8 @@ namespace NexusMods.Games.FromSoft.Tests;
 
 public class EldenRingDetectionTests(ITestOutputHelper helper) : AEldenRingTest<EldenRingDetectionTests>(helper)
 {
+    protected override bool UseDefaultDataRoot => true;
+
     [Fact]
     public void TheSteamInstallIsRegisteredAsEldenRing()
     {

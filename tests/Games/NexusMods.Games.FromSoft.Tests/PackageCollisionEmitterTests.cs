@@ -21,7 +21,7 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         return base.AddServices(services)
-            .AddFromSoftGames()
+            .AddFromSoftGamesWithOwnDataRoot()
             .AddUniversalGameLocator<EldenRingGame>(new Version("1.0"));
     }
 
