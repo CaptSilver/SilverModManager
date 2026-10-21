@@ -87,6 +87,13 @@
                 <TextBlock x:Name="TextCollectionStatus" />
             </controls:Statusbar>
 
+            <StackPanel DockPanel.Dock="Top" x:Name="InstallProgressPanel" IsVisible="False" Margin="16 8" Spacing="4">
+                <TextBlock x:Name="TextInstallSummary" />
+                <TextBlock x:Name="TextInstallRunning" TextWrapping="Wrap" />
+                <TextBlock x:Name="TextInstallDisabled" TextWrapping="Wrap" />
+                <ItemsControl x:Name="ListInstallFailures" />
+            </StackPanel>
+
             <Border x:Name="DownloadsTreeContainer"
                     Padding="0 8 0 0"
                     Background="{StaticResource SurfaceLowBrush}">

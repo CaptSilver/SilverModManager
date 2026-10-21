@@ -53,6 +53,11 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
     public IReadOnlyList<FailedItem> FailedItems => _failedItems.ToArray();
 
     /// <summary>
+    /// How far the install is. Observe <see cref="CollectionInstallProgress.Changes"/> to follow it live.
+    /// </summary>
+    public CollectionInstallProgress Progress { get; } = new();
+
+    /// <summary>
     /// A mod of the collection that failed to install.
     /// </summary>
     /// <param name="Download">The collection item that failed.</param>
@@ -115,6 +120,8 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         var skipCount = Items.Length - items.Length;
         if (skipCount > 0) Logger.LogInformation("Skipping `{Count}` already installed items for `{CollectionName}/{RevisionNumber}`", skipCount, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
 
+        Progress.Begin(total: items.Length, alreadyInstalled: skipCount);
+
         var isFullyDownloaded = CollectionDownloader.IsFullyDownloaded(items, db: Connection.Db);
         if (!isFullyDownloaded) throw new InvalidOperationException("The collection hasn't fully been downloaded!");
 
@@ -163,12 +170,16 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             try
             {
                 Logger.LogDebug("Installing `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
+                Progress.ModStarted(modAndDownload.Mod.Name);
                 await InstallMod(modAndDownload, collectionGroup, fallbackInstaller, game.GetFallbackCollectionInstallDirectory(loadout.InstallationInstance));
+                Progress.ModInstalled(modAndDownload.Mod.Name);
             }
             catch (Exception e)
             {
                 Logger.LogError(e, "Failed to install `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
-                _failedItems.Enqueue(new FailedItem(modAndDownload.Download, modAndDownload.Mod.Name, e));
+                var failed = new FailedItem(modAndDownload.Download, modAndDownload.Mod.Name, e);
+                _failedItems.Enqueue(failed);
+                Progress.ModFailed(failed.Name, failed.Reason);
             }
         });
 
@@ -193,6 +204,8 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             var result = await tx.Commit();
             collectionGroup = NexusCollectionLoadoutGroup.Load(result.Db, collectionGroup.Id);
         }
+
+        Progress.Finish(leftDisabled: !allRequiredItemsInstalled);
 
         return collectionGroup;
     }

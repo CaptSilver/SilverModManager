@@ -55,6 +55,10 @@ public class CollectionDownloadDesignViewModel : APageViewModel<ICollectionDownl
     public BindableReactiveProperty<bool> IsInstalled { get; } = new(value: false);
     public BindableReactiveProperty<bool> IsDownloading { get; } = new();
     public BindableReactiveProperty<bool> IsInstalling { get; } = new();
+    public BindableReactiveProperty<CollectionInstallProgress.Snapshot?> InstallProgress { get; } = new(value: new CollectionInstallProgress.Snapshot(
+        Total: 46, AlreadyInstalled: 241, Installed: 12,
+        Failed: [new CollectionInstallProgress.FailedMod("Broken Mod", "Saved choices do not apply: no option named \"X\".")],
+        Installing: ["Mod A", "Mod B"], IsFinished: false, LeftDisabled: false));
     public BindableReactiveProperty<bool> IsUpdateAvailable { get; } = new();
     public BindableReactiveProperty<bool> HasInstalledAllOptionalItems { get; } = new(value: false);
     public BindableReactiveProperty<Optional<RevisionNumber>> NewestRevisionNumber { get; } = new();

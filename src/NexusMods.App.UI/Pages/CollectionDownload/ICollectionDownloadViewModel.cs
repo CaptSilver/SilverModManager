@@ -97,6 +97,12 @@ public interface ICollectionDownloadViewModel : IPageViewModelInterface
 
     BindableReactiveProperty<bool> IsInstalled { get; }
     BindableReactiveProperty<bool> IsInstalling { get; }
+
+    /// <summary>
+    /// Progress of the latest collection install on this page, or null when there is none to show.
+    /// Stays set after the job ends so its failures remain visible.
+    /// </summary>
+    BindableReactiveProperty<CollectionInstallProgress.Snapshot?> InstallProgress { get; }
     BindableReactiveProperty<bool> IsDownloading { get; }
     BindableReactiveProperty<bool> IsUpdateAvailable { get; }
     BindableReactiveProperty<bool> HasInstalledAllOptionalItems { get; }

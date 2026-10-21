@@ -287,6 +287,26 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                     .Subscribe(isInstalling => IsInstalling.Value = isInstalling)
                     .AddTo(disposables);
 
+                // A job that ends leaves the active set; its last snapshot stays on screen if it finished.
+                jobMonitor
+                    .ObserveActiveJobs<InstallCollectionJob>()
+                    .QueryWhenChanged(query => query.Items
+                        .Select(static job => job.Definition)
+                        .OfType<InstallCollectionJob>()
+                        .FirstOrDefault(job => job.RevisionMetadata.Id == _revision.Id))
+                    .DistinctUntilChanged()
+                    .Select(static job => job is null
+                        ? Observable.Return<CollectionInstallProgress.Snapshot?>(null)
+                        : job.Progress.Changes.Select(static snapshot => (CollectionInstallProgress.Snapshot?)snapshot))
+                    .Switch()
+                    .OnUI()
+                    .Subscribe(snapshot =>
+                    {
+                        if (snapshot is not null) InstallProgress.Value = snapshot;
+                        else if (InstallProgress.Value is { IsFinished: false }) InstallProgress.Value = null;
+                    })
+                    .AddTo(disposables);
+
                 jobMonitor
                     .HasActiveJob<DownloadCollectionJob>(job => job.RevisionMetadata.Id == _revision.Id && job.ItemType == CollectionDownloader.ItemType.Required)
                     .OnUI()
@@ -495,6 +515,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
     private readonly BehaviorSubject<bool> _canInstallRequiredItems = new(initialValue: false);
     private readonly BehaviorSubject<bool> _canInstallOptionalItems = new(initialValue: false);
     public BindableReactiveProperty<bool> IsInstalling { get; } = new(value: false);
+    public BindableReactiveProperty<CollectionInstallProgress.Snapshot?> InstallProgress { get; } = new(value: null);
 
     public BindableReactiveProperty<bool> IsUpdateAvailable { get; }
     public BindableReactiveProperty<Optional<RevisionNumber>> NewestRevisionNumber { get; } = new();

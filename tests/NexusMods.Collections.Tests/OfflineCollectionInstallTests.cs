@@ -265,4 +265,71 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
             .ToArray();
         installedNames.Should().Contain(["mod0_a.out.esp", "mod2_a.out.esp"]).And.NotContain("mod1_a.out.esp");
     }
+
+    [Fact]
+    public async Task Progress_CountsRiseAndEveryModIsReportedAsInstallingBeforeItCounts()
+    {
+        var mods = Enumerable.Range(0, 6).Select(i => (Choices(), $"Fomod mod {i}")).ToArray();
+        var (file, revision, items) = await CreateCollection(mods);
+        var loadout = await CreateLoadout();
+
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        var snapshots = new List<CollectionInstallProgress.Snapshot>();
+        using var subscription = job.JobDefinition.Progress.Changes.Subscribe(snapshots.Add);
+        await AwaitJob(job);
+
+        var seen = snapshots.ToArray();
+        seen.Select(s => s.Installed).Should().BeInAscendingOrder();
+        seen.Should().OnlyContain(s => s.Total == 6 && s.Installed + s.Failed.Count + s.Installing.Count <= s.Total);
+        seen.SelectMany(s => s.Installing).Distinct().Should().BeEquivalentTo(mods.Select(m => m.Item2));
+
+        var last = seen[^1];
+        last.IsFinished.Should().BeTrue();
+        last.Installed.Should().Be(6);
+        last.Installing.Should().BeEmpty();
+        last.Failed.Should().BeEmpty();
+        last.LeftDisabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Progress_ListsAFailedModWithItsReasonAndSaysTheCollectionWasLeftDisabled()
+    {
+        var mods = new[]
+        {
+            (Choices(), "Good mod 0"),
+            (Choices("No such option"), "Broken mod"),
+            (Choices(), "Good mod 2"),
+        };
+        var (file, revision, items) = await CreateCollection(mods);
+        var loadout = await CreateLoadout();
+
+        var job = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        await AwaitJob(job);
+
+        var last = job.JobDefinition.Progress.Current;
+        last.IsFinished.Should().BeTrue();
+        last.Installed.Should().Be(2);
+        last.Failed.Should().ContainSingle();
+        last.Failed[0].Name.Should().Be("Broken mod");
+        last.Failed[0].Reason.Should().Contain("No such option");
+        last.LeftDisabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Progress_ReportsAlreadyInstalledModsSeparatelyFromThisRunsTotal()
+    {
+        var mods = Enumerable.Range(0, 3).Select(i => (Choices(), $"Fomod mod {i}")).ToArray();
+        var (file, revision, items) = await CreateCollection(mods);
+        var loadout = await CreateLoadout();
+
+        await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+        var second = InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items);
+        await AwaitJob(second);
+
+        var last = second.JobDefinition.Progress.Current;
+        last.AlreadyInstalled.Should().Be(3);
+        last.Total.Should().Be(0);
+        last.Installed.Should().Be(0);
+        last.IsFinished.Should().BeTrue();
+    }
 }

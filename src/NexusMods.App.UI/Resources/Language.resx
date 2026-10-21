@@ -1340,4 +1340,25 @@ Keep the downloaded files in your library in case you want to retry the installa
         <value>Delete collection revision</value>
     </data>
 
+    <data name="CollectionInstallProgress_SummaryInstalling" xml:space="preserve">
+        <value>Installing {0} of {1}</value>
+    </data>
+    <data name="CollectionInstallProgress_SummaryFinished" xml:space="preserve">
+        <value>Installed {0} of {1}</value>
+    </data>
+    <data name="CollectionInstallProgress_Installing" xml:space="preserve">
+        <value>Now installing: {0}</value>
+    </data>
+    <data name="CollectionInstallProgress_InstallingWithMore" xml:space="preserve">
+        <value>Now installing: {0} and {1} more</value>
+    </data>
+    <data name="CollectionInstallProgress_FailedMod" xml:space="preserve">
+        <value>{0}: {1}</value>
+    </data>
+    <data name="CollectionInstallProgress_LeftDisabled" xml:space="preserve">
+        <value>The collection was left disabled because required mods failed to install.</value>
+    </data>
+    <data name="CollectionComponents_InstallAction_ButtonText_Installing" xml:space="preserve">
+        <value>Installing</value>
+    </data>
 </root>

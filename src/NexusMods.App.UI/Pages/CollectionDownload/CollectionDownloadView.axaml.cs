@@ -4,6 +4,7 @@ using Avalonia.Media;
 using Avalonia.ReactiveUI;
 using NexusMods.App.UI.Controls;
 using NexusMods.App.UI.Resources;
+using NexusMods.Collections;
 using NexusMods.UI.Sdk.Icons;
 using NexusMods.MnemonicDB.Abstractions;
 using R3;
@@ -72,6 +73,13 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                     )
                     .Subscribe(isActive => Spinner.IsVisible = isActive);
                 
+                this.WhenAnyValue(view => view.ViewModel)
+                    .WhereNotNull()
+                    .Select(static vm => vm.InstallProgress.AsSystemObservable())
+                    .Switch()
+                    .Subscribe(ShowInstallProgress)
+                    .DisposeWith(d);
+
                 this.OneWayBind(ViewModel, vm => vm.Name, view => view.CollectionName.Text)
                     .DisposeWith(d);
 
@@ -258,5 +266,18 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
         );
 
         ButtonViewOptionalMods.Command = new ReactiveCommand(_ => TabControl.SelectedItem = OptionalTab);
+    }
+
+    private void ShowInstallProgress(CollectionInstallProgress.Snapshot? snapshot)
+    {
+        InstallProgressPanel.IsVisible = snapshot is not null;
+        if (snapshot is null) return;
+
+        TextInstallSummary.Text = CollectionInstallProgressText.Summary(snapshot);
+        TextInstallRunning.Text = CollectionInstallProgressText.Installing(snapshot);
+        TextInstallRunning.IsVisible = snapshot.Installing.Count > 0;
+        TextInstallDisabled.Text = CollectionInstallProgressText.DisabledNotice(snapshot);
+        TextInstallDisabled.IsVisible = TextInstallDisabled.Text.Length > 0;
+        ListInstallFailures.ItemsSource = CollectionInstallProgressText.FailedLines(snapshot);
     }
 }

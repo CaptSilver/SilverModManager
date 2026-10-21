@@ -203,20 +203,25 @@ public static class CollectionComponents
         private readonly IDisposable _activationDisposable;
         public InstallAction(
             CollectionDownloadEntity.ReadOnly downloadEntity,
-            Observable<bool> isInstalledObservable)
+            Observable<bool> isInstalledObservable,
+            Observable<JobStatus> installJobStatusObservable)
         {
             CommandInstall = _canInstall
                 .ToReactiveCommand<Unit, CollectionDownloadEntity.ReadOnly>(_ => downloadEntity);
 
-            _activationDisposable = this.WhenActivated((downloadEntity, isInstalledObservable), static (self, state, disposables) =>
+            _activationDisposable = this.WhenActivated((downloadEntity, isInstalledObservable, installJobStatusObservable), static (self, state, disposables) =>
             {
-                var (_, isInstalledObservable) = state;
+                var (_, isInstalledObservable, installJobStatusObservable) = state;
 
-                isInstalledObservable.ObserveOnUIThreadDispatcher().Subscribe(self, static (isInstalled, self) =>
+                isInstalledObservable.CombineLatest(installJobStatusObservable, static (isInstalled, status) => (isInstalled, isInstalling: status == JobStatus.Running))
+                    .ObserveOnUIThreadDispatcher().Subscribe(self, static (tuple, self) =>
                 {
-                    self._canInstall.OnNext(!isInstalled);
+                    var (isInstalled, isInstalling) = tuple;
+                    self._canInstall.OnNext(!isInstalled && !isInstalling);
                     self._isInstalled.Value = isInstalled;
-                    self._buttonText.Value = LibraryComponents.InstallAction.GetButtonText(isInstalled);
+                    self._buttonText.Value = isInstalling && !isInstalled
+                        ? Language.CollectionComponents_InstallAction_ButtonText_Installing
+                        : LibraryComponents.InstallAction.GetButtonText(isInstalled);
                 }).AddTo(disposables);
             });
         }

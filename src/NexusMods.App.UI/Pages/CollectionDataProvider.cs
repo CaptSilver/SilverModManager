@@ -214,7 +214,7 @@ public class CollectionDataProvider
         });
     }
 
-    private static void AddInstallAction(
+    private void AddInstallAction(
         CompositeItemModel<EntityId> itemModel,
         CollectionDownloadEntity.ReadOnly downloadEntity,
         Observable<CollectionDownloadStatus> statusObservable,
@@ -225,7 +225,8 @@ public class CollectionDataProvider
             shouldAddObservable: ShouldAddObservable(downloadEntity, statusObservable, groupObservable),
             componentFactory: () => new CollectionComponents.InstallAction(
                 downloadEntity: downloadEntity,
-                isInstalledObservable: statusObservable.Select(status => status.IsInstalled(out _))
+                isInstalledObservable: statusObservable.Select(status => status.IsInstalled(out _)),
+                installJobStatusObservable: GetJobStatusObservable<InstallCollectionDownloadJob>(job => job.Item.Id == downloadEntity.Id).Prepend(JobStatus.None)
             )
         );
     }
