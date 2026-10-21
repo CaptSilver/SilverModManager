@@ -13,6 +13,9 @@ public static class KnownPaths
     public static readonly GamePath F4SELoader = new(LocationId.Game, "f4se_loader.exe");
     public static readonly GamePath F4SEVRLoader = new(LocationId.Game, "f4sevr_loader.exe");
     public static readonly GamePath SFSELoader = new(LocationId.Game, "sfse_loader.exe");
+    public static readonly GamePath OBSELoader = new(LocationId.Game, "obse_loader.exe");
+    public static readonly GamePath FOSELoader = new(LocationId.Game, "fose_loader.exe");
+    public static readonly GamePath NVSELoader = new(LocationId.Game, "nvse_loader.exe");
     
     /// <summary>
     /// Common top level folders for use in the StopPatternInstaller.

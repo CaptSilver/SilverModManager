@@ -18,6 +18,9 @@ public static class Services
         services.AddBethesdaGame<Fallout4VR.Fallout4VR>(KnownPaths.F4SEVRLoader);
         services.AddBethesdaGame<Fallout76.Fallout76>(null);
         services.AddBethesdaGame<Starfield.Starfield>(KnownPaths.SFSELoader);
+        services.AddBethesdaGame<Oblivion.Oblivion>(KnownPaths.OBSELoader);
+        services.AddBethesdaGame<Fallout3.Fallout3>(KnownPaths.FOSELoader);
+        services.AddBethesdaGame<FalloutNewVegas.FalloutNewVegas>(KnownPaths.NVSELoader);
 
         return services;
     }

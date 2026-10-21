@@ -26,6 +26,9 @@ public class BethesdaCatalogTests
         { typeof(CreationEngine.Fallout4VR.Fallout4VR), "fallout4" },
         { typeof(CreationEngine.Fallout76.Fallout76), "fallout76" },
         { typeof(CreationEngine.Starfield.Starfield), "starfield" },
+        { typeof(CreationEngine.Oblivion.Oblivion), "oblivion" },
+        { typeof(CreationEngine.Fallout3.Fallout3), "fallout3" },
+        { typeof(CreationEngine.FalloutNewVegas.FalloutNewVegas), "newvegas" },
     };
 
     private readonly IGameData[] _games;
