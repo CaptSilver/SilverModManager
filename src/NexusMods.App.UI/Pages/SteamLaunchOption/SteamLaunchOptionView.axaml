@@ -43,6 +43,19 @@
                     <TextBlock x:Name="MessageText"
                                TextWrapping="Wrap"
                                Theme="{StaticResource BodyMDNormalTheme}" />
+                    <StackPanel x:Name="ReplacePanel" Spacing="8" IsVisible="False">
+                        <TextBlock x:Name="ReplaceIntroText"
+                                   TextWrapping="Wrap"
+                                   Theme="{StaticResource BodyMDNormalTheme}" />
+                        <TextBlock Text="Currently in Steam:" Theme="{StaticResource BodyMDSemiTheme}" />
+                        <SelectableTextBlock x:Name="OldLineText"
+                                             TextWrapping="Wrap"
+                                             Theme="{StaticResource BodyMDNormalTheme}" />
+                        <TextBlock Text="Will become:" Theme="{StaticResource BodyMDSemiTheme}" />
+                        <SelectableTextBlock x:Name="NewLineText"
+                                             TextWrapping="Wrap"
+                                             Theme="{StaticResource BodyMDNormalTheme}" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </base:MessageBoxBackground.TopContent>
@@ -54,6 +67,7 @@
                         HorizontalAlignment="Right"
                         Spacing="{StaticResource Spacing-2.5}">
                 <controls:StandardButton x:Name="ButtonClose" Text="Close" />
+                <controls:StandardButton x:Name="ButtonReplace" Text="Replace it" Type="Secondary" IsVisible="False" />
                 <controls:StandardButton x:Name="ButtonWrite" Text="Write to Steam" Type="Secondary" />
                 <controls:StandardButton x:Name="ButtonCopy" Text="Copy line" Type="Primary" Fill="Strong" />
             </StackPanel>

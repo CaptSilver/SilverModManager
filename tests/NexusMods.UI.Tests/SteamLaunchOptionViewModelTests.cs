@@ -102,6 +102,138 @@ public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTes
         f.Vm.Message.Should().Be("an unquoted ';' before %command%");
     }
 
+    private const string FluorineLine = "'/opt/fluorine-manager/fluorine-manager' --game 'Cyberpunk' # %command%";
+
+    private static LocalConfigVdfWriter.Replacement FluorineReplacement(string oldLine = FluorineLine) => new("Fluorine", oldLine, Line);
+
+    private static LocalConfigVdfWriter.Result AnotherManagersRefusal(LocalConfigVdfWriter.Replacement replacement) =>
+        new(null, "Steam's launch options for this game belong to Fluorine.", null, replacement);
+
+    [Fact]
+    public async Task Test_ARefusedWriteForAnotherManagerOffersReplace()
+    {
+        var f = await NewFixture(steamRunning: false);
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId)).Returns(AnotherManagersRefusal(FluorineReplacement()));
+
+        await f.Vm.WriteAsync();
+
+        f.Vm.CanReplace.Should().BeTrue();
+        f.Vm.OtherManagerName.Should().Be("Fluorine");
+        f.Vm.OldLine.Should().Be(FluorineLine);
+        f.Vm.NewLine.Should().Be(Line);
+        f.Vm.Message.Should().Be("Steam's launch options for this game belong to Fluorine.");
+    }
+
+    [Fact]
+    public async Task Test_AnUnrecognisedManagerIsNamedGenerically()
+    {
+        var f = await NewFixture(steamRunning: false);
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId))
+            .Returns(AnotherManagersRefusal(new LocalConfigVdfWriter.Replacement(null, FluorineLine, Line)));
+
+        await f.Vm.WriteAsync();
+
+        f.Vm.OtherManagerName.Should().Be("another launcher");
+    }
+
+    [Fact]
+    public async Task Test_ReplaceSendsTheShownOldLineToTheWriter()
+    {
+        var f = await NewFixture(steamRunning: false);
+        var backup = FileSystem.Shared.FromUnsanitizedFullPath("/tmp/localconfig.vdf.silvermod-bak");
+        var record = FileSystem.Shared.FromUnsanitizedFullPath("/tmp/replaced-launch-options.txt");
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId)).Returns(AnotherManagersRefusal(FluorineReplacement()));
+        f.Writer.Replace(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId), FluorineLine)
+            .Returns(new LocalConfigVdfWriter.Result(Line, null, backup, FluorineReplacement(), record));
+
+        await f.Vm.WriteAsync();
+        await f.Vm.ReplaceAsync();
+
+        f.Writer.Received(1).Replace(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId), FluorineLine);
+        f.Vm.Message.Should().Contain("Replaced the launch options of").And.Contain("replaced-launch-options.txt").And.Contain("localconfig.vdf.silvermod-bak");
+        f.Vm.CanReplace.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Test_ReplaceIsNotOfferedForAnOrdinaryRefusal()
+    {
+        var f = await NewFixture(steamRunning: false);
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId)).Returns(new LocalConfigVdfWriter.Result(null, "an unquoted ';' before %command%", null));
+
+        await f.Vm.WriteAsync();
+
+        f.Vm.CanReplace.Should().BeFalse();
+        f.Vm.OldLine.Should().BeEmpty();
+        f.Vm.NewLine.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Test_ReplaceChecksSteamAgainWhenPressed()
+    {
+        var f = await NewFixture(steamRunning: false);
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId)).Returns(AnotherManagersRefusal(FluorineReplacement()));
+        await f.Vm.WriteAsync();
+        f.Vm.CanReplace.Should().BeTrue();
+
+        f.Tracker.IsSteamRunning().Returns(true);
+        await f.Vm.ReplaceAsync();
+
+        f.Writer.DidNotReceiveWithAnyArgs().Replace(default!, default!, default!);
+        f.Vm.Message.Should().Contain("Close Steam");
+        f.Vm.CanReplace.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Test_ReplaceFollowsSteamStateWhileAReplacementIsPending()
+    {
+        var f = await NewFixture(steamRunning: false);
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId)).Returns(AnotherManagersRefusal(FluorineReplacement()));
+        await f.Vm.WriteAsync();
+
+        f.Tracker.IsSteamRunning().Returns(true);
+        f.Vm.RefreshSteamState();
+        f.Vm.CanReplace.Should().BeFalse();
+
+        f.Tracker.IsSteamRunning().Returns(false);
+        f.Vm.RefreshSteamState();
+        f.Vm.CanReplace.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Test_AChangedLineRefreshesWhatTheNextPressConfirms()
+    {
+        var f = await NewFixture(steamRunning: false);
+        const string changed = "'/opt/fluorine-manager/fluorine-manager' --game 'Other' # %command%";
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId)).Returns(AnotherManagersRefusal(FluorineReplacement()));
+        f.Writer.Replace(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId), FluorineLine)
+            .Returns(new LocalConfigVdfWriter.Result(null, "The launch options changed since they were shown.", null, FluorineReplacement(changed)));
+
+        await f.Vm.WriteAsync();
+        await f.Vm.ReplaceAsync();
+
+        f.Vm.Message.Should().Contain("changed since");
+        f.Vm.OldLine.Should().Be(changed);
+        f.Vm.CanReplace.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Test_ASuccessfulWriteClearsAPendingReplace()
+    {
+        var f = await NewFixture(steamRunning: false);
+        var backup = FileSystem.Shared.FromUnsanitizedFullPath("/tmp/localconfig.vdf.silvermod-bak");
+        f.Writer.Write(f.Vm.Installation, Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == f.Seeded.LoadoutId)).Returns(
+            AnotherManagersRefusal(FluorineReplacement()),
+            new LocalConfigVdfWriter.Result(Line, null, backup));
+
+        await f.Vm.WriteAsync();
+        f.Vm.CanReplace.Should().BeTrue();
+        await f.Vm.WriteAsync();
+
+        f.Vm.CanReplace.Should().BeFalse();
+        f.Vm.OldLine.Should().BeEmpty();
+        f.Vm.NewLine.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task Test_WriteChecksSteamAgainWhenPressed()
     {

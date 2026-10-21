@@ -44,9 +44,36 @@ public interface ISteamLaunchOptionViewModel : IOverlayViewModel<Unit>
     /// </summary>
     string Message { get; }
 
+    /// <summary>
+    /// Who owns the launch line Steam holds now: a name such as "Fluorine", or "another launcher" when the manager is
+    /// not recognised. Empty while no replacement is pending.
+    /// </summary>
+    string OtherManagerName { get; }
+
+    /// <summary>
+    /// The other manager's line as it is in Steam's config, the one Replace will swap out. Empty while no replacement
+    /// is pending.
+    /// </summary>
+    string OldLine { get; }
+
+    /// <summary>
+    /// What the launch options become when Replace is pressed. Empty while no replacement is pending.
+    /// </summary>
+    string NewLine { get; }
+
+    /// <summary>
+    /// Whether Replace can be pressed: another manager's line was refused and Steam is closed.
+    /// </summary>
+    bool CanReplace { get; }
+
     ReactiveCommand<Unit, Unit> CopyCommand { get; }
 
     ReactiveCommand<Unit, Unit> WriteCommand { get; }
+
+    /// <summary>
+    /// Swaps <see cref="OldLine"/> for <see cref="NewLine"/> in Steam's config.
+    /// </summary>
+    ReactiveCommand<Unit, Unit> ReplaceCommand { get; }
 
     ReactiveCommand<Unit, Unit> CloseCommand { get; }
 }

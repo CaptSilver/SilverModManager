@@ -14,7 +14,12 @@ public class SteamLaunchOptionDesignViewModel : AOverlayViewModel<ISteamLaunchOp
     public bool CanWrite => false;
     public string WriteNote => "Close Steam completely, including its tray icon, to write the launch option.";
     public string Message => "";
+    public string OtherManagerName => "Fluorine";
+    public string OldLine => "'/opt/fluorine-manager/fluorine-manager' --game 'Cyberpunk 2077' # %command%";
+    public string NewLine => Line;
+    public bool CanReplace => true;
     public ReactiveCommand<Unit, Unit> CopyCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> WriteCommand { get; } = ReactiveCommand.Create(() => { });
+    public ReactiveCommand<Unit, Unit> ReplaceCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> CloseCommand { get; } = ReactiveCommand.Create(() => { });
 }
