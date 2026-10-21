@@ -15,7 +15,8 @@ namespace NexusMods.Platform.Proton.Launch;
 /// The descriptor is O_CLOEXEC so a game (or a wrapper) started by the holder doesn't inherit it. An inherited
 /// lock descriptor would keep the installation locked until the game exits, even after the holder has died.
 /// The kernel drops the lock when the last descriptor on the open file closes, so a crashed holder can't leave
-/// the lock stuck. Only the state file can be left over.
+/// the lock stuck; only the state file can be left over. A live holder unlocks explicitly rather than waiting for
+/// that (see <see cref="Release"/>).
 /// </remarks>
 public sealed partial class InstallationLock : IDisposable
 {
@@ -90,7 +91,7 @@ public sealed partial class InstallationLock : IDisposable
     {
         var fd = TryFlock();
         if (fd < 0) return true;
-        _ = close(fd);
+        Release(fd);
         return false;
     }
 
@@ -160,7 +161,17 @@ public sealed partial class InstallationLock : IDisposable
     public void Dispose()
     {
         var fd = Interlocked.Exchange(ref _fd, -1);
-        if (fd >= 0) _ = close(fd);
+        if (fd >= 0) Release(fd);
+    }
+
+    /// <summary>
+    /// Unlocks, then closes. A close alone drops the lock only once every descriptor on the open file is gone, and
+    /// a child forked by any thread keeps a copy until its exec, so the lock would outlive the close.
+    /// </summary>
+    internal static void Release(int fd)
+    {
+        _ = flock(fd, LOCK_UN);
+        _ = close(fd);
     }
 
     private int TryFlock()
@@ -259,6 +270,7 @@ public sealed partial class InstallationLock : IDisposable
     private const int O_CLOEXEC = 0x80000;
     private const int LOCK_EX = 2;
     private const int LOCK_NB = 4;
+    private const int LOCK_UN = 8;
     private const int EWOULDBLOCK = 11;
 
     [LibraryImport("libc", EntryPoint = "open", StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]

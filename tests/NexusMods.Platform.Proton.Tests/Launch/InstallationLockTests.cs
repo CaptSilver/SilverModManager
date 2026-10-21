@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using FluentAssertions;
 using NexusMods.Platform.Proton.Launch;
 
@@ -292,4 +293,54 @@ public class InstallationLockTests : IDisposable
         Directory.GetFiles(Path.GetDirectoryName(path)!).Select(Path.GetFileName)
             .Should().BeEquivalentTo("launch-steam-1091500.lock", "launch-steam-1091500.state");
     }
+
+    [Fact]
+    public void Release_FreesTheLockWhileAForkedChildStillHasACopyOfTheDescriptor()
+    {
+        // Between fork and exec, a child started by any thread of this process holds a copy of every descriptor,
+        // O_CLOEXEC or not. A duplicate descriptor stands in for that copy: both share the open file the flock
+        // belongs to.
+        var path = PathFor();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var fd = open(path, O_RDWR | O_CREAT | O_CLOEXEC, 0b110_000_000);
+        fd.Should().BeGreaterThanOrEqualTo(0);
+        var childCopy = -1;
+        var released = false;
+        try
+        {
+            flock(fd, LOCK_EX | LOCK_NB).Should().Be(0);
+            childCopy = fcntl(fd, F_DUPFD_CLOEXEC, 0);
+            childCopy.Should().BeGreaterThanOrEqualTo(0);
+
+            InstallationLock.Release(fd);
+            released = true;
+
+            using var taker = new InstallationLock(path);
+            taker.TryAcquire(TimeSpan.Zero).Should().BeTrue();
+        }
+        finally
+        {
+            if (!released) close(fd);
+            if (childCopy >= 0) close(childCopy);
+        }
+    }
+
+    private const int O_RDWR = 2;
+    private const int O_CREAT = 0x40;
+    private const int O_CLOEXEC = 0x80000;
+    private const int F_DUPFD_CLOEXEC = 1030;
+    private const int LOCK_EX = 2;
+    private const int LOCK_NB = 4;
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int open(string path, int flags, uint mode);
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int flock(int fd, int operation);
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int fcntl(int fd, int command, int argument);
+
+    [DllImport("libc")]
+    private static extern int close(int fd);
 }
