@@ -101,4 +101,58 @@ internal class GitHubApi : IGitHubApi
         _logger.LogDebug("Latest release from GitHub for `{Organization}/{Repository}` is `{Name}`", organization, repository, latest.Name);
         return latest;
     }
+
+    public ValueTask<Release?> FetchReleaseByTag(string organization, string repository, string tag, CancellationToken cancellationToken = default)
+    {
+        return FetchRelease(new Uri($"{BaseUrl}/repos/{organization}/{repository}/releases/tags/{Uri.EscapeDataString(tag)}"), cancellationToken);
+    }
+
+    public ValueTask<Release?> FetchMarkedLatestRelease(string organization, string repository, CancellationToken cancellationToken = default)
+    {
+        return FetchRelease(new Uri($"{BaseUrl}/repos/{organization}/{repository}/releases/latest"), cancellationToken);
+    }
+
+    public ValueTask<Release?> FetchLatestReleaseById(long repositoryId, CancellationToken cancellationToken = default)
+    {
+        return FetchRelease(new Uri($"{BaseUrl}/repositories/{repositoryId}/releases/latest"), cancellationToken);
+    }
+
+    public ValueTask<Release?> FetchReleaseByTagById(long repositoryId, string tag, CancellationToken cancellationToken = default)
+    {
+        return FetchRelease(new Uri($"{BaseUrl}/repositories/{repositoryId}/releases/tags/{Uri.EscapeDataString(tag)}"), cancellationToken);
+    }
+
+    private async ValueTask<Release?> FetchRelease(Uri uri, CancellationToken cancellationToken)
+    {
+        _logger.LogDebug("Fetching release from {Uri}", uri);
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add(HeaderApiVersion, ApiVersion);
+
+            if (AuthenticationHeader is not null) request.Headers.Authorization = AuthenticationHeader;
+
+            using var response = await _httpClient.SendAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("GitHub Api returned with status code `{Code}` for `{Uri}`", response.StatusCode, uri);
+                return null;
+            }
+
+            var release = await response.Content.ReadFromJsonAsync<Release>(cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (release is null) _logger.LogWarning("Failed to deserialize release from `{Uri}`", uri);
+            return release;
+        }
+        catch (OperationCanceledException)
+        {
+            // ignore
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning(e, "Exception fetching release from `{Uri}`", uri);
+        }
+
+        return null;
+    }
 }

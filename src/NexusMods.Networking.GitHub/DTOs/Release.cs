@@ -31,6 +31,10 @@ public record Release(
 /// <summary>
 /// Release Asset.
 /// </summary>
+/// <remarks>
+/// <see cref="Digest"/> is "algorithm:hex" (for example "sha256:...") and null for assets uploaded before GitHub
+/// computed digests.
+/// </remarks>
 [PublicAPI]
 public record Asset(
     [property: JsonPropertyName("url")] string Url,
@@ -42,5 +46,6 @@ public record Asset(
     [property: JsonPropertyName("download_count")] int DownloadCount,
     [property: JsonPropertyName("created_at")] DateTimeOffset CreatedAt,
     [property: JsonPropertyName("updated_at")] DateTimeOffset UpdatedAt,
-    [property: JsonPropertyName("browser_download_url")] string BrowserDownloadUrl
+    [property: JsonPropertyName("browser_download_url")] string BrowserDownloadUrl,
+    [property: JsonPropertyName("digest")] string? Digest = null
 );

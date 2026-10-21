@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x414FB55BE6492ECC
-   - Total attributes: 264
-   - Total namespaces: 79
+   - Fingerprint: 0x241898D212064644
+   - Total attributes: 270
+   - Total namespaces: 80
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -113,6 +113,12 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Games.RedEngine.Cyberpunk2077.RedModSortOrder/Marker                     | Null                    | False   | False | False     | 
 | SilverModManager.Games.RedEngine.Cyberpunk2077.RedModSortableEntry/RedModFolderName       | Utf8Insensitive         | False   | False | False     | 
 | SilverModManager.Library.DownloadedFile/DownloadPageUri                                   | Utf8                    | False   | False | False     | 
+| SilverModManager.Library.GitHubRelease/AssetName                                          | Utf8                    | False   | False | False     | 
+| SilverModManager.Library.GitHubRelease/Organization                                       | Utf8                    | False   | False | False     | 
+| SilverModManager.Library.GitHubRelease/PinnedSha256                                       | Blob                    | False   | False | False     | 
+| SilverModManager.Library.GitHubRelease/Repository                                         | Utf8                    | False   | False | False     | 
+| SilverModManager.Library.GitHubRelease/RepositoryId                                       | UInt64                  | True    | False | False     | 
+| SilverModManager.Library.GitHubRelease/Tag                                                | Utf8                    | True    | False | False     | 
 | SilverModManager.Library.LibraryArchive/Archive                                           | Null                    | False   | False | False     | 
 | SilverModManager.Library.LibraryArchiveFileEntry/Parent                                   | Reference               | False   | False | False     | 
 | SilverModManager.Library.LibraryArchiveFileEntry/Path                                     | Utf8Insensitive         | False   | False | False     | 
