@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using FluentAssertions;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NSubstitute;
 
@@ -326,10 +327,64 @@ public class GameProcessTests : IDisposable
     public async Task PassThrough_RunsTheArgvUnchanged()
     {
         string[] argv = ["sh", "-c", "printf '%s|' \"$@\" > \"$0\"", File_("argv"), "a b", "", "$HOME", "--x=\"y\""];
-        using var process = GameProcess.PassThrough(argv, BasicEnvironment);
+        using var process = GameProcess.PassThrough(new GameProcessSpec(argv), BasicEnvironment);
         var result = await process.WaitAsync();
 
         result.ExitCode.Should().Be(0);
         (await File.ReadAllTextAsync(File_("argv"))).Should().Be("a b||$HOME|--x=\"y\"|");
+    }
+
+    private static readonly WineDllOverride Winmm = new("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]);
+
+    private async Task<string[]> EnvironmentOf(GameProcessSpec spec, IReadOnlyDictionary<string, string> inherited)
+    {
+        using var process = GameProcess.Start(spec, Substitute.For<IProcessTracker>(), Installation(), inherited, Grace);
+        await process.WaitAsync();
+        return await File.ReadAllLinesAsync(File_("env"));
+    }
+
+    [Fact]
+    public async Task WineDllOverridesMergeIntoTheInheritedValue()
+    {
+        var inherited = new Dictionary<string, string>(BasicEnvironment) { ["WINEDLLOVERRIDES"] = "dxgi=n,b" };
+
+        var env = await EnvironmentOf(Sh($"env > '{File_("env")}'") with { WineDllOverrides = [Winmm] }, inherited);
+
+        env.Should().Contain("WINEDLLOVERRIDES=dxgi=n,b;winmm=n,b");
+    }
+
+    [Fact]
+    public async Task WineDllOverridesAreSetWhenNoneWereInherited()
+    {
+        var env = await EnvironmentOf(Sh($"env > '{File_("env")}'") with { WineDllOverrides = [Winmm] }, BasicEnvironment);
+
+        env.Should().Contain("WINEDLLOVERRIDES=winmm=n,b");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AnEmptyOverrideListLeavesTheVariableAlone(bool inheritsAValue)
+    {
+        var inherited = new Dictionary<string, string>(BasicEnvironment);
+        if (inheritsAValue) inherited["WINEDLLOVERRIDES"] = "Dxgi.dll=B ; winmm=n";
+
+        foreach (IReadOnlyList<WineDllOverride>? list in new IReadOnlyList<WineDllOverride>?[] { null, [] })
+        {
+            var env = await EnvironmentOf(Sh($"env > '{File_("env")}'") with { WineDllOverrides = list }, inherited);
+
+            if (inheritsAValue) env.Should().Contain("WINEDLLOVERRIDES=Dxgi.dll=B ; winmm=n");
+            else env.Should().NotContain(l => l.StartsWith("WINEDLLOVERRIDES="));
+        }
+    }
+
+    [Fact]
+    public async Task PassThrough_MergesTheWineDllOverridesIntoTheEnvironment()
+    {
+        var inherited = new Dictionary<string, string>(BasicEnvironment) { ["WINEDLLOVERRIDES"] = "dxgi=n,b" };
+        using var process = GameProcess.PassThrough(Sh($"env > '{File_("env")}'") with { WineDllOverrides = [Winmm] }, inherited);
+        await process.WaitAsync();
+
+        (await File.ReadAllLinesAsync(File_("env"))).Should().Contain("WINEDLLOVERRIDES=dxgi=n,b;winmm=n,b");
     }
 }

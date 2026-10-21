@@ -47,7 +47,7 @@ static int HoldLock(string path, double seconds)
 {
     using var installationLock = new InstallationLock(path);
     if (!installationLock.TryAcquire()) return 3;
-    installationLock.WriteState(Environment.ProcessId, "test-loadout", LaunchPhase.Running);
+    installationLock.WriteState(Environment.ProcessId, "test-loadout", LaunchPhase.Running, "");
     Console.WriteLine("locked");
     Console.Out.Flush();
     Thread.Sleep(TimeSpan.FromSeconds(seconds));
@@ -178,7 +178,7 @@ static int SessionScenario(string runtimeDir, string blockIn, bool killFail)
     Console.WriteLine("ready");
     Console.Out.Flush();
 
-    var result = session.RunAsync(new LaunchContext(installation, LoadoutId.From(1), "test-loadout"), () => new GameProcessSpec(["game.exe"])).GetAwaiter().GetResult();
+    var result = session.RunAsync(new LaunchContext(installation, LoadoutId.From(1), "test-loadout", []), () => new GameProcessSpec(["game.exe"])).GetAwaiter().GetResult();
     session.Release();
     Console.WriteLine($"result {result.ExitCode} {string.Join(',', events)}");
     return 0;

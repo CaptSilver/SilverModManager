@@ -19,6 +19,9 @@ namespace NexusMods.Platform.Proton.Launch;
 /// </remarks>
 public sealed partial class InstallationLock : IDisposable
 {
+    /// <summary>The state file key holding the game's required Wine DLL overrides.</summary>
+    public const string WineDllOverridesKey = "WineDllOverrides";
+
     private static readonly TimeSpan DefaultRetryPause = TimeSpan.FromMilliseconds(100);
     private const int MaxRenameAttempts = 5;
 
@@ -94,11 +97,16 @@ public sealed partial class InstallationLock : IDisposable
     /// <summary>
     /// Records the holder in the state file, keeping any keys the wrapper has added.
     /// </summary>
-    public void WriteState(int pid, string loadout, LaunchPhase phase) => Rewrite(values =>
+    /// <param name="wineDllOverrides">
+    /// The game's required overrides as a <c>WINEDLLOVERRIDES</c> value, empty for none. Written on every call so
+    /// an earlier launch's value never outlives it.
+    /// </param>
+    public void WriteState(int pid, string loadout, LaunchPhase phase, string wineDllOverrides) => Rewrite(values =>
     {
         values["pid"] = pid.ToString(CultureInfo.InvariantCulture);
         values["loadout"] = SingleLine(loadout);
         values["phase"] = phase.ToString().ToLowerInvariant();
+        values[WineDllOverridesKey] = SingleLine(wineDllOverrides);
     });
 
     /// <summary>

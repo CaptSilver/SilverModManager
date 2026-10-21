@@ -1,3 +1,5 @@
+using NexusMods.Sdk;
+
 namespace NexusMods.Platform.Proton.Launch;
 
 /// <summary>
@@ -15,4 +17,12 @@ public sealed record InstallationLockState(
     string Loadout,
     LaunchPhase Phase,
     bool IsLeftover,
-    IReadOnlyDictionary<string, string> Values);
+    IReadOnlyDictionary<string, string> Values)
+{
+    /// <summary>
+    /// The Wine DLL overrides the launch's game needs. None for a file written without the key, as older
+    /// builds did.
+    /// </summary>
+    public IReadOnlyList<WineDllOverride> WineDllOverrides =>
+        WineParser.ParseEnvironmentVariable(Values.GetValueOrDefault(InstallationLock.WineDllOverridesKey, ""));
+}

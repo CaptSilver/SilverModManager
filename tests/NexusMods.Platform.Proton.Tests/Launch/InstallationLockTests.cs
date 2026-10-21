@@ -173,7 +173,7 @@ public class InstallationLockTests : IDisposable
         using (var old = new InstallationLock(path))
         {
             old.TryAcquire().Should().BeTrue();
-            old.WriteState(1, "old", LaunchPhase.Finishing);
+            old.WriteState(1, "old", LaunchPhase.Finishing, "");
             old.WriteWrapperKey("wrapper", "99");
         }
 
@@ -188,7 +188,7 @@ public class InstallationLockTests : IDisposable
         var path = PathFor();
         using var holder = new InstallationLock(path);
         holder.TryAcquire().Should().BeTrue();
-        holder.WriteState(1234, "my loadout", LaunchPhase.Preparing);
+        holder.WriteState(1234, "my loadout", LaunchPhase.Preparing, "");
 
         // Written by a different process that does not hold the lock, as the Steam wrapper does.
         var (exit, output) = TestHost.Run("write-wrapper", path, "777");
@@ -207,14 +207,52 @@ public class InstallationLockTests : IDisposable
         var path = PathFor();
         using var holder = new InstallationLock(path);
         holder.TryAcquire().Should().BeTrue();
-        holder.WriteState(1234, "loadout", LaunchPhase.Preparing);
+        holder.WriteState(1234, "loadout", LaunchPhase.Preparing, "");
         holder.WriteWrapperKey("wrapper", "777");
 
-        holder.WriteState(1234, "loadout", LaunchPhase.Running);
+        holder.WriteState(1234, "loadout", LaunchPhase.Running, "");
 
         var state = holder.ReadState()!;
         state.Phase.Should().Be(LaunchPhase.Running);
         state.Values["wrapper"].Should().Be("777");
+    }
+
+    [Fact]
+    public void WriteState_RecordsTheWineDllOverridesAndReadStateParsesThem()
+    {
+        var path = PathFor();
+        using var holder = new InstallationLock(path);
+        holder.TryAcquire().Should().BeTrue();
+
+        holder.WriteState(1234, "loadout", LaunchPhase.Running, "winmm=n,b;version=n,b");
+
+        var state = holder.ReadState()!;
+        state.Values["WineDllOverrides"].Should().Be("winmm=n,b;version=n,b");
+        state.WineDllOverrides.Select(o => o.ToString()).Should().Equal("winmm=n,b", "version=n,b");
+    }
+
+    [Fact]
+    public void WriteState_ReplacesTheOverridesOfAnEarlierLaunch()
+    {
+        var path = PathFor();
+        using var holder = new InstallationLock(path);
+        holder.TryAcquire().Should().BeTrue();
+        holder.WriteState(1234, "loadout", LaunchPhase.Running, "winmm=n,b");
+
+        holder.WriteState(1234, "loadout", LaunchPhase.Running, "");
+
+        holder.ReadState()!.WineDllOverrides.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ReadState_WithoutTheKeyReportsNone()
+    {
+        var path = PathFor();
+        using var holder = new InstallationLock(path);
+        holder.TryAcquire().Should().BeTrue();
+        File.WriteAllText(Path.ChangeExtension(path, ".state"), "pid=1234\nloadout=old\nphase=running\n");
+
+        holder.ReadState()!.WineDllOverrides.Should().BeEmpty();
     }
 
     [Fact]
@@ -223,7 +261,7 @@ public class InstallationLockTests : IDisposable
         var path = PathFor();
         using var holder = new InstallationLock(path);
         holder.TryAcquire().Should().BeTrue();
-        holder.WriteState(1, "loadout", LaunchPhase.Running);
+        holder.WriteState(1, "loadout", LaunchPhase.Running, "");
         holder.WriteWrapperKey("wrapper", "1");
         holder.WriteWrapperKey("wrapper", "2");
 
@@ -236,10 +274,10 @@ public class InstallationLockTests : IDisposable
         var path = PathFor();
         using var holder = new InstallationLock(path);
         holder.TryAcquire().Should().BeTrue();
-        holder.WriteState(1234, "loadout", LaunchPhase.Running);
+        holder.WriteState(1234, "loadout", LaunchPhase.Running, "");
 
         // Shell scripts and the support bundle read this file too; a BOM would glue itself to the first key.
-        File.ReadAllBytes(holder.StatePath).Should().Equal("pid=1234\nloadout=loadout\nphase=running\n"u8.ToArray());
+        File.ReadAllBytes(holder.StatePath).Should().Equal("pid=1234\nloadout=loadout\nphase=running\nWineDllOverrides=\n"u8.ToArray());
     }
 
     [Fact]
@@ -248,7 +286,7 @@ public class InstallationLockTests : IDisposable
         var path = PathFor();
         using var holder = new InstallationLock(path);
         holder.TryAcquire().Should().BeTrue();
-        holder.WriteState(1, "loadout", LaunchPhase.Running);
+        holder.WriteState(1, "loadout", LaunchPhase.Running, "");
         holder.WriteWrapperKey("k", "v");
 
         Directory.GetFiles(Path.GetDirectoryName(path)!).Select(Path.GetFileName)

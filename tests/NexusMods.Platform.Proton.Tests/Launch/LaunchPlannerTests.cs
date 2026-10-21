@@ -2,6 +2,7 @@ using FluentAssertions;
 using NexusMods.Abstractions.Games;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Sdk;
 
 namespace NexusMods.Platform.Proton.Tests.Launch;
 
@@ -18,7 +19,7 @@ public class LaunchPlannerTests
     ];
 
     private static LaunchPlan Compose(string[] command, string specExe, params string[] extraArgs)
-        => LaunchPlanner.Compose(command, Path_(SkyrimRoot), Path_($"{SkyrimRoot}/SkyrimSE.exe"), new LaunchSpec(Path_(specExe), extraArgs), []);
+        => LaunchPlanner.Compose(command, Path_(SkyrimRoot), Path_($"{SkyrimRoot}/SkyrimSE.exe"), new LaunchSpec(Path_(specExe), extraArgs), [], []);
 
     [Fact]
     public void FilesystemRootsComeFromTheDeploymentPlan()
@@ -26,7 +27,7 @@ public class LaunchPlannerTests
         var command = SteamCommand($"{SkyrimRoot}/SkyrimSE.exe");
 
         var plan = LaunchPlanner.Compose(command, Path_(SkyrimRoot), Path_($"{SkyrimRoot}/SkyrimSE.exe"),
-            new LaunchSpec(Path_($"{SkyrimRoot}/SkyrimSE.exe"), []), ["/run/media/store"]);
+            new LaunchSpec(Path_($"{SkyrimRoot}/SkyrimSE.exe"), []), ["/run/media/store"], []);
 
         plan.Process.FilesystemRoots.Should().Equal("/run/media/store");
     }
@@ -73,5 +74,16 @@ public class LaunchPlannerTests
         var command = new[] { "/usr/bin/true", "--flag" };
 
         Compose(command, $"{SkyrimRoot}/SkyrimSE.exe").Process.Argv.Should().Equal(command);
+    }
+
+    [Fact]
+    public void TheGamesWineDllOverridesLandOnTheSpec()
+    {
+        WineDllOverride[] overrides = [new("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn])];
+
+        var plan = LaunchPlanner.Compose(SteamCommand($"{SkyrimRoot}/SkyrimSE.exe"), Path_(SkyrimRoot), Path_($"{SkyrimRoot}/SkyrimSE.exe"),
+            new LaunchSpec(Path_($"{SkyrimRoot}/SkyrimSE.exe"), []), [], overrides);
+
+        plan.Process.WineDllOverrides.Should().Equal(overrides);
     }
 }

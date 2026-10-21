@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 
 namespace NexusMods.Platform.Proton.Launch;
@@ -14,11 +15,16 @@ namespace NexusMods.Platform.Proton.Launch;
 /// Host folders the Steam container must be able to write to, merged into
 /// <c>PRESSURE_VESSEL_FILESYSTEMS_RW</c>. Empty with the copy backend, which needs nothing mounted.
 /// </param>
+/// <param name="WineDllOverrides">
+/// DLL overrides the game needs, merged into the inherited <c>WINEDLLOVERRIDES</c> so the user's own entries
+/// survive. Null or empty leaves the variable as it came.
+/// </param>
 public sealed record GameProcessSpec(
     IReadOnlyList<string> Argv,
     string? WorkingDirectory = null,
     IReadOnlyDictionary<string, string>? Environment = null,
-    IReadOnlyList<string>? FilesystemRoots = null);
+    IReadOnlyList<string>? FilesystemRoots = null,
+    IReadOnlyList<WineDllOverride>? WineDllOverrides = null);
 
 /// <summary>
 /// How a <see cref="GameProcess"/> ended.
@@ -83,12 +89,13 @@ public sealed partial class GameProcess : IGameProcess
     }
 
     /// <summary>
-    /// Starts the command unchanged for a launch the GUI already owns. Nothing is merged into the
-    /// environment and nothing is cleaned up afterwards: the GUI's session ends the game.
+    /// Starts the command for a launch the GUI already owns. Only the spec's Wine DLL overrides are merged
+    /// into the environment (the GUI's launch mounted the filesystem roots already) and nothing is cleaned up
+    /// afterwards: the GUI's session ends the game.
     /// </summary>
-    public static GameProcess PassThrough(IReadOnlyList<string> argv, IReadOnlyDictionary<string, string>? baseEnvironment = null)
+    public static GameProcess PassThrough(GameProcessSpec spec, IReadOnlyDictionary<string, string>? baseEnvironment = null)
     {
-        return Spawn(new GameProcessSpec(argv), tracker: null, installation: null, baseEnvironment, grace: null, forwardTermination: true);
+        return Spawn(spec, tracker: null, installation: null, baseEnvironment, grace: null, forwardTermination: true);
     }
 
     private static GameProcess Spawn(
@@ -146,6 +153,12 @@ public sealed partial class GameProcess : IGameProcess
         if (spec.Environment is not null)
         {
             foreach (var (key, value) in spec.Environment) result[key] = value;
+        }
+
+        if (spec.WineDllOverrides is { Count: > 0 } overrides)
+        {
+            result.TryGetValue(WineParser.WineDllOverridesEnvironmentVariableName, out var existing);
+            result[WineParser.WineDllOverridesEnvironmentVariableName] = WineParser.MergeDllOverrides(existing ?? "", overrides);
         }
 
         if (spec.FilesystemRoots is { } roots) PressureVesselFilesystems.Merge(result, roots);

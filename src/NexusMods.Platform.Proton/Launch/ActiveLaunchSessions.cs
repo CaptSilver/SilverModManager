@@ -34,7 +34,7 @@ public sealed class ActiveLaunchSessions : IGameLaunchSession
     /// <inheritdoc />
     public IGameLaunch BeginSession(Loadout.ReadOnly loadout)
     {
-        return new GameLaunch(CreateSession(), new LaunchContext(loadout.InstallationInstance, loadout.LoadoutId, loadout.Name));
+        return new GameLaunch(CreateSession(), new LaunchContext(loadout.InstallationInstance, loadout.LoadoutId, loadout.Name, WineDllOverrideRequirements.For(loadout.InstallationInstance.Game, loadout)));
     }
 
     internal LaunchSession CreateSession()

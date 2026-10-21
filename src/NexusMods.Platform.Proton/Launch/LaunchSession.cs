@@ -161,10 +161,13 @@ public sealed class LaunchSession
 
         output.WriteLine(plan.Substitution is { } substitution ? $"App id: {substitution.AppId ?? "none"}" : "App id: none");
         output.WriteLine($"Command: {string.Join(' ', plan.Process.Argv)}");
+        output.WriteLine(plan.Process.WineDllOverrides is { Count: > 0 } overrides ? $"Wine DLL overrides: {string.Join(';', overrides)}" : "Wine DLL overrides: none");
         if (plan.Process.WorkingDirectory is { } workingDirectory) output.WriteLine($"Working directory: {workingDirectory}");
         output.WriteLine("The command was resolved against the loadout as it is now; a real launch applies the loadout first, which can change it.");
         return new LaunchResult(0, null);
     }
+
+    private static string WineOverridesOf(LaunchContext context) => string.Join(';', context.WineDllOverrides);
 
     private async Task<LaunchResult> Run(LaunchContext context, Func<LaunchPlan>? resolvePlan, Func<CancellationToken, Task>? whileRunning, CancellationToken cancellationToken)
     {
@@ -238,7 +241,7 @@ public sealed class LaunchSession
         var prepared = new List<ILaunchGate>();
         try
         {
-            _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Preparing);
+            _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Preparing, WineOverridesOf(context));
             await _synchronizer.Synchronize(context.LoadoutId);
             foreach (var gate in _gates)
             {
@@ -265,7 +268,7 @@ public sealed class LaunchSession
                     LogPlan(plan, game);
                     if (BeginRunning())
                     {
-                        _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running);
+                        _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context));
                         using var process = _processFactory.Start(plan.Process, context.Installation);
                         AttachProcess(process);
                         try
@@ -281,7 +284,7 @@ public sealed class LaunchSession
                 }
                 else if (BeginRunning())
                 {
-                    _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running);
+                    _lock.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Running, WineOverridesOf(context));
                     try
                     {
                         await whileRunning!(cancellationToken);
@@ -475,7 +478,7 @@ public sealed class LaunchSession
 
         try
         {
-            _lock!.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Finishing);
+            _lock!.WriteState(Environment.ProcessId, context.LoadoutName, LaunchPhase.Finishing, WineOverridesOf(context));
         }
         catch (Exception e)
         {

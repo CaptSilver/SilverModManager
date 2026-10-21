@@ -23,7 +23,7 @@ public class HeadlessMainRefusalTests : IDisposable
         var path = InstallationLock.PathFor(_runtimeDir, "steam", storeId);
         var installationLock = new InstallationLock(path);
         installationLock.TryAcquire().Should().BeTrue();
-        installationLock.WriteState(pid, loadout, phase);
+        installationLock.WriteState(pid, loadout, phase, "");
         _held.Add(installationLock);
     }
 

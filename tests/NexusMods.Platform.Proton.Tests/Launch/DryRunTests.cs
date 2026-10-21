@@ -42,7 +42,7 @@ public class DryRunTests : IDisposable
             Platform = OSPlatform.Windows,
         }, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, folder)));
 
-        _context = new LaunchContext(installation, LoadoutId.From(1), "My Loadout");
+        _context = new LaunchContext(installation, LoadoutId.From(1), "My Loadout", []);
         _session = new LaunchSession(_lockFactory, new ActiveLaunchSessions(), _synchronizer, _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error);
     }
 
@@ -57,7 +57,7 @@ public class DryRunTests : IDisposable
     ];
 
     private static LaunchPlan Compose(string[] command, string specExe, params string[] extraArgs)
-        => LaunchPlanner.Compose(command, Path_(GameRoot), Path_($"{GameRoot}/SkyrimSE.exe"), new LaunchSpec(Path_(specExe), extraArgs), []);
+        => LaunchPlanner.Compose(command, Path_(GameRoot), Path_($"{GameRoot}/SkyrimSE.exe"), new LaunchSpec(Path_(specExe), extraArgs), [], []);
 
     [Fact]
     public void ThePrintedCommandIsTheOneTheSubstitutionProduced()
@@ -121,5 +121,28 @@ public class DryRunTests : IDisposable
         _error.ToString().Should().Contain("/usr/bin/true");
         _notifier.Received(1).Notify(Arg.Any<string>(), Arg.Is<string>(m => m.Contains("/usr/bin/true")));
         _output.ToString().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ThePlanNamesTheWineDllOverrides()
+    {
+        WineDllOverride[] overrides =
+        [
+            new("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]),
+            new("version", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]),
+        ];
+        var plan = new LaunchPlan(new GameProcessSpec(["/usr/bin/true"], WineDllOverrides: overrides));
+
+        _session.DryRun(_context, () => plan, _output);
+
+        _output.ToString().ReplaceLineEndings("\n").Split('\n').Should().Contain("Wine DLL overrides: winmm=n,b;version=n,b");
+    }
+
+    [Fact]
+    public void ThePlanSaysWhenThereAreNoWineDllOverrides()
+    {
+        _session.DryRun(_context, () => new LaunchPlan(new GameProcessSpec(["/usr/bin/true"])), _output);
+
+        _output.ToString().ReplaceLineEndings("\n").Split('\n').Should().Contain("Wine DLL overrides: none");
     }
 }

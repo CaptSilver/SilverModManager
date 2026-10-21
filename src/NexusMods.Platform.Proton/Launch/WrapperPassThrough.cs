@@ -27,11 +27,14 @@ public static class WrapperPassThrough
         ILogger logger,
         IReadOnlyDictionary<string, string>? baseEnvironment = null)
     {
-        using var launch = TryOpen(command, environment.Get("SteamAppId"), environment.Get("XDG_RUNTIME_DIR"), guiPid);
-        if (launch is null) return null;
+        var joined = TryOpen(command, environment.Get("SteamAppId"), environment.Get("XDG_RUNTIME_DIR"), guiPid);
+        if (joined is null) return null;
 
+        var (launch, state) = joined.Value;
+        using var _ = launch;
+        // The wrapper has no database to ask which overrides the game needs; the window recorded them in the state file.
         // The window waits on Steam for as long as the key is there, so it is only written once the game is up.
-        using var process = GameProcess.PassThrough(command, baseEnvironment);
+        using var process = GameProcess.PassThrough(new GameProcessSpec(command, WineDllOverrides: state.WineDllOverrides), baseEnvironment);
         try
         {
             launch.WriteWrapperKey(LaunchSession.WrapperKey, Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
@@ -50,9 +53,10 @@ public static class WrapperPassThrough
     /// <paramref name="guiPid"/> holds it in the running phase. The app id comes from <paramref name="steamAppId"/>
     /// (Steam's <c>SteamAppId</c>) and, failing that, from <c>AppId=</c> in the command. Null in every other
     /// case, including a lock nobody holds: that state file is a dead launch's leftover.
-    /// The returned lock is not held; the caller disposes it.
+    /// The returned lock is not held; the caller disposes it. The state is the one that was checked, so the caller
+    /// need not read the file a second time.
     /// </summary>
-    public static InstallationLock? TryOpen(IReadOnlyList<string> command, string? steamAppId, string? runtimeDir, int guiPid)
+    public static (InstallationLock Lock, InstallationLockState State)? TryOpen(IReadOnlyList<string> command, string? steamAppId, string? runtimeDir, int guiPid)
     {
         if (string.IsNullOrEmpty(runtimeDir)) return null;
 
@@ -67,7 +71,7 @@ public static class WrapperPassThrough
         try
         {
             var state = installationLock.ReadState();
-            if (state is { IsLeftover: false, Phase: LaunchPhase.Running } && state.Pid == guiPid) return installationLock;
+            if (state is { IsLeftover: false, Phase: LaunchPhase.Running } && state.Pid == guiPid) return (installationLock, state);
         }
         catch (Exception e) when (e is InvalidDataException or IOException)
         {

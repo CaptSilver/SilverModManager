@@ -1,5 +1,6 @@
 using NexusMods.Abstractions.Games;
 using NexusMods.Paths;
+using NexusMods.Sdk;
 
 namespace NexusMods.Platform.Proton.Launch;
 
@@ -18,13 +19,14 @@ public static class LaunchPlanner
     /// <param name="primaryExe">The game's own executable.</param>
     /// <param name="spec">What the run tool wants started.</param>
     /// <param name="filesystemRoots">Host folders the deployment backends need visible inside the Steam container.</param>
-    public static LaunchPlan Compose(IReadOnlyList<string> command, AbsolutePath gameRoot, AbsolutePath primaryExe, LaunchSpec spec, IReadOnlyList<string> filesystemRoots)
+    /// <param name="wineDllOverrides">The overrides the game needs, set in the environment the command starts with.</param>
+    public static LaunchPlan Compose(IReadOnlyList<string> command, AbsolutePath gameRoot, AbsolutePath primaryExe, LaunchSpec spec, IReadOnlyList<string> filesystemRoots, IReadOnlyList<WineDllOverride> wineDllOverrides)
     {
         // Arguments the game needs count like a loader: a command with no exe to put them behind would start the game without them.
         var loaderResolved = !spec.Exe.Equals(primaryExe) || spec.ExtraArgs.Length > 0;
         var substitution = ExeSubstitution.Apply(command, gameRoot, spec, loaderResolved);
         if (substitution.IsRefused) throw new InvalidOperationException(substitution.Refusal);
 
-        return new LaunchPlan(new GameProcessSpec(substitution.Argv, FilesystemRoots: filesystemRoots), spec, substitution);
+        return new LaunchPlan(new GameProcessSpec(substitution.Argv, FilesystemRoots: filesystemRoots, WineDllOverrides: wineDllOverrides), spec, substitution);
     }
 }

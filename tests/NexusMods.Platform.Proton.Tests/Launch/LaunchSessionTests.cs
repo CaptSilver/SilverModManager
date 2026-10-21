@@ -31,7 +31,7 @@ public class LaunchSessionTests : IDisposable
     public LaunchSessionTests()
     {
         _installation = Installation();
-        _context = new LaunchContext(_installation, LoadoutId.From(1), "My Loadout");
+        _context = new LaunchContext(_installation, LoadoutId.From(1), "My Loadout", [new WineDllOverride("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn])]);
         _log = new RecordingLogger();
         _synchronizer = new FakeSynchronizer(_events, this);
         _processes = new FakeProcessFactory(_events, this, _log);
@@ -154,6 +154,27 @@ public class LaunchSessionTests : IDisposable
 
         state!.Pid.Should().Be(Environment.ProcessId);
         state.Loadout.Should().Be("My Loadout");
+    }
+
+    [Fact]
+    public async Task TheStateFileCarriesTheContextsWineDllOverridesInEveryPhase()
+    {
+        var seen = new List<(LaunchPhase Phase, string Overrides)>();
+        void Record()
+        {
+            using var reader = new InstallationLock(LockPath);
+            var state = reader.ReadState()!;
+            seen.Add((state.Phase, string.Join(';', state.WineDllOverrides)));
+        }
+        _synchronizer.OnSync = Record;
+        _processes.OnStart = Record;
+
+        await Run(NewSession());
+
+        seen.Should().Equal(
+            (LaunchPhase.Preparing, "winmm=n,b"),
+            (LaunchPhase.Running, "winmm=n,b"),
+            (LaunchPhase.Finishing, "winmm=n,b"));
     }
 
     [Fact]

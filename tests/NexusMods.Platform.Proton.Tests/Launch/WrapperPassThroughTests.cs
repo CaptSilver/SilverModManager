@@ -19,10 +19,10 @@ public class WrapperPassThroughTests : IDisposable
 
     private string LockPath(string appId = "1091500") => InstallationLock.PathFor(_runtimeDir, "steam", appId);
 
-    private Process HoldWithState(int pid, LaunchPhase phase, string appId = "1091500")
+    private Process HoldWithState(int pid, LaunchPhase phase, string appId = "1091500", string wineDllOverrides = "")
     {
         var holder = TestHost.StartHolder(LockPath(appId), seconds: 30);
-        new InstallationLock(LockPath(appId)).WriteState(pid, "my loadout", phase);
+        new InstallationLock(LockPath(appId)).WriteState(pid, "my loadout", phase, wineDllOverrides);
         return holder;
     }
 
@@ -32,11 +32,12 @@ public class WrapperPassThroughTests : IDisposable
         using var holder = HoldWithState(GuiPid, LaunchPhase.Running);
         try
         {
-            using var found = WrapperPassThrough.TryOpen(SteamCommand, steamAppId: null, _runtimeDir, GuiPid);
+            var found = WrapperPassThrough.TryOpen(SteamCommand, steamAppId: null, _runtimeDir, GuiPid);
 
             found.Should().NotBeNull();
-            found!.LockPath.Should().Be(LockPath());
-            found.IsHeld.Should().BeFalse();
+            using var joined = found!.Value.Lock;
+            joined.LockPath.Should().Be(LockPath());
+            joined.IsHeld.Should().BeFalse();
         }
         finally { holder.Kill(); }
     }
@@ -47,10 +48,11 @@ public class WrapperPassThroughTests : IDisposable
         using var holder = HoldWithState(GuiPid, LaunchPhase.Running, appId: "7");
         try
         {
-            using var found = WrapperPassThrough.TryOpen(SteamCommand, steamAppId: "7", _runtimeDir, GuiPid);
+            var found = WrapperPassThrough.TryOpen(SteamCommand, steamAppId: "7", _runtimeDir, GuiPid);
 
             found.Should().NotBeNull();
-            found!.LockPath.Should().Be(LockPath("7"));
+            using var joined = found!.Value.Lock;
+            joined.LockPath.Should().Be(LockPath("7"));
         }
         finally { holder.Kill(); }
     }
@@ -85,7 +87,7 @@ public class WrapperPassThroughTests : IDisposable
         using (var old = new InstallationLock(LockPath()))
         {
             old.TryAcquire().Should().BeTrue();
-            old.WriteState(GuiPid, "my loadout", LaunchPhase.Running);
+            old.WriteState(GuiPid, "my loadout", LaunchPhase.Running, "");
         }
 
         WrapperPassThrough.TryOpen(SteamCommand, null, _runtimeDir, GuiPid).Should().BeNull();
@@ -114,7 +116,7 @@ public class WrapperPassThroughTests : IDisposable
         using var holder = HoldWithState(GuiPid, LaunchPhase.Running);
         try
         {
-            using var found = WrapperPassThrough.TryOpen(SteamCommand, null, _runtimeDir, GuiPid)!;
+            using var found = WrapperPassThrough.TryOpen(SteamCommand, null, _runtimeDir, GuiPid)!.Value.Lock;
             found.WriteWrapperKey(LaunchSession.WrapperKey, "99");
 
             var state = found.ReadState()!;
@@ -155,6 +157,38 @@ public class WrapperPassThroughTests : IDisposable
             state.Pid.Should().Be(GuiPid);
             state.Phase.Should().Be(LaunchPhase.Running);
             state.Values[LaunchSession.WrapperKey].Should().Be(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+        finally { holder.Kill(); }
+    }
+
+    [Fact]
+    public async Task TryRun_SetsTheWineDllOverridesTheWindowRecorded()
+    {
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running, wineDllOverrides: "winmm=n,b;version=n,b");
+        try
+        {
+            var environment = new Dictionary<string, string>(BasicEnvironment) { ["WINEDLLOVERRIDES"] = "dxgi=n,b" };
+
+            var exitCode = await WrapperPassThrough.TryRunAsync(
+                ["sh", "-c", "printf '%s' \"$WINEDLLOVERRIDES\" > \"$0\"", File_("overrides")],
+                SteamEnvironment(), GuiPid, NullLogger.Instance, environment);
+
+            exitCode.Should().Be(0);
+            (await File.ReadAllTextAsync(File_("overrides"))).Should().Be("dxgi=n,b;winmm=n,b;version=n,b");
+        }
+        finally { holder.Kill(); }
+    }
+
+    [Fact]
+    public async Task TryRun_LeavesTheEnvironmentAloneWhenTheWindowRecordedNoOverrides()
+    {
+        using var holder = HoldWithState(GuiPid, LaunchPhase.Running);
+        try
+        {
+            var exitCode = await TryRun(["sh", "-c", "printf '%s' \"${WINEDLLOVERRIDES-unset}\" > \"$0\"", File_("overrides")]);
+
+            exitCode.Should().Be(0);
+            (await File.ReadAllTextAsync(File_("overrides"))).Should().Be("unset");
         }
         finally { holder.Kill(); }
     }
