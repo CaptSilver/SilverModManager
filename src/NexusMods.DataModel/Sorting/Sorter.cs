@@ -47,6 +47,9 @@ public class Sorter : ISorter
         where TId : IEquatable<TId>
         where TCollection : class, IReadOnlyList<TItem>
     {
+        // Partitioner.Create throws on an empty range.
+        if (items.Count == 0) return [];
+
         var partitioner = Partitioner.Create(0, items.Count);
         var indexed = new ConcurrentDictionary<TId, (TId[] After, TItem Item)>(Environment.ProcessorCount, items.Count);
 

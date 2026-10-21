@@ -41,6 +41,13 @@ public class SortTests
     }
 
     [Fact]
+    public void SortingNothingReturnsNothing()
+    {
+        // A collection whose every mod failed to install has no rules items to sort.
+        new Sorter().Sort<Item, string>([], x => x.Id, x => x.Rules).Should().BeEmpty();
+    }
+
+    [Fact]
     public void FirstItemsComeFirst()
     {
         var data = new List<Item>
