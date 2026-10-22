@@ -1,0 +1,5 @@
+Produced once with erm (read-only), working directory outside both repos.
+  tpf.write(tpf.Archive((tpf.Texture("SB_Icon_02_A", b"AAAA", 102, 0, 1, 0),
+                         tpf.Texture("SB_Status_GRO_00", b"BB", 102, 0, 1, 0)),
+                        platform=0, flag2=3, encoding=1))
+Compared byte-for-byte.

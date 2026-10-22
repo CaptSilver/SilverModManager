@@ -1,0 +1,8 @@
+Produced once with erm (read-only), working directory outside both repos.
+  base = dcx.write_dflt(tpf.write(tpf.Archive((tpf.Texture("A", b"aaaa", 102, 0, 3, 1),
+                                               tpf.Texture("B", b"bb", 0, 0, 1, 0)),
+                                              platform=0, flag2=3, encoding=1)))
+  other = tests.test_merge._tpf_blob([("B", b"xx"), ("C", b"cc"), ("D", b"dddddd")])
+  dcx.read(merge.tpf_union(base, other))
+Stored decompressed: the DFLT body .NET writes need not match Python's zlib, so the merge
+output is compared after Dcx.Read, byte-for-byte.
