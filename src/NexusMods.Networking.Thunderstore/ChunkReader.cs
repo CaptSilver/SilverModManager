@@ -14,6 +14,8 @@ internal static class ChunkReader
 {
     /// <summary>
     /// The digest a content-addressed URL promises, or null when the URL has no valid <c>sha256/&lt;hex&gt;</c> segment.
+    /// The live CDN appends a storage suffix and extension to the digest (<c>sha256/&lt;hex&gt;.sh_xxx.blob</c>), so
+    /// only the text before the first dot is the digest.
     /// </summary>
     public static Sha256Value? DigestFromUri(Uri uri)
     {
@@ -21,7 +23,9 @@ internal static class ChunkReader
         for (var i = 0; i < segments.Length - 1; i++)
         {
             if (segments[i].TrimEnd('/') != "sha256") continue;
-            if (Sha256Value.TryParse(segments[i + 1].TrimEnd('/'), out var digest)) return digest;
+            var next = segments[i + 1].TrimEnd('/');
+            var dot = next.IndexOf('.');
+            if (Sha256Value.TryParse(dot < 0 ? next : next[..dot], out var digest)) return digest;
         }
         return null;
     }

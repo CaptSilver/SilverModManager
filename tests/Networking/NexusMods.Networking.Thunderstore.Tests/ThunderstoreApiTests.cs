@@ -202,6 +202,16 @@ public class ThunderstoreApiTests
     }
 
     [Fact]
+    public void DigestFromUri_ReadsTheDigestBeforeTheBlobSuffix()
+    {
+        // The shape the live index serves: the digest, then a storage suffix and the extension.
+        const string hex = "dab5abef888b9fa1d2aa63d50b1b19419b1e106b16445822aecc4dd3e93ff626";
+        ChunkReader.DigestFromUri(new Uri($"https://ccdn.thunderstore.io/live/blob-storage/sha256/{hex}.sh_hoDLY1y.blob"))
+            .Should().Be(Sha256Value.FromHex(hex));
+        ChunkReader.DigestFromUri(new Uri($"https://cdn.example/sha256/{hex[..63]}.blob")).Should().BeNull();
+    }
+
+    [Fact]
     [Trait("RequiresNetworking", "True")]
     public async Task Live_FetchPackage_BepInExPackIsListedInRepo()
     {

@@ -2,6 +2,7 @@ using FluentAssertions;
 using NexusMods.Networking.Thunderstore.Tests.Fixtures;
 using NexusMods.Paths;
 using NexusMods.Sdk;
+using NexusMods.Sdk.Thunderstore;
 using Xunit;
 
 namespace NexusMods.Networking.Thunderstore.Tests;
@@ -263,6 +264,18 @@ public class ThunderstoreIndexCacheTests
 
         _clock.Now += TimeSpan.FromSeconds(2);
         _cache.IsStale("repo").Should().BeTrue();
+    }
+
+    [Fact]
+    [Trait("RequiresNetworking", "True")]
+    public async Task Live_Refresh_ReadsTheRepoIndex()
+    {
+        var cache = new ThunderstoreIndexCache(new ThunderstoreApi(new HttpClient()), _fileSystem, () => _settings, TimeProvider.System);
+
+        await cache.Refresh("repo", CancellationToken.None);
+        var catalog = await cache.Load("repo", CancellationToken.None);
+
+        catalog.TryGet(new ThunderstorePackageRef("BepInEx", "BepInExPack"), out _).Should().BeTrue();
     }
 
     private sealed class TestClock : TimeProvider
