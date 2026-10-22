@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x3B02A32B147B3932
-   - Total attributes: 284
-   - Total namespaces: 83
+   - Fingerprint: 0x24AD7610C3481318
+   - Total attributes: 291
+   - Total namespaces: 86
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -99,6 +99,13 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.FromSoft.BuildStamp/SteamBuildId                                         | Utf8                    | False   | False | False     | 
 | SilverModManager.GC.BackedUpFile/GameInstall                                              | Reference               | False   | False | False     | 
 | SilverModManager.GC.BackedUpFile/Hash                                                     | UInt64                  | False   | False | False     | 
+| SilverModManager.Games.CreationEngine.PluginListNotice/ReplacedAt                         | Int64                   | False   | False | False     | 
+| SilverModManager.Games.CreationEngine.PluginListNotice/SortOrder                          | Reference               | True    | False | False     | 
+| SilverModManager.Games.CreationEngine.PluginListNotice/Summary                            | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.CreationEngine.PluginSortOrder/Marker                              | Null                    | False   | False | False     | 
+| SilverModManager.Games.CreationEngine.PluginSortOrder/SeededFromGameFile                  | UInt8                   | False   | False | False     | 
+| SilverModManager.Games.CreationEngine.PluginSortableEntry/IsEnabled                       | UInt8                   | False   | False | False     | 
+| SilverModManager.Games.CreationEngine.PluginSortableEntry/PluginName                      | Utf8                    | False   | False | False     | 
 | SilverModManager.Games.FOMOD.EmptyDirectory/EmptyDirectory                                | UInt8                   | False   | False | False     | 
 | SilverModManager.Games.FileHashes.LocalBaseline/BuiltAt                                   | Int64                   | False   | False | False     | 
 | SilverModManager.Games.FileHashes.LocalBaseline/ClassificationVersion                     | Int32                   | False   | False | False     | 

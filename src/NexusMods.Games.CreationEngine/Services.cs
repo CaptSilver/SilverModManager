@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.CreationEngine.Models;
+using NexusMods.Games.CreationEngine.SortOrder;
 using NexusMods.Sdk.Games;
 
 namespace NexusMods.Games.CreationEngine;
@@ -24,6 +26,11 @@ public static class Services
         services.AddSingleton<Morrowind.OpenMw.IOpenMwConfigRoots, Morrowind.OpenMw.OpenMwConfigRoots>();
         services.AddBethesdaGame<Morrowind.Morrowind>(null);
         services.AddBethesdaGame<OblivionRemastered.OblivionRemastered>(KnownPaths.OBSE64Loader);
+
+        services.AddPluginSortOrderModel()
+            .AddPluginSortOrderItemModel()
+            .AddPluginListNoticeModel()
+            .AddPluginQueriesSql();
 
         return services;
     }
