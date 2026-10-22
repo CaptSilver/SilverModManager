@@ -126,4 +126,25 @@ on purpose.
             .AddValue<string>("IniKeys")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate PluginListReplaced = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 6))
+        .WithTitle("Game's plugin list changes were replaced")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("At {ReplacedAt} the app replaced changes made to the game's plugin list: {Summary}")
+        .WithDetails("""
+The plugin list the game keeps on disk was changed outside the app, and the last time the loadout was applied the app wrote its own list over it:
+
+{Summary}
+
+The app owns the plugin list. Switching a plugin on or off and changing the load order are done on the Load Order page; edits made to the file by the game or by another tool are not kept.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("ReplacedAt")
+            .AddValue<string>("Summary")
+        )
+        .Finish();
 }

@@ -13,11 +13,11 @@ namespace NexusMods.Games.CreationEngine.PluginLists;
 /// </summary>
 public abstract class APluginsTxtMechanism : IPluginListMechanism
 {
-    /// <summary>What goes in front of the name of an active plugin; empty when the file lists active plugins only.</summary>
-    protected abstract string ActiveMarker { get; }
-
     /// <summary>The text of the plugin list for plugins in load order, early loaders included.</summary>
     public abstract string Render(IEnumerable<PluginListEntry> entries);
+
+    /// <summary>The entries of a plugin list in file order.</summary>
+    public abstract IReadOnlyList<PluginListEntry> Parse(string text);
 
     public bool OrdersByTimestamp => false;
 
@@ -31,19 +31,7 @@ public abstract class APluginsTxtMechanism : IPluginListMechanism
         var file = loadout.InstallationInstance.Locations.ToAbsolutePath(game.PluginsFile);
         if (!file.FileExists) return null;
 
-        var entries = new List<(string Name, bool Active)>();
-        foreach (var raw in (await file.ReadAllTextAsync()).Split('\n'))
-        {
-            var line = raw.Trim();
-            if (line.Length == 0 || line[0] == '#') continue;
-
-            if (ActiveMarker.Length == 0)
-                entries.Add((line, true));
-            else if (line.StartsWith(ActiveMarker, StringComparison.Ordinal))
-                entries.Add((line[ActiveMarker.Length..], true));
-            else
-                entries.Add((line, false));
-        }
+        var entries = Parse(await file.ReadAllTextAsync()).Select(e => (e.Name, e.Active)).ToList();
         return new GamePluginListState(entries);
     }
 }
@@ -51,16 +39,16 @@ public abstract class APluginsTxtMechanism : IPluginListMechanism
 /// <summary>Active plugins are prefixed with <c>*</c> and unmarked ones are inactive (Skyrim SE, Fallout 4 and newer).</summary>
 public sealed class AsteriskMechanism : APluginsTxtMechanism
 {
-    protected override string ActiveMarker => "*";
-
     // The game loads its early loaders without being told, so the file leaves them out.
     public override string Render(IEnumerable<PluginListEntry> entries) => AsteriskPluginList.Render(entries, writeEarlyLoaders: false);
+
+    public override IReadOnlyList<PluginListEntry> Parse(string text) => AsteriskPluginList.Parse(text);
 }
 
 /// <summary>One plugin name per line; everything listed is active (Skyrim LE, Enderal).</summary>
 public sealed class PlainMechanism : APluginsTxtMechanism
 {
-    protected override string ActiveMarker => "";
-
     public override string Render(IEnumerable<PluginListEntry> entries) => PlainPluginList.Render(entries);
+
+    public override IReadOnlyList<PluginListEntry> Parse(string text) => PlainPluginList.Parse(text);
 }

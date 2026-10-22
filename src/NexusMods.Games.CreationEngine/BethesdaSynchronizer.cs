@@ -33,6 +33,13 @@ public class BethesdaSynchronizer(IServiceProvider provider, IBethesdaGame game)
         var variety = game.SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single();
         var sortOrderId = variety.GetSortOrderIdFor(loadout.LoadoutId, loadout.Db)
             .Value;
+
+        // The notice describes the Apply that wrote it. A later Apply either finds the file edited again, which
+        // writes a fresh notice while the tree is processed, or finds it untouched, which leaves none. The rebase
+        // matters: on the older revision the cleared notice still exists, and the fresh one would update it.
+        await variety.ClearReplacedGameEdit(sortOrderId);
+        loadout = loadout.Rebase();
+
         if (PluginListSeeder.IsSeeded(loadout.Db, sortOrderId)) return loadout;
 
         await PluginListSeeder.Seed(creationEngineGame, variety, provider.GetRequiredService<IConnection>(), loadout, sortOrderId);

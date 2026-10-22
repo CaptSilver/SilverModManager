@@ -102,6 +102,7 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     protected override IEnumerable<IDiagnosticEmitter> CreateEmitters(IServiceProvider provider)
     {
         yield return new MissingMasterEmitter(this);
+        yield return new PluginListReplacedEmitter(this);
         if (TestFileIniFiles.Count > 0)
             yield return new TestFileEntriesEmitter(this);
         foreach (var emitter in base.CreateEmitters(provider))
