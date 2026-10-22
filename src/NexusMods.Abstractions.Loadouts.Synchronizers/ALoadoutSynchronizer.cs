@@ -999,6 +999,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             }
         }
 
+        loadout = await PrepareLoadoutForSync(loadout);
+
         job?.SetStatus(SyncPhases.Collecting);
         var tree = await BuildSyncTree(loadout, job);
         ProcessSyncTree(tree);
@@ -1244,11 +1246,22 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     public async ValueTask BuildProcessRun(Loadout.ReadOnly loadout, GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken)
     {
+        // The loadout-switch path reaches the hook only here: Synchronize hands the switch to the loadout
+        // manager, which ends in this method.
+        loadout = await PrepareLoadoutForSync(loadout);
         var diskStateEntries = DiskStateEntry.FindByGame(state.Db, state);
         var tree = BuildSyncTree(DiskStateToPathPartPair(diskStateEntries), DiskStateToPathPartPair(diskStateEntries), loadout);
         ProcessSyncTree(tree);
         await RunActions(tree, loadout);
     }
+
+    /// <summary>
+    /// Runs before a sync tree is built for an Apply or a loadout switch, so a game can bring the loadout up to
+    /// date first (for example by seeding data from a game file). It may commit to the database and must return
+    /// the loadout at the revision the tree should be built on. It is not called from the public
+    /// <c>BuildSyncTree(loadout, job)</c>, which diagnostics and the CLI use and which must never write.
+    /// </summary>
+    protected virtual ValueTask<Loadout.ReadOnly> PrepareLoadoutForSync(Loadout.ReadOnly loadout) => ValueTask.FromResult(loadout);
 
     /// <inheritdoc />
     public virtual bool IsIgnoredBackupPath(GamePath path) => false;
