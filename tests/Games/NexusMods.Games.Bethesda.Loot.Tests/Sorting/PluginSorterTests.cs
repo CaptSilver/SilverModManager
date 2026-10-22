@@ -61,6 +61,18 @@ public class PluginSorterTests
     }
 
     [Fact]
+    public void ShouldUseGroupMetadataWhenDecidingRelativePluginPositions()
+    {
+        var fixture = WithPlugins(PluginB, PluginA);
+
+        var sorted = PluginSorter.Sort(
+            [fixture.GroupSortingData(PluginA, "A"), fixture.GroupSortingData(PluginB, "B")],
+            fixture.GroupsGraph, [], SortStages.Groups).Order;
+
+        sorted.Should().Equal(PluginA, PluginB);
+    }
+
+    [Fact]
     public void ShouldErrorIfAPluginHasAGroupThatDoesNotExist()
     {
         var fixture = WithPlugins(PluginA);

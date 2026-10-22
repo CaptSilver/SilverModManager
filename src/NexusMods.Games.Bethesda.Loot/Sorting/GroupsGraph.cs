@@ -23,6 +23,8 @@ public sealed class GroupsGraph
 
     public string NodeName(int node) => _graph[node];
 
+    internal DirectedGraph<string, EdgeType> Inner => _graph;
+
     /// <summary>Builds the graph from masterlist groups, then user groups, which may extend or add to them.</summary>
     /// <exception cref="BuildGroupsGraphException">A group loads after one that is not defined (masterlist groups cannot refer to user-only groups), or the relationships form a cycle.</exception>
     public static GroupsGraph Build(IEnumerable<Group> masterlistGroups, IEnumerable<Group> userGroups)

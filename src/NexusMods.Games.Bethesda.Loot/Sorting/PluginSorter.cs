@@ -64,9 +64,9 @@ public static class PluginSorter
         SortStages stages)
         where T : ISortingPlugin
     {
-        if (stages != SortStages.None)
+        if ((stages & ~SortStages.Groups) != SortStages.None)
         {
-            throw new NotImplementedException($"Sorting stages {stages} are not implemented yet.");
+            throw new NotImplementedException($"Sorting stages {stages & ~SortStages.Groups} are not implemented yet.");
         }
 
         var graph = new PluginsGraph<T>();
@@ -79,7 +79,9 @@ public static class PluginSorter
         // early failure.
         graph.CheckForCycles();
 
-        // Group, overlap and tie-break edges are added here.
+        if (stages.HasFlag(SortStages.Groups)) graph.AddGroupEdges(groupsGraph);
+
+        // Overlap and tie-break edges are added here.
 
         graph.CheckForCycles();
 

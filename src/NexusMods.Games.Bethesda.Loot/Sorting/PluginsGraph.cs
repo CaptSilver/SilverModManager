@@ -8,7 +8,7 @@ namespace NexusMods.Games.Bethesda.Loot.Sorting;
 /// The graph of load order constraints between the plugins of one partition. An edge goes from
 /// the plugin that loads first to the plugin that loads after it.
 /// </summary>
-internal sealed class PluginsGraph<T> where T : ISortingPlugin
+internal sealed partial class PluginsGraph<T> where T : ISortingPlugin
 {
     private readonly DirectedGraph<PluginSortingData<T>, EdgeType> _graph = new();
 

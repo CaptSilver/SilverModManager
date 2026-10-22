@@ -77,4 +77,7 @@ internal sealed class SortingFixture
 
     public PluginSortingData<TestPlugin> GroupSortingData(string name, string groupName) =>
         new(_plugins[name].Plugin, new PluginMetadata(name) { Group = groupName }, null, _plugins[name].Index);
+
+    public PluginSortingData<TestPlugin> UserGroupSortingData(string name, string groupName) =>
+        new(_plugins[name].Plugin, null, new PluginMetadata(name) { Group = groupName }, _plugins[name].Index);
 }
