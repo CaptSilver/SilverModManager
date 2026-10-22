@@ -20,24 +20,12 @@ public sealed class MergedFile(MergePlanCache plans, string relPath) : IIntrinsi
         => await stream.WriteAsync(Planned(loadout));
 
     /// <summary>
-    /// The synchronizer hands over a file that is not what it last wrote. The generated one replaces it right away,
-    /// because the write would otherwise only happen on the apply after the one that noticed the edit. The loadout
-    /// does not change: the file is derived from the mods, and an edit to it belongs in one of them.
+    /// The synchronizer hands over a file that is not what it last wrote. The loadout does not change: the file is
+    /// derived from the mods, and an edit to it belongs in one of them. The same apply writes the generated file
+    /// over the edit.
     /// </summary>
-    public async Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
-    {
-        var generated = Planned(loadout);
-
-        using var onDisk = new MemoryStream();
-        await stream.CopyToAsync(onDisk);
-        if (onDisk.GetBuffer().AsSpan(0, (int)onDisk.Length).SequenceEqual(generated)) return;
-
-        // Renamed over the file because the synchronizer still holds the old one open for reading.
-        var target = loadout.InstallationInstance.Locations.ToAbsolutePath(Path);
-        var replacement = target.Parent / $"{target.FileName}.new";
-        await File.WriteAllBytesAsync(replacement.GetFullPath(), generated);
-        await replacement.MoveToAsync(target, overwrite: true);
-    }
+    public Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
+        => Task.CompletedTask;
 
     private byte[] Planned(Loadout.ReadOnly loadout)
     {

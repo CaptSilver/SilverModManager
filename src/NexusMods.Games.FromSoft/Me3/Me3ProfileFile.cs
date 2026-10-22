@@ -26,10 +26,9 @@ public class Me3ProfileFile(ILogger<Me3ProfileFile> logger, Me3Loader loader) : 
     }
 
     /// <summary>
-    /// The synchronizer hands over a file whose content is not what it last wrote: someone edited it. It is
-    /// replaced here with the generated one, because the synchronizer would only rewrite the file on the apply
-    /// after the one that noticed the edit. The loadout is not changed: settings someone would tune by hand
-    /// belong in the loadout.
+    /// The synchronizer hands over a file whose content is not what it last wrote: someone edited it. The loadout is
+    /// not changed, because settings someone would tune by hand belong in the loadout. The same apply writes the
+    /// generated file over the edit.
     /// </summary>
     public async Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
     {
@@ -39,13 +38,8 @@ public class Me3ProfileFile(ILogger<Me3ProfileFile> logger, Me3Loader loader) : 
         var onDisk = await reader.ReadToEndAsync();
         if (onDisk == generated) return;
 
-        // Replaced by renaming a new file over it: the synchronizer still holds the old one open for reading.
         var target = loadout.InstallationInstance.Locations.ToAbsolutePath(Path);
-        var replacement = target.Parent / $"{target.FileName}.new";
-        await replacement.WriteAllTextAsync(generated);
-        await replacement.MoveToAsync(target, overwrite: true);
-
-        logger.LogInformation("The me3 profile {Path} differed from the one the loadout generates and was replaced. Changes made to it by hand are not kept; put settings in the loadout instead", target);
+        logger.LogInformation("The me3 profile {Path} differed from the one the loadout generates and is replaced. Changes made to it by hand are not kept; put settings in the loadout instead", target);
     }
 
     /// <summary>

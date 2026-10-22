@@ -51,6 +51,14 @@ public class SynchronizerRuleTests
 
             action.Should().NotHaveFlag(DeleteFromDisk, "Intrinsic files should not be deleted");
 
+            // The ingest runs first and the write after it in the same apply, so the file the app generates is on
+            // disk when the apply ends instead of one apply later.
+            if (action.HasFlag(AdaptLoadout))
+                action.Should().HaveFlag(WriteIntrinsic, "An intrinsic file that was ingested is written in the same apply");
+
+            if (signature.HasFlag(DiskExists) && !signature.HasFlag(PrevExists))
+                action.Should().HaveFlag(WriteIntrinsic, "An intrinsic file found with no previous state is replaced by the generated one in the same apply");
+
             if (signature.HasFlag(PrevEqualsLoadout) && !signature.HasFlag(DiskEqualsLoadout))
             {
                 if (signature.HasFlag(DiskExists))

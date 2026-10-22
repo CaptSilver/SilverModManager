@@ -108,6 +108,46 @@ public class IntrinsicFileSyncTests(ITestOutputHelper helper) : AIsolatedGameTes
         await Apply(loadout);
         (await Listed()).Should().BeEmpty();
     }
+
+    [Theory]
+    [InlineData("default")]
+    [InlineData("copy")]
+    public async Task AFileEditedByHandIsIngestedAndRewrittenInTheSameApply(string backend)
+    {
+        var loadout = await CreateLoadoutOn(backend);
+        await AddMod(loadout, "a.mod");
+        await Apply(loadout);
+        (await Listed()).Should().Equal("a.mod");
+
+        await Listing.WriteAllTextAsync("edited by the game\nand then some\n");
+        var ingestedBefore = ModListingStubbedGame.Ingested;
+        await Apply(loadout);
+
+        ModListingStubbedGame.Ingested.Should().Be(ingestedBefore + 1, "the edit is read back once");
+        // The app's render is on disk when the apply that noticed the edit ends.
+        (await Listed()).Should().Equal("a.mod");
+    }
+
+    [Theory]
+    [InlineData("default")]
+    [InlineData("copy")]
+    public async Task AFileFoundWithNoPreviousStateIsIngestedAndRewrittenInTheSameApply(string backend)
+    {
+        var loadout = await CreateLoadoutOn(backend);
+        await AddMod(loadout, "a.mod");
+        await Apply(loadout);
+
+        // What a reset leaves behind: the file is there, but nothing records that the app wrote it.
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, [LocatorId.From("StubbedGameState.zip")]);
+        Listing.Parent.CreateDirectory();
+        await Listing.WriteAllTextAsync("the file the user had before\n");
+        var ingestedBefore = ModListingStubbedGame.Ingested;
+        await Apply(loadout);
+
+        ModListingStubbedGame.Ingested.Should().Be(ingestedBefore + 1, "the file is read once");
+        // The app's render replaces the file in the same apply.
+        (await Listed()).Should().Equal("a.mod");
+    }
 }
 
 /// <summary>
