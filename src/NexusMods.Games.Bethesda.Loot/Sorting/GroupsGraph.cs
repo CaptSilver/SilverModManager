@@ -137,7 +137,7 @@ public sealed class GroupsGraph
     // Rust orders strings by UTF-8 bytes, which is code point order; ordinal string comparison
     // orders by UTF-16 unit and differs once supplementary characters are involved. OrderBy is stable.
     private static List<Group> SortedByName(IEnumerable<Group> groups) =>
-        groups.OrderBy(g => g.Name, CodePointComparer.Instance).ToList();
+        groups.OrderBy(g => g.Name, Utf8ByteOrderComparer.Instance).ToList();
 
     private static void AddGroups(
         DirectedGraph<string, EdgeType> graph, Dictionary<string, int> nodes, List<Group> groups, EdgeType edgeType)
@@ -150,7 +150,7 @@ public sealed class GroupsGraph
         foreach (var group in groups)
         {
             var node = nodes[group.Name];
-            foreach (var otherName in group.AfterGroups.Order(CodePointComparer.Instance))
+            foreach (var otherName in group.AfterGroups.Order(Utf8ByteOrderComparer.Instance))
             {
                 if (!nodes.TryGetValue(otherName, out var other)) throw new UndefinedGroupException(otherName);
                 graph.UpdateEdge(other, node, edgeType);

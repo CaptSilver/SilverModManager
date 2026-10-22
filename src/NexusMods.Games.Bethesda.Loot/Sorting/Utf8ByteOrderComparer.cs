@@ -5,9 +5,9 @@ namespace NexusMods.Games.Bethesda.Loot.Sorting;
 /// <summary>
 /// Orders strings by Unicode code point, which matches Rust's byte-wise comparison of UTF-8 strings.
 /// </summary>
-internal sealed class CodePointComparer : IComparer<string>
+internal sealed class Utf8ByteOrderComparer : IComparer<string>
 {
-    public static readonly CodePointComparer Instance = new();
+    public static readonly Utf8ByteOrderComparer Instance = new();
 
     public int Compare(string? x, string? y)
     {

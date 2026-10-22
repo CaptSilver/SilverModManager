@@ -2,15 +2,23 @@ namespace NexusMods.Games.Bethesda.Loot.Sorting;
 
 // Follows libloot's sorting/error.rs.
 
+/// <summary>Base of the errors raised while sorting plugins.</summary>
+public class SortingException : Exception
+{
+    public SortingException(string message) : base(message) { }
+
+    public SortingException(string message, Exception? inner) : base(message, inner) { }
+}
+
 /// <summary>Thrown when a group name does not match any group in the graph.</summary>
-public sealed class UndefinedGroupException(string groupName) : Exception($"the group \"{groupName}\" does not exist")
+public sealed class UndefinedGroupException(string groupName) : SortingException($"the group \"{groupName}\" does not exist")
 {
     public string GroupName { get; } = groupName;
 }
 
 /// <summary>Thrown when interactions form a cycle, with the vertices that make up the cycle.</summary>
 public sealed class CyclicInteractionException(IReadOnlyList<Vertex> cycle)
-    : Exception($"cyclic interaction detected: {DisplayCycle(cycle)}")
+    : SortingException($"cyclic interaction detected: {DisplayCycle(cycle)}")
 {
     public IReadOnlyList<Vertex> Cycle { get; } = cycle;
 
@@ -38,7 +46,7 @@ public enum PathfindingExceptionKind
 }
 
 /// <summary>Thrown when a path search finds something that should be impossible in a valid graph.</summary>
-public sealed class PathfindingException : Exception
+public sealed class PathfindingException : SortingException
 {
     private PathfindingException(PathfindingExceptionKind kind, string message, string? fromGroup = null, string? toGroup = null)
         : base(message)
@@ -75,6 +83,20 @@ public sealed class PathfindingException : Exception
         $"unexpectedly could not find the edge going from \"{fromGroup}\" to \"{toGroup}\"",
         fromGroup,
         toGroup);
+}
+
+/// <summary>Thrown when the plugin graph's specific or early-loading edges contradict plugin master flags.</summary>
+public sealed class PluginGraphValidationException(CyclicInteractionException cycle)
+    : SortingException("found a cycle in the plugin graph", cycle)
+{
+    public CyclicInteractionException Cycle { get; } = cycle;
+}
+
+/// <summary>Thrown when the topological sort of the plugin graph meets a cycle.</summary>
+public sealed class CycleInvolvingPluginException(string pluginName)
+    : SortingException($"found a cycle involving \"{pluginName}\"")
+{
+    public string PluginName { get; } = pluginName;
 }
 
 /// <summary>

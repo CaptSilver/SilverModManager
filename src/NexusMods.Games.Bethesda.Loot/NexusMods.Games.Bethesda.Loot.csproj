@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
         <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+        <ProjectReference Include="..\NexusMods.Games.Bethesda.LoadOrder\NexusMods.Games.Bethesda.LoadOrder.csproj" />
     </ItemGroup>
 
     <ItemGroup>
