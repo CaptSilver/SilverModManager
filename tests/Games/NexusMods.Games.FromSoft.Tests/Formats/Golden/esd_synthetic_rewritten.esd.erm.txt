@@ -1,0 +1,4 @@
+Produced once with erm (read-only), working directory outside both repos, from the esd_synthetic.esd blob:
+  from ermlib.formats import esd
+  esd.write(esd.read(raw))
+The two orphaned pool slots of the source are not rewritten, so the result is shorter than the source.

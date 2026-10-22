@@ -1,0 +1,3 @@
+Produced once with erm (read-only), working directory outside both repos. _synthetic is the helper in tests/test_esd.py:
+  _synthetic([(1, [(0, 1), (1, None)]), (7, [(0, None)])], extra_pool_slots=2)
+Compared byte-for-byte.
