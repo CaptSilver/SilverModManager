@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Downloads;
 using NexusMods.Abstractions.Library;
 using NexusMods.Library.Lock;
+using NexusMods.Library.Verbs;
 
 namespace NexusMods.Library;
 
@@ -23,6 +24,7 @@ public static class Services
             .AddSingleton<LibraryFileDigests>()
             .AddSingleton<IGitHubReleaseAssetSource, GitHubReleaseAssetSource>()
             .AddSingleton<IThunderstoreSource, ThunderstoreSource>()
-            .AddLockVerbs();
+            .AddLockVerbs()
+            .AddThunderstoreVerbs();
     }
 }

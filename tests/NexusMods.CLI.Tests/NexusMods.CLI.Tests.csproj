@@ -18,6 +18,8 @@
 
     <ItemGroup>
         <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\RoutingHandler.cs" Link="Fixtures\RoutingHandler.cs" />
+        <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\Gzip.cs" Link="Fixtures\Gzip.cs" />
+        <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\ThunderstoreJson.cs" Link="Fixtures\ThunderstoreJson.cs" />
     </ItemGroup>
 
     <ItemGroup>
