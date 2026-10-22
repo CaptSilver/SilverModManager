@@ -1,11 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Diagnostics.Emitters;
+using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.CreationEngine.Emitters;
 using NexusMods.Games.CreationEngine.PluginLists;
+using NexusMods.Games.CreationEngine.SortOrder;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -93,6 +95,9 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
 
         return PluginHeaderReader.Read(stream, HeaderFormat, name?.FileName.ToString() ?? "unknown.esm");
     }
+
+    // One instance per game: it owns a header cache, so it is never a shared service.
+    protected override ISortOrderVariety[] CreateSortOrderVarieties(IServiceProvider provider) => [new PluginSortOrderVariety(provider, this)];
 
     protected override IEnumerable<IDiagnosticEmitter> CreateEmitters(IServiceProvider provider)
     {

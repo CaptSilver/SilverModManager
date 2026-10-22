@@ -88,3 +88,10 @@ WHERE s.ParentSortOrder = sortOrderId
         WHERE lower(s.PluginName) = lower(p.Name)
     )
 ORDER BY s.SortIndex;
+
+
+-- The notice recording that the app replaced the game's plugin list, if the sort order has one.
+CREATE MACRO plugins.Notices(db, sortOrderId) AS TABLE
+SELECT n.Id, n.Summary
+FROM mdb_PluginListNotice(Db=>db) n
+WHERE n.SortOrder = sortOrderId;

@@ -48,7 +48,7 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFile
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {
             var sortOrderManager = provider.GetRequiredService<SortOrderManager>();
-            sortOrderManager.RegisterSortOrderVarieties([], this);
+            sortOrderManager.RegisterSortOrderVarieties(CreateSortOrderVarieties(provider), this);
             return sortOrderManager;
         });
     }
@@ -121,6 +121,9 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFile
         PluginLikeExtensions = PluginLikeExtensions,
         ArchiveLikeExtensions = ArchiveLikeExtensions,
     }.Build();
+
+    /// <summary>The load orders the Load Order page offers for this title. Most Bethesda titles have none.</summary>
+    protected virtual ISortOrderVariety[] CreateSortOrderVarieties(IServiceProvider provider) => [];
 
     protected virtual IEnumerable<IDiagnosticEmitter> CreateEmitters(IServiceProvider provider) =>
     [

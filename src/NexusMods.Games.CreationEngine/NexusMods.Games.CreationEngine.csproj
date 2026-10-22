@@ -14,4 +14,8 @@
         <UpToDateCheckInput Include="**\*.sql"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="NexusMods.Games.CreationEngine.Tests" />
+    </ItemGroup>
+
 </Project>
