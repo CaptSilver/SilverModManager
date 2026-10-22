@@ -1,0 +1,6 @@
+Produced once with erm (read-only), working directory outside both repos:
+  from tests.test_bnd4 import _synthetic_bnd4
+  from ermlib.formats import regulation
+  entries = [(1, "a.param", b"AAAA"), (2, "b.param", bytes(range(40))), (3, "c.param", b"C" * 100)]
+  regulation.pack(_synthetic_bnd4(entries, version=b"11701000"), bytes(16))
+Compared byte-for-byte: ZSTD level and window from the traits, IV of sixteen zero bytes, zero fill, one full 0x10 block.
