@@ -11,6 +11,7 @@
     <ProjectReference Include="../../src/NexusMods.Abstractions.NexusModsLibrary/NexusMods.Abstractions.NexusModsLibrary.csproj" />
     <ProjectReference Include="..\..\src\NexusMods.Backend\NexusMods.Backend.csproj" />
     <ProjectReference Include="..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
+    <ProjectReference Include="..\NexusMods.StandardGameLocators.TestHelpers\NexusMods.StandardGameLocators.TestHelpers.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\RoutingHandler.cs" Link="Fixtures\RoutingHandler.cs" />

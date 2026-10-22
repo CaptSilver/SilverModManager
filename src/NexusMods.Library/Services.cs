@@ -22,6 +22,7 @@ public static class Services
             .AddSingleton<IDownloadsService, DownloadsService>()
             .AddSingleton<LibraryFileDigests>()
             .AddSingleton<IGitHubReleaseAssetSource, GitHubReleaseAssetSource>()
+            .AddSingleton<IThunderstoreSource, ThunderstoreSource>()
             .AddLockVerbs();
     }
 }
