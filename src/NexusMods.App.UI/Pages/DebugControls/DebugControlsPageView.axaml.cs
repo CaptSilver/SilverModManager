@@ -111,7 +111,7 @@ public partial class DebugControlsPageView : ReactiveUserControl<IDebugControlsP
                 {
                     Text = "This is the name that will appear in the left hand menu and on the Collections page.",
                     InputLabel = "Collection name",
-                    InputWatermark = "e.g. My Armour Mods",
+                    InputWatermark = "e.g. My Horse Armor Mods",
                 },
                 [
                     DialogStandardButtons.Cancel,

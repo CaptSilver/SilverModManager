@@ -16,7 +16,7 @@ public static class LoadoutDialogs
             {
                 Text = "This is the name that will appear in the left hand menu and on the Collections page.",
                 InputLabel = "Collection name",
-                InputWatermark = "e.g. My Armour Mods",
+                InputWatermark = "e.g. My Horse Armor Mods",
             },
             [
                 DialogStandardButtons.Cancel,
@@ -63,7 +63,7 @@ public static class LoadoutDialogs
             {
                 Text = $"Rename your existing collection \"{collectionName}\" to something else.",
                 InputLabel = "New collection name",
-                InputWatermark = "e.g. My Armour Mods",
+                InputWatermark = "e.g. My Horse Armor Mods",
                 InputText = collectionName,
             },
             [
