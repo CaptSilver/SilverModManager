@@ -14,6 +14,8 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\..\src\NexusMods.Games.CreationEngine\NexusMods.Games.CreationEngine.csproj" />
+      <PackageReference Include="Mutagen.Bethesda.Fallout4" />
+      <PackageReference Include="Mutagen.Bethesda.Skyrim" />
       <ProjectReference Include="..\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
     </ItemGroup>
 

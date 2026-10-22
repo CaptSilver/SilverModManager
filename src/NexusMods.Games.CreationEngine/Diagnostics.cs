@@ -1,5 +1,4 @@
 using JetBrains.Annotations;
-using Mutagen.Bethesda.Plugins;
 using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Diagnostics.References;
 using NexusMods.Abstractions.Diagnostics.Values;
@@ -29,8 +28,8 @@ To fix this, you’ll need to install the missing master before playing.
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddDataReference<LoadoutItemGroupReference>("Mod")
-            .AddValue<ModKey>("PluginName")
-            .AddValue<ModKey>("MissingMasterPluginName")
+            .AddValue<string>("PluginName")
+            .AddValue<string>("MissingMasterPluginName")
         )
         .Finish();
 
@@ -54,8 +53,8 @@ To fix this, you’ll need to install the missing master before playing.
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddDataReference<LoadoutItemGroupReference>("Mod")
-            .AddValue<ModKey>("PluginName")
-            .AddValue<ModKey>("MissingMasterPluginName")
+            .AddValue<string>("PluginName")
+            .AddValue<string>("MissingMasterPluginName")
             .AddValue<LoadoutItemGroupReference>("MissingMasterMod")
         )
         .Finish();

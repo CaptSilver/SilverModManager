@@ -2,15 +2,10 @@
     <ItemGroup>
         <ProjectReference Include="..\NexusMods.Abstractions.Games.Diagnostics\NexusMods.Abstractions.Games.Diagnostics.csproj" />
         <ProjectReference Include="..\NexusMods.Abstractions.Games\NexusMods.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\NexusMods.Games.Bethesda.LoadOrder\NexusMods.Games.Bethesda.LoadOrder.csproj" />
         <ProjectReference Include="..\NexusMods.Games.Unreal\NexusMods.Games.Unreal.csproj" />
         <ProjectReference Include="..\NexusMods.Games.Generic\NexusMods.Games.Generic.csproj" />
         <ProjectReference Include="..\NexusMods.App.Generators.Diagnostics\NexusMods.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    </ItemGroup>
-    <ItemGroup>
-    </ItemGroup>
-    <ItemGroup>
-      <PackageReference Include="Mutagen.Bethesda.Fallout4" />
-      <PackageReference Include="Mutagen.Bethesda.Skyrim" />
     </ItemGroup>
 
 </Project>

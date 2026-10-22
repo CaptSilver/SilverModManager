@@ -6,8 +6,8 @@ using NexusMods.Sdk.Games;
 namespace NexusMods.Games.CreationEngine.Starfield;
 
 /// <summary>
-/// Starfield keeps a star-format Plugins.txt in AppData, but Mutagen.Bethesda.Starfield is not referenced,
-/// so this game cannot read plugin headers and writes no plugin list. Loose files also need
+/// Starfield keeps a star-format Plugins.txt in AppData, but it is not yet a Creation Engine game with a
+/// plugin reader, so it cannot read plugin headers and writes no plugin list. Loose files also need
 /// StarfieldCustom.ini to be loaded; writing that is not done yet either.
 /// </summary>
 public class Starfield(IServiceProvider provider) : ABethesdaGame<Starfield>(provider), IGameData<Starfield>

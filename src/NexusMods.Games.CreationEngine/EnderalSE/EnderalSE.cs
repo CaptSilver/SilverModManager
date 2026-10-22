@@ -1,5 +1,5 @@
 using DynamicData.Kernel;
-using Mutagen.Bethesda;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -26,7 +26,7 @@ public class EnderalSE(IServiceProvider provider) : ACreationEngineGame<EnderalS
     public override IReadOnlyList<RelativePath> IdentifyingFiles => ["Enderal Launcher.exe", "Data/Enderal - Forgotten Stories.esm"];
 
     protected override RelativePath PrimaryExe => "SkyrimSE.exe";
-    protected override GameRelease PluginRelease => GameRelease.EnderalSE;
+    protected override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override GamePath PluginsFile => new(LocationId.AppData, "Plugins.txt");
 
     // The GOG build keeps both its plugin list and its My Games folder apart from Steam's: gameenderalse.cpp

@@ -1,5 +1,5 @@
 using DynamicData.Kernel;
-using Mutagen.Bethesda;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -19,7 +19,7 @@ public class Fallout4(IServiceProvider provider) : ACreationEngineGame<Fallout4>
     };
 
     protected override RelativePath PrimaryExe => "Fallout4.exe";
-    protected override GameRelease PluginRelease => GameRelease.Fallout4;
+    protected override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override GamePath PluginsFile => Fallout4KnownPaths.PluginsFile;
 
     protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "Fallout4";

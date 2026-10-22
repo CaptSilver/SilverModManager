@@ -3,7 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Mutagen.Bethesda;
-using Mutagen.Bethesda.Fallout4;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Sorting;
@@ -67,7 +67,7 @@ public class FalloutStarfieldTests(IServiceProvider serviceProvider)
     }
 
     [Fact]
-    public async Task Fallout4VR_ReadsPluginHeadersAsItsOwnRelease()
+    public async Task Fallout4VR_ReadsPluginHeaders()
     {
         var bytes = BethesdaPluginBytes.Bytes(GameRelease.Fallout4VR, "A.esp", "Fallout4.esm");
         var stored = bytes.xxHash3();
@@ -77,8 +77,9 @@ public class FalloutStarfieldTests(IServiceProvider serviceProvider)
 
         var header = await game.ParsePlugin(stored, RelativePath.FromUnsanitizedInput("A.esp"));
 
-        header.Should().BeAssignableTo<IFallout4ModGetter>().Which.Fallout4Release.Should().Be(Fallout4Release.Fallout4VR);
-        header!.MasterReferences.Select(m => m.Master.FileName.ToString()).Should().Equal("Fallout4.esm");
+        header!.FileName.Should().Be("A.esp");
+        header.Masters.Should().Equal("Fallout4.esm");
+        header.Format.Should().Be(PluginFormat.Tes4);
     }
 
     [Fact]
@@ -106,7 +107,7 @@ public class FalloutStarfieldTests(IServiceProvider serviceProvider)
         lines.Where(l => !l.StartsWith('#')).Should().Equal("*A.esp");
     }
 
-    // No Mutagen release is referenced for either title, so neither writes a plugin list or checks masters.
+    // Neither title is a Creation Engine game with a plugin reader yet, so neither writes a plugin list or checks masters.
     [Theory]
     [InlineData(typeof(CreationEngine.Fallout76.Fallout76))]
     [InlineData(typeof(CreationEngine.Starfield.Starfield))]

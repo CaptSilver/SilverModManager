@@ -1,5 +1,5 @@
 using DynamicData.Kernel;
-using Mutagen.Bethesda;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -19,7 +19,7 @@ public class SkyrimSE(IServiceProvider provider) : ACreationEngineGame<SkyrimSE>
     };
 
     protected override RelativePath PrimaryExe => "SkyrimSE.exe";
-    protected override GameRelease PluginRelease => GameRelease.SkyrimSE;
+    protected override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override GamePath PluginsFile => new(LocationId.AppData, "Plugins.txt");
 
     // The GOG build keeps both its plugin list and its My Games folder apart from Steam's: gameskyrimse.cpp

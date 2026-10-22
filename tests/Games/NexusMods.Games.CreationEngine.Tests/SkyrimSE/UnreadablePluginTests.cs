@@ -123,7 +123,7 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
         var header = await Creation.ParsePlugin(node.Loadout.Hash, RelativePath.FromUnsanitizedInput("Readable.esp"));
 
         header.Should().NotBeNull();
-        header!.MasterReferences.Select(m => m.Master.FileName.ToString()).Should().Equal("Skyrim.esm");
+        header!.Masters.Should().Equal("Skyrim.esm");
     }
 
     [Fact]
@@ -175,7 +175,46 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
         diagnostics.Should().ContainSingle(d => d.Id == MissingMasterId);
     }
 
+    [Fact]
+    public async Task MissingMasterEmitter_MatchesAMasterNamedInADifferentCase()
+    {
+        // The game's file lookup ignores case, so a master reference spelled differently is still present.
+        var readable = await StoredPlugin("Readable.esp", "skyrim.esm");
+        var master = await StoredPlugin("Skyrim.esm");
+
+        var diagnostics = await Diagnose(Tree(readable, master));
+
+        diagnostics.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task MissingMasterEmitter_WithoutASyncTree_ReportsNothing()
+    {
+        var loadout = await EnsureLoadout();
+        var emitter = new MissingMasterEmitter(Creation);
+
+        var diagnostics = new List<Diagnostic>();
+        await foreach (var diagnostic in emitter.Diagnose(loadout, CancellationToken.None))
+            diagnostics.Add(diagnostic);
+
+        diagnostics.Should().BeEmpty();
+    }
+
     private PluginsFile NewPluginsFile() => new(NullLogger<PluginsFile>.Instance, Creation, ServiceProvider.GetRequiredService<ISorter>());
+
+    [Fact]
+    public async Task PluginsFile_SortsAPluginAfterAMasterNamedInADifferentCase()
+    {
+        var dependant = await StoredPlugin("A.esp", "z.esp");
+        var master = await StoredPlugin("Z.esp");
+        var loadout = await EnsureLoadout();
+
+        using var stream = new MemoryStream();
+        await NewPluginsFile().Write(stream, loadout, Tree(dependant, master).ToDictionary());
+
+        var lines = Encoding.UTF8.GetString(stream.ToArray()).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        lines.Where(l => !l.StartsWith('#')).Should().Equal("*Z.esp", "*A.esp");
+    }
 
     [Fact]
     public async Task PluginsFile_RefusesToWriteWhenAPluginCannotBeRead()

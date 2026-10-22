@@ -1,5 +1,5 @@
 using DynamicData.Kernel;
-using Mutagen.Bethesda;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -20,7 +20,7 @@ public class SkyrimVR(IServiceProvider provider) : ACreationEngineGame<SkyrimVR>
     };
 
     protected override RelativePath PrimaryExe => "SkyrimVR.exe";
-    protected override GameRelease PluginRelease => GameRelease.SkyrimVR;
+    protected override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
 
     protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "Skyrim VR";

@@ -3,7 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Mutagen.Bethesda;
-using Mutagen.Bethesda.Skyrim;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Sorting;
@@ -19,7 +19,7 @@ namespace NexusMods.Games.CreationEngine.Tests.SkyrimFamily;
 
 /// <summary>
 /// Each title writes its plugin list at its own path, with or without the active marker, and reads
-/// plugin headers as its own Mutagen release.
+/// plugin headers through the shared header reader.
 /// </summary>
 public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
 {
@@ -49,8 +49,8 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
 
     private ICreationEngineGame Registered(Type type) => serviceProvider.GetServices<IGame>().OfType<ICreationEngineGame>().Single(g => g.GetType() == type);
 
-    // A fresh instance of the title whose plugin reads come from these bytes, so ParsePlugin runs with the
-    // class's own release rather than one the test picks.
+    // A fresh instance of the title whose plugin reads come from these bytes, so ParsePlugin runs the
+    // class's own header format rather than one the test picks.
     private ICreationEngineGame Reading(Type type, byte[] bytes, out Hash hash)
     {
         var stored = bytes.xxHash3();
@@ -73,14 +73,15 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
 
     [Theory]
     [MemberData(nameof(Releases))]
-    public async Task PluginHeadersAreReadAsTheTitlesRelease(Type type, GameRelease release)
+    public async Task PluginHeadersAreReadForTheTitle(Type type, GameRelease release)
     {
         var game = Reading(type, BethesdaPluginBytes.Bytes(release, "A.esp", "Skyrim.esm"), out var hash);
 
         var header = await game.ParsePlugin(hash, RelativePath.FromUnsanitizedInput("A.esp"));
 
-        header.Should().BeAssignableTo<ISkyrimModGetter>().Which.SkyrimRelease.Should().Be(release.ToSkyrimRelease());
-        header!.MasterReferences.Select(m => m.Master.FileName.ToString()).Should().Equal("Skyrim.esm");
+        header!.FileName.Should().Be("A.esp");
+        header.Masters.Should().Equal("Skyrim.esm");
+        header.Format.Should().Be(PluginFormat.Tes4);
     }
 
     [Theory]

@@ -1,5 +1,5 @@
 using DynamicData.Kernel;
-using Mutagen.Bethesda;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -19,7 +19,7 @@ public class SkyrimLE(IServiceProvider provider) : ACreationEngineGame<SkyrimLE>
     };
 
     protected override RelativePath PrimaryExe => "TESV.exe";
-    protected override GameRelease PluginRelease => GameRelease.SkyrimLE;
+    protected override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
     public override PluginListFormat PluginListFormat => PluginListFormat.Plain;
 

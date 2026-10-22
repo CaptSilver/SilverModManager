@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Mutagen.Bethesda.Plugins;
 
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.CreationEngine.Abstractions;
@@ -86,15 +85,15 @@ public class LibraryArchiveInstallerTests(ITestOutputHelper outputHelper) : AIso
             .ToArray();
 
 
-        List<(string Plugin, int Index, string Master, ModType Type)> data = [];
+        List<(string Plugin, int Index, string Master)> data = [];
         foreach (var plugin in plugins)
         {
             var fileName = plugin.AsLoadoutItemWithTargetPath().TargetPath.Item3.FileName;
             var header = await ((ICreationEngineGame) Game).ParsePlugin(plugin.Hash, fileName);
             var index = 0;
-            foreach (var masterRef in header!.MasterReferences)
+            foreach (var master in header!.Masters)
             {
-                data.Add((fileName, index, masterRef.Master.FileName.ToString(), masterRef.Master.Type));
+                data.Add((fileName, index, master));
                 index++;
             }
         }

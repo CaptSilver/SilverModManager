@@ -1,5 +1,5 @@
 using DynamicData.Kernel;
-using Mutagen.Bethesda;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -23,7 +23,7 @@ public class Enderal(IServiceProvider provider) : ACreationEngineGame<Enderal>(p
     public override IReadOnlyList<RelativePath> IdentifyingFiles => ["Enderal Launcher.exe", "Data/Enderal - Forgotten Stories.esm"];
 
     protected override RelativePath PrimaryExe => "TESV.exe";
-    protected override GameRelease PluginRelease => GameRelease.EnderalLE;
+    protected override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
     public override PluginListFormat PluginListFormat => PluginListFormat.Plain;
 

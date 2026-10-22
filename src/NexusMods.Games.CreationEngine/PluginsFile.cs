@@ -1,12 +1,10 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
-using Mutagen.Bethesda.Plugins;
-using Mutagen.Bethesda.Plugins.Records;
-
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
@@ -23,7 +21,13 @@ public class PluginsFile : IIntrinsicFile
     private readonly ISorter _sorter;
     private readonly ILogger<PluginsFile> _logger;
 
-    private record struct Metadata(RelativePath FileName, ModKey ModKey, Hash Hash, IMod Mod);
+    private record struct Metadata(RelativePath FileName, Hash Hash, PluginHeader Header)
+    {
+        /// <summary>The sort id of the plugin: plugin names match without regard to case.</summary>
+        public string Id => SortId(Header.FileName);
+    }
+
+    private static string SortId(string pluginName) => pluginName.ToUpperInvariant();
 
     public PluginsFile(ILogger<PluginsFile> logger, ICreationEngineGame game, ISorter sorter)
     {
@@ -37,7 +41,7 @@ public class PluginsFile : IIntrinsicFile
     
     public async Task Write(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree)
     {
-        var plugins = new Dictionary<ModKey, Metadata>();
+        var plugins = new Dictionary<string, Metadata>();
         List<string> unreadable = [];
         foreach (var entry in syncTree)
         {
@@ -46,7 +50,7 @@ public class PluginsFile : IIntrinsicFile
 
             var metadata = await MakeMetadata(entry);
             if (metadata is { } found)
-                plugins.Add(found.ModKey, found);
+                plugins.Add(found.Id, found);
             else
                 unreadable.Add(entry.Key.FileName);
         }
@@ -77,18 +81,18 @@ public class PluginsFile : IIntrinsicFile
         await sw.FlushAsync();
     }
 
-    private static IReadOnlyList<ISortRule<Metadata, ModKey>> RuleCreator(Metadata metadata, Dictionary<ModKey, Metadata> allPlugins)
+    private static IReadOnlyList<ISortRule<Metadata, string>> RuleCreator(Metadata metadata, Dictionary<string, Metadata> allPlugins)
     {
-        var resultList = new List<ISortRule<Metadata, ModKey>>();
-        foreach (var master in metadata.Mod.MasterReferences)
+        var resultList = new List<ISortRule<Metadata, string>>();
+        foreach (var master in metadata.Header.Masters)
         {
             // Skip missing masters here, we'll catch that in diagnostics
-            if (!allPlugins.ContainsKey(master.Master))
+            if (!allPlugins.ContainsKey(SortId(master)))
                 continue;
             
-            resultList.Add(new After<Metadata, ModKey>()
+            resultList.Add(new After<Metadata, string>()
             {
-                Other = master.Master,
+                Other = SortId(master),
             });
         }
 
@@ -98,9 +102,9 @@ public class PluginsFile : IIntrinsicFile
             foreach (var other in allPlugins.Values)
             {
                 if (other.FileName.Extension == KnownCEExtensions.ESM)
-                    resultList.Add(new After<Metadata, ModKey>()
+                    resultList.Add(new After<Metadata, string>()
                     {
-                        Other = other.ModKey,
+                        Other = other.Id,
                     });
             }
         }
@@ -111,9 +115,9 @@ public class PluginsFile : IIntrinsicFile
             foreach (var other in allPlugins.Values)
             {
                 if (other.FileName.Extension == KnownCEExtensions.ESM || other.FileName.Extension == KnownCEExtensions.ESL)
-                    resultList.Add(new After<Metadata, ModKey>()
+                    resultList.Add(new After<Metadata, string>()
                     {
-                        Other = other.ModKey,
+                        Other = other.Id,
                     });
             }
         }
@@ -121,9 +125,9 @@ public class PluginsFile : IIntrinsicFile
         return resultList;
     }
 
-    private static ModKey IdSelector(Metadata metadata)
+    private static string IdSelector(Metadata metadata)
     {
-        return metadata.ModKey;
+        return metadata.Id;
     }
 
     private async ValueTask<Metadata?> MakeMetadata(KeyValuePair<GamePath, SyncNode> arg)
@@ -139,7 +143,7 @@ public class PluginsFile : IIntrinsicFile
             hash = syncNode.Disk.Hash;
         
         var modHeader = await _game.ParseNode(syncNode, hash, relPath);
-        return modHeader is null ? null : new Metadata(relPath, modHeader.ModKey, hash, modHeader);
+        return modHeader is null ? null : new Metadata(relPath, hash, modHeader);
     }
     
 

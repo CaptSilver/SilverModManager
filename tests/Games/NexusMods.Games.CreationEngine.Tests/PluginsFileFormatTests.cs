@@ -2,11 +2,8 @@ using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Mutagen.Bethesda;
-using Mutagen.Bethesda.Plugins;
-using Mutagen.Bethesda.Plugins.Records;
-using Mutagen.Bethesda.Skyrim;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.CreationEngine.Abstractions;
@@ -32,7 +29,8 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
         game.ParsePlugin(Hash.From(1), null).ReturnsForAnyArgs(call =>
         {
             var name = call.ArgAt<RelativePath?>(1);
-            return ValueTask.FromResult<IMod?>(new SkyrimMod(ModKey.FromFileName(name!.Value.FileName.ToString()), SkyrimRelease.SkyrimSE));
+            var fileName = name!.Value.FileName.ToString();
+            return ValueTask.FromResult<PluginHeader?>(new PluginHeader(fileName, [], 0, null, null, null, null, PluginFormat.Tes4));
         });
         return game;
     }

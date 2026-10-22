@@ -1,5 +1,5 @@
 using DynamicData.Kernel;
-using Mutagen.Bethesda;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -20,7 +20,7 @@ public class Fallout4VR(IServiceProvider provider) : ACreationEngineGame<Fallout
     };
 
     protected override RelativePath PrimaryExe => "Fallout4VR.exe";
-    protected override GameRelease PluginRelease => GameRelease.Fallout4VR;
+    protected override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
 
     // https://github.com/ModOrganizer2/modorganizer-game_fallout4vr/blob/master/src/gamefallout4vr.cpp
