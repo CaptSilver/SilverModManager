@@ -32,6 +32,12 @@ public interface IThunderstoreApi
     IAsyncEnumerable<PackageListing> ReadChunk(Uri chunk, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Downloads a content-addressed blob exactly as served, without checking it. The caller verifies the bytes
+    /// against the digest in the URL before trusting or storing them.
+    /// </summary>
+    Task<byte[]> DownloadBlob(Uri blob, CancellationToken cancellationToken);
+
+    /// <summary>
     /// The URL Thunderstore serves a version's zip from (it redirects to the CDN).
     /// </summary>
     Uri DownloadUri(ThunderstoreVersionRef version);

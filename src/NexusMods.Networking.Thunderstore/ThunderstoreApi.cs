@@ -55,6 +55,9 @@ internal sealed class ThunderstoreApi : IThunderstoreApi
         }
     }
 
+    public async Task<byte[]> DownloadBlob(Uri blob, CancellationToken cancellationToken)
+        => (await GetBytes(blob, cancellationToken)).Bytes;
+
     public Uri DownloadUri(ThunderstoreVersionRef version)
         => new($"{Host}/package/download/{version.Package.Namespace}/{version.Package.Name}/{version.Version}/");
 
