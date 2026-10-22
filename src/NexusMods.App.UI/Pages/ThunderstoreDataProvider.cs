@@ -68,9 +68,23 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
             .Group(PackageName);
     }
 
-    // A package has no entity of its own, so its row is keyed by the oldest of its files. The key is read once,
-    // when the row is created, and the row goes away with the package.
-    private static EntityId ParentKey(IGroup<ThunderstoreLibraryFile.ReadOnly, EntityId, string> package) => package.Cache.Keys.Min();
+    // A package has no entity of its own, so its row is keyed by an id derived from the package name. Keying it
+    // by one of its files would leave the row holding the id of a deleted entity once that version goes. The id
+    // lives in the temporary partition, which no stored entity can occupy, so it can't collide with a file's id.
+    internal static EntityId ParentKey(string packageName)
+    {
+        // FNV-1a rather than string.GetHashCode, which is randomized per process.
+        var hash = 14695981039346656037UL;
+        foreach (var b in System.Text.Encoding.UTF8.GetBytes(packageName))
+        {
+            hash ^= b;
+            hash *= 1099511628211UL;
+        }
+
+        return PartitionId.Temp.MakeEntityId(hash & 0x00FF_FFFF_FFFF_FFFFUL);
+    }
+
+    private static EntityId ParentKey(IGroup<ThunderstoreLibraryFile.ReadOnly, EntityId, string> package) => ParentKey(package.Key);
 
     private static string HighestVersion(IEnumerable<ThunderstoreLibraryFile.ReadOnly> files)
     {

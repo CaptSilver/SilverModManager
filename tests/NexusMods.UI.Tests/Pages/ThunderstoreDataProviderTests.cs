@@ -11,6 +11,7 @@ using NexusMods.App.UI.Pages;
 using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Pages.LoadoutPage;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Networking.Thunderstore;
 using NexusMods.Networking.Thunderstore.DTOs;
 using NexusMods.Paths;
@@ -395,5 +396,72 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
 
         await Eventually(() => count.Should().Be(0));
         rows.Count.Should().Be(0);
+    }
+
+    private async Task DeleteFile(EntityId id)
+    {
+        using var tx = Connection.BeginTransaction();
+        tx.Delete(id, recursive: true);
+        await tx.Commit();
+    }
+
+    [Fact]
+    public async Task DeletingTheOldestVersion_KeepsTheParentRowAndItsKey()
+    {
+        var community = UniqueCommunity();
+        var older = await AddFile(community, "Zehs", "REPOLib", "4.1.0");
+        var newer = await AddFile(community, "Zehs", "REPOLib", "4.2.0");
+        var game = ThunderstoreGameOf(community);
+        var filter = new LibraryFilter(NoLoadout, game);
+        var thunderstore = CreateProvider(game);
+
+        using var rows = Rows(thunderstore.ObserveLibraryItems(filter));
+        await Eventually(() => rows.Count.Should().Be(1));
+        var parent = rows.Items.Single();
+        var keyBefore = parent.Key;
+        keyBefore.Should().NotBe(older).And.NotBe(newer, "the row stands for the package, not for one of its files");
+
+        using var versions = ChildrenOf(parent);
+        await Eventually(() => versions.Keys.Should().BeEquivalentTo([older, newer]));
+
+        await DeleteFile(older);
+
+        await Eventually(() => versions.Keys.Should().BeEquivalentTo([newer]));
+        rows.Items.Should().ContainSingle().Which.Key.Should().Be(keyBefore);
+
+        // A row built after the deletion is keyed the same as the one built before it.
+        using var rebuilt = Rows(thunderstore.ObserveLibraryItems(filter));
+        await Eventually(() => rebuilt.Count.Should().Be(1));
+        rebuilt.Items.Single().Key.Should().Be(keyBefore);
+    }
+
+    [Fact]
+    public async Task DeletingTheLastVersion_RemovesTheParentRow()
+    {
+        var community = UniqueCommunity();
+        var only = await AddFile(community, "Zehs", "REPOLib", "4.1.0");
+        var game = ThunderstoreGameOf(community);
+        var thunderstore = CreateProvider(game);
+
+        using var rows = Rows(thunderstore.ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(1));
+
+        await DeleteFile(only);
+
+        await Eventually(() => rows.Count.Should().Be(0));
+    }
+
+    [Fact]
+    public async Task EachPackage_GetsItsOwnParentKey()
+    {
+        var community = UniqueCommunity();
+        await AddFile(community, "Zehs", "REPOLib", "4.1.0");
+        await AddFile(community, "nickklmao", "REPOConfig", "1.2.6");
+        var game = ThunderstoreGameOf(community);
+        var thunderstore = CreateProvider(game);
+
+        using var rows = Rows(thunderstore.ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+
+        await Eventually(() => rows.Count.Should().Be(2));
     }
 }
