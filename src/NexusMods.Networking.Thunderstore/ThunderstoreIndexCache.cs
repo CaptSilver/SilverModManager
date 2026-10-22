@@ -13,7 +13,7 @@ namespace NexusMods.Networking.Thunderstore;
 /// only downloads the ones it does not already have. Each community's catalog is built once per index and shared.
 /// </summary>
 [PublicAPI]
-public sealed class ThunderstoreIndexCache
+public sealed class ThunderstoreIndexCache : IThunderstoreCatalogSource
 {
     private const string IndexFileName = "index.json";
     private const string ChunksFolderName = "chunks";

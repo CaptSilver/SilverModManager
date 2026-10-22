@@ -27,6 +27,7 @@ public static class Services
                 p.GetRequiredService<IThunderstoreApi>(),
                 p.GetRequiredService<NexusMods.Paths.IFileSystem>(),
                 p.GetRequiredService<ISettingsManager>(),
-                p.GetRequiredService<TimeProvider>()));
+                p.GetRequiredService<TimeProvider>()))
+            .AddSingleton<IThunderstoreCatalogSource>(p => p.GetRequiredService<ThunderstoreIndexCache>());
     }
 }

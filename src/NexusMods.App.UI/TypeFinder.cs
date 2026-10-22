@@ -8,6 +8,7 @@ using NexusMods.App.UI.Pages.Diagnostics;
 using NexusMods.App.UI.Pages.Diff.ApplyDiff;
 using NexusMods.App.UI.Pages.Downloads;
 using NexusMods.App.UI.Pages.FromSoftSaves;
+using NexusMods.App.UI.Pages.Thunderstore;
 using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
 using NexusMods.App.UI.Pages.LoadoutPage;
@@ -47,6 +48,7 @@ internal class TypeFinder : ITypeFinder
         typeof(DownloadsPageContext),
         typeof(ToolsPageContext),
         typeof(FromSoftSavesPageContext),
+        typeof(ThunderstorePageContext),
 
         // workspace context
         typeof(EmptyContext),

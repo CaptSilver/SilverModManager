@@ -61,6 +61,7 @@ using NexusMods.App.UI.Pages.ObservableInfo;
 using NexusMods.App.UI.Pages.Settings;
 using NexusMods.App.UI.Pages.Sorting;
 using NexusMods.App.UI.Pages.SteamLaunchOption;
+using NexusMods.App.UI.Pages.Thunderstore;
 using NexusMods.App.UI.Pages.TextEdit;
 using NexusMods.App.UI.Pages.Tools;
 using NexusMods.App.UI.Settings;
@@ -192,6 +193,8 @@ public static class Services
             .AddViewModel<MarkdownRendererViewModel, IMarkdownRendererViewModel>()
             .AddView<ChangelogPageView, IChangelogPageViewModel>()
             .AddViewModel<ChangelogPageViewModel, IChangelogPageViewModel>()
+            .AddView<ThunderstoreView, IThunderstoreViewModel>()
+            .AddViewModel<ThunderstoreViewModel, IThunderstoreViewModel>()
             .AddView<FromSoftSavesView, IFromSoftSavesViewModel>()
             .AddViewModel<FromSoftSavesViewModel, IFromSoftSavesViewModel>()
             .AddView<ToolsPageView, IToolsPageViewModel>()
@@ -280,6 +283,7 @@ public static class Services
             .AddSingleton<IPageFactory, SettingsPageFactory>()
             .AddSingleton<IPageFactory, ChangelogPageFactory>()
             .AddSingleton<IPageFactory, FromSoftSavesPageFactory>()
+            .AddSingleton<IPageFactory, ThunderstorePageFactory>()
             .AddSingleton<IPageFactory, ToolsPageFactory>()
             .AddSingleton<IPageFactory, AboutPageFactory>()
             .AddSingleton<IPageFactory, TextEditorPageFactory>()

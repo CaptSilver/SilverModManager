@@ -1,0 +1,26 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:IThunderstoreViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.Thunderstore"
+    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+    x:Class="NexusMods.App.UI.Pages.Thunderstore.ThunderstoreView">
+
+    <DockPanel Margin="24">
+        <StackPanel DockPanel.Dock="Top" Spacing="{StaticResource Spacing-4}" Margin="0 0 0 16">
+            <TextBlock Text="Thunderstore" Theme="{StaticResource HeadingSMSemiTheme}" />
+            <TextBlock x:Name="ErrorText" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                <TextBox x:Name="SearchBox" Width="320" Watermark="Search packages or authors" />
+                <CheckBox x:Name="DeprecatedBox" Content="Show deprecated" />
+                <controls:StandardButton x:Name="RefreshButton" Type="Secondary" Size="Toolbar" Text="Refresh" />
+            </StackPanel>
+        </StackPanel>
+        <ListBox x:Name="PackageList" />
+    </DockPanel>
+
+</reactive:ReactiveUserControl>
