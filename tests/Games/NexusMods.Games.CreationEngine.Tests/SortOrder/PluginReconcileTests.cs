@@ -11,8 +11,8 @@ public class PluginReconcileTests
 {
     private static PluginSortData Row(string name, int index, bool enabled = true, int? early = null) => new(name, index, enabled, early);
 
-    private static PluginLoadoutData Plugin(string name, bool master = false, int? early = null) =>
-        new(name, Hash.From(1), true, "Mod", null, master, []) { EarlyLoaderIndex = early };
+    private static PluginLoadoutData Plugin(string name, bool master = false, int? early = null, string[]? masters = null) =>
+        new(name, Hash.From(1), true, "Mod", null, master, masters ?? []) { EarlyLoaderIndex = early };
 
     private static string[] Order(IEnumerable<(PluginSortData SortedEntry, PluginLoadoutData ItemLoadoutData)> result) =>
         result.OrderBy(r => r.SortedEntry.SortIndex).Select(r => r.SortedEntry.Name).ToArray();
@@ -41,6 +41,28 @@ public class PluginReconcileTests
 
         Order(result).Should().Equal("old.esp", "Core.esm", "alpha.esp", "zeta.esp");
         result.Skip(1).Should().OnlyContain(r => r.SortedEntry.IsEnabled, "a new plugin starts switched on");
+    }
+
+    [Fact]
+    public void NewPlugins_FollowTheirMastersEvenWhenTheNameSortsFirst()
+    {
+        var result = PluginSortOrderVariety.Reconcile(
+            [],
+            [Plugin("A.esp", masters: ["Z.esp"]), Plugin("Z.esp"), Plugin("Core.esm", master: true)],
+            NoTombstones);
+
+        Order(result).Should().Equal("Core.esm", "Z.esp", "A.esp");
+    }
+
+    [Fact]
+    public void NewPlugins_ThatListEachOtherAsMasters_StillGetAnOrderSoThePageStaysUsable()
+    {
+        var result = PluginSortOrderVariety.Reconcile(
+            [],
+            [Plugin("B.esm", master: true, masters: ["A.esm"]), Plugin("A.esm", master: true, masters: ["B.esm"]), Plugin("C.esp")],
+            NoTombstones);
+
+        Order(result).Should().Equal("A.esm", "B.esm", "C.esp");
     }
 
     [Fact]

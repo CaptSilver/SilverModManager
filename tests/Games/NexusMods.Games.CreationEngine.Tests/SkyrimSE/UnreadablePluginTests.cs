@@ -11,12 +11,12 @@ using Size = NexusMods.Paths.Size;
 using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.CreationEngine.Emitters;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -200,7 +200,7 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
         diagnostics.Should().BeEmpty();
     }
 
-    private PluginsFile NewPluginsFile() => new(NullLogger<PluginsFile>.Instance, Creation, ServiceProvider.GetRequiredService<ISorter>(), "*");
+    private PluginsFile NewPluginsFile() => new(NullLogger<PluginsFile>.Instance, Creation, new AsteriskMechanism());
 
     [Fact]
     public async Task PluginsFile_SortsAPluginAfterAMasterNamedInADifferentCase()

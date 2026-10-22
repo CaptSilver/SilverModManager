@@ -6,7 +6,6 @@ using Mutagen.Bethesda;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.CreationEngine.PluginLists;
@@ -91,7 +90,7 @@ public class FalloutStarfieldTests(IServiceProvider serviceProvider)
         var source = Substitute.For<IStreamSourceDispatcher>();
         source.OpenAsync(stored).Returns(_ => ValueTask.FromResult<Stream?>(new MemoryStream(bytes)));
         var game = (ICreationEngineGame)System.Activator.CreateInstance(typeof(CreationEngine.Fallout4VR.Fallout4VR), new WithStreamSource(serviceProvider, source))!;
-        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, serviceProvider.GetRequiredService<ISorter>(), "*");
+        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, new AsteriskMechanism());
         var tree = new Dictionary<GamePath, SyncNode>
         {
             [new GamePath(LocationId.Game, "Data/A.esp")] = new()
@@ -102,7 +101,7 @@ public class FalloutStarfieldTests(IServiceProvider serviceProvider)
         };
 
         using var stream = new MemoryStream();
-        await plugins.Write(stream, default, tree);
+        await plugins.Render(stream, null!, [], [], tree);
         var lines = Encoding.UTF8.GetString(stream.ToArray()).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         lines.Where(l => !l.StartsWith('#')).Should().Equal("*A.esp");

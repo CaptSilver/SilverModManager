@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.Bethesda.LoadOrder.Formats;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Sdk.Loadouts;
 
@@ -16,11 +16,14 @@ public abstract class APluginsTxtMechanism : IPluginListMechanism
     /// <summary>What goes in front of the name of an active plugin; empty when the file lists active plugins only.</summary>
     protected abstract string ActiveMarker { get; }
 
+    /// <summary>The text of the plugin list for plugins in load order, early loaders included.</summary>
+    public abstract string Render(IEnumerable<PluginListEntry> entries);
+
     public bool OrdersByTimestamp => false;
 
     public IEnumerable<IIntrinsicFile> IntrinsicFiles(ICreationEngineGame game, Loadout.ReadOnly loadout, IServiceProvider provider)
     {
-        yield return new PluginsFile(provider.GetRequiredService<ILogger<PluginsFile>>(), game, provider.GetRequiredService<ISorter>(), ActiveMarker);
+        yield return new PluginsFile(provider.GetRequiredService<ILogger<PluginsFile>>(), game, this);
     }
 
     public async Task<GamePluginListState?> ReadGameState(ICreationEngineGame game, Loadout.ReadOnly loadout)
@@ -49,10 +52,15 @@ public abstract class APluginsTxtMechanism : IPluginListMechanism
 public sealed class AsteriskMechanism : APluginsTxtMechanism
 {
     protected override string ActiveMarker => "*";
+
+    // The game loads its early loaders without being told, so the file leaves them out.
+    public override string Render(IEnumerable<PluginListEntry> entries) => AsteriskPluginList.Render(entries, writeEarlyLoaders: false);
 }
 
 /// <summary>One plugin name per line; everything listed is active (Skyrim LE, Enderal).</summary>
 public sealed class PlainMechanism : APluginsTxtMechanism
 {
     protected override string ActiveMarker => "";
+
+    public override string Render(IEnumerable<PluginListEntry> entries) => PlainPluginList.Render(entries);
 }

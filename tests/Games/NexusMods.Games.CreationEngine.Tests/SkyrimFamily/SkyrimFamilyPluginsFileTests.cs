@@ -6,7 +6,6 @@ using Mutagen.Bethesda;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.CreationEngine.PluginLists;
@@ -91,7 +90,7 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
     {
         var bytes = BethesdaPluginBytes.Bytes(release, "A.esp", "Skyrim.esm");
         var game = Reading(type, bytes, out var hash);
-        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, serviceProvider.GetRequiredService<ISorter>(), marker);
+        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, marker == "*" ? new AsteriskMechanism() : new PlainMechanism());
         var tree = new Dictionary<GamePath, SyncNode>
         {
             [new GamePath(LocationId.Game, "Data/A.esp")] = new()
@@ -102,7 +101,7 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
         };
 
         using var stream = new MemoryStream();
-        await plugins.Write(stream, default, tree);
+        await plugins.Render(stream, null!, [], [], tree);
         var lines = Encoding.UTF8.GetString(stream.ToArray()).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         plugins.Path.Should().Be(new GamePath(LocationId.AppData, file));

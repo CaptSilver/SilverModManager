@@ -378,6 +378,31 @@ public class PluginSortOrderVarietyTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task StageOrder_WithSwitches_KeepsAPluginTheLoadoutLacksUntilItArrives()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await AddMod(loadout, "Mods", "A.esp");
+        await variety.ReconcileSortOrder(id);
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            variety.StageOrder(id, [.. VanillaMasters.Select(name => (name, (bool?)null)), ("Later.esp", false), ("A.esp", null)], tx);
+            await tx.Commit();
+        }
+
+        variety.GetSortOrderItems(id, Connection.Db).Select(item => item.DisplayName).Should().Equal([.. VanillaMasters, "A.esp"],
+            "a row without a plugin stays out of the page");
+
+        await AddMod(loadout, "Late", "Later.esp");
+        await variety.ReconcileSortOrder(id);
+
+        var items = variety.GetSortOrderItems(id, Connection.Db);
+        items.Select(item => item.DisplayName).Should().Equal([.. VanillaMasters, "Later.esp", "A.esp"]);
+        items.Single(item => item.DisplayName == "Later.esp").IsEnabled.Should().BeFalse();
+        items.Single(item => item.DisplayName == "A.esp").IsEnabled.Should().BeTrue("a null switch leaves the row as it was");
+    }
+
+    [Fact]
     public async Task DeleteSortOrder_RemovesTombstonesToo()
     {
         var (loadout, variety, id) = await Reconciled();

@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.CreationEngine.PluginLists;
@@ -41,9 +40,11 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
         SourceItemType = LoadoutSourceItemType.Game,
     };
 
+    private static APluginsTxtMechanism Mechanism(string marker) => marker == "*" ? new AsteriskMechanism() : new PlainMechanism();
+
     private async Task<string> Write(string marker)
     {
-        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, GameWith(), serviceProvider.GetRequiredService<ISorter>(), marker);
+        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, GameWith(), Mechanism(marker));
         var tree = new Dictionary<GamePath, SyncNode>
         {
             [new GamePath(LocationId.Game, "Data Files/A.esp")] = Node(),
@@ -51,7 +52,7 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
         };
 
         using var stream = new MemoryStream();
-        await plugins.Write(stream, default, tree);
+        await plugins.Render(stream, null!, [], [], tree);
         return Encoding.UTF8.GetString(stream.ToArray());
     }
 

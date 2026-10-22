@@ -174,8 +174,19 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     }
 
     /// <inheritdoc />
+    public IReadOnlyList<PluginSortData> StoredOrder(Loadout.ReadOnly loadout)
+    {
+        var sortOrderId = GetSortOrderIdFor(loadout.LoadoutId, loadout.Db);
+        return sortOrderId.HasValue ? RetrieveSortOrder(sortOrderId.Value, loadout.Db) : [];
+    }
+
+    /// <inheritdoc />
     public void StageOrder(SortOrderId sortOrderId, IReadOnlyList<string> names, ITransaction tx) =>
         Stage(sortOrderId, names.Select(name => (name, (bool?)null)).ToList(), tx, Connection.Db);
+
+    /// <inheritdoc />
+    public void StageOrder(SortOrderId sortOrderId, IReadOnlyList<(string Name, bool? IsEnabled)> entries, ITransaction tx) =>
+        Stage(sortOrderId, entries, tx, Connection.Db);
 
     /// <inheritdoc />
     public void StageEnabled(SortOrderId sortOrderId, string name, bool enabled, ITransaction tx)
@@ -273,8 +284,9 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     /// <summary>
     /// Keeps every visible entry in its place. A plugin the order does not list is looked up among the tombstones
     /// by key and, if the order held it before, comes back at its stored index (clamped to below the locked rows and
-    /// to the end) with the switch it had; otherwise it goes at the end, switched on. Plugins the game always loads
-    /// first are the exception: stored or new, they go into the locked rows at the top in game order.
+    /// to the end) with the switch it had; otherwise it goes at the end, switched on, in the resolver's default
+    /// order. Plugins the game always loads first are the exception: stored or new, they go into the locked rows at
+    /// the top in game order.
     /// </summary>
     /// <param name="tombstone">Finds the stored row of a plugin by its lower-cased name.</param>
     internal static IReadOnlyList<(PluginSortData SortedEntry, PluginLoadoutData ItemLoadoutData)> Reconcile(
@@ -319,9 +331,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         foreach (var (data, stored) in restored.OrderBy(r => r.Stored.SortIndex))
             results.Insert(Math.Clamp(stored.SortIndex, early.Count, results.Count), (New(data, stored), data));
 
-        foreach (var data in added
-                     .OrderBy(item => item.IsMaster ? 0 : 1)
-                     .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
+        foreach (var data in PluginDefaultOrder.Sort(added))
             results.Add((New(data), data));
 
         for (var i = 0; i < results.Count; i++)
@@ -416,6 +426,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         var isMaster = false;
         IReadOnlyList<string> masters = [];
         string? flags = null;
+        var isBlueprint = false;
 
         if (_headers.TryGet(hash, out var header))
         {
@@ -431,12 +442,14 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
                 isMaster = _game.IsMaster(named, installation);
                 masters = named.Masters;
                 flags = FlagsOf(named, isMaster);
+                isBlueprint = _game.IsBlueprint(named);
             }
         }
 
         return new PluginLoadoutData(name, hash, isEnabled, modName, modGroupId, isMaster, masters)
         {
             Flags = flags,
+            IsBlueprint = isBlueprint,
             EarlyLoaderIndex = early.TryGetValue(name, out var index) ? index : null,
         };
     }

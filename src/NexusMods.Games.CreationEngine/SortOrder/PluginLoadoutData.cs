@@ -27,6 +27,9 @@ public sealed record PluginLoadoutData(
     /// <summary>Where the game loads the plugin among the early loaders, or null when it is not one of them.</summary>
     public int? EarlyLoaderIndex { get; init; }
 
+    /// <summary>The header's blueprint flag; the order only treats a blueprint that is also a master specially.</summary>
+    public bool IsBlueprint { get; init; }
+
     /// <summary>The name lower-cased, the way every plugin lookup compares it.</summary>
     public SortItemKey<string> Key { get; } = PluginSortData.KeyFor(Name);
 
