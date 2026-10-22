@@ -228,6 +228,7 @@ public static class Services
         Games.CreationEngine.Services.AddCreationEngine(services);
         Games.MountAndBlade2Bannerlord.Services.AddMountAndBlade2Bannerlord(services);
         Games.FromSoft.Services.AddFromSoftGames(services);
+        Games.Unity.Services.AddUnityGames(services);
         return services;
     }
 }
