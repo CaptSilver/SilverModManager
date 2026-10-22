@@ -144,6 +144,12 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
         
         if (token.IsCancellationRequested) return;
         
+        if (!CanApplyOrder(stagingList))
+        {
+            _logger.LogDebug("Move in sort order {SortOrderId} rejected by the variety", sortOrderId);
+            return;
+        }
+
         // TODO: Should we retry if the transaction fails due to a data race?
         await TryPersistSortOrder(sortOrderId, stagingList, dbToUse, token);
     }
@@ -187,6 +193,12 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
             
         if (token.IsCancellationRequested) return;
         
+        if (!CanApplyOrder(stagingList))
+        {
+            _logger.LogDebug("Move in sort order {SortOrderId} rejected by the variety", sortOrderId);
+            return;
+        }
+
         // TODO: Should we retry if the transaction fails due to a data race?
         await TryPersistSortOrder(sortOrderId, stagingList, dbToUse, token);
     }
@@ -256,6 +268,15 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
     
 #region protected members
     
+    /// <summary>
+    /// Lets a variety veto a move. <see cref="MoveItems"/> and <see cref="MoveItemDelta"/> call this with the
+    /// order the move would produce, before it is persisted; returning false leaves the stored order unchanged.
+    /// Reconciliation does not go through here, so a variety can still seed or repair an order it would refuse to
+    /// have a user build.
+    /// </summary>
+    /// <param name="proposed">The complete order the move would produce, with updated sort indices.</param>
+    protected virtual bool CanApplyOrder(IReadOnlyList<TItemSortData> proposed) => true;
+
     /// <summary>
     /// Retrieves the sorted entries for the sortOrderId, and returns them as a sorted list of TSortedEntries, without the loadout data.
     /// </summary>

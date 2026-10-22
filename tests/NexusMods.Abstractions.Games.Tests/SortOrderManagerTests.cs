@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Collections.Concurrent;
 using DynamicData;
 using DynamicData.Kernel;
+using Microsoft.Extensions.DependencyInjection;
 using FluentAssertions;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.TestFramework;
@@ -82,6 +83,30 @@ public class SortOrderManagerTests(ITestOutputHelper helper) : AStubbedGameIsola
         act.Should().NotThrow();
     }
 
+    [Fact]
+    public async Task EachGamesManagerKeepsOnlyItsOwnVarieties()
+    {
+        var varietyId = SortOrderVarietyId.From(Guid.NewGuid());
+        var a = new RecordingVariety(varietyId);
+        var b = new RecordingVariety(varietyId);
+        var gameOne = GameInstallation.GetGame();
+        var gameTwo = new NoNexusIdStubbedGame(ServiceProvider);
+
+        using var managerOne = ServiceProvider.GetRequiredService<SortOrderManager>();
+        using var managerTwo = ServiceProvider.GetRequiredService<SortOrderManager>();
+        managerOne.Should().NotBeSameAs(managerTwo, "each game resolves a manager of its own");
+        managerOne.RegisterSortOrderVarieties([a], gameOne);
+        managerTwo.RegisterSortOrderVarieties([b], gameTwo);
+
+        managerOne.GetSortOrderVarieties().Should().Equal(a);
+        managerTwo.GetSortOrderVarieties().Should().Equal(b);
+
+        var own = await SeedLoadout(StubbedGame.GameId);
+        await SeedFile(own);
+        await a.WaitForReconcile(own);
+        b.Reconciled.Should().BeEmpty("the second manager's game has no loadouts here");
+    }
+
     private async Task<LoadoutId> SeedLoadout(GameId? game)
     {
         using var tx = Connection.BeginTransaction();
@@ -119,6 +144,9 @@ public class SortOrderManagerTests(ITestOutputHelper helper) : AStubbedGameIsola
         private readonly ConcurrentDictionary<SortOrderId, LoadoutId> _orders = new();
         private int _next;
 
+        public RecordingVariety() : this(SortOrderVarietyId.From(Guid.NewGuid())) { }
+        public RecordingVariety(SortOrderVarietyId id) => SortOrderVarietyId = id;
+
         public ConcurrentBag<LoadoutId> Created { get; } = [];
         public ConcurrentBag<LoadoutId> Reconciled { get; } = [];
 
@@ -146,7 +174,7 @@ public class SortOrderManagerTests(ITestOutputHelper helper) : AStubbedGameIsola
         public Optional<SortOrderId> GetSortOrderIdFor(OneOf<LoadoutId, CollectionGroupId> parentEntity, IDb? db = null) => Optional<SortOrderId>.None;
         public ValueTask DeleteSortOrder(SortOrderId sortOrderId, CancellationToken token = default) => ValueTask.CompletedTask;
 
-        public SortOrderVarietyId SortOrderVarietyId { get; } = SortOrderVarietyId.From(Guid.NewGuid());
+        public SortOrderVarietyId SortOrderVarietyId { get; }
         public ListSortDirection SortDirectionDefault => ListSortDirection.Ascending;
         public IndexOverrideBehavior IndexOverrideBehavior => throw new NotSupportedException();
         public SortOrderUiMetadata SortOrderUiMetadata => throw new NotSupportedException();
