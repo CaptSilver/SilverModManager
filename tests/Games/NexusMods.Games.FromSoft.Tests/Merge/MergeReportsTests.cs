@@ -3,6 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.FromSoft.Build;
 using NexusMods.Games.FromSoft.Heal;
 using NexusMods.Games.FromSoft.Installers;
 using NexusMods.Games.FromSoft.Merge;
@@ -34,12 +35,13 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
             provider.GetRequiredService<IFileStore>(),
             provider.GetRequiredService<RegulationBaselines>(),
             provider.GetRequiredService<VanillaDumps>(),
+            provider.GetRequiredService<InstalledBuilds>(),
             provider.GetRequiredService<ILogger<LoadoutMergeSources>>()));
         return services;
     }
 
-    private sealed class FailingOnceSources(MergeReportsTests test, IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, ILogger<LoadoutMergeSources> logger)
-        : LoadoutMergeSources(fileStore, baselines, dumps, logger)
+    private sealed class FailingOnceSources(MergeReportsTests test, IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, InstalledBuilds builds, ILogger<LoadoutMergeSources> logger)
+        : LoadoutMergeSources(fileStore, baselines, dumps, builds, logger)
     {
         public override MergePathIndex Index(Loadout.ReadOnly loadout)
         {

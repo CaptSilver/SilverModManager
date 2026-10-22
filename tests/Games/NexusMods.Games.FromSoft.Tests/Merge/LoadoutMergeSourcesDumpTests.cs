@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.FromSoft.Build;
 using NexusMods.Games.FromSoft.Merge;
 using NexusMods.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Hashing.xxHash3;
@@ -19,12 +20,14 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
     private const string MsgPath = "msg/engus/item.msgbnd.dcx";
 
     private readonly HashSet<Hash> _hashDatabase = [];
+    private readonly CountingInstalledBuilds _builds = new();
 
     private LoadoutMergeSources Sources => ServiceProvider.GetRequiredService<LoadoutMergeSources>();
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         base.AddServices(services);
+        services.AddSingleton<InstalledBuilds>(_builds);
         services.AddSingleton<IVouchedRegulations>(provider => new ExtraVouching(provider.GetRequiredService<VouchedRegulations>(), _hashDatabase));
         return services;
     }
@@ -32,6 +35,19 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
     private sealed class ExtraVouching(IVouchedRegulations real, HashSet<Hash> extra) : IVouchedRegulations
     {
         public IReadOnlySet<Hash> Hashes(GameInstallation installation) => real.Hashes(installation).Concat(extra).ToHashSet();
+    }
+
+    private sealed class CountingInstalledBuilds : InstalledBuilds
+    {
+        public int Reads;
+        public string? ReportedVersion;
+
+        protected override BuildIdentity Read(GameInstallation installation)
+        {
+            Reads++;
+            var identity = base.Read(installation);
+            return ReportedVersion is null ? identity : identity with { RegulationVersion = ReportedVersion };
+        }
     }
 
     private static byte[] Bytes(string text) => System.Text.Encoding.UTF8.GetBytes(text);
@@ -96,6 +112,50 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
         var notes = new List<IMergeNote>();
         Sources.Vanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply, notes).Should().Equal(Bytes("old"));
         notes.Should().ContainSingle().Which.Should().Be(new VanillaServedFromDump(MsgPath, "Old.zip", OlderVersion));
+    }
+
+    [Fact]
+    public async Task ChoosingADumpAndVouchingForDumpsReadTheLiveBuildOnceAndAChangedRegulationIsReadAgain()
+    {
+        KeepBaseline(OlderVersion, Regulation(OlderVersion, 0xB0));
+        var loadout = await TwoMods((MsgPath, Bytes("mod")));
+        await AddDump("Old", Regulation(OlderVersion, 0xB0), "old");
+        await AddDump("Current", EldenRingInstall.RegulationFile, "current");
+        loadout = Refresh(loadout);
+        var contributors = Sources.Index(loadout).Lookup(MsgPath)!.Contributors;
+        var file = RealGameFolder / "regulation.bin";
+        // Indexing already read the build; a new write time starts this Apply from a cold cache.
+        File.SetLastWriteTimeUtc(file.GetFullPath(), DateTime.UtcNow.AddMinutes(1));
+        _builds.Reads = 0;
+
+        ServiceProvider.GetRequiredService<VouchedRegulations>().Hashes(loadout.InstallationInstance);
+        _builds.Reads.Should().Be(1, "vouching reads the installed build through the shared cache");
+
+        Sources.Vanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("current"));
+        _builds.Reads.Should().Be(1, "the vouched check and the dump choice share one reading of the installed regulation");
+
+        Sources.Vanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("current"));
+        _builds.Reads.Should().Be(1, "the regulation did not change");
+
+        File.WriteAllBytes(file.GetFullPath(), Regulation(NewerVersion, 0xC0));
+        Sources.Vanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply);
+        _builds.Reads.Should().Be(2, "a regulation of another size or write time is a different build");
+    }
+
+    [Fact]
+    public async Task TheDumpIsChosenByTheSharedReadingOfTheInstalledBuild()
+    {
+        KeepBaseline(OlderVersion, Regulation(OlderVersion, 0xB0));
+        var loadout = await TwoMods((MsgPath, Bytes("mod")));
+        await AddDump("Old", Regulation(OlderVersion, 0xB0), "old");
+        await AddDump("Current", EldenRingInstall.RegulationFile, "current");
+        loadout = Refresh(loadout);
+        var contributors = Sources.Index(loadout).Lookup(MsgPath)!.Contributors;
+        // Only a choice made from the shared reading sees this version; the file on disk is the current build.
+        _builds.ReportedVersion = OlderVersion;
+        File.SetLastWriteTimeUtc((RealGameFolder / "regulation.bin").GetFullPath(), DateTime.UtcNow.AddMinutes(1));
+
+        Sources.Vanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("old"));
     }
 
     [Fact]

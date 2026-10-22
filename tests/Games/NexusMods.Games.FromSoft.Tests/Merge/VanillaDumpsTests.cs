@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Abstractions.Games.FileHashes;
+using NexusMods.Games.FromSoft.Build;
 using NexusMods.Games.FromSoft.Heal;
 using NexusMods.Games.FromSoft.Merge;
 using NexusMods.Games.FromSoft.Tests.Fixtures;
@@ -116,7 +117,7 @@ public class VanillaDumpsTests(ITestOutputHelper helper) : AVanillaDumpTest<Vani
         service.Databases.Returns(Array.Empty<NexusMods.MnemonicDB.Abstractions.IDb>());
         arrange(service);
         var baselines = ServiceProvider.GetRequiredService<RegulationBaselines>();
-        return (new VouchedRegulations(service, baselines, NullLogger<VouchedRegulations>.Instance), service);
+        return (new VouchedRegulations(service, baselines, new InstalledBuilds(), NullLogger<VouchedRegulations>.Instance), service);
     }
 
     private static GameFileRecord Record(string path, ulong hash) => new()

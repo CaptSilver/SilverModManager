@@ -44,7 +44,7 @@ public enum MergeSourceMode
 /// decided here.
 /// </para>
 /// </summary>
-public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, ILogger<LoadoutMergeSources> logger)
+public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, InstalledBuilds builds, ILogger<LoadoutMergeSources> logger)
 {
     private readonly ConcurrentDictionary<Hash, string> _versions = new();
     private readonly ConcurrentDictionary<string, byte> _unprioritised = new(StringComparer.Ordinal);
@@ -255,7 +255,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
         string? installed = null;
         try
         {
-            installed = BuildIdentity.Identify(installation).RegulationVersion;
+            installed = builds.Identify(installation).RegulationVersion;
         }
         catch (InvalidOperationException exception)
         {
@@ -288,7 +288,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
         BuildIdentity live;
         try
         {
-            live = BuildIdentity.Identify(installation);
+            live = builds.Identify(installation);
         }
         catch (InvalidOperationException exception)
         {

@@ -5,6 +5,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
+using NexusMods.Games.FromSoft.Build;
 using NexusMods.Games.FromSoft.Formats;
 using NexusMods.Games.FromSoft.Heal;
 using NexusMods.Games.FromSoft.Installers;
@@ -48,12 +49,13 @@ public class MergedFileTests(ITestOutputHelper helper) : AVanillaDumpTest<Merged
             provider.GetRequiredService<IFileStore>(),
             provider.GetRequiredService<RegulationBaselines>(),
             provider.GetRequiredService<VanillaDumps>(),
+            provider.GetRequiredService<InstalledBuilds>(),
             provider.GetRequiredService<ILogger<LoadoutMergeSources>>()));
         return services;
     }
 
-    private sealed class FailingOnceSources(MergedFileTests test, IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, ILogger<LoadoutMergeSources> logger)
-        : LoadoutMergeSources(fileStore, baselines, dumps, logger)
+    private sealed class FailingOnceSources(MergedFileTests test, IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, InstalledBuilds builds, ILogger<LoadoutMergeSources> logger)
+        : LoadoutMergeSources(fileStore, baselines, dumps, builds, logger)
     {
         public override MergePathIndex Index(Loadout.ReadOnly loadout)
         {

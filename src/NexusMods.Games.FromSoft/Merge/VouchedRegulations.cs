@@ -26,10 +26,10 @@ public interface IVouchedRegulations
 /// decrypts the whole file. A game the database does not cover contributes nothing.
 /// </para>
 /// </summary>
-public sealed class VouchedRegulations(IFileHashesService fileHashes, RegulationBaselines baselines, ILogger<VouchedRegulations> logger) : IVouchedRegulations
+public sealed class VouchedRegulations(IFileHashesService fileHashes, RegulationBaselines baselines, InstalledBuilds builds, ILogger<VouchedRegulations> logger) : IVouchedRegulations
 {
     private readonly object _gate = new();
-    private (string Key, IReadOnlySet<Hash> Hashes)? _fromDatabase;
+    private (string Key, IDb[] Databases, IReadOnlySet<Hash> Hashes)? _fromDatabase;
     private (string Key, Hash? Hash)? _live;
 
     /// <inheritdoc />
@@ -48,12 +48,12 @@ public sealed class VouchedRegulations(IFileHashesService fileHashes, Regulation
 
         var gameId = installation.Game.NexusModsGameId.Value;
         var store = installation.LocatorResult.Store;
-        var databases = fileHashes.Databases;
-        var key = $"{gameId}/{store}/" + string.Join(',', databases.Select(db => $"{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(db)}@{db.BasisTxId}"));
+        var databases = fileHashes.Databases.ToArray();
+        var key = $"{gameId}/{store}/" + string.Join(',', databases.Select(db => db.BasisTxId));
 
         lock (_gate)
         {
-            if (_fromDatabase is { } cached && cached.Key == key) return cached.Hashes;
+            if (_fromDatabase is { } cached && cached.Key == key && SameInstances(cached.Databases, databases)) return cached.Hashes;
 
             var regulationPath = game.Layout.GameSubfolder + "/" + fileName;
             var hashes = new HashSet<Hash>();
@@ -67,10 +67,14 @@ public sealed class VouchedRegulations(IFileHashesService fileHashes, Regulation
                 }
             }
 
-            _fromDatabase = (key, hashes);
+            _fromDatabase = (key, databases, hashes);
             return hashes;
         }
     }
+
+    // A hash code can collide between two databases; the instances cannot.
+    private static bool SameInstances(IDb[] a, IDb[] b)
+        => a.Length == b.Length && a.Zip(b).All(pair => ReferenceEquals(pair.First, pair.Second));
 
     private Hash? Live(GameInstallation installation)
     {
@@ -88,9 +92,9 @@ public sealed class VouchedRegulations(IFileHashesService fileHashes, Regulation
             Hash? hash = null;
             try
             {
-                var identity = BuildIdentity.Identify(installation);
+                var identity = builds.Identify(installation);
                 var bytes = File.ReadAllBytes(file.GetFullPath());
-                // The identity was read a moment ago; a file that changed since must not be vouched for under it.
+                // The identity may be a cached reading; a file that changed since must not be vouched for under it.
                 if (identity.RegulationHash is { } identified && Regulation.Sha256Hex(bytes).Equals(identified, StringComparison.OrdinalIgnoreCase))
                     hash = bytes.xxHash3();
             }

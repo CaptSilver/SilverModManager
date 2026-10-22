@@ -75,7 +75,8 @@ public static class Services
         });
 
         // What the merge index and planner read from a loadout
-        services.AddSingleton<VouchedRegulations>()
+        services.AddSingleton<InstalledBuilds>()
+            .AddSingleton<VouchedRegulations>()
             .AddSingleton<IVouchedRegulations>(provider => provider.GetRequiredService<VouchedRegulations>())
             .AddSingleton<VanillaDumps>()
             .AddSingleton<LoadoutMergeSources>()
