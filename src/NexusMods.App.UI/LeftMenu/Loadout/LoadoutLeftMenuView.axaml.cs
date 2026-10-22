@@ -26,6 +26,12 @@ public partial class LoadoutLeftMenuView : ReactiveUserControl<ILoadoutLeftMenuV
             this.OneWayBind(ViewModel, vm => vm.LeftMenuItemLoadout, view => view.LoadoutItem.ViewModel)
                 .DisposeWith(disposables);
 
+            this.OneWayBind(ViewModel, vm => vm.LeftMenuItemThunderstore, view => view.ThunderstoreItem.ViewModel)
+                .DisposeWith(disposables);
+
+            this.OneWayBind(ViewModel, vm => vm.LeftMenuItemThunderstore, view => view.ThunderstoreItem.IsVisible, item => item is not null)
+                .DisposeWith(disposables);
+
             this.OneWayBind(ViewModel, vm => vm.LeftMenuItemNewCollection, view => view.NewCollection.ViewModel)
                 .DisposeWith(disposables);
 

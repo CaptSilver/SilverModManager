@@ -27,6 +27,8 @@ public class LoadoutLeftMenuDesignViewModel : AViewModel<ILoadoutLeftMenuViewMod
         Icon = IconValues.FormatAlignJustify,
     };
 
+    public ILeftMenuItemViewModel? LeftMenuItemThunderstore { get; } = null;
+
     public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; } = null!;
 
     public ILeftMenuItemViewModel LeftMenuItemHealthCheck { get; } = new LeftMenuItemDesignViewModel

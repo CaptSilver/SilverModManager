@@ -17,6 +17,14 @@ using NexusMods.Networking.Thunderstore.DTOs;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk;
+using System.Security.Cryptography;
+using NexusMods.Abstractions.Library;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Hashing.xxHash3;
+using NexusMods.Sdk.Hashes;
+using NexusMods.Sdk.Jobs;
+using NexusMods.Sdk.Library;
+using NexusMods.Sdk.Thunderstore;
 using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
 using NSubstitute;
 using Loadout = NexusMods.Sdk.Loadouts.Loadout;
@@ -50,7 +58,69 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         }
     }
 
-    private static PackageListing Package(string team, string name, double rating, bool deprecated = false, string version = "1.0.0")
+    private sealed class FakeInstallSource : IThunderstoreSource
+    {
+        public List<ThunderstoreInstallRequest> Requests { get; } = [];
+        public IReadOnlyList<LibraryFile.ReadOnly> Files { get; set; } = [];
+        public Exception? Failure { get; set; }
+
+        public ValueTask<IReadOnlyList<LibraryFile.ReadOnly>> AddAsync(ThunderstoreInstallRequest request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            return Failure is null ? ValueTask.FromResult(Files) : ValueTask.FromException<IReadOnlyList<LibraryFile.ReadOnly>>(Failure);
+        }
+    }
+
+    private static ILoadoutManager LoadoutManagerThatInstalls()
+    {
+        var manager = Substitute.For<ILoadoutManager>();
+        manager.InstallItem(default, default, default, default, default).ReturnsForAnyArgs(_ =>
+        {
+            var task = Substitute.For<IJobTask<IInstallLoadoutItemJob, InstallLoadoutItemJobResult>>();
+            task.GetAwaiter().Returns(Task.FromResult(default(InstallLoadoutItemJobResult)).GetAwaiter());
+            return task;
+        });
+        return manager;
+    }
+
+    private async Task<LibraryFile.ReadOnly> AddLibraryFile(string team, string name, string version)
+    {
+        var fileName = $"{team}-{name}-{version}.zip";
+        var bytes = System.Text.Encoding.UTF8.GetBytes(fileName);
+        using var tx = Connection.BeginTransaction();
+        var file = new LibraryFile.New(tx, out var id)
+        {
+            FileName = fileName,
+            Hash = bytes.xxHash3(),
+            Size = Size.From((ulong)bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, id) { Name = fileName },
+        };
+        _ = new ThunderstoreLibraryFile.New(tx, id)
+        {
+            LibraryFile = file,
+            Namespace = team,
+            Name = name,
+            VersionNumber = version,
+            Community = "repo",
+            PinnedSha256 = Sha256Value.From(SHA256.HashData(bytes)),
+        };
+        var result = await tx.Commit();
+        return result.Remap(file);
+    }
+
+    private async Task LinkIntoLoadout(LoadoutId loadoutId, LibraryFile.ReadOnly file)
+    {
+        using var tx = Connection.BeginTransaction();
+        var group = new LoadoutItemGroup.New(tx, out var id)
+        {
+            IsGroup = true,
+            LoadoutItem = new LoadoutItem.New(tx, id) { Name = file.FileName.ToString(), LoadoutId = loadoutId },
+        };
+        _ = new LibraryLinkedLoadoutItem.New(tx, id) { LibraryItemId = file.Id, LoadoutItemGroup = group };
+        await tx.Commit();
+    }
+
+    private static PackageListing Package(string team, string name, double rating, bool deprecated = false, string version = "1.0.0", string[]? categories = null)
         => new()
         {
             Name = name,
@@ -59,6 +129,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
             PackageUrl = $"https://thunderstore.io/c/repo/p/{team}/{name}/",
             RatingScore = rating,
             IsDeprecated = deprecated,
+            Categories = categories ?? [],
             Versions =
             [
                 new PackageVersion
@@ -78,6 +149,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         Package("nickklmao", "REPOConfig", rating: 300),
         Package("BepInEx", "BepInExPack", rating: 1500, version: "5.4.2305"),
         Package("Old", "Abandoned", rating: 5000, deprecated: true),
+        Package("Packs", "BigPack", rating: 10, categories: ["Modpacks"]),
     ]);
 
     // A loadout row of a game the registry does not know would make every other test's loadout observers throw, so the
@@ -105,14 +177,18 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         return (row.LoadoutId, new ThunderstoreGameOfLoadout((IGameData)installation.Game, stub));
     }
 
-    private async Task<(ThunderstoreViewModel Vm, FakeCatalogSource Source)> Open(FakeCatalogSource source)
+    private async Task<(ThunderstoreViewModel Vm, FakeCatalogSource Source)> Open(FakeCatalogSource source, FakeInstallSource? installs = null, ILoadoutManager? loadoutManager = null)
     {
+        installs ??= new FakeInstallSource();
+        loadoutManager ??= Substitute.For<ILoadoutManager>();
         var (loadoutId, game) = await SeedLoadout();
         var vm = new ThunderstoreViewModel(
             Provider.GetRequiredService<IWindowManager>(),
             Connection,
             [game],
             source,
+            installs,
+            loadoutManager,
             Substitute.For<IOSInterop>(),
             NullLogger<ThunderstoreViewModel>.Instance)
         {
@@ -130,7 +206,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         var (vm, source) = await Open(new FakeCatalogSource(Catalog()));
 
         source.Communities.Should().Equal("repo");
-        Names(vm).Should().Equal("BepInEx-BepInExPack", "Zehs-REPOLib", "nickklmao-REPOConfig");
+        Names(vm).Should().Equal("BepInEx-BepInExPack", "Zehs-REPOLib", "nickklmao-REPOConfig", "Packs-BigPack");
         vm.ErrorText.Should().BeEmpty();
         vm.Packages[1].LatestVersion.Should().Be("4.2.0");
         vm.Packages[1].Description.Should().Be("REPOLib does things");
@@ -155,7 +231,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
 
         vm.ShowDeprecated = true;
 
-        Names(vm).Should().Equal("Old-Abandoned", "BepInEx-BepInExPack", "Zehs-REPOLib", "nickklmao-REPOConfig");
+        Names(vm).Should().Equal("Old-Abandoned", "BepInEx-BepInExPack", "Zehs-REPOLib", "nickklmao-REPOConfig", "Packs-BigPack");
         vm.Packages[0].IsDeprecated.Should().BeTrue();
         vm.Packages[1].IsDeprecated.Should().BeFalse();
     }
@@ -184,7 +260,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         await vm.RefreshCommand.Execute();
 
         source.Refreshes.Should().Be(1);
-        Names(vm).Should().HaveCount(3);
+        Names(vm).Should().HaveCount(4);
     }
 
     [Fact]
@@ -203,7 +279,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         var (vm, _) = await Open(new FakeCatalogSource(Catalog()) { Stale = true, RefreshFailure = new HttpRequestException("connection refused") });
 
         vm.ErrorText.Should().Contain("connection refused");
-        Names(vm).Should().HaveCount(3);
+        Names(vm).Should().HaveCount(4);
     }
 
     [Fact]
@@ -232,7 +308,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
     {
         var vm = new ThunderstoreViewModel(
             Provider.GetRequiredService<IWindowManager>(), Connection, [], new FakeCatalogSource(Catalog()),
-            Substitute.For<IOSInterop>(), NullLogger<ThunderstoreViewModel>.Instance)
+            new FakeInstallSource(), Substitute.For<ILoadoutManager>(), Substitute.For<IOSInterop>(), NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = (await SeedLoadout()).Id,
         };
@@ -243,11 +319,59 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         vm.ErrorText.Should().NotBeEmpty();
     }
 
+    private static ThunderstoreVersionRef Ref(string team, string name, string version)
+        => new(new ThunderstorePackageRef(team, name), ThunderstoreVersionNumber.TryParse(version, out var number) ? number : throw new ArgumentException(version));
+
     [Fact]
-    public async Task TheViewModelOffersNoInstallCommand()
+    public async Task InstallCommand_AsksTheSourceForTheLatestVersionAndInstallsEachNewFileInOrder()
     {
-        typeof(IThunderstoreViewModel).GetProperties().Select(p => p.Name).Should().NotContain(name => name.Contains("Install"));
-        await Task.CompletedTask;
+        var loader = await AddLibraryFile("BepInEx", "BepInExPack", "5.4.2305");
+        var alreadyThere = await AddLibraryFile("Zehs", "REPOLib", "4.1.0");
+        var mod = await AddLibraryFile("nickklmao", "REPOConfig", "1.0.0");
+        var installs = new FakeInstallSource { Files = [loader, alreadyThere, mod] };
+        var manager = LoadoutManagerThatInstalls();
+        var (vm, _) = await Open(new FakeCatalogSource(Catalog()), installs, manager);
+        await LinkIntoLoadout(vm.LoadoutId, alreadyThere);
+
+        await vm.InstallCommand.Execute(vm.Packages.Single(p => p.FullName == "nickklmao-REPOConfig"));
+
+        var request = installs.Requests.Should().ContainSingle().Subject;
+        request.Root.Should().Be(Ref("nickklmao", "REPOConfig", "1.0.0"));
+        request.WithDependencies.Should().BeTrue();
+        request.Policy.Should().Be(DependencyPolicy.Latest);
+        request.InstalledInLoadout.Should().Equal(new Dictionary<ThunderstorePackageRef, ThunderstoreVersionNumber>
+        {
+            [new ThunderstorePackageRef("Zehs", "REPOLib")] = Ref("Zehs", "REPOLib", "4.1.0").Version,
+        });
+        manager.ReceivedCalls().Select(call => ((LibraryItem.ReadOnly)call.GetArguments()[0]!).Id)
+            .Should().Equal(loader.Id, mod.Id);
+        vm.ErrorText.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task InstallCommand_TakesTheExactDependencyVersionsOfAModpack()
+    {
+        var installs = new FakeInstallSource();
+        var (vm, _) = await Open(new FakeCatalogSource(Catalog()), installs, LoadoutManagerThatInstalls());
+
+        await vm.InstallCommand.Execute(vm.Packages.Single(p => p.FullName == "Packs-BigPack"));
+
+        installs.Requests.Should().ContainSingle().Which.Policy.Should().Be(DependencyPolicy.Exact);
+    }
+
+    [Fact]
+    public async Task InstallCommand_ShowsASourceFailureAndKeepsTheList()
+    {
+        var installs = new FakeInstallSource { Failure = new DependencyResolutionException("Zehs-REPOLib needs Missing-Thing, which is not in the index.") };
+        var manager = LoadoutManagerThatInstalls();
+        var (vm, _) = await Open(new FakeCatalogSource(Catalog()), installs, manager);
+        var before = Names(vm);
+
+        await vm.InstallCommand.Execute(vm.Packages[0]);
+
+        vm.ErrorText.Should().Contain("Missing-Thing");
+        Names(vm).Should().Equal(before);
+        manager.ReceivedCalls().Should().BeEmpty();
     }
 
     [Fact]
@@ -256,7 +380,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         var os = Substitute.For<IOSInterop>();
         var (loadoutId, game) = await SeedLoadout();
         var withOs = new ThunderstoreViewModel(Provider.GetRequiredService<IWindowManager>(), Connection,
-            [game], new FakeCatalogSource(Catalog()), os, NullLogger<ThunderstoreViewModel>.Instance)
+            [game], new FakeCatalogSource(Catalog()), new FakeInstallSource(), Substitute.For<ILoadoutManager>(), os, NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = loadoutId,
         };

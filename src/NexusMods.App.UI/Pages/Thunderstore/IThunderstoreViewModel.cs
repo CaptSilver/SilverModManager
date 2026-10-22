@@ -31,4 +31,10 @@ public interface IThunderstoreViewModel : IPageViewModelInterface
 
     /// <summary>Opens a package's page on thunderstore.io in the browser.</summary>
     ReactiveCommand<ThunderstorePackageRow, Unit> OpenPackageCommand { get; }
+
+    /// <summary>
+    /// Downloads the package's latest version with the packages it needs and installs them into the loadout, the
+    /// mod loader first. A failure ends up in <see cref="ErrorText"/>.
+    /// </summary>
+    ReactiveCommand<ThunderstorePackageRow, Unit> InstallCommand { get; }
 }

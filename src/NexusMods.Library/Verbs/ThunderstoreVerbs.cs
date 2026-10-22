@@ -114,7 +114,7 @@ internal static class ThunderstoreVerbs
             WithDependencies: true,
             exact ? DependencyPolicy.Exact : DependencyPolicy.Latest,
             ExpectedSha256: null,
-            InstalledPackages(connection.Db, loadout));
+            ThunderstoreLoadoutPackages.Installed(connection.Db, loadout.LoadoutId));
         IReadOnlyList<LibraryFile.ReadOnly> files;
         try
         {
@@ -137,7 +137,7 @@ internal static class ThunderstoreVerbs
 
             if (!inLibraryBefore.Contains(file.Id)) await renderer.TextLine($"[downloaded] {name}");
 
-            var linked = LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, item).Any(link => link.AsLoadoutItem().LoadoutId == loadout.LoadoutId);
+            var linked = ThunderstoreLoadoutPackages.IsLinked(connection.Db, item, loadout.LoadoutId);
             if (linked)
             {
                 await renderer.TextLine($"[already in loadout] {name}");
@@ -204,24 +204,6 @@ internal static class ThunderstoreVerbs
     {
         if (cache.IsStale(community)) await cache.Refresh(community, token);
         return await cache.Load(community, token);
-    }
-
-    // Only enabled groups count: a disabled mod is not in the game, so its dependents still need what it would have brought.
-    private static Dictionary<ThunderstorePackageRef, ThunderstoreVersionNumber> InstalledPackages(IDb db, Loadout.ReadOnly loadout)
-    {
-        var installed = new Dictionary<ThunderstorePackageRef, ThunderstoreVersionNumber>();
-        foreach (var link in LibraryLinkedLoadoutItem.All(db))
-        {
-            var item = link.AsLoadoutItem();
-            if (item.LoadoutId != loadout.LoadoutId || !item.IsEnabled()) continue;
-            if (!link.LibraryItem.TryGetAsLibraryFile(out var file) || !file.TryGetAsThunderstoreLibraryFile(out var package)) continue;
-            if (!ThunderstorePackageRef.TryCreate(package.Namespace, package.Name, out var reference)) continue;
-            if (!ThunderstoreVersionNumber.TryParse(package.VersionNumber, out var version)) continue;
-
-            if (!installed.TryGetValue(reference, out var other) || version > other) installed[reference] = version;
-        }
-
-        return installed;
     }
 
     /// <summary>

@@ -37,6 +37,7 @@
                                 </ItemsControl.ItemsPanel>
                             </ItemsControl>
                             <items:LeftMenuItemView x:Name="NewCollection" />
+                            <items:LeftMenuItemView x:Name="ThunderstoreItem" />
                         </StackPanel>
                     </Expander>
                 </StackPanel>

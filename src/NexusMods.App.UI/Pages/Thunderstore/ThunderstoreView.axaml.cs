@@ -44,12 +44,23 @@ public partial class ThunderstoreView : ReactiveUserControl<IThunderstoreViewMod
         panel.Children.Add(new TextBlock { Text = title, FontWeight = FontWeight.SemiBold });
         if (package.Description != "") panel.Children.Add(new TextBlock { Text = package.Description, TextWrapping = TextWrapping.Wrap });
 
+        var buttons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8 };
+        if (package.Latest is not null)
+        {
+            var install = new Button { Content = "Install" };
+            // Through ICommand, which honours CanExecute: the command is disabled while it runs, so a double click can't start a second install.
+            install.Click += (_, _) => ((System.Windows.Input.ICommand)viewModel.InstallCommand).Execute(package);
+            buttons.Children.Add(install);
+        }
+
         if (package.PackageUrl is not null)
         {
-            var link = new Button { Content = "Open on thunderstore.io", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left };
+            var link = new Button { Content = "Open on thunderstore.io" };
             link.Click += (_, _) => viewModel.OpenPackageCommand.Execute(package).Subscribe();
-            panel.Children.Add(link);
+            buttons.Children.Add(link);
         }
+
+        if (buttons.Children.Count > 0) panel.Children.Add(buttons);
 
         return panel;
     }

@@ -14,6 +14,9 @@ public interface ILoadoutLeftMenuViewModel : ILeftMenuViewModel
     public ILeftMenuItemViewModel LeftMenuItemLibrary { get; }
     
     public ILeftMenuItemViewModel LeftMenuItemLoadout { get; }
+
+    /// <summary>Null for a game whose mods do not come from Thunderstore.</summary>
+    public ILeftMenuItemViewModel? LeftMenuItemThunderstore { get; }
     public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; }
 
     public ILeftMenuItemViewModel LeftMenuItemHealthCheck { get; }

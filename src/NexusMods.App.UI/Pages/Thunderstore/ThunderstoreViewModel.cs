@@ -2,13 +2,17 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.Library;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Networking.Thunderstore;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
+using NexusMods.Sdk.Thunderstore;
 using NexusMods.UI.Sdk.Icons;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -21,6 +25,8 @@ public class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, ITh
     private readonly IConnection _connection;
     private readonly IEnumerable<IGameData> _games;
     private readonly IThunderstoreCatalogSource _catalogs;
+    private readonly IThunderstoreSource _source;
+    private readonly ILoadoutManager _loadoutManager;
     private readonly ILogger<ThunderstoreViewModel> _logger;
     private ThunderstoreCatalog? _catalog;
 
@@ -33,18 +39,23 @@ public class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, ITh
 
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
     public ReactiveCommand<ThunderstorePackageRow, Unit> OpenPackageCommand { get; }
+    public ReactiveCommand<ThunderstorePackageRow, Unit> InstallCommand { get; }
 
     public ThunderstoreViewModel(
         IWindowManager windowManager,
         IConnection connection,
         IEnumerable<IGameData> games,
         IThunderstoreCatalogSource catalogs,
+        IThunderstoreSource source,
+        ILoadoutManager loadoutManager,
         IOSInterop osInterop,
         ILogger<ThunderstoreViewModel> logger) : base(windowManager)
     {
         _connection = connection;
         _games = games;
         _catalogs = catalogs;
+        _source = source;
+        _loadoutManager = loadoutManager;
         _logger = logger;
 
         TabIcon = IconValues.Download;
@@ -57,6 +68,8 @@ public class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, ITh
         {
             if (row.PackageUrl is { } url) osInterop.OpenUri(url);
         });
+
+        InstallCommand = ReactiveCommand.CreateFromTask<ThunderstorePackageRow>(InstallAsync);
 
         this.WhenActivated(d =>
         {
@@ -144,13 +157,49 @@ public class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, ITh
 
     // The game comes from the installation's recorded id, not the game registry: the registry throws for an
     // installation it hasn't located, and a page shouldn't fail because its game went missing.
-    private string? CommunityOfLoadout()
+    private IThunderstoreGame? ThunderstoreGameOfLoadout()
     {
         if (LoadoutId == default) return null;
         var loadout = Loadout.Load(_connection.Db, LoadoutId);
         if (!GameInstallMetadata.Game.TryGetValue(loadout.Installation, out var gameId)) return null;
         var game = _games.FirstOrDefault(game => game.GameId == gameId);
-        return game is null ? null : ThunderstoreGame.For(game)?.ThunderstoreCommunity;
+        return game is null ? null : ThunderstoreGame.For(game);
+    }
+
+    private string? CommunityOfLoadout() => ThunderstoreGameOfLoadout()?.ThunderstoreCommunity;
+
+    private async Task InstallAsync(ThunderstorePackageRow row, CancellationToken cancellationToken)
+    {
+        ErrorText = "";
+        try
+        {
+            if (ThunderstoreGameOfLoadout() is not { } game) throw new InvalidOperationException("This game's mods do not come from Thunderstore.");
+            if (row.Latest is not { } root) throw new InvalidOperationException($"{row.FullName} has no version to install.");
+
+            // A modpack lists the exact versions it was tested with; anything else follows the newest ones.
+            var isModpack = _catalog?.Categories(root.Package).Contains("Modpacks") ?? false;
+            var request = new ThunderstoreInstallRequest(
+                root,
+                game,
+                WithDependencies: true,
+                isModpack ? DependencyPolicy.Exact : DependencyPolicy.Latest,
+                ExpectedSha256: null,
+                ThunderstoreLoadoutPackages.Installed(_connection.Db, LoadoutId));
+
+            // The downloads are jobs, so the spine's download indicator shows their progress.
+            var files = await _source.AddAsync(request, cancellationToken);
+            foreach (var file in files)
+            {
+                var item = file.AsLibraryItem();
+                if (ThunderstoreLoadoutPackages.IsLinked(_connection.Db, item, LoadoutId)) continue;
+                await _loadoutManager.InstallItem(item, LoadoutId);
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _logger.LogWarning(e, "Could not install {Package} from Thunderstore", row.FullName);
+            ErrorText = $"Could not install {row.FullName}: {e.Message}";
+        }
     }
 
     private void ApplyFilter()
@@ -158,6 +207,13 @@ public class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, ITh
         Packages = _catalog is null
             ? []
             : _catalog.Search(SearchText, ShowDeprecated).Select(ToRow).ToArray();
+    }
+
+    private static ThunderstoreVersionRef? LatestRef(NexusMods.Networking.Thunderstore.DTOs.PackageListing package, NexusMods.Networking.Thunderstore.DTOs.PackageVersion? latest)
+    {
+        if (latest is null || package.Owner is null) return null;
+        if (!ThunderstorePackageRef.TryCreate(package.Owner, package.Name, out var reference)) return null;
+        return ThunderstoreVersionNumber.TryParse(latest.VersionNumber, out var number) ? new ThunderstoreVersionRef(reference, number) : null;
     }
 
     private static ThunderstorePackageRow ToRow(NexusMods.Networking.Thunderstore.DTOs.PackageListing package)
@@ -169,6 +225,7 @@ public class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, ITh
             package.RatingScore,
             package.IsDeprecated,
             latest?.Description ?? "",
-            Uri.TryCreate(package.PackageUrl, UriKind.Absolute, out var url) ? url : null);
+            Uri.TryCreate(package.PackageUrl, UriKind.Absolute, out var url) ? url : null,
+            LatestRef(package, latest));
     }
 }

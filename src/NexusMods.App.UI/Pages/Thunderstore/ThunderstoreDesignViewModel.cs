@@ -24,5 +24,7 @@ public class ThunderstoreDesignViewModel : APageViewModel<IThunderstoreViewModel
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<ThunderstorePackageRow, Unit> OpenPackageCommand { get; } = ReactiveCommand.Create<ThunderstorePackageRow>(_ => { });
 
+    public ReactiveCommand<ThunderstorePackageRow, Unit> InstallCommand { get; } = ReactiveCommand.Create<ThunderstorePackageRow>(_ => { });
+
     public ThunderstoreDesignViewModel() : base(new DesignWindowManager()) { }
 }
