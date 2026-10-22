@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
+using NexusMods.Paths.Utilities;
 using NexusMods.Sdk.Games;
 
 namespace NexusMods.Backend.Games.Locators;
@@ -18,7 +19,7 @@ internal class LutrisLocator : IGameLocator
     private readonly ImmutableArray<LutrisRoot> _roots;
     private readonly StoreIdMap<long> _gogGames;
     private readonly StoreIdMap<string> _epicGames;
-    private readonly StoreIdMap<string> _executableGames;
+    private readonly Dictionary<string, List<IGameData>> _executableGames;
     private readonly Dictionary<IGameData, RelativePath> _primaryFiles;
 
     public LutrisLocator(IEnumerable<IGameData> games, ILoggerFactory loggerFactory, IFileSystem fileSystem)
@@ -39,13 +40,16 @@ internal class LutrisLocator : IGameLocator
 
         _gogGames = StoreIdMap.Build(all, game => game.StoreIdentifiers.GOGProductIds, "GOG product", nameof(LutrisLocator), _logger);
         _epicGames = StoreIdMap.Build(all, game => game.StoreIdentifiers.EGSCatalogItemId, "Epic catalog item", nameof(LutrisLocator), _logger);
-        _executableGames = StoreIdMap.Build<string>(
-            all,
-            game => _primaryFiles.TryGetValue(game, out var primaryFile) ? [primaryFile.FileName.ToString().ToLowerInvariant()] : [],
-            "executable name",
-            nameof(LutrisLocator),
-            _logger
-        );
+
+        // Games may share an executable (Enderal launches TESV.exe like Skyrim), so this is a lookup to all
+        // claimants rather than a StoreIdMap, which would report the shared name as a clash.
+        _executableGames = new Dictionary<string, List<IGameData>>();
+        foreach (var (game, primaryFile) in _primaryFiles)
+        {
+            var name = primaryFile.FileName.ToString().ToLowerInvariant();
+            if (!_executableGames.TryGetValue(name, out var claimants)) _executableGames[name] = claimants = [];
+            claimants.Add(game);
+        }
     }
 
     public IEnumerable<GameLocatorResult> Locate() => LocateGames(null);
@@ -54,7 +58,6 @@ internal class LutrisLocator : IGameLocator
     {
         _gogGames.ReportTo(problems);
         _epicGames.ReportTo(problems);
-        _executableGames.ReportTo(problems);
         return LocateGames(problems);
     }
 
@@ -64,7 +67,7 @@ internal class LutrisLocator : IGameLocator
     {
         var candidates = _roots
             .SelectMany(root => root.InstalledGames(_logger).Select(row => (Root: root, Row: row)))
-            .Select(entry => TryMatch(entry.Root, entry.Row))
+            .Select(entry => TryMatch(entry.Root, entry.Row, problems))
             .OfType<Candidate>()
             .GroupBy(candidate => candidate.Row.Slug);
 
@@ -90,7 +93,7 @@ internal class LutrisLocator : IGameLocator
     /// <summary>
     /// The game this row describes, or null when no registered game claims it or its settings cannot be read.
     /// </summary>
-    private Candidate? TryMatch(LutrisRoot root, LutrisRow row)
+    private Candidate? TryMatch(LutrisRoot root, LutrisRow row, IGameLocatorProblemSink? problems)
     {
         IGameData? game;
         GameStore store;
@@ -111,7 +114,9 @@ internal class LutrisLocator : IGameLocator
             // Only the YAML names the executable, so it is read before knowing whether anyone claims the game.
             var config = root.ReadGameConfig(row, _logger);
             if (config?.Exe is null) return null;
-            if (!_executableGames.Games.TryGetValue(FileName(config.Exe).ToLowerInvariant(), out game)) return null;
+            if (!_executableGames.TryGetValue(FileName(config.Exe).ToLowerInvariant(), out var claimants)) return null;
+            game = claimants.Count == 1 ? claimants[0] : ChooseByIdentifyingFiles(row, config, config.Exe, claimants, problems);
+            if (game is null) return null;
             return new Candidate(root, row, config, game, GameStore.Lutris, row.Slug);
         }
         else
@@ -121,6 +126,35 @@ internal class LutrisLocator : IGameLocator
 
         var gameConfig = root.ReadGameConfig(row, _logger);
         return gameConfig is null ? null : new Candidate(root, row, gameConfig, game, store, storeIdentifier);
+    }
+
+    /// <summary>
+    /// Picks among games that launch the same executable by the identifying files in the row's game folder.
+    /// Null, with one problem reported, when that leaves none or several.
+    /// </summary>
+    private IGameData? ChooseByIdentifyingFiles(LutrisRow row, LutrisGameConfig config, string exe, List<IGameData> claimants, IGameLocatorProblemSink? problems)
+    {
+        // The shared executable sits in the same folder whichever claimant is asked.
+        AbsolutePath? folder;
+        try
+        {
+            folder = InstallPath(row, config, claimants[0]);
+        }
+        catch (Exception e) when (IsUnusablePath(e))
+        {
+            _logger.LogWarning(e, "Skipping Lutris game {Slug}: its recorded paths are not usable", row.Slug);
+            return null;
+        }
+
+        var remaining = folder is { } path ? IdentifyingFilesNarrowing.Narrow(path, claimants, game => game) : [];
+        if (remaining.Count == 1) return remaining[0];
+
+        var message = $"Lutris game {row.Slug} runs {FileName(exe)}, which is shared by " +
+                      string.Join(" and ", claimants.Select(game => $"'{game.DisplayName}'")) +
+                      " and nothing in its folder tells them apart; it is not located. Add it with My Games > Add a game folder";
+        _logger.LogWarning("{Message}", message);
+        problems?.Report(nameof(LutrisLocator), message);
+        return null;
     }
 
     private GameLocatorResult? TryBuildResult(Candidate candidate)
@@ -163,7 +197,7 @@ internal class LutrisLocator : IGameLocator
                 Compatibility = compatibility,
             };
         }
-        catch (ArgumentException e)
+        catch (Exception e) when (IsUnusablePath(e))
         {
             _logger.LogWarning(e, "Skipping Lutris game {Slug}: its recorded paths are not usable", row.Slug);
             return null;
@@ -241,6 +275,9 @@ internal class LutrisLocator : IGameLocator
             folder = parent;
         }
     }
+
+    // A relative or empty recorded path fails as a PathException, which is not an ArgumentException.
+    private static bool IsUnusablePath(Exception e) => e is ArgumentException or PathException;
 
     private RelativePath? PrimaryFile(IGameData game) => PrimaryFileProbe.Find(game, _fileSystem, this, _logger);
 

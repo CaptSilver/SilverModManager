@@ -254,6 +254,106 @@ public sealed class LutrisLocatorTests : IDisposable
         NewLocator(NativeRoot(), Game("Game", gogId: GogId)).Locate().Should().BeEmpty();
     }
 
+    [Fact]
+    public void Locate_GamesSharingAnExecutableNameAndNoRows_ReportsNoProblem()
+    {
+        var problems = new CollectingProblemSink();
+
+        NewLocator(NativeRoot(), SharedSkyrim(), SharedEnderal()).Locate(problems).Should().BeEmpty();
+
+        problems.Problems.Should().BeEmpty("a shared executable is told apart by identifying files, it is not a clash");
+    }
+
+    [Fact]
+    public void Locate_SharedExecutableAndTheFolderHoldsTheIdentifyingFiles_LocatesTheGameThatNamesThem()
+    {
+        var root = NativeRoot();
+        var folder = Home().Combine("Games/enderal");
+        _fileSystem.CreateDirectory(folder.Combine("Data"));
+        _fileSystem.WriteAllText(folder.Combine("TESV.exe"), "");
+        _fileSystem.WriteAllText(folder.Combine("Enderal Launcher.exe"), "");
+        _fileSystem.WriteAllText(folder.Combine("Data/Enderal - Forgotten Stories.esm"), "");
+        WriteGame(root, "enderal", service: null, serviceId: null, runner: "wine", directory: folder.GetFullPath(), exe: "TESV.exe", prefix: Home().Combine("p").GetFullPath());
+        var enderal = SharedEnderal();
+        var problems = new CollectingProblemSink();
+
+        var result = NewLocator(root, SharedSkyrim(), enderal).Locate(problems).Should().ContainSingle().Subject;
+
+        result.Game.Should().BeSameAs(enderal);
+        result.Path.Should().Be(folder);
+        problems.Problems.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Locate_SharedExecutableAndTheFolderLacksTheIdentifyingFiles_LocatesTheGameThatNamesNone()
+    {
+        var root = NativeRoot();
+        var folder = Home().Combine("Games/skyrim");
+        _fileSystem.CreateDirectory(folder);
+        _fileSystem.WriteAllText(folder.Combine("TESV.exe"), "");
+        WriteGame(root, "skyrim", service: null, serviceId: null, runner: "wine", directory: folder.GetFullPath(), exe: "TESV.exe", prefix: Home().Combine("p").GetFullPath());
+        var skyrim = SharedSkyrim();
+
+        var result = NewLocator(root, skyrim, SharedEnderal()).Locate(new CollectingProblemSink()).Should().ContainSingle().Subject;
+
+        result.Game.Should().BeSameAs(skyrim);
+    }
+
+    [Fact]
+    public void Locate_SharedExecutableAndNothingTellsTheGamesApart_LocatesNothingAndNamesTheCandidates()
+    {
+        var root = NativeRoot();
+        var folder = Home().Combine("Games/shared");
+        _fileSystem.CreateDirectory(folder);
+        _fileSystem.WriteAllText(folder.Combine("Shared.exe"), "");
+        WriteGame(root, "shared-row", service: null, serviceId: null, runner: "wine", directory: folder.GetFullPath(), exe: "Shared.exe", prefix: Home().Combine("p").GetFullPath());
+        var problems = new CollectingProblemSink();
+
+        NewLocator(root, new FakeGameData("Alpha", primaryFile: "Shared.exe"), new FakeGameData("Beta", primaryFile: "Shared.exe"))
+            .Locate(problems).Should().BeEmpty();
+
+        var problem = problems.Problems.Should().ContainSingle().Subject;
+        problem.Locator.Should().Be(nameof(LutrisLocator));
+        problem.Message.Should().Contain("shared-row").And.Contain("Shared.exe").And.Contain("Alpha").And.Contain("Beta").And.Contain("Add a game folder");
+    }
+
+    [Fact]
+    public void Locate_SharedExecutableRowWithUnusablePaths_SkipsThatRowAndLocatesTheRest()
+    {
+        var root = NativeRoot();
+        WriteGame(root, "broken", service: null, serviceId: null, runner: "wine", directory: "relative/folder", exe: "TESV.exe", prefix: "relative/prefix");
+        var other = Home().Combine("Games/other");
+        _fileSystem.CreateDirectory(other);
+        _fileSystem.WriteAllText(other.Combine("Other.exe"), "");
+        WriteGame(root, "other", service: null, serviceId: null, runner: "wine", directory: other.GetFullPath(), exe: "Other.exe", prefix: Home().Combine("p").GetFullPath());
+        var otherGame = new FakeGameData("Other", primaryFile: "Other.exe");
+
+        var result = NewLocator(root, SharedSkyrim(), SharedEnderal(), otherGame).Locate(new CollectingProblemSink()).Should().ContainSingle().Subject;
+
+        result.Game.Should().BeSameAs(otherGame);
+    }
+
+    [Fact]
+    public void Locate_RowWithARelativeDirectory_SkipsThatRowAndLocatesTheRest()
+    {
+        var root = NativeRoot();
+        WriteGame(root, "broken", service: null, serviceId: null, runner: "wine", directory: "relative/folder", exe: "Broken.exe", prefix: "relative/prefix");
+        var other = Home().Combine("Games/other");
+        _fileSystem.CreateDirectory(other);
+        _fileSystem.WriteAllText(other.Combine("Other.exe"), "");
+        WriteGame(root, "other", service: null, serviceId: null, runner: "wine", directory: other.GetFullPath(), exe: "Other.exe", prefix: Home().Combine("p").GetFullPath());
+        var otherGame = new FakeGameData("Other", primaryFile: "Other.exe");
+
+        var result = NewLocator(root, new FakeGameData("Broken", primaryFile: "Broken.exe"), otherGame).Locate().Should().ContainSingle().Subject;
+
+        result.Game.Should().BeSameAs(otherGame);
+    }
+
+    private static FakeGameData SharedSkyrim() => new("Skyrim", primaryFile: "TESV.exe");
+
+    private static FakeIdentifiedGameData SharedEnderal()
+        => new("Enderal", "TESV.exe", ["Enderal Launcher.exe", "Data/Enderal - Forgotten Stories.esm"]);
+
     private AbsolutePath Home() => _fileSystem.GetKnownPath(KnownPath.HomeDirectory);
 
     // The data folder is a real directory because pga.db is opened by SQLite itself; the config folder is in
