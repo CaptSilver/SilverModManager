@@ -64,12 +64,25 @@ public class AvaloniaApp : IDisposable
                 Dispatcher.UIThread.CheckAccess();
                 
                 tcs.SetResult();
-                Dispatcher.UIThread.MainLoop(CancellationToken.None);
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "While setting up AvaloniaApp");
                 tcs.SetException(e);
+                return;
+            }
+
+            try
+            {
+                Dispatcher.UIThread.MainLoop(CancellationToken.None);
+            }
+            catch (Exception e)
+            {
+                // The setup task has already completed, so this can't be reported through it. The host dies either
+                // way; rethrowing makes the crash name this exception, and stderr gets it into the test run's log.
+                _logger.LogError(e, "Unhandled exception on the Avalonia dispatcher");
+                Console.Error.WriteLine($"Unhandled exception on the Avalonia dispatcher: {e}");
+                throw;
             }
         })
         {
