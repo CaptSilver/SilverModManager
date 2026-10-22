@@ -14,7 +14,7 @@ internal static class ExtractedLinks
     // Linux gives up at 40 link expansions in one lookup (ELOOP), so a longer chain cannot be a real one.
     private const int MaxLinkExpansions = 40;
 
-    internal static void Sanitize(string root, ILogger logger)
+    internal static void Sanitize(string root, string archive, ILogger logger)
     {
         if (!Directory.Exists(root)) return;
 
@@ -34,12 +34,12 @@ internal static class ExtractedLinks
 
             if (decision.CopyFrom is { } source)
             {
-                logger.LogWarning("Replacing symlink `{Entry}` in archive with a copy of `{Target}`", entry, Path.GetRelativePath(root, source));
+                logger.LogWarning("Replacing symlink `{Entry}` in archive `{Archive}` with a copy of `{Target}`", entry, archive, Path.GetRelativePath(root, source));
                 File.Copy(source, link);
             }
             else
             {
-                logger.LogWarning("Dropping symlink `{Entry}` from archive: {Reason}", entry, decision.Reason);
+                logger.LogWarning("Dropping symlink `{Entry}` from archive `{Archive}`: {Reason}", entry, archive, decision.Reason);
             }
         }
     }

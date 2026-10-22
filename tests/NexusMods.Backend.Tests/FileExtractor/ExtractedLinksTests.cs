@@ -31,7 +31,9 @@ public class ExtractedLinksTests : IDisposable
         File.CreateSymbolicLink(path, target);
     }
 
-    private void Sanitize() => ExtractedLinks.Sanitize(_root, new ListLogger(_log));
+    private const string Archive = "Some Mod-123-1-0.7z";
+
+    private void Sanitize() => ExtractedLinks.Sanitize(_root, Archive, new ListLogger(_log));
 
     private bool Exists(string path) => File.Exists(InRoot(path)) || Directory.Exists(InRoot(path)) || new FileInfo(InRoot(path)).LinkTarget is not null;
 
@@ -150,6 +152,16 @@ public class ExtractedLinksTests : IDisposable
         Link("deep/escape", "../../outside/secret.txt");
         Sanitize();
         _log.Should().ContainSingle(m => m.Contains("deep/escape"));
+    }
+
+    [Fact]
+    public void EveryLinkWarningNamesTheArchive()
+    {
+        File.WriteAllText(InRoot("real.txt"), "real content");
+        Link("copied", "real.txt");
+        Link("escape", "../outside/secret.txt");
+        Sanitize();
+        _log.Should().HaveCount(2).And.OnlyContain(m => m.Contains(Archive));
     }
 
     [Fact]

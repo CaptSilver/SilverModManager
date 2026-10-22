@@ -79,7 +79,7 @@ public class SevenZipExtractor : IExtractor
         // else reads the result.
         var root = destination.ToNativeSeparators(_osInformation);
         NormalizeModes(root);
-        ExtractedLinks.Sanitize(root, _logger);
+        ExtractedLinks.Sanitize(root, streamFactory.FileName.ToString(), _logger);
 
         if (trimmablePathsInArchive.Count == 0) return;
         FixPaths(trimmablePathsInArchive, destination);
