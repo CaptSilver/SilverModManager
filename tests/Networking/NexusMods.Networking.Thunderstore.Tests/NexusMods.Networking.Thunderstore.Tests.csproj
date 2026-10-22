@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\NexusMods.Networking.Thunderstore\NexusMods.Networking.Thunderstore.csproj" />
+    <ProjectReference Include="..\..\..\src\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+  </ItemGroup>
+</Project>

@@ -29,6 +29,7 @@ using NexusMods.Networking.GOG;
 using NexusMods.Networking.HttpDownloader;
 using NexusMods.Networking.NexusWebApi;
 using NexusMods.Networking.Steam;
+using NexusMods.Networking.Thunderstore;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton;
 using NexusMods.Platform.Proton.Launch;
@@ -177,7 +178,8 @@ public static class Services
             .AddSteamCli()
             .AddGOG()
             .AddFileHashes()
-            .AddGitHubApi();
+            .AddGitHubApi()
+            .AddThunderstore();
     }
 
     /// <summary>
