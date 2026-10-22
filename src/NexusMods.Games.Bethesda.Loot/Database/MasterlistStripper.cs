@@ -30,8 +30,14 @@ public static class MasterlistStripper
 
         var writer = new StringWriter { NewLine = "\n" };
         stream.Save(writer, assignAnchors: false);
-        return writer.ToString();
+        return WithoutDocumentEnd(writer.ToString());
     }
+
+    // YamlDotNet closes a document that ends in a plain scalar with "...". It is valid YAML, but
+    // libloot's parser reports that line as an unterminated scalar, and the stripped text is what
+    // libloot is asked to load when the sort is checked against it.
+    private static string WithoutDocumentEnd(string yaml) =>
+        yaml.EndsWith("\n...\n", StringComparison.Ordinal) ? yaml[..^4] : yaml;
 
     private static void Strip(YamlNode node, HashSet<YamlNode> seen)
     {

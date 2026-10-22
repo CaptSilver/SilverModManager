@@ -132,6 +132,19 @@ public class MasterlistStripperTests
     }
 
     [Fact]
+    public void ShouldNotEndTheTextWithADocumentEndMarker()
+    {
+        // YamlDotNet closes a document that ends in a plain scalar with "...", and libloot's YAML
+        // parser reports that line as an unterminated scalar.
+        var text = "plugins:\n  - name: A.esp\n    group: late\nglobals: []\n";
+
+        var stripped = MasterlistStripper.Strip(text);
+
+        stripped.Split('\n').Should().NotContain("...");
+        MetadataDocument.Load(stripped).Plugins[new Filename("A.esp")].Group.Should().Be("late");
+    }
+
+    [Fact]
     public void ShouldErrorOnInvalidYaml()
     {
         Action act = () => MasterlistStripper.Strip("a: [1, 2\nb: 3");
