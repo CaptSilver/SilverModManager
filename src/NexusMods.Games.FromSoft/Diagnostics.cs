@@ -265,4 +265,46 @@ which one wins. Disable or remove one of the mods that provide the file.
             .AddValue<string>("Strategy")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate HealPlan = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 13))
+        .WithTitle("The merged regulation needs rebuilding for the new build")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{Game} was updated, so the mods' regulations have to be rebased onto the new build")
+        .WithDetails("""
+{Game} was updated and this loadout has mods that ship a regulation. They were built for an earlier build, so the app
+merges them onto the new one when the loadout is applied:
+
+{Steps}
+
+`silvermod fromsoft heal` keeps the new regulation as the baseline and checks the mods' param layouts now; add
+`--dry-run` to only print the steps. A mod whose layout no longer fits needs an update from its author.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Game")
+            .AddValue<string>("Steps")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate HealRefused = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 14))
+        .WithTitle("The game's regulation was changed without an update")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("{Message}")
+        .WithDetails("""
+{Message}
+
+Merging mods onto a regulation that something else rewrote would build every merged file on the wrong rows, so the
+app does not take it as the vanilla one.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Message")
+        )
+        .Finish();
 }

@@ -26,6 +26,9 @@
         <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Formats\Fixtures\RegulationFixture.cs" Link="Fixtures\FromSoft\RegulationFixture.cs" />
         <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Formats\Fixtures\ParamFixture.cs" Link="Fixtures\FromSoft\ParamFixture.cs" />
         <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Fixtures\TestArchives.cs" Link="Fixtures\FromSoft\TestArchives.cs" />
+        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Fixtures\EldenRingInstall.cs" Link="Fixtures\FromSoft\EldenRingInstall.cs" />
+        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Fixtures\FakePe.cs" Link="Fixtures\FromSoft\FakePe.cs" />
+        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Fixtures\TreeSnapshot.cs" Link="Fixtures\FromSoft\TreeSnapshot.cs" />
     </ItemGroup>
 
     <ItemGroup>

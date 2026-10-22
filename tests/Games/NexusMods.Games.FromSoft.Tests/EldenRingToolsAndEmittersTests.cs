@@ -11,6 +11,7 @@ using NexusMods.Games.FileHashes.Emitters;
 using NexusMods.Games.FromSoft.Build;
 using NexusMods.Games.FromSoft.Diagnostics;
 using NexusMods.Games.FromSoft.Doctor;
+using NexusMods.Games.FromSoft.Heal;
 using NexusMods.Games.FromSoft.Merge;
 using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Installers;
@@ -67,6 +68,7 @@ public class EldenRingToolsAndEmittersTests(ITestOutputHelper helper) : AEldenRi
             typeof(ProtonPrefixEmitter),
             typeof(PackageCollisionEmitter),
             typeof(MergeDiagnosticsEmitter),
+            typeof(HealEmitter),
             typeof(Me3HostMissingEmitter),
             typeof(UpperdirAuditEmitter),
             typeof(GameFolderArtifactsEmitter),

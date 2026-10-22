@@ -49,6 +49,7 @@ public static class Services
         services.AddSingleton<PackageCollisionEmitter>()
             .AddSingleton<IFromSoftDiagnosticEmitter>(provider => provider.GetRequiredService<PackageCollisionEmitter>())
             .AddSingleton<IFromSoftDiagnosticEmitter, MergeDiagnosticsEmitter>()
+            .AddSingleton<IFromSoftDiagnosticEmitter, HealEmitter>()
             .AddSingleton<Me3HostMissingEmitter>()
             .AddSingleton<IFromSoftDiagnosticEmitter>(provider => provider.GetRequiredService<Me3HostMissingEmitter>())
             .AddSingleton<UpperdirAuditEmitter>()
@@ -85,6 +86,9 @@ public static class Services
         services.AddVerb(() => MergeVerbs.List)
             .AddModule("fromsoft", "Commands for the FromSoft games' loadouts")
             .AddModule("fromsoft merge", "What the app merges for a loadout");
+
+        // Planning a game update's rebase and keeping the new baseline
+        services.AddVerb(() => HealVerbs.Heal);
 
         // Launch gates, in run order
         services.AddSingleton<IExecutableLocator, PathExecutableLocator>()
