@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using NexusMods.Games.FromSoft.Formats;
 using NexusMods.Games.FromSoft.Saves;
+using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
 
 namespace NexusMods.Games.FromSoft.Tests.Fixtures;
 
@@ -31,6 +32,10 @@ public static class TestSoulsDefinition
             RegulationFileName: null,
             RegulationWrite: null,
             ImmutableArray<byte>.Empty,
-            "testsouls"),
+            "testsouls",
+            [Bhd5Fixture.TestKey.Archive("TestData0")],
+            PathHashBits: 32,
+            PathHashPrime: 37,
+            Bhd5Layout.Salted40ByteEntries),
     };
 }

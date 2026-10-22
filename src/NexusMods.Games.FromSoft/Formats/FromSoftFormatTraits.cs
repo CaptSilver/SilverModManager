@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Globalization;
+using System.Numerics;
 
 namespace NexusMods.Games.FromSoft.Formats;
 
@@ -32,6 +34,26 @@ public enum DcxCompression
 /// <param name="WindowLog">The Zstandard window size, as a power of two, that caps what the game's decoder must allocate; 0 when it is not Zstandard.</param>
 public sealed record DcxWriteFormat(DcxCompression Compression, uint Unk04, int Level, int WindowLog);
 
+/// <summary>How the entries of a game's archive index (BHD5) are laid out.</summary>
+public enum Bhd5Layout
+{
+    /// <summary>A salt after the header, then 40-byte entries: path hash (8), padded size, unpadded size, offset, a digest offset, an AES key offset.</summary>
+    Salted40ByteEntries,
+}
+
+/// <summary>One packed archive: an RSA-signed index (<c>Name.bhd</c>) beside its payloads (<c>Name.bdt</c>).</summary>
+/// <param name="Name">The file name without extension.</param>
+/// <param name="Modulus">The public modulus the game decrypts the index with.</param>
+/// <param name="Exponent">
+/// The public exponent. Not an int: one shipped key uses 0xffffffff, which does not fit a signed 32-bit value.
+/// </param>
+public sealed record ArchiveIndex(string Name, BigInteger Modulus, BigInteger Exponent)
+{
+    /// <summary>An archive whose modulus is written as big-endian hex, the way the keys are published.</summary>
+    public static ArchiveIndex FromHex(string name, string modulusHex, ulong exponent)
+        => new(name, BigInteger.Parse("0" + modulusHex, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture), exponent);
+}
+
 /// <summary>
 /// The file format parameters that differ from one FromSoft game to the next: the values a binder, DCX or
 /// regulation reader would otherwise hard-code for one game.
@@ -46,6 +68,10 @@ public sealed record DcxWriteFormat(DcxCompression Compression, uint Unk04, int 
 /// Names the family of param layouts the game uses. The param layout catalogue will be keyed by this and the build
 /// from <see cref="Build.BuildIdentity"/>; the catalogue itself does not exist yet.
 /// </param>
+/// <param name="Archives">The game's packed archives in the order a lookup walks them; empty when the game's files are not read from archives.</param>
+/// <param name="PathHashBits">The width, 1 to 64, the archive index hashes paths to.</param>
+/// <param name="PathHashPrime">The multiplier of the path hash; meaningless when <paramref name="Archives"/> is empty.</param>
+/// <param name="ArchiveLayout">How the index of each archive lays out its entries.</param>
 public sealed record FromSoftFormatTraits(
     BinderFormat Binder,
     ImmutableArray<DcxCompression> ReadableCompressions,
@@ -53,4 +79,8 @@ public sealed record FromSoftFormatTraits(
     string? RegulationFileName,
     DcxWriteFormat? RegulationWrite,
     ImmutableArray<byte> RegulationKey,
-    string ParamdefSet);
+    string ParamdefSet,
+    ImmutableArray<ArchiveIndex> Archives,
+    int PathHashBits,
+    int PathHashPrime,
+    Bhd5Layout ArchiveLayout);

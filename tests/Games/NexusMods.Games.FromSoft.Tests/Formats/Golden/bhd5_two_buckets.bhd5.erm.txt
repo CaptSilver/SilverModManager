@@ -1,0 +1,6 @@
+Produced once with erm (read-only), working directory outside both repos, with erm's tests/ directory on sys.path:
+  import test_bhd5
+  test_bhd5._synthetic_bhd5(
+      [(0x1111111111111111, 32, 30, 0), (0x2222222222222222, 64, 64, 32), (0x3333333333333333, 16, 5, 96)],
+      bucket_count=2, salt=b"GR_test")
+The plaintext index only; the RSA wrapping is per key and is not compared.

@@ -1,3 +1,4 @@
+using System.Numerics;
 using FluentAssertions;
 using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Formats;
@@ -43,5 +44,32 @@ public class FromSoftFormatTraitsTests
         TestSouls.RegulationWrite.Should().BeNull().And.NotBe(EldenRing.RegulationWrite);
         TestSouls.RegulationKey.Should().BeEmpty();
         TestSouls.ParamdefSet.Should().Be("testsouls").And.NotBe(EldenRing.ParamdefSet);
+        TestSouls.Archives.Select(a => a.Name).Should().NotIntersectWith(EldenRing.Archives.Select(a => a.Name));
+        TestSouls.Archives.Select(a => a.Modulus).Should().NotIntersectWith(EldenRing.Archives.Select(a => a.Modulus));
+        TestSouls.PathHashBits.Should().Be(32).And.NotBe(EldenRing.PathHashBits);
+        TestSouls.PathHashPrime.Should().Be(37).And.NotBe(EldenRing.PathHashPrime);
+    }
+
+    [Fact]
+    public void EldenRingReadsFiveArchivesInTheOrderTheGameSearchesThem()
+    {
+        EldenRing.Archives.Select(a => a.Name).Should().Equal("Data0", "Data1", "Data2", "Data3", "DLC");
+        EldenRing.PathHashBits.Should().Be(64);
+        EldenRing.PathHashPrime.Should().Be(133);
+        EldenRing.ArchiveLayout.Should().Be(Bhd5Layout.Salted40ByteEntries);
+    }
+
+    [Fact]
+    public void AnArchiveExponentTooBigForASignedIntSurvivesIntact()
+    {
+        var data2 = EldenRing.Archives.Single(a => a.Name == "Data2");
+        data2.Exponent.Should().Be(new BigInteger(0xffffffffUL));
+        (data2.Exponent > int.MaxValue).Should().BeTrue();
+    }
+
+    [Fact]
+    public void FromHexReadsAModulusAsBigEndianUnsigned()
+    {
+        ArchiveIndex.FromHex("X", "ff01", 3).Modulus.Should().Be(new BigInteger(0xff01));
     }
 }

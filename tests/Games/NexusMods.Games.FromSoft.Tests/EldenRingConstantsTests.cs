@@ -69,7 +69,11 @@ public class EldenRingConstantsTests
             "regulation.bin",
             new DcxWriteFormat(DcxCompression.Zstd, 0x11000, 15, 16),
             [..Convert.FromHexString("99BFFC366A6BC8C6F5827D093602D676C42892A01C207FB024D3AF4E493FEF99")],
-            "eldenring"));
+            "eldenring",
+            Definition.Formats.Archives,
+            PathHashBits: 64,
+            PathHashPrime: 133,
+            Bhd5Layout.Salted40ByteEntries));
     }
 
     [Fact]
