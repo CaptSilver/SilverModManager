@@ -61,3 +61,10 @@ public sealed record BaselineWillBeKept(string Version) : IMergeNote
     public string Describe() =>
         $"the next apply keeps this regulation as the version {Version} baseline";
 }
+
+/// <summary>The vanilla copy of a file came from a vanilla dump in the library.</summary>
+public sealed record VanillaServedFromDump(string Path, string ArchiveName, string Version) : IMergeNote
+{
+    public string Describe() =>
+        $"{Path}: compared against the vanilla copy in archive {ArchiveName} (version {Version})";
+}

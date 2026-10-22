@@ -73,7 +73,10 @@ public static class Services
         });
 
         // What the merge index and planner read from a loadout
-        services.AddSingleton<LoadoutMergeSources>();
+        services.AddSingleton<VouchedRegulations>()
+            .AddSingleton<IVouchedRegulations>(provider => provider.GetRequiredService<VouchedRegulations>())
+            .AddSingleton<VanillaDumps>()
+            .AddSingleton<LoadoutMergeSources>();
 
         // Launch gates, in run order
         services.AddSingleton<IExecutableLocator, PathExecutableLocator>()

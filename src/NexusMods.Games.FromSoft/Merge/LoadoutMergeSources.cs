@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Extensions;
@@ -45,7 +44,7 @@ public enum MergeSourceMode
 /// decided here.
 /// </para>
 /// </summary>
-public sealed class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines baselines, ILogger<LoadoutMergeSources> logger)
+public sealed class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, ILogger<LoadoutMergeSources> logger)
 {
     private readonly ConcurrentDictionary<Hash, string> _versions = new();
     private readonly ConcurrentDictionary<string, byte> _unprioritised = new(StringComparer.Ordinal);
@@ -107,7 +106,11 @@ public sealed class LoadoutMergeSources(IFileStore fileStore, RegulationBaseline
 
     /// <summary>The paths that more than one mod provides, and what the app would do about each.</summary>
     public MergePathIndex Index(Loadout.ReadOnly loadout)
-        => MergePathIndex.Build(Providers(loadout), TraitsOf(loadout.InstallationInstance), ImmutableHashSet<string>.Empty);
+    {
+        var providers = Providers(loadout);
+        var vanillaPaths = dumps.Paths(loadout.Db, loadout.InstallationInstance, providers.Select(p => p.RelPath).Distinct(StringComparer.OrdinalIgnoreCase));
+        return MergePathIndex.Build(providers, TraitsOf(loadout.InstallationInstance), vanillaPaths);
+    }
 
     /// <summary>
     /// A provider's bytes from the file store. Read synchronously because the planner is a pure function over byte
@@ -149,16 +152,24 @@ public sealed class LoadoutMergeSources(IFileStore fileStore, RegulationBaseline
     /// <paramref name="relPath"/>.
     /// <para>
     /// For the regulation the result always has the contributors' version: the merge folds from one ancestor, so the
-    /// contributors have to agree on it, and it is looked for in the kept baselines and then in the installed game,
-    /// but only if the game is at that version. Anything else is refused, never substituted.
+    /// contributors have to agree on it, and it is looked for in the kept baselines, then in the vanilla dumps of the
+    /// library, then in the installed game, but only if the game is at that version. Anything else is refused, never
+    /// substituted.
+    /// </para>
+    /// <para>
+    /// A packed file's vanilla copy is the member of a vanilla dump. With several dumps on offer the one of the
+    /// contributors' regulation version wins when they ship one, otherwise the newest not newer than the installed
+    /// build, otherwise the newest. Each copy served is named in <paramref name="notes"/> with its archive.
     /// </para>
     /// </summary>
-    /// <param name="notes">Receives what a read-only call would have kept had it been an apply.</param>
+    /// <param name="notes">Receives what a read-only call would have kept had it been an apply, and which dump served the file.</param>
     /// <exception cref="MergeException">The contributors disagree on a version, or no vanilla regulation of theirs is available.</exception>
-    public byte[]? Vanilla(GameInstallation installation, string relPath, IReadOnlyList<ProviderFile> contributors, MergeSourceMode mode, ICollection<IMergeNote>? notes = null)
+    public byte[]? Vanilla(Loadout.ReadOnly loadout, string relPath, IReadOnlyList<ProviderFile> contributors, MergeSourceMode mode, ICollection<IMergeNote>? notes = null)
     {
+        var installation = loadout.InstallationInstance;
         var traits = TraitsOf(installation);
-        if (traits.RegulationFileName is not { } regulationName || !relPath.Equals(regulationName, StringComparison.OrdinalIgnoreCase)) return null;
+        if (traits.RegulationFileName is not { } regulationName || !relPath.Equals(regulationName, StringComparison.OrdinalIgnoreCase))
+            return PackedVanilla(loadout, relPath, contributors, notes);
         if (contributors.Count == 0) throw new ArgumentException("A vanilla regulation is looked up for the files that provide it.", nameof(contributors));
 
         var versions = contributors.Select(c => (File: c, Version: VersionOf(installation, c))).ToArray();
@@ -169,7 +180,7 @@ public sealed class LoadoutMergeSources(IFileStore fileStore, RegulationBaseline
         }
 
         var version = versions[0].Version;
-        var vanilla = FindBaseline(version) ?? FromInstalledGame(installation, regulationName, version, mode, notes);
+        var vanilla = FindBaseline(version) ?? FromDump(loadout, regulationName, version, notes) ?? FromInstalledGame(installation, regulationName, version, mode, notes);
 
         // A hand-placed or damaged baseline must not slip an off-version file into the ancestor slot.
         string got;
@@ -207,6 +218,57 @@ public sealed class LoadoutMergeSources(IFileStore fileStore, RegulationBaseline
             throw new MergeException($"can't read {relPath} from the game folder ({exception.Message}); refusing rather than merging onto a mod's older snapshot");
         }
     }
+
+    private byte[]? FromDump(Loadout.ReadOnly loadout, string regulationName, string version, ICollection<IMergeNote>? notes)
+    {
+        var dump = dumps.Find(loadout.Db, loadout.InstallationInstance).FirstOrDefault(d => d.Version.Equals(version, StringComparison.Ordinal));
+        if (dump is null) return null;
+
+        notes?.Add(new VanillaServedFromDump(regulationName, dump.ArchiveName, dump.Version));
+        return dumps.Member(dump, regulationName);
+    }
+
+    private byte[]? PackedVanilla(Loadout.ReadOnly loadout, string relPath, IReadOnlyList<ProviderFile> contributors, ICollection<IMergeNote>? notes)
+    {
+        var installation = loadout.InstallationInstance;
+        var offering = dumps.Find(loadout.Db, installation).Where(d => d.TryResolve(relPath, out _, out _)).ToArray();
+        if (offering.Length == 0) return null;
+
+        var dump = offering.Length == 1 ? offering[0] : Choose(loadout, contributors, offering);
+        notes?.Add(new VanillaServedFromDump(relPath, dump.ArchiveName, dump.Version));
+        return dumps.Member(dump, relPath);
+    }
+
+    private VanillaDump Choose(Loadout.ReadOnly loadout, IReadOnlyList<ProviderFile> contributors, IReadOnlyList<VanillaDump> offering)
+    {
+        var installation = loadout.InstallationInstance;
+        var regulationName = TraitsOf(installation).RegulationFileName;
+        // Only a regulation shipped beside the contributors' copies says which build they branched from.
+        var packages = contributors.Select(c => c.PackageId).ToHashSet(StringComparer.Ordinal);
+        var shipped = Providers(loadout)
+            .Where(p => packages.Contains(p.PackageId) && p.RelPath.Equals(regulationName, StringComparison.OrdinalIgnoreCase))
+            .Select(p => VersionOf(installation, p))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (shipped.Length == 1 && offering.FirstOrDefault(d => d.Version.Equals(shipped[0], StringComparison.Ordinal)) is { } exact) return exact;
+
+        string? installed = null;
+        try
+        {
+            installed = BuildIdentity.Identify(installation).RegulationVersion;
+        }
+        catch (InvalidOperationException exception)
+        {
+            logger.LogDebug(exception, "The installed build could not be identified, so the newest vanilla dump is used");
+        }
+
+        var byVersion = offering.OrderByDescending(d => d.Version, Comparer<string>.Create(CompareVersions)).ToArray();
+        return byVersion.FirstOrDefault(d => installed is null || CompareVersions(d.Version, installed) <= 0) ?? byVersion[0];
+    }
+
+    // Build stamps are digit strings of equal length in practice; comparing by number keeps a shorter one from outranking a longer.
+    private static int CompareVersions(string a, string b)
+        => long.TryParse(a, out var x) && long.TryParse(b, out var y) ? x.CompareTo(y) : string.CompareOrdinal(a, b);
 
     private byte[]? FindBaseline(string version)
     {
