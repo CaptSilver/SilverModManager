@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using NexusMods.Library.Sources;
 
 namespace NexusMods.Library.Lock;
 
@@ -10,9 +11,14 @@ namespace NexusMods.Library.Lock;
 /// <param name="FileId">The Nexus Mods file id; only Nexus Mods entries have one.</param>
 /// <param name="Asset">The file name of the archive.</param>
 /// <param name="Sha256">The expected digest as the lock file spells it. It may be empty or malformed; those entries never verify.</param>
-/// <param name="Source">Either <see cref="LockSources.Nexus"/> or <see cref="LockSources.GitHub"/>.</param>
+/// <param name="Source">One of <see cref="LockSources.All"/>; the <see cref="ILibrarySource.Name"/> of the source that fetches it.</param>
 [PublicAPI]
-public sealed record LockEntry(string Id, string Version, string? FileId, string Asset, string Sha256, string Source);
+public sealed record LockEntry(string Id, string Version, string? FileId, string Asset, string Sha256, string Source)
+{
+    internal LibrarySourceEntry ToSourceEntry() => new(Id, Version, FileId, Asset, Sha256, Source);
+
+    internal static LockEntry From(LibrarySourceEntry entry) => new(entry.Id, entry.Version, entry.FileId, entry.Asset, entry.Sha256, entry.Source);
+}
 
 /// <summary>
 /// The values of <see cref="LockEntry.Source"/>.
@@ -22,6 +28,11 @@ public static class LockSources
 {
     public const string Nexus = "nexus";
     public const string GitHub = "github";
+
+    /// <summary>
+    /// Every source a lock file may name.
+    /// </summary>
+    public static readonly IReadOnlyList<string> All = [Nexus, GitHub];
 }
 
 /// <summary>

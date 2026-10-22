@@ -2,7 +2,7 @@ using System.Text;
 using JetBrains.Annotations;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.Abstractions.NexusModsLibrary;
+using NexusMods.Library.Sources;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
 
@@ -12,10 +12,10 @@ namespace NexusMods.Library.Lock;
 /// Turns the mods of a loadout into a <see cref="LockFile"/>.
 /// </summary>
 [PublicAPI]
-public sealed class LockExport(LibraryFileDigests digests)
+public sealed class LockExport(IEnumerable<ILibrarySource> sources)
 {
     /// <summary>
-    /// Exports every enabled group that links a Nexus Mods or GitHub release file. A group that links anything else, or
+    /// Exports every enabled group that links a file one of the library sources owns. A group that links anything else, or
     /// a file whose digest cannot be established, fails the export: a lock that quietly left a mod out, or pinned it
     /// without a digest, would be worse than none.
     /// </summary>
@@ -42,23 +42,17 @@ public sealed class LockExport(LibraryFileDigests digests)
         return new LockFile(entries.Values.ToArray());
     }
 
+    // The first source that owns the item pins it, so registration order decides when two could.
     private async ValueTask<LockEntry> ToEntry(string groupName, LibraryItem.ReadOnly libraryItem, LibraryFile.ReadOnly file, CancellationToken cancellationToken)
     {
-        var asset = file.FileName.ToString();
-
-        if (libraryItem.TryGetAsNexusModsLibraryItem(out var nexus))
+        foreach (var source in sources)
         {
-            var sha256 = await digests.EnsureSha256(file, cancellationToken)
-                ?? throw new LockException($"'{asset}' has no SHA-256 and its bytes are not in the file store, so it cannot be pinned.");
-
-            var id = SanitizeId(nexus.ModPageMetadata.Name, asset);
-            return new LockEntry(id, nexus.FileMetadata.Version, nexus.FileMetadata.Uid.FileId.Value.ToString(), asset, sha256.ToString(), LockSources.Nexus);
+            if (await source.Describe(groupName, libraryItem, file, cancellationToken) is { } entry)
+                return LockEntry.From(entry);
         }
 
-        if (file.TryGetAsGitHubReleaseLibraryFile(out var release))
-            return new LockEntry(SanitizeId(groupName, asset), release.Tag, null, release.AssetName, release.PinnedSha256.ToString(), LockSources.GitHub);
-
-        throw new LockException($"'{asset}' ('{groupName}') came from neither Nexus Mods nor a GitHub release, so it cannot be pinned.");
+        var names = string.Join(", ", sources.Select(source => source.Name));
+        throw new LockException($"'{file.FileName}' ('{groupName}') came from none of the sources a lock can pin ({names}), so it cannot be pinned.");
     }
 
     /// <summary>

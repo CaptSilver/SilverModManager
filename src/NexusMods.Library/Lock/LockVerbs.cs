@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Cli;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Library.Sources;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -15,7 +16,8 @@ namespace NexusMods.Library.Lock;
 internal static class LockVerbs
 {
     internal static IServiceCollection AddLockVerbs(this IServiceCollection services) => services
-        .AddSingleton<ILockDownloader, LockDownloader>()
+        .AddSingleton<ILibrarySource, NexusLibrarySource>()
+        .AddSingleton<ILibrarySource, GitHubLibrarySource>()
         .AddTransient<LockExport>()
         .AddTransient<LockVerify>()
         .AddTransient<LockImport>()
@@ -97,8 +99,10 @@ internal static class LockVerbs
         }
 
         NexusModsGameId? game = GameInstallMetadata.GameId.TryGetValue(loadout.Installation, out var gameId) ? gameId : null;
+        // A loadout whose game is not installed still imports; only sources that need the game's data lose it.
+        var gameData = provider.GetRequiredService<IGameRegistry>().TryGetGameInstallation(loadout, out var installation) ? installation.Game : null;
         var import = provider.GetRequiredService<LockImport>();
-        var summary = await import.Apply(await import.Plan(lockFile, game, token), token);
+        var summary = await import.Apply(await import.Plan(lockFile, game, token, gameData), token);
 
         foreach (var outcome in summary.Verified) await renderer.TextLine($"[verified] {outcome.Message}");
         foreach (var outcome in summary.Skipped) await renderer.TextLine($"[skipped] {outcome.Message}");

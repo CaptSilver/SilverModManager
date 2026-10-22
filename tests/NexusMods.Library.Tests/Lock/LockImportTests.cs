@@ -16,51 +16,13 @@ public class LockImportTests(IConnection connection)
 {
     private readonly LockFixtures _fixtures = new(connection);
 
-    /// <summary>
-    /// Serves content by asset name and records every call. A download adds a library file whose digest describes
-    /// what was served, as the real jobs do, so a lock with another digest is a mismatch.
-    /// </summary>
-    private sealed class FakeDownloader(LockFixtures fixtures, Dictionary<string, string> served) : ILockDownloader
-    {
-        public List<string> Downloads { get; } = [];
-        public List<string> Discarded { get; } = [];
-        public List<GitHubRepositoryRef> Repositories { get; } = [];
-        public HashSet<string> Throwing { get; } = [];
-
-        public async ValueTask<LibraryFile.ReadOnly> DownloadNexusFile(FileId fileId, NexusModsGameId game, CancellationToken cancellationToken)
-        {
-            var asset = served.Keys.Single(key => key.StartsWith($"{fileId.Value}:"));
-            return await Serve(asset, served[asset]);
-        }
-
-        public async ValueTask<LibraryFile.ReadOnly> DownloadGitHubAsset(GitHubRepositoryRef repository, string tag, string asset, Sha256Value expected, CancellationToken cancellationToken)
-        {
-            Repositories.Add(repository);
-            return await Serve(asset, served[asset]);
-        }
-
-        public ValueTask Discard(LibraryFile.ReadOnly file)
-        {
-            Discarded.Add(file.FileName.ToString());
-            return ValueTask.CompletedTask;
-        }
-
-        private async Task<LibraryFile.ReadOnly> Serve(string asset, string content)
-        {
-            Downloads.Add(asset);
-            if (Throwing.Contains(asset)) throw new IOException("network down");
-            var fileName = asset.Contains(':') ? asset[(asset.IndexOf(':') + 1)..] : asset;
-            return await fixtures.AddLibraryFile(fileName, content, LockFixtures.DigestOf(content));
-        }
-    }
-
     private static LockEntry Github(string id, string asset, string sha256) => new(id, "v1", null, asset, sha256, "github");
     private static LockEntry Nexus(string id, string asset, string fileId, string sha256) => new(id, "1.0", fileId, asset, sha256, "nexus");
 
-    private (LockImport Import, FakeDownloader Downloader) Create(Dictionary<string, string>? served = null)
+    private (LockImport Import, FakeSources Downloader) Create(Dictionary<string, string>? served = null)
     {
-        var downloader = new FakeDownloader(_fixtures, served ?? []);
-        return (new LockImport(connection, downloader), downloader);
+        var sources = new FakeSources(_fixtures, connection, served ?? []);
+        return (sources.CreateImport(connection), sources);
     }
 
     private static LockFile Lock(params LockEntry[] entries) => new(entries);
@@ -210,18 +172,18 @@ public class LockImportTests(IConnection connection)
     }
 
     [Fact]
-    public async Task ADownloadInAPlanThatNamesNoSourceFailsThatEntryWithoutDownloading()
+    public async Task ADownloadInAPlanForAnUnregisteredSourceFailsThatEntryWithoutDownloading()
     {
         var content = "fine " + Guid.NewGuid();
         var (import, downloader) = Create(new() { ["6:fine.zip"] = content });
         var fine = await import.Plan(Lock(Nexus("fine", "fine.zip", "6", LockFixtures.DigestOf(content).ToString())), LockFixtures.GameId, TestContext.Current.CancellationToken);
 
-        // A plan built by hand rather than by Plan: it says to download but carries neither a file id nor a repository.
-        var orphan = new LockPlanItem(Nexus("orphan", "orphan.zip", "7", LockFixtures.DigestOf("y").ToString()), LockAction.Download, "download");
+        // A plan built by hand rather than by Plan, for a source nobody registered.
+        var orphan = new LockPlanItem(new LockEntry("orphan", "1", null, "orphan.zip", LockFixtures.DigestOf("y").ToString(), "ghost"), LockAction.Download, "download");
         var plan = new LockImportPlan([orphan, ..fine.Items], LockFixtures.GameId);
         var summary = await import.Apply(plan, TestContext.Current.CancellationToken);
 
-        summary.Failed.Should().ContainSingle().Which.Message.Should().Contain("orphan").And.Contain("names no Nexus Mods file");
+        summary.Failed.Should().ContainSingle().Which.Message.Should().Contain("orphan").And.Contain("unknown source");
         summary.Verified.Should().ContainSingle().Which.Entry.Id.Should().Be("fine");
         downloader.Downloads.Should().Equal("6:fine.zip");
     }

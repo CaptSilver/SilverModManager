@@ -1,34 +1,13 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.NexusWebApi.Types;
+using NexusMods.Abstractions.Library;
+using NexusMods.Library.Sources;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Hashes;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.NexusModsApi;
 
 namespace NexusMods.Library.Lock;
-
-/// <summary>
-/// Fetches the files a lock names and adds them to the library.
-/// </summary>
-[PublicAPI]
-public interface ILockDownloader
-{
-    /// <summary>
-    /// Downloads one Nexus Mods file by its id and adds it to the library.
-    /// </summary>
-    ValueTask<LibraryFile.ReadOnly> DownloadNexusFile(FileId fileId, NexusModsGameId game, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Downloads the asset of a GitHub release and adds it to the library. The download must not be added when its
-    /// bytes do not match <paramref name="expected"/>.
-    /// </summary>
-    ValueTask<LibraryFile.ReadOnly> DownloadGitHubAsset(GitHubRepositoryRef repository, string tag, string asset, Sha256Value expected, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Removes a library file again.
-    /// </summary>
-    ValueTask Discard(LibraryFile.ReadOnly file);
-}
 
 [PublicAPI]
 public enum LockAction
@@ -43,10 +22,10 @@ public enum LockAction
 /// What import will do with one lock entry, and why.
 /// </summary>
 [PublicAPI]
-public sealed record LockPlanItem(LockEntry Entry, LockAction Action, string Message, LibraryFile.ReadOnly? Existing = null, GitHubRepositoryRef? Repository = null, FileId? NexusFileId = null);
+public sealed record LockPlanItem(LockEntry Entry, LockAction Action, string Message, LibraryFile.ReadOnly? Existing = null);
 
 [PublicAPI]
-public sealed record LockImportPlan(IReadOnlyList<LockPlanItem> Items, NexusModsGameId? Game);
+public sealed record LockImportPlan(IReadOnlyList<LockPlanItem> Items, NexusModsGameId? Game, IGameData? GameData = null);
 
 /// <summary>
 /// The outcome of one entry. <see cref="File"/> is the library file that holds the verified bytes, when there is one.
@@ -62,7 +41,7 @@ public sealed record LockImportSummary(IReadOnlyList<LockOutcome> Verified, IRea
 /// file that does not match is removed again; one entry failing never stops the others.
 /// </summary>
 [PublicAPI]
-public sealed class LockImport(IConnection connection, ILockDownloader downloader)
+public sealed class LockImport(IConnection connection, IEnumerable<ILibrarySource> sources, ILibraryService libraryService)
 {
     /// <summary>
     /// Decides what to do with each entry without changing anything. An entry whose digest is empty or malformed can
@@ -71,13 +50,15 @@ public sealed class LockImport(IConnection connection, ILockDownloader downloade
     /// <param name="lockFile">The lock to import.</param>
     /// <param name="game">The Nexus Mods game the file ids belong to. The lock carries only file ids.</param>
     /// <param name="cancellationToken"></param>
-    public ValueTask<LockImportPlan> Plan(LockFile lockFile, NexusModsGameId? game, CancellationToken cancellationToken = default)
+    /// <param name="gameData">The game of the loadout being imported into, for sources that need more than the Nexus Mods id.</param>
+    public ValueTask<LockImportPlan> Plan(LockFile lockFile, NexusModsGameId? game, CancellationToken cancellationToken = default, IGameData? gameData = null)
     {
-        var items = lockFile.Entries.Select(entry => PlanEntry(entry, game)).ToArray();
-        return ValueTask.FromResult(new LockImportPlan(items, game));
+        var context = new LibrarySourceContext(connection, gameData, game);
+        var items = lockFile.Entries.Select(entry => PlanEntry(entry, context)).ToArray();
+        return ValueTask.FromResult(new LockImportPlan(items, game, gameData));
     }
 
-    private LockPlanItem PlanEntry(LockEntry entry, NexusModsGameId? game)
+    private LockPlanItem PlanEntry(LockEntry entry, LibrarySourceContext context)
     {
         if (!Sha256Value.TryParse(entry.Sha256, out var expected))
             return new LockPlanItem(entry, LockAction.Fail, $"{entry.Id}: the lock has no valid sha256 for {entry.Asset}, so a download could not be verified.");
@@ -86,34 +67,19 @@ public sealed class LockImport(IConnection connection, ILockDownloader downloade
         if (present.IsValid())
             return new LockPlanItem(entry, LockAction.Skip, $"{entry.Id}: {entry.Asset} is already in the library with the locked sha256.", present);
 
-        if (entry.Source == LockSources.Nexus)
-        {
-            if (game is null)
-                return new LockPlanItem(entry, LockAction.Fail, $"{entry.Id}: the loadout's game has no Nexus Mods id, so file {entry.FileId} cannot be looked up.");
-            if (!uint.TryParse(entry.FileId, out var fileNumber))
-                return new LockPlanItem(entry, LockAction.Fail, $"{entry.Id}: the lock has no usable Nexus Mods file id ('{entry.FileId}').");
-            return new LockPlanItem(entry, LockAction.Download, $"{entry.Id}: download Nexus Mods file {entry.FileId}.", NexusFileId: FileId.From(fileNumber));
-        }
+        // Only a download needs the source, so a file already in the library verifies without it.
+        if (FindSource(entry.Source) is not { } source)
+            return new LockPlanItem(entry, LockAction.Fail, UnknownSource(entry));
 
-        if (FindRepository(entry.Asset) is not { } repository)
-            return new LockPlanItem(entry, LockAction.Fail, $"{entry.Id}: no repository is known for {entry.Asset}; add one release of it to the library once so its repository is recorded.");
-        return new LockPlanItem(entry, LockAction.Download, $"{entry.Id}: download {entry.Asset} of release {entry.Version} from {repository}.", Repository: repository);
+        if (source.WhyNotDownloadable(entry.ToSourceEntry(), context) is { } reason)
+            return new LockPlanItem(entry, LockAction.Fail, reason);
+
+        return new LockPlanItem(entry, LockAction.Download, $"{entry.Id}: download {entry.Asset} ({entry.Version}) from {source.Name}.");
     }
 
-    // The lock names no repository, so a library file that was downloaded from a release under the same asset name is
-    // the only place the importer can learn it from.
-    private GitHubRepositoryRef? FindRepository(string asset)
-    {
-        foreach (var file in GitHubReleaseLibraryFile.All(connection.Db))
-        {
-            if (file.AssetName != asset) continue;
-            if (GitHubReleaseLibraryFile.RepositoryId.TryGetValue(file, out var id)) return GitHubRepositoryRef.FromId(id);
-            if (GitHubReleaseLibraryFile.Organization.TryGetValue(file, out var organization) && GitHubReleaseLibraryFile.Repository.TryGetValue(file, out var repository))
-                return GitHubRepositoryRef.FromName(organization, repository);
-        }
+    private ILibrarySource? FindSource(string name) => sources.FirstOrDefault(source => source.Name == name);
 
-        return null;
-    }
+    private string UnknownSource(LockEntry entry) => $"{entry.Id}: unknown source '{entry.Source}'; the registered sources are {string.Join(", ", sources.Select(source => source.Name))}.";
 
     /// <summary>
     /// Carries out a plan. A download is verified against the lock before it counts: bytes that do not match are
@@ -134,7 +100,7 @@ public sealed class LockImport(IConnection connection, ILockDownloader downloade
                     failed.Add(new LockOutcome(item.Entry, item.Message));
                     break;
                 default:
-                    var outcome = await Download(item, plan.Game, cancellationToken);
+                    var outcome = await Download(item, new LibrarySourceContext(connection, plan.GameData, plan.Game), cancellationToken);
                     (outcome.File is null ? failed : verified).Add(outcome);
                     break;
             }
@@ -143,18 +109,16 @@ public sealed class LockImport(IConnection connection, ILockDownloader downloade
         return new LockImportSummary(verified, failed, skipped);
     }
 
-    private async ValueTask<LockOutcome> Download(LockPlanItem item, NexusModsGameId? game, CancellationToken cancellationToken)
+    private async ValueTask<LockOutcome> Download(LockPlanItem item, LibrarySourceContext context, CancellationToken cancellationToken)
     {
         var entry = item.Entry;
+        if (FindSource(entry.Source) is not { } source)
+            return new LockOutcome(entry, UnknownSource(entry));
+
         LibraryFile.ReadOnly file;
         try
         {
-            file = item switch
-            {
-                { NexusFileId: { } fileId } when game is { } nexusGame => await downloader.DownloadNexusFile(fileId, nexusGame, cancellationToken),
-                { Repository: { } repository } => await downloader.DownloadGitHubAsset(repository, entry.Version, entry.Asset, Sha256Value.FromHex(entry.Sha256), cancellationToken),
-                _ => throw new InvalidOperationException($"{entry.Id}: the plan says to download {entry.Asset} but names no Nexus Mods file and game or repository to download it from."),
-            };
+            file = await source.Download(entry.ToSourceEntry(), Sha256Value.FromHex(entry.Sha256), context, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -166,7 +130,7 @@ public sealed class LockImport(IConnection connection, ILockDownloader downloade
         if (Sha256Match.Matches(actual, entry.Sha256))
             return new LockOutcome(entry, $"{entry.Id}: {entry.Asset} verified.", fresh);
 
-        await downloader.Discard(file);
+        await libraryService.RemoveLibraryItems([file.AsLibraryItem()]);
         var got = actual?.ToString() ?? "no digest";
         return new LockOutcome(entry, $"{entry.Id}: {entry.Asset} has sha256 {got}, but the lock pins {entry.Sha256}; the download was removed from the library.");
     }

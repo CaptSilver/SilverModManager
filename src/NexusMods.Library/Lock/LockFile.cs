@@ -65,7 +65,7 @@ public sealed class LockFile(IReadOnlyList<LockEntry> entries)
         }
 
         var source = values["source"];
-        if (source is not (LockSources.Nexus or LockSources.GitHub))
+        if (!LockSources.All.Contains(source))
             throw new LockException($"The lock entry '{id}' has an unknown source '{source}'.");
 
         return new LockEntry(id, values["version"], values.GetValueOrDefault("file_id"), values["asset"], values["sha256"], source);
