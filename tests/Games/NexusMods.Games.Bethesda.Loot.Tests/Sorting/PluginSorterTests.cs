@@ -1,18 +1,25 @@
+using NexusMods.Games.Bethesda.Loot.Metadata;
 using NexusMods.Games.Bethesda.Loot.Sorting;
 using static NexusMods.Games.Bethesda.Loot.Tests.Sorting.SortingFixture;
 
 namespace NexusMods.Games.Bethesda.Loot.Tests.Sorting;
 
-// Ports the sort_plugins tests in libloot's sorting/plugins.rs that concern specific edges, early
-// loaders, validation and cycles. The tests that depend on group, overlap or tie-break edges are
-// not here; the sort is run without those steps (SortStages.None).
+// Ports the sort_plugins tests in libloot's sorting/plugins.rs, plus coverage for sorting end to end.
+//
+// Where the 88 tests of libloot's sorting/plugins.rs ended up:
+//   plugin_sorting_data            PluginSortingDataTests
+//   plugins_graph::check_for_cycles, add_early_loading_plugin_edges, topological_sort   PluginsGraphTests
+//   plugins_graph::add_group_edges GroupEdgesTests
+//   plugins_graph::add_overlap_edges   OverlapEdgesTests
+//   plugins_graph::add_tie_break_edges TieBreakEdgesTests
+//   sort_plugins                   this file
 public class PluginSorterTests
 {
     private static Vertex V(string name, EdgeType edge) => new(name, edge);
 
     private static IReadOnlyList<string> Sort(
         SortingFixture fixture, IReadOnlyList<PluginSortingData<TestPlugin>> data, params string[] earlyLoaders) =>
-        PluginSorter.Sort(data, fixture.GroupsGraph, earlyLoaders, SortStages.None).Order;
+        PluginSorter.Sort(data, fixture.GroupsGraph, earlyLoaders).Order;
 
     private static void ShouldFailValidationWith(Func<object> act, params Vertex[] cycle) =>
         act.Should().Throw<PluginGraphValidationException>().Which.Cycle.Cycle.Should().Equal(cycle);
@@ -67,7 +74,7 @@ public class PluginSorterTests
 
         var sorted = PluginSorter.Sort(
             [fixture.GroupSortingData(PluginA, "A"), fixture.GroupSortingData(PluginB, "B")],
-            fixture.GroupsGraph, [], SortStages.Groups).Order;
+            fixture.GroupsGraph, []).Order;
 
         sorted.Should().Equal(PluginA, PluginB);
     }
@@ -390,24 +397,134 @@ public class PluginSorterTests
     }
 
     [Fact]
-    public void VertexOrderingIsUtf8ByteOrderWhileLookupIsCaseInsensitive()
+    public void ShouldNotChangeTheResultIfGivenItsOwnOutput()
     {
-        // Without tie-break edges, plugins with no edges between them come out in the reverse of
-        // vertex order, so the result shows how the vertices were ordered.
-        var bytes = WithPlugins("a.esp", "B.esp");
-        Sort(bytes, [bytes.SortingData("a.esp"), bytes.SortingData("B.esp")])
-            .Should().Equal(["a.esp", "B.esp"], "B (0x42) sorts before a (0x61) as bytes, so the vertex order is B, a");
+        var fixture = WithPlugins(PluginA, PluginB);
 
-        // U+FFFD is EF BF BD in UTF-8 and U+1F600 is F0 9F 98 80, so U+FFFD is first, but as UTF-16
-        // code units U+1F600 (D83D DE00) is first.
-        var supplementary = WithPlugins("\uFFFD.esp", "\U0001F600.esp");
-        Sort(supplementary, [supplementary.SortingData("\uFFFD.esp"), supplementary.SortingData("\U0001F600.esp")])
-            .Should().Equal("\U0001F600.esp", "\uFFFD.esp");
-        string.CompareOrdinal("\U0001F600.esp", "\uFFFD.esp").Should().BeNegative();
+        var sorted = Sort(fixture, [fixture.SortingData(PluginB), fixture.SortingData(PluginA)]);
+        sorted.Should().Equal(PluginA, PluginB);
 
-        // A master reference in another case still finds the plugin.
+        Sort(fixture, [fixture.SortingData(PluginA), fixture.SortingData(PluginB)]).Should().Equal(PluginA, PluginB);
+    }
+
+    [Fact]
+    public void LookupIsCaseInsensitive()
+    {
         var lookup = WithPlugins("a.esp", "B.esp");
         lookup.Plugin("B.esp").AddMaster("A.ESP");
         Sort(lookup, [lookup.SortingData("a.esp"), lookup.SortingData("B.esp")]).Should().Equal("a.esp", "B.esp");
+    }
+
+    [Fact]
+    public void VertexOrderingIsUtf8ByteOrder()
+    {
+        // B is 0x42 and a is 0x61, so B sorts first, although a comes first case-insensitively.
+        Utf8ByteOrderComparer.Instance.Compare("B.esp", "a.esp").Should().BeNegative();
+
+        // U+FFFD is EF BF BD in UTF-8 and U+1F600 is F0 9F 98 80, so U+FFFD is first, but as UTF-16
+        // code units U+1F600 (D83D DE00) is first.
+        Utf8ByteOrderComparer.Instance.Compare("\uFFFD.esp", "\U0001F600.esp").Should().BeNegative();
+        string.CompareOrdinal("\U0001F600.esp", "\uFFFD.esp").Should().BeNegative();
+    }
+
+    [Fact]
+    public void PluginsWithTheSameLoadOrderIndexComeOutInVertexOrder()
+    {
+        // Tie-breaks walk the plugins in a stable sort by load order index, so plugins that share an
+        // index keep the order the sorter added their vertices in.
+        var fixture = WithPlugins("a.esp", "B.esp", "\uFFFD.esp", "\U0001F600.esp");
+        PluginSortingData<TestPlugin> AtZero(string name) => new(fixture.Plugin(name), null, null, 0);
+
+        Sort(fixture, [AtZero("a.esp"), AtZero("\U0001F600.esp"), AtZero("B.esp"), AtZero("\uFFFD.esp")])
+            .Should().Equal("B.esp", "a.esp", "\uFFFD.esp", "\U0001F600.esp");
+    }
+
+    [Fact]
+    public void ShouldReportWhetherAnyOverlapEdgeWasAdded()
+    {
+        var fixture = WithPlugins(PluginA, PluginB);
+        fixture.Plugin(PluginA).OverrideRecordCount = 2;
+        fixture.Plugin(PluginA).AddOverlappingRecords(PluginB);
+        fixture.Plugin(PluginB).OverrideRecordCount = 1;
+
+        var overlapping = PluginSorter.Sort(
+            [fixture.SortingData(PluginB), fixture.SortingData(PluginA)], fixture.GroupsGraph, []);
+
+        overlapping.Order.Should().Equal(PluginA, PluginB);
+        overlapping.OverlapEdgesAdded.Should().BeTrue();
+
+        var plain = WithPlugins(PluginA, PluginB);
+        PluginSorter.Sort([plain.SortingData(PluginA), plain.SortingData(PluginB)], plain.GroupsGraph, [])
+            .OverlapEdgesAdded.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShouldLetOverlapOverrideTheCurrentLoadOrder()
+    {
+        // B is first in the load order but A overrides more of B's records, so A has to load first.
+        var fixture = WithPlugins(PluginB, PluginA);
+        fixture.Plugin(PluginA).OverrideRecordCount = 3;
+        fixture.Plugin(PluginA).AddOverlappingRecords(PluginB);
+        fixture.Plugin(PluginB).OverrideRecordCount = 1;
+
+        Sort(fixture, [fixture.SortingData(PluginA), fixture.SortingData(PluginB)]).Should().Equal(PluginA, PluginB);
+    }
+
+    [Fact]
+    public void ShouldKeepTheCurrentLoadOrderOfUnrelatedPlugins()
+    {
+        var fixture = WithPlugins(PluginE, PluginC, PluginA, PluginD, PluginB);
+
+        var sorted = Sort(fixture, [.. new[] { PluginA, PluginB, PluginC, PluginD, PluginE }.Select(fixture.SortingData)]);
+
+        sorted.Should().Equal(PluginE, PluginC, PluginA, PluginD, PluginB);
+    }
+
+    [Fact]
+    public void ShouldSortRandomGraphsWithoutErrorAndNotChangeTheirOutput()
+    {
+        var random = new Random(20260622);
+        string[] groups = ["A", "B", "C", "default", "E", "F"];
+
+        for (var round = 0; round < 200; round++)
+        {
+            var names = Enumerable.Range(0, 30).Select(i => $"P{i:D2}.esp").ToArray();
+            var fixture = WithPlugins(names);
+
+            // The masters of a plugin are taken from the ones ranked below it, so there is no cycle.
+            var rank = Enumerable.Range(0, names.Length).OrderBy(_ => random.Next()).ToArray();
+            var byRank = names.Select((name, i) => (name, rank: rank[i])).OrderBy(e => e.rank).Select(e => e.name).ToArray();
+            for (var r = 1; r < byRank.Length; r++)
+            {
+                for (var m = 0; m < r; m++)
+                {
+                    if (random.Next(10) == 0) fixture.Plugin(byRank[r]).AddMaster(byRank[m]);
+                }
+            }
+
+            var group = names.ToDictionary(n => n, _ => groups[random.Next(groups.Length)]);
+            var data = names.Select(n => fixture.GroupSortingData(n, group[n])).ToList();
+
+            var sorted = PluginSorter.Sort(data, fixture.GroupsGraph, []);
+            sorted.Order.Should().HaveCount(names.Length).And.OnlyHaveUniqueItems();
+            sorted.UnlinkedNeighbours.Should().BeEmpty();
+
+            foreach (var name in names)
+            {
+                foreach (var master in fixture.Plugin(name).Masters)
+                {
+                    sorted.Order.ToList().IndexOf(master).Should().BeLessThan(sorted.Order.ToList().IndexOf(name));
+                }
+            }
+
+            // Sorting the output, which is now the current load order, changes nothing.
+            var position = sorted.Order.Select((n, i) => (n, i)).ToDictionary(e => e.n, e => e.i);
+            var again = PluginSorter.Sort(
+                names.Select(n => new PluginSortingData<TestPlugin>(
+                    fixture.Plugin(n), new PluginMetadata(n) { Group = group[n] }, null, position[n])).ToList(),
+                fixture.GroupsGraph, []);
+
+            again.Order.Should().Equal(sorted.Order, $"round {round}");
+        }
     }
 }

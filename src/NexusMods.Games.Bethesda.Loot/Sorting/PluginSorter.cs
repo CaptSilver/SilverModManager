@@ -15,16 +15,8 @@ public static class PluginSorter
     public static SortResult Sort<T>(
         IReadOnlyList<PluginSortingData<T>> plugins, GroupsGraph groupsGraph, IReadOnlyList<string> earlyLoadingPlugins)
         where T : ISortingPlugin
-        => Sort(plugins, groupsGraph, earlyLoadingPlugins, SortStages.All);
-
-    internal static SortResult Sort<T>(
-        IReadOnlyList<PluginSortingData<T>> plugins,
-        GroupsGraph groupsGraph,
-        IReadOnlyList<string> earlyLoadingPlugins,
-        SortStages stages)
-        where T : ISortingPlugin
     {
-        if (plugins.Count == 0) return new SortResult([], default);
+        if (plugins.Count == 0) return new SortResult([], default, false);
 
         Validation.ValidatePluginGroups(plugins, groupsGraph);
 
@@ -45,47 +37,60 @@ public static class PluginSorter
 
         // Blueprint masters are sorted before non-masters, as libloot does, so that when both
         // partitions fail it is the same error that gets reported.
-        var mastersOrder = SortPartition(masters, groupsGraph, earlyLoadingPlugins, stages);
-        var blueprintMastersOrder = SortPartition(blueprintMasters, groupsGraph, earlyLoadingPlugins, stages);
-        var nonMastersOrder = SortPartition(nonMasters, groupsGraph, earlyLoadingPlugins, stages);
+        var mastersResult = SortPartition(masters, groupsGraph, earlyLoadingPlugins);
+        var blueprintMastersResult = SortPartition(blueprintMasters, groupsGraph, earlyLoadingPlugins);
+        var nonMastersResult = SortPartition(nonMasters, groupsGraph, earlyLoadingPlugins);
 
         var order = new List<string>(byName.Count);
-        order.AddRange(mastersOrder);
-        order.AddRange(nonMastersOrder);
-        order.AddRange(blueprintMastersOrder);
+        order.AddRange(mastersResult.Order);
+        order.AddRange(nonMastersResult.Order);
+        order.AddRange(blueprintMastersResult.Order);
 
-        return new SortResult(order, default);
+        List<(string First, string Second)> unlinked =
+            [.. mastersResult.Unlinked, .. nonMastersResult.Unlinked, .. blueprintMastersResult.Unlinked];
+
+        return new SortResult(
+            order,
+            default,
+            mastersResult.OverlapEdgesAdded || blueprintMastersResult.OverlapEdgesAdded || nonMastersResult.OverlapEdgesAdded)
+        {
+            UnlinkedNeighbours = unlinked,
+        };
     }
 
-    private static IReadOnlyList<string> SortPartition<T>(
+    private readonly record struct PartitionResult(
+        IReadOnlyList<string> Order, bool OverlapEdgesAdded, IReadOnlyList<(string First, string Second)> Unlinked);
+
+    private static PartitionResult SortPartition<T>(
         IReadOnlyList<PluginSortingData<T>> plugins,
         GroupsGraph groupsGraph,
-        IReadOnlyList<string> earlyLoadingPlugins,
-        SortStages stages)
+        IReadOnlyList<string> earlyLoadingPlugins)
         where T : ISortingPlugin
     {
-        if ((stages & ~SortStages.Groups) != SortStages.None)
-        {
-            throw new NotImplementedException($"Sorting stages {stages & ~SortStages.Groups} are not implemented yet.");
-        }
-
         var graph = new PluginsGraph<T>();
         foreach (var plugin in plugins) graph.AddNode(plugin);
 
         graph.AddSpecificEdges();
         graph.AddEarlyLoadingPluginEdges(earlyLoadingPlugins);
 
-        // Later stages only add edges that do not make cycles, so checking now gives the cheap
-        // early failure.
+        // From here on edges are only added if they do not make a cycle, and overlap and tie-break
+        // edges are slow to add, so checking now gives the cheap early failure.
         graph.CheckForCycles();
 
-        if (stages.HasFlag(SortStages.Groups)) graph.AddGroupEdges(groupsGraph);
+        graph.AddGroupEdges(groupsGraph);
+        var overlapEdgesAdded = graph.AddOverlapEdges();
+        graph.AddTieBreakEdges();
 
-        // Overlap and tie-break edges are added here.
-
+        // Again in case a bug let one through. It takes no significant time.
         graph.CheckForCycles();
 
         var sorted = graph.TopologicalSort();
-        return sorted.Select(node => graph[node].Name).ToList();
+
+        // libloot only logs a path with no edge between two neighbours. The tie-break edges are there
+        // to rule that out, so a pair here means the result may not be the only valid order.
+        var unlinked = new List<(string First, string Second)>();
+        if (graph.CheckPathIsHamiltonian(sorted) is var (first, second)) unlinked.Add((graph[first].Name, graph[second].Name));
+
+        return new PartitionResult(sorted.Select(node => graph[node].Name).ToList(), overlapEdgesAdded, unlinked);
     }
 }
