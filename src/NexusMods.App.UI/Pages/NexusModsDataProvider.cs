@@ -411,7 +411,7 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
     }
 }
 
-file class DatomEntityIdEqualityComparer : IEqualityComparer<Datom>
+internal class DatomEntityIdEqualityComparer : IEqualityComparer<Datom>
 {
     public static readonly IEqualityComparer<Datom> Instance = new DatomEntityIdEqualityComparer();
 
