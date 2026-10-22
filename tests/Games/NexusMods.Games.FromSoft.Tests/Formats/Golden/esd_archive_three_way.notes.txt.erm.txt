@@ -1,0 +1,2 @@
+Produced once with erm (read-only), working directory outside both repos: the notes list of the merge.esd_three_way call described in esd_archive_three_way.bnd.erm.txt, each rendered with esdmerge.describe, one per line.
+Compared line-for-line.

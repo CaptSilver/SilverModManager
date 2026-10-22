@@ -1,0 +1,6 @@
+Produced once with erm (read-only), working directory outside both repos. _synthetic_bnd4 is the helper in tests/test_bnd4.py; each archive is dcx.write_dflt of it with members [(eid, f't{eid:09d}.esd', blob)] sorted by id.
+  merge.esd_three_way(base, other, vanilla, notes=notes), then dcx.read of the result
+  entry 0: the same machine {1: [(0, None)]} in all three
+  entry 6: the "both_changed" triple of EsdMergeGoldenCases (esd.write of each)
+  entry 7: vanilla and base {1: [(0, None)]}, other {1: [(0, None), (1, 0)]}
+The merged archive is compared after DCX decoding.
