@@ -3,8 +3,8 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x063683B87E00C62E
-   - Total attributes: 275
+   - Fingerprint: 0x93DE45C244C39A59
+   - Total attributes: 277
    - Total namespaces: 82
    
 ## Attributes
@@ -94,6 +94,8 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.FromSoft.BuildStamp/Exe                                                  | Utf8                    | False   | False | False     | 
 | SilverModManager.FromSoft.BuildStamp/Installation                                         | Reference               | True    | False | False     | 
 | SilverModManager.FromSoft.BuildStamp/RecordedAt                                           | Int64                   | False   | False | False     | 
+| SilverModManager.FromSoft.BuildStamp/RegulationHash                                       | Utf8                    | False   | False | False     | 
+| SilverModManager.FromSoft.BuildStamp/RegulationVersion                                    | Utf8                    | False   | False | False     | 
 | SilverModManager.FromSoft.BuildStamp/SteamBuildId                                         | Utf8                    | False   | False | False     | 
 | SilverModManager.GC.BackedUpFile/GameInstall                                              | Reference               | False   | False | False     | 
 | SilverModManager.GC.BackedUpFile/Hash                                                     | UInt64                  | False   | False | False     | 
