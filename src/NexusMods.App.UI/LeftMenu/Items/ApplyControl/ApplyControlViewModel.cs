@@ -127,6 +127,7 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
                                    && gameStatus != GameSynchronizerState.Busy
                                    && ldStatus != LoadoutSynchronizerState.Pending
                                    && ldStatus != LoadoutSynchronizerState.Current
+                                   && ldStatus != LoadoutSynchronizerState.Unavailable
                                    && !isUnmanaging;
                         IsLaunchButtonEnabled = !isProcessing 
                                                 && !running

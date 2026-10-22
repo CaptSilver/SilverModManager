@@ -380,6 +380,19 @@ public class SynchronizerService : ISynchronizerService
     private Observable<LoadoutSynchronizerState> CreateStatusObservable(LoadoutId loadoutId)
     {
         var loadout = Loadout.Load(_conn.Db, loadoutId);
+
+        // Without a game there is no installation to watch and no synchronizer to diff with. Keep following
+        // the loadout so the status is re-evaluated, but report it as unavailable instead of failing the stream.
+        if (!loadout.TryGetGame(out _))
+        {
+            _logger.LogWarning("Loadout `{LoadoutName}` ({LoadoutId}) is on a game this build does not know, its status is unavailable", loadout.Name, loadoutId);
+            return LoadoutQueries2.RevisionsWithChildUpdates(_conn, loadoutId)
+                .ToObservable()
+                .Select(_ => LoadoutSynchronizerState.Unavailable)
+                .Replay(1)
+                .RefCount();
+        }
+
         var loadoutState = GetOrAddLoadoutState(loadoutId);
 
         var isBusy = loadoutState.ObservePropertyChanged(l => l.Busy);
@@ -392,6 +405,7 @@ public class SynchronizerService : ISynchronizerService
             // Use DB transaction, since child updates are not part of the loadout
             .Select(rev => (loadout: rev, revDbTx: _conn.Db.BasisTxId));
 
+        var statusFailureLogged = 0;
         var statusObservable = isBusy.CombineLatest(lastApplied,
                 revisions,
                 (busy, last, rev) => (busy, last, rev.loadout, rev.revDbTx)
@@ -421,13 +435,32 @@ public class SynchronizerService : ISynchronizerService
                         return LoadoutSynchronizerState.Current;
 
                     // Potentially long operation, run on thread pool
-                    var diffFound = await Task.Run(async () =>
+                    bool diffFound;
+                    try
+                    {
+                        diffFound = await Task.Run(async () =>
                         {
                             _logger.LogTrace("Checking for changes in loadout {LoadoutId}", loadoutId);
                             var diffFound = await GetShouldSynchronize(loadoutId);
                             _logger.LogTrace("Changes found in loadout {LoadoutId}: {DiffFound}", loadoutId, diffFound);
                             return diffFound;
                         }, cancellationToken);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception e)
+                    {
+                        // An unhandled exception here would end the stream, and from there reach the UI thread
+                        // and take the process down. Every later revision would fail the same way, so only the
+                        // first failure is an error.
+                        if (Interlocked.Exchange(ref statusFailureLogged, 1) == 0)
+                            _logger.LogError(e, "Failed to compute the status of loadout `{LoadoutName}` ({LoadoutId})", rev.Name, loadoutId);
+                        else
+                            _logger.LogDebug(e, "Status of loadout `{LoadoutName}` ({LoadoutId}) is still unavailable", rev.Name, loadoutId);
+                        return LoadoutSynchronizerState.Unavailable;
+                    }
 
                     return diffFound ? LoadoutSynchronizerState.NeedsSync : LoadoutSynchronizerState.Current;
                 },

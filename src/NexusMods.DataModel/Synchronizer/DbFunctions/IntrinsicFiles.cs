@@ -62,7 +62,10 @@ public class IntrinsicFiles : ATableFunction
         var bindData = initInfo.GetBindData<BindData>();
         var db = bindData.Db;
 
+        // A loadout whose game this build does not know has no synchronizer to ask, and one such loadout
+        // must not fail the query for every other loadout.
         var data = from loadout in Loadout.All(db)
+            where loadout.TryGetGame(out _)
             let game = ((IGame)loadout.Game)
             let synchronizer = (ALoadoutSynchronizer)game.Synchronizer
             from intrinsic in synchronizer.IntrinsicFiles(loadout)

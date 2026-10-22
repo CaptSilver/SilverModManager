@@ -24,4 +24,9 @@ public enum LoadoutSynchronizerState
     /// The loadout is applied and up-to-date with the game state.
     /// </summary>
     Current,
+
+    /// <summary>
+    /// The status of the loadout cannot be computed, for example because its game is not known to this build.
+    /// </summary>
+    Unavailable,
 }
