@@ -1,0 +1,5 @@
+Produced once with erm (read-only), working directory outside both repos. _synthetic_bnd4 is the helper in tests/test_bnd4.py; msgbnd is [(eid, f'{eid}.fmg', fmg.write(table)) for eid, table in sorted(tables.items())] packed with it (uncompressed).
+  dcx.read(merge.fmg_union(msg(base), msg(other))) where msg = dcx.write_dflt(msgbnd)
+  base  = {1: {100: "mod note", 101: None}, 2: {20: "x"}}
+  other = {1: {100: "vanilla", 101: "real", 200: "new"}, 2: {20: "x", 21: "y"}}
+The merged archive is compared after DCX decoding.

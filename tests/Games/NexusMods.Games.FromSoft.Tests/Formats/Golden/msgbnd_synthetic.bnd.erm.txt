@@ -1,0 +1,3 @@
+Produced once with erm (read-only), working directory outside both repos. _synthetic_bnd4 is the helper in tests/test_bnd4.py; msgbnd is [(eid, f'{eid}.fmg', fmg.write(table)) for eid, table in sorted(tables.items())] packed with it (uncompressed).
+  _synthetic_bnd4 over fmg.write of {1: {1: "a", 2: "b", 10: None, 11: "a"}, 2: {20: "x", 21: "y"}}
+Compared byte-for-byte.
