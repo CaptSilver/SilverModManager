@@ -22,6 +22,12 @@ public class SortOrderManager : ISortOrderManager, IDisposable
     private readonly IConnection _connection;
     private IDisposable? _subscription;
     private readonly ILogger<SortOrderManager> _logger;
+
+    // Reconciles run from background subscriptions and read the database through native queries, so Dispose
+    // has to let the running ones finish before the connection goes away underneath them.
+    private readonly object _runningGate = new();
+    private readonly ManualResetEventSlim _idle = new(initialState: true);
+    private int _running;
     
     private FrozenDictionary<SortOrderVarietyId, ISortOrderVariety> _sortOrderVarieties;
 
@@ -36,6 +42,7 @@ public class SortOrderManager : ISortOrderManager, IDisposable
     /// <inheritdoc />
     public async ValueTask UpdateLoadOrders(LoadoutId loadoutId, Optional<CollectionGroupId> collectionGroupId = default, CancellationToken token = default)
     {
+        using var running = TrackRunning();
         var parentEntity = collectionGroupId.HasValue
             ? OneOf<LoadoutId, CollectionGroupId>.FromT1(collectionGroupId.Value)
             : OneOf<LoadoutId, CollectionGroupId>.FromT0(loadoutId);
@@ -50,6 +57,7 @@ public class SortOrderManager : ISortOrderManager, IDisposable
     
     protected async ValueTask CreateSortOrders(LoadoutId loadoutId, Optional<CollectionGroupId> collectionGroupId = default, CancellationToken token = default)
     {
+        using var running = TrackRunning();
         var parentEntity = collectionGroupId.HasValue
             ? OneOf<LoadoutId, CollectionGroupId>.FromT1(collectionGroupId.Value)
             : OneOf<LoadoutId, CollectionGroupId>.FromT0(loadoutId);
@@ -63,6 +71,7 @@ public class SortOrderManager : ISortOrderManager, IDisposable
 
     protected async ValueTask DeleteSortOrders(LoadoutId loadoutId, Optional<CollectionGroupId> collectionGroupId = default, CancellationToken token = default)
     {
+        using var running = TrackRunning();
         var parentEntity = collectionGroupId.HasValue
             ? OneOf<LoadoutId, CollectionGroupId>.FromT1(collectionGroupId.Value)
             : OneOf<LoadoutId, CollectionGroupId>.FromT0(loadoutId);
@@ -217,6 +226,23 @@ public class SortOrderManager : ISortOrderManager, IDisposable
     public void Dispose()
     {
         _subscription?.Dispose();
+        if (!_idle.Wait(TimeSpan.FromSeconds(30)))
+            _logger.LogWarning("A sort order update was still running 30 seconds after the manager was disposed");
+    }
+
+    private IDisposable TrackRunning()
+    {
+        lock (_runningGate)
+        {
+            if (_running++ == 0) _idle.Reset();
+        }
+        return Disposable.Create(this, static self =>
+        {
+            lock (self._runningGate)
+            {
+                if (--self._running == 0) self._idle.Set();
+            }
+        });
     }
 }
 

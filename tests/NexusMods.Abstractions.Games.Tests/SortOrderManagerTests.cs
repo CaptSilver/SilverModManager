@@ -107,6 +107,25 @@ public class SortOrderManagerTests(ITestOutputHelper helper) : AStubbedGameIsola
         b.Reconciled.Should().BeEmpty("the second manager's game has no loadouts here");
     }
 
+    [Fact]
+    public async Task Dispose_WaitsForAnUpdateThatIsStillRunning()
+    {
+        var variety = new BlockingVariety();
+        var manager = new SortOrderManager(ServiceProvider);
+        manager.RegisterSortOrderVarieties([variety], GameInstallation.GetGame());
+
+        var update = manager.UpdateLoadOrders(LoadoutId.From(1)).AsTask();
+        await variety.Started.Task.WaitAsync(TimeSpan.FromSeconds(20));
+        var dispose = Task.Run(manager.Dispose);
+
+        // A reconcile reads the database, so the manager must not report itself gone while one is running.
+        dispose.Wait(TimeSpan.FromMilliseconds(300)).Should().BeFalse("the update has not finished");
+
+        variety.Release.SetResult();
+        await update.WaitAsync(TimeSpan.FromSeconds(20));
+        await dispose.WaitAsync(TimeSpan.FromSeconds(20));
+    }
+
     private async Task<LoadoutId> SeedLoadout(GameId? game)
     {
         using var tx = Connection.BeginTransaction();
@@ -175,6 +194,34 @@ public class SortOrderManagerTests(ITestOutputHelper helper) : AStubbedGameIsola
         public ValueTask DeleteSortOrder(SortOrderId sortOrderId, CancellationToken token = default) => ValueTask.CompletedTask;
 
         public SortOrderVarietyId SortOrderVarietyId { get; }
+        public ListSortDirection SortDirectionDefault => ListSortDirection.Ascending;
+        public IndexOverrideBehavior IndexOverrideBehavior => throw new NotSupportedException();
+        public SortOrderUiMetadata SortOrderUiMetadata => throw new NotSupportedException();
+        public IObservable<IChangeSet<IReactiveSortItem, ISortItemKey>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId) => throw new NotSupportedException();
+        public IReadOnlyList<IReactiveSortItem> GetSortOrderItems(SortOrderId sortOrderId, IDb? db = null) => throw new NotSupportedException();
+        public Task MoveItems(SortOrderId sortOrderId, ISortItemKey[] itemsToMove, ISortItemKey dropTargetItem, TargetRelativePosition relativePosition, IDb? db = null, CancellationToken token = default) => throw new NotSupportedException();
+        public Task MoveItemDelta(SortOrderId sortOrderId, ISortItemKey sourceItem, int delta, IDb? db = null, CancellationToken token = default) => throw new NotSupportedException();
+    }
+
+    // Holds every reconcile until released, standing in for one that is busy in the database.
+    private sealed class BlockingVariety : ISortOrderVariety
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public ValueTask<SortOrderId> GetOrCreateSortOrderFor(LoadoutId loadoutId, OneOf<LoadoutId, CollectionGroupId> parentEntity, CancellationToken token = default) =>
+            ValueTask.FromResult(SortOrderId.From(1));
+
+        public async ValueTask ReconcileSortOrder(SortOrderId sortOrderId, IDb? db = null, CancellationToken token = default)
+        {
+            Started.TrySetResult();
+            await Release.Task;
+        }
+
+        public Optional<SortOrderId> GetSortOrderIdFor(OneOf<LoadoutId, CollectionGroupId> parentEntity, IDb? db = null) => Optional<SortOrderId>.None;
+        public ValueTask DeleteSortOrder(SortOrderId sortOrderId, CancellationToken token = default) => ValueTask.CompletedTask;
+
+        public SortOrderVarietyId SortOrderVarietyId { get; } = SortOrderVarietyId.From(Guid.NewGuid());
         public ListSortDirection SortDirectionDefault => ListSortDirection.Ascending;
         public IndexOverrideBehavior IndexOverrideBehavior => throw new NotSupportedException();
         public SortOrderUiMetadata SortOrderUiMetadata => throw new NotSupportedException();
