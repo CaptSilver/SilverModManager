@@ -20,6 +20,12 @@
         <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\RoutingHandler.cs" Link="Fixtures\RoutingHandler.cs" />
         <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\Gzip.cs" Link="Fixtures\Gzip.cs" />
         <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\ThunderstoreJson.cs" Link="Fixtures\ThunderstoreJson.cs" />
+        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Formats\Fixtures\MsgbndFixture.cs" Link="Fixtures\FromSoft\MsgbndFixture.cs" />
+        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Formats\Fixtures\Bnd3Fixture.cs" Link="Fixtures\FromSoft\Bnd3Fixture.cs" />
+        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Formats\Fixtures\Bnd4Fixture.cs" Link="Fixtures\FromSoft\Bnd4Fixture.cs" />
+        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Formats\Fixtures\RegulationFixture.cs" Link="Fixtures\FromSoft\RegulationFixture.cs" />
+        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Formats\Fixtures\ParamFixture.cs" Link="Fixtures\FromSoft\ParamFixture.cs" />
+        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Fixtures\TestArchives.cs" Link="Fixtures\FromSoft\TestArchives.cs" />
     </ItemGroup>
 
     <ItemGroup>

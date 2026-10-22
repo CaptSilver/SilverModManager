@@ -81,6 +81,11 @@ public static class Services
             .AddSingleton<MergePlanCache>()
             .AddSingleton<IMergeReports, MergeReports>();
 
+        // Read-only commands over the merges; the apply does the merging
+        services.AddVerb(() => MergeVerbs.List)
+            .AddModule("fromsoft", "Commands for the FromSoft games' loadouts")
+            .AddModule("fromsoft merge", "What the app merges for a loadout");
+
         // Launch gates, in run order
         services.AddSingleton<IExecutableLocator, PathExecutableLocator>()
             .AddSingleton<ISandboxProbe, BwrapSandboxProbe>()
