@@ -27,11 +27,9 @@ public static class TestSoulsDefinition
         Formats = new FromSoftFormatTraits(
             BinderFormat.Bnd3,
             [DcxCompression.Dflt],
-            DcxCompression.Dflt,
+            new DcxWriteFormat(DcxCompression.Dflt, Unk04: 0x10000, Level: 6, WindowLog: 0),
             RegulationFileName: null,
-            DcxCompression.None,
-            RegulationZstdLevel: 0,
-            RegulationZstdWindowLog: 0,
+            RegulationWrite: null,
             ImmutableArray<byte>.Empty,
             "testsouls"),
     };

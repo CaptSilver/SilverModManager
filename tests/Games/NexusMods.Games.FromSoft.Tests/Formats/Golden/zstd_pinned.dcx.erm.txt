@@ -1,0 +1,4 @@
+Produced once with erm (read-only), working directory outside both repos:
+  from ermlib.formats import dcx
+  dcx.write_zstd(bytes((i * 7919 + (i >> 3)) & 0xFF for i in range(300000)))
+Compared byte-for-byte. The frame after the 0x4C header is the one tests/test_dcx.py pins by SHA-256.

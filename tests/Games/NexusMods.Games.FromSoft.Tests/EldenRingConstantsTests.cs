@@ -65,11 +65,9 @@ public class EldenRingConstantsTests
         Definition.Formats.Should().BeEquivalentTo(new FromSoftFormatTraits(
             BinderFormat.Bnd4,
             [DcxCompression.Kraken, DcxCompression.Dflt, DcxCompression.Zstd],
-            DcxCompression.Dflt,
+            new DcxWriteFormat(DcxCompression.Dflt, 0x11000, 9, 0),
             "regulation.bin",
-            DcxCompression.Zstd,
-            15,
-            16,
+            new DcxWriteFormat(DcxCompression.Zstd, 0x11000, 15, 16),
             [..Convert.FromHexString("99BFFC366A6BC8C6F5827D093602D676C42892A01C207FB024D3AF4E493FEF99")],
             "eldenring"));
     }

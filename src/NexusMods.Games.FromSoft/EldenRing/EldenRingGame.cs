@@ -57,11 +57,9 @@ public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGa
         Formats = new FromSoftFormatTraits(
             BinderFormat.Bnd4,
             [DcxCompression.Kraken, DcxCompression.Dflt, DcxCompression.Zstd],
-            DcxCompression.Dflt,
+            new DcxWriteFormat(DcxCompression.Dflt, Unk04: 0x11000, Level: 9, WindowLog: 0),
             "regulation.bin",
-            DcxCompression.Zstd,
-            RegulationZstdLevel: 15,
-            RegulationZstdWindowLog: 16,
+            new DcxWriteFormat(DcxCompression.Zstd, Unk04: 0x11000, Level: 15, WindowLog: 16),
             // Static across every retail build; the regulation is encrypted only in the sense that the key ships with the game.
             [..Convert.FromHexString("99BFFC366A6BC8C6F5827D093602D676C42892A01C207FB024D3AF4E493FEF99")],
             "eldenring"),

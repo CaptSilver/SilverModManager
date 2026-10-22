@@ -16,11 +16,9 @@ public class FromSoftFormatTraitsTests
     {
         EldenRing.Binder.Should().Be(BinderFormat.Bnd4);
         EldenRing.ReadableCompressions.Should().Equal(DcxCompression.Kraken, DcxCompression.Dflt, DcxCompression.Zstd);
-        EldenRing.PackedWriteCompression.Should().Be(DcxCompression.Dflt);
+        EldenRing.PackedWrite.Should().Be(new DcxWriteFormat(DcxCompression.Dflt, 0x11000, 9, 0));
         EldenRing.RegulationFileName.Should().Be("regulation.bin");
-        EldenRing.RegulationCompression.Should().Be(DcxCompression.Zstd);
-        EldenRing.RegulationZstdLevel.Should().Be(15);
-        EldenRing.RegulationZstdWindowLog.Should().Be(16);
+        EldenRing.RegulationWrite.Should().Be(new DcxWriteFormat(DcxCompression.Zstd, 0x11000, 15, 16));
         EldenRing.ParamdefSet.Should().Be("eldenring");
     }
 
@@ -37,11 +35,12 @@ public class FromSoftFormatTraitsTests
     {
         TestSouls.Binder.Should().NotBe(EldenRing.Binder);
         TestSouls.ReadableCompressions.Should().NotEqual(EldenRing.ReadableCompressions);
-        TestSouls.PackedWriteCompression.Should().Be(DcxCompression.Dflt, "the one field Elden Ring and the test game could share is spelled out below");
+        TestSouls.PackedWrite.Should().Be(new DcxWriteFormat(DcxCompression.Dflt, 0x10000, 6, 0));
+        TestSouls.PackedWrite.Compression.Should().Be(EldenRing.PackedWrite.Compression, "the wrapper is the one field the two games share");
+        TestSouls.PackedWrite.Unk04.Should().NotBe(EldenRing.PackedWrite.Unk04);
+        TestSouls.PackedWrite.Level.Should().NotBe(EldenRing.PackedWrite.Level);
         TestSouls.RegulationFileName.Should().BeNull().And.NotBe(EldenRing.RegulationFileName);
-        TestSouls.RegulationCompression.Should().Be(DcxCompression.None).And.NotBe(EldenRing.RegulationCompression);
-        TestSouls.RegulationZstdLevel.Should().Be(0).And.NotBe(EldenRing.RegulationZstdLevel);
-        TestSouls.RegulationZstdWindowLog.Should().Be(0).And.NotBe(EldenRing.RegulationZstdWindowLog);
+        TestSouls.RegulationWrite.Should().BeNull().And.NotBe(EldenRing.RegulationWrite);
         TestSouls.RegulationKey.Should().BeEmpty();
         TestSouls.ParamdefSet.Should().Be("testsouls").And.NotBe(EldenRing.ParamdefSet);
     }

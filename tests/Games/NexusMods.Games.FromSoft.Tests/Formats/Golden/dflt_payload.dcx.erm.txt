@@ -1,0 +1,4 @@
+Produced once with erm (read-only), working directory outside both repos:
+  from ermlib.formats import dcx
+  dcx.write_dflt(b"payload")
+The compressed body is zlib's own packing, which .NET need not reproduce; compare the header with bytes 0x20-0x23 masked, and the decompressed payload.

@@ -15,6 +15,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <None Include="Formats/Golden/**" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
         <InternalsVisibleTo Include="NexusMods.Games.FromSoft.Tests" />
     </ItemGroup>
 </Project>

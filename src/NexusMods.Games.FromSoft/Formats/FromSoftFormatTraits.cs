@@ -25,17 +25,22 @@ public enum DcxCompression
     Zstd,
 }
 
+/// <summary>How a file is wrapped when it is written back out.</summary>
+/// <param name="Compression">The wrapper. Only <see cref="DcxCompression.Dflt"/> and <see cref="DcxCompression.Zstd"/> can be written.</param>
+/// <param name="Unk04">The word at offset 4 of the DCX header, which differs between the game generations.</param>
+/// <param name="Level">The compression level, also recorded in the header; zlib takes 1 to 9.</param>
+/// <param name="WindowLog">The Zstandard window size, as a power of two, that caps what the game's decoder must allocate; 0 when it is not Zstandard.</param>
+public sealed record DcxWriteFormat(DcxCompression Compression, uint Unk04, int Level, int WindowLog);
+
 /// <summary>
-/// The file format parameters that differ from one FromSoft game to the next. Nothing reads them yet: they are the
-/// values a binder, DCX or regulation reader would otherwise hard-code for Elden Ring.
+/// The file format parameters that differ from one FromSoft game to the next: the values a binder, DCX or
+/// regulation reader would otherwise hard-code for one game.
 /// </summary>
 /// <param name="Binder">The binder format of the game's archives.</param>
 /// <param name="ReadableCompressions">The wrappers found in the game's files; a reader must accept each.</param>
-/// <param name="PackedWriteCompression">The wrapper a rewritten archive gets.</param>
+/// <param name="PackedWrite">The wrapper a rewritten archive gets.</param>
 /// <param name="RegulationFileName">The file in the game folder that holds the param tables; null when the game has none.</param>
-/// <param name="RegulationCompression">The wrapper inside the regulation's encryption.</param>
-/// <param name="RegulationZstdLevel">The Zstandard level a rewritten regulation is compressed at; 0 when it is not Zstandard.</param>
-/// <param name="RegulationZstdWindowLog">The Zstandard window size, as a power of two, that caps what the game's decoder must allocate; 0 when it is not Zstandard.</param>
+/// <param name="RegulationWrite">The wrapper inside the regulation's encryption; null when the game has no regulation.</param>
 /// <param name="RegulationKey">The AES-256 key of the regulation. It ships with the game; empty when the regulation is not encrypted.</param>
 /// <param name="ParamdefSet">
 /// Names the family of param layouts the game uses. The param layout catalogue will be keyed by this and the build
@@ -44,10 +49,8 @@ public enum DcxCompression
 public sealed record FromSoftFormatTraits(
     BinderFormat Binder,
     ImmutableArray<DcxCompression> ReadableCompressions,
-    DcxCompression PackedWriteCompression,
+    DcxWriteFormat PackedWrite,
     string? RegulationFileName,
-    DcxCompression RegulationCompression,
-    int RegulationZstdLevel,
-    int RegulationZstdWindowLog,
+    DcxWriteFormat? RegulationWrite,
     ImmutableArray<byte> RegulationKey,
     string ParamdefSet);
