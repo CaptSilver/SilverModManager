@@ -44,7 +44,7 @@ public enum MergeSourceMode
 /// decided here.
 /// </para>
 /// </summary>
-public sealed class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, ILogger<LoadoutMergeSources> logger)
+public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, ILogger<LoadoutMergeSources> logger)
 {
     private readonly ConcurrentDictionary<Hash, string> _versions = new();
     private readonly ConcurrentDictionary<string, byte> _unprioritised = new(StringComparer.Ordinal);
@@ -105,7 +105,7 @@ public sealed class LoadoutMergeSources(IFileStore fileStore, RegulationBaseline
     }
 
     /// <summary>The paths that more than one mod provides, and what the app would do about each.</summary>
-    public MergePathIndex Index(Loadout.ReadOnly loadout)
+    public virtual MergePathIndex Index(Loadout.ReadOnly loadout)
     {
         var providers = Providers(loadout);
         var vanillaPaths = dumps.Paths(loadout.Db, loadout.InstallationInstance, providers.Select(p => p.RelPath).Distinct(StringComparer.OrdinalIgnoreCase));
