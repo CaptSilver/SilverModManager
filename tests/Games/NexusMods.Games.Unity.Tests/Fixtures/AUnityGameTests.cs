@@ -11,8 +11,10 @@ public abstract class AUnityGameTests<TTest, TGame>(ITestOutputHelper outputHelp
 {
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
-        return base.AddServices(services)
-            .AddUnityGames()
-            .AddUniversalGameLocator<TGame>(new Version("1.0"));
+        return AddGameLocator(base.AddServices(services).AddUnityGames());
     }
+
+    /// <summary>Registers the one locator that finds the game; a test that needs a Steam install with a prefix replaces it.</summary>
+    protected virtual IServiceCollection AddGameLocator(IServiceCollection services)
+        => services.AddUniversalGameLocator<TGame>(new Version("1.0"));
 }

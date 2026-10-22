@@ -13,7 +13,7 @@ namespace NexusMods.Games.Unity.BepInEx;
 
 /// <summary>
 /// Installs a BepInEx loader pack into the game folder. The pack's files sit under one root folder
-/// (<c>BepInExPack/</c>, <c>BepInExPack_PEAK/</c>, ...) that is left off, so winhttp.dll lands next to the executable.
+/// (<c>BepInExPack/</c>, <c>BepInExPack_PEAK/</c>, ...) that is left off, so the doorstop proxy lands next to the executable.
 /// The manifest, readme and icon every Thunderstore package carries are not installed. An archive is taken for a pack
 /// when its files say so, or when its name is the game's loader package or one of its aliases; the name covers
 /// BepInEx 6 packs, which have no BepInEx.Preloader.dll.

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.Unity.BepInEx;
 using NexusMods.Sdk.Games;
 
 namespace NexusMods.Games.Unity;
@@ -11,6 +12,7 @@ public static class Services
     public static IServiceCollection AddUnityGames(this IServiceCollection services)
     {
         return services
+            .AddSingleton<BepInExMissingEmitter>()
             .AddGame<Repo.Repo>()
             .AddSingleton<ITool, RunGameTool<Repo.Repo>>()
             .AddGame<Peak.Peak>()

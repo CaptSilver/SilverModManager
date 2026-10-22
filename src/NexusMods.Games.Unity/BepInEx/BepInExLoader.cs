@@ -1,3 +1,4 @@
+using DynamicData.Kernel;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts;
@@ -39,9 +40,21 @@ public sealed class BepInExLoader(UnityGameDefinition definition) : IWineDllOver
     public bool IsInstalled(Loadout.ReadOnly loadout) => EnabledTargets(loadout).Contains(DoorstopProxy);
 
     /// <summary>True when an enabled file of the loadout sits below <c>BepInEx/plugins</c>.</summary>
-    public bool HasPlugins(Loadout.ReadOnly loadout)
-        => EnabledTargets(loadout).Any(path =>
-            path.LocationId == LocationId.Game && path.Path.ToString().StartsWith(PluginsPrefix, StringComparison.OrdinalIgnoreCase));
+    public bool HasPlugins(Loadout.ReadOnly loadout) => FirstPluginGroup(loadout).HasValue;
+
+    /// <summary>The group of the first enabled file below <c>BepInEx/plugins</c>, or none.</summary>
+    public Optional<LoadoutItemGroup.ReadOnly> FirstPluginGroup(Loadout.ReadOnly loadout)
+    {
+        foreach (var item in EnabledFiles(loadout))
+        {
+            var path = (GamePath)item.TargetPath;
+            if (path.LocationId != LocationId.Game || !path.Path.ToString().StartsWith(PluginsPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+            var loadoutItem = item.AsLoadoutItem();
+            if (loadoutItem.HasParent()) return loadoutItem.Parent;
+        }
+
+        return Optional<LoadoutItemGroup.ReadOnly>.None;
+    }
 
     /// <summary>
     /// The proxy is winhttp.dll, which Wine would otherwise load its own copy of; it has to be the native one, with the
@@ -55,8 +68,10 @@ public sealed class BepInExLoader(UnityGameDefinition definition) : IWineDllOver
     public ILibraryItemInstaller[] Installers(IServiceProvider provider) => [new BepInExPackInstaller(provider, this), new BepInExPluginInstaller(provider, this)];
 
     private static IEnumerable<GamePath> EnabledTargets(Loadout.ReadOnly loadout)
+        => EnabledFiles(loadout).Select(item => (GamePath)item.TargetPath);
+
+    private static IEnumerable<LoadoutItemWithTargetPath.ReadOnly> EnabledFiles(Loadout.ReadOnly loadout)
         => LoadoutItem.FindByLoadout(loadout.Db, loadout)
             .OfTypeLoadoutItemWithTargetPath()
-            .Where(item => item.AsLoadoutItem().IsEnabled())
-            .Select(item => (GamePath)item.TargetPath);
+            .Where(item => item.AsLoadoutItem().IsEnabled());
 }

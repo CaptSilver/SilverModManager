@@ -10,6 +10,11 @@ namespace NexusMods.Games.Generic.Diagnostics;
 /// Reports the Wine DLL overrides a game declares through <see cref="IWineDllOverrideRequirements"/> that the
 /// prefix does not have yet. It clears once the prefix carries them.
 /// </summary>
+/// <remarks>
+/// The check compares against what the prefix and the Steam launch options line carry, not against the environment
+/// the app sets when it launches the game itself, so it keeps showing until the line is written even though a
+/// launch from the app would already have the override.
+/// </remarks>
 public class WineDllOverrideEmitter : ILoadoutDiagnosticEmitter
 {
     /// <inheritdoc />

@@ -1,6 +1,7 @@
 using DynamicData.Kernel;
 using FluentAssertions;
 using NexusMods.Abstractions.Games;
+using NexusMods.Games.Generic.Diagnostics;
 using NexusMods.Games.Unity.BepInEx;
 using NexusMods.Games.Unity.Tests.Fixtures;
 using NexusMods.Sdk.Games;
@@ -51,5 +52,19 @@ public class PeakTests(ITestOutputHelper outputHelper) : AUnityGameTests<PeakTes
     public void TheGameInstallsTheLoaderPack()
     {
         Game.LibraryItemInstallers.OfType<BepInExPackInstaller>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void TheGameInstallsThePackBeforePlugins()
+    {
+        Game.LibraryItemInstallers.Select(installer => installer.GetType())
+            .Should().Equal(typeof(BepInExPackInstaller), typeof(BepInExPluginInstaller));
+    }
+
+    [Fact]
+    public void TheGameReportsAMissingLoaderAndAMissingWineOverride()
+    {
+        Game.DiagnosticEmitters.OfType<BepInExMissingEmitter>().Should().ContainSingle();
+        Game.DiagnosticEmitters.OfType<WineDllOverrideEmitter>().Should().ContainSingle();
     }
 }

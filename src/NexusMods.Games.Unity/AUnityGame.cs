@@ -74,6 +74,8 @@ public abstract class AUnityGame<TSelf> : IUnityGame
             new NoWayToSourceFilesOnDisk(),
             new UndeployableLoadoutDueToMissingGameFiles(provider),
             provider.GetRequiredService<ProtonPrefixEmitter>(),
+            provider.GetRequiredService<BepInExMissingEmitter>(),
+            provider.GetRequiredService<WineDllOverrideEmitter>(),
         ];
 
         // The installers hold the loader, so it has to exist first.

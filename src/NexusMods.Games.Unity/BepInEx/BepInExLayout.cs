@@ -62,7 +62,7 @@ public sealed class BepInExLayout
     }
 
     /// <summary>
-    /// Whether the archive is a BepInEx loader pack: winhttp.dll, doorstop_config.ini and BepInEx/core/BepInEx.Preloader.dll
+    /// Whether the archive is a BepInEx loader pack: the doorstop proxy, doorstop_config.ini and BepInEx/core/BepInEx.Preloader.dll
     /// under one root folder, or all three at the archive root (<paramref name="root"/> is then empty).
     /// </summary>
     public static bool IsLoaderPack(IEnumerable<RelativePath> paths, out string root)
@@ -72,7 +72,7 @@ public sealed class BepInExLayout
         foreach (var candidate in all.Where(p => Path.GetFileName(p).Equals(BepInExFiles.DoorstopProxy, StringComparison.OrdinalIgnoreCase)))
         {
             var directory = candidate[..^BepInExFiles.DoorstopProxy.Length].TrimEnd('/');
-            // Only the pack's own root folder is allowed above the files; a deeper winhttp.dll is something else.
+            // Only the pack's own root folder is allowed above the files; a deeper proxy DLL is something else.
             if (directory.Contains('/')) continue;
 
             var prefix = directory.Length == 0 ? "" : directory + "/";
