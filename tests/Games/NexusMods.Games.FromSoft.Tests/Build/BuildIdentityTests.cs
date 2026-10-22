@@ -12,6 +12,49 @@ public class BuildIdentityClassificationTests
 {
     private static readonly BuildIdentity Stamped = new("2.7.1.0", "15000000");
 
+    private static readonly BuildIdentity WithRegulation = new("2.7.1.0", "15000000", "11701000", "aa");
+
+    [Fact]
+    public void ARegulationChangedUnderAnUnchangedExeIsTampered()
+    {
+        var live = WithRegulation with { RegulationHash = "bb" };
+
+        BuildIdentity.Classify(WithRegulation, live).Should().Be(BuildChangeKind.Tampered);
+        BuildIdentity.Drift(WithRegulation, live).Should().Equal(new BuildChange("regulation_hash", "aa", "bb"));
+    }
+
+    [Fact]
+    public void AChangedExeBuildIdAndRegulationIsPatched()
+    {
+        var live = new BuildIdentity("2.8.0.0", "16000000", "11801000", "cc");
+
+        BuildIdentity.Classify(WithRegulation, live).Should().Be(BuildChangeKind.Patched);
+    }
+
+    [Fact]
+    public void AStampWithoutRegulationFieldsIsUnchangedAgainstALiveIdentityThatHasThem()
+    {
+        BuildIdentity.Classify(Stamped, WithRegulation).Should().Be(BuildChangeKind.Unchanged);
+        BuildIdentity.Drift(Stamped, WithRegulation).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AMovedExeAgainstAnOldStampIsStillRepackaged()
+    {
+        BuildIdentity.Classify(Stamped, WithRegulation with { Exe = "2.8.0.0" }).Should().Be(BuildChangeKind.Repackaged);
+    }
+
+    [Fact]
+    public void AStampedRegulationTheGameHasLostIsTampered()
+    {
+        var live = new BuildIdentity("2.7.1.0", "15000000");
+
+        BuildIdentity.Classify(WithRegulation, live).Should().Be(BuildChangeKind.Tampered);
+        BuildIdentity.Drift(WithRegulation, live).Should().Equal(
+            new BuildChange("regulation_version", "11701000", null),
+            new BuildChange("regulation_hash", "aa", null));
+    }
+
     [Fact]
     public void NoStampIsUnchanged()
     {
@@ -30,7 +73,7 @@ public class BuildIdentityClassificationTests
     [InlineData("2.8.0.0", "15000000")]
     [InlineData("2.7.1.0", "15000001")]
     [InlineData("2.8.0.0", "15000001")]
-    public void AMovedExeOrSteamBuildIdIsRepackagedWhileNoDataFieldIsTracked(string exe, string buildId)
+    public void AMovedExeOrSteamBuildIdIsRepackagedWhileTheRegulationIsUntouched(string exe, string buildId)
     {
         BuildIdentity.Classify(Stamped, new BuildIdentity(exe, buildId)).Should().Be(BuildChangeKind.Repackaged);
     }
@@ -45,8 +88,7 @@ public class BuildIdentityClassificationTests
         both.Should().Equal(new BuildChange("exe", "2.7.1.0", "2.8.0.0"), new BuildChange("steam_buildid", "15000000", "16000000"));
     }
 
-    // The tracked data fields are empty until regulation fields are added, which makes Patched and Tampered
-    // unreachable through Classify. The full rule is still here, so these run it with a data field to keep it honest.
+    // The full rule with an arbitrary choice of install and data fields, independent of which ones the build tracks.
     [Fact]
     public void WithADataFieldTheFullRuleIsPatchedRepackagedTamperedOrUnchanged()
     {
@@ -67,7 +109,37 @@ public class BuildIdentityIdentifyTests(ITestOutputHelper helper) : AEldenRingTe
     [Fact]
     public void TheIdentityIsTheExecutablesFileVersionAndSteamsBuildId()
     {
-        BuildIdentity.Identify(GameInstallation).Should().Be(new BuildIdentity("2.7.1.0", EldenRingInstall.SteamBuildId.ToString()));
+        BuildIdentity.Identify(GameInstallation).Should().Be(new BuildIdentity("2.7.1.0", EldenRingInstall.SteamBuildId.ToString(), EldenRingInstall.RegulationVersion, EldenRingInstall.RegulationHash));
+    }
+
+    [Fact]
+    public void TheRegulationsVersionAndHashAreReadFromTheDecryptedFile()
+    {
+        var identity = BuildIdentity.Identify(GameInstallation);
+
+        identity.RegulationVersion.Should().Be("11701000");
+        identity.RegulationHash.Should().Be(Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes((RealGameFolder / "regulation.bin").GetFullPath()))));
+    }
+
+    [Fact]
+    public void AGameFolderWithoutItsRegulationHasNeitherField()
+    {
+        File.Delete((RealGameFolder / "regulation.bin").GetFullPath());
+
+        var identity = BuildIdentity.Identify(GameInstallation);
+
+        identity.RegulationVersion.Should().BeNull();
+        identity.RegulationHash.Should().BeNull();
+    }
+
+    [Fact]
+    public void ARegulationThatDoesNotDecryptIsRefusedNamingTheFile()
+    {
+        File.WriteAllText((RealGameFolder / "regulation.bin").GetFullPath(), "not a regulation, but long enough to hold an IV and a block");
+
+        var act = () => BuildIdentity.Identify(GameInstallation);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*regulation.bin*");
     }
 
     [Fact]
@@ -140,6 +212,7 @@ public sealed class BuildIdentityOnAnotherLayoutTests : IDisposable
         var game = Substitute.For<IFromSoftGame>();
         game.Definition.Returns(TestSoulsDefinition.Definition);
         game.Layout.Returns(TestSoulsDefinition.Layout);
+        game.Formats.Returns(TestSoulsDefinition.Definition.Formats);
         game.DisplayName.Returns("Test Souls");
 
         var root = FileSystem.Shared.FromUnsanitizedFullPath(_root);
@@ -161,6 +234,15 @@ public sealed class BuildIdentityOnAnotherLayoutTests : IDisposable
     public void TheVersionIsReadFromTheLayoutsExecutableInItsSubfolder()
     {
         BuildIdentity.Identify(TestSoulsInstallation("777")).Should().Be(new BuildIdentity("1.2.3.4", "777"));
+    }
+
+    [Fact]
+    public void AGameWhoseTraitsHaveNoRegulationHasNeitherField()
+    {
+        var identity = BuildIdentity.Identify(TestSoulsInstallation("777"));
+
+        identity.RegulationVersion.Should().BeNull();
+        identity.RegulationHash.Should().BeNull();
     }
 
     [Fact]

@@ -1,4 +1,7 @@
 using System.Text.RegularExpressions;
+using NexusMods.Games.FromSoft.EldenRing;
+using NexusMods.Games.FromSoft.Formats;
+using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
 using NexusMods.Games.TestFramework.Helpers;
 
 namespace NexusMods.Games.FromSoft.Tests.Fixtures;
@@ -20,11 +23,20 @@ internal static class EldenRingInstall
     /// <summary>A real PE whose version resource says <see cref="ExecutableVersion"/>, so the build can be read from it.</summary>
     public static byte[] Executable { get; } = FakePe.WithVersion(ExecutableVersion);
 
+    /// <summary>The build stamp inside the fixture's regulation.</summary>
+    public const string RegulationVersion = RegulationFixture.GoldenVersion;
+
+    /// <summary>A regulation the game's key opens, so the install has a version and a hash to read.</summary>
+    public static byte[] RegulationFile { get; } = RegulationFixture.BuildFromEntries(RegulationFixture.GoldenEntries, RegulationVersion, EldenRingGame.Definition.Formats);
+
+    /// <summary>The hash <see cref="BuildIdentity"/> reports for <see cref="RegulationFile"/>.</summary>
+    public static string RegulationHash { get; } = FromSoft.Formats.Regulation.Sha256Hex(RegulationFile);
+
     public static SteamFile[] GameFiles { get; } =
     [
         new("Game/eldenring.exe", Executable),
         new("Game/start_protected_game.exe", "anti-cheat launcher"),
-        new("Game/regulation.bin", "regulation"),
+        new("Game/regulation.bin", RegulationFile),
         new("Game/Data0.bdt", "data archive"),
         new("Game/Data0.bhd", "data archive header"),
         new("Game/sd/sd.bdt", "sound archive"),

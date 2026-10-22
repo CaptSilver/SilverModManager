@@ -17,6 +17,9 @@ public class BuildDriftEmitter(BuildStampStore stamps) : IFromSoftDiagnosticEmit
     /// <summary>The id of the action that stamps the installed build. Its one argument is the loadout id.</summary>
     public const string RestampActionId = "restamp-build";
 
+    // A regulation the game lost reads as null; "none" says so where an empty string would look like a formatting slip.
+    private const string NoValue = "none";
+
     public static DiagnosticAction RestampAction(LoadoutId loadoutId) => new(RestampActionId, "Re-stamp", [loadoutId.Value.Value.ToString()]);
 
     // Compares the live build with the stamp, not the sync tree, so it gives the same answer without one.
@@ -34,7 +37,7 @@ public class BuildDriftEmitter(BuildStampStore stamps) : IFromSoftDiagnosticEmit
         var kind = BuildIdentity.Classify(stamped, live);
         if (kind == BuildChangeKind.Unchanged) yield break;
 
-        var moved = string.Join("; ", BuildIdentity.Drift(stamped, live).Select(c => $"{c.Field} {c.Stamped} -> {c.Live}"));
+        var moved = string.Join("; ", BuildIdentity.Drift(stamped, live).Select(c => $"{c.Field} {c.Stamped ?? NoValue} -> {c.Live ?? NoValue}"));
         yield return FromSoftDiagnostics.CreateBuildChanged(loadout.InstallationInstance.Game.DisplayName, kind.ToString().ToLowerInvariant(), moved) with { Actions = [RestampAction(loadout.LoadoutId)] };
     }
 }

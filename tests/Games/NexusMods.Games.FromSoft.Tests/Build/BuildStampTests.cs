@@ -6,6 +6,8 @@ using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.FromSoft.Build;
 using NexusMods.Games.FromSoft.Diagnostics;
+using NexusMods.Games.FromSoft.EldenRing;
+using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
 using NexusMods.Games.FromSoft.Tests.Fixtures;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Platform.Proton.Launch;
@@ -16,7 +18,7 @@ namespace NexusMods.Games.FromSoft.Tests.Build;
 
 public class BuildStampTests(ITestOutputHelper helper) : AModdedEldenRingTest<BuildStampTests>(helper)
 {
-    private static readonly BuildIdentity Original = new("2.7.1.0", EldenRingInstall.SteamBuildId.ToString());
+    private static readonly BuildIdentity Original = new("2.7.1.0", EldenRingInstall.SteamBuildId.ToString(), EldenRingInstall.RegulationVersion, EldenRingInstall.RegulationHash);
 
     private BuildStampGate StampGate => ServiceProvider.GetServices<ILaunchGate>().OfType<BuildStampGate>().Single();
 
@@ -65,6 +67,62 @@ public class BuildStampTests(ITestOutputHelper helper) : AModdedEldenRingTest<Bu
         await StampGate.Prepare(ContextOf(loadout), CancellationToken.None);
 
         Stamps.Find(InstallationOf(loadout)).Should().Be(Original);
+    }
+
+    // What the current build wrote before the regulation was tracked: the two install fields and nothing else.
+    private async Task StampLikeAnOlderBuild(Loadout.ReadOnly loadout)
+    {
+        await Stamps.Record(InstallationOf(loadout), new BuildIdentity(Original.Exe, Original.SteamBuildId));
+        Stamps.Find(InstallationOf(loadout)).Should().Be(new BuildIdentity(Original.Exe, Original.SteamBuildId));
+    }
+
+    [Fact]
+    public async Task AStampFromBeforeTheRegulationWasTrackedProducesNoDiagnostic()
+    {
+        var loadout = await CreateLoadout();
+        await StampLikeAnOlderBuild(loadout);
+
+        (await Diagnose(loadout)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task TheGateBackfillsTheRegulationFieldsIntoAnOlderStamp()
+    {
+        var loadout = await CreateLoadout();
+        await StampLikeAnOlderBuild(loadout);
+
+        await StampGate.Prepare(ContextOf(loadout), CancellationToken.None);
+
+        Stamps.Find(InstallationOf(loadout)).Should().Be(Original);
+        FromSoftBuildStamp.All(Connection.Db).Should().ContainSingle();
+        (await Diagnose(loadout)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ABackfilledStampThenCatchesARegulationWrittenBehindTheApp()
+    {
+        var loadout = await CreateLoadout();
+        await StampLikeAnOlderBuild(loadout);
+        await StampGate.Prepare(ContextOf(loadout), CancellationToken.None);
+
+        var edited = RegulationFixture.BuildFromEntries(RegulationFixture.GoldenEntries, "11701001", EldenRingGame.Definition.Formats);
+        await (RealGameFolder / "regulation.bin").WriteAllBytesAsync(edited);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+        Describe(diagnostic).Should().Contain("tampered").And.Contain("regulation_version").And.Contain("11701000").And.Contain("11701001");
+    }
+
+    [Fact]
+    public async Task AnOlderStampIsNotBackfilledWhenTheInstallHasMoved()
+    {
+        var loadout = await CreateLoadout();
+        await StampLikeAnOlderBuild(loadout);
+
+        SetExecutableVersion(new Version(2, 8, 0, 0));
+        await StampGate.Prepare(ContextOf(loadout), CancellationToken.None);
+
+        // The live regulation may belong to the new build, so it says nothing about the stamped one.
+        Stamps.Find(InstallationOf(loadout)).Should().Be(new BuildIdentity(Original.Exe, Original.SteamBuildId));
     }
 
     [Fact]
@@ -179,7 +237,7 @@ public class BuildStampTests(ITestOutputHelper helper) : AModdedEldenRingTest<Bu
 
         await Stamps.Restamp(loadout.LoadoutId);
 
-        Stamps.Find(InstallationOf(loadout)).Should().Be(new BuildIdentity("2.8.0.0", EldenRingInstall.SteamBuildId.ToString()));
+        Stamps.Find(InstallationOf(loadout)).Should().Be(Original with { Exe = "2.8.0.0" });
         (await Diagnose(loadout)).Should().BeEmpty();
     }
 

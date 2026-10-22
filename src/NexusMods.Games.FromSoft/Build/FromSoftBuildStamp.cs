@@ -21,6 +21,12 @@ public partial class FromSoftBuildStamp : IModelDefinition
     /// <summary>Steam's build id when stamped.</summary>
     public static readonly StringAttribute SteamBuildId = new(Namespace, nameof(SteamBuildId));
 
+    /// <summary>The regulation's version when stamped. Absent on stamps recorded before it was tracked, and for a game with no regulation.</summary>
+    public static readonly StringAttribute RegulationVersion = new(Namespace, nameof(RegulationVersion)) { IsOptional = true };
+
+    /// <summary>The SHA-256 of the regulation file when stamped, lowercase hex. Absent under the same conditions as <see cref="RegulationVersion"/>.</summary>
+    public static readonly StringAttribute RegulationHash = new(Namespace, nameof(RegulationHash)) { IsOptional = true };
+
     /// <summary>When the stamp was recorded.</summary>
     public static readonly TimestampAttribute RecordedAt = new(Namespace, nameof(RecordedAt));
 }
