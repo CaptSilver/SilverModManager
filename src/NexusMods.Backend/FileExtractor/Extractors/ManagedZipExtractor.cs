@@ -29,12 +29,26 @@ internal class ManagedZipExtractor : IExtractor
         await using var stream = await source.GetStreamAsync().ConfigureAwait(false);
 
         using var zipFile = new ZipFile(stream, leaveOpen: false, stringCodec: _stringCodec);
+        var rewrites = new ArchiveEntryPath.Rewrites();
+        var written = new Dictionary<string, string>(StringComparer.Ordinal);
         for (var i = 0; i < zipFile.Count; i++)
         {
             var zipEntry = zipFile[i];
 
             var originalName = GetName(zipEntry);
-            var fixedPath = PathsHelper.FixPath(originalName);
+            var cleaned = ArchiveEntryPath.Clean(originalName);
+            if (ArchiveEntryPath.IsRewritten(originalName, cleaned)) rewrites.Add(originalName, cleaned);
+            if (cleaned.Length == 0) continue;
+
+            // The later entry wins, as it does for two entries with the same plain name. Different raw names
+            // that clean to one path are reported, since the author probably didn't mean to overwrite.
+            if (!zipEntry.IsDirectory)
+            {
+                if (written.TryGetValue(cleaned, out var earlier) && earlier != originalName) rewrites.AddOverwritten(earlier, cleaned);
+                written[cleaned] = originalName;
+            }
+
+            var fixedPath = PathsHelper.FixPath(cleaned);
             var relativePath = RelativePath.FromUnsanitizedInput(fixedPath);
             var absolutePath = destination.Combine(relativePath);
 
@@ -53,6 +67,8 @@ internal class ManagedZipExtractor : IExtractor
             await using var inputStream = zipFile.GetInputStream(zipEntry);
             await inputStream.CopyToAsync(outputStream, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
+
+        rewrites.Log(_logger, source.FileName.ToString());
     }
 
     private string GetName(ZipEntry zipEntry)

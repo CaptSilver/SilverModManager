@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reactive.Disposables;
+using System.Text;
 using CliWrap;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.FileExtractor;
@@ -65,13 +66,13 @@ public class SevenZipExtractor : IExtractor
         using var _ = sourceDisposable;
 
         var trimmablePathsInArchive = await GetTrimmablePathsInArchive(source, cancellationToken: cancellationToken);
-        await ExtractArchive(source, destination, cancellationToken: cancellationToken);
+        await ExtractArchive(source, streamFactory.FileName.ToString(), destination, cancellationToken: cancellationToken);
 
         using var innerTar = await TakeInnerTar(source, destination, cancellationToken);
         if (innerTar is not null)
         {
             trimmablePathsInArchive = await GetTrimmablePathsInArchive(innerTar.Value.Path, cancellationToken: cancellationToken);
-            await ExtractArchive(innerTar.Value.Path, destination, cancellationToken: cancellationToken);
+            await ExtractArchive(innerTar.Value.Path, streamFactory.FileName.ToString(), destination, cancellationToken: cancellationToken);
         }
 
         // Modes first, since the link sweep has to list every folder and copy link targets that the archive
@@ -284,19 +285,127 @@ public class SevenZipExtractor : IExtractor
         return (temporaryFile.Path, temporaryFile);
     }
 
-    // 7z 21.03 refuses to create a link whose target is absolute or contains "..", and reports each one on
-    // stderr in this form while exiting with code 2. There is no switch that stops it creating the
-    // remaining links (-snld only allows the dangerous ones), so ExtractedLinks sweeps the result.
-    private const string DangerousLinkError = "ERROR: Dangerous link path was ignored";
+    // 7z refuses to create a link whose target contains "..", and reports each one on stderr in one of
+    // these forms while exiting with code 2; the second is used for a target that climbs and comes back
+    // down inside the archive. There is no switch that stops it creating the remaining links (-snld only
+    // allows the dangerous ones), so ExtractedLinks sweeps the result.
+    private static readonly string[] DangerousLinkErrors = ["ERROR: Dangerous link path was ignored", "ERROR: Dangerous symbolic link path was ignored"];
 
-    private async ValueTask ExtractArchive(AbsolutePath source, AbsolutePath destination, CancellationToken cancellationToken)
+    /// <summary>
+    /// Extracts with 7z, then makes the result match <see cref="ArchiveEntryPath.Clean"/>. Only entries whose
+    /// names 7z would place differently are handled separately, so an archive with well-formed names is a
+    /// single 7z run.
+    /// </summary>
+    private async ValueTask ExtractArchive(AbsolutePath source, string archiveName, AbsolutePath destination, CancellationToken cancellationToken)
+    {
+        var plan = new ArchiveEntryPlan(await ListEntries(source, cancellationToken));
+        if (plan.IsPlain)
+        {
+            await RunExtract(source, archiveName, destination, extraArguments: [], cancellationToken);
+            plan.Rewrites.Log(_logger, archiveName);
+            return;
+        }
+
+        // 7z reads the list as UTF-8 and, with -spd, takes each line as a literal name and not a pattern.
+        await using var excludeList = _temporaryFileManager.CreateFile(ext: new Extension(".txt"));
+        await File.WriteAllLinesAsync(excludeList.Path.ToNativeSeparators(_osInformation), plan.Excluded, new UTF8Encoding(false), cancellationToken);
+        await RunExtract(source, archiveName, destination, ["-spd", "-scsUTF-8", $"-x@{excludeList.Path.ToNativeSeparators(_osInformation)}"], cancellationToken);
+
+        var root = destination.ToNativeSeparators(_osInformation);
+        foreach (var folder in plan.Folders) Directory.CreateDirectory(Path.Combine(root, folder));
+
+        foreach (var (name, cleaned) in plan.Moved)
+        {
+            await using var scratch = _temporaryFileManager.CreateFolder();
+            await RunExtract(source, archiveName, scratch.Path, ["-spd", $"-i!{name}"], cancellationToken);
+
+            var extracted = FindExtractedEntries(scratch.Path.ToNativeSeparators(_osInformation));
+            if (extracted.Count == 0)
+            {
+                _logger.LogWarning("7z produced nothing for entry `{Entry}` of archive `{Archive}`", name, archiveName);
+                continue;
+            }
+
+            var target = Path.GetFullPath(Path.Combine(root, cleaned));
+            if (!target.StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            {
+                throw new FileExtractionException($"Cleaned path `{cleaned}` of entry `{name}` in `{archiveName}` is outside the extraction folder");
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(target) ?? throw new InvalidOperationException($"`{target}` has no parent folder"));
+            File.Move(extracted[0], target, overwrite: true);
+        }
+
+        plan.Rewrites.Log(_logger, archiveName);
+    }
+
+    /// <summary>
+    /// Everything 7z extracted into a folder that held no other entry, links included and never followed.
+    /// </summary>
+    private static List<string> FindExtractedEntries(string folder)
+    {
+        var result = new List<string>();
+        var pending = new Stack<string>();
+        pending.Push(folder);
+        while (pending.TryPop(out var directory))
+        {
+            foreach (var info in new DirectoryInfo(directory).EnumerateFileSystemInfos())
+            {
+                if (info is DirectoryInfo && info.LinkTarget is null) pending.Push(info.FullName);
+                else result.Add(info.FullName);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Lists the entries with their names as stored. <c>-slt</c> prints one "Path = " block per entry, and
+    /// the plain table would hide a leading "../" behind column alignment.
+    /// </summary>
+    private async ValueTask<List<ArchiveEntryPlan.Entry>> ListEntries(AbsolutePath source, CancellationToken cancellationToken)
+    {
+        var entries = new List<ArchiveEntryPlan.Entry>();
+        string? name = null;
+        var isDirectory = false;
+
+        void Flush()
+        {
+            if (name is not null) entries.Add(new ArchiveEntryPlan.Entry(name, isDirectory));
+            name = null;
+            isDirectory = false;
+        }
+
+        var process = Cli
+            .Wrap(_exePath)
+            .WithArguments(["l", "-slt", "-ba", "-sccUTF-8", $"{source.ToNativeSeparators(_osInformation)}"])
+            .WithStandardOutputPipe(PipeTarget.ToDelegate(line =>
+            {
+                if (line.StartsWith("Path = ", StringComparison.Ordinal))
+                {
+                    Flush();
+                    name = line["Path = ".Length..];
+                }
+                else if (line.StartsWith("Folder = ", StringComparison.Ordinal))
+                {
+                    isDirectory = line["Folder = ".Length..] == "+";
+                }
+            }))
+            .WithValidation(CommandResultValidation.ZeroExitCode);
+
+        await _processRunner.RunAsync(process, logOutput: false, cancellationToken: cancellationToken);
+        Flush();
+        return entries;
+    }
+
+    private async ValueTask RunExtract(AbsolutePath source, string archiveName, AbsolutePath destination, string[] extraArguments, CancellationToken cancellationToken)
     {
         var errors = new List<string>();
 
         // NOTE(erri120): Using "-bsp1" to redirect the progress line to stdout
         var process = Cli
             .Wrap(_exePath)
-            .WithArguments(["x", "-bsp1", "-y", $"-o{destination.ToNativeSeparators(_osInformation)}", $"{source.ToNativeSeparators(_osInformation)}"])
+            .WithArguments(["x", "-bsp1", "-y", .. extraArguments, $"-o{destination.ToNativeSeparators(_osInformation)}", $"{source.ToNativeSeparators(_osInformation)}"])
             .WithStandardOutputPipe(PipeTarget.ToDelegate(line =>
             {
                 // TODO: progress reporting
@@ -313,13 +422,13 @@ public class SevenZipExtractor : IExtractor
 
         // An archive whose only problem is links it was not allowed to create still extracts: the links are
         // dropped and the rest of the mod is usable.
-        if (errors.Count > 0 && errors.All(e => e.StartsWith(DangerousLinkError, StringComparison.Ordinal)))
+        if (errors.Count > 0 && errors.All(e => DangerousLinkErrors.Any(prefix => e.StartsWith(prefix, StringComparison.Ordinal))))
         {
-            foreach (var error in errors) _logger.LogWarning("Dropped a symlink from `{Archive}`: {Error}", source.FileName, error);
+            foreach (var error in errors) _logger.LogWarning("Dropped a symlink from `{Archive}`: {Error}", archiveName, error);
             return;
         }
 
-        throw new FileExtractionException($"7z exited with code {result.ExitCode} extracting `{source.FileName}`: {string.Join(" | ", errors)}");
+        throw new FileExtractionException($"7z exited with code {result.ExitCode} extracting `{archiveName}`: {string.Join(" | ", errors)}");
     }
 
     private static bool TryParseExtractCommandOutput(ReadOnlySpan<char> line, out int percentage)
