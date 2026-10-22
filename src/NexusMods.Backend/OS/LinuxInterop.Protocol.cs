@@ -14,19 +14,53 @@ internal partial class LinuxInterop
     private const string ExecuteParameterPlaceholder = "${INSTALL_EXEC}";
     private const string TryExecuteParameterPlaceholder = "${INSTALL_TRYEXEC}";
 
-    public async ValueTask RegisterUriSchemeHandler(string scheme, bool setAsDefaultHandler, CancellationToken cancellationToken)
+    // Set by AppImage managers (appimaged, AppImageLauncher, Gear Lever) to say they already made the menu entry.
+    private const string DesktopIntegrationVariable = "DESKTOPINTEGRATION";
+
+    public ValueTask RegisterUriSchemeHandler(string scheme, bool setAsDefaultHandler, CancellationToken cancellationToken)
     {
-        var canWriteDesktopFile = ApplicationConstants.InstallationMethod is InstallationMethod.AppImage or InstallationMethod.Manually;
-        var canRegisterAsDefault = ApplicationConstants.InstallationMethod is not InstallationMethod.Flatpak and not InstallationMethod.PackageManager;
+        var desktopIntegration = Environment.GetEnvironmentVariable(DesktopIntegrationVariable, EnvironmentVariableTarget.Process);
+        GetRunningExecutablePath(out var runningExecutable);
+        return RegisterUriSchemeHandler(scheme, setAsDefaultHandler, ApplicationConstants.InstallationMethod, desktopIntegration, runningExecutable, cancellationToken);
+    }
+
+    internal async ValueTask RegisterUriSchemeHandler(
+        string scheme,
+        bool setAsDefaultHandler,
+        InstallationMethod installationMethod,
+        string? desktopIntegration,
+        string runningExecutable,
+        CancellationToken cancellationToken)
+    {
+        var canWriteDesktopFile = installationMethod is InstallationMethod.AppImage or InstallationMethod.Manually;
+        var canRegisterAsDefault = installationMethod is not InstallationMethod.Flatpak and not InstallationMethod.PackageManager;
+        var desktopFileName = DesktopFile;
 
         if (canWriteDesktopFile)
         {
             var applicationsDirectory = _fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine("applications");
             _logger.LogInformation("Using applications directory `{Path}`", applicationsDirectory);
 
+            string? launcherEntry = null;
+            if (installationMethod is InstallationMethod.AppImage && !string.IsNullOrEmpty(desktopIntegration))
+            {
+                launcherEntry = await FindLauncherEntry(applicationsDirectory, runningExecutable, scheme, cancellationToken);
+                if (launcherEntry is null)
+                    _logger.LogWarning("`{Variable}` is set but no launcher entry in `{Path}` runs `{AppImage}` for `{Scheme}`, writing our own desktop file", DesktopIntegrationVariable, applicationsDirectory, runningExecutable, scheme);
+            }
+
             try
             {
-                await CreateDesktopFile(applicationsDirectory, cancellationToken: cancellationToken);
+                if (launcherEntry is null)
+                {
+                    await CreateDesktopFile(applicationsDirectory, runningExecutable, cancellationToken: cancellationToken);
+                }
+                else
+                {
+                    _logger.LogInformation("Using launcher entry `{Entry}` as the handler for `{Scheme}`", launcherEntry, scheme);
+                    desktopFileName = launcherEntry;
+                    RemoveOwnDesktopFiles(applicationsDirectory);
+                }
             }
             catch (Exception e)
             {
@@ -49,7 +83,7 @@ internal partial class LinuxInterop
         {
             try
             {
-                await SetAsDefaultHandler(scheme, cancellationToken: cancellationToken);
+                await SetAsDefaultHandler(scheme, desktopFileName, cancellationToken: cancellationToken);
             }
             catch (Exception e)
             {
@@ -58,7 +92,39 @@ internal partial class LinuxInterop
         }
     }
 
-    private async Task CreateDesktopFile(AbsolutePath applicationsDirectory, CancellationToken cancellationToken = default)
+    private async ValueTask<string?> FindLauncherEntry(AbsolutePath applicationsDirectory, string appImagePath, string scheme, CancellationToken cancellationToken)
+    {
+        if (!applicationsDirectory.DirectoryExists()) return null;
+
+        var entries = new List<(string FileName, string Contents)>();
+        foreach (var file in applicationsDirectory.EnumerateFiles("*.desktop", recursive: false))
+        {
+            try
+            {
+                entries.Add((file.FileName, await File.ReadAllTextAsync(file.ToString(), cancellationToken)));
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogWarning(e, "Unable to read desktop file `{Path}`, skipping it", file);
+            }
+        }
+
+        return FindLauncherDesktopEntry(entries, appImagePath, scheme, ResolveRealPath);
+    }
+
+    // Earlier runs wrote our own entry; with a launcher entry in place it would show up as a second menu item.
+    private void RemoveOwnDesktopFiles(AbsolutePath applicationsDirectory)
+    {
+        var desktopFile = applicationsDirectory.Combine(DesktopFile);
+        foreach (var file in new[] { desktopFile, desktopFile.AppendExtension(new Extension(".bak")), applicationsDirectory.Combine($"{ApplicationId}.sh") })
+        {
+            if (!file.FileExists) continue;
+            _logger.LogInformation("Removing `{Path}`, a launcher entry handles the protocol", file);
+            file.Delete();
+        }
+    }
+
+    private async Task CreateDesktopFile(AbsolutePath applicationsDirectory, string processPath, CancellationToken cancellationToken = default)
     {
         if (!applicationsDirectory.DirectoryExists()) applicationsDirectory.CreateDirectory();
 
@@ -101,7 +167,6 @@ internal partial class LinuxInterop
         //              characters on Linux. The Paths library converts \ to /
         //              which breaks the path, so we must avoid this.
         //              https://github.com/Nexus-Mods/NexusMods.Paths/issues/71
-        _ = GetRunningExecutablePath(out var processPath);
         var wrapperScriptPath = await CreateWrapperScriptIfNeeded(applicationsDirectory, processPath, cancellationToken);
 
         text = text.Replace(ExecuteParameterPlaceholder, wrapperScriptPath);
@@ -152,12 +217,12 @@ internal partial class LinuxInterop
         await _processRunner.RunAsync(command, logOutput: true, cancellationToken: cancellationToken);
     }
 
-    private async Task SetAsDefaultHandler(string uriScheme, CancellationToken cancellationToken = default)
+    private async Task SetAsDefaultHandler(string uriScheme, string desktopFile, CancellationToken cancellationToken = default)
     {
         // Note(sewer): This adds `MimeType=x-scheme-handler/nxm;` to the protocol handler entry
         //              so if we supply this in the existing `.desktop` file running this would make
         //              a duplicate.
-        var command = _xdgSettingsDependency.CreateSetDefaultUrlSchemeHandlerCommand(uriScheme, DesktopFile);
+        var command = _xdgSettingsDependency.CreateSetDefaultUrlSchemeHandlerCommand(uriScheme, desktopFile);
         await _processRunner.RunAsync(command, logOutput: true, cancellationToken: cancellationToken);
     }
 
