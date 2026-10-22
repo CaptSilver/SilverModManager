@@ -1,0 +1,3 @@
+merged regulation.bin claims 11601000, game is 11701000
+alpha: SpEffectParam.param row 1 did not survive the rebase
+baseline SpEffectParam.param row 99 was dropped by the rebase

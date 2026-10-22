@@ -1,0 +1,3 @@
+alpha: SpEffectParam.param row stride 12 != baseline 8 — rows can't be transplanted, this mod needs an update for the new game build
+beta: EquipParamWeapon.param paramdef version 5 != baseline 4 — field layout moved, this mod needs an update for the new game build
+beta: PlayerCommonParam.param paramdef version 3 != baseline 2 — field layout moved, this mod needs an update for the new game build

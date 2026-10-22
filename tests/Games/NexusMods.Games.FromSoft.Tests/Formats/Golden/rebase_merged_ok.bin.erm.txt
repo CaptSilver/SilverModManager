@@ -1,0 +1,3 @@
+Produced once with erm (read-only), working directory outside both repos. Helpers: tests/test_param.py make_param (paramdef version at 0x08 then set with struct.pack_into), tests/test_bnd4.py _synthetic_bnd4, ermlib.formats.regulation.pack(..., bytes(16)), tests/build_fixtures.py build_id().
+
+  One SpEffectParam table, stride 8. baseline: rows 1 and 2 "v"*8 and 99 "n"*8; mod: row 1 "M"*8, row 2 "v"*8; merged_ok: row 1 "M"*8, row 2 "v"*8, row 99 "n"*8 (build 11701000); merged_lossy: row 1 and 2 "v"*8, no row 99, build stamp 11601000.

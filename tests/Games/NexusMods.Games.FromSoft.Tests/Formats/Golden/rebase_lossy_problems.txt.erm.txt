@@ -1,0 +1,4 @@
+Produced once with erm (read-only), working directory outside both repos. Helpers: tests/test_param.py make_param (paramdef version at 0x08 then set with struct.pack_into), tests/test_bnd4.py _synthetic_bnd4, ermlib.formats.regulation.pack(..., bytes(16)), tests/build_fixtures.py build_id().
+
+  heal.verify_rebase(rebase_merged_lossy, rebase_baseline, [("alpha", rebase_mod)], build_id())  with the live build 11701000.
+  The problem strings, one per line. verify_rebase(rebase_merged_ok, ...) returns none.

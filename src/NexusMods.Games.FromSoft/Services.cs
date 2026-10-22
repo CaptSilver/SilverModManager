@@ -7,10 +7,12 @@ using NexusMods.Games.FromSoft.Cleanup;
 using NexusMods.Games.FromSoft.Diagnostics;
 using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.EldenRing;
+using NexusMods.Games.FromSoft.Heal;
 using NexusMods.Games.FromSoft.Launch;
 using NexusMods.Games.FromSoft.Me3;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.FromSoft.Saves;
+using NexusMods.Paths;
 using NexusMods.Platform.Proton.Doctor;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk.ProxyConsole;
@@ -60,6 +62,14 @@ public static class Services
         services.AddSingleton<Me3HostProvisioner>()
             .AddSingleton<Me3AutoInstaller>()
             .AddSingleton<IHostedService>(provider => provider.GetRequiredService<Me3AutoInstaller>());
+
+        // Vanilla regulations kept per build
+        services.AddSingleton(provider =>
+        {
+            var settings = provider.GetRequiredService<ISettingsManager>();
+            var fileSystem = provider.GetRequiredService<IFileSystem>();
+            return new RegulationBaselines(() => settings.Get<FromSoftSettings>().DataRoot.ToPath(fileSystem) / "baselines");
+        });
 
         // Launch gates, in run order
         services.AddSingleton<IExecutableLocator, PathExecutableLocator>()

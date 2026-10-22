@@ -1,0 +1,3 @@
+Produced once with erm (read-only), working directory outside both repos. Helpers: tests/test_param.py make_param (paramdef version at 0x08 then set with struct.pack_into), tests/test_bnd4.py _synthetic_bnd4, ermlib.formats.regulation.pack(..., bytes(16)), tests/build_fixtures.py build_id().
+
+  A regulation of param tables, entry names "GR\param\gameparam\<Name>.param", build stamp 11701000. The baseline has SpEffectParam (3 rows, stride 8), EquipParamWeapon (2 rows, stride 16), PlayerCommonParam (1 row, stride 16, paramdef 2) and BaseOnly. The stride mod moves SpEffectParam to stride 12, narrows the one-row PlayerCommonParam to stride 8 and adds ModOnly. The paramdef mod moves EquipParamWeapon to paramdef 5 and PlayerCommonParam to 3.

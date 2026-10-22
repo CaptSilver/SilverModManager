@@ -1,0 +1,4 @@
+Produced once with erm (read-only), working directory outside both repos. Helpers: tests/test_param.py make_param (paramdef version at 0x08 then set with struct.pack_into), tests/test_bnd4.py _synthetic_bnd4, ermlib.formats.regulation.pack(..., bytes(16)), tests/build_fixtures.py build_id().
+
+  heal.layout_gate(layout_gate_baseline, [("alpha", layout_gate_mod_stride), ("beta", layout_gate_mod_paramdef)])
+  The problem strings, one per line, in the order erm returns them.
