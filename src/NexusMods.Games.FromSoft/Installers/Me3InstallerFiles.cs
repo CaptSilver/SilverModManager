@@ -24,28 +24,51 @@ internal static class Me3InstallerFiles
         => ModId(archive.AsLibraryFile().AsLibraryItem().Name);
 
     /// <summary>
-    /// Drops the whole archive extension, so <c>x.tar.gz</c> is <c>x</c> and not <c>x.tar</c>. A name that is only an
+    /// Drops the whole archive extension, so <c>x.tar.gz</c> is <c>x</c> and not <c>x.tar</c>. Only the last path
+    /// segment counts, with a backslash read as a separator because me3 runs under Wine. A name that is only an
     /// extension (<c>.zip</c>) gives an empty id.
     /// </summary>
     public static string ModId(string archiveName)
     {
+        var name = archiveName.Replace('\\', '/');
+        name = name[(name.LastIndexOf('/') + 1)..];
+
         foreach (var extension in MultiPartExtensions)
         {
-            if (archiveName.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
-                return archiveName[..^extension.Length];
+            if (name.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+                return name[..^extension.Length];
         }
 
-        return Path.GetFileNameWithoutExtension(archiveName);
+        return Path.GetFileNameWithoutExtension(name);
     }
 
     /// <summary>The reason shown when the archive's name leaves no id at all.</summary>
     public const string NoNameReason = "The archive has no name once its extension is removed, so there is nothing to call the mod. Rename the archive and add it again.";
 
-    /// <summary>The reason shown when the archive's name leaves no usable package id, or null when <paramref name="id"/> is fine.</summary>
-    public static string? IdRefusal(string id)
+    // Characters Windows refuses in a file name; me3 reads the mods folder through Wine, so they are refused here too.
+    private static readonly char[] ForbiddenInFolderNames = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
+
+    /// <summary>
+    /// The reason shown when <paramref name="id"/> can't be a single folder inside the mods folder, or null when it
+    /// can. This is what keeps an archive name like <c>...zip</c> from turning into <c>..</c>. A trailing dot or space
+    /// is refused too: Windows path rules, which Wine follows, drop them, so <c>...</c> would name the mods folder itself.
+    /// </summary>
+    public static string? FolderNameRefusal(string id)
     {
         if (string.IsNullOrWhiteSpace(id))
             return NoNameReason;
+
+        if (id.EndsWith('.') || id.EndsWith(' ') || id.IndexOfAny(ForbiddenInFolderNames) >= 0 || id.Any(char.IsControl))
+            return $"'{id}' is not a usable folder name for the mod. Rename the archive and add it again.";
+
+        return null;
+    }
+
+    /// <summary>The reason shown when the archive's name leaves no usable package id, or null when <paramref name="id"/> is fine.</summary>
+    public static string? IdRefusal(string id)
+    {
+        if (FolderNameRefusal(id) is { } refusal)
+            return refusal;
 
         return Me3ModsLayout.IsReservedPackageId(id)
             ? $"'{id}' is a reserved folder name in the mods folder, so a package cannot be called that. Rename the archive and add it again."

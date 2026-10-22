@@ -91,4 +91,18 @@ public class Me3NativeInstallerTests(ITestOutputHelper outputHelper) : AEldenRin
         reason.Should().Contain("no name");
         targets.Should().BeEmpty();
     }
+
+    [Theory]
+    [InlineData("...zip")]
+    [InlineData("a:b.zip")]
+    public async Task AnArchiveWhoseNameIsNotAUsableFolderNameIsNotSupported(string archiveName)
+    {
+        var archive = await AddNamed(archiveName, "hook.dll");
+
+        var (result, targets) = await TryInstall(archive);
+
+        result.IsNotSupported(out var reason).Should().BeTrue();
+        reason.Should().Contain("folder name");
+        targets.Should().BeEmpty();
+    }
 }

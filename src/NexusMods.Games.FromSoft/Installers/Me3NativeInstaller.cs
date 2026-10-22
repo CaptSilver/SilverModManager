@@ -30,8 +30,8 @@ public class Me3NativeInstaller : ALibraryArchiveInstaller
         CancellationToken cancellationToken)
     {
         var modId = Me3InstallerFiles.ModId(libraryArchive);
-        if (string.IsNullOrWhiteSpace(modId))
-            return Me3InstallerFiles.Decline(Logger, Me3InstallerFiles.NoNameReason);
+        if (Me3InstallerFiles.FolderNameRefusal(modId) is { } refusal)
+            return Me3InstallerFiles.Decline(Logger, refusal);
 
         var files = Me3InstallerFiles.Files(libraryArchive);
 

@@ -188,4 +188,42 @@ public class Me3PackageInstallerTests(ITestOutputHelper outputHelper) : AEldenRi
         result.IsNotSupported(out var reason).Should().BeTrue();
         reason.Should().Contain("reserved");
     }
+
+    [Theory]
+    [InlineData("...zip")]
+    [InlineData("....tar.gz")]
+    [InlineData("Weapons..zip")]
+    [InlineData("Weapons .zip")]
+    [InlineData("a:b.zip")]
+    [InlineData("a|b.zip")]
+    [InlineData("a\u0001b.zip")]
+    public async Task AnArchiveWhoseNameIsNotAUsableFolderNameIsNotSupported(string archiveName)
+    {
+        var archive = await AddNamed(archiveName, "parts/wp_a.dcx");
+
+        var (result, targets) = await TryInstall(archive);
+
+        result.IsNotSupported(out var reason).Should().BeTrue();
+        reason.Should().Contain("folder name");
+        targets.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("../../Weapons.tar.gz", "Weapons")]
+    [InlineData("/abs/Weapons.zip", "Weapons")]
+    [InlineData(@"..\..\Weapons.tar.xz", "Weapons")]
+    public void TheIdIsTakenFromTheFileNameAloneWhateverPathTheNameCarries(string archiveName, string expectedId)
+        => Me3InstallerFiles.ModId(archiveName).Should().Be(expectedId);
+
+    [Theory]
+    [InlineData(".")]
+    [InlineData("..")]
+    [InlineData("a/b")]
+    [InlineData("a\\b")]
+    [InlineData("a*b")]
+    [InlineData("...")]
+    [InlineData("a.")]
+    [InlineData("a ")]
+    public void AnIdThatIsNotASingleSafeFolderNameIsRefused(string id)
+        => Me3InstallerFiles.IdRefusal(id).Should().NotBeNull();
 }
