@@ -116,7 +116,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
     /// A provider's bytes from the file store. Read synchronously because the planner is a pure function over byte
     /// sources; it never goes through the deployment backend or the mods folder.
     /// </summary>
-    public byte[] ContributorBytes(ProviderFile file)
+    public virtual byte[] ContributorBytes(ProviderFile file)
     {
         using var stream = fileStore.GetFileStream(file.Hash).GetAwaiter().GetResult();
         using var buffer = new MemoryStream();

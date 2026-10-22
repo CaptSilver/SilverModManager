@@ -1,5 +1,7 @@
 using System.Runtime.ExceptionServices;
 using System.Text;
+using NexusMods.Games.FromSoft.Build;
+using NexusMods.Games.FromSoft.Formats;
 using NexusMods.Games.FromSoft.Heal;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Sdk.Games;
@@ -17,13 +19,17 @@ namespace NexusMods.Games.FromSoft.Merge;
 /// Re-entrancy: the index is built from model accessors only, see <see cref="LoadoutMergeSources"/>.
 /// </para>
 /// </summary>
-public sealed class MergePlanCache(LoadoutMergeSources sources)
+public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore stamps)
 {
     // A plan made in Report mode that would have kept a baseline is not what an apply needs: the apply keeps it.
     private sealed record Entry(string Key, MergePlan Plan, bool ApplyWouldKeepSomething);
 
     private readonly Dictionary<LoadoutId, Entry> _latest = [];
     private readonly object _gate = new();
+
+    // Identifying the installed build decrypts the regulation, so it is remembered for as long as the game's file and
+    // Steam's build id are the ones it was read from.
+    private readonly Dictionary<GameInstallMetadataId, (string Key, BuildIdentity Live)> _live = [];
 
     /// <summary>
     /// The plan for the loadout as it is now. <see cref="MergeSourceMode.Apply"/> may keep a vanilla regulation under
@@ -38,7 +44,7 @@ public sealed class MergePlanCache(LoadoutMergeSources sources)
         lock (_gate)
         {
             var index = sources.Index(loadout);
-            var inputs = Fetch(loadout, index, mode);
+            var inputs = Fetch(loadout, index, mode, traits);
             var key = KeyOf(index, inputs);
 
             if (_latest.TryGetValue(loadout.LoadoutId, out var known)
@@ -46,7 +52,8 @@ public sealed class MergePlanCache(LoadoutMergeSources sources)
                 && (mode == MergeSourceMode.Report || !known.ApplyWouldKeepSomething))
                 return known.Plan;
 
-            var plan = MergePlanner.Plan(index, sources.ContributorBytes, (path, _) => inputs.Vanilla(path), inputs.GameBase, traits);
+            var rebase = RegulationRebase.For(c => sources.VersionOf(installation, c), () => inputs.Live(), traits);
+            var plan = MergePlanner.Plan(index, sources.ContributorBytes, (path, _) => inputs.Vanilla(path), inputs.GameBase, traits, MergeStrategyBindings.For, rebase);
             plan = inputs.WithSourceNotes(plan);
             _latest[loadout.LoadoutId] = new Entry(key, plan, inputs.Notes.Values.Any(notes => notes.OfType<BaselineWillBeKept>().Any()));
             return plan;
@@ -55,23 +62,78 @@ public sealed class MergePlanCache(LoadoutMergeSources sources)
 
     // Both inputs are read before the planner runs because they are part of the cache key, and a failure to read one
     // belongs to the path that needed it: it is held and thrown when the planner asks, so it becomes that path's refusal.
-    private Inputs Fetch(Loadout.ReadOnly loadout, MergePathIndex index, MergeSourceMode mode)
+    private Inputs Fetch(Loadout.ReadOnly loadout, MergePathIndex index, MergeSourceMode mode, FromSoftFormatTraits traits)
     {
         var inputs = new Inputs();
         foreach (var candidate in index.Candidates.Where(c => c.Outcome.Merges))
         {
             var strategy = candidate.Strategy
                            ?? throw new InvalidOperationException($"{candidate.Path} is marked as merging but has no strategy");
+            // The game's file is read first: a regulation that changed without a patch must stop the merge before a
+            // vanilla is looked up, since an apply may keep the installed file as the baseline of its version.
+            string? refusal = null;
+            if (MergeStrategies.TakesGameBase(strategy))
+            {
+                var gameBase = Read(() => sources.GameBase(loadout.InstallationInstance, candidate.Path));
+                inputs.GameBaseOf[candidate.Path] = gameBase;
+                if (gameBase.Failure is null)
+                {
+                    var fingerprint = gameBase.Fingerprint;
+                    inputs.Live = () => Identify(loadout, fingerprint);
+                    refusal = TamperedReason(loadout, candidate.Path, inputs);
+                }
+            }
             if (MergeStrategies.NeedsVanilla(strategy))
             {
                 var notes = new List<IMergeNote>();
                 inputs.Notes[candidate.Path] = notes;
-                inputs.VanillaOf[candidate.Path] = Read(() => sources.Vanilla(loadout, candidate.Path, candidate.Contributors, mode, notes));
+                inputs.VanillaOf[candidate.Path] = refusal is not null
+                    ? new Fetched(null, "refused: " + refusal, new MergeException(refusal))
+                    : Read(() => sources.Vanilla(loadout, candidate.Path, candidate.Contributors, mode, notes));
             }
-            if (MergeStrategies.TakesGameBase(strategy))
-                inputs.GameBaseOf[candidate.Path] = Read(() => sources.GameBase(loadout.InstallationInstance, candidate.Path));
         }
         return inputs;
+    }
+
+    // A stamp that says the game's data moved while the install did not means something wrote to it. Without a stamp
+    // there is nothing to compare with, so the build is not even identified. With one, a build that can't be read
+    // refuses too: the check that it was not tampered with could not be made.
+    private string? TamperedReason(Loadout.ReadOnly loadout, string path, Inputs inputs)
+    {
+        var stamped = stamps.Find(loadout.InstallationId);
+        inputs.Stamps[path] = $"{stamped?.ToString() ?? "none"}/{loadout.InstallationInstance.LocatorResult.StoreBuildId}";
+        if (stamped is null) return null;
+
+        BuildIdentity identity;
+        try
+        {
+            identity = inputs.Live();
+        }
+        catch (MergeException exception)
+        {
+            return exception.Message;
+        }
+        return BuildIdentity.Classify(stamped, identity) == BuildChangeKind.Tampered
+            ? TamperedRegulation.Describe(path, identity)
+            : null;
+    }
+
+    private BuildIdentity Identify(Loadout.ReadOnly loadout, string gameFingerprint)
+    {
+        var installation = loadout.InstallationInstance;
+        var key = $"{installation.LocatorResult.StoreBuildId}|{gameFingerprint}";
+        if (_live.TryGetValue(loadout.InstallationId, out var known) && known.Key == key) return known.Live;
+
+        try
+        {
+            var identity = BuildIdentity.Identify(installation);
+            _live[loadout.InstallationId] = (key, identity);
+            return identity;
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new MergeException($"the installed build could not be identified: {exception.Message}");
+        }
     }
 
     private static Fetched Read(Func<byte[]?> read)
@@ -97,6 +159,7 @@ public sealed class MergePlanCache(LoadoutMergeSources sources)
             foreach (var c in candidate.Contributors)
                 key.Append("|c:").Append(c.PackageId).Append('/').Append(c.RelPath).Append('=').Append(c.Hash).Append('@').Append(c.Priority).Append(' ').Append(c.ModName);
             if (inputs.GameBaseOf.TryGetValue(candidate.Path, out var gameBase)) key.Append("|g:").Append(gameBase.Fingerprint);
+            if (inputs.Stamps.TryGetValue(candidate.Path, out var stamp)) key.Append("|b:").Append(stamp);
             if (inputs.VanillaOf.TryGetValue(candidate.Path, out var vanilla)) key.Append("|v:").Append(vanilla.Fingerprint);
             key.Append('\n');
         }
@@ -109,6 +172,11 @@ public sealed class MergePlanCache(LoadoutMergeSources sources)
     {
         public Dictionary<string, Fetched> VanillaOf { get; } = new(StringComparer.Ordinal);
         public Dictionary<string, Fetched> GameBaseOf { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, string> Stamps { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>The installed build; set once the game's own regulation has been read, since it is identified against that file.</summary>
+        public Func<BuildIdentity> Live { get; set; } = () => throw new MergeException("the installed build was not read");
+
         public Dictionary<string, List<IMergeNote>> Notes { get; } = new(StringComparer.Ordinal);
 
         public byte[]? Vanilla(string path) => Take(VanillaOf[path]);

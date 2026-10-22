@@ -33,7 +33,8 @@ public static class MergePlanner
         Func<string, IReadOnlyList<ProviderFile>, byte[]?> vanilla,
         Func<string, byte[]> gameBase,
         FromSoftFormatTraits traits,
-        Func<MergeStrategy, MergeFold> bindings)
+        Func<MergeStrategy, MergeFold> bindings,
+        RegulationRebase? rebase = null)
     {
         var notMergeable = index.Candidates.Where(c => !c.Outcome.Merges).ToArray();
         var merged = new List<MergedPath>();
@@ -45,7 +46,7 @@ public static class MergePlanner
                            ?? throw new InvalidOperationException($"{candidate.Path} is marked as merging but has no strategy");
             try
             {
-                merged.Add(Merge(candidate, strategy, bytes, vanilla, gameBase, traits, bindings(strategy)));
+                merged.Add(Merge(candidate, strategy, bytes, vanilla, gameBase, traits, bindings(strategy), rebase));
             }
             catch (Exception exception) when (IsFormatFailure(exception))
             {
@@ -58,7 +59,7 @@ public static class MergePlanner
     private static MergedPath Merge(
         MergeCandidate candidate, MergeStrategy strategy, Func<ProviderFile, byte[]> bytes,
         Func<string, IReadOnlyList<ProviderFile>, byte[]?> vanilla, Func<string, byte[]> gameBase,
-        FromSoftFormatTraits traits, MergeFold fold)
+        FromSoftFormatTraits traits, MergeFold fold, RegulationRebase? rebase)
     {
         var path = candidate.Path;
         var takesGameBase = MergeStrategies.TakesGameBase(strategy);
@@ -84,6 +85,18 @@ public static class MergePlanner
             owners.Add(contributor.ModName);
         }
 
+        // The mods were built for an older build than the one installed: their rows are about to be moved onto the
+        // game's file, which is only sound while the table layouts still agree.
+        var rebasing = takesGameBase && rebase is not null && rebase.IsRebase(blobs[0], candidate.Contributors) ? rebase : null;
+        if (rebasing is not null)
+        {
+            var problems = rebasing.Gate(blobs[0], candidate.Contributors.Select((c, i) => (c.ModName, blobs[i + 1])).ToArray());
+            if (problems.Count > 0)
+                throw new MergeException("the game's param layout moved, so mod rows can't be transplanted onto it:\n  "
+                                         + string.Join("\n  ", problems)
+                                         + "\nThose mods need updates built for this game version.");
+        }
+
         // Past the first step the accumulated side is a merge led by the highest-priority mod, and that is who a note
         // names as the one whose content stayed.
         var leader = candidate.Contributors[0].ModName;
@@ -95,6 +108,17 @@ public static class MergePlanner
             result = fold(
                 result, blobs[step + 1], ancestor ?? [], ancestor is not null, baseIsGame,
                 baseIsGame ? GameName : leader, owners[step + 1], notes, traits);
+        }
+
+        if (rebasing is not null)
+        {
+            // By now the merged file is the only copy of every contributor's rows, and both ways a rebase goes wrong
+            // (a merge still on the mods' old build, a dropped row) are invisible until the game is running.
+            var problems = rebasing.Verify(result, blobs[0], candidate.Contributors.Select((c, i) => (c.ModName, blobs[i + 1])).ToArray());
+            if (problems.Count > 0)
+                throw new MergeException($"the merged {path} is not a faithful rebase onto the installed build:\n  "
+                                         + string.Join("\n  ", problems)
+                                         + "\nNothing was written; fix the mods and apply again.");
         }
 
         return new MergedPath(path, strategy, candidate.Contributors, result, notes, VanillaSourceOf(strategy));
