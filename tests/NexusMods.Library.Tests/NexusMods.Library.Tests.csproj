@@ -13,6 +13,10 @@
     <ProjectReference Include="..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\RoutingHandler.cs" Link="Fixtures\RoutingHandler.cs" />
+    <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\ThunderstoreJson.cs" Link="Fixtures\ThunderstoreJson.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <None Update="Resources\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
