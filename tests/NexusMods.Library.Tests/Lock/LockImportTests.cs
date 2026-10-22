@@ -5,9 +5,11 @@ using NexusMods.Library.Tests.DownloadsService;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Library.Lock;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Hashes;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.NexusModsApi;
+using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
 using Xunit;
 
 namespace NexusMods.Library.Tests.Lock;
@@ -18,6 +20,10 @@ public class LockImportTests(IConnection connection)
 
     private static LockEntry Github(string id, string asset, string sha256) => new(id, "v1", null, asset, sha256, "github");
     private static LockEntry Nexus(string id, string asset, string fileId, string sha256) => new(id, "1.0", fileId, asset, sha256, "nexus");
+
+    private static LockEntry Thunderstore(string asset, string sha256) => new("zehs-repolib", "4.2.0", null, asset, sha256, "thunderstore");
+
+    private static readonly IGameData ThunderstoreGame = new ThunderstoreStubbedGame(new ServiceCollection().BuildServiceProvider());
 
     private (LockImport Import, FakeSources Downloader) Create(Dictionary<string, string>? served = null)
     {
@@ -187,6 +193,78 @@ public class LockImportTests(IConnection connection)
         summary.Verified.Should().ContainSingle().Which.Entry.Id.Should().Be("fine");
         downloader.Downloads.Should().Equal("6:fine.zip");
     }
+
+    [Fact]
+    public async Task AThunderstoreEntryAbsentFromTheLibraryIsPlannedForDownloadAndVerifiedAfterwards()
+    {
+        var content = "repolib " + Guid.NewGuid();
+        var (import, downloader) = Create(new() { ["Zehs-REPOLib-4.2.0.zip"] = content });
+
+        var plan = await import.Plan(Lock(Thunderstore("Zehs-REPOLib-4.2.0.zip", LockLibraryDigest(content))), game: null, TestContext.Current.CancellationToken, ThunderstoreGame);
+        plan.Items.Should().ContainSingle().Which.Action.Should().Be(LockAction.Download);
+        var summary = await import.Apply(plan, TestContext.Current.CancellationToken);
+
+        downloader.Downloads.Should().Equal("Zehs-REPOLib-4.2.0.zip");
+        summary.Verified.Should().ContainSingle().Which.File.Should().NotBeNull();
+        summary.Failed.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AThunderstoreEntryWhoseDigestIsAlreadyInTheLibraryIsSkipped()
+    {
+        var content = "present repolib " + Guid.NewGuid();
+        await _fixtures.AddThunderstoreFile("Zehs", "REPOLib", "4.2.0", content, LockFixtures.DigestOf(content));
+        var (import, downloader) = Create();
+
+        var plan = await import.Plan(Lock(Thunderstore("Zehs-REPOLib-4.2.0.zip", LockLibraryDigest(content))), game: null, TestContext.Current.CancellationToken, ThunderstoreGame);
+        var summary = await import.Apply(plan, TestContext.Current.CancellationToken);
+
+        summary.Skipped.Should().ContainSingle();
+        downloader.Downloads.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AThunderstoreAssetThatIsNotAPackageArchiveNameFailsThePlanQuotingIt()
+    {
+        var (import, downloader) = Create();
+
+        var plan = await import.Plan(Lock(Thunderstore("repolib.zip", LockLibraryDigest("x"))), game: null, TestContext.Current.CancellationToken, ThunderstoreGame);
+        var summary = await import.Apply(plan, TestContext.Current.CancellationToken);
+
+        plan.Items.Should().ContainSingle().Which.Message.Should().Contain("repolib.zip");
+        summary.Failed.Should().ContainSingle();
+        downloader.Downloads.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AThunderstoreEntryForALoadoutGameWithoutThunderstoreSupportFailsThePlanNamingTheGame()
+    {
+        var (import, downloader) = Create();
+        var game = new StubbedGame(new ServiceCollection().BuildServiceProvider());
+
+        var plan = await import.Plan(Lock(Thunderstore("Zehs-REPOLib-4.2.0.zip", LockLibraryDigest("x"))), game: null, TestContext.Current.CancellationToken, game);
+
+        var item = plan.Items.Should().ContainSingle().Subject;
+        item.Action.Should().Be(LockAction.Fail);
+        item.Message.Should().Contain(StubbedGame.DisplayName).And.Contain("Thunderstore");
+        downloader.Downloads.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AThunderstoreDownloadWithAnotherDigestFailsWithTheMismatchAndLeavesNothingBehind()
+    {
+        var served = "tampered " + Guid.NewGuid();
+        var (import, downloader) = Create(new() { ["Zehs-REPOLib-4.2.0.zip"] = served });
+
+        var plan = await import.Plan(Lock(Thunderstore("Zehs-REPOLib-4.2.0.zip", LockLibraryDigest("what the lock pinned"))), game: null, TestContext.Current.CancellationToken, ThunderstoreGame);
+        var summary = await import.Apply(plan, TestContext.Current.CancellationToken);
+
+        summary.Failed.Should().ContainSingle().Which.Message.Should().Contain("Zehs-REPOLib-4.2.0.zip").And.Contain(LockFixtures.DigestOf("what the lock pinned").ToString());
+        downloader.Discarded.Should().Equal("Zehs-REPOLib-4.2.0.zip");
+        summary.Verified.Should().BeEmpty();
+    }
+
+    private static string LockLibraryDigest(string content) => LockFixtures.DigestOf(content).ToString();
 
     public class Startup
     {

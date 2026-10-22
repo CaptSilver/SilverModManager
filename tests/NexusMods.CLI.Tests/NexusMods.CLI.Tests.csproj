@@ -17,6 +17,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\RoutingHandler.cs" Link="Fixtures\RoutingHandler.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
         <None Update="Resources\**">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>

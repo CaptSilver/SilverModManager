@@ -30,9 +30,14 @@ public static class LockSources
     public const string GitHub = "github";
 
     /// <summary>
+    /// Not a source erm knows: a lock that uses it is ours alone, and erm will refuse it.
+    /// </summary>
+    public const string Thunderstore = "thunderstore";
+
+    /// <summary>
     /// Every source a lock file may name.
     /// </summary>
-    public static readonly IReadOnlyList<string> All = [Nexus, GitHub];
+    public static readonly IReadOnlyList<string> All = [Nexus, GitHub, Thunderstore];
 }
 
 /// <summary>

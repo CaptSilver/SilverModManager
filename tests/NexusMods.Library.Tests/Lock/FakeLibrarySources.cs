@@ -47,7 +47,7 @@ internal sealed class FakeLibrarySource(string name, LockFixtures fixtures, Dict
 }
 
 /// <summary>
-/// The Nexus Mods and GitHub sources of the lock tests with their downloads replaced, plus the library service that
+/// The Nexus Mods, GitHub and Thunderstore sources of the lock tests with their downloads replaced, plus the library service that
 /// removes rejected downloads.
 /// </summary>
 internal sealed class FakeSources
@@ -64,6 +64,8 @@ internal sealed class FakeSources
             return entry.Asset;
         }, new GitHubLibrarySource(provider), Downloads);
 
+        Thunderstore = new FakeLibrarySource(LockSources.Thunderstore, fixtures, served, entry => entry.Asset, new ThunderstoreLibrarySource(provider), Downloads);
+
         LibraryService = Substitute.For<ILibraryService>();
         LibraryService.RemoveLibraryItems(Arg.Any<IEnumerable<LibraryItem.ReadOnly>>(), Arg.Any<GarbageCollectorRunMode>())
             .Returns(call =>
@@ -78,8 +80,9 @@ internal sealed class FakeSources
     public List<GitHubRepositoryRef> Repositories { get; } = [];
     public FakeLibrarySource Nexus { get; }
     public FakeLibrarySource GitHub { get; }
+    public FakeLibrarySource Thunderstore { get; }
     public ILibraryService LibraryService { get; }
     public HashSet<string> Throwing => Nexus.Throwing;
 
-    public LockImport CreateImport(IConnection connection) => new(connection, [Nexus, GitHub], LibraryService);
+    public LockImport CreateImport(IConnection connection) => new(connection, [Nexus, GitHub, Thunderstore], LibraryService);
 }

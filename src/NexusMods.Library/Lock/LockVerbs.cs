@@ -18,6 +18,7 @@ internal static class LockVerbs
     internal static IServiceCollection AddLockVerbs(this IServiceCollection services) => services
         .AddSingleton<ILibrarySource, NexusLibrarySource>()
         .AddSingleton<ILibrarySource, GitHubLibrarySource>()
+        .AddSingleton<ILibrarySource, ThunderstoreLibrarySource>()
         .AddTransient<LockExport>()
         .AddTransient<LockVerify>()
         .AddTransient<LockImport>()
@@ -56,7 +57,7 @@ internal static class LockVerbs
         return report.ExitCode;
     }
 
-    [Verb("library export-lock", "Writes the Nexus Mods and GitHub release files of a loadout to a lock file")]
+    [Verb("library export-lock", "Writes the Nexus Mods, GitHub release and Thunderstore files of a loadout to a lock file; source = \"thunderstore\" entries are new to erm and it will not read them")]
     private static async Task<int> ExportLock(
         [Injected] IRenderer renderer,
         [Injected] LockExport export,

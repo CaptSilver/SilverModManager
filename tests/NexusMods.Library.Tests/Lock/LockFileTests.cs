@@ -85,6 +85,20 @@ public class LockFileTests
     }
 
     [Fact]
+    public void AThunderstoreSourceParsesAndIsWrittenSortedWithTheSameKeyOrder()
+    {
+        const string text = "[b-mod]\nversion = \"1\"\nasset = \"b.zip\"\nsha256 = \"ab\"\nsource = \"github\"\n\n" +
+                            "[a-mod]\nversion = \"4.2.0\"\nasset = \"Zehs-REPOLib-4.2.0.zip\"\nsha256 = \"cd\"\nsource = \"thunderstore\"\n";
+
+        var lockFile = LockFile.Parse(text);
+
+        lockFile.Entries.Single(entry => entry.Id == "a-mod").Source.Should().Be(LockSources.Thunderstore);
+        WithoutHeader(lockFile.Write()).Should().Be(
+            "\n[a-mod]\nversion = \"4.2.0\"\nasset = \"Zehs-REPOLib-4.2.0.zip\"\nsha256 = \"cd\"\nsource = \"thunderstore\"\n" +
+            "\n[b-mod]\nversion = \"1\"\nasset = \"b.zip\"\nsha256 = \"ab\"\nsource = \"github\"\n");
+    }
+
+    [Fact]
     public void AnUnknownSourceFailsTheParse()
     {
         var act = () => LockFile.Parse("[some-mod]\nversion = \"1\"\nasset = \"a.zip\"\nsha256 = \"ab\"\nsource = \"ftp\"\n");

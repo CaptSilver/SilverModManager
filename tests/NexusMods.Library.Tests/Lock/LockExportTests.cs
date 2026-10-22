@@ -21,6 +21,7 @@ public class LockExportTests(IConnection connection)
     private LockExport Export() => new([
         new NexusLibrarySource(new ServiceCollection().BuildServiceProvider(), new LibraryFileDigests(Substitute.For<IFileStore>(), connection)),
         new GitHubLibrarySource(new ServiceCollection().BuildServiceProvider()),
+        new ThunderstoreLibrarySource(new ServiceCollection().BuildServiceProvider()),
     ]);
 
     [Fact]
@@ -69,6 +70,19 @@ public class LockExportTests(IConnection connection)
             "asset = \"me3-linux-amd64.tar.gz\"\n" +
             "sha256 = \"1a4535c67311f6056ca2fba7e96e983e1afa09e0b719c6a75876b87bb03f5669\"\n" +
             "source = \"github\"\n");
+    }
+
+    [Fact]
+    public async Task AThunderstorePackageExportsItsPackageIdVersionArchiveNameAndPinnedDigestWithoutAFileId()
+    {
+        var loadout = await _fixtures.CreateLoadout();
+        var digest = LockFixtures.DigestOf("repolib archive");
+        var file = await _fixtures.AddThunderstoreFile("Zehs", "REPOLib", "4.2.0", "repolib archive", digest);
+        await _fixtures.Link(loadout, file, "REPOLib");
+
+        var lockFile = await Export().FromLoadout(loadout, TestContext.Current.CancellationToken);
+
+        lockFile.Entries.Should().Equal(new LockEntry("zehs-repolib", "4.2.0", null, "Zehs-REPOLib-4.2.0.zip", digest.ToString(), "thunderstore"));
     }
 
     [Fact]
