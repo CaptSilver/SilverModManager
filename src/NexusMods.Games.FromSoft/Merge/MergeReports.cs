@@ -1,0 +1,95 @@
+using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.Loadouts;
+using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Sdk.Loadouts;
+
+namespace NexusMods.Games.FromSoft.Merge;
+
+/// <summary>
+/// Builds a <see cref="MergeReport"/> from the merge index and the cached plan in report mode, which are the two
+/// things the apply itself reads. The report therefore says what the apply would do, and since report mode writes
+/// nothing, asking for it changes nothing.
+/// </summary>
+public sealed class MergeReports(
+    IConnection connection, LoadoutMergeSources sources, MergePlanCache plans, VanillaDumps dumps, ILogger<MergeReports> logger) : IMergeReports
+{
+    private const string HeldBack = "not merged: the apply is refused";
+
+    public Task<MergeReport> ForLoadout(LoadoutId id, CancellationToken token)
+        => Task.Run(() => Build(Loadout.Load(connection.Db, id)), token);
+
+    private MergeReport Build(Loadout.ReadOnly loadout)
+    {
+        MergePathIndex index;
+        MergePlan? plan = null;
+        string? refusal = null;
+        try
+        {
+            index = sources.Index(loadout);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Without an index there are no paths to list, only the reason the apply would stop.
+            return new MergeReport([], Failed(loadout, exception), MergeReport.DefaultPriorityOrderHint);
+        }
+
+        try
+        {
+            plan = plans.Current(loadout, MergeSourceMode.Report);
+            if (plan.Refusal is { } refused) refusal = new MergeRefusedException(refused).Message;
+        }
+        catch (MergeRefusedException refused)
+        {
+            refusal = refused.Message;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            refusal = Failed(loadout, exception);
+        }
+
+        var unconfirmed = index.Candidates.Any(c => c.Outcome.Reason == MergeOutcome.NoVanillaSource)
+            ? dumps.Unconfirmed(loadout.Db, loadout.InstallationInstance).Select(d => d.Describe()).ToArray()
+            : [];
+
+        var entries = index.Candidates
+            .Select(c => EntryOf(c, plan, refusal, unconfirmed))
+            .OrderBy(e => e.Path, StringComparer.Ordinal)
+            .ToArray();
+        return new MergeReport(entries, refusal, MergeReport.DefaultPriorityOrderHint);
+    }
+
+    // Same words Health Check and the apply use for a plan that could not be made at all.
+    private string Failed(Loadout.ReadOnly loadout, Exception exception)
+    {
+        logger.LogError(exception, "Planning the merges of {Loadout} failed", loadout.Name);
+        return MergeRefusedException.PlanFailed(exception).Message;
+    }
+
+    private static MergeReportEntry EntryOf(MergeCandidate candidate, MergePlan? plan, string? refusal, IReadOnlyList<string> unconfirmed)
+    {
+        var strategy = candidate.Strategy is { } s ? MergeStrategies.Name(s) : string.Empty;
+        var mods = candidate.Contributors.Select(c => c.ModName).Distinct(StringComparer.Ordinal).ToArray();
+
+        if (!candidate.Outcome.Merges)
+        {
+            // An unrecognised dump is why a file that looks mergeable has no vanilla source, so it rides on those.
+            var notes = candidate.Outcome.Reason == MergeOutcome.NoVanillaSource ? unconfirmed : [];
+            return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.NotMergeable, notes, string.Empty, candidate.Outcome.Reason ?? string.Empty);
+        }
+
+        if (plan?.Merged.FirstOrDefault(m => m.Path.Equals(candidate.Path, StringComparison.OrdinalIgnoreCase)) is { } merged)
+        {
+            // Where the ancestor came from has its own field, so its notes are not repeated among the choices the merge made.
+            var source = merged.Notes.OfType<BaselineWillBeKept>().Select(n => n.Describe())
+                .Concat(merged.Notes.OfType<VanillaServedFromDump>().Select(n => n.Describe()))
+                .FirstOrDefault() ?? merged.VanillaSource;
+            var notes = merged.Notes.Where(n => n is not (BaselineWillBeKept or VanillaServedFromDump)).Select(n => n.Describe()).ToArray();
+            return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.Merged, notes, source, string.Empty);
+        }
+
+        var reason = plan?.Refusal is { } r && r.Path.Equals(candidate.Path, StringComparison.OrdinalIgnoreCase) && refusal is { } text
+            ? text
+            : HeldBack;
+        return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.Refused, [], string.Empty, reason);
+    }
+}

@@ -78,7 +78,8 @@ public static class Services
             .AddSingleton<IVouchedRegulations>(provider => provider.GetRequiredService<VouchedRegulations>())
             .AddSingleton<VanillaDumps>()
             .AddSingleton<LoadoutMergeSources>()
-            .AddSingleton<MergePlanCache>();
+            .AddSingleton<MergePlanCache>()
+            .AddSingleton<IMergeReports, MergeReports>();
 
         // Launch gates, in run order
         services.AddSingleton<IExecutableLocator, PathExecutableLocator>()
