@@ -1,0 +1,8 @@
+Produced once with erm (read-only), working directory outside both repos. The helpers are in tests/test_merge.py
+(_regulation, _dup_regulation), tests/test_param.py (make_param) and tests/test_bnd4.py (_synthetic_bnd4); SP = b"SP_EFFECT_PARAM_ST".
+The merged regulation is compared byte-for-byte.
+
+  van = _dup_regulation({1: (SP, [(1, bytes(12)), (5, b"\x50" * 8 + bytes(4)), (5, b"\x51" * 8 + bytes(4))], 12)})
+  base = _dup_regulation({1: (SP, [(1, b"\xaa" * 8 + bytes(4)), (5, b"\x50" * 8 + bytes(4)), (5, b"\x51" * 8 + bytes(4))], 12)})
+  other = _dup_regulation({1: (SP, [(1, bytes(8)), (5, b"\x50" * 8), (5, b"\x51" * 8)], 8)})
+  out = merge.param_rows(base, other, van)

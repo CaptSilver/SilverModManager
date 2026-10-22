@@ -1,0 +1,12 @@
+Produced once with erm (read-only), working directory outside both repos. The helpers are in tests/test_merge.py
+(_regulation, _dup_regulation), tests/test_param.py (make_param) and tests/test_bnd4.py (_synthetic_bnd4); SP = b"SP_EFFECT_PARAM_ST".
+_raw_regulation(entries) is regulation.pack(_synthetic_bnd4([(id, f'{id}.param', data), ...]), bytes(16)); a blob
+shorter than a PARAM header is one erm's param reader refuses.
+The merged regulation is compared byte-for-byte.
+
+  van = _raw_regulation([(1, b"not a PARAM at all")])
+  base = van
+  other = _regulation({1: (SP, {1: b"\x02" * 8}, 8)})
+  notes = []
+  out = merge.param_rows(base, other, van, notes=notes)
+  notes afterwards: [UnreadableParam(entry_id=1)]

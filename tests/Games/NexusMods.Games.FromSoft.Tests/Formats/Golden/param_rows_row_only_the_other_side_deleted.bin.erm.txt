@@ -1,0 +1,8 @@
+Produced once with erm (read-only), working directory outside both repos. The helpers are in tests/test_merge.py
+(_regulation, _dup_regulation), tests/test_param.py (make_param) and tests/test_bnd4.py (_synthetic_bnd4); SP = b"SP_EFFECT_PARAM_ST".
+The merged regulation is compared byte-for-byte.
+
+  van = _regulation({1: (SP, {1: b"\x11" * 8, 2: b"\x22" * 8, 3: b"\x33" * 8}, 8)})
+  base = _regulation({1: (SP, {1: b"\x11" * 8, 2: b"\x22" * 8, 3: b"\x33" * 8}, 8)})
+  other = _regulation({1: (SP, {1: b"\x11" * 8, 3: b"\x33" * 8}, 8)})
+  out = merge.param_rows(base, other, van)

@@ -58,7 +58,8 @@ public static class FmgMerge
         var otherTables = Tables(binder, Dcx.Read(other, traits));
         var vanillaTables = Tables(binder, Dcx.Read(vanilla, traits));
 
-        RequireSameEntries(baseTables.Keys, otherTables.Keys, vanillaTables.Keys);
+        BinderEntrySets.RequireSameEntries(
+            baseTables.Keys, otherTables.Keys, vanillaTables.Keys, "archives", message => new FmgMergeException(message));
 
         var replacements = new Dictionary<int, byte[]>();
         foreach (var (entryId, baseTable) in baseTables)
@@ -110,24 +111,4 @@ public static class FmgMerge
 
     private static Dictionary<int, Dictionary<int, string?>> Tables(IBinder binder, byte[] raw) =>
         binder.Read(raw).ToDictionary(e => e.Id, e => Fmg.Read(e.Data));
-
-    /// <summary>
-    /// Refuses three archives that do not hold the same tables. The rebuild takes its member list from base, so a table
-    /// one side lacks has nowhere to go, and "only the other side moved" cannot be told from "base authored this and
-    /// vanilla never carried it".
-    /// </summary>
-    internal static void RequireSameEntries(IEnumerable<int> @base, IEnumerable<int> other, IEnumerable<int> vanilla)
-    {
-        var sides = new (string Name, HashSet<int> Ids)[] { ("base", [.. @base]), ("other", [.. other]), ("vanilla", [.. vanilla]) };
-        var all = sides.SelectMany(s => s.Ids).ToHashSet();
-        var odd = all.Where(id => !sides.All(s => s.Ids.Contains(id))).Order().ToArray();
-        if (odd.Length == 0) return;
-
-        const int shown = 5;
-        var listed = string.Join("; ", odd.Take(shown).Select(id =>
-            $"entry {id}: in {string.Join(", ", sides.Where(s => s.Ids.Contains(id)).Select(s => s.Name))}"));
-        var more = odd.Length > shown ? $" (and {odd.Length - shown} more)" : "";
-        throw new FmgMergeException(
-            $"the three archives hold different entries ({listed}{more}); merging would silently drop whichever side is missing from the structural base");
-    }
 }
