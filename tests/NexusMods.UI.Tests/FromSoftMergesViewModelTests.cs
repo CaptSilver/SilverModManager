@@ -37,6 +37,13 @@ public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(p
 
     private static void Refresh(FromSoftMergesViewModel vm) => vm.RefreshCommand.Execute().Subscribe();
 
+    // The rows appear before the refresh restores the selection; a test that selects a row must wait for the refresh to end.
+    private async Task Loaded(FromSoftMergesViewModel vm, int rows) => await Eventually(() =>
+    {
+        vm.Entries.Should().HaveCount(rows);
+        vm.IsLoading.Should().BeFalse();
+    });
+
     [Fact]
     public async Task EntriesKeepTheReportsOrderAndStrategySpelling()
     {
@@ -72,7 +79,7 @@ public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(p
         var vm = CreateVm(Reports(Report(null,
             Entry("regulation.bin", "param-rows", ["A", "B"], notes: ["Row 12 of EquipParamGoods: A wins over B"], vanilla: "vanilla dump"))));
         Refresh(vm);
-        await Eventually(() => vm.Entries.Should().HaveCount(1));
+        await Loaded(vm, rows: 1);
 
         vm.SelectedNotes.Should().BeEmpty();
         vm.Selected = vm.Entries[0];
@@ -89,7 +96,7 @@ public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(p
         // The list view clears its selection whenever its rows are replaced, before the refresh restores it.
         vm.WhenAnyValue(x => x.Entries).Subscribe(_ => vm.Selected = null);
         Refresh(vm);
-        await Eventually(() => vm.Entries.Should().HaveCount(2));
+        await Loaded(vm, rows: 2);
         vm.Selected = vm.Entries[1];
 
         Refresh(vm);
@@ -130,13 +137,16 @@ public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(p
     public async Task ARevisionChangeReplacesTheRows()
     {
         var loadout = await SeedLoadoutRow(GameStore.Unknown, "merges-vm");
-        var vm = CreateVm(Reports(
-            Report(null, Entry("a.bin", "param-rows", ["A", "B"])),
-            Report(null, Entry("b.bin", "fmg-union", ["B", "A"]))));
+        // The stream may refresh more than once on subscribe, so the report depends on the state, not on the call count.
+        var current = Report(null, Entry("a.bin", "param-rows", ["A", "B"]));
+        var source = Substitute.For<IMergeReports>();
+        source.ForLoadout(Arg.Any<NexusMods.Sdk.Loadouts.LoadoutId>(), Arg.Any<CancellationToken>()).Returns(_ => Task.FromResult(Volatile.Read(ref current)));
+        var vm = CreateVm(source);
 
         using var _ = vm.Activator.Activate();
         vm.LoadoutId = loadout.LoadoutId;
         await Eventually(() => vm.Entries.Select(e => e.Path).Should().Equal("a.bin"));
+        Volatile.Write(ref current, Report(null, Entry("b.bin", "fmg-union", ["B", "A"])));
 
         using var tx = Connection.BeginTransaction();
         tx.Add(loadout.Id, Loadout.Name, "merges-vm-renamed");

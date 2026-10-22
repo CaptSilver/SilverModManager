@@ -109,13 +109,17 @@ public class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewModel>, I
             return;
         }
 
+        // Read before the rows change: the list views clear the selection as soon as their rows are replaced.
+        var selectedFolder = SelectedFolder?.Folder;
+        var selectedFile = SelectedFile?.Path;
+
         var listing = _saves.List(installation);
         Problem = listing.Problem;
         Folders = listing.Folders;
 
         // The same folder and file stay selected across a refresh, as far as they still exist.
-        SelectedFolder = Folders.FirstOrDefault(f => f.Folder == SelectedFolder?.Folder) ?? Folders.FirstOrDefault();
-        SelectedFile = SelectedFolder?.Files.FirstOrDefault(f => f.Path == SelectedFile?.Path);
+        SelectedFolder = Folders.FirstOrDefault(f => f.Folder == selectedFolder) ?? Folders.FirstOrDefault();
+        SelectedFile = SelectedFolder?.Files.FirstOrDefault(f => f.Path == selectedFile);
         SelectedBackup = null;
 
         try

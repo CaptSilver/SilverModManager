@@ -1,3 +1,4 @@
+using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -11,6 +12,15 @@ public static class ObservableExtensions
     public static IConnectableObservable<T> PublishWithFunc<T>(this IObservable<T> source, Func<T> initialValueFunc)
     {
         return source.Multicast(new PublishWithFuncSubject<T>(func: initialValueFunc));
+    }
+
+    /// <summary>
+    /// Passes the first value through at once and throttles every later one by <paramref name="dueTime"/>.
+    /// For streams that emit their current state on subscribe, where waiting out the throttle would delay the first paint.
+    /// </summary>
+    public static IObservable<T> ThrottleAfterFirst<T>(this IObservable<T> source, TimeSpan dueTime, IScheduler scheduler)
+    {
+        return source.Publish(shared => shared.Take(1).Merge(shared.Skip(1).Throttle(dueTime, scheduler)));
     }
 
     public static IObservable<T> ReturnFactory<T>(Func<T> factory)

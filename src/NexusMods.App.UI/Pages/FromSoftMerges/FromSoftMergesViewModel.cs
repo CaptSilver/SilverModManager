@@ -23,6 +23,7 @@ public class FromSoftMergesViewModel : APageViewModel<IFromSoftMergesViewModel>,
     public const string EmptyStateText = "No file is provided by more than one enabled mod";
 
     // An apply or a priority change touches many entities in one burst; one refresh after it is enough.
+    // The first revision, emitted on subscribe, skips the wait so the page paints at once.
     private static readonly TimeSpan RevisionThrottle = TimeSpan.FromMilliseconds(300);
 
     private readonly IMergeReports _reports;
@@ -61,7 +62,7 @@ public class FromSoftMergesViewModel : APageViewModel<IFromSoftMergesViewModel>,
             this.WhenAnyValue(vm => vm.LoadoutId)
                 .Select(id => id == default
                     ? Observable.Empty<Unit>()
-                    : LoadoutQueries2.RevisionsWithChildUpdates(_conn, id).Throttle(RevisionThrottle, TaskPoolScheduler.Default).Select(_ => Unit.Default))
+                    : LoadoutQueries2.RevisionsWithChildUpdates(_conn, id).ThrottleAfterFirst(RevisionThrottle, TaskPoolScheduler.Default).Select(_ => Unit.Default))
                 .Switch()
                 .OnUI()
                 .Subscribe(_ => Refresh())

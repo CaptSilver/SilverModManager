@@ -100,6 +100,30 @@ public class FromSoftSavesViewModelTests(IServiceProvider provider) : AUiTest(pr
     }
 
     [Fact]
+    public void TheSelectedFolderAndFileSurviveARefreshThatReplacesTheRows()
+    {
+        using var fixture = new Fixture(Provider, steamRunning: false);
+        fixture.Write("ER0000.sl2", "vanilla");
+        var otherFolder = Path.Combine(Path.GetDirectoryName(fixture.SaveFolder)!, "76561198000000002");
+        Directory.CreateDirectory(otherFolder);
+        File.WriteAllText(Path.Combine(otherFolder, "ER0000.sl2"), "other account");
+        File.WriteAllText(Path.Combine(otherFolder, "ER0000.co2"), "other account coop");
+        // The list views clear their selection whenever their rows are replaced, before the refresh restores it.
+        fixture.Vm.WhenAnyValue(vm => vm.Folders).Subscribe(_ => fixture.Vm.SelectedFolder = null);
+        fixture.Vm.WhenAnyValue(vm => vm.Files).Subscribe(_ => fixture.Vm.SelectedFile = null);
+        fixture.Vm.RefreshCommand.Execute().Subscribe();
+        fixture.Vm.SelectedFolder = fixture.Vm.Folders.Single(f => f.SteamId == "76561198000000002");
+        fixture.Vm.SelectedFile = fixture.Vm.Files.Single(f => f.Name == "ER0000.co2");
+
+        fixture.Vm.RefreshCommand.Execute().Subscribe();
+
+        fixture.Vm.SelectedFolder.Should().NotBeNull();
+        fixture.Vm.SelectedFolder!.SteamId.Should().Be("76561198000000002");
+        fixture.Vm.SelectedFile.Should().NotBeNull();
+        fixture.Vm.SelectedFile!.Name.Should().Be("ER0000.co2");
+    }
+
+    [Fact]
     public void QuarantineIsDisabledWithTheReasonWhileSteamRuns()
     {
         using var fixture = new Fixture(Provider, steamRunning: true);
