@@ -4,6 +4,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Games.TestFramework;
+using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.StandardGameLocators.TestHelpers;
 
@@ -51,23 +52,102 @@ public class AsteriskMechanismTests(ITestOutputHelper helper)
     }
 }
 
-public class PlainMechanismTests(ITestOutputHelper helper)
-    : AIsolatedGameTest<PlainMechanismTests, CreationEngine.SkyrimLE.SkyrimLE>(helper)
+/// <summary>Skyrim LE and Enderal keep the active plugins in plugins.txt and the whole order in loadorder.txt.</summary>
+public class TextfileMechanismTests(ITestOutputHelper helper)
+    : AIsolatedGameTest<TextfileMechanismTests, CreationEngine.SkyrimLE.SkyrimLE>(helper)
 {
     protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services)
         .AddCreationEngine()
         .AddUniversalGameLocator<CreationEngine.SkyrimLE.SkyrimLE>(new Version("1.9.32.0"), locationsFileSystem: IsolatedKnownFolders.Create);
 
+    private AbsolutePath ActiveFile => GameInstallation.Locations.ToAbsolutePath(Game.PluginsFile);
+    private AbsolutePath OrderFile => ActiveFile.Parent / "loadorder.txt";
+
+    private async Task Write(AbsolutePath file, string text)
+    {
+        file.Parent.CreateDirectory();
+        await file.WriteAllTextAsync(text);
+    }
+
     [Fact]
-    public async Task ReadGameState_ListsEveryEntryAsActive()
+    public async Task ReadGameState_TakesTheOrderFromLoadOrderTxtAndTheSwitchesFromPluginsTxt()
     {
         var loadout = await CreateLoadout();
-        var file = GameInstallation.Locations.ToAbsolutePath(Game.PluginsFile);
-        file.Parent.CreateDirectory();
-        await file.WriteAllTextAsync("# comment\nA.esp\nB.esp\n");
+        await Write(OrderFile, "# comment\nSkyrim.esm\nB.esp\nA.esp\nC.esp\n");
+        await Write(ActiveFile, "Skyrim.esm\nA.esp\n");
 
-        var state = await new PlainMechanism().ReadGameState(Game, loadout);
+        var state = await new TextfileMechanism().ReadGameState(Game, loadout);
+
+        state!.Entries.Should().Equal(("Skyrim.esm", true), ("B.esp", false), ("A.esp", true), ("C.esp", false));
+    }
+
+    [Fact]
+    public async Task ReadGameState_MatchesNamesIgnoringCase()
+    {
+        var loadout = await CreateLoadout();
+        await Write(OrderFile, "Skyrim.esm\nA.esp\n");
+        await Write(ActiveFile, "skyrim.ESM\na.esp\n");
+
+        var state = await new TextfileMechanism().ReadGameState(Game, loadout);
+
+        state!.Entries.Should().Equal(("Skyrim.esm", true), ("A.esp", true));
+    }
+
+    [Fact]
+    public async Task ReadGameState_FollowsPluginsTxtWhenThereIsNoLoadOrderTxt()
+    {
+        var loadout = await CreateLoadout();
+        await Write(ActiveFile, "# comment\nB.esp\nA.esp\n");
+
+        var state = await new TextfileMechanism().ReadGameState(Game, loadout);
+
+        state!.Entries.Should().Equal(("B.esp", true), ("A.esp", true));
+    }
+
+    [Fact]
+    public async Task ReadGameState_AppendsActivePluginsLoadOrderTxtLeftOut()
+    {
+        var loadout = await CreateLoadout();
+        await Write(OrderFile, "A.esp\n");
+        await Write(ActiveFile, "A.esp\nB.esp\n");
+
+        var state = await new TextfileMechanism().ReadGameState(Game, loadout);
 
         state!.Entries.Should().Equal(("A.esp", true), ("B.esp", true));
     }
+
+    [Fact]
+    public async Task ReadGameState_ListsEverythingAsInactiveWithoutPluginsTxt()
+    {
+        var loadout = await CreateLoadout();
+        await Write(OrderFile, "A.esp\nB.esp\n");
+
+        var state = await new TextfileMechanism().ReadGameState(Game, loadout);
+
+        state!.Entries.Should().Equal(("A.esp", false), ("B.esp", false));
+    }
+
+    [Fact]
+    public async Task ReadGameState_IsNullWhenTheGameHasNeitherFile()
+    {
+        var loadout = await CreateLoadout();
+        ActiveFile.Delete();
+        OrderFile.Delete();
+
+        (await new TextfileMechanism().ReadGameState(Game, loadout)).Should().BeNull();
+    }
+
+    [Fact]
+    public void TheMechanismOffersBothFilesBesideEachOther()
+    {
+        var game = (ICreationEngineGame)Game;
+
+        var files = new TextfileMechanism().IntrinsicFiles(game, default, ServiceProvider).ToList();
+
+        files.Select(f => f.Path).Should().Equal(game.PluginsFile, game.PluginsFile.Parent / "loadorder.txt");
+        files.Should().AllBeOfType<PluginsFile>();
+    }
+
+    [Fact]
+    public void ItOrdersByLoadOrderTxtAndNotByTimestamp() => new TextfileMechanism().OrdersByTimestamp.Should().BeFalse();
 }

@@ -23,8 +23,10 @@ public class SkyrimLE(IServiceProvider provider) : ACreationEngineGame<SkyrimLE>
     public override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
     public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
-    private static readonly IPluginListMechanism Mechanism = new PlainMechanism();
-    public override IReadOnlyList<string> HardcodedPlugins => ["Skyrim.esm"];
+    private static readonly IPluginListMechanism Mechanism = new TextfileMechanism();
+    // libloadorder game_settings.rs implicitly_active_plugins: Update.esm is always active. Listing it as an early
+    // loader keeps it on and puts it right after Skyrim.esm, where listing it in plugins.txt would put it too.
+    public override IReadOnlyList<string> HardcodedPlugins => ["Skyrim.esm", "Update.esm"];
 
     protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "Skyrim";
     // gameName() is the My Games folder in modorganizer-game_skyrim; no store variant changes it.

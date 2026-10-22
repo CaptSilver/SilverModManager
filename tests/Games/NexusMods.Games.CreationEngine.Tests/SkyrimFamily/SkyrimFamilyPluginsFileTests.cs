@@ -39,14 +39,6 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
         { typeof(CreationEngine.EnderalSE.EnderalSE), GameRelease.EnderalSE },
     };
 
-    public static TheoryData<Type, string> Paths => new()
-    {
-        { typeof(CreationEngine.SkyrimLE.SkyrimLE), "plugins.txt" },
-        { typeof(CreationEngine.SkyrimVR.SkyrimVR), "plugins.txt" },
-        { typeof(CreationEngine.Enderal.Enderal), "plugins.txt" },
-        { typeof(CreationEngine.EnderalSE.EnderalSE), "Plugins.txt" },
-    };
-
     private ICreationEngineGame Registered(Type type) => serviceProvider.GetServices<IGame>().OfType<ICreationEngineGame>().Single(g => g.GetType() == type);
 
     // A fresh instance of the title whose plugin reads come from these bytes, so ParsePlugin runs the
@@ -67,7 +59,7 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
         var game = Registered(type);
 
         game.PluginsFile.Should().Be(new GamePath(LocationId.AppData, file));
-        game.PluginList(null!).Should().BeOfType(marker == "*" ? typeof(AsteriskMechanism) : typeof(PlainMechanism));
+        game.PluginList(null!).Should().BeOfType(marker == "*" ? typeof(AsteriskMechanism) : typeof(TextfileMechanism));
         game.DataPath.Should().Be(new GamePath(LocationId.Game, "Data"));
     }
 
@@ -90,7 +82,7 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
     {
         var bytes = BethesdaPluginBytes.Bytes(release, "A.esp", "Skyrim.esm");
         var game = Reading(type, bytes, out var hash);
-        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, marker == "*" ? new AsteriskMechanism() : new PlainMechanism());
+        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, marker == "*" ? (IPluginListFormat)new AsteriskMechanism() : new PlainFormat());
         var tree = new Dictionary<GamePath, SyncNode>
         {
             [new GamePath(LocationId.Game, "Data/A.esp")] = new()
@@ -109,15 +101,19 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
     }
 
     [Theory]
-    [MemberData(nameof(Paths))]
-    public void TheTitlesMechanismOffersThePluginsFileAtTheTitlesPath(Type type, string file)
+    [MemberData(nameof(Titles))]
+    public void TheTitlesMechanismOffersThePluginsFileAtTheTitlesPath(Type type, GameRelease _, string file, string marker)
     {
         var game = Registered(type);
 
         var offered = game.PluginList(null!).IntrinsicFiles(game, default, serviceProvider).ToList();
 
-        offered.Select(f => f.Path).Should().Equal(new GamePath(LocationId.AppData, file));
-        offered.Single().Should().BeOfType<PluginsFile>();
+        // The textfile games keep the full order in a loadorder.txt beside the active list.
+        var expected = marker == "*"
+            ? new[] { new GamePath(LocationId.AppData, file) }
+            : [new GamePath(LocationId.AppData, file), new GamePath(LocationId.AppData, "loadorder.txt")];
+        offered.Select(f => f.Path).Should().Equal(expected);
+        offered.Should().AllBeOfType<PluginsFile>();
     }
 
     [Theory]

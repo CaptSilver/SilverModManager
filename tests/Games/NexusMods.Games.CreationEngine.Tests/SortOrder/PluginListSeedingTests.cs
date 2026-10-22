@@ -29,7 +29,7 @@ public class PluginListSeedingTests(ITestOutputHelper helper)
 
     private AbsolutePath PluginsTxt => GameInstallation.Locations.ToAbsolutePath(Game.PluginsFile);
 
-    private IPluginSortOrderVariety Variety => Game.SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single();
+    private IPluginSortOrderVariety Variety => Game.PluginVariety();
 
     private async Task GameHasAPluginsFile(string content)
     {
@@ -57,21 +57,13 @@ public class PluginListSeedingTests(ITestOutputHelper helper)
 
     private async Task Apply(Loadout.ReadOnly loadout) => await Synchronizer.Synchronize(Refresh(loadout));
 
-    private SortOrderId SortOrderOf(Loadout.ReadOnly loadout) => Variety.GetSortOrderIdFor(loadout.LoadoutId, Connection.Db).Value;
+    private SortOrderId SortOrderOf(Loadout.ReadOnly loadout) => Variety.SortOrderOf(loadout, Connection);
 
     private bool IsSeeded(Loadout.ReadOnly loadout) => PluginSortOrder.Load(Connection.Db, SortOrderOf(loadout).Value).SeededFromGameFile;
 
-    // Creating a loadout already syncs it once, which seeds from whatever the game has then. This puts a loadout
-    // back in the state of one made before the seed existed, with its plugins installed and the order not filled.
-    private async Task Unseed(Loadout.ReadOnly loadout)
-    {
-        await Variety.ReconcileSortOrder(SortOrderOf(loadout));
-        using var tx = Connection.BeginTransaction();
-        tx.Add(SortOrderOf(loadout).Value, PluginSortOrder.SeededFromGameFile, false);
-        await tx.Commit();
-    }
+    private Task Unseed(Loadout.ReadOnly loadout) => Variety.Unseed(loadout, Connection);
 
-    private static SortItemKey<string> Key(string name) => new(name.ToLowerInvariant());
+    private static SortItemKey<string> Key(string name) => PluginSortOrderTestHelpers.Key(name);
 
     [Fact]
     public async Task TheFirstApply_ReproducesTheOrderAndStarStateOfTheFileTheGameHad()

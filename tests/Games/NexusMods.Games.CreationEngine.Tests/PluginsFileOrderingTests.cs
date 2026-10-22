@@ -53,7 +53,7 @@ public class PluginsFileOrderingTests
 
     private static async Task<string[]> Lines(
         ICreationEngineGame game,
-        APluginsTxtMechanism mechanism,
+        IPluginListFormat mechanism,
         string[] tree,
         PluginSortData[] rows,
         params string[] earlyLoaders)
@@ -80,7 +80,7 @@ public class PluginsFileOrderingTests
     [Fact]
     public async Task ADisabledSortItem_IsLeftOutOfAPlainList()
     {
-        var lines = await Lines(Game(NoMasters), new PlainMechanism(), ["A.esp", "B.esp"], [Row("A.esp", 0), Row("B.esp", 1, enabled: false)]);
+        var lines = await Lines(Game(NoMasters), new PlainFormat(), ["A.esp", "B.esp"], [Row("A.esp", 0), Row("B.esp", 1, enabled: false)]);
 
         lines.Should().Equal("A.esp");
     }
@@ -112,7 +112,7 @@ public class PluginsFileOrderingTests
         PluginSortData[] rows = [Row("Skyrim.esm", 0), Row("A.esp", 1)];
 
         var skyrimSE = await Lines(game, new AsteriskMechanism(), tree, rows, "Skyrim.esm");
-        var skyrimLE = await Lines(game, new PlainMechanism(), tree, rows, "Skyrim.esm");
+        var skyrimLE = await Lines(game, new PlainFormat(), tree, rows, "Skyrim.esm");
 
         skyrimSE.Should().Equal("*A.esp");
         skyrimLE.Should().Equal("Skyrim.esm", "A.esp");
@@ -122,7 +122,7 @@ public class PluginsFileOrderingTests
     public async Task AnEarlyLoader_AlwaysRendersActiveAndFirst()
     {
         // The row says it is off and last, which the Load Order page never lets happen, but a stale row must not win.
-        var lines = await Lines(Game(NoMasters), new PlainMechanism(), ["Skyrim.esm", "A.esp"], [Row("A.esp", 0), Row("Skyrim.esm", 1, enabled: false)], "Skyrim.esm");
+        var lines = await Lines(Game(NoMasters), new PlainFormat(), ["Skyrim.esm", "A.esp"], [Row("A.esp", 0), Row("Skyrim.esm", 1, enabled: false)], "Skyrim.esm");
 
         lines.Should().Equal("Skyrim.esm", "A.esp");
     }
@@ -164,7 +164,7 @@ public class PluginsFileOrderingTests
         PluginSortData[] rows = [Row("Blueprint.esm", 0), Row("A.esp", 1), Row("Core.esm", 2)];
 
         // Hardcoded, but a blueprint master never loads early, so a plain list that writes early loaders still has it last.
-        var plain = await Lines(game, new PlainMechanism(), tree, rows, "Blueprint.esm", "Core.esm");
+        var plain = await Lines(game, new PlainFormat(), tree, rows, "Blueprint.esm", "Core.esm");
         var asterisk = await Lines(game, new AsteriskMechanism(), tree, rows, "Blueprint.esm", "Core.esm");
 
         plain.Should().Equal("Core.esm", "A.esp", "Blueprint.esm");
@@ -184,7 +184,7 @@ public class PluginsFileOrderingTests
     [Fact]
     public async Task WithNoPlugins_TheFileIsStillWritten()
     {
-        var file = new PluginsFile(NullLogger<PluginsFile>.Instance, Game(NoMasters), new PlainMechanism());
+        var file = new PluginsFile(NullLogger<PluginsFile>.Instance, Game(NoMasters), new PlainFormat());
         using var stream = new MemoryStream();
 
         await file.Render(stream, null!, [], [], Tree());

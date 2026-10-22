@@ -21,20 +21,28 @@ namespace NexusMods.Games.CreationEngine;
 /// <summary>
 /// The plugin list file of a game that keeps one as text. The plugins come from the sync tree, their order and
 /// on/off switches from the loadout's plugin sort order; this only renders them and never writes to the database.
+/// A game can have several such files (plugins.txt beside loadorder.txt), each in its own <see cref="IPluginListFormat"/>.
 /// </summary>
 public class PluginsFile : IIntrinsicFile
 {
     private readonly ICreationEngineGame _game;
-    private readonly APluginsTxtMechanism _mechanism;
+    private readonly IPluginListFormat _format;
+    private readonly bool _comparesWithGame;
     private readonly ILogger<PluginsFile> _logger;
 
     private record struct Metadata(RelativePath FileName, Hash Hash, PluginHeader Header);
 
-    public PluginsFile(ILogger<PluginsFile> logger, ICreationEngineGame game, APluginsTxtMechanism mechanism)
+    /// <param name="path">Where the file lives; the game's plugins file when omitted.</param>
+    /// <param name="comparesWithGame">
+    /// Whether Ingest compares the game's copy and records what differs. A file that cannot carry the switches
+    /// (loadorder.txt) leaves it to the file that can, since both would write the same notice.
+    /// </param>
+    public PluginsFile(ILogger<PluginsFile> logger, ICreationEngineGame game, IPluginListFormat format, GamePath? path = null, bool comparesWithGame = true)
     {
         _game = game;
-        _mechanism = mechanism;
-        Path = game.PluginsFile;
+        _format = format;
+        _comparesWithGame = comparesWithGame;
+        Path = path ?? game.PluginsFile;
         _logger = logger;
     }
 
@@ -59,7 +67,7 @@ public class PluginsFile : IIntrinsicFile
     {
         var listed = await Expected(installation, earlyLoaders, rows, syncTree);
         await using var writer = new StreamWriter(stream, leaveOpen: true);
-        await writer.WriteAsync(_mechanism.Render(listed));
+        await writer.WriteAsync(_format.Render(listed));
         await writer.FlushAsync();
     }
 
@@ -151,6 +159,7 @@ public class PluginsFile : IIntrinsicFile
     /// </summary>
     public async Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
     {
+        if (!_comparesWithGame) return;
         if (!syncTree.TryGetValue(Path, out var node) || !node.HavePrevious) return;
 
         var variety = Variety;
@@ -162,7 +171,7 @@ public class PluginsFile : IIntrinsicFile
 
         var installation = loadout.InstallationInstance;
         var expected = await Expected(installation, _game.EarlyLoadingPlugins(installation), variety.StoredOrder(loadout), syncTree);
-        var difference = PluginListDifference.Between(expected, _mechanism.Parse(text));
+        var difference = PluginListDifference.Between(expected, _format.Parse(text));
 
         PluginListNotices.Stage(loadout.Db, found.Value, difference.IsEmpty ? null : difference.Summary(), DateTimeOffset.UtcNow, tx);
     }

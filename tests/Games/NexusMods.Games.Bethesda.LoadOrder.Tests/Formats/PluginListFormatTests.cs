@@ -94,4 +94,14 @@ public class PluginListFormatTests
     {
         LoadOrderTxt.Parse(LoadOrderTxt.Render(Entries)).Should().Equal(Entries.Select(e => e.Name));
     }
+
+    [Fact]
+    public void EveryActiveNameInPluginsTxtIsInLoadOrderTxt()
+    {
+        var active = PlainPluginList.Parse(PlainPluginList.Render(Entries)).Select(e => e.Name);
+        var order = LoadOrderTxt.Parse(LoadOrderTxt.Render(Entries));
+
+        order.Should().Contain(active);
+        order.Should().Contain(Entries.Single(e => !e.Active).Name);
+    }
 }

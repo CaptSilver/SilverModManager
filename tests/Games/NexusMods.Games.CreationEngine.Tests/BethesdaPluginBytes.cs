@@ -17,6 +17,10 @@ internal static class BethesdaPluginBytes
         if (release == GameRelease.Starfield)
             return PluginBytes.Write(PluginFormat.Tes4, new PluginSpec { Masters = masters });
 
+        // Mutagen's Oblivion mod would need its own branch; the hand-built header is all the plugin list reads.
+        if (release == GameRelease.Oblivion)
+            return PluginBytes.Write(PluginFormat.Tes4Oblivion, new PluginSpec { Masters = masters });
+
         var key = ModKey.FromFileName(fileName);
         IModGetter mod;
         switch (release)

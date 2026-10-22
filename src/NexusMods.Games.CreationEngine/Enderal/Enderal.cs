@@ -27,7 +27,7 @@ public class Enderal(IServiceProvider provider) : ACreationEngineGame<Enderal>(p
     public override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
     public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
-    private static readonly IPluginListMechanism Mechanism = new PlainMechanism();
+    private static readonly IPluginListMechanism Mechanism = new TextfileMechanism();
     public override IReadOnlyList<string> HardcodedPlugins => ["Skyrim.esm"];
 
     protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "enderal";

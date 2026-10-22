@@ -3,7 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Games.TestFramework.Helpers;
 using NexusMods.Sdk.Games;
 using Xunit;
@@ -12,7 +14,7 @@ namespace NexusMods.Games.CreationEngine.Tests.OblivionRemastered;
 
 /// <summary>
 /// Oblivion Remastered is an Unreal game with the old Data folder buried in its Content: saves go under My
-/// Games, nothing is registered in AppData, and the game ships its own plugin list.
+/// Games, nothing is registered in AppData, and the plugin list sits in the Data folder.
 /// </summary>
 public class OblivionRemasteredTests(IServiceProvider serviceProvider)
 {
@@ -38,11 +40,27 @@ public class OblivionRemasteredTests(IServiceProvider serviceProvider)
         ((IBethesdaGame)Game).DataPath.Should().Be(new GamePath(LocationId.Game, "OblivionRemastered/Content/Dev/ObvData/Data"));
 
     [Fact]
-    public void WritesNoPluginListAndChecksNoMasters()
+    public void KeepsItsPluginListInTheDataFolderAndChecksMasters()
     {
-        Game.Should().NotBeAssignableTo<ICreationEngineGame>();
-        ((ALoadoutSynchronizer)Game.Synchronizer).IntrinsicFiles(default).Should().BeEmpty();
-        Game.DiagnosticEmitters.Select(e => e.GetType()).Should().NotContain(typeof(Emitters.MissingMasterEmitter));
+        var game = (ICreationEngineGame)Game;
+        var data = new GamePath(LocationId.Game, "OblivionRemastered/Content/Dev/ObvData/Data");
+
+        game.HeaderFormat.Should().Be(PluginFormat.Tes4Oblivion);
+        game.PluginsFile.Should().Be(data / "Plugins.txt");
+        game.PluginList(null!).Should().BeOfType<TextfileMechanism>();
+        game.PluginList(null!).IntrinsicFiles(game, default, serviceProvider).Select(f => f.Path)
+            .Should().Equal(data / "Plugins.txt", data / "loadorder.txt");
+        Game.DiagnosticEmitters.Select(e => e.GetType()).Should().Contain(typeof(Emitters.MissingMasterEmitter));
+    }
+
+    [Fact]
+    public void NoPluginIsAMasterWhateverItsFlagSays()
+    {
+        var game = (ICreationEngineGame)Game;
+        var flagged = new PluginHeader("Flagged.esm", [], 0x1, null, null, null, null, PluginFormat.Tes4Oblivion);
+
+        game.MasterFlagIgnored(null!).Should().BeTrue();
+        game.IsMaster(flagged, null!).Should().BeFalse();
     }
 
     [Fact]

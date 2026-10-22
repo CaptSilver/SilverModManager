@@ -1,7 +1,9 @@
 using DynamicData.Kernel;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Installers;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Games.FOMOD;
 using NexusMods.Games.Unreal;
 using NexusMods.Paths;
@@ -11,15 +13,16 @@ namespace NexusMods.Games.CreationEngine.OblivionRemastered;
 
 /// <summary>
 /// The Unreal Engine 5 remake of Oblivion. It still loads Bethesda plugins, from a Data folder buried in the
-/// project's Content, and takes Unreal paks and UE4SS mods besides. The game ships its own Data/Plugins.txt and
-/// the app does not write it. No plugin header reader exists for it, so no masters are checked.
+/// project's Content, and takes Unreal paks and UE4SS mods besides. The app writes Plugins.txt and loadorder.txt
+/// into that Data folder, the same pair Skyrim LE keeps in AppData. The game ignores master flags, so every plugin
+/// is a non-master.
 /// </summary>
 /// <remarks>
 /// Sources for every path below are Mod Organizer 2's basic_games plugin
 /// (https://github.com/ModOrganizer2/modorganizer-basic_games/blob/master/games/game_oblivion_remaster.py)
 /// and its script extender helper (games/oblivion_remaster/script_extender.py).
 /// </remarks>
-public class OblivionRemastered(IServiceProvider provider) : ABethesdaGame<OblivionRemastered>(provider), IGameData<OblivionRemastered>
+public class OblivionRemastered(IServiceProvider provider) : ACreationEngineGame<OblivionRemastered>(provider), IGameData<OblivionRemastered>
 {
     private const string ProjectFolder = "OblivionRemastered";
 
@@ -40,6 +43,15 @@ public class OblivionRemastered(IServiceProvider provider) : ABethesdaGame<Obliv
 
     // game_oblivion_remaster.py, GameDataPath.
     public override GamePath DataPath => new(LocationId.Game, $"{ProjectFolder}/Content/Dev/ObvData/Data");
+
+    public override PluginFormat HeaderFormat => PluginFormat.Tes4Oblivion;
+    public override GamePath PluginsFile => DataPath / "Plugins.txt";
+    public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
+    private static readonly IPluginListMechanism Mechanism = new TextfileMechanism();
+    public override IReadOnlyList<string> HardcodedPlugins => [];
+
+    // libloot plugin/mod.rs: the remaster never reads the master flag of a plugin.
+    public override bool MasterFlagIgnored(GameInstallation installation) => true;
 
     // script_extender.py: obse64_loader.exe is installed in OblivionRemastered\Binaries\Win64, with its
     // plugins under OBSE/Plugins beside it.
