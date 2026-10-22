@@ -29,22 +29,19 @@ public class Me3PackageInstaller : ALibraryArchiveInstaller
         Loadout.ReadOnly loadout,
         CancellationToken cancellationToken)
     {
+        var packageId = Me3InstallerFiles.ModId(libraryArchive);
+        if (Me3InstallerFiles.IdRefusal(packageId) is { } idRefusal)
+            return Me3InstallerFiles.Decline(Logger, idRefusal);
+
         var files = Me3InstallerFiles.Files(libraryArchive);
         var paths = files.Select(f => (RelativePath)f.Path).ToArray();
 
         if (!Me3PackageLayout.TryFindRoot(paths, out var root))
         {
             var options = Me3PackageLayout.ListOptionDirs(paths);
-            return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: options.Count > 0
+            return Me3InstallerFiles.Decline(Logger, options.Count > 0
                 ? $"The archive holds the option folders {string.Join(", ", options.Select(o => $"'{o}'"))} and the installer cannot pick one. Install the one you want with the Advanced installer."
-                : "The archive has none of the game's asset folders (parts, menu, msg, ...), so it is not a content package."));
-        }
-
-        var packageId = Me3InstallerFiles.ModId(libraryArchive);
-        if (Me3ModsLayout.IsReservedPackageId(packageId))
-        {
-            return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason:
-                $"'{packageId}' is a reserved folder name in the mods folder, so a package cannot be called that. Rename the archive and add it again."));
+                : "The archive has none of the game's asset folders (parts, menu, msg, ...), so it is not a content package.");
         }
 
         var rootPrefix = root == RelativePath.Empty ? "" : root.Path + "/";

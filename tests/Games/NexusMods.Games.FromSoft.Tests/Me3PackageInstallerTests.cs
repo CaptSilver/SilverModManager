@@ -142,4 +142,50 @@ public class Me3PackageInstallerTests(ITestOutputHelper outputHelper) : AEldenRi
         reason.Should().Contain("reserved");
         targets.Should().BeEmpty();
     }
+
+    [Theory]
+    [InlineData("Weapons.tar.gz", "Weapons")]
+    [InlineData("Weapons.tar.xz", "Weapons")]
+    [InlineData("Weapons.tar.zst", "Weapons")]
+    [InlineData("Weapons.tar.bz2", "Weapons")]
+    [InlineData("Weapons.TAR.GZ", "Weapons")]
+    [InlineData("Weapons.v1.2.zip", "Weapons.v1.2")]
+    [InlineData("Weapons.7z", "Weapons")]
+    public async Task TheWholeArchiveExtensionIsDroppedFromThePackageId(string archiveName, string expectedId)
+    {
+        var archive = await AddNamed(archiveName, "parts/wp_a.dcx");
+
+        var (result, targets) = await TryInstall(archive);
+
+        result.IsSuccess.Should().BeTrue();
+        targets.Should().BeEquivalentTo(Me3Mods($"{expectedId}/parts/wp_a.dcx"));
+    }
+
+    [Theory]
+    [InlineData(".zip")]
+    [InlineData(".tar.gz")]
+    public async Task AnArchiveWhoseNameIsOnlyAnExtensionIsNotSupportedAndTheReasonSaysWhy(string archiveName)
+    {
+        var archive = await AddNamed(archiveName, "parts/wp_a.dcx");
+
+        var (result, targets) = await TryInstall(archive);
+
+        result.IsNotSupported(out var reason).Should().BeTrue();
+        reason.Should().Contain("no name");
+        targets.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("natives.tar.gz")]
+    [InlineData("overlay.tar.xz")]
+    [InlineData("_merged.tar.zst")]
+    public async Task AReservedNameBehindAMultiPartExtensionIsStillNotSupported(string archiveName)
+    {
+        var archive = await AddNamed(archiveName, "parts/wp_a.dcx");
+
+        var (result, _) = await TryInstall(archive);
+
+        result.IsNotSupported(out var reason).Should().BeTrue();
+        reason.Should().Contain("reserved");
+    }
 }

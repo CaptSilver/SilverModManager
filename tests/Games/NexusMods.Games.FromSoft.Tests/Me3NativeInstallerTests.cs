@@ -66,4 +66,29 @@ public class Me3NativeInstallerTests(ITestOutputHelper outputHelper) : AEldenRin
 
         result.IsSuccess.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task AMultiPartArchiveExtensionIsDroppedFromTheNativesFolderName()
+    {
+        var archive = await AddNamed("Hook.tar.gz", "hook.dll");
+
+        var (result, targets) = await TryInstall(archive);
+
+        result.IsSuccess.Should().BeTrue();
+        targets.Should().BeEquivalentTo(Me3Mods("natives/Hook/hook.dll"));
+    }
+
+    [Theory]
+    [InlineData(".zip")]
+    [InlineData(".tar.gz")]
+    public async Task AnArchiveWhoseNameIsOnlyAnExtensionIsNotSupportedAndTheReasonSaysWhy(string archiveName)
+    {
+        var archive = await AddNamed(archiveName, "hook.dll");
+
+        var (result, targets) = await TryInstall(archive);
+
+        result.IsNotSupported(out var reason).Should().BeTrue();
+        reason.Should().Contain("no name");
+        targets.Should().BeEmpty();
+    }
 }

@@ -29,16 +29,19 @@ public class Me3NativeInstaller : ALibraryArchiveInstaller
         Loadout.ReadOnly loadout,
         CancellationToken cancellationToken)
     {
-        var files = Me3InstallerFiles.Files(libraryArchive);
         var modId = Me3InstallerFiles.ModId(libraryArchive);
+        if (string.IsNullOrWhiteSpace(modId))
+            return Me3InstallerFiles.Decline(Logger, Me3InstallerFiles.NoNameReason);
+
+        var files = Me3InstallerFiles.Files(libraryArchive);
 
         var paths = files.Select(f => f.Path).ToArray();
         if (Me3NativeDll.Find(paths, modId) is null)
         {
             var dlls = Me3NativeDll.ListDlls(paths);
-            return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: dlls.Length == 0
+            return Me3InstallerFiles.Decline(Logger, dlls.Length == 0
                 ? "The archive holds no DLL for me3 to load."
-                : $"Several DLLs; pick the mod's DLL with the manual installer: {string.Join(", ", dlls)}"));
+                : $"Several DLLs; pick the mod's DLL with the manual installer: {string.Join(", ", dlls)}");
         }
 
         foreach (var file in files)
