@@ -37,6 +37,7 @@ Licenses below are the SPDX expressions in each package's nuspec at the pinned v
 | Avalonia and its Skia/Svg/Markdown add-ons | MIT |
 | Bannerlord.LauncherManager (BUTR Team) | MIT |
 | ooz (Powzix, https://github.com/powzix/ooz, `extern/ooz`) | GPL-3.0-or-later, built from source into `libooz.so` for Kraken decompression |
+| SoulsFormats (JKAnderson, https://github.com/JKAnderson/SoulsFormats) | GPL-3.0; used as the description of the BND3 layout, no code taken |
 | SMAPI (Pathoschild, `extern/SMAPI`) | LGPL-3.0, see `extern/SMAPI/LICENSE.txt` |
 
 `src/NexusMods.Sdk/FileExtractor/Definitions/magic_sigs.txt` is derived from Gary Kessler's

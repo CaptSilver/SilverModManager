@@ -360,11 +360,4 @@ public class Bnd4Tests
     {
         Binders.For(EldenRingGame.Definition.Formats).Should().BeOfType<Bnd4>();
     }
-
-    [Fact]
-    public void AGameWhoseBindersAreAnotherFormatIsRefusedByName()
-    {
-        var act = () => Binders.For(TestSoulsGame.Definition.Formats);
-        act.Should().Throw<NotSupportedException>().WithMessage("*Bnd3*not read*");
-    }
 }

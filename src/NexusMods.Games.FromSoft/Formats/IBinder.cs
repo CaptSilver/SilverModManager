@@ -24,6 +24,7 @@ public static class Binders
     /// <exception cref="NotSupportedException">The game's binder format is not one this build reads.</exception>
     public static IBinder For(FromSoftFormatTraits traits) => traits.Binder switch
     {
+        BinderFormat.Bnd3 => Bnd3.Instance,
         BinderFormat.Bnd4 => Bnd4.Instance,
         var other => throw new NotSupportedException($"The {other} binder format is not read by this build."),
     };
