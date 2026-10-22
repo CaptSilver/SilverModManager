@@ -4,6 +4,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Sdk.Settings;
 using NexusMods.Games.Larian.BaldursGate3.Emitters;
 using NexusMods.Games.Larian.BaldursGate3.RunGameTools;
+using NexusMods.Games.Larian.BaldursGate3.Utils;
 
 namespace NexusMods.Games.Larian.BaldursGate3;
 
@@ -16,6 +17,7 @@ public static class Services
             .AddSingleton<ITool, BG3RunGameTool>()
             .AddSettings<BaldursGate3Settings>()
             .AddPipelines()
+            .AddSingleton<GameModuleCatalog>()
             // diagnostics
             .AddSingleton<DependencyDiagnosticEmitter>();
 

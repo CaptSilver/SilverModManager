@@ -58,6 +58,7 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
         foreach (var gameFile in gameFiles)
         {
             var gameFilePath = _path.Path.Combine(gameFile.Key);
+            gameFilePath.Parent.CreateDirectory();
             using var stream = fileSystem.CreateFile(gameFilePath);
             stream.Write(gameFile.Value, 0, gameFile.Value.Length);
         }

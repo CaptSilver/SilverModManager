@@ -11,6 +11,7 @@ using NexusMods.Abstractions.Loadouts.Extensions;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Games.Generic;
+using NexusMods.Games.Larian.BaldursGate3.Utils;
 using NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Games.Larian.BaldursGate3.Utils.PakParsing;
@@ -27,10 +28,13 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
     private readonly ILogger _logger;
     private readonly IResourceLoader<Hash, Outcome<LspkPackageFormat.PakMetaData>> _metadataPipeline;
     private readonly GameDomain _gameDomain;
+    private readonly GameModuleCatalog _gameModules;
+    private int _loggedUnreadableGame;
 
-    public DependencyDiagnosticEmitter(IServiceProvider serviceProvider, ILogger<DependencyDiagnosticEmitter> logger, IGameDomainToGameIdMappingCache mappingCache)
+    public DependencyDiagnosticEmitter(IServiceProvider serviceProvider, ILogger<DependencyDiagnosticEmitter> logger, IGameDomainToGameIdMappingCache mappingCache, GameModuleCatalog gameModules)
     {
         _logger = logger;
+        _gameModules = gameModules;
         _metadataPipeline = Pipelines.GetMetadataPipeline(serviceProvider);
         _gameDomain = mappingCache[BaldursGate3.NexusModsGameId.Value];
     }
@@ -72,6 +76,10 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
             .ToArrayAsync(cancellationToken: cancellationToken);
 
         var diagnostics = new List<Diagnostic>();
+        var gameModules = GetGameModules(loadout);
+        var overridesGroupId = LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id)
+            .Select(group => group.Id.Value)
+            .FirstOrDefault();
 
         foreach (var metaFileTuple in metaFileTuples)
         {
@@ -110,6 +118,16 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                 if (dependencyUuid == string.Empty)
                     continue;
 
+                // Modules the game itself ships (GustavX, PhotoMode, ...) are not in the loadout.
+                LsxXmlFormat.ModuleShortDesc gameModule = default;
+                var providedByGame = gameModules?.TryGetValue(dependencyUuid, out gameModule) ?? false;
+                if (gameModules is null && LsxXmlFormat.DependencyUuidsToIgnore.Contains(dependencyUuid, StringComparer.OrdinalIgnoreCase))
+                    continue;
+
+                var requiredVersion = dependency.SemanticVersion;
+                if (providedByGame && (requiredVersion == default(LsxXmlFormat.ModuleVersion) || gameModule.SemanticVersion >= requiredVersion))
+                    continue;
+
                 var matchingDeps = metaFileTuples.Where(
                         x =>
                             x.Item2.Exception is null &&
@@ -117,15 +135,42 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                     )
                     .ToArray();
 
+                if (matchingDeps.Length == 0 && providedByGame)
+                {
+                    diagnostics.Add(Diagnostics.CreateOutdatedGameModule(
+                            ModName: loadoutItemGroup.ToReference(loadout),
+                            PakModuleName: pakMetaData.MetaFileData.ModuleShortDesc.Name,
+                            PakModuleVersion: pakMetaData.MetaFileData.ModuleShortDesc.SemanticVersion.ToString(),
+                            DepName: dependency.Name,
+                            MinDepVersion: requiredVersion.ToString(),
+                            CurrentDepVersion: gameModule.SemanticVersion.ToString()
+                        )
+                    );
+                    continue;
+                }
+
                 if (matchingDeps.Length == 0)
                 {
                     // Missing dependency
-                    diagnostics.Add(Diagnostics.CreateMissingDependency(
+                    var missingName = dependency.Name;
+                    var missingVersion = dependency.SemanticVersion.ToString();
+                    var moduleName = pakMetaData.MetaFileData.ModuleShortDesc.Name;
+                    var moduleVersion = pakMetaData.MetaFileData.ModuleShortDesc.SemanticVersion.ToString();
+                    diagnostics.Add(loadoutItemGroup.Id.Value == overridesGroupId
+                        ? Diagnostics.CreateMissingDependencyInOverrides(
                             ModName: loadoutItemGroup.ToReference(loadout),
-                            MissingDepName: dependency.Name,
-                            MissingDepVersion: dependency.SemanticVersion.ToString(),
-                            PakModuleName: pakMetaData.MetaFileData.ModuleShortDesc.Name,
-                            PakModuleVersion: pakMetaData.MetaFileData.ModuleShortDesc.SemanticVersion.ToString(),
+                            MissingDepName: missingName,
+                            MissingDepVersion: missingVersion,
+                            PakModuleName: moduleName,
+                            PakModuleVersion: moduleVersion,
+                            NexusModsLink: NexusModsLink
+                        )
+                        : Diagnostics.CreateMissingDependency(
+                            ModName: loadoutItemGroup.ToReference(loadout),
+                            MissingDepName: missingName,
+                            MissingDepVersion: missingVersion,
+                            PakModuleName: moduleName,
+                            PakModuleVersion: moduleVersion,
                             NexusModsLink: NexusModsLink
                         )
                     );
@@ -164,6 +209,21 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
 #endregion Diagnosers
 
 #region Helpers
+
+    /// <summary>
+    /// The modules the installed game provides, or null when its Data folder cannot be read, in which case the
+    /// built-in list of known game modules stands in. Logged once, not on every refresh.
+    /// </summary>
+    private IReadOnlyDictionary<string, LsxXmlFormat.ModuleShortDesc>? GetGameModules(Loadout.ReadOnly loadout)
+    {
+        var dataFolder = loadout.InstallationInstance.Locations[LocationId.Game].Path.Combine("Data");
+        var modules = _gameModules.GetModules(dataFolder);
+        if (modules is null && Interlocked.Exchange(ref _loggedUnreadableGame, 1) == 0)
+        {
+            _logger.LogWarning("Unable to read the game's modules from `{DataFolder}`, using the list of known game modules instead", dataFolder);
+        }
+        return modules;
+    }
 
     private static async IAsyncEnumerable<ValueTuple<LoadoutFile.ReadOnly, Outcome<LspkPackageFormat.PakMetaData>>> GetAllPakMetadata(
         LoadoutFile.ReadOnly[] pakLoadoutFiles,

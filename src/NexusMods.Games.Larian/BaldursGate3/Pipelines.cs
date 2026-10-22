@@ -40,7 +40,7 @@ public static class Pipelines
                 {
                     try
                     {
-                        var metaFileData = PakFileParser.ParsePakMeta(resource.Data);
+                        var metaFileData = PakFileParser.ParsePakMeta(resource.Data, keepGameModuleDependencies: true);
                         return ValueTask.FromResult(resource.WithData(Outcome.FromResult(metaFileData)));
                     }
                     catch (InvalidDataException e)

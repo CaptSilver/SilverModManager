@@ -173,8 +173,9 @@ public static class LsxXmlFormat
 
 
     /// <summary>
-    /// Collection of modules that should be ignored when parsing dependencies.
-    /// These are mostly vanilla pak files, so not relevant for dependencies between mods. 
+    /// Modules the game ships, which no mod in the loadout provides. Only a fallback for when the game's own
+    /// paks cannot be read: the installed game is the source of truth (<see cref="NexusMods.Games.Larian.BaldursGate3.Utils.GameModuleCatalog"/>),
+    /// and this list goes stale with every patch.
     /// </summary>
     public static readonly ModuleShortDesc[] DependencyModulesToIgnore = 
 
@@ -275,6 +276,34 @@ public static class LsxXmlFormat
         // Vanilla pak file
         Name = "MainUI",
         Uuid = "630daa32-70f8-3da5-41b9-154fe8410236",
+    },
+
+    new ()
+    {
+        // Vanilla pak file
+        Name = "GustavX",
+        Uuid = "cb555efe-2d9e-131f-8195-a89329d218ea",
+    },
+
+    new ()
+    {
+        // Vanilla pak file
+        Name = "HonourX",
+        Uuid = "767d0062-d82c-279c-e16b-dfee7fe94cdd",
+    },
+
+    new ()
+    {
+        // Vanilla pak file
+        Name = "PhotoMode",
+        Uuid = "55ef175c-59e3-b44b-3fb2-8f86acc5d550",
+    },
+
+    new ()
+    {
+        // Vanilla pak file
+        Name = "CrossplayUI",
+        Uuid = "e1ce736b-52e6-e713-e9e7-e6abbb15a198",
     },
     ];
 

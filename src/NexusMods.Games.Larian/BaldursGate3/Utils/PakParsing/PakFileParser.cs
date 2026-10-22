@@ -20,12 +20,17 @@ public static class PakFileParser
     /// <summary>
     /// Parses a bg3 `.pak` file stream and extracts the metadata from the packed `meta.lsx` file.
     /// </summary>
+    /// <param name="pakFileStream">The pak to read.</param>
+    /// <param name="keepGameModuleDependencies">
+    /// Keeps dependencies on modules the game ships (see <see cref="LsxXmlFormat.DependencyModulesToIgnore"/>)
+    /// instead of dropping them, for callers that decide that against the installed game.
+    /// </param>
     /// <exception cref="InvalidDataException">In case of errors during parsing</exception>
-    public static LspkPackageFormat.PakMetaData ParsePakMeta(Stream pakFileStream)
+    public static LspkPackageFormat.PakMetaData ParsePakMeta(Stream pakFileStream, bool keepGameModuleDependencies = false)
     {
         using var br = new BinaryReader(pakFileStream);
         var headerData = ParseHeaderInternal(br);
-        var fileList = ParseFileListInternal(br, (int)headerData.FileListOffset, headerData);
+        var fileList = ParseFileListInternal(br, (long)headerData.FileListOffset, headerData);
 
         var fileEntryInfo = fileList.FirstOrOptional(f => f.Name.Contains("meta.lsx"));
         if (!fileEntryInfo.HasValue)
@@ -34,7 +39,7 @@ public static class PakFileParser
         }
 
         var metaStream = GetFileEntryStream(br, fileEntryInfo.Value);
-        var metaFile = MetaLsxParser.ParseMetaFile(metaStream);
+        var metaFile = MetaLsxParser.ParseMetaFile(metaStream, keepGameModuleDependencies);
 
         var seConfig = GetScriptExtenderConfigMetaData(fileList, br);
 
@@ -43,6 +48,35 @@ public static class PakFileParser
             MetaFileData = metaFile,
             ScriptExtenderConfigMetadata = seConfig,
         };
+    }
+
+    /// <summary>
+    /// Lists the modules a `.pak` holds: one for each `Mods/&lt;Folder&gt;/meta.lsx`. Only the file table and
+    /// those small entries are read, so this is cheap on the game's multi-gigabyte paks.
+    /// </summary>
+    /// <exception cref="InvalidDataException">In case of errors during parsing</exception>
+    public static LsxXmlFormat.ModuleShortDesc[] ParseModules(Stream pakFileStream)
+    {
+        using var br = new BinaryReader(pakFileStream);
+        var headerData = ParseHeaderInternal(br);
+        var fileList = ParseFileListInternal(br, (long)headerData.FileListOffset, headerData);
+
+        var modules = new List<LsxXmlFormat.ModuleShortDesc>();
+        foreach (var entry in fileList.Where(IsModuleMeta))
+        {
+            using var metaStream = GetFileEntryStream(br, entry);
+            modules.Add(MetaLsxParser.ParseMetaFile(metaStream, keepGameModuleDependencies: true).ModuleShortDesc);
+        }
+
+        return modules.ToArray();
+    }
+
+    private static bool IsModuleMeta(LspkPackageFormat.FileEntryInfoCommon entry)
+    {
+        var parts = entry.Name.Split('/');
+        return parts.Length == 3
+               && parts[0].Equals("Mods", StringComparison.OrdinalIgnoreCase)
+               && parts[2].Equals("meta.lsx", StringComparison.OrdinalIgnoreCase);
     }
 
     private static Optional<LspkPackageFormat.ScriptExtenderConfigMetadata> GetScriptExtenderConfigMetaData(List<LspkPackageFormat.FileEntryInfoCommon> fileList, BinaryReader br)
@@ -121,7 +155,7 @@ public static class PakFileParser
         }
     }
 
-    private static List<LspkPackageFormat.FileEntryInfoCommon> ParseFileListInternal(BinaryReader br, int offset, LspkPackageFormat.HeaderCommon header)
+    private static List<LspkPackageFormat.FileEntryInfoCommon> ParseFileListInternal(BinaryReader br, long offset, LspkPackageFormat.HeaderCommon header)
     {
         br.BaseStream.Seek(offset, SeekOrigin.Begin);
 

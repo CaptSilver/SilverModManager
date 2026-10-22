@@ -123,4 +123,58 @@ internal static partial class Diagnostics
         )
         .WithMessageData(messageBuilder => messageBuilder.AddValue<string>("Instructions"))
         .Finish();
+
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate OutdatedGameModuleTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 6))
+        .WithTitle("Required game module is outdated")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The mod {PakModuleName} (in {ModName}) requires at least version {MinDepVersion}+ of the game module '{DepName}' but the game has v{CurrentDepVersion}.")
+        .WithDetails("""
+                     '{PakModuleName}' v{PakModuleVersion} requires at least version {MinDepVersion}+ of '{DepName}', which ships with Baldur's Gate 3 itself. Your game has v{CurrentDepVersion}.
+
+                     ## Recommended Actions
+                     Update Baldur's Gate 3 to the latest version, or install a version of {ModName} made for the game version you have.
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddDataReference<LoadoutItemGroupReference>("ModName")
+            .AddValue<string>("PakModuleName")
+            .AddValue<string>("PakModuleVersion")
+            .AddValue<string>("DepName")
+            .AddValue<string>("MinDepVersion")
+            .AddValue<string>("CurrentDepVersion")
+        )
+        .Finish();
+
+    /// <summary>
+    /// <see cref="MissingDependencyTemplate"/> for a pak in the Overrides group, where the group's own name says nothing about the mod.
+    /// </summary>
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate MissingDependencyInOverridesTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 7))
+        .WithTitle("Missing required dependency")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The mod {PakModuleName} (in {ModName}) is missing the required dependency '{MissingDepName}' v{MissingDepVersion}+.")
+        .WithDetails("""
+                     '{MissingDepName}' v{MissingDepVersion}+ is not installed or enabled in your Loadout. This pak module is required by '{PakModuleName}' v{PakModuleVersion} to run correctly.
+                     
+                     
+                     ## Recommended Actions
+                     #### Search for and install the missing mod
+                     You can search for '{MissingDepName}' on {NexusModsLink} or search the in-game mod manager.
+                     #### Or
+                     #### Check the required mods section on the Nexus Mods page of {PakModuleName}
+                     Mod pages can contain useful installation instructions in the 'Description' tab, this tab will also include requirements the mod needs to work correctly. 
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddDataReference<LoadoutItemGroupReference>("ModName")
+            .AddValue<string>("MissingDepName")
+            .AddValue<string>("MissingDepVersion")
+            .AddValue<string>("PakModuleName")
+            .AddValue<string>("PakModuleVersion")
+            .AddValue<NamedLink>("NexusModsLink")
+        )
+        .Finish();
 }

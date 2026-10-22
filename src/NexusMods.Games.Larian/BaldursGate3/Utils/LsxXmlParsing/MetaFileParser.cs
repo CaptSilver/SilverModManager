@@ -12,8 +12,11 @@ namespace NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing
         /// Parses dependencies and metadata from a stream of a bg3 `meta.lsx` file.
         /// </summary>
         /// <param name="xmlStream"></param>
+        /// <param name="keepGameModuleDependencies">
+        /// Keeps dependencies listed in <see cref="LsxXmlFormat.DependencyModulesToIgnore"/> instead of dropping them.
+        /// </param>
         /// <returns></returns>
-        public static LsxXmlFormat.MetaFileData ParseMetaFile(Stream xmlStream)
+        public static LsxXmlFormat.MetaFileData ParseMetaFile(Stream xmlStream, bool keepGameModuleDependencies = false)
         {
             using var reader = XmlReader.Create(xmlStream);
             var metaFileData = new LsxXmlFormat.MetaFileData();
@@ -131,7 +134,7 @@ namespace NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing
                                 }
                             }
 
-                            if (LsxXmlFormat.DependencyUuidsToIgnore.Contains(dependency.Uuid))
+                            if (!keepGameModuleDependencies && LsxXmlFormat.DependencyUuidsToIgnore.Contains(dependency.Uuid))
                                 continue;
                             dependencies.Add(dependency);
                         }
