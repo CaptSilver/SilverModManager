@@ -46,7 +46,7 @@ internal static partial class Diagnostics
         .WithSeverity(DiagnosticSeverity.Warning)
         .WithSummary("Mod {ModName} requires at least version {MinDepVersion}+ of '{DepName}' but only v{CurrentDepVersion} is installed.")
         .WithDetails("""
-                     '{PakModuleName}' v{PakModuleVersion} requires at least version {MinDepVersion}+ of '{DepName}' to run correctly. However, you only have version v{CurrentDepVersion} installed in mod {ModName}.
+                     '{PakModuleName}' v{PakModuleVersion} requires at least version {MinDepVersion}+ of '{DepName}' to run correctly. However, you only have version v{CurrentDepVersion} installed in mod {DepModName}.
                      """
         )
         .WithMessageData(messageBuilder => messageBuilder
@@ -175,6 +175,30 @@ internal static partial class Diagnostics
             .AddValue<string>("PakModuleName")
             .AddValue<string>("PakModuleVersion")
             .AddValue<NamedLink>("NexusModsLink")
+        )
+        .Finish();
+
+    /// <summary>
+    /// <see cref="OutdatedDependencyTemplate"/> for a pak in the Overrides group, where the group's own name says nothing about the mod.
+    /// </summary>
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate OutdatedDependencyInOverridesTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 8))
+        .WithTitle("Required dependency is outdated")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The mod {PakModuleName} (in {ModName}) requires at least version {MinDepVersion}+ of '{DepName}' but only v{CurrentDepVersion} is installed (in {DepModName}).")
+        .WithDetails("""
+                     '{PakModuleName}' v{PakModuleVersion} requires at least version {MinDepVersion}+ of '{DepName}' to run correctly. However, you only have version v{CurrentDepVersion} installed in mod {DepModName}.
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddDataReference<LoadoutItemGroupReference>("ModName")
+            .AddValue<string>("PakModuleName")
+            .AddValue<string>("PakModuleVersion")
+            .AddDataReference<LoadoutItemGroupReference>("DepModName")
+            .AddValue<string>("DepName")
+            .AddValue<string>("MinDepVersion")
+            .AddValue<string>("CurrentDepVersion")
         )
         .Finish();
 }

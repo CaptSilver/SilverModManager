@@ -81,6 +81,9 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
             .Select(group => group.Id.Value)
             .FirstOrDefault();
 
+        // The Overrides group's name says nothing about a pak in it, so those diagnostics name the pak module instead.
+        bool IsOverridesGroup(LoadoutItemGroup.ReadOnly group) => group.Id.Value == overridesGroupId;
+
         foreach (var metaFileTuple in metaFileTuples)
         {
             var (mod, metadataOrError) = metaFileTuple;
@@ -156,7 +159,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                     var missingVersion = dependency.SemanticVersion.ToString();
                     var moduleName = pakMetaData.MetaFileData.ModuleShortDesc.Name;
                     var moduleVersion = pakMetaData.MetaFileData.ModuleShortDesc.SemanticVersion.ToString();
-                    diagnostics.Add(loadoutItemGroup.Id.Value == overridesGroupId
+                    diagnostics.Add(IsOverridesGroup(loadoutItemGroup)
                         ? Diagnostics.CreateMissingDependencyInOverrides(
                             ModName: loadoutItemGroup.ToReference(loadout),
                             MissingDepName: missingName,
@@ -189,10 +192,22 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                 // Check if found dependency is outdated
                 if (installedMatchModule.SemanticVersion < dependency.SemanticVersion)
                 {
-                    diagnostics.Add(Diagnostics.CreateOutdatedDependency(
+                    var outdatedModuleName = pakMetaData.MetaFileData.ModuleShortDesc.Name;
+                    var outdatedModuleVersion = pakMetaData.MetaFileData.ModuleShortDesc.SemanticVersion.ToString();
+                    diagnostics.Add(IsOverridesGroup(loadoutItemGroup)
+                        ? Diagnostics.CreateOutdatedDependencyInOverrides(
                             ModName: loadoutItemGroup.ToReference(loadout),
-                            PakModuleName: pakMetaData.MetaFileData.ModuleShortDesc.Name,
-                            PakModuleVersion: pakMetaData.MetaFileData.ModuleShortDesc.SemanticVersion.ToString(),
+                            PakModuleName: outdatedModuleName,
+                            PakModuleVersion: outdatedModuleVersion,
+                            DepModName: matchLoadoutItemGroup.ToReference(loadout),
+                            DepName: installedMatchModule.Name,
+                            MinDepVersion: dependency.SemanticVersion.ToString(),
+                            CurrentDepVersion: installedMatchModule.SemanticVersion.ToString()
+                        )
+                        : Diagnostics.CreateOutdatedDependency(
+                            ModName: loadoutItemGroup.ToReference(loadout),
+                            PakModuleName: outdatedModuleName,
+                            PakModuleVersion: outdatedModuleVersion,
                             DepModName: matchLoadoutItemGroup.ToReference(loadout),
                             DepName: installedMatchModule.Name,
                             MinDepVersion: dependency.SemanticVersion.ToString(),

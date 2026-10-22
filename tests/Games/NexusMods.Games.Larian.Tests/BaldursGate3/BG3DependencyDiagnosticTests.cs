@@ -78,6 +78,33 @@ public class BG3DependencyDiagnosticTests(ITestOutputHelper outputHelper) : ADep
     }
 
     [Fact]
+    public async Task AnOutdatedDependencyIsReportedAgainstTheModThatRequiresIt()
+    {
+        var loadout = await CreateLoadout();
+        await AddPak(loadout, "Library Mod", "library.pak", SyntheticPak.ForModule("Library", "Library", MissingUuid, SyntheticPak.Version(1)));
+        await AddPak(loadout, "Some Mod", "some.pak", SyntheticPak.ForModule("Some", "Some", OtherUuid, SyntheticPak.Version(1),
+            new SyntheticPak.Dependency("Library", MissingUuid, SyntheticPak.Version(2))));
+
+        var warning = (await Dependencies(loadout)).Should().ContainSingle().Subject;
+
+        warning.Id.Should().Be(OutdatedDependencyId);
+        Summary(warning).Should().Be("Mod Some Mod requires at least version 2.0.0+ of 'Library' but only v1.0.0 is installed.");
+    }
+
+    [Fact]
+    public async Task APakInTheOverridesGroupNamesItsModuleInTheOutdatedDependencyWarning()
+    {
+        var loadout = await CreateLoadout();
+        await AddPak(loadout, "Library Mod", "library.pak", SyntheticPak.ForModule("Library", "Library", MissingUuid, SyntheticPak.Version(1)));
+        await AddPak(loadout, "Overrides", "mindweaver.pak", SyntheticPak.ForModule("Mindweaver", "Mindweaver", OtherUuid, SyntheticPak.Version(1),
+            new SyntheticPak.Dependency("Library", MissingUuid, SyntheticPak.Version(2))), inOverrides: true);
+
+        var warning = (await Dependencies(loadout)).Should().ContainSingle().Subject;
+
+        Summary(warning).Should().Be("The mod Mindweaver (in Overrides) requires at least version 2.0.0+ of 'Library' but only v1.0.0 is installed (in Library Mod).");
+    }
+
+    [Fact]
     public async Task AGameModuleOlderThanRequiredIsReported()
     {
         var loadout = await CreateLoadout();
@@ -122,6 +149,7 @@ public abstract class ADependencyDiagnosticTests(ITestOutputHelper outputHelper)
     protected const string GustavXUuid = "cb555efe-2d9e-131f-8195-a89329d218ea";
 
     protected static readonly DiagnosticId MissingDependencyId = new("NexusMods.Games.Larian.BaldursGate3", number: 1);
+    protected static readonly DiagnosticId OutdatedDependencyId = new("NexusMods.Games.Larian.BaldursGate3", number: 2);
     protected static readonly DiagnosticId OutdatedGameModuleId = new("NexusMods.Games.Larian.BaldursGate3", number: 6);
 
     protected abstract Dictionary<RelativePath, byte[]>? GameFiles { get; }
