@@ -121,4 +121,31 @@ usually keeps the original folder next to the link under a backup name.
             .AddValue<string>("Backups")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate RequiredWineDllOverrides = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 6))
+        .WithTitle("Incorrect WINE configuration")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("Update the WINE DLL overrides to mod {GameName} on Linux")
+        .WithDetails("""
+Modding {GameName} on Linux requires you to configure WINE or its mods will not load.
+
+A WINE DLL override tells WINE to load a DLL file that sits next to the game instead of its own built-in version of that DLL.
+
+### How to Resolve
+{Instructions}
+
+### Technical Details
+Many mod loaders hook into the game by replacing a system DLL. On Windows the game loads that DLL from its own folder. WINE prefers its built-in copy unless an override says otherwise, so the loader never starts.
+
+The WINE DLL overrides of this game's prefix do not include the ones its mod loader needs.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+            .AddValue<string>("Instructions")
+        )
+        .Finish();
 }

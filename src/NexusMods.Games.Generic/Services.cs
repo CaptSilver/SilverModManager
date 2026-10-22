@@ -10,6 +10,7 @@ public static class Services
     {
         services.AddSingleton<IniAnalysisData>();
         services.AddSingleton<ProtonPrefixEmitter>();
+        services.AddSingleton<WineDllOverrideEmitter>();
 
         return services;
     }
