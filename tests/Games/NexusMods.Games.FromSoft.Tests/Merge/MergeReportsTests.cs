@@ -213,4 +213,19 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
         report.Entries.Should().BeEmpty();
         report.Refusal.Should().Be(MergeRefusedException.PlanFailed(new IOException("the library could not be read")).Message);
     }
+
+    [Theory]
+    [InlineData(MergeReportOutcome.Merged, "merged")]
+    [InlineData(MergeReportOutcome.Refused, "refused")]
+    [InlineData(MergeReportOutcome.NotMergeable, "not merged")]
+    public void EveryOutcomeHasOneDisplayLabel(MergeReportOutcome outcome, string label)
+    {
+        outcome.Label().Should().Be(label);
+    }
+
+    [Fact]
+    public void TheNoVanillaReasonPointsAtTheFileShownBesideIt()
+    {
+        MergeOutcome.NoVanillaSource.Should().Contain("this file").And.NotContain("the vanilla file");
+    }
 }

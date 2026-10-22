@@ -33,10 +33,12 @@ public sealed record UnreadableParam(int EntryId) : IMergeNote
 /// <summary>Both sides changed one row differently; the winner's row was kept whole.</summary>
 /// <param name="KeptMod">Who owned the row that stayed: the higher-priority mod, or the game on the first step of a fold.</param>
 /// <param name="DroppedMod">Whose edits to the row were dropped.</param>
-public sealed record RowConflict(int EntryId, int RowId, string KeptMod, string DroppedMod) : IMergeNote
+/// <param name="KeptIsGame">The row that stayed is the game's own, so the conflict is a mod against the game rather than two mods.</param>
+public sealed record RowConflict(int EntryId, int RowId, string KeptMod, string DroppedMod, bool KeptIsGame = false) : IMergeNote
 {
-    public string Describe() =>
-        $"entry {EntryId} row {RowId}: both mods changed it differently; kept {KeptMod}'s row and dropped {DroppedMod}'s edits to it";
+    public string Describe() => KeptIsGame
+        ? $"entry {EntryId} row {RowId}: {DroppedMod} changed it differently from the game's own row; kept the game's row and dropped {DroppedMod}'s edits to it"
+        : $"entry {EntryId} row {RowId}: both mods changed it differently; kept {KeptMod}'s row and dropped {DroppedMod}'s edits to it";
 }
 
 /// <summary>Both mods ship a message under one id with different text; the winner's text was kept.</summary>

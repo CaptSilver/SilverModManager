@@ -15,6 +15,18 @@ public enum MergeReportOutcome
     NotMergeable,
 }
 
+/// <summary>The one wording of a <see cref="MergeReportOutcome"/> that the page and the command line both print.</summary>
+public static class MergeReportOutcomes
+{
+    public static string Label(this MergeReportOutcome outcome) => outcome switch
+    {
+        MergeReportOutcome.Merged => "merged",
+        MergeReportOutcome.Refused => "refused",
+        MergeReportOutcome.NotMergeable => "not merged",
+        _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, "Unknown merge outcome"),
+    };
+}
+
 /// <summary>One path of a <see cref="MergeReport"/>.</summary>
 /// <param name="Path">The package-relative path.</param>
 /// <param name="Strategy">The strategy's name as <see cref="MergeStrategies.Name"/> spells it; empty when the engine has none.</param>

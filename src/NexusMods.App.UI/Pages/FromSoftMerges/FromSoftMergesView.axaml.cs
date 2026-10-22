@@ -62,13 +62,6 @@ public partial class FromSoftMergesView : ReactiveUserControl<IFromSoftMergesVie
 
     private static string Describe(MergeReportEntry entry)
     {
-        var outcome = entry.Outcome switch
-        {
-            MergeReportOutcome.Merged => "merged",
-            MergeReportOutcome.Refused => "refused",
-            MergeReportOutcome.NotMergeable => "not merged",
-            _ => throw new ArgumentOutOfRangeException(nameof(entry), entry.Outcome, "Unknown merge outcome"),
-        };
-        return $"{entry.Path}  {(entry.Strategy == "" ? "no strategy" : entry.Strategy)}  {outcome}  {string.Join(", ", entry.Contributors)}";
+        return $"{entry.Path}  {(entry.Strategy == "" ? "no strategy" : entry.Strategy)}  {entry.Outcome.Label()}  {string.Join(", ", entry.Contributors)}";
     }
 }

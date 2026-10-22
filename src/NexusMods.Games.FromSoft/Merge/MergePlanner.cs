@@ -8,8 +8,6 @@ namespace NexusMods.Games.FromSoft.Merge;
 /// </summary>
 public static class MergePlanner
 {
-    private const string GameName = "the game";
-
     /// <summary>
     /// Merges every path the index says will merge. The highest-priority contributor leads the fold, so it wins what a
     /// strategy settles by priority. A strategy that starts from the game's file puts that file first, so the output
@@ -77,7 +75,7 @@ public static class MergePlanner
         if (takesGameBase)
         {
             blobs.Add(gameBase(path));
-            owners.Add(GameName);
+            owners.Add(MergeNames.Game);
         }
         foreach (var contributor in candidate.Contributors)
         {
@@ -107,7 +105,7 @@ public static class MergePlanner
             var baseIsGame = step == 0 && takesGameBase;
             result = fold(
                 result, blobs[step + 1], ancestor ?? [], ancestor is not null, baseIsGame,
-                baseIsGame ? GameName : leader, owners[step + 1], notes, traits);
+                baseIsGame ? MergeNames.Game : leader, owners[step + 1], notes, traits);
         }
 
         if (rebasing is not null)

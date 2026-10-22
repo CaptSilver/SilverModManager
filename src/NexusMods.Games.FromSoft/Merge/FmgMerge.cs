@@ -8,9 +8,6 @@ namespace NexusMods.Games.FromSoft.Merge;
 /// </summary>
 public static class FmgMerge
 {
-    private const string DefaultBaseName = "the preferred mod";
-    private const string DefaultOtherName = "the other mod";
-
     /// <summary>
     /// Unions the text tables of two archives. Where both define an id, base wins only if it has real text: a null in
     /// base is a structural gap, not an authored value, so it defers to the other side.
@@ -34,8 +31,8 @@ public static class FmgMerge
             throw new FmgMergeException(
                 $"the second archive has entries [{string.Join(", ", extra)}] that the first doesn't; merging would drop them, so refusing rather than reporting a partial merge as success");
 
-        var kept = baseName ?? DefaultBaseName;
-        var dropped = otherName ?? DefaultOtherName;
+        var kept = baseName ?? MergeNames.PreferredMod;
+        var dropped = otherName ?? MergeNames.OtherMod;
         var replacements = new Dictionary<int, byte[]>();
         foreach (var entry in baseEntries)
         {
@@ -72,8 +69,8 @@ public static class FmgMerge
         ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, ReadOnlySpan<byte> vanilla, FromSoftFormatTraits traits,
         ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null)
     {
-        var kept = baseName ?? DefaultBaseName;
-        var dropped = otherName ?? DefaultOtherName;
+        var kept = baseName ?? MergeNames.PreferredMod;
+        var dropped = otherName ?? MergeNames.OtherMod;
         var binder = Binders.For(traits);
         var baseRaw = Dcx.Read(@base, traits);
         var baseTables = Tables(binder, baseRaw);

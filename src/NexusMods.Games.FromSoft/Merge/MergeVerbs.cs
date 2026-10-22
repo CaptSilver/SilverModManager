@@ -69,7 +69,7 @@ internal static class MergeVerbs
         [
             Renderable.Text(entry.Path),
             Renderable.Text(entry.Strategy),
-            Renderable.Text(entry.Outcome.ToString()),
+            Renderable.Text(entry.Outcome.Label()),
             Renderable.Text(string.Join(", ", entry.Contributors)),
             Renderable.Text(entry.VanillaSource),
             Renderable.Text(entry.Reason),

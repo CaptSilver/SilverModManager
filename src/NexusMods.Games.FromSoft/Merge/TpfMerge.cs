@@ -34,7 +34,7 @@ public static class TpfMerge
             foreach (var texture in otherArchive.Textures)
             {
                 if (have.TryGetValue(texture.Name, out var own) && !own.Data.AsSpan().SequenceEqual(texture.Data))
-                    notes.Add(new TextureKept(texture.Name, baseName ?? "the preferred mod", otherName ?? "the other mod"));
+                    notes.Add(new TextureKept(texture.Name, baseName ?? MergeNames.PreferredMod, otherName ?? MergeNames.OtherMod));
             }
         }
 

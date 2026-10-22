@@ -15,7 +15,7 @@ public readonly record struct ProviderFile(string PackageId, string RelPath, Has
 public readonly record struct MergeOutcome(bool Merges, string? Reason)
 {
     public const string NoStrategy = "not a file the app merges";
-    public const string NoVanillaSource = "needs the vanilla file the mods branched from; add an archive holding a vanilla copy to the library";
+    public const string NoVanillaSource = "needs a vanilla copy of this file, the one the mods branched from; add an archive holding a vanilla copy to the library";
     public const string CaseOnlyCollision = "these paths differ only in case, so it's ambiguous which file me3 would mount; rename one so the paths differ for real, or drop one of the mods";
 
     public static MergeOutcome WillMerge => new(true, null);

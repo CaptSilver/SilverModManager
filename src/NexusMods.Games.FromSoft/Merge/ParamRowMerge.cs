@@ -64,8 +64,8 @@ public static class ParamRowMerge
         BinderEntrySets.RequireSameEntries(baseEntries.Keys, otherEntries.Keys, vanillaEntries.Keys, "regulations");
 
         var names = new Owners(
-            baseName ?? (baseIsGame ? "the game" : "the preferred mod"),
-            otherName ?? "the other mod");
+            baseName ?? (baseIsGame ? MergeNames.Game : MergeNames.PreferredMod),
+            otherName ?? MergeNames.OtherMod);
 
         var replacements = new Dictionary<int, byte[]>();
         foreach (var (entryId, baseBlob) in baseEntries)
@@ -167,7 +167,7 @@ public static class ParamRowMerge
                 var merged = MergeRow(bd, od, vd, entryId, rowId);
                 if (merged is null)
                 {
-                    notes.Add(new RowConflict(entryId, rowId, owners.Kept, owners.Dropped));
+                    notes.Add(new RowConflict(entryId, rowId, owners.Kept, owners.Dropped, baseIsGame));
                     continue;
                 }
                 if (bd is not null && merged.AsSpan().SequenceEqual(bd)) continue;   // the base already had everything the other side did

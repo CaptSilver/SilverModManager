@@ -141,7 +141,7 @@ public class ParamRowMergeTests
         var other = Reg(Sp(1, 8, (5, Rep(0x22, 8))));
         var notes = new List<IMergeNote>();
         Run(@base, other, van, notes, baseIsGame: true);
-        notes.Should().Equal(new RowConflict(1, 5, "the game", "the other mod"));
+        notes.Should().Equal(new RowConflict(1, 5, "the game", "the other mod", KeptIsGame: true));
     }
 
     [Fact]
@@ -664,5 +664,19 @@ public class ParamRowMergeTests
     {
         new RowConflict(4, 70, "Mod A", "Mod B").Describe().Should().Be(
             "entry 4 row 70: both mods changed it differently; kept Mod A's row and dropped Mod B's edits to it");
+    }
+
+    [Fact]
+    public void AGameVersusModRowConflictNamesTheModAndTheGamesOwnRow()
+    {
+        new RowConflict(4, 70, "the game", "Mod B", KeptIsGame: true).Describe().Should().Be(
+            "entry 4 row 70: Mod B changed it differently from the game's own row; kept the game's row and dropped Mod B's edits to it");
+    }
+
+    [Fact]
+    public void TheDefaultModNamesAreSharedAcrossTheMerges()
+    {
+        MergeNames.PreferredMod.Should().Be("the preferred mod");
+        MergeNames.OtherMod.Should().Be("the other mod");
     }
 }

@@ -111,7 +111,7 @@ public class MergeVerbsTests(ITestOutputHelper helper) : AIsolatedGameTest<Merge
         var row = renderer.LastCellsAsStrings().Should().ContainSingle().Which.ToArray();
         row[0].Should().Be(Msg);
         row[1].Should().Be("fmg-union");
-        row[2].Should().Be("Merged");
+        row[2].Should().Be("merged");
         row[3].Should().Contain("Alpha.zip").And.Contain("Beta.zip");
         output.Should().Contain("both mods ship it and differ");
         output.TrimEnd().Split('\n').Last().Should().Be(MergeReport.DefaultPriorityOrderHint);
@@ -158,7 +158,7 @@ public class MergeVerbsTests(ITestOutputHelper helper) : AIsolatedGameTest<Merge
         expected.Refusal.Should().NotBeNullOrEmpty();
         exitCode.Should().NotBe(0);
         renderer.Logs.OfType<Text>().First().Template.Should().StartWith(expected.Refusal);
-        renderer.LastCellsAsStrings().Should().ContainSingle().Which.Should().Contain("Refused");
+        renderer.LastCellsAsStrings().Should().ContainSingle().Which.Should().Contain("refused");
         DataRootListing().Should().Equal(before);
     }
 
