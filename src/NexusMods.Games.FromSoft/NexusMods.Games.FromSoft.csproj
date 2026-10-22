@@ -14,6 +14,15 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- Built from extern/ooz by scripts/build-ooz.sh; see Formats/Native/LibOozResolver.cs for the lookup. -->
+        <None Include="runtimes\linux-x64\native\libooz.so">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Pack>true</Pack>
+            <PackagePath>runtimes/linux-x64/native</PackagePath>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
         <InternalsVisibleTo Include="NexusMods.Games.FromSoft.Tests" />
     </ItemGroup>
 </Project>

@@ -36,6 +36,7 @@ Licenses below are the SPDX expressions in each package's nuspec at the pinned v
 | SteamKit2 | LGPL-2.1-only, linked dynamically as a NuGet assembly |
 | Avalonia and its Skia/Svg/Markdown add-ons | MIT |
 | Bannerlord.LauncherManager (BUTR Team) | MIT |
+| ooz (Powzix, https://github.com/powzix/ooz, `extern/ooz`) | GPL-3.0-or-later, built from source into `libooz.so` for Kraken decompression |
 | SMAPI (Pathoschild, `extern/SMAPI`) | LGPL-3.0, see `extern/SMAPI/LICENSE.txt` |
 
 `src/NexusMods.Sdk/FileExtractor/Definitions/magic_sigs.txt` is derived from Gary Kessler's
