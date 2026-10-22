@@ -1,0 +1,2612 @@
+# Prelude for LOOT masterlists
+common:
+##### Message Anchors #####
+  - &alreadyInX
+    type: error
+    content:
+      - lang: en
+        text: 'Delete. Already included in {0}.'
+      - lang: bg
+        text: 'За изтриване. Включена е в {0}.'
+      - lang: da
+        text: 'Slet. Allerede inkluderet i {0}.'
+      - lang: de
+        text: 'Löschen. Bereits in {0} enthalten.'
+      - lang: es
+        text: 'Eliminar. Está incluido en {0}.'
+      - lang: fi
+        text: 'Poista. {0} sisältää jo tämän.'
+      - lang: fr
+        text: 'Supprimer. Déjà inclus dans {0}.'
+      - lang: it
+        text: 'Cancella. Già incluso in {0}.'
+      - lang: ja
+        text: '削除してください。既に {0} に含まれています。'
+      - lang: ko
+        text: '삭제하십시오. 이미 {0}에 포함되어 있습니다.'
+      - lang: pl
+        text: 'Usuń. Już zawarte w {0}'
+      - lang: pt_BR
+        text: 'Apague. Já incluído em {0}.'
+      - lang: pt_PT
+        text: 'Apagar. Já incluído em {0}.'
+      - lang: ru
+        text: 'Удалите. Уже добавлено в {0}.'
+      - lang: sv
+        text: 'Ta bort. Redan inkluderat i {0}.'
+      - lang: ta
+        text: 'நீக்கு. ஏற்கனவே {0} இல் சேர்க்கப்பட்டுள்ளது.'
+      - lang: tr_TR
+        text: 'Sil. Zaten {0} içinde yer alıyor.'
+      - lang: uk_UA
+        text: 'Видаліть. Уже додано у {0}.'
+      - lang: zh_CN
+        text: '删除。已包含在{0}中。'
+
+  - &alreadyInOrFixedByX
+    type: error
+    content:
+      - lang: en
+        text: 'Delete. Already included or otherwise fixed in {0}.'
+      - lang: bg
+        text: 'За изтриване. Приложена е в {0}.'
+      - lang: da
+        text: 'Slet. Allerede inkluderet eller på anden måde rettet i {0}.'
+      - lang: de
+        text: 'Löschen. Bereits enthalten oder anderweitig korrigiert in {0}.'
+      - lang: es
+        text: 'Eliminar. Está incluido o arreglado en {0}.'
+      - lang: fi
+        text: 'Poista. {0} sisältää jo tämän muutoksen tai korjauksen.'
+      - lang: fr
+        text: 'Supprimer. Déjà inclus ou corrigé dans {0}.'
+      - lang: it
+        text: 'Cancella. Già incluso o corretto in {0}.'
+      - lang: ja
+        text: '削除してください。{0} にすでに含まれているか修正されています。'
+      - lang: ko
+        text: '삭제하십시오. 이미 {0}에 포함되었거나 수정되었습니다.'
+      - lang: pl
+        text: 'Usuń. Już zawarte lub naprawione w {0}.'
+      - lang: pt_BR
+        text: 'Apague. Já incluído ou consertado em {0}.'
+      - lang: pt_PT
+        text: 'Apagar. Já incluído ou reparado em {0}.'
+      - lang: ru
+        text: 'Удалите. Уже добавлено или исправлено иным образом в {0}.'
+      - lang: sv
+        text: 'Ta bort. Redan inkluderat eller fixat i {0}.'
+      - lang: ta
+        text: 'நீக்கு. ஏற்கனவே சேர்க்கப்பட்டுள்ளது அல்லது {0} இல் சரி செய்யப்பட்டது.'
+      - lang: tr_TR
+        text: 'Sil. Zaten {0} içinde yer alıyor veya başka bir şekilde düzeltildi.'
+      - lang: uk_UA
+        text: 'Видаліть. Уже додано або виправлено у {0}.'
+      - lang: zh_CN
+        text: '删除。在{0}中已包含或修复。'
+
+  - &alsoUseX
+    type: say
+    content:
+      - lang: en
+        text: 'It''s highly recommended that you also use {0}.'
+      - lang: bg
+        text: 'Препоръчва се да използвате {0}.'
+      - lang: da
+        text: 'Det er stærk anbefalet, at du også bruger {0}.'
+      - lang: de
+        text: 'Es wird dringend empfohlen, dass Sie auch {0} benutzen.'
+      - lang: es
+        text: 'Se recomienda que también use {0}.'
+      - lang: fi
+        text: 'On suotavaa käyttää myös lisäosaa {0}.'
+      - lang: fr
+        text: 'Il est vivement recommandé que vous utilisiez aussi {0}.'
+      - lang: it
+        text: 'Si consiglia vivamente di usare anche {0}.'
+      - lang: ja
+        text: '{0} の併用を強く推奨します。'
+      - lang: ko
+        text: '{0}도 함께 사용하는 것을 매우 권장합니다.'
+      - lang: pl
+        text: 'Jest wysoce wskazane abyś używał także {0}.'
+      - lang: pt_BR
+        text: 'É altamente recomendado que você também use {0}.'
+      - lang: pt_PT
+        text: 'É altamente recomendado que você também use {0}.'
+      - lang: ru
+        text: 'Настоятельно рекомендуется также использовать {0}.'
+      - lang: sv
+        text: 'Det är rekommenderat att du också använder {0}.'
+      - lang: ta
+        text: 'நீங்கள் {0} ஐப் பயன்படுத்தப் பரிந்துரைக்கப்படுகிறது.'
+      - lang: tr_TR
+        text: '{0} kullanmanız şiddetle tavsiye edilir.'
+      - lang: uk_UA
+        text: 'Наполегливо радимо також використати {0}.'
+      - lang: zh_CN
+        text: '强烈建议您使用{0}。'
+
+  - &compatIssuesWithX
+    type: say
+    content:
+      - lang: en
+        text: 'This plugin has compatibility issues with {0}. For more information, read this mod''s compatibility notes.'
+      - lang: bg
+        text: 'Тази приставка не е съвместима с {0}. За повече информация, прочетете бележките за съвместимост.'
+      - lang: da
+        text: 'Dette plugin har kompatibilitetsproblemer med {0}. For mere information, læs dette mod''s kompatibilitetsnoter.'
+      - lang: de
+        text: 'Dieses Plugin hat Kompatibilitätsprobleme mit {0}. Mehr Information dazu sind in den Kompatibilitäts-Notizen der Mod nachzulesen.'
+      - lang: es
+        text: 'Este plugin tiene problemas de compatibilidad con {0}. Para más información, lea las notas de compatibilidad de este mod.'
+      - lang: fi
+        text: 'Tämä lisäosa ei ole täysin yhteensopiva lisäosan {0} kanssa. Lisätietoja löydät lisäosan yhteensopivuushuomautuksista.'
+      - lang: fr
+        text: 'Ce plugin a des problèmes de compatibilité avec {0}. Pour plus d''informations, lisez la liste de compabilité de ce mod.'
+      - lang: it
+        text: 'Questo plugin ha problemi di compatibilità con {0}. Per maggiori informazioni, leggi le note sulla compatibilità di questa mod.'
+      - lang: ja
+        text: 'このプラグインには {0} との互換性の問題があります。詳細についてはこの Mod の互換性に関する注意事項をお読みください。'
+      - lang: ko
+        text: '이 플러그인은 {0}와의 호환성 문제가 있습니다. 자세한 내용은 이 모드의 호환성 정보를 확인해주세요.'
+      - lang: pl
+        text: 'Ta wtyczka ma problemy ze kompatybilnością z {0}. Aby uzyskać więcej informacji, przeczytaj uwagi dotyczące zgodności tego moda.'
+      - lang: pt_BR
+        text: 'Este plugin tem problemas de compatibilidade com {0}. Para mais informações, leia as notas de compatibilidade deste mod.'
+      - lang: pt_PT
+        text: 'Este plugin tem problemas de compatibilidade com {0}. Para mais informações, leia as notas de compatibilidade deste mod.'
+      - lang: ru
+        text: 'У этого плагина есть проблемы совместимости с {0}. Для получения дополнительной информации прочтите заметки о совместимости этого мода.'
+      - lang: sv
+        text: 'Denna insticksmodul är inte helt kompatibelt med {0}. För mer information, läs det här moddets kompatibilitetsanteckningar.'
+      - lang: ta
+        text: 'இந்தச் சொருகி {0} உடன் பொருந்தக்கூடிய சிக்கல்களைக் கொண்டுள்ளது. மேலும் தகவலுக்கு, இந்த மோடின் பொருந்தக்கூடிய குறிப்புகளைப் படியுங்கள்.'
+      - lang: tr_TR
+        text: 'Bu eklenti {0} ile uyumluluk sorunları yaşıyor. Daha fazla bilgi için bu modun uyumluluk notlarını okuyun.'
+      - lang: uk_UA
+        text: 'У цього плагіна наявні проблеми сумісності з {0}. Додаткова інформація може міститись у замітках сумісності цього моду.'
+      - lang: zh_CN
+        text: '这个插件与{0}有兼容性问题。欲了解更多信息，请阅读这个mod的兼容性说明。'
+
+  - &compatNotes
+    type: say
+    content:
+      - lang: en
+        text: 'It is recommended that you read this mod''s [Compatibility Notes]({0}).'
+      - lang: bg
+        text: 'Препоръчва се да прочетете [бележките за съвместимост]({0}).'
+      - lang: da
+        text: 'Det anbefales, at du læser dette mod''s [Kompatibilitetsnoter]({0}).'
+      - lang: de
+        text: 'Es wird empfohlen, dass Sie die [Kompatibilitäts-Notizen]({0}) dieses Mods lesen.'
+      - lang: es
+        text: 'Se recomienda que lea las [Notas de compatibilidad]({0}) de este mod.'
+      - lang: fi
+        text: 'On suotavaa lukea lisäosan [yhteensopivuushuomautukset]({0}).'
+      - lang: fr
+        text: 'Il est recommandé que vous lisiez les [Notes de compabilités]({0}) de ce mod.'
+      - lang: it
+        text: 'Si raccomanda la lettura delle [Note sulla compatibilità]({0}) di questa mod.'
+      - lang: ja
+        text: '[互換性に関する注意事項]({0})を読みましょう。'
+      - lang: ko
+        text: '이 모드의 [호환성 정보]({0})를 읽어 보는 걸 권장합니다.'
+      - lang: pl
+        text: 'Jest rekomendowane abyś przeczytał [Notki Kompatybilności]({0}) tego moda.'
+      - lang: pt_BR
+        text: 'É recomendada a leitura das [Notas de Compatibilidade]({0}) deste mod.'
+      - lang: pt_PT
+        text: 'É recomendada leitura das [Notas de Compatibilidade]({0}) deste mod.'
+      - lang: ru
+        text: 'Рекомендуется прочитать [Примечания о совместимости]({0}) этого мода.'
+      - lang: sv
+        text: 'Det är rekommenderat att du läser det här moddets [kompatibilitetsanteckningar]({0}).'
+      - lang: ta
+        text: 'இந்த மோடின் [பொருந்தக்கூடிய குறிப்புகள்]({0}) ஐப் படிக்கப் பரிந்துரைக்கப்படுகிறது.'
+      - lang: tr_TR
+        text: 'Bu mod için [Uyumluluk Notları]({0}) okumanız tavsiye edilir.'
+      - lang: uk_UA
+        text: 'Радимо прочитати [замітки щодо сумісності]({0}) моду.'
+      - lang: zh_CN
+        text: '建议您阅读这个mod的[兼容性说明]({0})。'
+
+  - &compatPatch
+    type: say
+    content:
+      - lang: en
+        text: 'It is recommended that you check the following compatibility patch compilation for this mod: {0}'
+      - lang: bg
+        text: 'Препоръчва се да проверите следните кръпки за съвместимост за тази модификация: {0}'
+      - lang: da
+        text: 'Vi anbefaler, at du tjekker følgende kompilering af kompatibilitetspatches til dette mod: {0}.'
+      - lang: de
+        text: 'Es wird empfohlen, dass Sie die folgende Kompatibilitäts-Patch Zusammenstellung für diese Mod überprüfen: {0}'
+      - lang: es
+        text: 'Se recomienda comprobar la siguiente compilación de parches de compatibilidad para este mod: {0}'
+      - lang: fi
+        text: 'On suotavaa katsoa myös tämä kokoelma lisäosan yhteensopivuuskorjauksia: {0}'
+      - lang: fr
+        text: 'Il est recommandé que vous alliez consulter le patch de compatibilités pour ce mod: {0}'
+      - lang: it
+        text: 'Si raccomanda di controllare la seguente compatibility patch compilation per questa mod: {0}'
+      - lang: ja
+        text: '次の互換性パッチを確認することをお勧めします: {0}'
+      - lang: pl
+        text: 'Jest rekomendowane żebyś sprawdził następujące kompatybilności patchu kompilacji dla tego moda: {0}'
+      - lang: pt_BR
+        text: 'É recomendado que você verifique a seguinte compilação do patch de compatibilidade para este mod: {0}'
+      - lang: pt_PT
+        text: 'É recomendado que verifique a seguinte compilação do patch de compatibilidade para este mod: {0}'
+      - lang: ru
+        text: 'Рекомендуется проверить следующую коллекцию патчей совместимости для этого мода: {0}'
+      - lang: sv
+        text: 'Det rekommenderas att du kontrollerar följande kompatibilitet patch sammanställning för denna mod: {0}'
+      - lang: ta
+        text: 'இந்த மோடிற்கான பின்வரும் பொருந்தக்கூடிய ஒட்டு தொகுப்பைச் சரிபார்க்க பரிந்துரைக்கப்படுகிறது: {0}'
+      - lang: tr_TR
+        text: 'Bu mod için aşağıdaki uyumluluk yaması derlemesini kontrol etmeniz tavsiye edilir: {0}'
+      - lang: uk_UA
+        text: 'Радимо переглянути наступну колекцію патчів сумісності для цього моду: {0}'
+      - lang: zh_CN
+        text: '推荐您检查以下适用于此模组的兼容补丁： {0}'
+
+  - &compatPatchForX
+    type: say
+    content:
+      - lang: en
+        text: 'It is recommended that you check the following compatibility patch compilation for {0}: {1}'
+      - lang: bg
+        text: 'Препоръчва се да проверите следните кръпки за съвместимост за {0}: {1}'
+      - lang: de
+        text: 'Es wird empfohlen, dass Sie die folgende Kompatibilitäts-Patch Zusammenstellung für {0} überprüfen: {1}'
+      - lang: es
+        text: 'Se recomienda comprobar la siguiente compilación de parches de compatibilidad para {0}: {1}'
+      - lang: fi
+        text: 'On suotavaa katsoa myös tämä kokoelma lisäosan {0} yhteensopivuuskorjauksia: {1}'
+      - lang: fr
+        text: 'Il est recommandé que vous alliez consulter le patch de compatibilités pour {0}: {1}'
+      - lang: it
+        text: 'Si raccomanda di controllare la seguente compatibility patch compilation per {0}: {1}'
+      - lang: ja
+        text: '{0} の互換性パッチを確認することをお勧めします: {1}'
+      - lang: pt_BR
+        text: 'É recomendado que você verifique a seguinte compilação do patch de compatibilidade para {0}: {1}'
+      - lang: pt_PT
+        text: 'É recomendado que verifique a seguinte compilação do patch de compatibilidade para {0}: {1}'
+      - lang: ru
+        text: 'Рекомендуется проверить следующую коллекцию патчей совместимости для {0}: {1}'
+      - lang: sv
+        text: 'Det rekommenderas att du kontrollerar följande kompatibilitet patch sammanställning för {0}: {1}'
+      - lang: ta
+        text: '{0}க்கான பின்வரும் பொருந்தக்கூடிய ஒட்டு தொகுப்பைச் சரிபார்க்க பரிந்துரைக்கப்படுகிறது: {1}'
+      - lang: tr_TR
+        text: '{0} için aşağıdaki uyumluluk yaması derlemesini kontrol etmeniz önerilir: {1}'
+      - lang: uk_UA
+        text: 'Радимо переглянути наступну колекцію патчів сумісності для {0}: {1}'
+      - lang: zh_CN
+        text: '推荐您检查以下用于 {0} 的兼容补丁合辑： {1}'
+
+  - &corrupt
+    type: warn
+    content:
+      - lang: en
+        text: 'This file is corrupt and should not be used.'
+      - lang: bg
+        text: 'Този файл е повреден и не трябва да се използва.'
+      - lang: da
+        text: 'Denne fil er beskadiget og bør ikke anvendes.'
+      - lang: de
+        text: 'Diese Datei ist korrupt und sollte nicht benutzt werden.'
+      - lang: es
+        text: 'Este archivo está corrupto y no debería ser utilizado.'
+      - lang: fi
+        text: 'Tiedosto on vaurioitunut, eikä sitä tule käyttää.'
+      - lang: fr
+        text: 'Ce fichier est corrompu et ne devrait pas être utilisé.'
+      - lang: it
+        text: 'Questo file risulta corrotto e pertanto non deve essere utilizzato.'
+      - lang: ja
+        text: 'このファイルは壊れています。使用しないでください。'
+      - lang: ko
+        text: '이 파일은 손상되었습니다. 사용하지 마십시오.'
+      - lang: pl
+        text: 'Ten plik jest zepsuty i nie powinien być używany.'
+      - lang: pt_BR
+        text: 'Este arquivo está corrompido e não deveria ser utilizado.'
+      - lang: pt_PT
+        text: 'Este ficheiro está corrompido e não deve ser utilizado.'
+      - lang: ru
+        text: 'Файл испорчен и не должен использоваться.'
+      - lang: sv
+        text: 'Denna fil är korrupt och borde inte användas.'
+      - lang: ta
+        text: 'இந்தக் கோப்புத் தவறுகள் நிறைந்தது மற்றும் பயன்படுத்தக் கூடாது.'
+      - lang: tr_TR
+        text: 'Bu dosya bozuk, kullanılmamalıdır.'
+      - lang: uk_UA
+        text: 'Файл зіпсований та не має використовуватися.'
+      - lang: zh_CN
+        text: '该文件已损坏，不应使用。'
+
+  - &deactivateAfterCharacterCreation
+    type: say
+    content:
+      - lang: en
+        text: 'Deactivate and/or uninstall this mod after character creation.'
+      - lang: bg
+        text: 'Деактивирайте или премахнете тази модификация след създаването на героя.'
+      - lang: de
+        text: 'Deaktivieren und/oder deinstallieren Sie diese Mod nach der Charaktererstellung.'
+      - lang: es
+        text: 'Desactiva y/o desinstala este mod después de la creación del personaje.'
+      - lang: fi
+        text: 'Poista tämän lisäosan käyttö tai asennus hahmon luotuasi.'
+      - lang: fr
+        text: 'Désactivez et/ou désinstallez ce mod après la création de votre personnage.'
+      - lang: it
+        text: 'Disattiva e/o disinstalla questa mod dopo la creazione del personaggio.'
+      - lang: ja
+        text: 'キャラクター作成後、この Mod を非アクティブにするかアンインストールしてください。'
+      - lang: pt_BR
+        text: 'Desative e/ou desinstale este mod após a criação do personagem.'
+      - lang: pt_PT
+        text: 'Desative e/ou desinstale este mod após a criação da personagem.'
+      - lang: ru
+        text: 'Отключите и/или удалите этот мод после создания персонажа.'
+      - lang: sv
+        text: 'Avaktivera och/eller avinstallera denna mod efter du skapat din karaktär.'
+      - lang: ta
+        text: 'கதாபாத்திரத்தை உருவாக்கியபிறகு இந்த மோட் செயலிழக்க மற்றும்/அல்லது நிறுவல் நீக்கவும்.'
+      - lang: tr_TR
+        text: 'Karakter oluşturulduktan sonra bu modu devre dışı bırakın ve/veya kaldırın.'
+      - lang: uk_UA
+        text: 'Деактивуйте та/або видаліть цей мод після створення персонажу.'
+      - lang: zh_CN
+        text: '在角色创建完成后取消激活并（或）卸载此模组。'
+
+  - &deleteOrDeactivateX
+    type: error
+    content:
+      - lang: en
+        text: 'Delete or deactivate. {0}'
+      - lang: bg
+        text: 'За изтриване или деактивиране. {0}'
+      - lang: da
+        text: 'Slet eller deaktiver. {0}'
+      - lang: de
+        text: 'Lösche oder deaktiviere. {0}'
+      - lang: es
+        text: 'Eliminar o desactivar. {0}'
+      - lang: fi
+        text: 'Poista käytöstä tai kokonaan. {0}'
+      - lang: fr
+        text: 'Désactiver ou supprimer. {0}'
+      - lang: it
+        text: 'Elimina o disattiva. {0}'
+      - lang: ja
+        text: '{0} を削除するか非アクティブにしてください。'
+      - lang: ko
+        text: '{0}을 제거하거나 비활성화하십시오.'
+      - lang: pl
+        text: 'Usuń lub dezaktywuj. {0}'
+      - lang: pt_BR
+        text: 'Apague ou desative. {0}'
+      - lang: pt_PT
+        text: 'Apague ou desative. {0}'
+      - lang: ru
+        text: 'Удалите или отключите. {0}'
+      - lang: sv
+        text: 'Ta bort eller avaktivera. {0}'
+      - lang: ta
+        text: 'நீக்கு அல்லது செயலிழக்கச் செய்யுங்கள். {0}'
+      - lang: tr_TR
+        text: 'Sil veya devre dışı bırak. {0}'
+      - lang: uk_UA
+        text: 'Видаліть чи вимкніть. {0}'
+      - lang: zh_CN
+        text: '删除或禁用。{0}'
+    subs: [ '' ]
+
+  - &deletePlugin
+    type: warn
+    content:
+      - lang: en
+        text: 'When using **{0}**, it''s recommended that you deactivate or delete this ESP file but keep the resources (e.g. meshes, textures) installed with this mod.'
+      - lang: bg
+        text: 'Когато използвате приставката **{0}**, трябва да деактивирате или изтриете този ESP файл, но да запазите неговите ресурси (триизмерни модели, текстури и други).'
+      - lang: da
+        text: 'Når du bruger **{0}**, anbefales det, at du deaktiverer eller sletter denne ESP-fil, men beholder ressourcerne (f.eks. meshes, teksturer), der er installeret med dette mod.'
+      - lang: de
+        text: 'Beim Nutzen von **{0}** ist es empfohlen, dass Sie die ESP-Datei deaktivieren oder löschen, aber die mitgelieferten Ressourcen (z.B Meshes, Texturen) beibehalten die mit dieser Mod mitinstalliert wurden.'
+      - lang: es
+        text: 'Si usa **{0}**, se recomienda que desactive o elimine este archivo ESP pero que mantenga los recursos (ej. mallas, texturas) que se instalaron con él.'
+      - lang: fi
+        text: '**{0}** ollessa käytössä on suotavaa jättää ESP-tiedosto pois käytöstä, mutta jättää kaikki resurssitiedostot (esim. "meshes", "textures"), jotka tulivat lisäosan mukana.'
+      - lang: fr
+        text: 'Lorsque vous utilisez **{0}**, il est recommandé que vous désactiviez, ou que vous supprimiez cet ESP mais que vous gardiez les ressources (ex: meshes, textures) installées avec ce mod.'
+      - lang: it
+        text: 'Quando si utilizza **{0}**, è fortemente consigliato disattivare o eliminare questo file ESP ma mantenerne le risorse (ad es. mesh, texture) installate con questa mod.'
+      - lang: ja
+        text: '**{0}** を使用する場合、この Esp ファイルを無効化あるいは削除することをお勧めします。ただしこの Mod によってインストールされたリソース（メッシュ、テクスチャなど）はそのままにしておいてください。'
+      - lang: ko
+        text: '**{0}**를 사용할 때 이 ESP 파일을 비활성화하거나 삭제하되, 이 모드와 함께 설치된 리소스(예: 메쉬, 텍스쳐)는 유지하는 것을 권장합니다.'
+      - lang: pl
+        text: 'Używając **{0}**, jest rekomendowane abyś dezaktywował lub usunął ten plik ESP, ale pozostawił zasoby (siatki, tekstury) zainstalowane z tym modem.'
+      - lang: pt_BR
+        text: 'Quando se usa **{0}**, é recomendado que você desative ou apague este arquivo ESP mas que mantenha os recursos (por ex. meshes, textures) instalados com esse mod.'
+      - lang: pt_PT
+        text: 'Ao utilizar **{0}**, é recomendado que você desative ou apage este ficheiro ESP, mas mantenha os recursos (ex. meshes, texturas) instalados por este mod.'
+      - lang: ru
+        text: 'При использовании **{0}** рекомендуется отключить или удалить этот ESP-файл, но оставить ресурсы (например, меши, текстуры), установленные с этим модом.'
+      - lang: sv
+        text: 'När du använder **{0}** är det rekommenderat att du avaktiverar eller tar bort denna ESP-fil, men behåll resurserna (meshar och texturer) installerade med detta mod.'
+      - lang: ta
+        text: '**{0}** ஐப் பயன்படுத்தும்போது, இந்த எச்பி கோப்பை செயலிழக்கச் செய்ய அல்லது நீக்கப் பரிந்துரைக்கப்படுகிறது, ஆனால் இந்த மோடுடன் நிறுவப்பட்ட வளங்களை (எ.கா. மெச்கள், அமைப்புகள்) வைக்கவும்.'
+      - lang: tr_TR
+        text: '**{0}** kullanırken, bu ESP dosyasını devre dışı bırakmanız veya silmeniz, ancak bu mod ile kurulan kaynakları (örneğin, meshler, dokular) saklamanız tavsiye edilir.'
+      - lang: uk_UA
+        text: 'Поки використовується **{0}**, радимо відключити чи деактивувати esp цього моду, але залишити встановлені ресурси (меші, текстури тощо).'
+      - lang: zh_CN
+        text: '当使用**{0}**时，建议您禁用或删除这个ESP文件，但保留与此mod一起安装的资源(如网格，纹理等)。'
+
+  - &deprecated
+    type: warn
+    content:
+      - lang: en
+        text: 'This file is deprecated and should no longer be used.'
+      - lang: bg
+        text: 'Тази приставка е остаряла и не трябва да се използва.'
+      - lang: de
+        text: 'Diese Datei ist veraltet und sollte nicht mehr verwendet werden.'
+      - lang: es
+        text: 'Este archivo está obsoleto y ya no debe utilizarse.'
+      - lang: fi
+        text: 'Tämä tiedosto on poistumassa ja sen käyttäminen pitäisi lopettaa.'
+      - lang: fr
+        text: 'Ce fichier est obsolète et ne devrait plus être utilisé.'
+      - lang: it
+        text: 'Questo file è obsoleto e non dovrebbe essere più usato.'
+      - lang: ja
+        text: '非推奨のファイルです。使用しないでください。'
+      - lang: pl
+        text: 'Ten plik jest przestarzały i nie powinien być już używany.'
+      - lang: pt_BR
+        text: 'Este arquivo está obsoleto e não deve mais ser usado.'
+      - lang: pt_PT
+        text: 'Este ficheiro é obsoleto e já não deve ser usado.'
+      - lang: ru
+        text: 'Этот файл устарел и больше не должен использоваться.'
+      - lang: sv
+        text: 'Den här filen är markerad för att inte längre användas.'
+      - lang: ta
+        text: 'இந்தக் கோப்பு நீக்கப்பட்டது, இனி பயன்படுத்தப்படக் கூடாது.'
+      - lang: tr_TR
+        text: 'Bu dosya artık kullanılmıyor ve kullanılmamalıdır.'
+      - lang: uk_UA
+        text: 'Цей файл застарілий та не має використовуватися.'
+      - lang: zh_CN
+        text: '此文件已废弃且不应再使用。'
+
+  - &disableAfterGeneratingXwithY
+    type: say
+    content:
+      - lang: en
+        text: 'This plugin may be disabled after generating **{0}** with **{1}**.'
+      - lang: bg
+        text: 'Тази приставка може да е деактивирана след създаването на **{0}** с **"{1}"**.'
+      - lang: de
+        text: 'Dieses Plugin kann nach der Erzeugung von **{0}** mit **{1}** deaktiviert werden.'
+      - lang: es
+        text: 'Este plugin puede desactivarse después de generar **{0}** con **{1}**.'
+      - lang: fi
+        text: 'Tämä lisäosa voidaan poistaa käytöstä, kun **{0}** on luotu käyttäen **{1}**.'
+      - lang: fr
+        text: 'Ce plugin pourra être désactivé après avoir généré des **{0}** avec **{1}**.'
+      - lang: it
+        text: 'Questo plugin potrebbe essere disabilitato dopo aver generato **{0}** con **{1}**.'
+      - lang: ja
+        text: 'このプラグインは **{1}** で **{0}** を生成すると無効化される場合があります。'
+      - lang: pt_BR
+        text: 'Este plugin pode ser desativado após gerar **{0}** com **{1}**.'
+      - lang: pt_PT
+        text: 'Este plugin pode ser desativado após gerar **{0}** com **{1}**.'
+      - lang: ru
+        text: 'Этот плагин может быть отключён после генерации **{0}** с помощью **{1}**.'
+      - lang: sv
+        text: 'Denna insticksmodul kan inaktiveras efter att ha genererat **{0}** med **{1}**.'
+      - lang: ta
+        text: '**{0}** உடன் **{1}** உருவாக்கியபிறகு இந்தச் சொருகி முடக்கப்படலாம்.'
+      - lang: tr_TR
+        text: 'Bu eklenti, **{1}** ile **{0}** oluşturulduktan sonra devre dışı bırakılabilir.'
+      - lang: uk_UA
+        text: 'Цей плагін можна вимкнути після створення **{0}** за допомогою **{1}**.'
+      - lang: zh_CN
+        text: '此插件可在用 **{1}** 产生 **{0}** 后禁用。'
+
+  - &doNotCleanOBME
+    type: say
+    content:
+      - lang: en
+        text: 'Do not clean. TES4Edit does not support OBME and may remove records containing OBME data when cleaning.'
+      - lang: de
+        text: 'Nicht säubern. TES4Edit unterstützt OBME nicht und entfernt bei der Säuberung möglicherweise Datensätze, die OBME-Daten enthalten.'
+
+  - &essentialFiles
+    type: warn
+    content:
+      - lang: en
+        text: 'Another mod seems to be overwriting one of this mod''s essential files. Please ensure you''re using this mod''s version of {0} or a compatible version if available.'
+      - lang: bg
+        text: 'Някои от файловете на тази модификация са презаписани. Моля, използвайте {0} или друга съвместима версия.'
+      - lang: da
+        text: 'Det ser ud til at et andet mod overskriver dette mods kernefiler. Sørg venligst for at du bruger denne mod''s version af {0} eller en kompatibel version, hvis den er tilgængelig.'
+      - lang: de
+        text: 'Eine andere Mod scheint eine der essenziellen Dateien dieser Modifikation zu überschreiben. Bitte stellen Sie sicher, dass Sie die Version dieser Modifikation von {0} oder eine kompatible Version verwenden, falls verfügbar.'
+      - lang: es
+        text: 'Otro mod parece estar sobrescribiendo uno de los archivos esenciales de este mod. Por favor, asegúrate de que estás usando la versión {0} de este mod o una versión compatible si está disponible.'
+      - lang: fi
+        text: 'Toinen lisäosa on kirjoittanut yhden tämän lisäosan kriittisen tiedoston päälle. Varmistathan, että käytössä on tämän lisäosan {0} tai muutoin yhteensopiva versio.'
+      - lang: fr
+        text: 'Un autre mod semble écraser l''un des fichiers essentiels de ce mod. Assurez-vous d''utiliser la version du fichier {0} de ce mod ou une version compatible si disponible.'
+      - lang: it
+        text: 'Sembra che ci sia una mod che sovrascrive uno dei file fondamentali di questa mod. Assicurati di usare questa versione della mod {0} o una versione compatibile, se disponibile.'
+      - lang: ja
+        text: '必須ファイルが別の Mod によって上書きされているようです。この Mod の {0} バージョン、あるいは互換バージョンがある場合、必ずそちらを使用してください。'
+      - lang: pl
+        text: 'Inny mod wydaje się nadpisywać jeden z podstawowych plików tego moda. Upewnij się, że używasz wersji {0} tego moda lub wersji kompatybilnej, jeśli jest dostępna.'
+      - lang: pt_BR
+        text: 'Aparentemente outro mod está sobrescrevendo um dos arquivos essenciais deste mod. Por favor certifique-se que você está usando a versão do mod {0} ou uma versão compatível, se disponível.'
+      - lang: pt_PT
+        text: 'Aparentemente outro mod está a sobrescrever um dos ficheiros essenciais deste mod. Por favor certifique-se que usa a versão do mod {0} ou uma versão compatível, se disponível.'
+      - lang: ru
+        text: 'Другой мод, похоже, перезаписывает один из основных файлов этого мода. Убедитесь, что вы используете версию {0} этого мода или совместимую версию, если она доступна.'
+      - lang: sv
+        text: 'En annan mod verkar skriva över en av denna mods viktiga filer. Se till att du använder denna mods version av {0} eller en kompatibel version om den är tillgänglig.'
+      - lang: ta
+        text: 'மற்றொரு மோட் இந்த மோடின் அத்தியாவசிய கோப்புகளில் ஒன்றை மேலெழுதும் என்று தெரிகிறது. இந்த மோடின் பதிப்பின் {0} அல்லது கிடைத்தால் இணக்கமான பதிப்பைப் பயன்படுத்துகிறீர்கள் என்பதை உறுதிப்படுத்தவும்.'
+      - lang: tr_TR
+        text: 'Başka bir mod, bu modun temel dosyalarından birini üzerine yazıyor gibi görünüyor. Lütfen bu modun {0} sürümünü veya uyumlu bir sürümü kullanıp kullanmadığınızı kontrol edin.'
+      - lang: uk_UA
+        text: 'Інший мод може переписувати один із критичних файлів. Будь ласка впевніться, що ви використовуєте версію {0} із цього моду, або сумісну за її наявності.'
+      - lang: zh_CN
+        text: '其它模组似乎覆盖了此模组的某些重要文件。请确保您正在使用此模组的 {0} 版本或兼容版本（如可用）。'
+
+  # Useful for Fallout 3 and Fallout: New Vegas plugins
+  - &flagESM
+    type: warn
+    content:
+      - lang: en
+        text: 'This plugin isn''t an ESM, but it appears to contain navmeshes. This can lead to problems with NPC pathfinding. It is recommended to flag this plugin as **ESM** to avoid these problems. It might also be necessary to ensure that all references called by scripts in this plugin are flagged as **persistent**.'
+      - lang: bg
+        text: 'Тази приставка не е ESM файл, но съдържа навигационни обекти. Това може да причини проблеми с навигацията на компютърните герои. Препоръчва се да отбележите тази приставка като **ESM** файл, за да избегнете тези проблеми. Необходимо е всички препратки от скриптовете да се отбележат като **непроменливи**.'
+      - lang: de
+        text: 'Dieses Plugin ist kein ESM, aber es scheint Navmeshes zu enthalten. Dies kann zu Problemen mit der NPC-Pfadfindung führen. Es wird empfohlen, dieses Plugin als **ESM** zu kennzeichnen, um diese Probleme zu vermeiden. Es könnte auch notwendig sein, sicherzustellen, dass alle Referenzen, die von Skripten in diesem Plugin aufgerufen werden, als **persistent** gekennzeichnet sind.'
+      - lang: es
+        text: 'Este plugin no es un ESM, pero parece contener navmeshes. Esto puede provocar problemas con el pathfinding de los NPCs. Se recomienda marcar este plugin como **ESM** para evitar estos problemas. También puede ser necesario asegurarse de que todas las referencias invocadas por scripts en este plugin están marcadas como **persistentes**.'
+      - lang: fi
+        text: 'Tämä liitännäinen ei ole ESM, mutta se näyttää sisältävän navmeshejä. Tämä voi johtaa ongelmiin NPC-polkujen etsinnässä. On suositeltavaa merkitä tämä lisäosa **ESM:ksi** näiden ongelmien välttämiseksi. Voi myös olla tarpeen varmistaa, että kaikki tämän lisäosan komentosarjojen kutsumat viittaukset merkitään **pysyviksi**.'
+      - lang: pt_BR
+        text: 'Esse plugin não é um ESM, mas parece conter navmeshes. Isso pode levar a problemas com a localização de NPCs. Recomenda-se marcar esse plugin como **ESM** para evitar esses problemas. Também pode ser necessário garantir que todas as referências chamadas por scripts nesse plugin sejam marcadas como **persistentes**.'
+      - lang: pt_PT
+        text: 'Este plugin não é um ESM, mas parece conter navmeshes. Isso pode levar a problemas com o Pathfinding NPC. Recomenda-se a marcar este plugin como **ESM** para evitar esses problemas. Também pode ser necessário garantir que todas as referências chamadas por scripts neste plugin são sinalizadas como **persistent***.'
+      - lang: ru
+        text: 'Этот плагин не является ESM, но, похоже, содержит навмеши. Это может привести к проблемам с поиском пути у НИП. Рекомендуется пометить этот плагин как **ESM**, чтобы избежать этих проблем. Также может потребоваться убедиться, что все ссылки, вызываемые скриптами в этом плагине, помечены как **постоянные**.'
+      - lang: ta
+        text: 'இந்தச் சொருகி ஒரு இஎச்எம் அல்ல, ஆனால் அதில் நவ்மேச்கள் இருப்பதாகத் தெரிகிறது. இது NPC பாத்ஃபைண்டிங் சிக்கல்களுக்கு வழிவகுக்கும். இந்தச் சிக்கல்களைத் தவிர்க்க இந்தச் சொருகி **ESM** எனக் கொடியிட பரிந்துரைக்கப்படுகிறது. இந்தச் சொருகி ச்கிரிப்ட்களால் அழைக்கப்படும் அனைத்து குறிப்புகளும் **தொடர்ச்சியான** எனக் கொடியிடப்படுவதை உறுதிசெய்வதும் அவசியமாக இருக்கலாம்.'
+      - lang: tr_TR
+        text: 'Bu eklenti bir ESM değil, ancak navmeshler içeriyor gibi görünüyor. Bu, NPC yol bulma sorunlarına neden olabilir. Bu sorunları önlemek için bu eklentiyi **ESM** olarak işaretlemeniz önerilir. Bu eklentideki betikler tarafından çağrılan tüm referansların **kalıcı** olarak işaretlendiğinden emin olmanız da gerekebilir.'
+      - lang: uk_UA
+        text: 'Плагін не є ESM, але може містити навмеші. Це може спричинити проблеми з пошуком шляху персонажами. Радимо позначити плагін як **ESM** для уникнення цих проблем. Також потрібно переконатися, що всі посилання використані в скриптах відмічені як **постійні**.'
+      - lang: zh_CN
+        text: '此插件非 ESM，但它似乎包含了导航网格（即 Navmeshes）。这可能导致 NPC 寻径问题。推荐您标记此插件为 **ESM** 以避免这些问题。它也可能是确保插件中脚本调用的所有引用均标记为**持久化**所必需的。'
+
+  - &includesX
+    type: say
+    content:
+      - lang: en
+        text: '{0} is included with this mod.'
+      - lang: bg
+        text: 'Приставката {0} е включена в тази модификация.'
+      - lang: da
+        text: '{0} er inkluderet i dette mod.'
+      - lang: de
+        text: '{0} ist in dieser Mod enthalten.'
+      - lang: es
+        text: '{0} viene incluido ya con este mod.'
+      - lang: fi
+        text: '{0} on tässä lisäosassa.'
+      - lang: fr
+        text: '{0} est inclus avec ce mod.'
+      - lang: it
+        text: '{0} è incluso in questa mod.'
+      - lang: ja
+        text: '{0} はこの Mod に含まれています。'
+      - lang: ko
+        text: '{0} 모드가 포함되어 있습니다.'
+      - lang: pl
+        text: '{0} jest już zawarte z tym modem.'
+      - lang: pt_BR
+        text: '{0} está incluído neste mod.'
+      - lang: pt_PT
+        text: '{0} vem incluído com este mod.'
+      - lang: ru
+        text: '{0} уже добавлен с этим модом.'
+      - lang: sv
+        text: '{0} är inluderat med denna mod.'
+      - lang: ta
+        text: '{0} இந்த மோட் மூலம் சேர்க்கப்பட்டுள்ளது.'
+      - lang: tr_TR
+        text: '{0}, bu mod ile birlikte gelmektedir.'
+      - lang: uk_UA
+        text: '{0} вже додано з цим модом.'
+      - lang: zh_CN
+        text: '{0}已包含在这个mod中。'
+
+  - &languageX
+    type: say
+    content:
+      - lang: en
+        text: 'Language: {0}'
+      - lang: bg
+        text: 'Език: {0}'
+      - lang: da
+        text: 'Sprog: {0}'
+      - lang: de
+        text: 'Sprache: {0}'
+      - lang: es
+        text: 'Lenguaje: {0}'
+      - lang: fi
+        text: 'Kieli: {0}'
+      - lang: fr
+        text: 'Langue: {0}'
+      - lang: it
+        text: 'Lingua: {0}'
+      - lang: ja
+        text: '言語: {0}'
+      - lang: ko
+        text: '언어: {0}'
+      - lang: pl
+        text: 'Język: {0}'
+      - lang: pt_BR
+        text: 'Língua: {0}'
+      - lang: pt_PT
+        text: 'Língua: {0}'
+      - lang: ru
+        text: 'Язык: {0}'
+      - lang: sv
+        text: 'Språk: {0}'
+      - lang: ta
+        text: 'மொழி: {0}'
+      - lang: tr_TR
+        text: 'Dil: {0}'
+      - lang: uk_UA
+        text: 'Мова: {0}'
+      - lang: zh_CN
+        text: '语言: {0}'
+
+  - &mainQuestCompleted
+    type: say
+    content:
+      - lang: en
+        text: 'Only use this plugin once the main quest of the game has been completed.'
+      - lang: bg
+        text: 'Използвайте тази приставка само след завършване на основната мисия на играта.'
+      - lang: da
+        text: 'Brug kun dette plugin, når hovedmissionen i spillet er fuldført.'
+      - lang: de
+        text: 'Verwenden Sie dieses Plugin erst, wenn die Hauptquest des Spiels abgeschlossen ist.'
+      - lang: es
+        text: 'Use este plugin solo cuando la misión principal del juego haya sido completada.'
+      - lang: fi
+        text: 'Käytä tätä lisäosaa vasta päätarinan jälkeen.'
+      - lang: fr
+        text: 'N''utilisez ce plugin que lorsque la quête principale du jeu aura été complétée.'
+      - lang: it
+        text: 'Utilizzare questo plugin solo quando la missione principale del gioco è stata completata.'
+      - lang: ja
+        text: 'このプラグインはゲームのメインクエスト完了後に使用してください。'
+      - lang: ko
+        text: '이 플러그인은 게임의 메인 퀘스트가 완료된 후에만 사용하십시오.'
+      - lang: pl
+        text: 'Używaj tej wtyczki dopiero po ukończeniu głównego zadania gry.'
+      - lang: pt_BR
+        text: 'Só use este plugin após finalizar a história principal do jogo.'
+      - lang: pt_PT
+        text: 'Apenas utilize este plugin quando a missão principal do jogo estiver completada.'
+      - lang: ru
+        text: 'Используйте этот плагин только после завершения основного квеста игры.'
+      - lang: sv
+        text: 'Använd endast denna insticksmodul när spelets huvuduppdrag har slutförts.'
+      - lang: ta
+        text: 'விளையாட்டின் முக்கிய தேடல் முடிந்த பிறகு மட்டுமே இந்தச் சொருகி பயன்படுத்தவும்.'
+      - lang: tr_TR
+        text: 'Bu eklentiyi, oyunun ana görevi tamamlandıktan sonra kullanın.'
+      - lang: uk_UA
+        text: 'Використовуйте цей плагін, лише якщо головний квест гри вже пройдено.'
+      - lang: zh_CN
+        text: '只有在游戏的主要任务完成后才可以使用这个插件。'
+
+  - &masterReassign
+    type: say
+    content:
+      - lang: en
+        text: 'The **{0}** master must be reassigned to **{1}**.'
+      - lang: bg
+        text: '**{0}** трябва да бъде преназначен като **{1}**.'
+      - lang: da
+        text: '**{0}**-masteren skal overdrages til **{1}**.'
+      - lang: de
+        text: 'Der **{0}** Master muss **{1}** neu zugewiesen werden.'
+      - lang: es
+        text: 'El master **{0}** debe ser cambiado por **{1}**.'
+      - lang: fi
+        text: 'Tiedoston **{0}** tilalle tulee vaihtaa **{1}**.'
+      - lang: fr
+        text: 'Le fichier master de **{0}** doit être réassigné à **{1}**.'
+      - lang: it
+        text: 'Il file **{0}** master deve essere riassegnato al file **{1}**.'
+      - lang: ja
+        text: '**{0}** のマスターは **{1}** に割り当て直す必要があります。'
+      - lang: ko
+        text: '**{0}** 마스터는 **{1}**에 다시 할당되어야합니다.'
+      - lang: pl
+        text: 'Wzorzec **{0}** musi zostać ponownie przypisany do wartości **{1}**.'
+      - lang: pt_BR
+        text: 'O mestre **{0}** deve ser realocado para **{1}**.'
+      - lang: pt_PT
+        text: 'O mestre **{0}** deve ser reatribuído a **{1}**.'
+      - lang: ru
+        text: 'Мастер **{0}** необходимо переназначить на **{1}**.'
+      - lang: sv
+        text: '**{0}** mästaren måste omfördelas till **{1}**.'
+      - lang: ta
+        text: '**{0}** தலைவன் **{1}** க்கு மீண்டும் நியமிக்க வேண்டும்.'
+      - lang: tr_TR
+        text: '**{0}** master, **{1}** olarak yeniden atanmalıdır.'
+      - lang: uk_UA
+        text: '**{0}** необхідно переназначити як **{1}**.'
+      - lang: zh_CN
+        text: '**{0}**必须重新分配给**{1}**。'
+
+  - &mismatchedFormIDs
+    type: error
+    content:
+      - lang: en
+        text: 'This plugin is a **{0}**, but it contains FormIDs that do not match this type of Master. Using this plugin would have unpredictable consequences for your game and is therefore not recommended.'
+      - lang: bg
+        text: 'Тази приставка е **{0}**, но съдържа „FormID“, който не съвпада с типа на основната. Използването на тази приставка може да причини непредвидими последици за Вашата игра и не се препоръчва.'
+      - lang: de
+        text: 'Dieses Plugin ist ein **{0}**, aber es enthält FormIDs, die nicht zu diesem Typ von Master passen. Die Verwendung dieses Plugins würde unvorhersehbare Folgen für Ihr Spiel haben und wird daher nicht empfohlen.'
+      - lang: es
+        text: 'Este plugin es un **{0}**, pero contiene FormIDs que no coinciden con este tipo de Master. El uso de este plugin tendría consecuencias impredecibles para su juego y por lo tanto no se recomienda.'
+      - lang: fi
+        text: 'Tämä liitännäinen on **{0}**, mutta se sisältää FormID-tunnuksia, jotka eivät vastaa tätä Master-tyyppiä. Tämän lisäosan käytöllä olisi arvaamattomia seurauksia pelillesi, joten sitä ei suositella.'
+      - lang: pt_BR
+        text: 'Esse plugin é um **{0}**, mas contém FormIDs que não correspondem a esse tipo de Mestre. O uso desse plugin teria consequências imprevisíveis para seu jogo e, portanto, não é recomendado.'
+      - lang: pt_PT
+        text: 'Este plugin é um **{0}**, mas contém FormIDs que não correspondem a este tipo de Master. Usando este plugin teria consequências imprevisíveis para o seu jogo e, portanto, não é recomendado.'
+      - lang: ru
+        text: 'Этот плагин - **{0}**, но он содержит FormID, которые не соответствуют этому типу мастер-плагина. Использование этого плагина может иметь непредсказуемые последствия для вашей игры и поэтому не рекомендуется.'
+      - lang: sv
+        text: 'Denna insticksmodul är en **{0}**, men innehåller FormID som inte matchar denna typ av Mästare. Att använda denna insticksmodul skulle ha oförutsägbara konsekvenser för ditt spel och rekommenderas därmed inte.'
+      - lang: ta
+        text: 'இந்தச் சொருகி **{0}** ஆகும், ஆனால் அதில் இந்த வகை மாச்டருடன் பொருந்தாத ஃபார்மிட்கள் உள்ளன. இந்தச் சொருகி பயன்படுத்துவது உங்கள் விளையாட்டுக்குக் கணிக்க முடியாத விளைவுகளை ஏற்படுத்தும், எனவே இது பரிந்துரைக்கப்படவில்லை.'
+      - lang: uk_UA
+        text: 'Цей плагін є **{0}**, але містить невідповідні для цього типу майстру. Використання цього плагіну не рекомендоване через можливі непередбачувані наслідки для вашої гри.'
+      - lang: zh_CN
+        text: '此插件为 **{0}**，但其包含的 FormID 不匹配此类型的 Master。使用此插件会对您的游戏产生不可预知的后果，因此不推荐您使用它。'
+    subs:
+      - 'Master Type'
+
+  - &missingRequirementXforY
+    type: warn
+    content:
+      - lang: en
+        text: 'It appears you have installed **{1}**, but some of its requirements seem to be missing. Please ensure you have correctly installed **{0}**.'
+      - lang: bg
+        text: 'Инсталирали сте **{1}**, но някои от нейните изисквания не са изпълнени. Моля, инсталирайте **{0}** отново.'
+      - lang: da
+        text: 'Det ser ud til, at du har installeret **{1}**, men at nogle af kravene ikke er opfyldt. Sørg for, at du har installeret **{0}**.'
+      - lang: de
+        text: 'Es erscheint so als hätten Sie **{1}** installiert, aber einige der Voraussetzungen scheinen zu fehlen. Bitte stellen Sie sicher, dass Sie **{0}** korrekt installiert haben.'
+      - lang: es
+        text: 'Parece que tiene instalado **{1}**, pero algunos de sus requerimientos no están presentes. Por favor, asegúrese de que haya instalado **{0}** correctamente.'
+      - lang: fi
+        text: '**{1}** on asennettu, mutta osa sen vaatimista lisäosista puuttuu. Varmista, että **{0}** on oikein asennettu.'
+      - lang: fr
+        text: 'Il semble que vous avez installé **{1}**, mais certains de ses prérequis semblent manquer. Veuillez vous assurer que vous ayez correctement installé **{0}**.'
+      - lang: it
+        text: 'Sembra che tu abbia installato **{1}**, ma mancano alcuni dei suoi requisiti. Assicurati di aver installato correttamente **{0}**.'
+      - lang: ja
+        text: '**{1}** がインストールされましたが、必要なものの一部が不足しているようです。**{0}** が正しくインストールされていることを確認してください。'
+      - lang: ko
+        text: '**{1}** 모드를 실행하기 위한 필요 모드가 빠져 있습니다. **{0}** 모드를 제대로 설치하십시오.'
+      - lang: pl
+        text: 'Wygląda na to że zainstalowałeś **{1}**, ale wydaje się, że brakuje niektórych z jego wymagań. Upewnij się że poprawnie zainstalowałeś **{0}**.'
+      - lang: pt_BR
+        text: 'Aparentemente você tem instalado **{1}**, mas alguns de seus requerimentos estão faltando. Por favor tenha certeza de que você instalou **{0}** corretamente.'
+      - lang: pt_PT
+        text: 'Aparentemente você tem instalado **{1}**, mas alguns de seus requerimentos estão em falta Por favor confirme que você instalou **{0}** corretamente.'
+      - lang: ru
+        text: 'Похоже, вы установили **{1}**, но некоторые из его зависимостей, похоже, отсутствуют. Убедитесь, что вы правильно установили **{0}**.'
+      - lang: sv
+        text: 'Det verkar som om du har installerat **{1}**, men några av dess krav är inte uppfyllda. Var vänlig och se till att du har installerat **{0}**.'
+      - lang: ta
+        text: 'நீங்கள் **{1}** நிறுவியிருப்பதாகத் தெரிகிறது, ஆனால் அதன் சில தேவைகள் காணவில்லை என்று தெரிகிறது. நீங்கள் சரியாக நிறுவப்பட்டுள்ளீர்கள் என்பதை உறுதிப்படுத்தவும் **{0}**.'
+      - lang: tr_TR
+        text: '**{1}** zaten yüklü, ancak bazı gereksinimleri eksik gibi görünüyor. **{0}**''yi doğru bir şekilde yüklediğinizden emin olun.'
+      - lang: uk_UA
+        text: 'Схоже, що у вас уже встановлено **{1}**, але деякі його вимоги відсутні. Переконайтесь, що ви правильно встановили **{0}**.'
+      - lang: zh_CN
+        text: '看起来您安装了**{1}**，但它的一些需求似乎缺失了。请确保您已正确安装**{0}**。'
+
+  - &missingRequirementXforPlugin
+    type: warn
+    content:
+      - lang: en
+        text: 'Some of this plugin''s requirements seem to be missing. Please ensure you have correctly installed **{0}**.'
+      - lang: bg
+        text: 'Някои от изискванията на приставката не са изпълнени. Моля, инсталирайте **{0}** отново.'
+      - lang: da
+        text: 'Nogle af kravene til dette plugin mangles. Kontroller venligst, at du har installeret **{0}** korrekt.'
+      - lang: de
+        text: 'Einige der Voraussetzungen dieses Plugins scheinen zu fehlen. Bitte stellen Sie sicher, dass Sie **{0}** korrekt installiert haben.'
+      - lang: es
+        text: 'Algunos de los requerimientos de este plugin parecen faltar. Por favor, asegúrese de que haya instalado correctamente **{0}**.'
+      - lang: fi
+        text: 'Osa tämän lisäosan vaatimuksista puuttuu. Varmista, että **{0}** on asennettu oikein.'
+      - lang: fr
+        text: 'Certains prérequis de ce plugin semblent manquer. Veuillez vous assurer que vous ayez correctement installé **{0}**.'
+      - lang: it
+        text: 'Sembra che manchino alcuni requisiti di questi plugin. Assicurati di avere installato correttamente **{0}**.'
+      - lang: ja
+        text: 'このプラグインに必要なものの一部が不足しているようです。**{0}** が正しくインストールされていることを確認してください。'
+      - lang: ko
+        text: '이 플러그인의 일부 요구사항이 빠져 있습니다. **{0}** 모드를 제대로 설치하십시오.'
+      - lang: pl
+        text: 'Część wymagań dla tej wtyczki wydaje się być brakująca. Upewnij się że poprawnie zainstalowałeś **{0}**.'
+      - lang: pt_BR
+        text: 'Alguns dos requerimentos deste plugin estão faltando. Por favor tenha certeza de que você instalou **{0}** corretamente.'
+      - lang: pt_PT
+        text: 'Alguns dos requerimentos deste plugin estão em falta. Por favor confirme que você instalou **{0}** corretamente.'
+      - lang: ru
+        text: 'Некоторые из зависимостей этого плагина, похоже, отсутствуют. Убедитесь, что вы правильно установили **{0}**.'
+      - lang: sv
+        text: 'Några av denna insticksmoduls krav verkar saknas. Var god och se till att du har installerat **{0}** korrekt.'
+      - lang: ta
+        text: 'இந்தச் சொருகி தேவைகள் சில காணவில்லை. நீங்கள் சரியாக நிறுவப்பட்டுள்ளீர்கள் என்பதை உறுதிப்படுத்தவும் **{0}**.'
+      - lang: tr_TR
+        text: 'Bu eklentinin bazı gereksinimleri eksik gibi görünüyor. **{0}**''yi doğru bir şekilde yüklediğinizden emin olun.'
+      - lang: uk_UA
+        text: 'Деякі вимоги цього плагіна відсутні. Переконайтеся, що правильно встановили **{0}**.'
+      - lang: zh_CN
+        text: '这些插件的一些需求似乎缺失了。请确保您已正确安装**{0}**。'
+
+  - &moddingPlugin
+    type: error
+    content:
+      - lang: en
+        text: 'This plugin is a modding resource and should not be used in-game.'
+      - lang: bg
+        text: 'Тази приставка е ресурс за модифициране и не трябва да се използва по време на игра.'
+      - lang: da
+        text: 'Dette plugin er en moddingressource og bør ikke bruges i spillet.'
+      - lang: de
+        text: 'Dieses Plugin ist eine Modding Ressource und sollte nicht im Spiel verwendet werden.'
+      - lang: es
+        text: 'Este plugin es un recurso para la creación de mods y no debería ser usado en el juego.'
+      - lang: fi
+        text: 'Tämä lisäosa on tarkoitettu lisäosien kehittäjille eikä sitä tule käyttää pelaamiseen.'
+      - lang: fr
+        text: 'Ce plugin est une ressource pour les créateurs de mods et ne devrait pas être utilisé en jeu.'
+      - lang: it
+        text: 'Questo Plugin è una risorsa di modding e non dovrebbe essere usato in gioco.'
+      - lang: ja
+        text: 'このプラグインは Mod 製作用のリソースです。ゲーム内で使用するものではありません。'
+      - lang: ko
+        text: '이 플러그인은 모딩 리소스이며 게임 내에서 사용해서는 안 됩니다.'
+      - lang: pl
+        text: 'Ta wtyczka jest zasobem modowania i nie powinna być używana w grze.'
+      - lang: pt_BR
+        text: 'Este plugin é um recurso para a criação de mods e não deve ser usado no jogo.'
+      - lang: pt_PT
+        text: 'Este plugin é um recurso para a criação de mods e não deve ser usado no jogo.'
+      - lang: ru
+        text: 'Этот плагин является ресурсом для моддинга и не должен использоваться в игре.'
+      - lang: sv
+        text: 'Denna insticksmodul används som en moddningsresurs och borde inte användas i spelet.'
+      - lang: ta
+        text: 'இந்தச் சொருகி ஒரு மோடிங் வளமாகும், மேலும் விளையாட்டில் பயன்படுத்தக் கூடாது.'
+      - lang: tr_TR
+        text: 'Bu eklenti bir modlama kaynağıdır ve oyun içinde kullanılmamalıdır.'
+      - lang: uk_UA
+        text: 'Цей плагін є мод-ресурсом та не має використовуватися під час гри.'
+      - lang: zh_CN
+        text: '这个插件是一个mod开发资源，不应该在游戏中使用。'
+
+  - &moveXFromYToZ
+    type: say
+    content:
+      - lang: en
+        text: 'Move {0} from {1} to {2}.'
+      - lang: bg
+        text: 'Преместете {0} от {1} в {2}.'
+      - lang: da
+        text: 'Flyt {0} fra {1} til {2}.'
+      - lang: de
+        text: 'Verschiebe {0} von {1} nach {2}.'
+      - lang: es
+        text: 'Mueva {0} de {1} hacia {2}.'
+      - lang: fi
+        text: 'Siirrä {0} kansiosta {1} kansioon {2}.'
+      - lang: fr
+        text: 'Déplacez {0} de {1} à {2}.'
+      - lang: it
+        text: 'Sposta {0} da {1} a {2}.'
+      - lang: ja
+        text: '{0} を {1} から {2} に移動します。'
+      - lang: ko
+        text: '{0}를 {1}에서 {2}로 이동합니다.'
+      - lang: pl
+        text: 'Przesuń {0} do {1} do {2}.'
+      - lang: pt_BR
+        text: 'Mover {0} de {1} para {2}.'
+      - lang: pt_PT
+        text: 'Mova {0} de {1} para {2}.'
+      - lang: ru
+        text: 'Переместите {0} из {1} в {2}.'
+      - lang: sv
+        text: 'Flytta {0} från {1} till {2}.'
+      - lang: ta
+        text: '{1} இலிருந்து {2}பெறுநருக்கு {0} நகர்த்தவும்.'
+      - lang: tr_TR
+        text: '{0} dosyasını, {1} klasöründen {2} klasörüne taşı.'
+      - lang: uk_UA
+        text: 'Перемістіть {0} з {1} до {2}.'
+      - lang: zh_CN
+        text: '将{0}从{1}移动到{2}。'
+
+  - &obsolete
+    type: warn
+    content:
+      - lang: en
+        text: 'Obsolete. Update to the latest version. {0}'
+      - lang: bg
+        text: 'Стара версия. Моля, обновете приставката. {0}'
+      - lang: da
+        text: 'Forældet. Opdatér til den nyeste version. {0}'
+      - lang: de
+        text: 'Veraltet. Aktualisieren Sie zur neusten Version. {0}'
+      - lang: es
+        text: 'Obsoleto. Actualizar a la última versión. {0}'
+      - lang: fi
+        text: 'Vanhentunut. Päivitä uusimpaan versioon. {0}'
+      - lang: fr
+        text: 'Obsolète. Veuillez mettre ce fichier à jour. {0}'
+      - lang: it
+        text: 'Obsoleto. Aggiorna all''ultima versione. {0}'
+      - lang: ja
+        text: '旧式のプラグインです。最新版に更新してください。{0}'
+      - lang: ko
+        text: '폐기된 플러그인입니다. 최신 버전으로 업데이트하십시오. {0}'
+      - lang: pl
+        text: 'Przestarzały. Uaktualnij do ostatniej wersji. {0}'
+      - lang: pt_BR
+        text: 'Obsoleto. Atualize para a última versão. {0}.'
+      - lang: pt_PT
+        text: 'Obsoleto. Atualize para a versão mais recente. {0}'
+      - lang: ru
+        text: 'Устарел. Обновите до последней версии. {0}'
+      - lang: sv
+        text: 'Utdaterad. Uppdatera till den senaste versionen. {0}'
+      - lang: ta
+        text: 'வழக்கற்றுப்போன. அண்மைக் கால பதிப்பிற்கு புதுப்பிக்கவும். {0}'
+      - lang: tr_TR
+        text: 'Güncel değil. En son sürüme güncelleyin. {0}'
+      - lang: uk_UA
+        text: 'Застаріло. Оновіть до останньої версії. {0}'
+      - lang: zh_CN
+        text: '已过时。请升级到最新版本。 {0}'
+    subs: [ '' ]
+
+  - &optional
+    type: say
+    content:
+      - lang: en
+        text: 'This plugin is optional.'
+      - lang: bg
+        text: 'Тази приставка не е задължителна.'
+      - lang: da
+        text: 'Dette plugin er valgfrit.'
+      - lang: de
+        text: 'Dieses Plugin ist optional.'
+      - lang: es
+        text: 'Este plugin es opcional.'
+      - lang: fi
+        text: 'Tämä lisäosa ei ole pakollinen.'
+      - lang: fr
+        text: 'Ce plugin est optionnel.'
+      - lang: it
+        text: 'Questo plugin è opzionale.'
+      - lang: ja
+        text: 'このプラグインは任意で使うオプションファイルです。'
+      - lang: ko
+        text: '이 플러그인은 선택 사항입니다.'
+      - lang: pl
+        text: 'Ta wtyczka jest opcjonalna.'
+      - lang: pt_BR
+        text: 'Este plugin é opcional.'
+      - lang: pt_PT
+        text: 'Este plugin é opcional.'
+      - lang: ru
+        text: 'Это опциональный плагин.'
+      - lang: sv
+        text: 'Denna insticksmodul är valfri.'
+      - lang: ta
+        text: 'இந்த சொருகி விருப்பமானது.'
+      - lang: tr_TR
+        text: 'Bu eklenti isteğe bağlıdır.'
+      - lang: uk_UA
+        text: 'Цей плагін не обов’язковий.'
+      - lang: zh_CN
+        text: '这个插件是可选的。'
+
+  - &patch3rdParty
+    type: say
+    content:
+      - lang: en
+        text: 'You seem to be using **{0}**, but you have not enabled a compatibility patch for this mod. A third party patch is available here: {1}'
+      - lang: bg
+        text: 'Използвате **{0}**, но се изисква кръпка за съвместимост. Тя е налична от: {1}'
+      - lang: da
+        text: 'Det ser ud til, at du bruger **{0}**, men du har ikke aktiveret en kompatibilitetspatch for dette mod. En tredjepartspatch er tilgængelig her: {1}'
+      - lang: de
+        text: 'Sie scheinen **{0}** zu nutzen, aber Sie haben keinen Kompatibilitätspatch für diese Mod aktiviert. Ein Patch von Dritten ist hier verfügbar: {1}'
+      - lang: es
+        text: 'Parece que está usando **{0}**, pero no ha habilitado un parche de compatibilidad para este mod. Un parche de un tercero se encuentra disponible aquí: {1}'
+      - lang: fi
+        text: 'Käytät lisäosaa **{0}**, muttet ole asentanut yhteensopivuuskorjausta tälle lisäosalle. Kolmannen osapuolen korjaus on saatavilla: {1}'
+      - lang: fr
+        text: 'Il semble que vous utilisez **{0}**, mais vous n''avez pas activé le patch de compatibilité pour ce mod. Ce patch peut être trouvé ici: {1}'
+      - lang: it
+        text: 'Sembra che tu stia utilizzando **{0}**, ma non hai attivato la patch di compatibilità per questa mod. E'' disponibile una patch esterna qui: {1}'
+      - lang: ja
+        text: '**{0}** を使用しているようですが、この Mod の互換性パッチが有効になっていません。サードパーティのパッチはこちらで入手できます: {1}'
+      - lang: ko
+        text: '**{0}** 모드와 사용하기 위한 호환성 패치가 작동 중이지 않습니다. 제3자 제공 호환성 패치는 여기에서 다운로드 가능합니다: {1}'
+      - lang: pl
+        text: 'Wygląda na to że używasz **{0}**, ale nie masz aktywnej łatki zgodności dla tego moda. Łatka trzeciej strony jest dostępna tutaj: {1}'
+      - lang: pt_BR
+        text: 'Você aparenta estar usando **{0}**, mas não habilitou o patch de compatibilidade para este mod. Um patch feito por terceiros está disponível aqui: {1}'
+      - lang: pt_PT
+        text: 'Você aparenta estar a utilizar **{0}**, mas não ativou o patch de compatibilidade para este mod. Um patch feito por terceiros está disponível aqui: {1}'
+      - lang: ru
+        text: 'Похоже, вы используете **{0}**, но вы не включили патч совместимости для этого мода. Сторонний патч можно найти здесь: {1}'
+      - lang: sv
+        text: 'Det verkar som att du använder **{0}**, men du har inte aktiverat en kompatibilitetspatch för denna mod. En patch från en tredje part finns här: {1}'
+      - lang: ta
+        text: 'நீங்கள் **{0}** ஐப் பயன்படுத்துவதாகத் தெரிகிறது, ஆனால் இந்த மோடிற்கான பொருந்தக்கூடிய இணைப்பை நீங்கள் இயக்கவில்லை. மூன்றாம் தரப்பு இணைப்பு இங்கே கிடைக்கிறது: {1}'
+      - lang: tr_TR
+        text: '**{0}** kullanıyorsunuz gibi görünüyor, ancak bu mod için bir uyumluluk yaması etkinleştirilmemiş. Üçüncü taraf bir yama burada mevcut: {1}'
+      - lang: uk_UA
+        text: 'Схоже, що ви використовуєте **{0}**, але його патч сумісності не було ввімкнено. Сторонній патч можна знайти тут: {1}'
+      - lang: zh_CN
+        text: '您似乎使用了**{0}**，但没有启用这个mod的兼容性补丁。第三方补丁可以在这里找到:{1}'
+
+  - &patcherScriptAvailable
+    type: say
+    content:
+      - lang: en
+        text: '{0} patcher script available here: {1}'
+      - lang: bg
+        text: 'Скриптът за кръпки {0} е наличен от: {1}'
+      - lang: da
+        text: '{0} patcher-scriptet er tilgængeligt her: {1}'
+      - lang: de
+        text: '{0} Patch-Skript hier verfügbar: {1}'
+      - lang: es
+        text: '{0} un script parcheador se encuentra disponible aquí: {1}'
+      - lang: fi
+        text: '{0} korjauskoodi on saatavilla: {1}'
+      - lang: fr
+        text: 'Un script pour patch {0} est disponible ici: {1}'
+      - lang: it
+        text: '{0} patcher script disponibile qui: {1}'
+      - lang: ja
+        text: '{0} のパッチスクリプトをこちらから入手できます: {1}'
+      - lang: ko
+        text: '{0}의 패쳐 스크립트는 {1}에서 사용이 가능합니다.'
+      - lang: pl
+        text: '{0} skrypt patchera dostępny tutaj: {1}'
+      - lang: pt_BR
+        text: '{0} script patcher disponível aqui: {1}'
+      - lang: pt_PT
+        text: 'O script de atualização para {0} está disponível aqui: {1}'
+      - lang: ru
+        text: 'Скрипт патчера {0} доступен здесь: {1}'
+      - lang: sv
+        text: '{0}-patcharskript tillgängligt här: {1}'
+      - lang: ta
+        text: '{0} பேட்சர் ச்கிரிப்ட் இங்கே கிடைக்கிறது: {1}'
+      - lang: tr_TR
+        text: '{0} yaması burada mevcut: {1}'
+      - lang: uk_UA
+        text: '{0} патчер скрипт доступний тут: {1}'
+      - lang: zh_CN
+        text: '{0}的补丁在这里: {1}'
+
+  - &patchIncluded
+    type: say
+    content:
+      - lang: en
+        text: 'You seem to be using **{0}**, but you have not enabled a compatibility patch for this mod. A compatibility patch is included with this plugin''s installer.'
+      - lang: bg
+        text: 'Използвате **{0}**, но се изисква кръпка за съвместимост. Тя е налична от инсталационния файл на приставката.'
+      - lang: da
+        text: 'Det ser ud til, at du bruger **{0}**, men du har ikke aktiveret en kompatibilitetspatch for dette mod. En kompatibilitetspatch er inkluderet i dette plugin''s installationsprogram.'
+      - lang: de
+        text: 'Sie scheinen **{0}** zu nutzen, aber Sie haben keinen Kompatibilitätspatch für diese Mod aktiviert. Ein Kompatibilitätspatch ist enthalten mit dem Installer dieses Plugins.'
+      - lang: es
+        text: 'Parece que está usando **{0}**, pero no ha habilitado un parche de compatibilidad para este mod. Un parche de compatibilidad está incluido en el instalador de este plugin.'
+      - lang: fi
+        text: 'Käytät lisäosaa **{0}**, muttet ole asentanut yhteensopivuuskorjausta tälle lisäosalle. Korjaus on saatavilla tämän lisäosan asennusohjelman kautta.'
+      - lang: fr
+        text: 'Il semble que vous utilisez **{0}**, mais vous n''avez pas activé le patch de compatibilité pour ce mod. Ce patch est inclus avec l''installeur de ce plugin.'
+      - lang: it
+        text: 'Sembra che tu stia utilizzando **{0}**, ma non hai attivato patch di compatibilità per questa mod. Una patch di compatibilità è inclusa nell''installer di questo plugin.'
+      - lang: ja
+        text: '**{0}** を使用しているようですが、この Mod の互換性パッチが有効になっていません。互換性パッチは、このプラグインのインストーラーに含まれています。'
+      - lang: ko
+        text: '**{0}** 모드와 사용하기 위한 호환성 패치가 작동 중이지 않습니다. 호환성 패치는 이 플러그인의 인스톨러에 포함되어 있습니다.'
+      - lang: pl
+        text: 'Wygląda na to że używasz **{0}**, ale nie masz aktywnej łatki zgodności dla tego moda. Łatka zgodności jest dostarczona wraz z instalatorem tej wtyczki.'
+      - lang: pt_BR
+        text: 'Você aparenta estar usando **{0}**, mas não habilitou o patch de compatibilidade para este mod. Um patch de compatibilidade está incluso com o instalador desse plugin.'
+      - lang: pt_PT
+        text: 'Você aparenta estar a utilizar **{0}**, mas não ativou o patch de compatibilidade para este mod. Um patch de compatibilidade está incluído com o instalador do plugin.'
+      - lang: ru
+        text: 'Похоже, вы используете **{0}**, но вы не включили патч совместимости для этого мода. Патч совместимости включён в установщик этого плагина.'
+      - lang: sv
+        text: 'Det verkar som att du använder **{0}**, men du har inte aktiverat en kompatibilitetspatch för detta mod. En kompatibilitetspatch inkluderas i denna insticksmoduls installationsprogram.'
+      - lang: ta
+        text: 'நீங்கள் **{0}** ஐப் பயன்படுத்துவதாகத் தெரிகிறது, ஆனால் இந்த மோடிற்கான பொருந்தக்கூடிய இணைப்பை நீங்கள் இயக்கவில்லை. இந்தச் சொருகி நிறுவியுடன் ஒரு பொருந்தக்கூடிய இணைப்பு சேர்க்கப்பட்டுள்ளது.'
+      - lang: tr_TR
+        text: '**{0}** kullanıyorsunuz gibi görünüyor, ancak bu mod için bir uyumluluk yaması etkinleştirilmemiş. Bir uyumluluk yaması bu eklentinin yükleyicisi ile birlikte sunulmuştur.'
+      - lang: uk_UA
+        text: 'Схоже, що ви використовуєте **{0}**, але його патч сумісності не було ввімкнено. Патч сумісності можна знайти в установнику плагіна.'
+      - lang: zh_CN
+        text: '您似乎使用了**{0}**，但没有启用这个mod的兼容性补丁。这个插件的安装程序中包含了该补丁。'
+
+  - &patchOutdated
+    type: warn
+    content:
+      - lang: en
+        text: 'This patch is outdated and may not be compatible with the latest version of the patched mod.'
+      - lang: bg
+        text: 'Тази кръпка е остаряла и може да не е съвместима с последната версия на модификацията.'
+      - lang: da
+        text: 'Denne patch er forældet og er muligvis ikke kompatibel med den nyeste version af det patched mod.'
+      - lang: de
+        text: 'Dieser Patch ist veraltet und ist möglicherweise nicht kompatibel mit der aktuellen Version der gepatchten Mod.'
+      - lang: es
+        text: 'Este parche no ha sido actualizado y podría no ser compatible con la última versión del mod original.'
+      - lang: fi
+        text: 'Tämä lisäosa on vanhentunut eikä välttämättä ole yhteensopiva uusimman yhteensopivuuskorjatun lisäosan kanssa.'
+      - lang: fr
+        text: 'Ce patch est obsolète et pourrait ne pas être compatible avec la dernière version du mod concerné.'
+      - lang: it
+        text: 'Questa patch è obsoleta e potrebbe non essere compatibile con l''ultima versione della mod patchata.'
+      - lang: ja
+        text: '旧式のパッチです。パッチが適用された Mod の最新版とは両立できない可能性があります。'
+      - lang: pl
+        text: 'Ten patch jest nieaktualny i może nie być kompatybilny z najnowszą wersją poprawionego moda.'
+      - lang: pt_BR
+        text: 'Este patch está desatualizado e pode não ser compatível com a versão mais recente do mod corrigido.'
+      - lang: pt_PT
+        text: 'Este patch está desatualizado e pode não ser compatível com a versão mais recente do mod corrigido.'
+      - lang: ru
+        text: 'Данный патч устарел и может быть несовместим с последней версией исправленного мода.'
+      - lang: sv
+        text: 'Denna patch är utdaterad och kanske inte är kompatibel med den senaste versionen av det patchade moddet.'
+      - lang: ta
+        text: 'இந்த இணைப்பு காலாவதியானது மற்றும் ஒட்டப்பட்ட மோடின் அண்மைக் கால பதிப்போடு பொருந்தாது.'
+      - lang: tr_TR
+        text: 'Bu yama güncel değil ve yamalanmış modun en son sürümüyle uyumlu olmayabilir.'
+      - lang: uk_UA
+        text: 'Патч застарів і може бути несумісним з останньою версією моду.'
+      - lang: zh_CN
+        text: '此补丁已过期且可能不兼容已补丁模组的最新版本。'
+
+  - &patchProvided
+    type: say
+    content:
+      - lang: en
+        text: 'You seem to be using **{0}**, but you have not enabled a compatibility patch for this mod. A compatibility patch is provided on this plugin''s mod page.'
+      - lang: bg
+        text: 'Използвате **{0}**, но се изисква кръпка за съвместимост. Тя е налична от Интернет страницата на приставката.'
+      - lang: da
+        text: 'Det ser ud til, at du bruger **{0}**, men du har ikke aktiveret en kompatibilitetspatch for dette mod. Der findes en kompatibilitetspatch på dette plugin''s mod-side.'
+      - lang: de
+        text: 'Sie scheinen **{0}** zu nutzen, aber Sie haben keinen Kompatibilitätspatch für diese Mod aktiviert. Ein Kompatibilitätspatch wird auf dieser Plugins Mod-Seite zur Verfügung gestellt.'
+      - lang: es
+        text: 'Parece que está usando **{0}**, pero no ha habilitado un parche de compatibilidad para este mod. Un parche de compatibilidad está disponible en la página del mod.'
+      - lang: fi
+        text: 'Käytät lisäosaa **{0}**, muttet ole asentanut yhteensopivuuskorjausta tälle lisäosalle. Korjaus on saatavilla tämän lisäosan lataussivulta.'
+      - lang: fr
+        text: 'Vous utilisez **{0}**, mais vous n''avez pas activé le patch de compatibilité pour ce mod. Ce patch peut être trouvé sur la page web du plugin.'
+      - lang: it
+        text: 'Sembra che tu stia utilizzando **{0}**, ma non hai attivato patch di compatibilità per questa mod. Una patch di compatibilità è presente in questa pagina.'
+      - lang: ja
+        text: '**{0}** を使用しているようですが、この Mod の互換性パッチが有効になっていません。互換性パッチは、このプラグインの Mod ページにあります。'
+      - lang: ko
+        text: '**{0}** 모드와 사용하기 위한 호환성 패치가 작동 중이지 않습니다. 호환성 패치는 이 플러그인의 모드 페이지에서 제공 중입니다.'
+      - lang: pl
+        text: 'Wygląda na to że używasz **{0}**, ale nie masz aktywnej łatki zgodności dla tego moda. Łatka zgodności jest dostarczona na stronie internetowej tej wtyczki.'
+      - lang: pt_BR
+        text: 'Você aparenta estar usando **{0}**, mas não habilitou o patch de compatibilidade para este mod. Um patch de compatibilidade é provido na página desse plugin.'
+      - lang: pt_PT
+        text: 'Você aparenta estar a utilizar **{0}**, mas não ativou o patch de compatibilidade para este mod. Um patch de compatibilidade está disponível na página mod deste plugin.'
+      - lang: ru
+        text: 'Похоже, вы используете **{0}**, но вы не включили патч совместимости для этого мода. Патч совместимости имеется на странице этого плагина.'
+      - lang: sv
+        text: 'Det verkar som att du använder **{0}**, men du har inte aktiverat en kompatibilitetspatch för denna mod. En kompatibilitetspatch finns på denna insticksmoduls modsida.'
+      - lang: ta
+        text: 'நீங்கள் **{0}** ஐப் பயன்படுத்துவதாகத் தெரிகிறது, ஆனால் இந்த மோடிற்கான பொருந்தக்கூடிய இணைப்பை நீங்கள் இயக்கவில்லை. இந்தச் சொருகி மோட் பக்கத்தில் ஒரு பொருந்தக்கூடிய இணைப்பு வழங்கப்படுகிறது.'
+      - lang: tr_TR
+        text: '**{0}** kullanıyorsunuz gibi görünüyor, ancak bu mod için bir uyumluluk yaması etkinleştirilmemiş. Bir uyumluluk yaması bu eklentinin mod sayfasında sağlanmıştır.'
+      - lang: uk_UA
+        text: 'Схоже, що ви використовуєте **{0}**, але його патч сумісності не було ввімкнено. Патч сумісності можна знайти на сторінці плагіну.'
+      - lang: zh_CN
+        text: '您似乎使用了**{0}**，但没有启用这个mod的兼容性补丁。这个插件的mod页面提供了该补丁。'
+
+  - &patchUnavailable
+    type: warn
+    content:
+      - lang: en
+        text: 'A patch is required to make this mod fully compatible with {0}. None is currently available for download.'
+      - lang: bg
+        text: 'Тази модификация изисква кръпка за съвместимост с приставката {0}. Няма налична кръпка за съвместимост.'
+      - lang: da
+        text: 'Der kræves en patch for at gøre dette mod fuldt kompatibelt med {0}. Der er ingen tilgængelig til download i øjeblikket.'
+      - lang: de
+        text: 'Ein Patch ist nötig um diese Mod vollständig kompatibel mit {0} zu machen. Keiner ist derzeit zum Download verfügbar.'
+      - lang: es
+        text: 'Se requiere un parche para hacer este mod completamente compatible con {0}. No existe por el momento ninguno disponible para ser descargado.'
+      - lang: fi
+        text: 'Yhteensopivuus lisäosan {0} kanssa vaatii yhteensopivuuskorjauksen, mutta korjausta ei tällä hetkellä ole saatavilla.'
+      - lang: fr
+        text: 'Ce mod requiert un patch pour être entièrement compatible avec {0}. Aucun patch n''est disponible pour l''instant.'
+      - lang: it
+        text: 'E'' necessaria una patch che renda questa mod totalmente compatibile con {0}. Al momento non ne è disponibile nessuna che possa essere scaricata.'
+      - lang: ja
+        text: 'この Mod を {0} に完全対応させるにはパッチが必要です。現在ダウンロードできるパッチはありません。'
+      - lang: ko
+        text: '이 모드가 {0}와 완전히 호환되도록하려면 패치가 필요합니다. 현재 다운로드 할 수있는 항목이 없습니다.'
+      - lang: pl
+        text: 'Wymagana jest patch, aby ten mod był w pełni kompatybilny z {0}. Żaden nie jest obecnie dostępny do pobrania.'
+      - lang: pt_BR
+        text: 'Um patch é necessário para fazer esse mod ser totalmente compatível com {0}. No entanto, não há nenhum patch atualmente disponível para download.'
+      - lang: pt_PT
+        text: 'Um patch é necessário para fazer este mod ser totalmente compatível com {0}. Atualmente, nenhum está disponível para download.'
+      - lang: ru
+        text: 'Для полной совместимости этого мода с {0} требуется патч. В настоящее время ни один из них не доступен для загрузки.'
+      - lang: sv
+        text: 'En kompatibilitetspatch krävs för att för att göra det moddet fullständigt kompatibelt med {0}. Ingen kompatibilitetspatch finns tillgänglig för nedladdning.'
+      - lang: ta
+        text: 'இந்த மோட் {0} உடன் முழுமையாக இணக்கமாக இருக்க ஒரு இணைப்புத் தேவை. பதிவிறக்கம் செய்ய எதுவும் தற்போது கிடைக்கவில்லை.'
+      - lang: tr_TR
+        text: 'Bu modun {0} ile tam uyumlu olması için bir yama gereklidir. Şu anda indirilebilecek bir yama yok.'
+      - lang: uk_UA
+        text: 'Потрібний патч для повної сумісності з {0}. На даний момент жодного не доступно для завантаження.'
+      - lang: zh_CN
+        text: '需要一个补丁来使这个mod与{0}完全兼容。目前没有可供下载的。'
+
+  - &patchUpdateAvailable
+    type: say
+    content:
+      - lang: en
+        text: 'Update Patch available: {0}'
+      - lang: bg
+        text: 'Налична е обновена кръпка: {0}'
+      - lang: da
+        text: 'Opdateringspatch tilgængelig: {0}'
+      - lang: de
+        text: 'Update Patch verfügbar: {0}'
+      - lang: es
+        text: 'Parche actualizado disponible aquí {0}.'
+      - lang: fi
+        text: 'Päivitys saatavilla: {0}'
+      - lang: fr
+        text: 'Mise à jour du patch disponible: {0}'
+      - lang: it
+        text: 'Aggiornamento della Patch disponibile: {0}'
+      - lang: ja
+        text: 'パッチを更新可能: {0}'
+      - lang: ko
+        text: '패치 업데이트 가능: {0}'
+      - lang: pl
+        text: 'Dostępna Łatka Aktualizująca: {0}'
+      - lang: pt_BR
+        text: 'Patch de Atualização disponível: {0}'
+      - lang: pt_PT
+        text: 'Patch de atualização disponível: {0}'
+      - lang: ru
+        text: 'Доступно обновление патча: {0}'
+      - lang: sv
+        text: 'Uppdateringspatch tillgänglig: {0}'
+      - lang: ta
+        text: 'புதுப்பிப்பு இணைப்பு கிடைக்கிறது: {0}'
+      - lang: tr_TR
+        text: 'Yama Güncellemesi mevcut: {0}'
+      - lang: uk_UA
+        text: 'Наявне оновлення патчу: {0}'
+      - lang: zh_CN
+        text: '可用的更新补丁:{0}'
+
+  - &renameFile
+    type: say
+    content:
+      - lang: en
+        text: 'Rename this file to {0}.'
+      - lang: bg
+        text: 'Преименувайте този файл на {0}.'
+      - lang: da
+        text: 'Omdøb denne fil til {0}.'
+      - lang: de
+        text: 'Benennen Sie diese Datei in {0} um.'
+      - lang: es
+        text: 'Renombre este archivo a {0}.'
+      - lang: fi
+        text: 'Uudelleennimeä tiedosto nimelle {0}.'
+      - lang: fr
+        text: 'Renommer ce fichier en {0}.'
+      - lang: it
+        text: 'Rinomina questo file in {0}.'
+      - lang: ja
+        text: 'ファイル名を {0} に変更してください。'
+      - lang: ko
+        text: '이 파일의 이름을 {0}로 바꿉니다.'
+      - lang: pl
+        text: 'Zmień nazwę tego pliku do {0}.'
+      - lang: pt_BR
+        text: 'Renomeie este arquivo para {0}.'
+      - lang: pt_PT
+        text: 'Renomeie este ficheiro para {0}.'
+      - lang: ru
+        text: 'Переименуйте этот файл на {0}.'
+      - lang: sv
+        text: 'Ändra den här filens namn till {0}.'
+      - lang: ta
+        text: 'இந்தக் கோப்பை {0} என மறுபெயரிடுங்கள்.'
+      - lang: tr_TR
+        text: 'Bu dosyayı {0} olarak yeniden adlandırın.'
+      - lang: uk_UA
+        text: 'Перейменуйте цей файл у {0}.'
+      - lang: zh_CN
+        text: '将此文件重命名为{0}。'
+
+  - &renameXtoY
+    type: warn
+    content:
+      - lang: en
+        text: 'You need to rename {0} to {1} or this mod won''t work.'
+      - lang: bg
+        text: 'Трябва да преименувате {0} на {1}, в противен случай модификацията няма да работи.'
+      - lang: da
+        text: 'Du skal omdøbe {0} til {1}, ellers vil dette mod ikke fungere.'
+      - lang: de
+        text: 'Sie müssen {0} zu {1} umbenennen, ansonsten funktioniert diese Mod nicht.'
+      - lang: es
+        text: 'Necesita renombrar {0} como {1} o de lo contrario este mod no funcionará.'
+      - lang: fi
+        text: '{0} on uudelleennimettävä nimelle {1} tämän lisäosan toimimiseksi.'
+      - lang: fr
+        text: 'Vous devez renommer {0} en {1} ou ce mod ne fonctionnera pas.'
+      - lang: it
+        text: 'Devi rinominare {0} in {1} o questa mod non funzionerà.'
+      - lang: ja
+        text: '{0} を {1} にリネームしないと機能しません。'
+      - lang: ko
+        text: '{0}의 이름을 {1}로 변경하지 않으면 이 모드가 작동하지 않습니다.'
+      - lang: pl
+        text: 'Musisz zmienić nazwę {0} na {1} lub ten mod nie będzie działać.'
+      - lang: pt_BR
+        text: 'Você precisa renomear {0} para {1}, caso contrário esse mod não irá funcionar.'
+      - lang: pt_PT
+        text: 'Você necessita renomear {0} para {1} ou este mod não irá funcionar.'
+      - lang: ru
+        text: 'Вам нужно переименовать {0} на {1} или этот мод не будет работать.'
+      - lang: sv
+        text: 'Du behöver byta namn på {0} till {1} för att det här moddet ska fungera.'
+      - lang: ta
+        text: 'நீங்கள் {0} {1}க்கு மறுபெயரிட வேண்டும் அல்லது இந்த மோட் இயங்காது.'
+      - lang: tr_TR
+        text: '{0} dosyasının adını {1} olarak değiştirmeniz gerekiyor, aksi takdirde bu mod çalışmayacaktır.'
+      - lang: uk_UA
+        text: 'Вам потрібно перейменувати {0} у {1}, або мод не працюватиме.'
+      - lang: zh_CN
+        text: '你需要把{0}重命名为{1}，否则这个mod将不起作用。'
+
+  # Useful for when a plugin needs SkyUI, but shouldn't load after it (eg. when it's a master plugin).
+  - &requiresMCM_X
+    type: warn
+    content:
+      - lang: en
+        text: 'A **Mod Configuration Menu** is required for this mod to be fully functional. An **MCM** can be added by installing {0}.'
+      - lang: bg
+        text: 'Тази модификация изисква **меню за конфигуриране на модификациите** за някои от неговите функции. Може да добавите **МКМ** с инсталиране на {0}.'
+      - lang: da
+        text: 'En **Mod-konfigurationsmenu** er nødvendig for at dette mod kan fungere korrekt. En **MCM** kan opnås ved at installere {0}.'
+      - lang: de
+        text: 'Ein **Mod-Konfigurationsmenü** ist vorausgesetzt, damit diese Mod voll funktionstüchtig ist. Ein **MCM** kann hinzugefügt werden, indem man {0} installiert.'
+      - lang: es
+        text: 'Un **Menú de configuración de mod** se requiere para que este mod sea completamente funcional. Un **MCM** puede ser agregado si se instala {0}.'
+      - lang: fi
+        text: 'Tämä lisäosa vaatii **lisäosien konfiguraatiolisäosan (MCM)**, joka voidaan lisätä asentamalla {0}, täyden toiminnallisuuden saamiseksi.'
+      - lang: fr
+        text: 'Un **Mod Configuration Menu** est requis pour que ce mod fonctionne complètement. Un **MCM** peut-être ajouté en installant {0}.'
+      - lang: it
+        text: 'È necessario un **Menu di configurazione Mod** per rendere questa mod completamente funzionante. È possibile aggiungere un **MCM** installando {0}.'
+      - lang: ja
+        text: 'この Mod を完全に機能させるには、**MCM** (Mod Configuration Menu) が必要です。**MCM** を追加するには {0} を導入してください。'
+      - lang: ko
+        text: '모드가 정상 작동하기 위해서는 **모드 설정 메뉴**가필요합니다. {0}를 설치하면 **MCM** 메뉴를 추가할 수 있습니다.'
+      - lang: pl
+        text: '**Menu Konfiguracji Modów** jest wymagane aby ten mod funkcjonował w pełni poprawnie. **MCM** może zostać dodane poprzez instalację {0}.'
+      - lang: pt_BR
+        text: 'Um **Menu de Configuração de Mod** (Mod Configuration Menu) é necessário para que este mod funcione totalmente. Um **MCM** pode ser adicionado ao instalar {0}.'
+      - lang: pt_PT
+        text: 'Um **Menu de Configuração de Mod** (Mod Configuration Menu) é necessário para este mod funcionar na totalidade. Um **MCM** pode ser adicionado ao instalar {0}.'
+      - lang: ru
+        text: '**Mod Configuration Menu** (Меню Настройки Модов) требуется для полного функционирования этого мода. **MCM** можно добавить, установив {0}.'
+      - lang: sv
+        text: 'En **Mod-konfigurationsmeny** krävs för att denna mod ska fungera korrekt. En **MCM** kan fås genom att installera {0}.'
+      - lang: ta
+        text: 'இந்த மோட் முழுமையாகச் செயல்பட ஒரு **மோட் உள்ளமைவு பட்டியல்** தேவை. {0} ஐ நிறுவுவதன் மூலம் ஒரு **MCM** ஐ சேர்க்கலாம்.'
+      - lang: tr_TR
+        text: 'Bu modun tam işlevsel olabilmesi için bir **Mod Configuration Menu** gereklidir. **MCM**, {0} yükleyerek eklenir.'
+      - lang: uk_UA
+        text: '**Mod Configuration Menu** (Меню Налаштування Модів) потрібне для повного функціонування мода. **MCM** може бути додано разом з {0}.'
+      - lang: zh_CN
+        text: '这个Mod需要一个**Mod配置菜单**来实现完整功能。**MCM**可以通过安装{0}来添加。'
+
+  - &requiresResources
+    type: warn
+    content:
+      - lang: en
+        text: 'Requires resources (e.g. meshes, textures; not plugins) from {0}.'
+      - lang: bg
+        text: 'Изисква ресурси (триизмерни модели и текстури, без приставки) от {0}.'
+      - lang: da
+        text: 'Kræver ressourcer (f.eks. meshes, teksturer; ikke plugins) fra {0}.'
+      - lang: de
+        text: 'Braucht Ressourcen (z.B. Meshes, Texturen; keine Plugins) von {0}.'
+      - lang: es
+        text: 'Requiere de recursos (ej. mallas, texturas; no plugins) de {0}.'
+      - lang: fi
+        text: 'Vaatii resursseja (ei itse lisäosaa vaan esim. "meshes", "textures") lisäosasta {0}.'
+      - lang: fr
+        text: 'Requiert des ressources (ex: meshes, textures ; pas de plugins) de {0}.'
+      - lang: it
+        text: 'Richiede risorse (ad es. mesh, texture; non plugin) da {0}.'
+      - lang: ja
+        text: '{0} のリソース（プラグインではなくメッシュやテクスチャなど）が必要です。'
+      - lang: ko
+        text: '{0}의 리소스(플러그인이 아닌, 메쉬 및 질감 등)가 필요합니다.'
+      - lang: pl
+        text: 'Wymaga zasobów (np. siatek, tekstur; nie wtyczek) od {0}.'
+      - lang: pt_BR
+        text: 'Requer recursos (ex: meshes, texturas; não plugins) vindos de {0}.'
+      - lang: pt_PT
+        text: 'Requer recursos (ex: meshes, texturas; não plugins) vindos de {0}.'
+      - lang: ru
+        text: 'Требуются ресурсы (например, меши, текстуры; не плагины) из {0}.'
+      - lang: sv
+        text: 'Behöver resurser (t.ex. meshar, texturer; inte insticksmoduler) från {0}.'
+      - lang: ta
+        text: '{0} இலிருந்து வளங்கள் (எ.கா. மெச்கள், கட்டமைப்புகள்; செருகுநிரல்கள் அல்ல) தேவை.'
+      - lang: tr_TR
+        text: '{0} kaynaklarına (ör. meshler, dokular; eklentiler hariç) ihtiyaç duyar.'
+      - lang: uk_UA
+        text: 'Потрібні ресурси (наприклад: меші, текстури; не плагіни) від {0}.'
+      - lang: zh_CN
+        text: '需要{0}的资源(如网格，纹理;非插件)。'
+
+  - &requiresX
+    type: warn
+    content:
+      - lang: en
+        text: 'Requires: {0}'
+      - lang: bg
+        text: 'Изисква: {0}'
+      - lang: da
+        text: 'Kræver: {0}'
+      - lang: de
+        text: 'Benötigt: {0}'
+      - lang: es
+        text: 'Requiere: {0}'
+      - lang: fi
+        text: 'Vaatimus: {0}'
+      - lang: fr
+        text: 'Requiert: {0}'
+      - lang: it
+        text: 'Richiede: {0}'
+      - lang: ja
+        text: '要: {0}'
+      - lang: ko
+        text: '필요모드: {0}'
+      - lang: pl
+        text: 'Wymaga: {0}'
+      - lang: pt_BR
+        text: 'Requer: {0}'
+      - lang: pt_PT
+        text: 'Requer: {0}'
+      - lang: ru
+        text: 'Требуется: {0}'
+      - lang: sv
+        text: 'Kräver: {0}'
+      - lang: ta
+        text: 'தேவை: {0}'
+      - lang: tr_TR
+        text: 'Gereksinimler: {0}'
+      - lang: uk_UA
+        text: 'Потрібно: {0}'
+      - lang: zh_CN
+        text: '需要:{0}'
+
+  - &runAnimFramework
+    type: say
+    content:
+      - lang: en
+        text: 'It appears you have **{0}** installed. Remember to run **{1}** every time you have installed or uninstalled {2}, or a {2}-based mod.'
+      - lang: bg
+        text: 'Инсталирали сте **{0}**. Използвайте **{1}** всеки път, когато променяте {2} или модификации, свързани с {2}.'
+      - lang: da
+        text: 'Det ser ud til, at du har **{0}** installeret. Husk at køre **{1}** hver gang du har installeret eller afinstalleret {2} eller en {2}-baseret mod.'
+      - lang: de
+        text: 'Sie haben anscheinend **{0}** installiert. Vergessen Sie nicht, jedes mal **{1}** zu starten, wenn Sie {2} oder einen auf {2} basierende Mod installiert oder deinstalliert haben.'
+      - lang: es
+        text: 'Parece que **{0}** está instalado. Recuerda ejecutar **{1}** cada vez que se instale o desinstale {2}, o un mod basado en {2}.'
+      - lang: fi
+        text: 'Käytät lisäosaa **{0}**. Muista ajaa **{1}** aina, kun {2} tai siihen liittyvä lisäosa asennetaan tai poistetaan.'
+      - lang: fr
+        text: 'Il semble que vous avez **{0}** d''installé. N''oubliez pas de lancer **{1}** à chaque fois que vous installez ou désinstallez {2}, ou un mod dépendant de {2}.'
+      - lang: it
+        text: 'Sembra che tu abbia installato **{0}**. Ricorda di eseguire **{1}** ogni volta che installi o disinstalli {2}, o una mod basata su {2}.'
+      - lang: ja
+        text: '**{0}** がインストールされているようです。{2} 本体、また {2} に準拠する Mod をインストール/アンインストールする際は、必ず **{1}** を実行し直すようにしてください。'
+      - lang: ko
+        text: '**{0}**가 설치되어 있습니다. {2} 또는 {2} 기반 모드를 설치하거나 제거할 때마다 **{1}**를 실행하는 것을 잊지 마십시오.'
+      - lang: pl
+        text: 'Wygląda na to że masz zainstalowany **{0}**. Pamiętaj aby uruchomić **{1}** za każdym razem kiedy zainstalowałeś lub odinstalowałeś {2}, lub mod bazujący na {2}.'
+      - lang: pt_BR
+        text: 'Você aparenta ter o **{0}** instalado. Lembre-se de rodar o **{1}** toda vez que você instalar or desinstalar o **{2}** ou um mod baseado no **{2}**.'
+      - lang: pt_PT
+        text: 'Você aparenta ter **{0}** instalado. Lembre-se de correr **{1}** cada vez que instale ou desinstale {2}, ou um mod baseado em {2}.'
+      - lang: ru
+        text: 'Похоже, у вас установлен **{0}**. Не забывайте запускать **{1}** каждый раз, когда вы устанавливаете или удаляете {2} или мод на основе {2}.'
+      - lang: sv
+        text: 'Det verkar som att använder **{0}** installerat. Kom ihåg att köra **{1}** varje gång du har installerat eller avinstallerat {2}, eller en {2}-baserad mod.'
+      - lang: ta
+        text: 'உங்களிடம் **{0}** நிறுவப்பட்டதாகத் தெரிகிறது. **{1}** இயக்க நினைவில் கொள்ளுங்கள் {2}, அல்லது {2} அடிப்படையிலான மோட் நிறுவிய அல்லது நிறுவல் நீக்கப்பட்ட ஒவ்வொரு முறையும்.'
+      - lang: tr_TR
+        text: '**{0}** yüklü görünüyor. **{1}** her {2} yüklediğinizde veya kaldırdığınızda veyahut da {2} tabanlı bir mod yüklediğinizde çalıştırmayı unutmayın.'
+      - lang: uk_UA
+        text: 'У вас встановлений **{0}**. Не забудьте запускати **{1}** щоразу, коли встановите або видалите {2}, або мод на його основі.'
+      - lang: zh_CN
+        text: '您安装了**{0}**。每次安装或卸载{2}，以及基于{2}的mod时，记得运行**{1}**。'
+
+  - &runxLODGen
+    type: say
+    content:
+      - lang: en
+        text: 'If you add, remove, or update plugins that alter WRLD/CELL records, remember to update this module with **xLODGen**.'
+      - lang: bg
+        text: 'Ако добавите, премахнете или обновите приставки, които променят записите WRLD и CELL, трябва да обновите този модул с **„xLODGen“**.'
+      - lang: da
+        text: 'Hvis du tilføjer, fjerner eller opdaterer plugins, der ændrer WRLD/CELL-poster, skal du huske at opdatere dette modul med **xLODGen**.'
+      - lang: de
+        text: 'Wenn Sie Plugins hinzufügen, entfernen oder aktualisieren die WRLD/CELL Einträge verändern, denken Sie daran dieses Modul mit **xLODGen** zu aktualisieren.'
+      - lang: es
+        text: 'Si se agrega, elimina, o se actualizan plugins que modifican registros WRLD/CELL, recuerde actualizar este módulo con **xLODGen**.'
+      - lang: fi
+        text: 'Jos lisäät, poistat tai päivität lisäosia, jotka muokkaavat WRLD- tai CELL-tietueita, muista päivittää tämä lisäosa **xLODGenillä**.'
+      - lang: fr
+        text: 'Si vous ajoutez, enlevez, ou mettez à jour des plugins qui modifient les WRLD/CELL records, n''oubliez pas de mettre à jour ce module avec **xLODGen**.'
+      - lang: it
+        text: 'Se aggiungi, rimuovi o aggiorni i plugin che modificano i record WRLD/CELL, ricorda di aggiornare questo modulo con **xLODGen**.'
+      - lang: ja
+        text: 'WRLD/CELL レコードを変更するプラグインを追加、削除、または更新する場合は、このモジュールを **xLODGen** で更新することを忘れないでください。'
+      - lang: ko
+        text: 'WRLD/CELL 레코드를 변경하는 플러그인을 추가, 제거 또는 업데이트하는 경우 **xLODGen**으로 이 모듈을 업데이트해야 합니다.'
+      - lang: pl
+        text: 'Jeśli dodasz, usuniesz lub zaktualizujesz wtyczki, które zmieniają rekordy WRLD/CELL, pamiętaj, aby zaktualizować ten moduł za pomocą **xLODGen**.'
+      - lang: pt_BR
+        text: 'Se você adicionar, remover, ou atualizar plugins que alteram registros WRLD/CELL, lembre-se de atualizar esse módulo com **xLODGen**.'
+      - lang: pt_PT
+        text: 'Se você adicionar, remover, ou atualizar plugins que alterem registos WRLD/CELL, lembre-se de atualizar este módulo com **xLODGen**.'
+      - lang: ru
+        text: 'Если вы добавляете, удаляете или обновляете плагины, которые изменяют записи WRLD / CELL, не забудьте обновить этот модуль с помощью **xLODGen**.'
+      - lang: sv
+        text: 'Om du lägger till, tar bort eller uppdaterar insticksmoduler som ändrar WRLD/CELL-poster, kom ihåg att uppdatera denna modul med **xLODGen**.'
+      - lang: ta
+        text: 'WRLD/CELL பதிவுகளை மாற்றும் செருகுநிரல்களை நீங்கள் சேர்த்தால், அகற்று அல்லது புதுப்பித்தால், இந்தத் தொகுதியை **xLODGen** உடன் புதுப்பிக்க நினைவில் கொள்ளுங்கள்.'
+      - lang: tr_TR
+        text: 'WRLD/CELL kayıtlarını değiştiren eklentiler eklediğinizde, kaldırdığınızda veya güncellediğinizde bu modülü **xLODGen** ile güncellemeyi unutmayın.'
+      - lang: uk_UA
+        text: 'Якщо ви додаєте, видаляєте чи оновлюєте плагіни, які змінюють записи WRLD/CELL, не забудьте оновити цей модуль за допомогою **xLODGen**.'
+      - lang: zh_CN
+        text: '如果您添加、删除或更新修改了WRLD/CELL记录的插件时，记得使用**xLODGen**更新此模块。'
+
+  # Subs can be Full Master, Medium Master or Small Master
+  - &unsupportedChangeVerified
+    type: warn
+    content:
+      - lang: en
+        text: 'This plugin has been changed from **{0}** to **{1}**.'
+      - lang: bg
+        text: 'Тази приставка е променена от **{0}** на **{1}**.'
+      - lang: de
+        text: 'Dieses Plugin wurde von **{0}** zu **{1}** geändert.'
+      - lang: es
+        text: 'Este plugin ha cambiado de **{0}** a **{1}**.'
+      - lang: fi
+        text: 'Tämä liitännäinen on muutettu **{0}**:sta **{1}**:ksi.'
+      - lang: pt_BR
+        text: 'Esse plugin foi alterado de **{0}** para **{1}**.'
+      - lang: pt_PT
+        text: 'Este plugin foi alterado de **{0}** a **{1}**.'
+      - lang: ru
+        text: 'Этот плагин был изменён с **{0}** на **{1}**.'
+      - lang: sv
+        text: 'Denna insticksmodul har ändrats från **{0}** till **{1}**.'
+      - lang: ta
+        text: 'இந்தச் சொருகி **{0}** இலிருந்து **{1}** ஆக மாற்றப்பட்டுள்ளது.'
+      - lang: uk_UA
+        text: 'Цей плагін було змінено з **{0}** на **{1}**.'
+      - lang: zh_CN
+        text: '此插件已从 **{0}** 更改为 **{1}**。'
+    subs:
+      - 'Previous Type'
+      - 'Type'
+
+  - &useBashTweakInstead
+    type: say
+    content:
+      - lang: en
+        text: 'A Bashed Patch tweak can be used instead of this plugin. {0}'
+      - lang: bg
+        text: 'Може да използвате кръпка на „Bash“ вместо тази приставка. {0}'
+      - lang: da
+        text: 'Du kan bruge en Bashed Patch tweak i stedet for dette plugin. {0}'
+      - lang: de
+        text: 'Ein Bashed Patch Tweak kann anstelle dieses Plugins verwendet werden. {0}'
+      - lang: es
+        text: 'Un Bashed patch puede ser empleado en vez de este plugin. {0}'
+      - lang: fi
+        text: 'Tämän lisäosan sijaan voidaan käyttää "Bashed Patch"-pohjaista muokkausta. {0}'
+      - lang: fr
+        text: 'Un Bashed Patch tweak peut être utilisé au lieu de ce plugin. {0}'
+      - lang: it
+        text: 'Puoi usare una Bashed Patch modificata invece di questo plugin. {0}'
+      - lang: ja
+        text: 'このプラグインは、Bashed Patch の調整機能（Tweak）で代用できます。{0}'
+      - lang: ko
+        text: '이 플러그인 대신 Bashed Patch의 트윅을 사용할 수 있습니다. {0}'
+      - lang: pl
+        text: 'Zamiast tej wtyczki można użyć poprawki Bashed Patch. {0}'
+      - lang: pt_BR
+        text: 'Uma tweak do Bashed Patch pode ser utilizada no lugar deste plugin. {0}'
+      - lang: pt_PT
+        text: 'Um Bashed Patch modificado pode ser utilizado em vez deste plugin. {0}'
+      - lang: ru
+        text: 'Вместо этого плагина можно использовать настройку из Bashed Patch. {0}'
+      - lang: sv
+        text: 'En Bashed Patch Tweak kan användas istället för denna insticksmodul. {0}'
+      - lang: ta
+        text: 'இந்த சொருகி பதிலாக ஒரு பாச்ட் ஒட்டு மாற்றங்களைப் பயன்படுத்தலாம். {0}'
+      - lang: tr_TR
+        text: 'Bu eklentinin yerine bir Bashed Patch tweak kullanılabilir. {0}'
+      - lang: uk_UA
+        text: 'Можна використати Bashed Patch tweak замість цього плагіну. {0}'
+      - lang: zh_CN
+        text: '可以使用一个Bashed Patch来代替这个插件。{0}'
+    subs: [ '' ]
+    condition: 'file("Bashed Patch.*\.esp")'
+
+  - &useINITweakInstead
+    type: say
+    content:
+      - lang: en
+        text: 'An INI tweak can be used instead of this plugin. {0}'
+      - lang: bg
+        text: 'Може да използвате параметрите на INI файла вместо тази приставка. {0}'
+      - lang: da
+        text: 'Der kan bruges en INI-indstilling i stedet for dette plugin. {0}'
+      - lang: de
+        text: 'Ein INI Tweak kann anstelle dieses Plugins verwendet werden. {0}'
+      - lang: es
+        text: 'Se puede modificar un archivo INI en vez de emplear este plugin. {0}'
+      - lang: fi
+        text: 'Tämän lisäosan sijaan voidaan muokata INI-tiedostoa. {0}'
+      - lang: fr
+        text: 'Un INI tweak peut être utilisé au lieu de ce plugin. {0}'
+      - lang: it
+        text: 'Puoi usare un INI modificato invece di questo plugin. {0}'
+      - lang: ja
+        text: 'このプラグインは、INI の調整機能（INI Tweak）で代用できます。{0}'
+      - lang: ko
+        text: '이 플러그인 대신 INI 조정을 사용할 수 있습니다. {0}'
+      - lang: pl
+        text: 'Zamiast tej wtyczki można użyć ulepszenia INI. {0}'
+      - lang: pt_BR
+        text: 'Uma INI Tweak pode ser usada ao invés deste plugin. {0}'
+      - lang: pt_PT
+        text: 'Um INI modificado pode ser usado ao invés deste plugin. {0}'
+      - lang: ru
+        text: 'Вместо этого плагина можно использовать настройку INI. {0}'
+      - lang: sv
+        text: 'En INI Tweak kan användas istället för denna insticksmodul. {0}'
+      - lang: ta
+        text: 'இந்த சொருகி பதிலாக ஒரு ஐ.என்.ஐ மாற்றத்தைப் பயன்படுத்தலாம். {0}'
+      - lang: tr_TR
+        text: 'Bu eklentinin yerine bir INI tweak kullanılabilir. {0}'
+      - lang: uk_UA
+        text: 'Можна використати параметри INI-файлу замість цього плагіну. {0}'
+      - lang: zh_CN
+        text: '可以使用一个INI调整来代替这个插件。{0}'
+    subs: [ '' ]
+
+  - &useInstead
+    type: warn
+    content:
+      - lang: en
+        text: 'Use {0} instead.'
+      - lang: bg
+        text: 'Може да използвате {0}.'
+      - lang: da
+        text: 'Brug {0} i stedet.'
+      - lang: de
+        text: 'Nutzen Sie {0} stattdessen.'
+      - lang: es
+        text: 'Use {0} en su lugar.'
+      - lang: fi
+        text: 'Käytä tämän sijaan lisäosaa {0}.'
+      - lang: fr
+        text: 'Utilisez {0} au lieu de celui-ci.'
+      - lang: it
+        text: 'Utilizza {0} al suo posto.'
+      - lang: ja
+        text: '代わりに {0} を使用してください。'
+      - lang: ko
+        text: '대신 {0}를 사용하십시오.'
+      - lang: pl
+        text: 'Użyj {0} zamiast tego.'
+      - lang: pt_BR
+        text: 'Use {0} ao invés disso.'
+      - lang: pt_PT
+        text: 'Use {0} ao invés disto.'
+      - lang: ru
+        text: 'Вместо этого используйте {0}.'
+      - lang: sv
+        text: 'Använd {0} istället.'
+      - lang: ta
+        text: 'அதற்கு பதிலாக {0} பயன்படுத்தவும்.'
+      - lang: tr_TR
+        text: 'Bunun yerine {0} kullanın.'
+      - lang: uk_UA
+        text: 'Замість цього використовуйте: {0}.'
+      - lang: zh_CN
+        text: '使用{0}代替。'
+
+  - &useOnlyOneX
+    type: error
+    content:
+      - lang: en
+        text: 'Use only one {0}.'
+      - lang: bg
+        text: 'Използвайте само една {0}.'
+      - lang: da
+        text: 'Brug kun én {0}.'
+      - lang: de
+        text: 'Nutzen Sie nur einen {0}.'
+      - lang: es
+        text: 'Utilice solo uno {0}.'
+      - lang: fi
+        text: 'Käytä vain yhtä: {0}.'
+      - lang: fr
+        text: 'N''utilisez qu''un {0}.'
+      - lang: it
+        text: 'Usa solo un {0}.'
+      - lang: ja
+        text: '{0} は一つだけ使用してください。'
+      - lang: ko
+        text: '{0}을 한 개만 사용하십시오.'
+      - lang: pl
+        text: 'Używa tylko jednego {0}.'
+      - lang: pt_BR
+        text: 'Utilize apenas um {0}.'
+      - lang: pt_PT
+        text: 'Utilizar apenas um {0}.'
+      - lang: ru
+        text: 'Используйте только один {0}.'
+      - lang: sv
+        text: 'Använd endast en {0}.'
+      - lang: ta
+        text: 'ஒரு {0} மட்டுமே பயன்படுத்தவும்.'
+      - lang: tr_TR
+        text: 'Sadece bir {0} kullanın.'
+      - lang: uk_UA
+        text: 'Використовуйте лише один {0}.'
+      - lang: zh_CN
+        text: '只使用一个{0}。'
+
+  - &useVersion
+    type: error
+    content:
+      - lang: en
+        text: 'Use {0} version.'
+      - lang: bg
+        text: 'Използвайте версията {0}.'
+      - lang: da
+        text: 'Brug {0} version.'
+      - lang: de
+        text: 'Benutzen Sie die {0} Version.'
+      - lang: es
+        text: 'Use la versión diseñada para {0}.'
+      - lang: fi
+        text: 'Käytä versiota {0}.'
+      - lang: fr
+        text: 'Utilisez la version de {0}.'
+      - lang: it
+        text: 'Usa la versione {0}.'
+      - lang: ja
+        text: '{0} バージョンを使用してください。'
+      - lang: ko
+        text: '{0} 버전을 사용하십시오.'
+      - lang: pl
+        text: 'Użyj wersji {0}.'
+      - lang: pt_BR
+        text: 'Use a versão {0}.'
+      - lang: pt_PT
+        text: 'Use a versão {0}.'
+      - lang: ru
+        text: 'Используйте версию {0}.'
+      - lang: sv
+        text: 'Använd version {0}.'
+      - lang: ta
+        text: '{0} பதிப்பைப் பயன்படுத்தவும்.'
+      - lang: tr_TR
+        text: '{0} sürümünü kullanın.'
+      - lang: uk_UA
+        text: 'Використовуйте версію {0}.'
+      - lang: zh_CN
+        text: '使用{0}版本。'
+
+  - &useVersionNon
+    type: error
+    content:
+      - lang: en
+        text: 'Use non-{0} version.'
+      - lang: bg
+        text: 'Използвайте версията, която не е за {0}.'
+      - lang: da
+        text: 'Brug en ikke-{0} version.'
+      - lang: de
+        text: 'Benutzen Sie die Nicht-{0} Version.'
+      - lang: es
+        text: 'Use la versión que fue diseñada para funcionar sin {0}.'
+      - lang: fi
+        text: 'Käytä versiota, jota ei ole tehty lisäosalle {0}.'
+      - lang: fr
+        text: 'Utilisez la version du mod sans {0}.'
+      - lang: it
+        text: 'Non usare la versione-{0}.'
+      - lang: ja
+        text: '{0} バージョン以外を使用してください。'
+      - lang: ko
+        text: '{0}가 아닌 버전을 사용하십시오.'
+      - lang: pl
+        text: 'Użyj wersji innej niż {0}.'
+      - lang: pt_BR
+        text: 'Use a versão não-{0}.'
+      - lang: pt_PT
+        text: 'Use a versão não-{0}.'
+      - lang: ru
+        text: 'Используйте не-{0} версию.'
+      - lang: sv
+        text: 'Använd en icke-{0} version.'
+      - lang: ta
+        text: '{0} பதிப்பைப் பயன்படுத்தவும்.'
+      - lang: tr_TR
+        text: '{0} olmayan sürümü kullanın.'
+      - lang: uk_UA
+        text: 'Використовуйте не-{0} версію.'
+      - lang: zh_CN
+        text: '使用{0}以外的版本。'
+
+  - &versionOldX
+    type: say
+    content:
+      - lang: en
+        text: 'It appears you do not have the latest version of {0}. Some mods may require functionality added in the latest version of {0} to work.'
+      - lang: bg
+        text: 'Инсталирайте последната версия на {0}. Някои модификации може да изискват последната версия на {0} за да работят.'
+      - lang: da
+        text: 'Det ser ud til, at du ikke har den nyeste version af {0}. Nogle mods kan kræve funktionalitet, der er tilføjet i den nyeste version af {0}, for at fungere.'
+      - lang: de
+        text: 'Sie haben anscheinend nicht die aktuellste Version von {0} installiert. Einige Mods könnten Funktionalitäten benötigen, die nur in der aktuellsten Version von {0} enthalten sind, um zu funktionieren.'
+      - lang: es
+        text: 'Parece que no tiene la última versión de {0}. Algunos mods pueden requerir funcionalidades añadidas en la última versión de {0} para funcionar.'
+      - lang: fi
+        text: '{0}: käytössä on vanhempi versio. Jotkin lisäosat saattavat vaatia uusimman {0}-version toimiakseen.'
+      - lang: fr
+        text: 'Il semble que vous n''avez pas la dernière version de {0}. Certains mods pourraient avoir besoin de fonctionalités disponibles dans la dernière version de {0} pour pouvoir fonctionner.'
+      - lang: it
+        text: 'Sembra che tu non abbia l''ultima versione di {0}. Alcune modifiche potrebbero richiedere funzionalità aggiunte nell''ultima versione di {0} per funzionare.'
+      - lang: ja
+        text: '{0} が最新版ではないようです。一部の Mod を動作させるには最新版の {0} で追加された機能が必要となる場合があります。'
+      - lang: ko
+        text: '{0}의 최신 버전이없는 것 같습니다. 일부 모드가 동작하려면 {0}의 최신 버전에 추가 된 기능이 필요할 수 있습니다.'
+      - lang: pl
+        text: 'Wygląda na to że nie masz ostatniej aktualnej wersji {0}. Część modów może wymagać funkcjonalności dodanej w ostatniej wersji {0} aby działać poprawnie.'
+      - lang: pt_BR
+        text: 'Você aparenta não ter a versão mais recente de {0}. Alguns mods podem requerer funcionalidades que foram adicionada na versão mais recente de {0} para funcionar.'
+      - lang: pt_PT
+        text: 'Aparenta que você não tem a versão mais recente de {0}. Alguns mods podem requerir funcinalidades adicionadas na última versão de {0} para funcionar.'
+      - lang: ru
+        text: 'Похоже, у вас не последняя версия {0}. Для работы некоторых модов может потребоваться функционал, добавленный в последней версии {0}.'
+      - lang: sv
+        text: 'Det verkar som att du inte har den senaste versionen av {0}. Några mods kan kräva funktionalitet tillagd i den senaste versionen av {0} för att fungera.'
+      - lang: ta
+        text: '{0} இன் அண்மைக் கால பதிப்பு உங்களிடம் இல்லை என்று தோன்றுகிறது. சில மோட்களுக்கு வேலை செய்ய {0}இன் அண்மைக் கால பதிப்பில் சேர்க்கப்பட்ட செயல்பாடு தேவைப்படலாம்.'
+      - lang: tr_TR
+        text: 'Görünüşe göre {0} için en son sürümüne sahip değilsiniz. Bazı modlar çalışabilmek için {0} en son sürümünde eklenen işlevselliği gerektirebilir.'
+      - lang: uk_UA
+        text: 'Можливо, у вас не встановлена остання версія {0}. Деякі моди можуть потребувати функціоналу доданого в останній версії {0}.'
+      - lang: zh_CN
+        text: '您的{0}似乎不是最新的。有些插件可能需要最新的{0}才能工作。'
+
+  - &versionPrecedence
+    type: error
+    content:
+      - lang: en
+        text: 'Delete {0} from {1}. {2}''s version must take precedence.'
+      - lang: bg
+        text: 'Изтрийте {0} от {1}. Версията на {2} е с предимство.'
+      - lang: de
+        text: 'Löschen Sie {0} von {1}. Die Version von {2} muss Vorrang haben.'
+      - lang: es
+        text: 'Borra {0} de {1}. La versión de {2} debe tener prioridad.'
+      - lang: fi
+        text: 'Poista {0} kohteesta {1}. {2}:n versio on oltava etusijalla.'
+      - lang: fr
+        text: 'Supprimez {0} de {1}. La version de {2} doit prendre la priorité.'
+      - lang: it
+        text: 'Elimina {0} da {1}. La versione di {2} deve avere la precedenza.'
+      - lang: ja
+        text: '{1} から {0} を削除してください。{2} のものを優先させる必要があります。'
+      - lang: pt_BR
+        text: 'Delete {0} de {1}. A versão de {2} deve ter precedência.'
+      - lang: pt_PT
+        text: 'Apague {0} de {1}. A versão de {2} deve ter precedência.'
+      - lang: ru
+        text: 'Удалите {0} из {1}. Версия {2} должна иметь приоритет.'
+      - lang: ta
+        text: '{1} இலிருந்து {0} ஐ நீக்கு. {2} இன் பதிப்பு முன்னுரிமை பெற வேண்டும்.'
+      - lang: tr_TR
+        text: '{1} içerisinden {0} silin. {2} sürümü öncelikli olmalıdır.'
+      - lang: uk_UA
+        text: 'Видаліть {0} з {1}. Версія {2} повинна мати пріоритет.'
+      - lang: zh_CN
+        text: '从 {1} 内删除 {0}。 {2} 的版本必须优先。'
+
+  - &versionUpToDateX
+    type: say
+    content:
+      - lang: en
+        text: 'Your {0} is up-to-date.'
+      - lang: bg
+        text: '{0} е актуална.'
+      - lang: da
+        text: 'Din {0} er opdateret.'
+      - lang: de
+        text: 'Ihr {0} ist aktuell.'
+      - lang: es
+        text: 'Tiene la última versión de {0}.'
+      - lang: fi
+        text: '{0} on ajan tasalla.'
+      - lang: fr
+        text: '{0} est à jour.'
+      - lang: it
+        text: 'La tua {0} è aggiornata.'
+      - lang: ja
+        text: '{0} は最新版です。'
+      - lang: ko
+        text: '{0}가 최신 버전입니다.'
+      - lang: pl
+        text: 'Twój {0} jest aktualny.'
+      - lang: pt_BR
+        text: 'Seu {0} está atualizado.'
+      - lang: pt_PT
+        text: 'O seu {0} está atualizado.'
+      - lang: ru
+        text: 'Ваш {0} обновлен.'
+      - lang: sv
+        text: 'Din {0} är uppdaterad.'
+      - lang: ta
+        text: 'உங்கள் {0} புதுப்பித்த நிலையில் உள்ளது.'
+      - lang: tr_TR
+        text: '{0} güncel.'
+      - lang: uk_UA
+        text: 'Ваш {0} оновлено.'
+      - lang: zh_CN
+        text: '您的{0}是最新的。'
+
+  - &versionXIncY
+    type: error
+    content:
+      - lang: en
+        text: 'Your installed version of {0} is not compatible with your version of {1}.'
+      - lang: bg
+        text: 'Инсталираната версия на {0} не е съвместима с версията на {1}.'
+      - lang: da
+        text: 'Din installerede version af {0} er ikke kompatibel med din version af {1}.'
+      - lang: de
+        text: 'Ihre installierte Version von {0} ist nicht kompatibel mit Ihrer Version von {1}.'
+      - lang: es
+        text: 'La versión instalada de {0} no es compatible con la versión de {1} que está utilizando.'
+      - lang: fi
+        text: 'Lisäosien {0} ja {1} asennetut versiot eivät ole yhteensopivat toistensa kanssa.'
+      - lang: fr
+        text: 'La version installée de {0} n''est pas compatible avec votre version de {1}.'
+      - lang: it
+        text: 'La tua versione installata di {0} non è compatibile con la tua versione di {1}.'
+      - lang: ja
+        text: 'インストールされている {0} は使用中のバージョンの {1} との互換性がありません。'
+      - lang: ko
+        text: '현재 설치된 {0}의 버전은 {1}의 버전과 호환되지 않습니다.'
+      - lang: pl
+        text: 'Twoja zainstalowana wersja {0} nie jest kompatybilna z twoją wersją {1}.'
+      - lang: pt_BR
+        text: 'A sua versão instalada de {0} não é compatível com a sua versão de {1}.'
+      - lang: pt_PT
+        text: 'A sua versão instalada de {0} não é compatível com a sua versão de {1}.'
+      - lang: ru
+        text: 'Установленная вами версия {0} несовместима с вашей версией {1}.'
+      - lang: sv
+        text: 'Din installerade version av {0} är inte kombatibel med din version av {1}.'
+      - lang: ta
+        text: '{0} இன் உங்கள் நிறுவப்பட்ட பதிப்பு உங்கள் {1} பதிப்போடு பொருந்தாது.'
+      - lang: tr_TR
+        text: 'Yüklü olan {0} sürümü, {1} sürümü ile uyumlu değil.'
+      - lang: uk_UA
+        text: 'Встановлена у вас версія {0} несумісна з вашою версією {1}.'
+      - lang: zh_CN
+        text: '您安装的{0}版本与{1}版本不兼容。'
+
+  - &versionXofYorGreaterRequired
+    type: error
+    content:
+      - lang: en
+        text: 'Requires version **{0}** or greater of **{1}**.'
+      - lang: bg
+        text: 'Изисква версия **{0}** или всяка следваща на **{1}**.'
+      - lang: da
+        text: 'Kræver version **{0}** eller en højere version af **{1}**.'
+      - lang: de
+        text: 'Benötigt Version **{0}** oder höher von **{1}**.'
+      - lang: es
+        text: 'Requiere como mínimo la versión **{0}** de **{1}**.'
+      - lang: fi
+        text: 'Vaati **{1}**:n version **{0}** tai uudemman.'
+      - lang: fr
+        text: 'Requiert la version **{0}** ou supérieure de **{1}**.'
+      - lang: it
+        text: 'Richiede la versione **{0}** o superiore di **{1}**.'
+      - lang: ja
+        text: 'バージョン **{0}** 以上の **{1}** が必要です。'
+      - lang: ko
+        text: '**{0}** 혹은 **{1}** 이상의 버전이 필요합니다.'
+      - lang: pl
+        text: 'Wymaga wersji **{0}** lub lepszej od **{1}**.'
+      - lang: pt_BR
+        text: 'Requer versão **{0}** ou mais recente que **{1}**.'
+      - lang: pt_PT
+        text: 'Necessita a versão **{0}** ou maior de **{1}**.'
+      - lang: ru
+        text: 'Нужна версия **{0}** или выше **{1}**.'
+      - lang: ta
+        text: 'பதிப்பு **{0}** அல்லது அதற்கு மேற்பட்ட **{1}** தேவை.'
+      - lang: tr_TR
+        text: '**{1}** için **{0}** veya daha yüksek bir sürüm gereklidir.'
+      - lang: uk_UA
+        text: 'Потрібна версія **{0}** або вище **{1}**.'
+      - lang: zh_CN
+        text: '需要 **{1}** 的 **{0}** 或更高版本。'
+
+  - &wildEdits
+    type: warn
+    content:
+      - lang: en
+        text: 'This plugin contains [wild edits](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) and may require additional manual cleaning to not interfere with other mods. {0}'
+      - lang: bg
+        text: 'Тази приставка съдържа [диви редакции](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) и може да изисква допълнително ръчно почистване. {0}'
+      - lang: da
+        text: 'Dette plugin indeholder [ukontrollerede redigeringer](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) og kan behøve yderligere manuel oprydning for ikke at forstyrre andre mods. {0}'
+      - lang: de
+        text: 'Dieses Plugin enthält [wilde Modifikationen](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) und benötigt vermutlich zusätzliche manuelle Säuberung um andere Mods nicht zu beeinträchtigen. {0}'
+      - lang: es
+        text: 'Este plugin contiene [ediciones no intencionadas](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) y probablemente requiera de una limpieza manual adicional para que no interfiera con otros mods. {0}'
+      - lang: fi
+        text: 'Tämä lisäosa sisältää [tarkoituksettomia muutoksia](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits). Manuaalinen puhdistaminen voi olla tarpeen yhteensopivuuden takaamiseksi. {0}'
+      - lang: fr
+        text: 'Ce plugin contient des [wild edits](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) et peut avoir besoin de nettoyage manuel additionel afin de ne pas interférer avec d''autres mods. {0}'
+      - lang: it
+        text: 'Questo plugin contiene [pesanti modifiche](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) e potrebbe richiedere una pulizia manuale aggiuntiva, in modo da non interferire con altre mod. {0}'
+      - lang: ja
+        text: 'このプラグインには [Wild Edit](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits)（不用意な編集）が含まれています。他の Mod に干渉しないようにするには、追加で手動クリーニングを行う必要があるでしょう。{0}'
+      - lang: ko
+        text: '이 플러그인에는 [잘못된 편집](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits)이 포함되어 있으며 다른 모드와 간섭되지 않도록 추가적인 수동 청소가 필요할 수 있습니다. {0}'
+      - lang: pl
+        text: 'Ta wtyczka zawiera [dzikie edycje](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) i może wymagać dodatkowego ręcznego czyszczenia aby nie kolidować z innymi modami. {0}'
+      - lang: pt_BR
+        text: 'Este plugin contém [edições não-intencionais](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) e pode requerer limpeza manual adicional para que não interfira com outros mods. {0}'
+      - lang: pt_PT
+        text: 'Este plugin contém [edições selvagens](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits). Pode requerer limpeza manual adicional de forma a não interferir com outros mods. {0}'
+      - lang: ru
+        text: 'Этот плагин содержит [дикие правки](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) и может потребовать дополнительной ручной очистки, чтобы не мешать работе других модов. {0}'
+      - lang: sv
+        text: 'Denna insticksmodul innehåller [vilda förändringar](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) och kan kräva ytterligare manuell rensning för att inte störa andra moddar. {0}'
+      - lang: ta
+        text: 'இந்தச் சொருகி [காட்டு திருத்தங்கள்](https://tes5edit.github.io/docs/7-mod-cleaning-and- error- checking.html#wildedits) மற்றும் பிற சொருகி உடன் தலையிடாமல் கூடுதல் கையேடு தூய்மை தேவைப்படலாம். {0}'
+      - lang: tr_TR
+        text: 'Bu eklenti [wild edits](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) içerir ve diğer modlarla çakışmaması için ek manuel temizlik gerekebilir. {0}'
+      - lang: uk_UA
+        text: 'Плагін містить [дикі зміни](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) та може вимагати додаткової ручної чистки, щоб не конфліктувати з іншими модами. {0}'
+      - lang: zh_CN
+        text: '这个插件包含[随意编辑](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits)，可能需要额外的手动清理，以免干扰其他mod。{0}'
+    subs: [ '' ]
+
+##### Cleaning Data Anchors #####
+  - &quickClean
+    util: '[TES5Edit](https://www.nexusmods.com/skyrim/mods/25859)'
+    detail:
+      - lang: en
+        text: 'A guide to cleaning plugins using xEdit can be found [here](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: bg
+        text: 'Информация за почистване на приставките в „xEdit“ може да намерите [тук](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: da
+        text: 'En vejledning i rensning af plugins med xEdit kan findes [her](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: de
+        text: 'Eine Anleitung zum Säubern von Plugins mit xEdit finden Sie [hier](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: es
+        text: 'Una guía para limpiar plugins usando xEdit se encuentra disponible [aquí](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: fi
+        text: 'Ohjeet lisäosien puhdistamiseen xEditillä löytyvät [tästä linkistä](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: fr
+        text: 'Un guide pour nettoyer les plugins grâce à xEdit se trouve [ici](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: it
+        text: 'Puoi trovare una guida per la pulizia dei plugin tramite xEdit [qui](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: ja
+        text: 'xEdit を使ったプラグインのクリーニング方法を[こちら](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods)のガイドから確認できます。'
+      - lang: ko
+        text: 'xEdit을 사용한 플러그인 정리에 대한 가이드는 [여기](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods)에서 찾을 수 있습니다.'
+      - lang: pl
+        text: 'Przewodnik po czyszczeniu wtyczek za pomocą xEdit można znaleźć [tutaj](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: pt_BR
+        text: 'Um guia para limpar plugins utilizando o xEdit pode ser encontrado [aqui](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: pt_PT
+        text: 'Um guia para limpar plugins utilizando xEdit pode ser encontrado [aqui](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: ru
+        text: 'Руководство по очистке плагинов с помощью xEdit можно найти [здесь](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: sv
+        text: 'En guide till att rensa insticksmoduler med xEdit finns [här](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: ta
+        text: 'xEdit ஐப் பயன்படுத்தி செருகுநிரல்களை தூய்மை செய்வதற்கான வழிகாட்டியை [இங்கே](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods) காணலாம்.'
+      - lang: tr_TR
+        text: 'xEdit kullanarak eklentileri temizleme kılavuzunu [burada](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods) bulabilirsiniz.'
+      - lang: uk_UA
+        text: 'Посібник з очищення модів за допомогою xEdit можна знайти [тут](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+      - lang: zh_CN
+        text: 'xEdit的清洁插件指南可以在[这里](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods)找到。'
+
+  - &reqManualFix
+    util: '[TES5Edit](https://www.nexusmods.com/skyrim/mods/25859)'
+    detail:
+      - lang: en
+        text: 'It is strongly recommended not to use mods that contain **deleted navmeshes** as they''re known to cause crashes. **Deleted navmeshes** must be corrected manually (a complex process that should be done by the mod author). More information on **deleted navmeshes** is provided [here](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: bg
+        text: 'Препоръчва се да избягвате модификации, които съдържат **изтрити навигационни обекти**, защото те могат да причинят проблеми. **Изтритите навигационни обекти** трябва да бъдат коригирани ръчно (това е сложен процес и не се препоръчва за начинаещи). Повече информация за **тях** може да намерите [тук](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: da
+        text: 'Det er stærkt anbefalet, at du ikke bruger mods, der indeholder **deleted navmeshes**, da de er kendt for at forårsage nedbrud. **Deleted navmeshes** skal rettes manuelt (en kompleks proces, som bør udføres af mod forfatteren). Der findes flere oplysninger om **deleted navmeshes** [her](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: de
+        text: 'Es wird streng empfohlen, keine Mods zu verwenden die **Gelöschte Navmeshes** beinhalten, da diese dafür bekannt sind Abstürze auszulösen. **Gelöschte Navmeshes** müssen manuell korrigiert werden (ein komplexer Prozess der vom Mod-Autor erledigt werden sollte). Mehr Informationen über **Gelöschte Navmeshes** werden [hier](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial) geboten.'
+      - lang: es
+        text: 'Es altamente recomendable que no se usen mods que contienen **navmeshes eliminadas** pues es común que causen cierres súbitos (crashes). Las **navmeshes eliminadas** deben ser corregidas manualmente (un proceso bien complejo que debe ser ejecutado por el autor del mod). Más información sobre las **navmeshes eliminadas** puede ser consltada [aquí](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: fi
+        text: '**Poistettuja navmeshejä** sisältävien lisäosien käyttö ei ole suotavaa, sillä se aiheuttaa pelin kaatumista. Ne tulee korjata käsin, mikä on monimutkainen toimenpide, joka lisäosan kehittäjän tulisi tehdä. Lisätietoja aiheesta löydät [täältä](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: fr
+        text: 'Il est fortement recommandé de ne pas utiliser de mods contenant des **navmeshes supprimées**, ils sont connus pour provoquer des crash. Les **navmeshes supprimées** doivent être corrigées manuellement (un procédé complexe, qui devrait normalement être effectué par l''auteur du mod). Plus d''information sur les **navmeshes supprimées** trouvables [ici](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: it
+        text: 'Si raccomanda vivamente di non utilizzare mod che contengono **navmesh cancellate** che sono note come causa di Crash. **Navmesh cancellate** devono essere corrette manualmente (un processo complesso che dovrebbe essere fatto dall''autore della mod). Puoi trovare maggiori informazioni su **deleted navmeshes** [qui](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: ja
+        text: '**削除された navmesh**（deleted navmeshes）が含まれている Mod は使用しないことを強く推奨します。こうした Mod はクラッシュの原因となるからです。**削除された navmesh** は手動で修正しなくてはなりません（本来なら Mod の製作者が行わなくてはならない複雑な手順です）。**削除された navmesh** については[こちら](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial)から詳しい情報を確認できます。'
+      - lang: ko
+        text: '**삭제된 Navmesh**가 포함된 모드는 크래시를 유발하는 것으로 알려져 있으므로 사용하지 않는 것이 좋습니다. **삭제된 Navmesh**는 수동으로 수정해야합니다(모드 작성자가 수행해야하는 복잡한 프로세스). **삭제된 Navmesh**에 대한 자세한 정보는 [여기](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial)에서 제공됩니다.'
+      - lang: pl
+        text: 'Jest silnie zalecane aby nie używać modów zawierających **Usunięte navmeshe** jako że są znane jako powód awarii. **Usunięte navmeshe** muszą zostać poprawione ręcznie(skomplikowany proces który powinien być wykonany przez autora modu). Więcej informacji o **Usuniętych navmeshach** można znaleźć [tutaj](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: pt_BR
+        text: 'É altamente recomendado que você não utilize mods que contenham **Navmeshes deletados**, pois eles são conhecidos por causar problemas. **Navmeshes deletados devem ser corrigos manualmente (Um processo complexo que deve ser feito pelo autor do mod). Mais informações em **Navmeshes deletadas** está disponível [aqui](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: pt_PT
+        text: 'É fortemente recomandado não utilizar mods que contenham **Navmeshes apagados** sendo que são conhecidos por causar falhas. **Navmeshes apagados** devem ser corrigidos manualmente(Um processo complexo que deve ser feito pelo autor do mod). Mais informação sobre **Navmeshes apagados** está disponível em inglês [aqui] (https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: ru
+        text: 'Настоятельно рекомендуется не использовать моды, содержащие **удалённые навмеши**, поскольку они, как известно, вызывают сбои. **Удаленные навмеши** должны быть исправлены вручную (сложный процесс, который должен выполняться автором мода). Более подробная информация об **удалённых навмешах** представлена [здесь](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: sv
+        text: 'Det är starkt rekommenderat att inte använda mods som innehåller **Borttagna navmeshes** eftersom de kan orsaka krascher. **Borttagna navmeshes** måste korrigeras manuellt (en komplex process som borde göras av modskaparen). Mer information om **Borttagna navmeshes** hittar du [här](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: ta
+        text: '* நீக்கப்பட்ட நவ்மேச்கள்** கொண்ட மோட்சைப் பயன்படுத்த வேண்டாம் என்று கடுமையாகப் பரிந்துரைக்கப்படுகிறது, ஏனெனில் அவை செயலிழப்புகளை ஏற்படுத்தும் என்று அறியப்படுகிறது. **நீக்கப்பட்ட நவ்மேச்கள்** கைமுறையாகச் சரிசெய்யப்பட வேண்டும் (மோட் ஆசிரியரால் செய்யப்பட வேண்டிய ஒரு சிக்கலான செயல்முறை). **நீக்கப்பட்ட நவ்மேச்கள்** பற்றிய கூடுதல் தகவல்கள் [இங்கே](https://www.creationkit/index.php?title=Fixing_Navmesh_Deletion_Tutorial) வழங்கப்பட்டுள்ளன.'
+      - lang: tr_TR
+        text: '**Silinmiş navmeshler** içeren modları kullanmamanız şiddetle tavsiye edilir çünkü hatalara neden oldukları bilinmektedir. **Silinmiş navmeshler** manuel olarak düzeltilmelidir (mod yazarı tarafından yapılması gereken karmaşık bir işlem). **Silinmiş navmeshler** hakkında daha fazla bilgiyi [burada](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial) bulabilirsiniz.'
+      - lang: uk_UA
+        text: 'Наполегливо радимо не використовувати моди з **видаленими навмешами** бо відомо, що вони викликають збої. **Видалені навмеші** повинні бути виправлені вручну (складний процес, який повинен бути виконаний автором моду). Більше інформації про **видалені навмеші** можна знайти [тут](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+      - lang: zh_CN
+        text: '强烈建议不要使用包含已删除navmeshes的mod，因为它们会导致崩溃。**已删除navmeshes**必须手动修正(一个复杂的过程，应该由mod作者完成)。更多关于**已删除navmeshes**的信息已提供[这里](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial)。'
+
+##### Global Anchors #####
+  - &changeUnsupported
+    type: say
+    content:
+      - lang: en
+        text: 'Changing the type of an existing plugin isn''t supported. Additional details are provided [here]({0}).'
+      - lang: bg
+        text: 'Промяната на типа на съществуваща приставка не се поддържа. Повече информация може да намерите [тук]({0}).'
+      - lang: de
+        text: 'Das Ändern des Typs eines bestehenden Plugins wird nicht unterstützt. Weitere Einzelheiten sind [hier]({0}) zu finden.'
+      - lang: es
+        text: 'No es posible cambiar el tipo de un plugin existente. Se proporcionan detalles adicionales [aquí]({0}).'
+      - lang: fi
+        text: 'Olemassa olevan laajennuksen tyypin vaihtamista ei tueta. Lisätietoja on [tässä]({0}).'
+      - lang: pt_BR
+        text: 'Não há suporte para a alteração do tipo de um plugin existente. Detalhes adicionais são fornecidos [aqui]({0}).'
+      - lang: pt_PT
+        text: 'Alterar o tipo de um plugin existente não é suportado. Detalhes adicionais são fornecidos [aqui]({0}).'
+      - lang: ru
+        text: 'Изменение типа существующего плагина не поддерживается. Дополнительная информация представлена [здесь]({0}).'
+      - lang: sv
+        text: 'Att ändra typen för en befintligt insticksmodul stöds inte. Ytterligare detaljer finns [här]({0}).'
+      - lang: ta
+        text: 'ஏற்கனவே உள்ள சொருகி வகையை மாற்றுவது ஆதரிக்கப்படவில்லை. கூடுதல் விவரங்கள் வழங்கப்படுகின்றன [இங்கே]({0}).'
+      - lang: uk_UA
+        text: 'Зміна типу існуючого плагіна не підтримується. Додаткова інформація доступна [тут]({0}).'
+      - lang: zh_CN
+        text: '不支持更改现有插件类型。附加信息请参阅[此处]({0})。'
+    subs: [ 'https://loot.github.io/docs/help/Changing-Plugin-Types-In-Starfield.html' ]
+
+  - &filenameExtension
+    type: error
+    content:
+      - lang: en
+        text: '{0} does not support the usage of **{1}** plugins ingame, but your load order contains such plugins. In order to avoid irreversible damage to your game, it is recommended to not use **{1}** plugins.'
+      - lang: bg
+        text: '{0} не поддържа използването на **{1}** приставки, но Вашият ред за зареждане съдържа такива приставки. Препоръчва се да не използвате **{1}** приставки, за да избегнете непоправими щети на Вашата игра.'
+      - lang: de
+        text: '{0} unterstützt nicht die Verwendung von **{1}** Plugins im Spiel, aber Ihre Ladereihenfolge enthält solche Plugins. Um irreversible Schäden an Ihrem Spiel zu vermeiden, wird empfohlen, keine **{1}** Plugins zu verwenden.'
+      - lang: es
+        text: '{0} no soporta el uso de **{1}** plugins en el juego, pero su orden de carga contiene dichos plugins. Para evitar daños irreversibles en el juego, se recomienda no utilizar plugins **{1}**.'
+      - lang: fi
+        text: '{0} ei tue **{1}**-liitännäisten käyttöä pelissä, mutta lataustilauksesi sisältää sellaisia liitännäisiä. Jotta vältät peruuttamattomat vauriot pelillesi, on suositeltavaa olla käyttämättä **{1}**-liitännäisiä.'
+      - lang: pt_BR
+        text: '{0} não é compatível com o uso de plugins **{1}** no jogo, mas sua ordem de carregamento contém esses plugins. Para evitar danos irreversíveis ao seu jogo, é recomendável não usar plugins **{1}**.'
+      - lang: pt_PT
+        text: '{0} não suporta o uso de plugins **{1}*** no jogo, mas a sua ordem de carga contém esses plugins. Para evitar danos irreversíveis ao seu jogo, recomenda-se não usar * plugins.'
+      - lang: ru
+        text: '{0} не поддерживает использование **{1}** плагинов в игре, но ваш порядок загрузки содержит такие плагины. Чтобы избежать необратимого ущерба для вашей игры, рекомендуется не использовать **{1}** плагины.'
+      - lang: sv
+        text: '{0} stöder inte användningen av **{1}**-insticksmoduler i spelet, men din laddningsordning innehåller sådana insticksmoduler. För att undvika oåterkalleliga skador på ditt spel rekommenderas det att inte använda **{1}**-insticksmoduler.'
+      - lang: ta
+        text: '{0} செருகுநிரல்களின் **{1}** பயன்பாட்டை ஆதரிக்காது, ஆனால் உங்கள் ஏற்று வரிசையில் அத்தகைய செருகுநிரல்கள் உள்ளன. உங்கள் விளையாட்டுக்கு மாற்ற முடியாத சேதத்தைத் தவிர்ப்பதற்காக, **{1}** செருகுநிரல்களைப் பயன்படுத்த வேண்டாம் என்று பரிந்துரைக்கப்படுகிறது.'
+      - lang: uk_UA
+        text: '{0} не підтримує використання **{1}** плагінів у грі, але ваш набір модів має подібні файли. Радимо не користуватися **{1}** плагінами задля уникнення невідворотного пошкодження вашої гри.'
+      - lang: zh_CN
+        text: '{0} 不支持游戏内使用 **{1}** 插件，但您的加载顺序包含此种插件。要避免不可逆的游戏损坏，推荐您不使用这 **{1}** 个插件。'
+    subs:
+      - 'Game'
+      - 'Filename Extension'
+    condition: 'file("([^\.]+\.esx)")'
+
+  - &incompatible
+    type: error
+    content:
+      - lang: en
+        text: '{0} is incompatible with {1}, but both are present.'
+      - lang: bg
+        text: '{0} не е съвместима с {1}, но и двете са налични.'
+      - lang: da
+        text: '{0} er ikke inkompatibelt med {1}, men begge filer er til stede.'
+      - lang: de
+        text: '{0} ist inkompatibel mit {1}, aber beide sind vorhanden.'
+      - lang: es
+        text: '{0} es incompatible con {1}, pero ambos se encuentran presentes.'
+      - lang: fi
+        text: '{0} ei ole yhteensopiva lisäosan {1} kanssa, mutta molemmat löydettiin.'
+      - lang: fr
+        text: '{0} est incompatible avec {1}, mais les deux sont présents.'
+      - lang: it
+        text: '{0} è incompatibile con {1}, ma entrambi i file sono presenti.'
+      - lang: ja
+        text: '{0}は{1}と相容れないが、どちらも存在する。'
+      - lang: ko
+        text: '{0}은 {1}과 호환되지 않지만 둘 다 존재합니다.'
+      - lang: pl
+        text: '{0} jest niekompatybilna z {1}, a jest aktywna.'
+      - lang: pt_BR
+        text: '{0} é incompatível com {1}, mas ambos estão presentes.'
+      - lang: pt_PT
+        text: '{0} é incompatível com {1}, mas ambos os ficheiros estão presentes.'
+      - lang: ru
+        text: '{0} несовместим с {1}, но оба они присутствуют.'
+      - lang: sv
+        text: '{0} är inkompatibel med {1}, men bägge finns installerade.'
+      - lang: ta
+        text: '{0} {1} உடன் பொருந்தாது, ஆனால் இரண்டும் உள்ளன.'
+      - lang: tr_TR
+        text: '{0}, {1} ile uyumsuzdur, ancak her ikisi de halihazırda var.'
+      - lang: uk_UA
+        text: '{0} несумісний з {1}, але обидва присутні.'
+      - lang: zh_CN
+        text: '{0}与{1}不兼容，但是两者都存在。'
+    subs:
+      - 'non-plugin mod 0'
+      - 'non-plugin mod 1'
+    condition: 'file("NVSE/Plugins/0.dll") and file("NVSE/Plugins/1.dll")'
+
+  - &latestLOOTThread
+    type: say
+    content:
+      - lang: en
+        text: '[Latest LOOT thread]({0}).'
+      - lang: bg
+        text: '[Форумът на LOOT]({0}).'
+      - lang: da
+        text: '[Seneste LOOT-tråd]({0}).'
+      - lang: de
+        text: '[Aktueller LOOT-Thread]({0}).'
+      - lang: es
+        text: '[Forum de LOOT]({0}).'
+      - lang: fi
+        text: '[LOOTin keskustelupalsta]({0}).'
+      - lang: fr
+        text: '[Dernier thread sur le forum de LOOT]({0}).'
+      - lang: it
+        text: '[Ultimo thread di LOOT]({0}).'
+      - lang: ja
+        text: '[LOOT の最新スレッドを開く]({0})（英語）。'
+      - lang: ko
+        text: '[최신 LOOT 스레드]({0}).'
+      - lang: pl
+        text: '[Ostatni wątek LOOT]({0}).'
+      - lang: pt_BR
+        text: '[Thread mais recento do LOOT]({0}).'
+      - lang: pt_PT
+        text: '[Postagem mais recente do LOOT]({0}).'
+      - lang: ru
+        text: '[Последняя тема LOOT]({0}).'
+      - lang: sv
+        text: '[Senaste LOOT-tråd]({0}).'
+      - lang: ta
+        text: '[அண்மைகால கொள்ளை நூல்]({0}).'
+      - lang: tr_TR
+        text: '[Son LOOT Konusu]({0}).'
+      - lang: uk_UA
+        text: '[Обговорення LOOT "(Eng)"]({0}).'
+      - lang: zh_CN
+        text: '[最新的LOOT版本]({0})。'
+    subs: [ 'https://loot.github.io/latest-thread/' ]
+
+  - &moveNVAC
+    type: warn
+    content:
+      - lang: en
+        text: 'NVAC is installed under **NVSE/Plugins** but needs to be moved to **{0}/Plugins** for {0} to pick it up for {1}.'
+      - lang: bg
+        text: 'NVAC е инсталирана в **NVSE/Plugins**, но трябва да бъде преместена в **{0}/Plugins** за да може {0} да използва нейните функции в {1}.'
+      - lang: da
+        text: 'NVAC er installeret under **NVSE/Plugins**, men skal flyttes til **{0}/Plugins** for at {0} kan hente det til {1}.'
+      - lang: de
+        text: 'NVAC ist unter **NVSE/Plugins** installiert aber es muss nach **{0}/Plugins** verschoben werden um von {0} erkannt zu werden für {1}.'
+      - lang: es
+        text: 'NVAC se encuentra instalado bajo **NVSE/Plugins** pero debe ser trasladado a **{0}/Plugins** para que {0} pueda ser reconocido por {1}.'
+      - lang: fi
+        text: 'NVAC on asennettu kansioon **NVSE/Plugins**. Se on siirrettävä kansioon **{0}/Plugins**, jotta {0} voi käyttää sitä peliin {1}.'
+      - lang: fr
+        text: 'NVAC est installé dans **NVSE/Plugins** mais doit être déplacé dans **{0}/Plugins** afin que {0} puisse l''utiliser pour {1}.'
+      - lang: it
+        text: 'NVAC è installato in **NVSE/Plugins** ma deve essere spostato in **{0}/Plugins** per permettere a {0} di essere usato da {1}.'
+      - lang: ja
+        text: 'NVAC が **NVSE/Plugins** 以下にインストールされています。{1} の {0} で利用するには **{0}/Plugins** に移さなくてはなりません。'
+      - lang: ko
+        text: 'NVAC는 **NVSE/플러그인** 아래에 설치되지만 {1}에 대해 선택하려면 {0}에 대해 **{0}/Plugins**로 이동해야합니다.'
+      - lang: pl
+        text: 'NVAC jest instalowany w **NVSE/Plugins**, ale musi zostać przeniesiony do **{0}/Plugins** dla {0}, aby pobrać go za {1}.'
+      - lang: pt_BR
+        text: 'O NVAC está instalado em **NVSE/Plugins** porém precisa ser movido para **{0}/Plugins** para que o {0} o reconheça para o {1}.'
+      - lang: pt_PT
+        text: 'O NVAC está instalado em **NVSE/Plugins** porém precisa ser movido para **{0}/Plugins** para que o {0} o reconheça para o {1}.'
+      - lang: ru
+        text: 'NVAC установлен в **NVSE/Plugins**, но его необходимо переместить в **{0}/Plugins**, чтобы {0} использовал его для {1}.'
+      - lang: sv
+        text: 'NVAC installeras under **NVSE/Plugins** men måste flyttas till **{0}/Plugins** för att hämta den för {1}.'
+      - lang: ta
+        text: 'NVAC **NVSE/Plugins** இன் கீழ் நிறுவப்பட்டுள்ளது, ஆனால் {1} பெறுநருக்கு எடுக்க {0}க்கு **{0}/Plugins** க்கு நகர்த்தப்பட வேண்டும்.'
+      - lang: tr_TR
+        text: 'NVAC **NVSE/Plugins** altına kurulmuş ancak {0} tarafından {1} için alınabilmesi için **{0}/Plugins** altına taşınmalıdır.'
+      - lang: uk_UA
+        text: 'NVAC встановлено у **NVSE/Plugins**, але його необхідно перемістити до **{0}/Plugins**, щоб {0} використовував його для {1}.'
+      - lang: zh_CN
+        text: 'NVAC安装在**NVSE/Plugins**下，但需要移动到**{0}/Plugins**来让{0}获取{1}。'
+    subs:
+      - '<Script Extender>'
+      - 'your game'
+    condition: 'file("NVSE/Plugins/nvac.dll")'
+
+  - &pluginEnabler
+    type: warn
+    content:
+      - lang: en
+        text: 'You have installed {0}, but since {1} version {2} this is no longer needed.'
+      - lang: bg
+        text: 'Инсталирали сте {0}, но от {1} версия {2} това вече не е необходимо.'
+      - lang: de
+        text: 'Sie haben {0} installiert, aber seit {1} Version {2} wird dies nicht mehr benötigt.'
+      - lang: es
+        text: 'Has instalado {0}, pero desde {1} la versión {2} ya no es necesaria.'
+      - lang: fi
+        text: 'Olet asentanut {0}:n, mutta {1} versiosta {2}, tätä ei enää tarvita.'
+      - lang: pt_BR
+        text: 'Você instalou {0}, mas desde {1} versão {2} isso não é mais necessário.'
+      - lang: pt_PT
+        text: 'Instalou {0}, mas desde {1} versão {2} já não é necessário.'
+      - lang: ru
+        text: 'Вы установили {0}, но для {1} начиная с версии {2} это больше не требуется.'
+      - lang: sv
+        text: 'Du har installerat {0}, men sedan {1} version {2} behövs inte detta längre.'
+      - lang: ta
+        text: 'நீங்கள் {0} நிறுவியுள்ளீர்கள், ஆனால் {1} பதிப்பு {2} இது இனி தேவையில்லை.'
+      - lang: uk_UA
+        text: 'Ви встановили {0}, але з версії {2} {1} це вже непотрібно.'
+      - lang: zh_CN
+        text: '您已安装 {0}，但自 {1} 版本 {2} 后不再需要。'
+    subs:
+      - 'Plugin Enabler'
+      - 'Game'
+      - 'Game Version'
+    condition: 'file("xSE/Plugins/xPluginsTxtEnabler.dll")'
+
+  - &scriptExtenderMissing
+    type: error
+    content:
+      - lang: en
+        text: 'You have installed an {0} plugin but {0} was not found! See {0} download page: {1}.'
+      - lang: bg
+        text: 'Инсталирали сте приставката {0}, но {0} липсва! Отворете Интернет страницата на {0}: {1}.'
+      - lang: da
+        text: 'Du har installeret et {0} plugin, men {0} blev ikke fundet! Se {0} download-siden: {1}.'
+      - lang: de
+        text: 'Sie haben ein {0} Plugin installiert, aber {0} wurde nicht gefunden! {0} kann hier heruntergeladen werden: {1}.'
+      - lang: es
+        text: '!Tiene un {0} plugin instalado pero {0} no se pudo encontrar! Véase {0} la página de descarga: {1}.'
+      - lang: fi
+        text: 'Olet asentanut {0}-lisäosan, mutta {0} ei ole asennettu! Katso {0}:n lataussivu: {1}.'
+      - lang: fr
+        text: 'Vous avez installé un plugin de {0}, mais {0} n''a pas été détecté ! Veuillez consulter la page de téléchargement de {0}: {1}.'
+      - lang: it
+        text: 'Hai installato un plugin {0} ma {0} non è stato trovato! Consulta {0} nella pagina di download: {1}.'
+      - lang: ja
+        text: '{0} プラグインがインストールされていますが、{0} が見つかりません！{0} のダウンロードページはこちら: {1}'
+      - lang: ko
+        text: '{0} 플러그인이 설치되었지만 {0}를 찾을 수 없습니다! {0} 다운로드 페이지를 참조하십시오: {1}.'
+      - lang: pl
+        text: 'Zainstalowałeś an {0} plugin ale nie odnaleziono {0}! Odwiedź stronę pobierania {0}: {1}.'
+      - lang: pt_BR
+        text: 'Você tem um plugin do {0} instalado mas o {0} não foi encontrado! Veja a página de download do {0}: {1}.'
+      - lang: pt_PT
+        text: 'Você instalou an {0} plugin mas o {0} não foi encontrado! Veja a página de download do {0}: {1}.'
+      - lang: ru
+        text: 'Вы установили плагин {0}, но {0} не найден! Смотрите страницу загрузки {0}: {1}.'
+      - lang: sv
+        text: 'Du har installerat en {0}-insticksmodul, men {0} kunde inte hittas! Läs mer på {0}:s nedladdningssisda: {1}.'
+      - lang: ta
+        text: 'நீங்கள் ஒரு {0} சொருகி நிறுவியுள்ளீர்கள், ஆனால் {0} கண்டுபிடிக்கப்படவில்லை! {0} பதிவிறக்கப் பக்கத்தைக் காண்க: {1}.'
+      - lang: tr_TR
+        text: '{0} eklentisi yüklenmiş ancak {0} bulunamadı! {0} indirme sayfasına bakın: {1}.'
+      - lang: uk_UA
+        text: 'У вас встановлено {0} плагін, але {0} не знайдено! Дивіться сторінку завантаження: {1}.'
+      - lang: zh_CN
+        text: '您已经安装了{0}插件，但是未发现{0}！请查看{0}的下载页面:{1}。'
+    subs:
+      - 'Script Extender'
+      - '[Script Extender](http://silverlock.org/)'
+
+  - &scriptExtenderRequiredScripts
+    type: warn
+    content:
+      - lang: en
+        text: 'It appears you have installed **{0}**, but its required scripts seem to be missing. Please ensure you have correctly installed the scripts bundled with the **{1}** installation archive.'
+      - lang: bg
+        text: 'Инсталирали сте **{0}**, но неговите скриптове липсват. Моля, инсталирайте **{1}** отново.'
+      - lang: da
+        text: 'Det ser ud til, at du har installeret **{0}**, men de scripts, som det kræver, mangles tilsyneladende. Sørg for, at du har installeret de scripts, der er vedhæftet **{1}** installationsarkivet, korrekt.'
+      - lang: de
+        text: 'Es erscheint als hätten Sie **{0}** installiert, aber die vorausgesetzten Skripte scheinen zu fehlen. Bitte stellen Sie sicher, dass Sie die Skripte korrekt mit installiert haben, die mit dem **{1}** Installationsarchiv enthalten sind.'
+      - lang: es
+        text: 'Parece que tiene instalado **{0}** pero los scripts necesarios parece que no se encuentran presentes. Por favor, asegúrese de que haya instalado correctamente los scripts que vienen con el archivo de instalación de **{1}**.'
+      - lang: fi
+        text: '**{0}** on asennettu, mutta sen vaatimat skriptit puuttuvat. Tarkista, että olet asentanut **{1}**:n mukana tulleet skriptitiedostot.'
+      - lang: fr
+        text: 'Il semble que vous avez installé **{0}**, mais il manque les scripts requis. Veuillez vous assurer que vous ayez correctement installé les scripts de **{1}**, dans l''archive d''installation.'
+      - lang: it
+        text: 'Sembra che tu abbia installato **{0}**, ma i suoi script di base non sembrano essere presenti. Assicurati di aver installato correttamente gli script dall''archivio di installazione presenti in **{1}**.'
+      - lang: ja
+        text: '**{0}** がインストールされているようですが、必要なスクリプトが見つかりません。**{1}** に付属するスクリプトが正しくインストールされているかを確認してください。'
+      - lang: ko
+        text: '**{0}**를 설치한것으로 보이지만 필수 스크립트가 누락된 것같습니다. **{1}** 설치 아카이브와 함께 번들로 제공되는 스크립트를 올바르게 설치했는지 확인하십시오.'
+      - lang: pl
+        text: 'Wygląda na to że zainstalowałeś **{0}**, ale jego wymagane skrypty są brakujące. Upewnij się że poprawnie zainstalowałeś skrypty w pakiecie z archiwum instalacyjnym **{1}**.'
+      - lang: pt_BR
+        text: 'Você aparenta ter instalado o **{0}**, mas os scripts necessários aparentam estar faltando. Por favor, tenha certeza de que você instalou o scripts que vem com o arquivo de instalação do **{1}**.'
+      - lang: pt_PT
+        text: 'Você aparenta ter instalado **{0}**, mas os seus scripts necessário estão em falta. Por favor, garanta que tem os devidamente instalados os scripts the acompanham o arquivo de instalação do **{1}**.'
+      - lang: ru
+        text: 'Похоже, вы установили **{0}**, но требуемые скрипты отсутствуют. Убедитесь, что вы правильно установили скрипты, входящие в архив установки **{1}**.'
+      - lang: sv
+        text: 'Det verkar som att du har installerat **{0}**, men de script som det kräver verkar saknas. Var god att se till att du har installerat de script som bifogas med installationsarkivet **{1}** på ett korrekt sätt.'
+      - lang: ta
+        text: 'நீங்கள் **{0}** நிறுவியிருப்பதாகத் தெரிகிறது, ஆனால் அதன் தேவையான ச்கிரிப்ட்கள் காணவில்லை என்று தெரிகிறது. **{1}** நிறுவல் காப்பகத்துடன் தொகுக்கப்பட்ட ச்கிரிப்ட்களை நீங்கள் சரியாக நிறுவியுள்ளீர்கள் என்பதை உறுதிப்படுத்தவும்.'
+      - lang: tr_TR
+        text: 'Görünüşe göre **{0}** yüklemişsiniz, ancak gerekli betikler eksik görünüyor. Lütfen **{1}** kurulum arşiviyle birlikte gelen betikleri doğru bir şekilde kurduğunuzdan emin olun.'
+      - lang: uk_UA
+        text: 'Схоже, що у вас встановлено **{0}**, але необхідні скрипти відсутні. Переконайтеся, що правильно встановили скрипти включені в інсталяційний архів **{1}**.'
+      - lang: zh_CN
+        text: '看起来您已经安装了**{0}**，但它需要的脚本似乎缺失了。请确保您已正确安装**{1}**中附带的脚本。'
+    subs:
+      - 'Script Extender'
+      - '[Script Extender](http://silverlock.org/)'
+    condition: 'not file("scripts/xxse.pex") and file("../xxse_loader.exe")'
+
+  - &supersede
+    type: warn
+    content:
+      - lang: en
+        text: 'You seem to be using **{0}**, but it has been superseded. It is recommended that you use **{1}** instead.'
+      - lang: bg
+        text: 'Използвате **{0}**, но тя е заменена. Препоръчва се да използвате **{1}**.'
+      - lang: de
+        text: 'Sie scheinen **{0}** zu verwenden, das jedoch überholt ist. Es wird empfohlen, dass Sie stattdessen **{1}** verwenden.'
+      - lang: es
+        text: 'Parece que estas utilizando **{0}**, pero ha sido sustituido. Se recomienda utilizar **{1}** en su lugar.'
+      - lang: fi
+        text: 'Vaikuttaa siltä, että **{0}** on käytössä, mutta se on korvattu uudemmalla. Sen sijaan on suositeltavaa käyttää **{1}**.'
+      - lang: it
+        text: 'Sembra che tu stia utilizzando **{0}**, ma è stato sostitutito. Si raccomanda di usare **{1}** in sostituzione.'
+      - lang: pt_BR
+        text: 'Parece que você está usando **{0}**, mas ele foi substituído. É recomendável que você use **{1}** em vez disso.'
+      - lang: pt_PT
+        text: 'Parece que usa **{0}**, mas esse foi substituído. É recomendável que use **{1}** em ao invés.'
+      - lang: ru
+        text: 'Похоже, вы используете **{0}**, но он был заменён. Рекомендуется использовать вместо него **{1}**.'
+      - lang: ta
+        text: 'நீங்கள் **{0}** ஐப் பயன்படுத்துவதாகத் தெரிகிறது, ஆனால் அது முறியடிக்கப்பட்டுள்ளது. அதற்குப் பதிலாக **{1}** ஐப் பயன்படுத்தப் பரிந்துரைக்கப்படுகிறது.'
+      - lang: tr_TR
+        text: '**{0}** kullanıyor gibi görünüyorsunuz, ancak bu artık geçersiz. Bunun yerine **{1}** kullanmanız tavsiye edilir.'
+      - lang: uk_UA
+        text: 'Здається, ви використовуєте **{0}**, але його було замінено. Радимо використовувати **{1}** замість нього.'
+      - lang: zh_CN
+        text: '您似乎正在使用 **{0}**，但它已受到取代。推荐您使用 **{1}**。'
+    subs:
+      - 'xSE Plugin 0'
+      - 'xSE Plugin 1'
+    condition: 'file("xxSE/Plugins/xxse_plugin_0.dll") and not file("xxSE/Plugins/xxse_plugin_1.dll")'
+
+globals: []

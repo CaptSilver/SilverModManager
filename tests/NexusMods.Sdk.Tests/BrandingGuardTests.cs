@@ -22,6 +22,7 @@ public partial class BrandingGuardTests
         ("README.md", "SilverModManager is a Linux-only fork of the [Nexus Mods App](https://github.com/Nexus-Mods/NexusMods.App) that downloads mods from [Nexus Mods](https://www.nexusmods.com).", "credits the project this is forked from"),
         ("README.md", "It is not affiliated with or endorsed by Nexus Mods. It is a modified version of the Nexus Mods App, which is GPL-3.0-only;", "non-affiliation statement names the project this is forked from"),
         ("src/NexusMods.App/Program.cs", "_logger.LogWarning(\"Upstream Nexus Mods App data found at {Path}; unmanage shared games there first\", UpstreamData.DataModelPath(fileSystem));", "tells the user about the upstream install on purpose"),
+        ("src/NexusMods.Games.Bethesda.Loot/Masterlists/CachingMasterlistStore.cs", "public const string Endpoint = \"https://raw.githubusercontent.com/loot/\";", "the LOOT masterlist refresh downloads from LOOT's own repositories, not upstream's"),
         ("src/NexusMods.App/UpstreamData.cs", "/// Detects data left by the upstream Nexus Mods App, which this fork can run next to. The fork", "names the upstream install this class detects"),
     ];
 

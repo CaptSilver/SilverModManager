@@ -1,0 +1,453 @@
+# LOOT ignores anything that doesn't come under 'bash_tags', 'globals',
+# 'groups', or 'plugins', so a section like 'common' is useful for storing
+# data that gets re-used.
+prelude:
+  common:
+  # Message Anchors
+    - &alreadyInX
+      type: error
+      content: 'Delete. Already included in {0}.'
+
+    - &alreadyInOrFixedByX
+      type: error
+      content: 'Delete. Already included or otherwise fixed in {0}.'
+
+    - &alsoUseX
+      type: say
+      content: 'It''s highly recommended that you also use {0}.'
+
+    - &compatIssuesWithX
+      type: say
+      content: 'This plugin has compatibility issues with {0}. For more information, read this mod''s compatibility notes.'
+
+    - &compatNotes
+      type: say
+      content: 'It is recommended that you read this mod''s [Compatibility Notes]({0}).'
+
+    - &compatPatch
+      type: say
+      content: 'It is recommended that you check the following compatibility patch compilation for this mod: {0}'
+
+    - &compatPatchForX
+      type: say
+      content: 'It is recommended that you check the following compatibility patch compilation for {0}: {1}'
+
+    - &corrupt
+      type: warn
+      content: 'This file is corrupt and should not be used.'
+
+    - &deactivateAfterCharacterCreation
+      type: say
+      content: 'Deactivate and/or uninstall this mod after character creation.'
+
+    - &deleteOrDeactivateX
+      type: error
+      content: 'Delete or deactivate. {0}'
+      subs: [ '' ]
+
+    - &deletePlugin
+      type: warn
+      content: 'When using **{0}**, it''s recommended that you deactivate or delete this ESP file but keep the resources (e.g. meshes, textures) installed with this mod.'
+
+    - &deprecated
+      type: warn
+      content: 'This file is deprecated and should no longer be used.'
+
+    - &disableAfterGeneratingXwithY
+      type: say
+      content: 'This plugin may be disabled after generating **{0}** with **{1}**.'
+
+    - &essentialFiles
+      type: warn
+      content: 'Another mod seems to be overwriting one of this mod''s essential files. Please ensure you''re using this mod''s version of {0} or a compatible version if available.'
+
+    - &includesX
+      type: say
+      content: '{0} is included with this mod.'
+
+    - &languageX
+      type: say
+      content: 'Language: {0}'
+
+    - &mainQuestCompleted
+      type: say
+      content: 'Only use this plugin once the main quest of the game has been completed.'
+
+    - &masterReassign
+      type: say
+      content: 'The **{0}** master must be reassigned to **{1}**.'
+
+    - &missingRequirementXforY
+      type: warn
+      content: 'It appears you have installed **{1}**, but some of its requirements seem to be missing. Please ensure you have correctly installed **{0}**.'
+
+    - &missingRequirementXforPlugin
+      type: warn
+      content: 'Some of this plugin''s requirements seem to be missing. Please ensure you have correctly installed **{0}**.'
+
+    - &moddingPlugin
+      type: error
+      content: 'This plugin is a modding resource and should not be used in-game.'
+
+    - &moveXFromYToZ
+      type: say
+      content: 'Move {0} from {1} to {2}.'
+
+    - &obsolete
+      type: warn
+      content: 'Obsolete. Update to the latest version. {0}'
+      subs: [ '' ]
+
+    - &optional
+      type: say
+      content: 'This plugin is optional.'
+
+    - &patch3rdParty
+      type: say
+      content: 'You seem to be using **{0}**, but you have not enabled a compatibility patch for this mod. A third party patch is available here: {1}'
+
+    - &patcherScriptAvailable
+      type: say
+      content: '{0} patcher script available here: {1}'
+
+    - &patchIncluded
+      type: say
+      content: 'You seem to be using **{0}**, but you have not enabled a compatibility patch for this mod. A compatibility patch is included with this plugin''s installer.'
+
+    - &patchOutdated
+      type: warn
+      content: 'This patch is outdated and may not be compatible with the latest version of the patched mod.'
+
+    - &patchProvided
+      type: say
+      content: 'You seem to be using **{0}**, but you have not enabled a compatibility patch for this mod. A compatibility patch is provided on this plugin''s mod page.'
+
+    - &patchUnavailable
+      type: warn
+      content: 'A patch is required to make this mod fully compatible with {0}. None is currently available for download.'
+
+    - &patchUpdateAvailable
+      type: say
+      content: 'Update Patch available: {0}'
+
+    - &renameFile
+      type: say
+      content: 'Rename this file to {0}.'
+
+    - &renameXtoY
+      type: warn
+      content: 'You need to rename {0} to {1} or this mod won''t work.'
+
+    # Useful for when a plugin needs SkyUI, but shouldn't load after it (eg. when it's a master plugin).
+    - &requiresMCM_X
+      type: warn
+      content: 'A **Mod Configuration Menu** is required for this mod to be fully functional. An **MCM** can be added by installing {0}.'
+
+    - &requiresResources
+      type: warn
+      content: 'Requires resources (e.g. meshes, textures; not plugins) from {0}.'
+
+    - &requiresX
+      type: warn
+      content: 'Requires: {0}'
+
+    - &runAnimFramework
+      type: say
+      content: 'It appears you have **{0}** installed. Remember to run **{1}** every time you have installed or uninstalled {2}, or a {2}-based mod.'
+
+    - &runxLODGen
+      type: say
+      content: 'If you add, remove, or update plugins that alter WRLD/CELL records, remember to update this module with **xLODGen**.'
+
+    - &useBashTweakInstead
+      type: say
+      content: 'A Bashed Patch tweak can be used instead of this plugin. {0}'
+      subs: [ '' ]
+      condition: 'file("Bashed Patch.*\.esp")'
+
+    - &useINITweakInstead
+      type: say
+      content: 'An INI tweak can be used instead of this plugin. {0}'
+      subs: [ '' ]
+
+    - &useInstead
+      type: warn
+      content: 'Use {0} instead.'
+
+    - &useOnlyOneX
+      type: error
+      content: 'Use only one {0}.'
+
+    - &useVersion
+      type: error
+      content: 'Use {0} version.'
+
+    - &useVersionNon
+      type: error
+      content: 'Use non-{0} version.'
+
+    - &versionOldX
+      type: say
+      content: 'It appears you do not have the latest version of {0}. Some mods may require functionality added in the latest version of {0} to work.'
+
+    - &versionPrecedence
+      type: error
+      content: 'Delete {0} from {1}. {2}''s version must take precedence.'
+
+    - &versionUpToDateX
+      type: say
+      content: 'Your {0} is up-to-date.'
+
+    - &versionXIncY
+      type: error
+      content: 'Your installed version of {0} is not compatible with your version of {1}.'
+
+    - &versionXofYorGreaterRequired
+      type: error
+      content: 'Requires version **{0}** or greater of **{1}**.'
+
+    - &wildEdits
+      type: warn
+      content: 'This plugin contains [wild edits](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) and may require additional manual cleaning to not interfere with other mods. {0}'
+      subs: [ '' ]
+
+  # Cleaning Data Anchors
+    - &quickClean
+      util: '[EnderalEdit](https://www.nexusmods.com/enderal/mods/23/)'
+      detail: 'A guide to cleaning plugins using xEdit can be found [here](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+
+    - &reqManualFix
+      util: '[EnderalEdit](https://www.nexusmods.com/enderal/mods/23/)'
+      detail: 'It is strongly recommended not to use mods that contain **deleted navmeshes** as they''re known to cause crashes. **Deleted navmeshes** must be corrected manually (a complex process that should be done by the mod author). More information on **deleted navmeshes** is provided [here](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+
+  # Global Anchors
+    - &incompatible
+      type: error
+      content: '{0} is incompatible with {1}, but both are present.'
+
+    - &latestLOOTThread
+      type: say
+      content: '[Latest LOOT thread]({0}).'
+      subs: [ 'https://loot.github.io/latest-thread/' ]
+
+    - &supersede
+      type: warn
+      content: 'You seem to be using **{0}**, but it has been superseded. It is recommended that you use **{1}** instead.'
+
+common: []
+
+bash_tags:
+  - 'Actors.ACBS'
+  - 'Actors.AIData'
+  - 'Actors.AIPackages'
+  - 'Actors.AIPackagesForceAdd'
+  - 'Actors.CombatStyle'
+  - 'Actors.DeathItem'
+  - 'Actors.Factions'
+  - 'Actors.RecordFlags'
+  - 'Actors.Spells'
+  - 'Actors.SpellsForceAdd'
+  - 'Actors.Stats'
+  - 'Actors.Voice'
+  - 'C.Acoustic'
+  - 'C.Climate'
+  - 'C.Encounter'
+  - 'C.ForceHideLand'
+  - 'C.ImageSpace'
+  - 'C.Light'
+  - 'C.Location'
+  - 'C.LockList'
+  - 'C.MiscFlags'
+  - 'C.Music'
+  - 'C.Name'
+  - 'C.Owner'
+  - 'C.RecordFlags'
+  - 'C.Regions'
+  - 'C.SkyLighting'
+  - 'C.Water'
+  - 'Deactivate'
+  - 'Delev'
+  - 'Destructible'
+  - 'EffectStats'
+  - 'Enchantments'
+  - 'EnchantmentStats'
+  - 'Filter'
+  - 'Graphics'
+  - 'Invent.Add'
+  - 'Invent.Change'
+  - 'Invent.Remove'
+  - 'Keywords'
+  - 'MustBeActiveIfImported'
+  - 'Names'
+  - 'NoMerge'
+  - 'NPC.AIPackageOverrides'
+  - 'NPC.AttackRace'
+  - 'NPC.Class'
+  - 'NPC.CrimeFaction'
+  - 'NPC.DefaultOutfit'
+  - 'NPC.Perks.Add'
+  - 'NPC.Perks.Change'
+  - 'NPC.Perks.Remove'
+  - 'NPC.Race'
+  - 'ObjectBounds'
+  - 'Outfits.Add'
+  - 'Outfits.Remove'
+  - 'R.AddSpells'
+  - 'R.Body-Size-F'
+  - 'R.Body-Size-M'
+  - 'R.ChangeSpells'
+  - 'R.Description'
+  - 'R.Skills'
+  - 'R.Stats'
+  - 'R.Voice-F'
+  - 'R.Voice-M'
+  - 'Relations.Add'
+  - 'Relations.Change'
+  - 'Relations.Remove'
+  - 'Relev'
+  - 'Sound'
+  - 'SpellStats'
+  - 'Stats'
+  - 'Text'
+
+globals:
+# Latest LOOT Thread
+  - *latestLOOTThread
+
+groups:
+  - name: &dlcGroup DLC
+    description: 'A group for official downloadable content.'
+
+  - name: &fixesGroup Fixes & Resources
+    description: 'A group for modules that fix issues and bugs or add resources for other mods.'
+    after: [ *dlcGroup ]
+
+  - name: default
+    after: [ *fixesGroup ]
+
+  - name: &worldSettingsGroup Worldspace Settings
+    description: 'A group for modules that need to be loaded late to preserve worldspace settings.'
+    after: [ default ]
+
+  - name: &dynamicPatchesGroup Dynamic Patches
+    description: 'A group for patches that are dynamically generated by modding tools.'
+    after: [ *worldSettingsGroup ]
+
+  - name: &dynamicLODGroup Dynamic LOD
+    description: 'A group for modules that add dynamic distant LOD for objects.'
+    after: [ *dynamicPatchesGroup ]
+
+plugins:
+###### Official Game Files ######
+  - name: 'Update.esm'
+    url:
+      - 'https://store.steampowered.com/app/933480/Enderal_Forgotten_Stories/'
+      - 'https://store.steampowered.com/app/976620/Enderal_Forgotten_Stories_Special_Edition/'
+    group: *dlcGroup
+    clean:
+      - crc: 0xF5E824B0
+        util: 'EnderalEdit v4.0.3'
+      - crc: 0x462828DF
+        util: 'EnderalSEEdit v4.0.3g'
+  - name: 'Dawnguard.esm'
+    url: [ 'https://store.steampowered.com/app/976620/Enderal_Forgotten_Stories_Special_Edition/' ]
+    group: *dlcGroup
+  - name: 'HearthFires.esm'
+    url: [ 'https://store.steampowered.com/app/976620/Enderal_Forgotten_Stories_Special_Edition/' ]
+    group: *dlcGroup
+  - name: 'Dragonborn.esm'
+    url: [ 'https://store.steampowered.com/app/976620/Enderal_Forgotten_Stories_Special_Edition/' ]
+    group: *dlcGroup
+
+  - name: 'Enderal - Forgotten Stories.esm'
+    url:
+      - 'https://store.steampowered.com/app/933480/Enderal_Forgotten_Stories/'
+      - 'https://store.steampowered.com/app/976620/Enderal_Forgotten_Stories_Special_Edition/'
+    group: *dlcGroup
+    tag:
+      - Delev
+      - Relev
+    dirty:
+      - <<: *quickClean
+        crc: 0xB3DFC9F7
+        util: '[EnderalEdit v4.0.3](https://www.nexusmods.com/enderal/mods/23)'
+        itm: 5
+        udr: 55
+      - <<: *quickClean
+        crc: 0xC7BC7AEA
+        util: '[EnderalSEEdit v4.0.3g](https://www.nexusmods.com/enderalspecialedition/mods/78)'
+        itm: 112
+        udr: 61
+
+  - name: 'SkyUI_SE.esp'
+    url: [ 'https://store.steampowered.com/app/976620/Enderal_Forgotten_Stories_Special_Edition/' ]
+    group: *dlcGroup
+
+###### Fixes ######
+  - name: 'Enderal - Bug Fixes.esp'
+    url: [ 'https://www.nexusmods.com/enderal/mods/176/' ]
+    group: *fixesGroup
+    tag: [ Delev ]
+
+  - name: 'Enderal SE - Bug Fixes.esp'
+    url: [ 'https://www.nexusmods.com/enderalspecialedition/mods/2/' ]
+    group: *fixesGroup
+    tag: [ Delev ]
+
+###### Modding Tools - Generated Files ######
+  - name: 'Bashed Patch.*\.esp'
+    url: [ 'https://www.nexusmods.com/site/mods/591/' ]
+    group: *dynamicPatchesGroup
+
+  - name: 'DynDOLOD.esp'
+    url:
+      - link: 'https://www.nexusmods.com/skyrim/mods/59721/'
+        name: 'Dynamic Distant Objects LOD - DynDOLOD'
+    group: *dynamicLODGroup
+
+  - name: 'Occlusion.esp'
+    url:
+      - link: 'https://stepmodifications.org/forum/topic/13451-xlodgen-terrain-lod-beta-76-for-fnv-fo3-fo4-fo4vr-tes5-sse-tes5vr-enderal-enderalse/'
+        name: 'xLODGen Occlusion'
+    group: *dynamicLODGroup
+    after: [ 'DynDOLOD.esp' ]
+    msg: [ *runxLODGen ]
+
+###### Gameplay ######
+  - name: 'Enderal - Dynamic Fast Travel.esp'
+    url:
+      - 'https://www.nexusmods.com/enderal/mods/120/'
+      - 'https://www.nexusmods.com/enderalspecialedition/mods/16/'
+    group: *worldSettingsGroup
+    clean:
+      - crc: 0xD6E63CF5
+        util: 'EnderalEdit v4.0.3'
+      - crc: 0x80C83D55
+        util: 'EnderalSEEdit v4.0.3g'
+
+  - name: 'Enderal Fast Travel EV.esp'
+    url:
+      - link: 'https://www.nexusmods.com/enderal/mods/5/'
+        name: 'Enderal Fast Travel EV'
+    group: *worldSettingsGroup
+    msg:
+      - <<: *alreadyInOrFixedByX
+        subs: [ '**Enderal - Dynamic Fast Travel.esp**' ]
+        condition: 'active("Enderal - Dynamic Fast Travel.esp")'
+      - <<: *obsolete
+        subs: [ '[Dynamic Fast Travel](https://www.nexusmods.com/enderal/mods/120/)' ]
+        condition: 'not active("Enderal - Dynamic Fast Travel.esp")'
+
+###### Items ######
+  - name: 'Enderal SE - Crossbows.esp'
+    url: [ 'https://www.nexusmods.com/enderalspecialedition/mods/4/' ]
+    tag:
+      - Invent.Add
+      - Invent.Remove
+    msg:
+      - <<: *alreadyInX
+        subs: [ 'Enderal SE - Gameplay Overhaul.esp' ]
+        condition: 'active("Enderal SE - Gameplay Overhaul.esp")'
+    clean:
+      - crc: 0x73625F44
+        util: 'EnderalSEEdit v4.0.3g'

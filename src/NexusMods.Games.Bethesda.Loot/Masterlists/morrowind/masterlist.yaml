@@ -1,0 +1,1087 @@
+# LOOT ignores anything that doesn't come under 'bash_tags', 'globals',
+# 'groups', or 'plugins', so a section like 'common' is useful for storing
+# data that gets re-used.
+prelude:
+  common:
+  # Message Anchors
+    - &alreadyInX
+      type: error
+      content: 'Delete. Already included in {0}.'
+
+    - &alreadyInOrFixedByX
+      type: error
+      content: 'Delete. Already included or otherwise fixed in {0}.'
+
+    - &alsoUseX
+      type: say
+      content: 'It''s highly recommended that you also use {0}.'
+
+    - &compatIssuesWithX
+      type: say
+      content: 'This plugin has compatibility issues with {0}. For more information, read this mod''s compatibility notes.'
+
+    - &compatNotes
+      type: say
+      content: 'It is recommended that you read this mod''s [Compatibility Notes]({0}).'
+
+    - &compatPatch
+      type: say
+      content: 'It is recommended that you check the following compatibility patch compilation for this mod: {0}'
+
+    - &compatPatchForX
+      type: say
+      content: 'It is recommended that you check the following compatibility patch compilation for {0}: {1}'
+
+    - &corrupt
+      type: warn
+      content: 'This file is corrupt and should not be used.'
+
+    - &deactivateAfterCharacterCreation
+      type: say
+      content: 'Deactivate and/or uninstall this mod after character creation.'
+
+    - &deleteOrDeactivateX
+      type: error
+      content: 'Delete or deactivate. {0}'
+      subs: [ '' ]
+
+    - &deletePlugin
+      type: warn
+      content: 'When using **{0}**, it''s recommended that you deactivate or delete this ESP file but keep the resources (e.g. meshes, textures) installed with this mod.'
+
+    - &deprecated
+      type: warn
+      content: 'This file is deprecated and should no longer be used.'
+
+    - &disableAfterGeneratingXwithY
+      type: say
+      content: 'This plugin may be disabled after generating **{0}** with **{1}**.'
+
+    - &essentialFiles
+      type: warn
+      content: 'Another mod seems to be overwriting one of this mod''s essential files. Please ensure you''re using this mod''s version of {0} or a compatible version if available.'
+
+    - &includesX
+      type: say
+      content: '{0} is included with this mod.'
+
+    - &languageX
+      type: say
+      content: 'Language: {0}'
+
+    - &mainQuestCompleted
+      type: say
+      content: 'Only use this plugin once the main quest of the game has been completed.'
+
+    - &masterReassign
+      type: say
+      content: 'The **{0}** master must be reassigned to **{1}**.'
+
+    - &missingRequirementXforY
+      type: warn
+      content: 'It appears you have installed **{1}**, but some of its requirements seem to be missing. Please ensure you have correctly installed **{0}**.'
+
+    - &missingRequirementXforPlugin
+      type: warn
+      content: 'Some of this plugin''s requirements seem to be missing. Please ensure you have correctly installed **{0}**.'
+
+    - &moddingPlugin
+      type: error
+      content: 'This plugin is a modding resource and should not be used in-game.'
+
+    - &moveXFromYToZ
+      type: say
+      content: 'Move {0} from {1} to {2}.'
+
+    - &obsolete
+      type: warn
+      content: 'Obsolete. Update to the latest version. {0}'
+      subs: [ '' ]
+
+    - &optional
+      type: say
+      content: 'This plugin is optional.'
+
+    - &patch3rdParty
+      type: say
+      content: 'You seem to be using **{0}**, but you have not enabled a compatibility patch for this mod. A third party patch is available here: {1}'
+
+    - &patcherScriptAvailable
+      type: say
+      content: '{0} patcher script available here: {1}'
+
+    - &patchIncluded
+      type: say
+      content: 'You seem to be using **{0}**, but you have not enabled a compatibility patch for this mod. A compatibility patch is included with this plugin''s installer.'
+
+    - &patchOutdated
+      type: warn
+      content: 'This patch is outdated and may not be compatible with the latest version of the patched mod.'
+
+    - &patchProvided
+      type: say
+      content: 'You seem to be using **{0}**, but you have not enabled a compatibility patch for this mod. A compatibility patch is provided on this plugin''s mod page.'
+
+    - &patchUnavailable
+      type: warn
+      content: 'A patch is required to make this mod fully compatible with {0}. None is currently available for download.'
+
+    - &patchUpdateAvailable
+      type: say
+      content: 'Update Patch available: {0}'
+
+    - &renameFile
+      type: say
+      content: 'Rename this file to {0}.'
+
+    - &renameXtoY
+      type: warn
+      content: 'You need to rename {0} to {1} or this mod won''t work.'
+
+    - &requiresResources
+      type: warn
+      content: 'Requires resources (e.g. meshes, textures; not plugins) from {0}.'
+
+    - &requiresX
+      type: warn
+      content: 'Requires: {0}'
+
+    - &runAnimFramework
+      type: say
+      content: 'It appears you have **{0}** installed. Remember to run **{1}** every time you have installed or uninstalled {2}, or a {2}-based mod.'
+
+    - &useBashTweakInstead
+      type: say
+      content: 'A Bashed Patch tweak can be used instead of this plugin. {0}'
+      subs: [ '' ]
+      condition: 'file("Bashed Patch.*\.esp")'
+
+    - &useINITweakInstead
+      type: say
+      content: 'An INI tweak can be used instead of this plugin. {0}'
+      subs: [ '' ]
+
+    - &useInstead
+      type: warn
+      content: 'Use {0} instead.'
+
+    - &useOnlyOneX
+      type: error
+      content: 'Use only one {0}.'
+
+    - &useVersion
+      type: error
+      content: 'Use {0} version.'
+
+    - &useVersionNon
+      type: error
+      content: 'Use non-{0} version.'
+
+    - &versionOldX
+      type: say
+      content: 'It appears you do not have the latest version of {0}. Some mods may require functionality added in the latest version of {0} to work.'
+
+    - &versionPrecedence
+      type: error
+      content: 'Delete {0} from {1}. {2}''s version must take precedence.'
+
+    - &versionUpToDateX
+      type: say
+      content: 'Your {0} is up-to-date.'
+
+    - &versionXIncY
+      type: error
+      content: 'Your installed version of {0} is not compatible with your version of {1}.'
+
+    - &versionXofYorGreaterRequired
+      type: error
+      content: 'Requires version **{0}** or greater of **{1}**.'
+
+  # Global Anchors
+    - &incompatible
+      type: error
+      content: '{0} is incompatible with {1}, but both are present.'
+
+    - &latestLOOTThread
+      type: say
+      content: '[Latest LOOT thread]({0}).'
+      subs: [ 'https://loot.github.io/latest-thread/' ]
+
+    - &supersede
+      type: warn
+      content: 'You seem to be using **{0}**, but it has been superseded. It is recommended that you use **{1}** instead.'
+
+common: []
+
+bash_tags: []
+
+globals:
+# Latest LOOT Thread
+  - *latestLOOTThread
+
+groups:
+  - name: &veryEarlyGroup Very Early Loaders
+    description: 'A group for modules that need to load early before DLC files.'
+
+  - name: &dlcGroup DLC
+    after: [ *veryEarlyGroup ]
+
+  - name: &fixesGroup Fixes
+    description: 'A group for modules that fix issues and bugs.'
+    after: [ *dlcGroup ]
+
+  - name: &earlyLoadersGroup Early Loaders
+    description: 'A group for modules that should load early before most other mods.'
+    after: [ *fixesGroup ]
+
+  - name: default
+    after: [ *earlyLoadersGroup ]
+
+  - name: &dynamicPatchesGroup Dynamic Patches
+    description: 'A group for patches that are dynamically generated by modding tools.'
+    after: [ default ]
+
+plugins:
+###### Official Game Files ######
+  - name: 'Tribunal.esm'
+    group: *dlcGroup
+
+  - name: 'Bloodmoon.esm'
+    group: *dlcGroup
+    after: [ 'Tribunal.esm' ]
+
+###### Official Mods ######
+  - name: '(adamantiumarmor|AreaEffectArrows|bcsounds|EBQ_Artifact|entertainers|LeFemmArmor|master_index|Siege at Firemoth).esp'
+    url:
+      - link: 'https://en.m.uesp.net/wiki/Morrowind:Plugins'
+        name: 'Morrowind Official Plugins on UESP.net'
+      - link: 'https://www.nexusmods.com/morrowind/mods/43931/'
+        name: 'Unofficial Morrowind Official Plugins Patched'
+    group: *earlyLoadersGroup
+    msg:
+      - <<: *alreadyInX
+        subs: [ 'Unofficial Morrowind Official Plugins Patched' ]
+        condition: 'active("Unofficial Morrowind Official Plugins Patched.ESP")'
+      - <<: *deletePlugin
+        subs: [ '"Unofficial Morrowind Official Plugins Patched.ESP"' ]
+        condition: 'active("Unofficial Morrowind Official Plugins Patched.ESP")'
+
+  - name: '\[Official\](Adamantium Armor|Area Effect Arrows|Bitter Coast Sounds|Helm of Tohan|Entertainers|LeFemm Armor|Master Index|Siege at Firemoth)\.esp'
+    url:
+      - link: 'http://download.fliggerty.com/download-13-1079'
+        name: 'Morrowind Official Plugins on fliggerty.com'
+    group: *earlyLoadersGroup
+    inc: [ 'Unofficial Morrowind Official Plugins Patched.ESP' ]
+    msg:
+      - <<: *alreadyInX
+        subs: [ 'Unofficial Morrowind Official Plugins Patched' ]
+        condition: 'active("Unofficial Morrowind Official Plugins Patched.ESP")'
+
+  - name: '(Adamantium Armor|Area Effect Arrows|Helm of Tohan|Master Index|Siege at Firemoth) Naturalized\.esp'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/51107/'
+        name: 'Bethesda Official Plugins Naturalized'
+    group: *earlyLoadersGroup
+    inc: [ 'Unofficial Morrowind Official Plugins Patched.ESP' ]
+
+  - name: '(adamantiumarmor|(\[Official\])?Adamantium Armor( Naturalized)?)\.esp'
+    after:
+      - 'AreaEffectArrows.esp'
+      - 'bcsounds.esp'
+      - 'EBQ_Artifact.esp'
+      - 'entertainers.esp'
+      - 'LeFemmArmor.esp'
+      - 'master_index.esp'
+      - '[Official]Area Effect Arrows.esp'
+      - '[Official]Bitter Coast Sounds.esp'
+      - '[Official]Entertainers.esp'
+      - '[Official]Helm of Tohan.esp'
+      - '[Official]LeFemm Armor.esp'
+      - '[Official]Master Index.esp'
+      - 'Area Effect Arrows Naturalized.esp'
+      - 'Helm of Tohan Naturalized.esp'
+      - 'Master Index Naturalized.esp'
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ '"Adamantium Armor"' ]
+        condition: 'many("(adamantiumarmor|(\[Official\])?Adamantium Armor( Naturalized)?)\.esp")'
+
+  - name: '(AreaEffectArrows|(\[Official\])?Area Effect Arrows( Naturalized)?)\.esp'
+    after:
+      - 'bcsounds.esp'
+      - 'entertainers.esp'
+      - '[Official]Bitter Coast Sounds.esp'
+      - '[Official]Entertainers.esp'
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ '"Area Effect Arrows"' ]
+        condition: 'many("(AreaEffectArrows|(\[Official\])?Area Effect Arrows( Naturalized)?)\.esp")'
+
+  - name: '(bcsounds|\[Official\]Bitter Coast Sounds)\.esp'
+    after:
+      - 'entertainers.esp'
+      - '[Official]Entertainers.esp'
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ '"Bitter Coast Sounds"' ]
+        condition: 'many("(bcsounds|\[Official\]Bitter Coast Sounds)\.esp")'
+
+  - name: '(EBQ_Artifact|(\[Official\])?Helm of Tohan( Naturalized)?)\.esp'
+    after:
+      - 'AreaEffectArrows.esp'
+      - 'bcsounds.esp'
+      - 'entertainers.esp'
+      - '[Official]Area Effect Arrows.esp'
+      - '[Official]Bitter Coast Sounds.esp'
+      - '[Official]Entertainers.esp'
+      - 'Area Effect Arrows Naturalized.esp'
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ '"EBQ_Artifact" or "Helm of Tohan"' ]
+        condition: 'many("(EBQ_Artifact|(\[Official\])?Helm of Tohan( Naturalized)?)\.esp")'
+
+  - name: '(entertainers|\[Official\]Entertainers)\.esp'
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ '"Entertainers"' ]
+        condition: 'many("(entertainers|\[Official\]Entertainers)\.esp")'
+
+  - name: 'LeFemmArmor.esp'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/42560/'
+        name: 'Expanded LeFemm Armor'
+  - name: '(LeFemmArmor|\[Official\]LeFemm Armor)\.esp'
+    after:
+      - 'AreaEffectArrows.esp'
+      - 'bcsounds.esp'
+      - 'EBQ_Artifact.esp'
+      - 'entertainers.esp'
+      - 'master_index.esp'
+      - '[Official]Area Effect Arrows.esp'
+      - '[Official]Bitter Coast Sounds.esp'
+      - '[Official]Entertainers.esp'
+      - '[Official]Helm of Tohan.esp'
+      - '[Official]Master Index.esp'
+      - 'Area Effect Arrows Naturalized.esp'
+      - 'Helm of Tohan Naturalized.esp'
+      - 'Master Index Naturalized.esp'
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ '"LeFemm Armor"' ]
+        condition: 'many("(LeFemmArmor|\[Official\]LeFemm Armor)\.esp")'
+
+  - name: '(master_index|(\[Official\])?Master Index( Naturalized)?)\.esp'
+    after:
+      - 'AreaEffectArrows.esp'
+      - 'bcsounds.esp'
+      - 'EBQ_Artifact.esp'
+      - 'entertainers.esp'
+      - '[Official]Area Effect Arrows.esp'
+      - '[Official]Bitter Coast Sounds.esp'
+      - '[Official]Entertainers.esp'
+      - '[Official]Helm of Tohan.esp'
+      - 'Area Effect Arrows Naturalized.esp'
+      - 'Helm of Tohan Naturalized.esp'
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ '"Master Index"' ]
+        condition: 'many("(master_index|(\[Official\])?Master Index( Naturalized)?)\.esp")'
+
+  - name: '(\[Official\])?Siege at Firemoth( Naturalized)?\.esp'
+    after:
+      - 'adamantiumarmor.esp'
+      - 'AreaEffectArrows.esp'
+      - 'bcsounds.esp'
+      - 'EBQ_Artifact.esp'
+      - 'entertainers.esp'
+      - 'LeFemmArmor.esp'
+      - 'master_index.esp'
+      - '[Official]Adamantium Armor.esp'
+      - '[Official]Area Effect Arrows.esp'
+      - '[Official]Bitter Coast Sounds.esp'
+      - '[Official]Entertainers.esp'
+      - '[Official]Helm of Tohan.esp'
+      - '[Official]LeFemm Armor.esp'
+      - '[Official]Master Index.esp'
+      - 'Adamantium Armor Naturalized.esp'
+      - 'Area Effect Arrows Naturalized.esp'
+      - 'Helm of Tohan Naturalized.esp'
+      - 'Master Index Naturalized.esp'
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ '"Siege at Firemoth"' ]
+        condition: 'many("(\[Official\])?Siege at Firemoth( Naturalized)?\.esp")'
+
+  - name: 'Unofficial Morrowind Official Plugins Patched.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/43931/' ]
+    group: *earlyLoadersGroup
+
+###### Base Game Patches ######
+  - name: 'Patch for Purists.*\.es(m|p)'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/45096/' ]
+    group: *fixesGroup
+  - name: 'Patch for Purists( - Base Patch)?\.esm'
+    inc:
+      - 'gr_ScriptImprovements.esm'
+      - 'gr_ScriptImprovements.esp'
+      - 'Morrowind Patch v1.2.2.esm'
+      - 'Morrowind Patch v1.6.3.esm'
+      - 'Morrowind Patch v1.6.4.esm'
+      - 'Morrowind Patch v1.6.5-BETA.esm'
+      - 'Morrowind Patch 1.6.5 Beta (BTB Edit).esm'
+      - 'Morrowind Patch v1.6.5d_beta.esm'
+      - 'Morrowind Patch v1.6.6_beta.esm'
+      - 'Morrowind Rebirth [Main].ESP'
+    msg:
+      - <<: *useInstead
+        type: error
+        subs: [ 'Morrowind Patch Project 1.6.5 [For Rebirth].esm' ]
+        condition: 'active("Morrowind Rebirth [Main].ESP")'
+  - name: 'Patch for Purists.esm'
+    msg:
+      - <<: *obsolete
+        condition: 'version("Patch for Purists.esm", <, "3.1.2")'
+      - type: say
+        content:
+          - lang: en
+            text: 'Legacy version. Only recommended for old saves.'
+          - lang: bg
+            text: 'Версията е стара. Изисква се само за стари записи.'
+          - lang: de
+            text: 'Alt-Version. Ausschließlich für alte Speicherstände empfohlen.'
+        condition: 'version("Patch for Purists.esm", <, "3.1.2")'
+  - name: 'Patch for Purists - (Base Patch|(Book|Dialogue|Statistic) Typos|Floating Rocks|Expansion Implementation|Dialogue Inconsistencies)\.esm'
+    msg:
+      - *obsolete
+      - type: say
+        content:
+          - lang: en
+            text: 'Legacy version. Only recommended for old saves.'
+          - lang: bg
+            text: 'Версията е стара. Изисква се само за стари записи.'
+          - lang: de
+            text: 'Alt-Version. Ausschließlich für alte Speicherstände empfohlen.'
+  - name: 'Patch for Purists - Base Patch.esm'
+    after: [ 'Patch for Purists - Dialogue Typos.esm' ]
+  - name: 'Patch for Purists - Book Typos.esm'
+    after:
+      - name: 'Patch for Purists - Dialogue Typos.esm'
+      - name: 'Patch for Purists - Base Patch.esm'
+  - name: 'Patch for Purists - Floating Rocks.esm'
+    after:
+      - name: 'Patch for Purists - Dialogue Typos.esm'
+      - name: 'Patch for Purists - Base Patch.esm'
+      - name: 'Patch for Purists - Book Typos.esm'
+  - name: 'Patch for Purists - Expansion Implementation.esm'
+    after:
+      - name: 'Patch for Purists - Dialogue Typos.esm'
+      - name: 'Patch for Purists - Base Patch.esm'
+      - name: 'Patch for Purists - Book Typos.esm'
+      - name: 'Patch for Purists - Floating Rocks.esm'
+  - name: 'Patch for Purists - Dialogue Inconsistencies.esm'
+    after:
+      - name: 'Patch for Purists - Dialogue Typos.esm'
+      - name: 'Patch for Purists - Base Patch.esm'
+      - name: 'Patch for Purists - Book Typos.esm'
+      - name: 'Patch for Purists - Floating Rocks.esm'
+      - name: 'Patch for Purists - Expansion Implementation.esm'
+  - name: 'Patch for Purists - Statistic Typos.esm'
+    after:
+      - name: 'Patch for Purists - Dialogue Typos.esm'
+      - name: 'Patch for Purists - Base Patch.esm'
+      - name: 'Patch for Purists - Book Typos.esm'
+      - name: 'Patch for Purists - Floating Rocks.esm'
+      - name: 'Patch for Purists - Expansion Implementation.esm'
+      - name: 'Patch for Purists - Dialogue Inconsistencies.esm'
+
+###### Modding Tools - Resources ######
+  - name: 'Rem_(A[CILT]|BC|GL|LOCM?|RR|Solstheim|VM|WG)(_TR)?\.esp'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/46733/'
+        name: 'Remiros'' Groundcover'
+    msg:
+      - <<: *moddingPlugin
+        condition: 'active("Rem_(A[CILT]|BC|GL|LOCM?|RR|Solstheim|VM|WG)(_TR)?\.esp")'
+
+###### Modding Tools - Generated Files ######
+  - name: 'delta_plugin.esp'
+    url:
+      - link: 'https://gitlab.com/bmwinger/delta-plugin/'
+        name: 'DeltaPlugin'
+    group: *dynamicPatchesGroup
+  - name: '(Merged Objects|multipatch)\.esp'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/46870/'
+        name: 'TES3Merge'
+    group: *dynamicPatchesGroup
+  - name: 'Merged Objects.esp'
+    msg:
+      - type: say
+        content:
+          - lang: en
+            text: 'Regenerate after adding or removing mods that change or add in-game items. Use {0}.'
+          - lang: bg
+            text: 'Презаредете приставката след добавяне или премахване на модификации, които променят или добавят предмети в играта. Използвайте {0}.'
+        subs: [ '[TES3Merge](https://www.nexusmods.com/morrowind/mods/46870/)' ]
+  - name: 'multipatch.esp'
+    after: [ 'Merged Objects.esp' ]
+    msg:
+      - type: say
+        content:
+          - lang: en
+            text: 'Regenerate after adding or removing mods or generating {0}.'
+          - lang: bg
+            text: 'Презаредете приставката след добавяне или премахване на модификации, или промяна на {0}.'
+        subs: [ '[**Merged Objects.esp**](https://www.nexusmods.com/morrowind/mods/46870/)' ]
+      - type: say
+        content:
+          - lang: en
+            text: 'Delete before generating {0} to avoid cyclic dependency.'
+          - lang: bg
+            text: 'Изтрийте приставката, преди промяна на {0}, за да избегнете циклична зависимост.'
+        subs: [ '[**Merged Objects.esp**](https://www.nexusmods.com/morrowind/mods/46870/)' ]
+
+###### Resources & Frameworks ######
+  - name: 'OAAB_Data.esm'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49042/' ]
+    group: *earlyLoadersGroup
+
+  - name: 'Tamriel_Data.esm'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/44537/' ]
+    group: *earlyLoadersGroup
+
+###### Fixes ######
+  - name: 'correctUV Ore Replacer_(fixed|respawning)\.esp'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/46599/'
+        name: 'Graphic Herbalism - MWSE and OpenMW Edition'
+    inc:
+      - 'correctUV Ore Replacer 1.0.esp'
+      - 'Graphic Herbalism.esp'
+      - 'Graphic Herbalism Extra.esp'
+      - 'Graphic Herbalism Extra (Correct UV).esp'
+      - 'Graphic Herbalism TR.ESP'
+      - 'Graphic Herbalism TR Extra.ESP'
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ 'Correct UV Diverse Ore Replacer ESP' ]
+        condition: 'many("correctUV Ore Replacer_(fixed|respawning)\.esp")'
+
+  - name: 'gr_ScriptImprovements.es(m|p)'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/43828/' ]
+    msg:
+      - <<: *alreadyInX
+        subs: [ 'Patch for Purists' ]
+        condition: 'active("Patch for Purists.esm") or active("Patch for Purists - Base Patch.esm")'
+      - <<: *useOnlyOneX
+        subs: [ '"Script Improvements" version' ]
+        condition: 'many("gr_ScriptImprovements.es(m|p)")'
+
+###### AudioVisual ######
+  - name: 'Better Propylon Teleport Warp(-Master Index)?\.esp'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/46364/'
+        name: 'Pikas Miscellaneous Mods'
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ 'Better Propylon Teleport Warp ESP' ]
+        condition: 'many("Better Propylon Teleport Warp(-Master Index)?\.esp")'
+  - name: 'Better Propylon Teleport Warp-Master Index.esp'
+    after: [ 'MasterIndexRedux.esp' ]
+    req:
+      - name: 'master_index.esp'
+        display: '[Master Index Plugin](https://www.nexusmods.com/morrowind/mods/42985/) **OR** [Unofficial Morrowind Official Plugins Patched](https://www.nexusmods.com/morrowind/mods/43931/) (**master-index.esp**)'
+        condition: 'not active("MasterIndexRedux.esp")'
+
+###### AudioVisual - Animations & Physics ######
+###### AudioVisual - Models & Textures ######
+###### AudioVisual - Sound & Music ######
+  - name: 'k_weather( \(louder sounds\))?\.esp'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/49278/'
+        name: 'Kirel''s Interior Weather'
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ 'Kirel''s Interior Weather ESP' ]
+        condition: 'many("k_weather( \(louder sounds\))?\.esp")'
+
+###### AudioVisual - Water ######
+###### AudioVisual - Weather & Lighting ######
+
+###### Character Appearance ######
+  - name: 'Improved Argonians.esp'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/45918/' ]
+    after: [ 'New Argonian Bodies - Clean.esp' ]
+    inc:
+      - 'Slof''s BB neck fix.esp'
+      - 'Slof''s Better Beasts a.esp'
+      - 'Slof''s Better Beasts b.esp'
+      - 'Slof''s Civilised Beasts.esp'
+      - 'Wey_New_Argonians.ESP'
+
+###### Environment, Landscape & Flora ######
+  - name: 'Baan_Binif.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/51419/' ]
+    after: [ 'Bal''laku - The Lonely Towers.esp' ]
+
+  - name: 'Better Landscapes Stonewood Pass (RP Edit).esp'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49464/' ]
+    after:
+      - 'DD_Caldera_Expansion.esp'
+      - 'Foyada Mamaea Overhaul.ESP'
+      - 'Order_Of_Sanctity.ESP'
+      - 'Walkers of Morrowind.esp'
+
+  - name: 'distant_seafloor_2.00.esm'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/50796/'
+        name: 'Distant Seafloor for OpenMW'
+    group: *veryEarlyGroup
+    after: ['Tribunal.esm']
+
+###### Gameplay ######
+  - name: 'Bardcraft\.(ESP|omwscripts)'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/56814/'
+        name: 'Bardcraft'
+    after:
+      - 'SkillFramework.omwscripts'
+
+  - name: 'Immersive_corprus.esp'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/44961/' ]
+    after:
+      - 'Main Quest Overhaul.esp'
+      - 'Sixth House.esp'
+
+  - name: 'NOM 3.0.esp'
+    url: [ 'https://mw.modhistory.com/download-35-12114' ]
+    after:
+      - 'ab01HousesMerged.esp'
+      - 'ab01housesMergedNOM.esp'
+      - 'abotGuards.esp'
+      - 'abotGuardsBM.esp'
+      - 'abotGuardsTR2101.esp'
+      - 'Apothecary''s Demise.esp'
+      - 'ARCDX - Alternative Music.esp'
+      - 'ARCDX - Lightweight.esp'
+      - 'ARCDX - NOMv3 Compatible.esp'
+      - 'Ascadian Rose Cottage DX.esm'
+      - 'Ascadian_Rose_Cottage_ver1.0.esp'
+      - 'Better Clothes Complete.ESP'
+      - 'Better Clothes_v1.1.esp'
+      - 'Better Clothes_v1.1_nac.esp'
+      - 'Korobal.esp'
+      - 'Morrowind Crafting 2-1.esp'
+      - 'Morrowind Crafting Equipment.esp'
+      - 'Morrowind Crafting Houses.esp'
+      - 'Sentinel+Serendipity.esp'
+  - name: 'NOM3_PT SO.esp'
+    after:
+      - 'ab01HousesMerged.esp'
+      - 'ab01housesMergedNOM.esp'
+      - 'abotGuards.esp'
+      - 'abotGuardsBM.esp'
+      - 'abotGuardsTR2101.esp'
+      - 'Apothecary''s Demise.esp'
+      - 'ARCDX - Alternative Music.esp'
+      - 'ARCDX - Lightweight.esp'
+      - 'ARCDX - NOMv3 Compatible.esp'
+      - 'Ascadian Rose Cottage DX.esm'
+      - 'Ascadian_Rose_Cottage_ver1.0.esp'
+      - 'Better Clothes Complete.ESP'
+      - 'Better Clothes_v1.1.esp'
+      - 'Better Clothes_v1.1_nac.esp'
+      - 'Korobal.esp'
+      - 'Morrowind Crafting 2-1.esp'
+      - 'Morrowind Crafting Equipment.esp'
+      - 'Morrowind Crafting Houses.esp'
+      - 'Sentinel+Serendipity.esp'
+  - name: 'NoM_CoM Compatibility Patch.esp'
+    url: [ 'https://mw.modhistory.com/download-35-12114' ]
+    after:
+      - 'MW_Children_1_0.esm'
+      - 'NOM3.0.esp'
+      - 'NOM3_PT SO.esp'
+      - 'NoM_Creatures Loot Standard.esp'
+      - 'NoM_MC Compatibility Patch.esp'
+  - name: 'NoM_Creatures Loot Standard.esp'
+    url: [ 'https://mw.modhistory.com/download-35-12114' ]
+    after:
+      - 'NOM3.0.esp'
+      - 'NOM3_PT SO.esp'
+  - name: 'NoM_Creatures Loot PHW.esp'
+    url: [ 'https://mw.modhistory.com/download-35-12114' ]
+    after:
+      - 'NOM3.0.esp'
+      - 'NOM3_PT SO.esp'
+  - name: 'NoM_MC Compatibility Patch.esp'
+    url: [ 'https://mw.modhistory.com/download-35-12114' ]
+    after:
+      - 'Morrowind Crafting 2-1.esp'
+      - 'Morrowind Crafting 3b1.ESP'
+      - 'NOM3.0.esp'
+      - 'NOM3_PT SO.esp'
+      - 'NoM_Creatures Loot Standard.esp'
+  - name: 'Vampire Masquerade - A Detailed Overhaul(?: TR)?\.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/56101/' ]
+    after:
+      - 'LDM - Context Matters 1.7.ESP'
+      - 'Quest Voice Greetings.ESP'
+
+###### Gameplay - Character Classes & Races ######
+###### Gameplay - Combat ######
+###### Gameplay - Crafting & Harvesting ######
+###### Gameplay - Economy & Item Balance ######
+  - name: 'Ownership Overhaul\.es[mp]'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/48051/'
+        name: 'Ownership Overhaul'
+    group: *fixesGroup
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ 'Ownership Overhaul plugin' ]
+        condition: 'many("Ownership Overhaul\.es[mp]")'
+
+  - name: 'Playable Game of Ur.esp'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/53914/'
+        name: 'Playable Game of Ur'
+    req: [ 'The_Royal_Game_Of_Ur.esp' ]
+
+###### Gameplay - Mount & Follower Managers ######
+###### Gameplay - NPC Balance & Distribution ######
+###### Gameplay - NPC Behaviour & Dialogue ######
+
+###### Gameplay - Quests ######
+  - name: 'Guild of Vampire Hunters.esp'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/45832/' ]
+    after:
+      - 'Beautiful cities of Morrowind.ESP'
+      - 'NX9_StuddedArmor.esp'
+
+  - name: 'Imperial Legion Expansion.esp'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/44469/'
+        name: 'Imperial Legion Expansion'
+    inc:
+      - 'dukesarmor.ESP'
+      - 'Imperial Legion Goods.esp'
+      - 'Legionpapers.esp'
+      - 'Publius_Claudius_Follower.ESP'
+
+  - name: 'LuceEdit - Guild of Vampire Hunters.esp'
+    url:
+      - 'https://www.nexusmods.com/morrowind/mods/47224/'
+      - 'https://www.nexusmods.com/morrowind/mods/49231/'
+    after:
+      - 'Beautiful cities of Morrowind.ESP'
+      - 'Glass Domes of Vivec.esp'
+      - 'Mixed Cantons of Vivec.esp'
+      - 'No-Frills Open Vivec.esp'
+
+  - name: 'Main_Quest_Overhaul.ESP'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/46913/'
+        name: 'Main Quest Overhaul'
+    inc:
+      - 'Ashlander Quests.ESP'
+      - 'Consequences for Looting the Andrano Tomb.ESP'
+      - 'Exterminate all the Brutes.ESP'
+      - 'Hortator.ESP'
+      - 'Imperialist Nerevarine.ESP'
+      - 'Joinable Sixth House - So to Speak.ESP'
+      - 'Living With Caius.ESP'
+      - 'Nationalist Nerevarine.ESP'
+      - 'Past Life Regressions.ESP'
+      - 'Refuse the Main Quest.ESP'
+      - 'Sixth House Smugglers.ESP'
+      - 'Vampire_Nerevarine.ESP'
+
+  - name: 'Ministry_of_Clarity.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/46093/' ]
+    after: [ 'Clean_Mines & Caverns.esp' ]
+
+  - name: 'Religions Elaborated.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/47843/' ]
+    after:
+      - 'Imperial_Legion_Expansion.esp'
+      - 'More Exclusive Factions.ESP'
+      - 'SwampFever.ESP'
+
+  - name: 'ROHT_2_0_8.ESP'
+    url:
+      - 'https://www.nexusmods.com/morrowind/mods/48225/'
+      - 'https://www.nexusmods.com/morrowind/mods/49231/'
+    after: [ 'Beautiful cities of Morrowind.ESP' ]
+    inc: [ 'BOM_ROHT_Patch.ESP' ]
+    req:
+      - name: 'Rise of House Telvanni.esm'
+        display: '[Rise of House Telvanni.esm](https://www.nexusmods.com/morrowind/mods/27545/)'
+
+  - name: 'The_Vanilla_Quest_Tweaks_RP_Choices_Consequences_Super_Mega_Package_-_Ultimate_Edition.ESP'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/47466/'
+        name: 'The Vanilla Quest Tweaks RP Choices Consequences Super Mega Package - Ultimate Edition'
+    after: [ 'Religions Elaborated.ESP' ]
+    inc:
+      - 'A Cure for Vampirism - Skink''s Solution.ESP'
+      - 'Champion of Clutter.ESP'
+      - 'Duel of Honor - Improve the Chances.ESP'
+      - 'Fargoth in Distress.ESP'
+      - 'Fort Moonmoth Fundraiser Dinner.ESP'
+      - 'Harvest''s End Festival.ESP'
+      - 'Hentus Needs Pants Overhaul.ESP'
+      - 'Hiring Guards for the Redoran Stronghold - Honorable Solution.ESP'
+      - 'Immersive Neloth Reward.ESP'
+      - 'Libertarian Magical Services.ESP'
+      - 'Morrowind - Immanuel Kant Edition.ESP'
+      - 'Oath to Saint Roris Instead.ESP'
+      - 'Pacifist Options - When it Makes Sense.ESP'
+      - 'Redoran Founder''s Helm Add On- Honor the Ancestors.ESP'
+      - 'Strange Man at Gindrala Hleran''s House Overhaul.ESP'
+      - 'Teach Nels Llendo a Lesson.ESP'
+      - 'The Corpse and the Skooma Pipe Overhaul.ESP'
+      - 'The Frostmoth Smugglers - Properly Rewarded.ESP'
+      - 'Thelas'' Pillows Overhaul.ESP'
+      - 'Therana vs Trerayna.ESP'
+
+  - name: 'Thieves_Guild_Overhaul( - Purist Ahnassi Romance version)?\.ESP'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/49944/'
+        name: 'Thieves'' Guild Overhaul'
+    inc:
+      - 'Bal Molagmer Add-on.ESP'
+      - 'Lore-friendly Bal Molagmer Gloves.ESP'
+      - 'More Redoran Master Helms.ESP'
+      - 'Plunder the Dungeon.ESP'
+      - 'Smooth Moves - Romancing Ahnassi.esp'
+      - 'Thieves Guild in Gnaar Mok.ESP'
+      - 'Wanted Posters.ESP'
+    msg:
+      - <<: *useOnlyOneX
+        subs: [ 'Thieves'' Guild Overhaul ESP' ]
+        condition: 'many("Thieves_Guild_Overhaul( - Purist Ahnassi Romance version)?\.ESP")'
+
+  - name: 'Vivec Lighthouse Questline.esp'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/52120/' ]
+    after: [ 'Vivec_Lighthouse.ESP' ]
+
+###### Gameplay - Skills & Abilities ######
+  - name: 'ncg\.omw(scripts|addon)'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/57801/'
+        name: 'Natural Character Growth'
+    after:
+      - 'StatsWindow.ESP'
+      - 'StatsWindow.omwscripts'
+
+  - name: 'skill-evolution\.omw(scripts|addon)'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/57802/'
+        name: 'Skill Evolution'
+    after:
+      - 'StatsWindow.ESP'
+      - 'StatsWindow.omwscripts'
+
+  - name: 'SkillFramework\.omwscripts'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/57765/'
+        name: 'Skill Framework'
+    after:
+      - 'StatsWindow.ESP'
+      - 'StatsWindow.omwscripts'
+
+###### Gameplay - User Interface ######
+###### Gameplay - User Interface - Map markers ######
+###### Gameplay - User Interface - Maps ######
+
+###### Locations - New Lands ######
+  - name: 'TR_(Mainland|Factions|Firemoth_Vanilla_patch)\.es[mp]'
+    url:
+      - link: 'https://www.nexusmods.com/morrowind/mods/42145/'
+        name: 'Tamriel Rebuilt'
+  - name: 'TR_Mainland.esm'
+    msg:
+      - <<: *patchIncluded
+        subs: [ 'Siege at Firemoth' ]
+        condition: '(active("Siege at Firemoth.esp") or active("Unofficial Morrowind Official Plugins Patched.ESP")) and not active("TR_Firemoth_Vanilla_patch.esp")'
+  - name: 'TR_Factions.esp'
+    after: [ 'higher faction requirements - Full.ESP' ]
+  - name: 'TR_Firemoth_Vanilla_patch.esp'
+    req:
+      - name: 'Siege at Firemoth.esp'
+        display: '[Siege at Firemoth](https://www.nexusmods.com/morrowind/mods/42982/) or [Unofficial Morrowind Official Plugins Patched](https://www.nexusmods.com/morrowind/mods/43931/)'
+        condition: 'not file("Unofficial Morrowind Official Plugins Patched.ESP") or not file("[Official]Siege at Firemoth.esp")'
+
+###### Locations - New Structures & Landmarks ######
+
+###### Locations - Overhauls ######
+  - name: 'Beautiful cities of Morrowind.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    after:
+      - 'BCOM West Gash.esp'
+      - 'Better Landscapes Stonewood Pass.esp'
+      - 'Better Landscapes Stonewood Pass (MD Edit).esp'
+      - 'Better Landscapes Stonewood Pass (RP Edit).esp'
+      - 'DD_Caldera_Expansion v15 + Stonewood Pass Patch.ESP'
+      - 'Fighters_Guild_Questline_Overhaul.ESP'
+      - 'Foyada Mamaea Overhaul.ESP'
+      - 'KS_Julan_Ashlander Companion_2.0.esp'
+      - 'KS_Julan_Ashlander Companion_3.0_beta.esp'
+      - 'Morrowind Anti-Cheese.esp'
+      - 'Trackless Grazeland.ESP'
+      - 'Uvirith''s Legacy_3.53.esp'
+    inc:
+      - 'MDP 2013.esp'
+      - 'MDP 2013-CV.esp'
+      - 'MDP 2016.esp'
+      - 'Duke''s Throne Room Overhaul.ESP'
+      - 'Ald-Ruhn Temple Expansion 1.5.esp'
+      - 'aldruhnmagesguildexpansion.esp'
+      - 'AldRuhn_seat_of_power.ESP'
+      - 'Atmospheric Delights.ESP'
+      - 'Balmora Redecorated.esp'
+      - 'Balmora_Rooftop_Apartments_1-0.esp'
+      - 'Balmora_Seat of power.esm'
+      - 'Barabus'' fireplaces 2 - Vanilla Chimneys v2.2.ESP'
+      - 'bw_striderports.esp'
+      - 'Caldera Mages Guild Expanded.ESP'
+      - 'Clean DR115_TheDropoff.ESP'
+      - 'Concept Art Hlaalu Balconies - Balmora.esp'
+      - 'Concept Art Hlaalu Balconies - Suran.ESP'
+      - 'Concept art Hlaalu Balconies - WhiteSuran.esp'
+      - 'DirtierCozierMuriels.ESP'
+      - 'DirtyMurielsExpansion.esp'
+      - 'Dramatic Vivec - Temple only.ESP'
+      - 'Even Seedier Eight Plates.ESP'
+      - 'Exterior Guild Lighting.ESP'
+      - 'Guilds.esp'
+      - 'Hla Oad.esp'
+      - 'HotV - Gnisis.ESP'
+      - 'Immersive Seyda Neen.ESP'
+      - 'Improved Temple Experience.ESP'
+      - 'Inscribed Maar Gan Rock.ESP'
+      - 'IntoTheFyr.ESP'
+      - 'Izi cities -  Ebonheart.esp'
+      - 'Izi cities - Ebonheart_TR_Statue.esp'
+      - 'jobashaBookShop.esp'
+      - 'Mixed Cantons of Vivec.esp'
+      - 'Moonmoth Legion Fort Overhaul.ESP'
+      - 'No-Frills Closed Molag Mar.esp'
+      - 'Properly Cluttered Ald Velothi.ESP'
+      - 'QL_SevenGracesShrines.esp'
+      - 'RR_Ghost_Gate_Fortress_Eng.ESP'
+      - 'RR_Holamayan_Eng.ESP'
+      - 'Sadrith Mora - seat of power.esm'
+      - 'Seyda_Neen_Gateway.ESP'
+      - 'Suran_the_pearl_vanilla_style.ESP'
+      - 'Tel Naga Treasury.ESP'
+      - 'Telvanni Council Lounge Room.ESP'
+      - 'Tel_Aruhn_Chronicles.ESP'
+      - 'The Ashlanders.ESP'
+      - 'The Grand Pharos Lighthouse-Apel.ESP'
+      - 'The Grand Pharos Lighthouse.esp'
+      - 'The Merchants of Sadrith Mora.ESP'
+      - 'Velothi Strider Port Lights.ESP'
+      - 'Vivec_Mages_Guild_Expanded.ESP'
+      - 'Well addon for Ashfall.ESP'
+      - 'Whitney_EdwinnaStudy.ESP'
+      - 'wl_dockclutter.esp'
+      - 'Wolverine Hall Interior Expanded.ESP'
+      - 'Wolverine Hall Overhaul.ESP'
+      - 'WWGTMA.esp'
+    msg:
+      - <<: *patchIncluded
+        subs: [ 'Rise of House Telvanni' ]
+        condition: 'active("Rise of House Telvanni.esm") and not active("ROHT_2_0_8.ESP") and not active("BOM_ROHT_Patch.ESP")'
+  - name: 'BOM_pathgrid_reset.esp'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    after: [ 'Beautiful cities of Morrowind.ESP' ]
+  - name: 'BOM_OpenMW_plazas.esp'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    after:
+      - 'Beautiful cities of Morrowind.ESP'
+      - 'BOM_pathgrid_reset.esp'
+  - name: 'Interior exterior flag reset.esp'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    after:
+      - 'Beautiful cities of Morrowind.ESP'
+      - 'BOM_OpenMW_plazas.esp'
+      - 'BOM_pathgrid_reset.esp'
+  ### BCOM - Optional files ###
+  - name: 'BOM_PfP_patch.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    after:
+      - 'Beautiful cities of Morrowind.ESP'
+      - 'Patch for Purists.esm'
+      - 'Patch for Purists - Book Typos.ESP'
+      - 'Patch for Purists - Semi-Purist Fixes.ESP'
+  - name: 'BCOM_Suran Expansion.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    after: [ 'BOM_pathgrid_reset.esp' ]
+  - name: 'BOM_Stavs_MGO.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    after: [ 'Beautiful cities of Morrowind.ESP' ]
+  - name: 'BOM - Taller Lighthouse.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    after: [ 'BOM_pathgrid_reset.esp' ]
+  - name: 'BOM_Vanilla Trees.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    after: [ 'BOM_pathgrid_reset.esp' ]
+  - name: 'BOM_White_Suran.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    after:
+      - 'BCOM_Suran Expansion.esp'
+      - 'Beautiful cities of Morrowind.ESP'
+      - 'Suran_Underworld_v3.esp'
+  - name: 'SOP_Canal_02.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    after: [ 'Beautiful cities of Morrowind.ESP' ]
+  - name: 'SOP_RichPlaza_IziStyle.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    inc: [ 'Brevur of Balmora - Finally Some Good Statue Mod.ESP' ]
+    after: [ 'BOM_pathgrid_reset.esp' ]
+  - name: 'TR_Travels_(P_M) Patch.esp'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49231/' ]
+    after:
+      - 'Beautiful cities of Morrowind.ESP'
+      - 'TR_Travels.esp'
+      - 'TR_Travels_(Preview_and_Mainland).esp'
+      - 'TR_Travels Patch.esp'
+
+  - name: 'Brevur of Balmora - Finally Some Good Statue Mod.ESP'
+    url:
+      - 'https://www.nexusmods.com/morrowind/mods/47557/'
+      - 'https://www.nexusmods.com/morrowind/mods/49231/'
+    inc: [ 'SOP_RichPlaza_IziStyle.ESP' ]
+    after: [ 'BOM_pathgrid_reset.esp' ]
+    msg:
+      - <<: *requiresResources
+        subs: [ '[Brevur of Balmora - Finally Some Good Statue Mod](https://www.nexusmods.com/morrowind/mods/47557)' ]
+        condition: 'not file("textures/R0/Brevur.dds")'
+      - <<: *useInstead
+        subs: [ '[Brevur of Balmora - Finally Some Good Statue Mod.ESP](https://www.nexusmods.com/morrowind/mods/49231/)' ]
+        condition: 'active("Beautiful cities of Morrowind.ESP") and checksum("Brevur of Balmora - Finally Some Good Statue Mod.ESP", 728FD2B8)'
+
+  - name: 'OAAB_Tel Mora.esp'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/46177/' ]
+    after: [ 'NOM 3.0.esp' ]
+  - name: 'OAAB_Tel Mora_Female Guards.ESP'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/46177/' ]
+    after: [ 'OAAB_Tel Mora.esp' ]
+
+  - name: 'OAAB - Tombs and Towers.esp'
+    url: [ 'https://www.nexusmods.com/morrowind/mods/49131/' ]
+    inc:
+      - 'Mawia Overhaul.esp'
+      - 'Remiros'' Tombs Expansion.esp'
+      - 'Urshilaku Burial Caverns Overhaul.esp'
+
+###### Locations - Player Homes ######
+###### New Characters - Allies ######
+###### New Characters - Enemies ######
+###### New Characters - Neutrals ######
+###### New Items ######
+###### 3RD Party Patches ######
+
+###### Anything new can go after this (If you're not sure where to put it) ######

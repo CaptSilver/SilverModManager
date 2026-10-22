@@ -9,6 +9,12 @@
     </ItemGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="Masterlists\*\masterlist.yaml" LogicalName="loot/%(RecursiveDir)masterlist.yaml" />
+        <EmbeddedResource Include="Masterlists\prelude.yaml" LogicalName="loot/prelude.yaml" />
+        <EmbeddedResource Include="Masterlists\masterlists.lock.json" LogicalName="loot/masterlists.lock.json" />
+    </ItemGroup>
+
+    <ItemGroup>
         <InternalsVisibleTo Include="NexusMods.Games.Bethesda.Loot.Tests" />
     </ItemGroup>
 </Project>

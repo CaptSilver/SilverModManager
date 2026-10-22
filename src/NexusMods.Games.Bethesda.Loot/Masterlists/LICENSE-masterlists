@@ -1,0 +1,7 @@
+The masterlist.yaml and prelude.yaml files in this directory are copied from the LOOT
+masterlist repositories at https://github.com/loot (branch v0.29), which publish them under
+CC0 1.0 Universal (public domain dedication):
+https://creativecommons.org/publicdomain/zero/1.0/
+
+masterlists.lock.json records the repository, commit, SHA-256 and download date of each file.
+tools/loot-masterlists/update.sh regenerates the files and the lock.

@@ -1,0 +1,604 @@
+# LOOT ignores anything that doesn't come under 'prelude', 'bash_tags',
+# 'globals', 'groups', or 'plugins', so a section like 'common' is useful for
+# storing data that gets re-used.
+prelude:
+  common:
+  # Message Anchors
+    - &alreadyInX
+      type: error
+      content: 'Delete. Already included in {0}.'
+
+    - &alreadyInOrFixedByX
+      type: error
+      content: 'Delete. Already included or otherwise fixed in {0}.'
+
+    - &alsoUseX
+      type: say
+      content: 'It''s highly recommended that you also use {0}.'
+
+    - &compatIssuesWithX
+      type: say
+      content: 'This plugin has compatibility issues with {0}. For more information, read this mod''s compatibility notes.'
+
+    - &compatNotes
+      type: say
+      content: 'It is recommended that you read this mod''s [Compatibility Notes]({0}).'
+
+    - &compatPatch
+      type: say
+      content: 'It is recommended that you check the following compatibility patch compilation for this mod: {0}'
+
+    - &compatPatchForX
+      type: say
+      content: 'It is recommended that you check the following compatibility patch compilation for {0}: {1}'
+
+    - &corrupt
+      type: warn
+      content: 'This file is corrupt and should not be used.'
+
+    - &deactivateAfterCharacterCreation
+      type: say
+      content: 'Deactivate and/or uninstall this mod after character creation.'
+
+    - &deleteOrDeactivateX
+      type: error
+      content: 'Delete or deactivate. {0}'
+      subs: [ '' ]
+
+    - &deletePlugin
+      type: warn
+      content: 'When using **{0}**, it''s recommended that you deactivate or delete this ESP file but keep the resources (e.g. meshes, textures) installed with this mod.'
+
+    - &deprecated
+      type: warn
+      content: 'This file is deprecated and should no longer be used.'
+
+    - &disableAfterGeneratingXwithY
+      type: say
+      content: 'This plugin may be disabled after generating **{0}** with **{1}**.'
+
+    - &essentialFiles
+      type: warn
+      content: 'Another mod seems to be overwriting one of this mod''s essential files. Please ensure you''re using this mod''s version of {0} or a compatible version if available.'
+
+    - &includesX
+      type: say
+      content: '{0} is included with this mod.'
+
+    - &languageX
+      type: say
+      content: 'Language: {0}'
+
+    - &mainQuestCompleted
+      type: say
+      content: 'Only use this plugin once the main quest of the game has been completed.'
+
+    - &masterReassign
+      type: say
+      content: 'The **{0}** master must be reassigned to **{1}**.'
+
+    - &missingRequirementXforY
+      type: warn
+      content: 'It appears you have installed **{1}**, but some of its requirements seem to be missing. Please ensure you have correctly installed **{0}**.'
+
+    - &missingRequirementXforPlugin
+      type: warn
+      content: 'Some of this plugin''s requirements seem to be missing. Please ensure you have correctly installed **{0}**.'
+
+    - &moddingPlugin
+      type: error
+      content: 'This plugin is a modding resource and should not be used in-game.'
+
+    - &moveXFromYToZ
+      type: say
+      content: 'Move {0} from {1} to {2}.'
+
+    - &obsolete
+      type: warn
+      content: 'Obsolete. Update to the latest version. {0}'
+      subs: [ '' ]
+
+    - &optional
+      type: say
+      content: 'This plugin is optional.'
+
+    - &patch3rdParty
+      type: say
+      content: 'You seem to be using **{0}**, but you have not enabled a compatibility patch for this mod. A third party patch is available here: {1}'
+
+    - &patcherScriptAvailable
+      type: say
+      content: '{0} patcher script available here: {1}'
+
+    - &patchIncluded
+      type: say
+      content: 'You seem to be using **{0}**, but you have not enabled a compatibility patch for this mod. A compatibility patch is included with this plugin''s installer.'
+
+    - &patchOutdated
+      type: warn
+      content: 'This patch is outdated and may not be compatible with the latest version of the patched mod.'
+
+    - &patchProvided
+      type: say
+      content: 'You seem to be using **{0}**, but you have not enabled a compatibility patch for this mod. A compatibility patch is provided on this plugin''s mod page.'
+
+    - &patchUnavailable
+      type: warn
+      content: 'A patch is required to make this mod fully compatible with {0}. None is currently available for download.'
+
+    - &patchUpdateAvailable
+      type: say
+      content: 'Update Patch available: {0}'
+
+    - &renameFile
+      type: say
+      content: 'Rename this file to {0}.'
+
+    - &renameXtoY
+      type: warn
+      content: 'You need to rename {0} to {1} or this mod won''t work.'
+
+    - &requiresResources
+      type: warn
+      content: 'Requires resources (e.g. meshes, textures; not plugins) from {0}.'
+
+    - &requiresX
+      type: warn
+      content: 'Requires: {0}'
+
+    - &runAnimFramework
+      type: say
+      content: 'It appears you have **{0}** installed. Remember to run **{1}** every time you have installed or uninstalled {2}, or a {2}-based mod.'
+
+    - &useBashTweakInstead
+      type: say
+      content: 'A Bashed Patch tweak can be used instead of this plugin. {0}'
+      subs: [ '' ]
+      condition: 'file("Bashed Patch.*\.esp")'
+
+    - &useINITweakInstead
+      type: say
+      content: 'An INI tweak can be used instead of this plugin. {0}'
+      subs: [ '' ]
+
+    - &useInstead
+      type: warn
+      content: 'Use {0} instead.'
+
+    - &useOnlyOneX
+      type: error
+      content: 'Use only one {0}.'
+
+    - &useVersion
+      type: error
+      content: 'Use {0} version.'
+
+    - &useVersionNon
+      type: error
+      content: 'Use non-{0} version.'
+
+    - &versionOldX
+      type: say
+      content: 'It appears you do not have the latest version of {0}. Some mods may require functionality added in the latest version of {0} to work.'
+
+    - &versionPrecedence
+      type: error
+      content: 'Delete {0} from {1}. {2}''s version must take precedence.'
+
+    - &versionUpToDateX
+      type: say
+      content: 'Your {0} is up-to-date.'
+
+    - &versionXIncY
+      type: error
+      content: 'Your installed version of {0} is not compatible with your version of {1}.'
+
+    - &versionXofYorGreaterRequired
+      type: error
+      content: 'Requires version **{0}** or greater of **{1}**.'
+
+    - &wildEdits
+      type: warn
+      content: 'This plugin contains [wild edits](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#WildEdits) and may require additional manual cleaning to not interfere with other mods. {0}'
+      subs: [ '' ]
+
+  # Cleaning Data Anchors
+    - &quickClean
+      util: '[TES4REdit](https://www.nexusmods.com/oblivion/mods/11536/)'
+      detail: 'A guide to cleaning plugins using xEdit can be found [here](https://tes5edit.github.io/docs/7-mod-cleaning-and-error-checking.html#ThreeEasyStepstocleanMods).'
+
+    - &reqManualFix
+      util: '[TES4REdit](https://www.nexusmods.com/oblivion/mods/11536/)'
+      detail: 'It is strongly recommended not to use mods that contain **deleted navmeshes** as they''re known to cause crashes. **Deleted navmeshes** must be corrected manually (a complex process that should be done by the mod author). More information on **deleted navmeshes** is provided [here](https://www.creationkit.com/index.php?title=Fixing_Navmesh_Deletion_Tutorial).'
+
+  # Global Anchors
+    - &incompatible
+      type: error
+      content: '{0} is incompatible with {1}, but both are present.'
+
+    - &latestLOOTThread
+      type: say
+      content: '[Latest LOOT thread]({0}).'
+      subs: [ 'https://loot.github.io/latest-thread/' ]
+
+    - &moveNVAC
+      type: warn
+      content: 'NVAC is installed under **NVSE/Plugins** but needs to be moved to **{0}/Plugins** for {0} to pick it up for {1}.'
+      subs:
+        - 'OBSE'
+        - 'Oblivion'
+      condition: 'file("NVSE/Plugins/nvac.dll")'
+
+    - &scriptExtenderMissing
+      type: error
+      content: 'You have installed an {0} plugin but {0} was not found! See {0} download page: {1}.'
+      subs:
+        - 'OBSE'
+        - '[Oblivion Remastered Script Extender (OBSE64)](https://www.nexusmods.com/oblivionremastered/mods/282/)'
+      condition: 'file("../../../../Binaries/Win64/OblivionRemastered-Win64-Shipping.exe") and file("../../../../Binaries/Win64/OBSE/Plugins/([^\.]+\.dll)") and not file("../../../../Binaries/Win64/obse64_1_512_105.dll")'
+
+    - &supersede
+      type: warn
+      content: 'You seem to be using **{0}**, but it has been superseded. It is recommended that you use **{1}** instead.'
+
+common:
+# Condition Anchors
+  - &isOblivion >-
+      not (
+        file("../../../../Binaries/Win64/OblivionRemastered-Win64-Shipping.exe") or
+        file("../../../../Binaries/WinGDK/OblivionRemastered-WinGDK-Shipping.exe")
+      ) and not file("../NehrimLauncher.exe")
+
+  - &isOblivionRemastered
+    file("../../../../Binaries/Win64/OblivionRemastered-Win64-Shipping.exe") or file("../../../../Binaries/WinGDK/OblivionRemastered-WinGDK-Shipping.exe")
+
+# File Anchors
+  - &OBSE64
+    name: '../../../../Binaries/Win64/obse64_1_512_105.dll'
+    display: '[OBSE64](https://www.nexusmods.com/oblivionremastered/mods/282/)'
+
+# Sub-Anchors
+
+bash_tags:
+  - 'Actors.ACBS'
+  - 'Actors.AIData'
+  - 'Actors.AIPackages'
+  - 'Actors.AIPackagesForceAdd'
+  - 'Actors.Anims'
+  - 'Actors.CombatStyle'
+  - 'Actors.DeathItem'
+  - 'Actors.Factions'
+  - 'Actors.RecordFlags'
+  - 'Actors.Skeleton'
+  - 'Actors.Spells'
+  - 'Actors.SpellsForceAdd'
+  - 'Actors.Stats'
+  - 'C.Climate'
+  - 'C.Light'
+  - 'C.MiscFlags'
+  - 'C.Music'
+  - 'C.Name'
+  - 'C.Owner'
+  - 'C.RecordFlags'
+  - 'C.Regions'
+  - 'C.Water'
+  - 'Creatures.Blood'
+  - 'Creatures.Type'
+  - 'Deactivate'
+  - 'Delev'
+  - 'EffectStats'
+  - 'Enchantments'
+  - 'EnchantmentStats'
+  - 'Filter'
+  - 'Graphics'
+  - 'IIM'
+  - 'Invent.Add'
+  - 'Invent.Change'
+  - 'Invent.Remove'
+  - 'MustBeActiveIfImported'
+  - 'Names'
+  - 'NoMerge'
+  - 'NPC.Class'
+  - 'NPC.Eyes'
+  - 'NPC.FaceGen'
+  - 'NPC.Hair'
+  - 'NPC.Race'
+  - 'NpcFacesForceFullImport'
+  - 'R.AddSpells'
+  - 'R.Attributes-F'
+  - 'R.Attributes-M'
+  - 'R.Body-F'
+  - 'R.Body-M'
+  - 'R.Body-Size-F'
+  - 'R.Body-Size-M'
+  - 'R.ChangeSpells'
+  - 'R.Description'
+  - 'R.Ears'
+  - 'R.Eyes'
+  - 'R.Hair'
+  - 'R.Head'
+  - 'R.Mouth'
+  - 'R.Relations.Add'
+  - 'R.Relations.Change'
+  - 'R.Relations.Remove'
+  - 'R.Skills'
+  - 'R.Teeth'
+  - 'R.Voice-F'
+  - 'R.Voice-M'
+  - 'Relations.Add'
+  - 'Relations.Change'
+  - 'Relations.Remove'
+  - 'Relev'
+  - 'Roads'
+  - 'Scripts'
+  - 'Sound'
+  - 'SpellStats'
+  - 'Stats'
+  - 'Text'
+
+globals:
+# Latest LOOT Thread
+  - *latestLOOTThread
+
+# OBSE
+  # Missing
+  - *scriptExtenderMissing
+
+groups:
+  - name: &gameMasterGroup Main Game Master
+
+  - name: &dlcGroup DLC
+    after: [ *gameMasterGroup ]
+
+  - name: &fixesGroup Fixes
+    description: 'A group for modules that fix issues and bugs.'
+    after: [ *dlcGroup ]
+
+  - name: &earlyLoadersGroup Early Loaders
+    description: 'A group for modules that should load early before most other mods.'
+    after: [ *fixesGroup ]
+
+  - name: default
+    after: [ *earlyLoadersGroup ]
+
+  - name: &lowPriorityGroup Low Priority Overrides
+    description: 'A group for modules that must load after most other mods.'
+    after: [ default ]
+
+  - name: &mediumPriorityGroup Medium Priority Overrides
+    after: [ *lowPriorityGroup ]
+
+  - name: &coreGroup Core Mods
+    after: [ *mediumPriorityGroup ]
+
+  - name: &highPriorityGroup High Priority Overrides
+    after: [ *coreGroup ]
+
+  - name: &lateLoadersGroup Late Loaders
+    after: [ *highPriorityGroup ]
+
+  - name: &latePatchesGroup Late Patches
+    after: [ *lateLoadersGroup ]
+
+  - name: &bashFilterPatchesGroup Bash Filter Patches
+    after: [ *latePatchesGroup ]
+
+  - name: &worldSettingsGroup Worldspace Settings
+    description: 'A group for modules that need to be loaded late to preserve worldspace settings.'
+    after: [ *bashFilterPatchesGroup ]
+
+  - name: &conflictResPatchGroup Conflict Resolution Patches
+    description: 'A group for patches that resolve conflicts.'
+    after: [ *worldSettingsGroup ]
+
+  - name: &dynamicPatchesGroup Dynamic Patches
+    description: 'A group for patches that are dynamically generated by modding tools.'
+    after: [ *conflictResPatchGroup ]
+
+  - name: &lateChangesGroup Late Fixes & Changes
+    description: 'A group for modules that need to be placed after dynamic patches such as Bashed Patch.'
+    after: [ *dynamicPatchesGroup ]
+
+plugins:
+###### Official Game Files ######
+  - name: 'Oblivion.esm'
+    group: *gameMasterGroup
+  - name: 'DLCBattlehornCastle.esp'
+    group: *dlcGroup
+    tag: [ Sound ]
+  - name: 'DLCFrostcrag.esp'
+    group: *dlcGroup
+    after: [ 'DLCBattlehornCastle.esp' ]
+    tag:
+      - C.Light
+      - C.Name
+      - C.Owner
+      - C.Regions
+      - Factions
+      - Sound
+  - name: 'DLCHorseArmor.esp'
+    group: *dlcGroup
+    after:
+      - 'DLCBattlehornCastle.esp'
+      - 'DLCFrostcrag.esp'
+    tag:
+      - Actors.ACBS
+      - Actors.AIPackages
+      - Scripts
+  - name: 'DLCMehrunesRazor.esp'
+    group: *dlcGroup
+    after:
+      - 'DLCBattlehornCastle.esp'
+      - 'DLCFrostcrag.esp'
+      - 'DLCHorseArmor.esp'
+    tag:
+      - Actors.ACBS
+      - Factions
+  - name: 'DLCOrrery.esp'
+    group: *dlcGroup
+    after:
+      - 'DLCBattlehornCastle.esp'
+      - 'DLCFrostcrag.esp'
+      - 'DLCHorseArmor.esp'
+      - 'DLCMehrunesRazor.esp'
+    tag:
+      - Actors.AIPackages
+      - C.Light
+      - Sound
+  - name: 'DLCShiveringIsles.esp'
+    group: *dlcGroup
+    after:
+      - 'DLCBattlehornCastle.esp'
+      - 'DLCFrostcrag.esp'
+      - 'DLCHorseArmor.esp'
+      - 'DLCMehrunesRazor.esp'
+      - 'DLCOrrery.esp'
+  - name: 'DLCSpellTomes.esp'
+    group: *dlcGroup
+    after:
+      - 'DLCBattlehornCastle.esp'
+      - 'DLCFrostcrag.esp'
+      - 'DLCHorseArmor.esp'
+      - 'DLCMehrunesRazor.esp'
+      - 'DLCOrrery.esp'
+      - 'DLCShiveringIsles.esp'
+    tag:
+      - Actors.Stats
+      - Relev
+  - name: 'DLCThievesDen.esp'
+    group: *dlcGroup
+    after:
+      - 'DLCBattlehornCastle.esp'
+      - 'DLCFrostcrag.esp'
+      - 'DLCHorseArmor.esp'
+      - 'DLCMehrunesRazor.esp'
+      - 'DLCOrrery.esp'
+      - 'DLCShiveringIsles.esp'
+      - 'DLCSpellTomes.esp'
+    tag:
+      - Actors.ACBS
+      - Actors.AIPackages
+      - Actors.Stats
+      - C.Climate
+      - C.Light
+      - C.MiscFlags
+      - C.Music
+      - C.Name
+      - C.Owner
+      - C.Water
+      - Names
+  - name: 'DLCVileLair.esp'
+    group: *dlcGroup
+    after:
+      - 'DLCBattlehornCastle.esp'
+      - 'DLCFrostcrag.esp'
+      - 'DLCHorseArmor.esp'
+      - 'DLCMehrunesRazor.esp'
+      - 'DLCOrrery.esp'
+      - 'DLCShiveringIsles.esp'
+      - 'DLCSpellTomes.esp'
+      - 'DLCThievesDen.esp'
+    tag: [ Sound ]
+  - name: 'Knights.esp'
+    group: *dlcGroup
+    after:
+      - 'DLCBattlehornCastle.esp'
+      - 'DLCFrostcrag.esp'
+      - 'DLCHorseArmor.esp'
+      - 'DLCMehrunesRazor.esp'
+      - 'DLCOrrery.esp'
+      - 'DLCShiveringIsles.esp'
+      - 'DLCSpellTomes.esp'
+      - 'DLCThievesDen.esp'
+      - 'DLCVileLair.esp'
+    tag:
+      - Actors.ACBS
+      - Actors.AIPackages
+      - Actors.Stats
+      - Factions
+      - Graphics
+      - Invent.Add
+      - Invent.Remove
+      - Names
+  - name: 'AltarESPMain.esp'
+    group: *dlcGroup
+  - name: 'AltarESPLocal.esp'
+    group: *dlcGroup
+  - name: 'AltarDeluxe.esp'
+    group: *dlcGroup
+  - name: 'AltarGymNavigation.esp'
+    group: *dlcGroup
+  - name: 'TamrielLeveledRegion.esp'
+    group: *dlcGroup
+
+###### Base Game Patches ######
+  - name: 'Unofficial Oblivion Remastered Patch( - Deluxe)?\.esp'
+    url:
+      - link: 'https://www.nexusmods.com/oblivionremastered/mods/477/'
+        name: 'Unofficial Oblivion Remastered Patch - UORP (Nexus Mods)'
+  - name: 'Unofficial Oblivion Remastered Patch.esp'
+    group: *fixesGroup
+    clean:
+      - crc: 0xDE18F3AF
+        util: 'TES4REdit v4.1.5p 32bit fix version'
+  - name: 'Unofficial Oblivion Remastered Patch - Deluxe.esp'
+    group: *fixesGroup
+    tag:
+      - Actors.ACBS
+      - Actors.AIPackages
+      - Stats
+    clean:
+      - crc: 0x9E05ED7E
+        util: 'TES4REdit v4.1.5p 32bit fix version'
+
+###### Modding Tools ######
+###### Modding Tools - Generated Files ######
+  - name: 'Bashed Patch.*\.esp'
+    url: [ 'https://www.nexusmods.com/site/mods/591/' ]
+    group: *dynamicPatchesGroup
+
+###### Resources & Frameworks ######
+###### Fixes ######
+###### Fixes - Stability & Performance ######
+###### AudioVisual ######
+###### AudioVisual - Animations & Physics ######
+###### AudioVisual - Models & Textures ######
+###### AudioVisual - Sounds & Music ######
+###### AudioVisual - Water ######
+###### AudioVisual - Weather & Lighting ######
+###### Character Appearance - Body, face & hair ######
+###### Character Appearance - NPCs ######
+###### Environment, Landscape & Flora ######
+###### Gameplay - General ######
+###### Gameplay - Character Classes & Races ######
+###### Gameplay - Combat ######
+###### Gameplay - Crafting & Harvesting ######
+###### Gameplay - Economy & Item Balance ######
+###### Gameplay - Magic & Abilities ######
+###### Gameplay - NPC Balance & Distribution ######
+###### Gameplay - NPC Behaviour & Dialogue ######
+  - name: 'Realistic Player Speech Remastered.esp'
+    url:
+      - link: 'https://www.nexusmods.com/oblivionremastered/mods/4909/'
+        name: 'Realistic Player Dialogue Overhaul - Remastered and Expanded'
+    req:
+      - '00 Realistic Player Speech.esp'
+      - 'SI Player Dialogue Overhaul.esp'
+
+###### Gameplay - Quests ######
+###### Gameplay - Skills & Leveling ######
+###### Gameplay - User Interface ######
+###### Gameplay - User Interface - Maps ######
+###### Locations ######
+###### Locations - New Dungeons ######
+###### Locations - New Lands ######
+###### Locations - New Structures & Landmarks ######
+###### Locations - Overhauls ######
+###### Locations - Player homes ######
+###### New Characters - Allies ######
+###### New Characters - Enemies ######
+###### New Characters - Neutrals ######
+###### New Items ######
+###### Translations ######
+###### 3rd Party Patches ######
+###### Anything new can go after this (If you're not sure where to put it) ######

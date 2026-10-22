@@ -1,0 +1,92 @@
+{
+  "files": [
+    {
+      "file": "morrowind/masterlist.yaml",
+      "repo": "morrowind",
+      "branch": "v0.29",
+      "commit": "36606462e655913e02c4bb583f720822f57d64bb",
+      "sha256": "7ecd834f9189fe775aef6512d75692df80113b944f9d3f6d22350f00601b87ff",
+      "retrieved": "2026-10-22"
+    },
+    {
+      "file": "oblivion/masterlist.yaml",
+      "repo": "oblivion",
+      "branch": "v0.29",
+      "commit": "5a63bf93cea94cab4cc33097502db155d9799c6e",
+      "sha256": "3e0330f4e72e977e5393ed915f6dc466b6c10d8336529330e1040ef6ad5480e0",
+      "retrieved": "2026-10-22"
+    },
+    {
+      "file": "oblivion-remastered/masterlist.yaml",
+      "repo": "oblivion-remastered",
+      "branch": "v0.29",
+      "commit": "8f6ac323488bf8e3a144c23f799e06d2235093e5",
+      "sha256": "b7242632d68657a269aa99b1a6898840051bc67aa3966aa1f01023a75a25a2de",
+      "retrieved": "2026-10-22"
+    },
+    {
+      "file": "skyrim/masterlist.yaml",
+      "repo": "skyrim",
+      "branch": "v0.29",
+      "commit": "2d65f851150a155998765446e8c7dc607eb4bd73",
+      "sha256": "6d1fed6da0f598e94d9b415e2e455987b1db43beab95d25f47d4c63adbbfa6e9",
+      "retrieved": "2026-10-22"
+    },
+    {
+      "file": "skyrimse/masterlist.yaml",
+      "repo": "skyrimse",
+      "branch": "v0.29",
+      "commit": "4a3a51a2166f40b5e6a05c220407291dbfb07c3c",
+      "sha256": "2e2da8e8373c07e0ae84c4bd2d151a272bd090230decc59a22c374b01bb3e509",
+      "retrieved": "2026-10-22"
+    },
+    {
+      "file": "fallout3/masterlist.yaml",
+      "repo": "fallout3",
+      "branch": "v0.29",
+      "commit": "76e62d5479eedf24975895fe2019000c6df679c3",
+      "sha256": "4947d03d6e5dbe1e933d597eee467e7554fc5f744a207736c3964df12feb1f29",
+      "retrieved": "2026-10-22"
+    },
+    {
+      "file": "falloutnv/masterlist.yaml",
+      "repo": "falloutnv",
+      "branch": "v0.29",
+      "commit": "79b2bb6db4ce560e8ecd80f66b375618d3e33405",
+      "sha256": "ec2d9f340f1ad308aef4fa8e4190408a9ddf0a2148131945fdd95ffd38064ad4",
+      "retrieved": "2026-10-22"
+    },
+    {
+      "file": "fallout4/masterlist.yaml",
+      "repo": "fallout4",
+      "branch": "v0.29",
+      "commit": "22dcffee55f148f8b41981c8119cd6ed36869f56",
+      "sha256": "b018c8c92de4fe0c4cb19476ee41a7cc0b37d40e1922e3810b0cc33526d65c06",
+      "retrieved": "2026-10-22"
+    },
+    {
+      "file": "starfield/masterlist.yaml",
+      "repo": "starfield",
+      "branch": "v0.29",
+      "commit": "9c4f8cf7a21cddc3d8ab6586afe8a6f263495151",
+      "sha256": "b6ae3640d43a33d0fa23a65ba739d9c75707426880d2de458b90fb2de5373c63",
+      "retrieved": "2026-10-22"
+    },
+    {
+      "file": "enderal/masterlist.yaml",
+      "repo": "enderal",
+      "branch": "v0.29",
+      "commit": "fe637250e4312dcb10eff8351ed90dda0135fe6d",
+      "sha256": "e692331dea4f852b79a6456429ad9e5ac22627b926da7e7243e4577e149d7e29",
+      "retrieved": "2026-10-22"
+    },
+    {
+      "file": "prelude.yaml",
+      "repo": "prelude",
+      "branch": "v0.29",
+      "commit": "3ae09f060500468d937f38bf23ffc40b2c950d13",
+      "sha256": "d766b2d98565c2147bfeedf8df8385aae1c32731fc0b14b1bdb1ee54d1729711",
+      "retrieved": "2026-10-22"
+    }
+  ]
+}
