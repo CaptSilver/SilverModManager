@@ -67,17 +67,36 @@ public class BepInExPackageFolderTests
         BepInExPackageFolder.For("Mod.zip", "Some-Team", "Name_2").Should().Be("Some-Team-Name_2");
 
     [Theory]
-    [InlineData("a\\b.zip")]
-    [InlineData("C:evil.zip")]
+    [InlineData("a\\b.zip", "a_b")]
+    [InlineData("C:evil.zip", "C_evil")]
+    [InlineData("a\\b-1.0.zip", "a_b")]
+    [InlineData("x..zip", "x")]
+    [InlineData("x .zip", "x")]
+    [InlineData("a\tb.zip", "a_b")]
+    [InlineData("a\u0001b-1.0.zip", "a_b")]
+    [InlineData("a<b>c|d.zip", "a_b_c_d")]
+    public void AnArchiveNameWithUnusableCharactersIsSanitizedIntoAFolderName(string archive, string expected) =>
+        BepInExPackageFolder.For(archive).Should().Be(expected);
+
+    [Theory]
     [InlineData("..zip")]
     [InlineData(".zip")]
+    [InlineData("...zip")]
     [InlineData("..-1.0.zip")]
-    [InlineData("a\\b-1.0.zip")]
-    public void AnArchiveNameThatCannotBeAFolderNameIsRefusedNamingTheArchive(string archive)
+    [InlineData(" .zip")]
+    public void AnArchiveNameWithNothingUsableLeftIsRefusedNamingTheArchive(string archive)
     {
         var act = () => BepInExPackageFolder.For(archive);
 
         act.Should().Throw<BepInExLayoutException>().Which.Message.Should().Contain(archive);
+    }
+
+    [Fact]
+    public async Task ALibraryItemNameWithPathSeparatorsGivesASingleFolder()
+    {
+        var folder = await BepInExPackageFolder.FromLibraryItemName("a\\b.zip", () => ValueTask.FromResult<BepInExPackageFolder.Manifest?>(null));
+
+        folder.Should().Be("a_b");
     }
 
     [Fact]

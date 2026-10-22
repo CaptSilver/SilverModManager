@@ -7,6 +7,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Paths.Trees.Traits;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
 
@@ -45,9 +46,6 @@ internal static class Me3InstallerFiles
     /// <summary>The reason shown when the archive's name leaves no id at all.</summary>
     public const string NoNameReason = "The archive has no name once its extension is removed, so there is nothing to call the mod. Rename the archive and add it again.";
 
-    // Characters Windows refuses in a file name; me3 reads the mods folder through Wine, so they are refused here too.
-    private static readonly char[] ForbiddenInFolderNames = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
-
     /// <summary>
     /// The reason shown when <paramref name="id"/> can't be a single folder inside the mods folder, or null when it
     /// can. This is what keeps an archive name like <c>...zip</c> from turning into <c>..</c>. A trailing dot or space
@@ -58,7 +56,7 @@ internal static class Me3InstallerFiles
         if (string.IsNullOrWhiteSpace(id))
             return NoNameReason;
 
-        if (id.EndsWith('.') || id.EndsWith(' ') || id.IndexOfAny(ForbiddenInFolderNames) >= 0 || id.Any(char.IsControl))
+        if (!FolderName.IsUsable(id))
             return $"'{id}' is not a usable folder name for the mod. Rename the archive and add it again.";
 
         return null;

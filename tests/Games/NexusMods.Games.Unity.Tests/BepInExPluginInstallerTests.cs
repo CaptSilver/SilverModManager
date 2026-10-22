@@ -154,4 +154,27 @@ public class BepInExPluginInstallerTests(ITestOutputHelper outputHelper) : AUnit
         reason.Should().Contain("a/x.dll").And.Contain("b/x.dll").And.Contain("BepInEx/plugins/Zehs-REPOLib/x.dll");
         targets.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task AnArchiveNameWithUnusableCharactersGivesTheSanitizedPluginFolder()
+    {
+        var archive = await AddFromPathsNamed("a<b-1.0.zip", "x.dll");
+
+        var (result, targets) = await TryInstall(PluginInstaller, archive);
+
+        result.IsSuccess.Should().BeTrue();
+        targets.Should().BeEquivalentTo(OnGame("BepInEx/plugins/a_b/x.dll"));
+    }
+
+    [Fact]
+    public async Task AnArchiveNameWithNothingUsableLeftIsNotSupportedNamingTheArchive()
+    {
+        var archive = await AddFromPathsNamed("..zip", "x.dll");
+
+        var (result, targets) = await TryInstall(PluginInstaller, archive);
+
+        result.IsNotSupported(out var reason).Should().BeTrue();
+        reason.Should().Contain("..zip");
+        targets.Should().BeEmpty();
+    }
 }

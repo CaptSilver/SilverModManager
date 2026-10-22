@@ -31,7 +31,17 @@ public sealed class BepInExLoader(UnityGameDefinition definition) : IWineDllOver
     /// </summary>
     public bool IsLoaderPackName(string libraryItemName)
     {
-        var package = BepInExPackageFolder.For(libraryItemName);
+        string package;
+        try
+        {
+            package = BepInExPackageFolder.For(libraryItemName);
+        }
+        catch (BepInExLayoutException)
+        {
+            // A name that makes no folder is no package's name; the installers decline such an archive themselves.
+            return false;
+        }
+
         return package.Equals(LoaderPackage, StringComparison.OrdinalIgnoreCase)
                || LoaderAliases.Any(alias => package.Equals(alias, StringComparison.OrdinalIgnoreCase));
     }

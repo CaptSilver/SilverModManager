@@ -1,3 +1,5 @@
+using NexusMods.Sdk.IO;
+
 namespace NexusMods.Games.Unity.BepInEx;
 
 /// <summary>
@@ -13,7 +15,7 @@ public static class BepInExPackageFolder
     /// <param name="archiveFileName">The archive's file name, with its extension.</param>
     /// <param name="manifestNamespace">The manifest's optional namespace field.</param>
     /// <param name="manifestName">The manifest's name field, if the archive has a manifest.</param>
-    /// <exception cref="BepInExLayoutException">The archive name cannot be used as a folder name.</exception>
+    /// <exception cref="BepInExLayoutException">Nothing usable is left of the archive name once its unusable characters are replaced.</exception>
     public static string For(string archiveFileName, string? manifestNamespace = null, string? manifestName = null)
     {
         var stem = Path.GetFileNameWithoutExtension(archiveFileName);
@@ -36,12 +38,11 @@ public static class BepInExPackageFolder
 
     private static bool IsThunderstoreNamespace(string value) => value.All(c => char.IsAsciiLetterOrDigit(c) || c == '_' || c == '-');
 
+    // Sanitized rather than refused: a stray character in the archive's name should not stop the install, only a name
+    // with nothing usable left.
     private static string RequireSafeFolderName(string folder, string archiveFileName)
-    {
-        if (folder.Length == 0 || folder is "." or ".." || folder.IndexOfAny(['/', '\\', ':']) >= 0)
-            throw new BepInExLayoutException($"'{archiveFileName}' cannot be installed: its name does not make a valid folder name");
-        return folder;
-    }
+        => FolderName.Sanitize(folder)
+           ?? throw new BepInExLayoutException($"'{archiveFileName}' cannot be installed: its name does not make a valid folder name");
 
     /// <summary>The "namespace" and "name" fields of a package's manifest.json.</summary>
     public readonly record struct Manifest(string? Namespace, string? Name);

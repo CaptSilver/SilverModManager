@@ -101,4 +101,15 @@ public class BepInExPackInstallerTests(ITestOutputHelper outputHelper) : AUnityI
         result.IsNotSupported(out _).Should().BeTrue();
         targets.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task AnArchiveNameWithNothingUsableLeftIsNotSupportedRatherThanThrowing()
+    {
+        var archive = await AddFromPathsNamed("..zip", "x.dll");
+
+        var (result, targets) = await TryInstallPack(archive);
+
+        result.IsNotSupported(out _).Should().BeTrue();
+        targets.Should().BeEmpty();
+    }
 }

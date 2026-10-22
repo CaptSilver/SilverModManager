@@ -93,6 +93,8 @@ public class BepInExLoaderTests(ITestOutputHelper outputHelper) : AUnityInstalle
     [InlineData("Test-LoaderPack-6.0.0.zip", true)]
     [InlineData("other-loaderpack-1.0.0.zip", true)]
     [InlineData("Zehs-REPOLib-4.2.0.zip", false)]
+    [InlineData("..zip", false)]
+    [InlineData(".zip", false)]
     public void IsLoaderPackNameMatchesThePackageAndItsAliasesIgnoringCase(string itemName, bool expected)
     {
         Game.Loader.IsLoaderPackName(itemName).Should().Be(expected);

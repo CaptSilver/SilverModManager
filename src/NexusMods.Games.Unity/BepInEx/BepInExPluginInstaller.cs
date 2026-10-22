@@ -46,15 +46,14 @@ public sealed class BepInExPluginInstaller(IServiceProvider serviceProvider, Bep
                 $"The archive is the {loader.LoaderPackage} loader pack, which the loader pack installer installs, not a plugin.");
         }
 
-        var packageFolder = await BepInExPackageFolder.FromLibraryItemName(itemName, async () =>
-        {
-            var manifest = files.FirstOrDefault(f => f.Item.Path.ToString().Equals(ManifestFile, StringComparison.OrdinalIgnoreCase));
-            return manifest is null ? null : await ReadManifest(manifest.Item.LibraryFile.Value.Hash, cancellationToken);
-        });
-
         IReadOnlyDictionary<RelativePath, GamePath> routes;
         try
         {
+            var packageFolder = await BepInExPackageFolder.FromLibraryItemName(itemName, async () =>
+            {
+                var manifest = files.FirstOrDefault(f => f.Item.Path.ToString().Equals(ManifestFile, StringComparison.OrdinalIgnoreCase));
+                return manifest is null ? null : await ReadManifest(manifest.Item.LibraryFile.Value.Hash, cancellationToken);
+            });
             routes = BepInExLayout.Route(paths, packageFolder);
         }
         catch (BepInExLayoutException e)
