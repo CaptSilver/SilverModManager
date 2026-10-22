@@ -1,0 +1,3 @@
+Produced once with erm (read-only), working directory outside both repos. _synthetic_bnd4 is the helper in tests/test_bnd4.py, lifted out of that file unchanged:
+  _synthetic_bnd4([(10, "a.fmg", b"AAA"), (20, "b.fmg", b"BBBB"), (30, "c.fmg", bytes(range(40)))])
+Compared byte-for-byte.

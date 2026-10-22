@@ -1,0 +1,4 @@
+Produced once with erm (read-only), working directory outside both repos, from bnd4_three_entries.bnd:
+  from ermlib.formats import bnd4
+  bnd4.rebuild(<bnd4_three_entries.bnd>, {20: b"replaced with something longer"})
+Compared byte-for-byte.
