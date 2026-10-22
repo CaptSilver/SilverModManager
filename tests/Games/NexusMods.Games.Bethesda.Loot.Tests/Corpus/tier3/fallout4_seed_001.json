@@ -1,0 +1,715 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": 1,
+  "game_type": "Fallout4",
+  "format": "Tes4",
+  "header_version": 1.0,
+  "name": "fallout4_seed_001",
+  "plugins": [
+    {"name": "ccgcafo4025-pagunmm.esl", "flags": 1, "masters": []},
+    {"name": "IV_HC_Perk_Updated.esp", "flags": 0, "masters": []},
+    {"name": "Homemaker.esm", "flags": 1, "masters": ["Distractor1851.esm"]},
+    {"name": "NukaWorldRedRocket_DC_F-ESL.esp", "flags": 0, "masters": []},
+    {"name": "ValdacilsItemSorting-ModsWeightless.esp", "flags": 0, "masters": []},
+    {"name": "EBMD-UF04P Patch.esp", "flags": 0, "masters": []},
+    {"name": "SuperMutantRedux VIS Patch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5228.esm", "flags": 1, "masters": ["cczsefo4002-smanor.esm"]},
+    {
+      "name": "Distractor2384.esp",
+      "flags": 0,
+      "masters": ["Z_Horizon_Patch_CC_ArmorPaint_Railroad.esl", "Z_Horizon_Patch_CC_WeaponPaint_Army.esl"]
+    },
+    {
+      "name": "Reverb and Ambiance Overhaul - Nuka World.esp",
+      "flags": 0,
+      "masters": ["ValdacilsItemSorting-AidReducedWeight.esp"]
+    },
+    {
+      "name": "ValdacilsItemSorting-AmmoWeightless.esp",
+      "flags": 0,
+      "masters": ["ccfsvfo4004-vrworkshopgnrplaza.esl"]
+    },
+    {"name": "Winter Redone - IE.esp", "flags": 0, "masters": []},
+    {
+      "name": "ValdacilsItemSorting-AidReducedWeight.esp",
+      "flags": 0,
+      "masters": ["Distractor5058.esm", "ccbgsfo4050-dgbcoll.esl"]
+    },
+    {
+      "name": "WeatherAndTimeSwitch.esp",
+      "flags": 0,
+      "masters": ["Distractor4168.esp", "SavrenX SuperMutant Armor HD.esp"]
+    },
+    {"name": "Smashed Patch.esp", "flags": 0, "masters": ["TrueStormsFO4.esm", "ppf.esm"]},
+    {"name": "Rebuild_Settlements_Previs.esp", "flags": 0, "masters": ["ccbgsfo4083-pipartdeco.esl"]},
+    {
+      "name": "Recruitable NPC Dialogue Fixes.esp",
+      "flags": 0,
+      "masters": ["SavrenXHD1KBuildingAndInterior.esp", "ccbgsfo4080-pippop.esl", "Distractor9307.esm"]
+    },
+    {"name": "Homemaker - Greenhouse and Bunker Disabler SK.esp", "flags": 0, "masters": []},
+    {"name": "Some Assembly Required.esp", "flags": 0, "masters": []},
+    {"name": "Crafting Workbench.esp", "flags": 0, "masters": []},
+    {
+      "name": "CraftableAnimationMarkers.esp",
+      "flags": 0,
+      "masters": ["LongerDistanceLightsWithPipBoyShadows.esp", "ValdacilsItemSorting-ModsWeightless.esp", "OVT.esp"]
+    },
+    {"name": "TrueStormsFO4-FarHarborExtraRads.esp", "flags": 0, "masters": []},
+    {"name": "SuperMutantRedux_ArmorSmithExtended.esp", "flags": 0, "masters": []},
+    {"name": "Vault4-Depravity.esp", "flags": 0, "masters": []},
+    {
+      "name": "Frost_Marshlands_Patch.esp",
+      "flags": 0,
+      "masters": ["Distractor0438.esm", "ccbgsfo4080-pippop.esl", "Z_Horizon_Patch_CC_WeaponPaint_Shi.esl"]
+    },
+    {"name": "InteriorsEnhanced-VaultTec.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor6316.esp",
+      "flags": 0,
+      "masters": ["TrueStormsFO4-GlowingSeaExtraRads.esp", "ppf.esm"]
+    },
+    {
+      "name": "OVT.esp",
+      "flags": 0,
+      "masters": ["TrueStormsFO4.esm", "Z_Horizon_Patch_CC_ArmorPaint_Shi.esl", "Distractor0037.esm"]
+    },
+    {
+      "name": "CompanionBugfixExperimental.esp",
+      "flags": 0,
+      "masters": ["Clarity Decreased Saturation Addon.esp", "Z_BlurRemoval_Original.esp"]
+    },
+    {
+      "name": "Distractor4596.esp",
+      "flags": 0,
+      "masters": ["WETTER.esp", "BakaFramework.esm", "Distractor0037.esm"]
+    },
+    {"name": "Distractor0607.esm", "flags": 1, "masters": []},
+    {
+      "name": "Z_Horizon_Patch_CC_PowerArmorSkin_Black.esl",
+      "flags": 1,
+      "masters": ["TrueStormsFO4.esm", "ccbgsfo4003-pipboy(camo01).esl"]
+    },
+    {
+      "name": "LGBT Family (2).esp",
+      "flags": 0,
+      "masters": ["ccbgsfo4117-capmerc.esl", "ccbgsfo4119-cyberdog.esl", "Distractor0037.esm"]
+    },
+    {"name": "Distractor6321.esp", "flags": 0, "masters": []},
+    {"name": "ccbgsfo4050-dgbcoll.esl", "flags": 1, "masters": []},
+    {
+      "name": "ELFX-Phase4DLC.esp",
+      "flags": 0,
+      "masters": ["Winter Redone - WCP.esp", "WorkshopRearranged.esp"]
+    },
+    {"name": "Z_Horizon_Patch_CC_WeaponPaint_Army.esl", "flags": 1, "masters": []},
+    {
+      "name": "LongerDistanceLightsWithPipBoyShadows.esp",
+      "flags": 0,
+      "masters": ["Vault4-PreVis.esp", "ccbgsfo4047-qthund.esl"]
+    },
+    {"name": "WestTekTacticalOptics.esp", "flags": 0, "masters": []},
+    {
+      "name": "XDI.esm",
+      "flags": 1,
+      "masters": ["ccgcafo4021-factionas10hrflames.esl", "TrueStormsFO4.esm", "ccbgsfo4056-dglabb.esl"]
+    },
+    {"name": "Distractor0849.esm", "flags": 1, "masters": []},
+    {"name": "AmazingFollowerTweaks.esp", "flags": 0, "masters": []},
+    {"name": "BostonFPSFixAutomatron.esp", "flags": 0, "masters": []},
+    {"name": "SavrenX SuperMutant Armor HD.esp", "flags": 0, "masters": []},
+    {"name": "Z_Architect_WorldFixes.esp", "flags": 0, "masters": []},
+    {"name": "LasersNoRecoil - Beam Splitters Patch.esp", "flags": 0, "masters": ["SS2.esm"]},
+    {"name": "Distractor0082.esp", "flags": 0, "masters": []},
+    {"name": "ccbgsfo4117-capmerc.esl", "flags": 1, "masters": []},
+    {"name": "ccfsvfo4004-vrworkshopgnrplaza.esl", "flags": 1, "masters": []},
+    {"name": "Targeting HUD Berry Mentats Fix.esp", "flags": 0, "masters": ["ccbgsfo4059-dgpit.esl"]},
+    {"name": "Distractor5956.esp", "flags": 0, "masters": []},
+    {
+      "name": "SettlementAttacksBeyondFH.esp",
+      "flags": 0,
+      "masters": ["ccgcafo4025-pagunmm.esl", "Distractor5228.esm", "Z_Horizon_Patch_CC_WeaponPaint_HotRod.esl"]
+    },
+    {
+      "name": "HUDFramework.esm",
+      "flags": 1,
+      "masters": ["BakaFramework.esm", "ccgcafo4021-factionas10hrflames.esl"]
+    },
+    {"name": "Vault4-FastTravel.esp", "flags": 0, "masters": []},
+    {
+      "name": "FROST Downtown Workbenches.esp",
+      "flags": 0,
+      "masters": ["ccbgsfo4085-piphawaii.esl", "FCF_HotfixELFX.esp"]
+    },
+    {"name": "FOFW_ALL_IN_ONE_VANILLA.esp", "flags": 0, "masters": ["ValdacilsItemSorting-Misc.esp"]},
+    {"name": "Distractor4069.esm", "flags": 1, "masters": []},
+    {"name": "ccbgsfo4080-pippop.esl", "flags": 1, "masters": []},
+    {
+      "name": "Pipe_Revolver_Tuned_Receiver.esp",
+      "flags": 0,
+      "masters": ["NukaWorldRedRocket_DC_F-ESL.esp"]
+    },
+    {"name": "Z_Horizon_Patch_CC_ArmorPaint_Shi.esl", "flags": 1, "masters": []},
+    {"name": "NukaWorldReborn.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor1547.esp",
+      "flags": 0,
+      "masters": [
+        "SS2.esm",
+        "Z_Horizon_Patch_CC_PowerArmorSkin_Pink.esl",
+        "Reverb and Ambiance Overhaul - Nuka World.esp"
+      ]
+    },
+    {
+      "name": "Z_Horizon_Patch_CC_ArmorPaint_Railroad.esl",
+      "flags": 1,
+      "masters": ["ccgcafo4021-factionas10hrflames.esl", "Distractor0037.esm"]
+    },
+    {"name": "FROST - It Snowed.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8991.esp", "flags": 0, "masters": []},
+    {"name": "ELFX-TrainBar.esp", "flags": 0, "masters": []},
+    {"name": "ValdacilsItemSorting-ArmorByClass.esp", "flags": 0, "masters": ["LGBT Family (2).esp"]},
+    {"name": "Z_Horizon_Patch_CC_WeaponPaint_Shi.esl", "flags": 1, "masters": ["Homemaker.esm"]},
+    {"name": "Synth Overhaul.esp", "flags": 0, "masters": ["Distractor0037.esm"]},
+    {"name": "ccbgsfo4003-pipboy(camo01).esl", "flags": 1, "masters": []},
+    {"name": "VltElevatorDLC.esp", "flags": 0, "masters": []},
+    {"name": "ccgcafo4021-factionas10hrflames.esl", "flags": 1, "masters": []},
+    {"name": "ccbgsfo4085-piphawaii.esl", "flags": 1, "masters": []},
+    {"name": "Distractor5058.esm", "flags": 1, "masters": []},
+    {"name": "atlanticofficesf23.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0037.esm", "flags": 1, "masters": ["ccbgsfo4047-qthund.esl"]},
+    {"name": "FCF_HotfixELFX.esp", "flags": 0, "masters": ["Distractor1851.esm"]},
+    {
+      "name": "Mechanist Lair Overhaul.esp",
+      "flags": 0,
+      "masters": ["Distractor9848.esm", "Z_Horizon_Patch_CC_PowerArmorSkin_Pink.esl"]
+    },
+    {
+      "name": "BakaFramework.esm",
+      "flags": 1,
+      "masters": ["Distractor0438.esm", "Distractor0037.esm", "JonsMod.esm"]
+    },
+    {"name": "ccbgsfo4119-cyberdog.esl", "flags": 1, "masters": []},
+    {"name": "Distractor1779.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5454.esp", "flags": 0, "masters": ["Homemaker.esm", "FROST - It Snowed.esp"]},
+    {"name": "__Wheres_the_rum.esp", "flags": 0, "masters": []},
+    {"name": "Z_Architect_Empire.esp", "flags": 0, "masters": []},
+    {"name": "ELFX-OAR.esp", "flags": 0, "masters": []},
+    {"name": "ccbgsfo4059-dgpit.esl", "flags": 1, "masters": []},
+    {
+      "name": "Winter Redone - WCP.esp",
+      "flags": 0,
+      "masters": [
+        "Z_Horizon_Patch_CC_PowerArmorSkin_Black.esl",
+        "Z_BlurRemoval_Original.esp",
+        "Z_Horizon_Patch_CC_ArmorPaint_Railroad.esl"
+      ]
+    },
+    {
+      "name": "Combat Armor Weight Fix.esp",
+      "flags": 0,
+      "masters": ["Z_Horizon_Patch_CC_ArmorPaint_Shi.esl", "Distractor3645.esp"]
+    },
+    {"name": "PlayerComments_SKKSyntheticPlayer_Patch.esp", "flags": 0, "masters": []},
+    {"name": "Vault4-PreVis.esp", "flags": 0, "masters": []},
+    {"name": "ccbgsfo4045-advarccab.esl", "flags": 1, "masters": []},
+    {
+      "name": "PLI_USAF_Satellite_Station_Olivia.esp",
+      "flags": 0,
+      "masters": ["Glow Front Sight Ring Fix.esp"]
+    },
+    {"name": "Vault4-HuxsLabcoat.esp", "flags": 0, "masters": []},
+    {
+      "name": "Z_Horizon_Patch_CC_Prey.esp",
+      "flags": 0,
+      "masters": ["JonsMod.esm", "ccfsvfo4004-vrworkshopgnrplaza.esl"]
+    },
+    {"name": "Synth Armor Fix.esp", "flags": 0, "masters": ["HUDFramework.esm"]},
+    {
+      "name": "Vault4-eXoPatch.esp",
+      "flags": 0,
+      "masters": ["Frost_Marshlands_Patch.esp", "LasersNoRecoil - Beam Splitters Patch.esp"]
+    },
+    {"name": "PlayerComments_NoraSpouse_Patch.esp", "flags": 0, "masters": []},
+    {"name": "CaN.esp", "flags": 0, "masters": []},
+    {
+      "name": "Z_Horizon_Patch_CC_HorseArmor.esp",
+      "flags": 0,
+      "masters": ["ccfsvfo4002-midcenturymodern.esl"]
+    },
+    {
+      "name": "Eli_Armour_Compendium.esp",
+      "flags": 0,
+      "masters": ["Distractor3645.esp", "Distractor6676.esp", "atlanticofficesf23.esp"]
+    },
+    {"name": "cczsefo4002-smanor.esm", "flags": 1, "masters": []},
+    {
+      "name": "SS2.esm",
+      "flags": 1,
+      "masters": ["Distractor5228.esm", "Z_Horizon_Patch_CC_WeaponPaint_HotRod.esl"]
+    },
+    {"name": "starlightdoorfix.esp", "flags": 0, "masters": []},
+    {
+      "name": "Another Pine Forest Trees Only.esp",
+      "flags": 0,
+      "masters": ["ppf.esm", "ccgcafo4021-factionas10hrflames.esl", "America Rising - A Tale of the Enclave.esp"]
+    },
+    {
+      "name": "FROST - M38 Patch.esp",
+      "flags": 0,
+      "masters": ["Forever Radiation Lite.esp", "Z_Horizon_Patch_CC_ArmorPaint_Railroad.esl"]
+    },
+    {"name": "Distractor7120.esp", "flags": 0, "masters": []},
+    {
+      "name": "Clarity Decreased Saturation Addon.esp",
+      "flags": 0,
+      "masters": [
+        "ccbgsfo4030-powerarmorskinpurple.esl",
+        "Z_Horizon_Patch_CC_ArmorPaint_Shi.esl",
+        "Z_Horizon_Patch_CC_PowerArmorSkin_Black.esl"
+      ]
+    },
+    {"name": "Distractor3673.esp", "flags": 0, "masters": []},
+    {"name": "OutcastsAndRemnants.esp", "flags": 0, "masters": ["Distractor5896.esm"]},
+    {"name": "ccbgsfo4006-pipboy(chrome).esl", "flags": 1, "masters": []},
+    {"name": "Better Locational Damage.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0322.esp", "flags": 0, "masters": []},
+    {"name": "Another Pine Forest Mod.esp", "flags": 0, "masters": []},
+    {"name": "IV_Misc_BoiledWaterBottles.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2939.esp", "flags": 0, "masters": []},
+    {"name": "ValdacilsItemSorting-Misc.esp", "flags": 0, "masters": ["CaN.esp"]},
+    {"name": "Distractor6122.esp", "flags": 0, "masters": ["Distractor0037.esm"]},
+    {
+      "name": "CombatZoneRestored.esp",
+      "flags": 0,
+      "masters": ["Z_Horizon_Patch_CC_PowerArmorSkin_Pink.esl", "Distractor9272.esp", "ELFX-OAR.esp"]
+    },
+    {"name": "TrueStormsFO4-GlowingSeaExtraRads.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6178.esm", "flags": 1, "masters": []},
+    {"name": "ValdacilsItemSorting-ZY-DLCAutomatron-Weightless.esp", "flags": 0, "masters": []},
+    {"name": "Grasslands - Healthy.esp", "flags": 0, "masters": []},
+    {
+      "name": "Vault4-ELFX-PreVis.esp",
+      "flags": 0,
+      "masters": [
+        "DWUK_LexingtonInteriors_Patch.esp",
+        "Homemaker - Greenhouse and Bunker Disabler SK.esp",
+        "Better Locational Damage.esp"
+      ]
+    },
+    {
+      "name": "Scrap Everything - Core.esp",
+      "flags": 0,
+      "masters": ["Z_Horizon_Patch_CC_ArmorPaint_Shi.esl"]
+    },
+    {"name": "Distractor3934.esp", "flags": 0, "masters": ["ccbgsfo4003-pipboy(camo01).esl"]},
+    {
+      "name": "BostonFPSFix-Vanilla.esp",
+      "flags": 0,
+      "masters": ["Z_Horizon_Patch_CC_WeaponPaint_Shi.esl", "Z_Horizon_Patch_CC_WeaponPaint_HotRod.esl"]
+    },
+    {"name": "Distractor1851.esm", "flags": 1, "masters": ["ccbgsfo4003-pipboy(camo01).esl"]},
+    {
+      "name": "Campsite-AWKCR.esp",
+      "flags": 0,
+      "masters": ["FROST_WorkshopPatch.esp", "Better Locational Damage.esp"]
+    },
+    {"name": "JonsMod.esm", "flags": 1, "masters": ["ccgcafo4025-pagunmm.esl"]},
+    {"name": "SavrenX HD Vanilla Armor.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4168.esp", "flags": 0, "masters": []},
+    {
+      "name": "PRP-SE-Vault120.esp",
+      "flags": 0,
+      "masters": ["Distractor9848.esm", "Z_Horizon_Patch_CC_ArmorPaint_Railroad.esl", "Frost_Marshlands_Patch.esp"]
+    },
+    {
+      "name": "StartMeUpFarHarborPatch.esp",
+      "flags": 0,
+      "masters": ["JamaicaPlains_DCnR_F-ESL.esp", "Distractor5126.esp"]
+    },
+    {"name": "Z_BlurRemoval_Original.esp", "flags": 0, "masters": []},
+    {
+      "name": "MakanarPerkBigLeaguesFix.esp",
+      "flags": 0,
+      "masters": ["LongerDistanceLightsWithPipBoyShadows.esp", "Distractor0037.esm", "ELFX-OAR.esp"]
+    },
+    {"name": "RailroadGloryBugFix.esp", "flags": 0, "masters": []},
+    {"name": "Live Action Handy.esp", "flags": 0, "masters": ["XDI.esm"]},
+    {"name": "Distractor9848.esm", "flags": 1, "masters": ["ccgcafo4025-pagunmm.esl"]},
+    {
+      "name": "Be Exceptional.esp",
+      "flags": 0,
+      "masters": ["Distractor0037.esm", "Distractor6178.esm", "SettlementAttacksBeyondFH.esp"]
+    },
+    {"name": "MinutemenGeneralOutfitF.esp", "flags": 0, "masters": []},
+    {"name": "Institute Patch for PRC.esp", "flags": 0, "masters": ["VotWSpecialVideos.esl"]},
+    {"name": "Z_Horizon_Patch_CC_PowerArmorSkin_Pink.esl", "flags": 1, "masters": []},
+    {
+      "name": "SavrenXHD1KBuildingAndInterior.esp",
+      "flags": 0,
+      "masters": ["ccbgsfo4119-cyberdog.esl", "ccfsvfo4004-vrworkshopgnrplaza.esl", "ccbgsfo4045-advarccab.esl"]
+    },
+    {"name": "JamaicaPlains_DCnR_F-ESL.esp", "flags": 0, "masters": []},
+    {"name": "Frost PipTab.esp", "flags": 0, "masters": []},
+    {"name": "VotWSpecialVideos.esl", "flags": 1, "masters": []},
+    {
+      "name": "Glow Front Sight Ring Fix.esp",
+      "flags": 0,
+      "masters": ["cczsefo4002-smanor.esm", "ccfsvfo4004-vrworkshopgnrplaza.esl", "ccbgsfo4117-capmerc.esl"]
+    },
+    {"name": "ccbgsfo4030-powerarmorskinpurple.esl", "flags": 1, "masters": []},
+    {
+      "name": "Distractor8895.esp",
+      "flags": 0,
+      "masters": ["OCDCCPatch.esp", "FCF_HotfixELFX.esp", "ccbgsfo4036-trnsdg.esl"]
+    },
+    {"name": "StartMeUpNukaWorldPatch.esp", "flags": 0, "masters": []},
+    {"name": "ELFX-PreVis.esp", "flags": 0, "masters": ["Distractor5896.esm"]},
+    {
+      "name": "Distractor6544.esp",
+      "flags": 0,
+      "masters": ["Be Exceptional.esp", "CompanionBugfixExperimental.esp"]
+    },
+    {"name": "MojaveImports.esp", "flags": 0, "masters": []},
+    {
+      "name": "Concentrated Splitter.esp",
+      "flags": 0,
+      "masters": ["ValdacilsItemSorting-AmmoWeightless.esp"]
+    },
+    {"name": "Distractor0510.esp", "flags": 0, "masters": ["Campsite-AWKCR.esp"]},
+    {"name": "WhatsYourName.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6676.esp", "flags": 0, "masters": []},
+    {
+      "name": "Z_Horizon_Patch_CC_PowerArmorSkin_Tan.esl",
+      "flags": 1,
+      "masters": ["Homemaker.esm", "Z_Horizon_Patch_CC_PowerArmorSkin_Pink.esl"]
+    },
+    {"name": "ccbgsfo4083-pipartdeco.esl", "flags": 1, "masters": ["ccgcafo4025-pagunmm.esl"]},
+    {"name": "RealTroughs.esp", "flags": 0, "masters": []},
+    {"name": "FROST_WorkshopPatch.esp", "flags": 0, "masters": []},
+    {
+      "name": "Quieter Settlements - Contraptions.esp",
+      "flags": 0,
+      "masters": ["Distractor5126.esp", "tsuki no hana.esp"]
+    },
+    {
+      "name": "Frost PatchCrossbow.esp",
+      "flags": 0,
+      "masters": ["FCF_HotfixELFX.esp", "Distractor1930.esp"]
+    },
+    {"name": "TrueStormsFO4.esm", "flags": 1, "masters": []},
+    {"name": "ccbgsfo4047-qthund.esl", "flags": 1, "masters": []},
+    {"name": "SKKFastBOS.esp", "flags": 0, "masters": []},
+    {"name": "ccbgsfo4081-pipphenolresin.esl", "flags": 1, "masters": []},
+    {"name": "ccbgsfo4013-piptan.esl", "flags": 1, "masters": []},
+    {"name": "SKKRESystemManager.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6638.esm", "flags": 1, "masters": ["ccbgsfo4003-pipboy(camo01).esl"]},
+    {"name": "ppf.esm", "flags": 1, "masters": []},
+    {
+      "name": "ValdacilsItemSorting-CosmeticsByType.esp",
+      "flags": 0,
+      "masters": ["Vault4-PreVis.esp", "LasersNoRecoil - Beam Splitters Patch.esp"]
+    },
+    {
+      "name": "Distractor5896.esm",
+      "flags": 1,
+      "masters": ["Distractor6178.esm", "Z_Horizon_Patch_CC_ArmorPaint_Railroad.esl", "cczsefo4002-smanor.esm"]
+    },
+    {
+      "name": "ccgcafo4009-factionws09mm.esl",
+      "flags": 1,
+      "masters": ["ccgcafo4021-factionas10hrflames.esl"]
+    },
+    {"name": "RedRocket_DC_F-ESL.esp", "flags": 0, "masters": ["Distractor9307.esm"]},
+    {"name": "Distractor0652.esp", "flags": 0, "masters": []},
+    {
+      "name": "Frost-Snowy-Weathers.esp",
+      "flags": 0,
+      "masters": ["Homemaker.esm", "SettlementAttacksBeyondFH.esp", "Distractor0849.esm"]
+    },
+    {"name": "DiamondCity-PreVis-Ambience.esp", "flags": 0, "masters": []},
+    {"name": "WorkshopRearranged.esp", "flags": 0, "masters": []},
+    {
+      "name": "SavrenXLandscapeInteriorBuildingDLC.esp",
+      "flags": 0,
+      "masters": [
+        "Winter Redone - WCP.esp",
+        "Z_Horizon_Patch_CC_ArmorPaint_Railroad.esl",
+        "ValdacilsItemSorting-AidReducedWeight.esp"
+      ]
+    },
+    {
+      "name": "ccgcafo4001-factionws01army.esl",
+      "flags": 1,
+      "masters": ["Z_Horizon_Patch_CC_PowerArmorSkin_Pink.esl", "ccbgsfo4056-dglabb.esl"]
+    },
+    {"name": "Distractor1497.esp", "flags": 0, "masters": []},
+    {"name": "Forever Radiation Lite.esp", "flags": 0, "masters": ["cczsefo4002-smanor.esm"]},
+    {"name": "ccfsvfo4002-midcenturymodern.esl", "flags": 1, "masters": []},
+    {"name": "EveryonesBestFriend.esp", "flags": 0, "masters": ["ccbgsfo4117-capmerc.esl"]},
+    {"name": "Distractor3645.esp", "flags": 0, "masters": []},
+    {"name": "Z_Horizon_Patch_CC_WeaponPaint_HotRod.esl", "flags": 1, "masters": []},
+    {
+      "name": "Distractor0438.esm",
+      "flags": 1,
+      "masters": ["ccbgsfo4003-pipboy(camo01).esl", "Distractor0037.esm", "ccbgsfo4047-qthund.esl"]
+    },
+    {"name": "ManufacturingExtendedFH.esp", "flags": 0, "masters": []},
+    {
+      "name": "BetterMikaMerged-1_1nocttb.esp",
+      "flags": 0,
+      "masters": ["LasersNoRecoil - Beam Splitters Patch.esp", "ValdacilsItemSorting-AmmoWeightless.esp"]
+    },
+    {"name": "NukaWorldRebalanced.esp", "flags": 0, "masters": ["Z_Horizon_Patch_CC_Prey.esp"]},
+    {
+      "name": "Distractor4094.esp",
+      "flags": 0,
+      "masters": ["ccgcafo4009-factionws09mm.esl", "Z_BlurRemoval_Original.esp", "LGBT Family (2).esp"]
+    },
+    {"name": "Z_Architect_EnhancedSettlements.esp", "flags": 0, "masters": []},
+    {"name": "Distractor9272.esp", "flags": 0, "masters": []},
+    {"name": "America Rising - A Tale of the Enclave.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5126.esp", "flags": 0, "masters": ["Homemaker.esm", "JonsMod.esm"]},
+    {"name": "PLIUSAFSSO_Previs.esp", "flags": 0, "masters": []},
+    {"name": "DWUK_LexingtonInteriors_Patch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor9307.esm", "flags": 1, "masters": []},
+    {"name": "OCDCCPatch.esp", "flags": 0, "masters": []},
+    {
+      "name": "ccbgsfo4056-dglabb.esl",
+      "flags": 1,
+      "masters": ["Z_Horizon_Patch_CC_ArmorPaint_Railroad.esl", "Distractor0438.esm"]
+    },
+    {"name": "SKKSettlementAttackSystemMarkers.esp", "flags": 0, "masters": []},
+    {"name": "WETTER.esp", "flags": 0, "masters": []},
+    {"name": "tsuki no hana.esp", "flags": 0, "masters": ["Forever Radiation Lite.esp"]},
+    {"name": "ccbgsfo4036-trnsdg.esl", "flags": 1, "masters": ["ccbgsfo4003-pipboy(camo01).esl"]},
+    {"name": "ValdacilsItemSorting-MiscWeightless.esp", "flags": 0, "masters": []},
+    {"name": "Distractor1930.esp", "flags": 0, "masters": []},
+    {"name": "LongerDistanceLightsNoShadows.esp", "flags": 0, "masters": []}
+  ],
+  "masterlist": null,
+  "userlist": null,
+  "prelude": null,
+  "real_masterlist": {
+    "repository": "fallout4",
+    "bundled_sha256": "b018c8c92de4fe0c4cb19476ee41a7cc0b37d40e1922e3810b0cc33526d65c06",
+    "stripped_sha256": "fd60ded2fff5223b80646d68a48be32793d95138fd2b30fbe83ba94e33696c75",
+    "prelude_bundled_sha256": "d766b2d98565c2147bfeedf8df8385aae1c32731fc0b14b1bdb1ee54d1729711",
+    "prelude_stripped_sha256": "e4e8c81907defb24d03c7b22c8d9dc68186c6584f67aa75ce83727ff3758da85"
+  },
+  "expected": {
+    "order": [
+      "ccgcafo4025-pagunmm.esl",
+      "ccbgsfo4050-dgbcoll.esl",
+      "ccbgsfo4117-capmerc.esl",
+      "ccfsvfo4004-vrworkshopgnrplaza.esl",
+      "ccbgsfo4080-pippop.esl",
+      "ccbgsfo4003-pipboy(camo01).esl",
+      "ccgcafo4021-factionas10hrflames.esl",
+      "ccbgsfo4085-piphawaii.esl",
+      "ccbgsfo4119-cyberdog.esl",
+      "ccbgsfo4059-dgpit.esl",
+      "ccbgsfo4045-advarccab.esl",
+      "cczsefo4002-smanor.esm",
+      "ccbgsfo4006-pipboy(chrome).esl",
+      "ccbgsfo4030-powerarmorskinpurple.esl",
+      "ccbgsfo4083-pipartdeco.esl",
+      "ccbgsfo4047-qthund.esl",
+      "ccbgsfo4081-pipphenolresin.esl",
+      "ccbgsfo4013-piptan.esl",
+      "ccgcafo4009-factionws09mm.esl",
+      "ccfsvfo4002-midcenturymodern.esl",
+      "ccbgsfo4036-trnsdg.esl",
+      "Distractor0037.esm",
+      "Z_Horizon_Patch_CC_ArmorPaint_Railroad.esl",
+      "Distractor0438.esm",
+      "ccbgsfo4056-dglabb.esl",
+      "Z_Horizon_Patch_CC_PowerArmorSkin_Pink.esl",
+      "ccgcafo4001-factionws01army.esl",
+      "ppf.esm",
+      "JonsMod.esm",
+      "BakaFramework.esm",
+      "HUDFramework.esm",
+      "TrueStormsFO4.esm",
+      "XDI.esm",
+      "Distractor1851.esm",
+      "Homemaker.esm",
+      "Distractor5228.esm",
+      "Distractor0607.esm",
+      "Z_Horizon_Patch_CC_PowerArmorSkin_Black.esl",
+      "Z_Horizon_Patch_CC_WeaponPaint_Army.esl",
+      "Distractor0849.esm",
+      "Distractor4069.esm",
+      "Z_Horizon_Patch_CC_ArmorPaint_Shi.esl",
+      "Z_Horizon_Patch_CC_WeaponPaint_Shi.esl",
+      "Distractor5058.esm",
+      "Z_Horizon_Patch_CC_WeaponPaint_HotRod.esl",
+      "SS2.esm",
+      "Distractor6178.esm",
+      "Distractor9848.esm",
+      "VotWSpecialVideos.esl",
+      "Z_Horizon_Patch_CC_PowerArmorSkin_Tan.esl",
+      "Distractor6638.esm",
+      "Distractor5896.esm",
+      "Distractor9307.esm",
+      "OVT.esp",
+      "SavrenX SuperMutant Armor HD.esp",
+      "SavrenX HD Vanilla Armor.esp",
+      "SavrenXHD1KBuildingAndInterior.esp",
+      "ValdacilsItemSorting-AidReducedWeight.esp",
+      "Z_BlurRemoval_Original.esp",
+      "Winter Redone - WCP.esp",
+      "SavrenXLandscapeInteriorBuildingDLC.esp",
+      "Recruitable NPC Dialogue Fixes.esp",
+      "Targeting HUD Berry Mentats Fix.esp",
+      "RailroadGloryBugFix.esp",
+      "Glow Front Sight Ring Fix.esp",
+      "Distractor3645.esp",
+      "Combat Armor Weight Fix.esp",
+      "Clarity Decreased Saturation Addon.esp",
+      "CompanionBugfixExperimental.esp",
+      "Vault4-FastTravel.esp",
+      "Vault4-PreVis.esp",
+      "LongerDistanceLightsWithPipBoyShadows.esp",
+      "ELFX-OAR.esp",
+      "MakanarPerkBigLeaguesFix.esp",
+      "NukaWorldRedRocket_DC_F-ESL.esp",
+      "Pipe_Revolver_Tuned_Receiver.esp",
+      "Z_Architect_WorldFixes.esp",
+      "IV_HC_Perk_Updated.esp",
+      "ValdacilsItemSorting-ModsWeightless.esp",
+      "EBMD-UF04P Patch.esp",
+      "SuperMutantRedux VIS Patch.esp",
+      "Distractor2384.esp",
+      "Reverb and Ambiance Overhaul - Nuka World.esp",
+      "ValdacilsItemSorting-AmmoWeightless.esp",
+      "Winter Redone - IE.esp",
+      "Distractor4168.esp",
+      "WeatherAndTimeSwitch.esp",
+      "Homemaker - Greenhouse and Bunker Disabler SK.esp",
+      "Some Assembly Required.esp",
+      "Crafting Workbench.esp",
+      "CraftableAnimationMarkers.esp",
+      "TrueStormsFO4-FarHarborExtraRads.esp",
+      "SuperMutantRedux_ArmorSmithExtended.esp",
+      "Vault4-Depravity.esp",
+      "InteriorsEnhanced-VaultTec.esp",
+      "TrueStormsFO4-GlowingSeaExtraRads.esp",
+      "Distractor6316.esp",
+      "LGBT Family (2).esp",
+      "Distractor6321.esp",
+      "WestTekTacticalOptics.esp",
+      "AmazingFollowerTweaks.esp",
+      "LasersNoRecoil - Beam Splitters Patch.esp",
+      "Distractor0082.esp",
+      "Distractor5956.esp",
+      "SettlementAttacksBeyondFH.esp",
+      "CaN.esp",
+      "ValdacilsItemSorting-Misc.esp",
+      "FOFW_ALL_IN_ONE_VANILLA.esp",
+      "NukaWorldReborn.esp",
+      "Distractor1547.esp",
+      "FROST - It Snowed.esp",
+      "Distractor8991.esp",
+      "ValdacilsItemSorting-ArmorByClass.esp",
+      "Synth Overhaul.esp",
+      "VltElevatorDLC.esp",
+      "atlanticofficesf23.esp",
+      "Mechanist Lair Overhaul.esp",
+      "Distractor1779.esp",
+      "Distractor5454.esp",
+      "__Wheres_the_rum.esp",
+      "PlayerComments_SKKSyntheticPlayer_Patch.esp",
+      "Vault4-HuxsLabcoat.esp",
+      "Z_Horizon_Patch_CC_Prey.esp",
+      "Synth Armor Fix.esp",
+      "PlayerComments_NoraSpouse_Patch.esp",
+      "Z_Horizon_Patch_CC_HorseArmor.esp",
+      "Distractor6676.esp",
+      "Eli_Armour_Compendium.esp",
+      "starlightdoorfix.esp",
+      "America Rising - A Tale of the Enclave.esp",
+      "Another Pine Forest Trees Only.esp",
+      "Distractor7120.esp",
+      "Distractor3673.esp",
+      "OutcastsAndRemnants.esp",
+      "Better Locational Damage.esp",
+      "Distractor0322.esp",
+      "Another Pine Forest Mod.esp",
+      "IV_Misc_BoiledWaterBottles.esp",
+      "Distractor2939.esp",
+      "Distractor6122.esp",
+      "Distractor9272.esp",
+      "CombatZoneRestored.esp",
+      "ValdacilsItemSorting-ZY-DLCAutomatron-Weightless.esp",
+      "Grasslands - Healthy.esp",
+      "DWUK_LexingtonInteriors_Patch.esp",
+      "Vault4-ELFX-PreVis.esp",
+      "Scrap Everything - Core.esp",
+      "Distractor3934.esp",
+      "FROST_WorkshopPatch.esp",
+      "Campsite-AWKCR.esp",
+      "JamaicaPlains_DCnR_F-ESL.esp",
+      "Distractor5126.esp",
+      "StartMeUpFarHarborPatch.esp",
+      "Live Action Handy.esp",
+      "Be Exceptional.esp",
+      "MinutemenGeneralOutfitF.esp",
+      "Institute Patch for PRC.esp",
+      "Frost PipTab.esp",
+      "StartMeUpNukaWorldPatch.esp",
+      "Distractor6544.esp",
+      "MojaveImports.esp",
+      "Concentrated Splitter.esp",
+      "Distractor0510.esp",
+      "WhatsYourName.esp",
+      "RealTroughs.esp",
+      "Forever Radiation Lite.esp",
+      "tsuki no hana.esp",
+      "Quieter Settlements - Contraptions.esp",
+      "SKKFastBOS.esp",
+      "SKKRESystemManager.esp",
+      "ValdacilsItemSorting-CosmeticsByType.esp",
+      "RedRocket_DC_F-ESL.esp",
+      "Distractor0652.esp",
+      "Frost-Snowy-Weathers.esp",
+      "DiamondCity-PreVis-Ambience.esp",
+      "WorkshopRearranged.esp",
+      "Distractor1497.esp",
+      "EveryonesBestFriend.esp",
+      "ManufacturingExtendedFH.esp",
+      "BetterMikaMerged-1_1nocttb.esp",
+      "NukaWorldRebalanced.esp",
+      "Distractor4094.esp",
+      "PLIUSAFSSO_Previs.esp",
+      "OCDCCPatch.esp",
+      "SKKSettlementAttackSystemMarkers.esp",
+      "ValdacilsItemSorting-MiscWeightless.esp",
+      "Distractor1930.esp",
+      "LongerDistanceLightsNoShadows.esp",
+      "Rebuild_Settlements_Previs.esp",
+      "BostonFPSFix-Vanilla.esp",
+      "BostonFPSFixAutomatron.esp",
+      "Z_Architect_Empire.esp",
+      "Z_Architect_EnhancedSettlements.esp",
+      "FCF_HotfixELFX.esp",
+      "PLI_USAF_Satellite_Station_Olivia.esp",
+      "Distractor8895.esp",
+      "FROST Downtown Workbenches.esp",
+      "Frost_Marshlands_Patch.esp",
+      "Vault4-eXoPatch.esp",
+      "ELFX-PreVis.esp",
+      "ELFX-Phase4DLC.esp",
+      "ELFX-TrainBar.esp",
+      "PRP-SE-Vault120.esp",
+      "FROST - M38 Patch.esp",
+      "Frost PatchCrossbow.esp",
+      "WETTER.esp",
+      "Distractor4596.esp",
+      "Smashed Patch.esp"
+    ]
+  },
+  "groups_paths": []
+}

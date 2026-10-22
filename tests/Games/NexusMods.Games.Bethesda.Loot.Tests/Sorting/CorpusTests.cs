@@ -1,7 +1,9 @@
 using System.Text.Json;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.Bethesda.Loot.Database;
+using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.Bethesda.Loot.Sorting;
+using NexusMods.Games.Bethesda.Loot.Tests.Corpus;
 
 namespace NexusMods.Games.Bethesda.Loot.Tests.Sorting;
 
@@ -11,6 +13,7 @@ public class CorpusTests
 {
     private const string ExpectedLibLootVersion = "0.29.6";
     private const int Tier2Seeds = 40;
+    private const int Tier3SeedsPerGame = 4;
 
     private static readonly string CorpusDirectory = Path.Combine(AppContext.BaseDirectory, "Corpus");
 
@@ -28,12 +31,17 @@ public class CorpusTests
     }
 
     [Fact]
-    public void CorpusShouldHoldTheHandWrittenCasesAndEveryRandomSeed()
+    public void CorpusShouldHoldTheHandWrittenCasesEveryRandomSeedAndFourSeedsPerBundledMasterlist()
     {
         Directory.Exists(CorpusDirectory).Should().BeTrue("the generated corpus is copied next to the tests");
 
         Directory.EnumerateFiles(Path.Combine(CorpusDirectory, "tier1"), "*.json").Should().NotBeEmpty();
         Directory.EnumerateFiles(Path.Combine(CorpusDirectory, "tier2"), "*.json").Should().HaveCount(Tier2Seeds);
+
+        var tier3 = Directory.EnumerateFiles(Path.Combine(CorpusDirectory, "tier3"), "*.json").Select(Path.GetFileName).ToList();
+        tier3.Should().HaveCount(LootGameExtensions.BundledRepositories.Count * Tier3SeedsPerGame);
+        foreach (var repo in LootGameExtensions.BundledRepositories)
+            tier3.Should().Contain(Enumerable.Range(0, Tier3SeedsPerGame).Select(seed => $"{repo}_seed_{seed:000}.json"));
     }
 
     [Theory]
@@ -168,6 +176,9 @@ internal sealed record CorpusCase(
         string? Text(string name) => root.GetProperty(name).GetString();
 
         var expected = root.GetProperty("expected");
+        var (masterlist, prelude) = root.TryGetProperty("real_masterlist", out var real)
+            ? StrippedBundledText(real)
+            : (Text("masterlist"), Text("prelude"));
         return new CorpusCase(
             Text("libloot_version")!,
             Text("game_type")!,
@@ -177,9 +188,9 @@ internal sealed record CorpusCase(
                 p.GetProperty("name").GetString()!,
                 p.GetProperty("flags").GetUInt32(),
                 p.GetProperty("masters").EnumerateArray().Select(m => m.GetString()!).ToList())).ToList(),
-            Text("masterlist"),
+            masterlist,
             Text("userlist"),
-            Text("prelude"),
+            prelude,
             new OracleExpected(
                 expected.TryGetProperty("order", out var order) ? order.EnumerateArray().Select(n => n.GetString()!).ToList() : null,
                 expected.TryGetProperty("resorted", out var resorted) ? resorted.EnumerateArray().Select(n => n.GetString()!).ToList() : null,
@@ -189,6 +200,24 @@ internal sealed record CorpusCase(
                 p.GetProperty("to").GetString()!,
                 p.TryGetProperty("path", out var path) ? path.EnumerateArray().Select(OracleVertex.From).ToList() : null,
                 p.TryGetProperty("error", out var pathError) ? OracleError.From(pathError) : null)).ToList());
+    }
+
+    // Tier 3 stores hashes, not text. The bundled files are stripped here with the same code the
+    // generator's input was stripped with, and must hash to what the oracle saw.
+    private static (string Masterlist, string Prelude) StrippedBundledText(JsonElement real)
+    {
+        var repo = real.GetProperty("repository").GetString()!;
+        var masterlist = StrippedMasterlists.Masterlist(repo);
+        var prelude = StrippedMasterlists.Prelude();
+
+        void Check(string what, string expected, string actual) =>
+            actual.Should().Be(expected, $"the bundled {what} must be the one the oracle sorted with; regenerate the tier 3 corpus after refreshing the masterlists");
+
+        Check($"{repo} masterlist", real.GetProperty("bundled_sha256").GetString()!, masterlist.BundledSha256);
+        Check($"{repo} masterlist once stripped", real.GetProperty("stripped_sha256").GetString()!, masterlist.StrippedSha256);
+        Check("prelude", real.GetProperty("prelude_bundled_sha256").GetString()!, prelude.BundledSha256);
+        Check("prelude once stripped", real.GetProperty("prelude_stripped_sha256").GetString()!, prelude.StrippedSha256);
+        return (masterlist.Stripped, prelude.Stripped);
     }
 
     public LootDatabase BuildDatabase()
@@ -206,7 +235,7 @@ internal sealed record CorpusCase(
 }
 
 /// <summary>What the corpus assumes about a game: header layout, flag rules and early loaders.</summary>
-internal sealed record CorpusGame(bool MasterByExtension, bool SupportsLightPlugins, bool IsStarfield, IReadOnlyList<string> EarlyLoaders)
+internal sealed record CorpusGame(bool MasterByExtension, bool SupportsLightPlugins, bool IsStarfield, IReadOnlyList<string> EarlyLoaders, bool MasterFlagIgnored = false)
 {
     // The early loaders are libloadorder's hardcoded lists (game_settings.rs); the corpus has no
     // Creation Club list for them to grow by.
@@ -230,7 +259,10 @@ internal sealed record CorpusGame(bool MasterByExtension, bool SupportsLightPlug
         "SkyrimSE" => new CorpusGame(true, true, false, SkyrimSEEarlyLoaders),
         "Fallout4" => new CorpusGame(true, true, false, Fallout4EarlyLoaders),
         "Starfield" => new CorpusGame(true, true, true, StarfieldEarlyLoaders),
-        "Oblivion" or "Morrowind" => new CorpusGame(false, false, false, []),
+        "Skyrim" => new CorpusGame(true, false, false, ["Skyrim.esm"]),
+        "Oblivion" or "Morrowind" or "Fallout3" or "FalloutNV" => new CorpusGame(false, false, false, []),
+        // Oblivion Remastered ignores the master flag and the extension: libloot treats every plugin as a non-master.
+        "OblivionRemastered" => new CorpusGame(false, false, false, [], MasterFlagIgnored: true),
         _ => throw new InvalidOperationException($"The corpus has no rules for the game {gameType}"),
     };
 
@@ -239,7 +271,7 @@ internal sealed record CorpusGame(bool MasterByExtension, bool SupportsLightPlug
         var header = new PluginHeader(spec.Name, spec.Masters, spec.Flags, corpusCase.HeaderVersion, 0, null, null, corpusCase.Format);
         var plugin = new TestPlugin(spec.Name)
         {
-            IsMaster = PluginFlags.IsMaster(header, MasterByExtension, masterFlagIgnored: false),
+            IsMaster = PluginFlags.IsMaster(header, MasterByExtension, MasterFlagIgnored),
             IsBlueprintPlugin = PluginFlags.IsBlueprint(header, IsStarfield),
         };
         foreach (var master in spec.Masters) plugin.AddMaster(master);

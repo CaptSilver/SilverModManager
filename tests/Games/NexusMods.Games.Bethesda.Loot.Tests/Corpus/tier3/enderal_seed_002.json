@@ -1,0 +1,67 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": 2,
+  "game_type": "SkyrimSE",
+  "format": "Tes4",
+  "header_version": 1.7,
+  "name": "enderal_seed_002",
+  "plugins": [
+    {
+      "name": "Enderal - Dynamic Fast Travel.esp",
+      "flags": 0,
+      "masters": ["Dragonborn.esm", "HearthFires.esm"]
+    },
+    {"name": "Update.esm", "flags": 1, "masters": []},
+    {
+      "name": "Occlusion.esp",
+      "flags": 0,
+      "masters": ["HearthFires.esm", "Enderal - Forgotten Stories.esm"]
+    },
+    {"name": "HearthFires.esm", "flags": 1, "masters": []},
+    {"name": "Enderal Fast Travel EV.esp", "flags": 0, "masters": ["HearthFires.esm"]},
+    {"name": "Dawnguard.esm", "flags": 1, "masters": []},
+    {"name": "Distractor6752.esm", "flags": 1, "masters": []},
+    {"name": "SkyUI_SE.esp", "flags": 0, "masters": ["Distractor6752.esm", "Update.esm"]},
+    {"name": "Enderal SE - Bug Fixes.esp", "flags": 0, "masters": []},
+    {"name": "DynDOLOD.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4255.esp", "flags": 0, "masters": ["DynDOLOD.esp", "Occlusion.esp"]},
+    {"name": "Enderal - Bug Fixes.esp", "flags": 0, "masters": ["HearthFires.esm"]},
+    {"name": "Enderal SE - Crossbows.esp", "flags": 0, "masters": []},
+    {"name": "Dragonborn.esm", "flags": 1, "masters": []},
+    {"name": "Enderal - Forgotten Stories.esm", "flags": 1, "masters": []},
+    {"name": "Distractor9295.esp", "flags": 0, "masters": []}
+  ],
+  "masterlist": null,
+  "userlist": null,
+  "prelude": null,
+  "real_masterlist": {
+    "repository": "enderal",
+    "bundled_sha256": "e692331dea4f852b79a6456429ad9e5ac22627b926da7e7243e4577e149d7e29",
+    "stripped_sha256": "75a744e307a09175a47a643102c53d0e0d3a4c812b2bbd9747c1faf7a25cdc3b",
+    "prelude_bundled_sha256": "d766b2d98565c2147bfeedf8df8385aae1c32731fc0b14b1bdb1ee54d1729711",
+    "prelude_stripped_sha256": "e4e8c81907defb24d03c7b22c8d9dc68186c6584f67aa75ce83727ff3758da85"
+  },
+  "expected": {
+    "order": [
+      "Update.esm",
+      "Dawnguard.esm",
+      "HearthFires.esm",
+      "Dragonborn.esm",
+      "Enderal - Forgotten Stories.esm",
+      "Distractor6752.esm",
+      "SkyUI_SE.esp",
+      "Enderal SE - Bug Fixes.esp",
+      "Enderal - Bug Fixes.esp",
+      "Enderal SE - Crossbows.esp",
+      "Distractor9295.esp",
+      "Enderal - Dynamic Fast Travel.esp",
+      "Enderal Fast Travel EV.esp",
+      "DynDOLOD.esp",
+      "Occlusion.esp",
+      "Distractor4255.esp"
+    ]
+  },
+  "groups_paths": []
+}

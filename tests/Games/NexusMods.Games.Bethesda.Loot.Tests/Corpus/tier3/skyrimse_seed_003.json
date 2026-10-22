@@ -1,0 +1,683 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": 3,
+  "game_type": "SkyrimSE",
+  "format": "Tes4",
+  "header_version": 1.7,
+  "name": "skyrimse_seed_003",
+  "plugins": [
+    {
+      "name": "tdgsseActivateToInteract.esl",
+      "flags": 1,
+      "masters": ["EFFCore.esm", "Distractor8442.esm"]
+    },
+    {"name": "Infiltration QE - Bandit War Patch.esp", "flags": 0, "masters": ["Distractor8442.esm"]},
+    {"name": "EFFCore.esm", "flags": 1, "masters": []},
+    {"name": "PCE - RLO Patch.esp", "flags": 0, "masters": ["Distractor7111.esp"]},
+    {"name": "BlendedRoads.esp", "flags": 0, "masters": []},
+    {"name": "Bound Quiver Fire.esp", "flags": 0, "masters": []},
+    {"name": "aaaJudgement.esp", "flags": 0, "masters": []},
+    {"name": "Enhanced Vanilla Trees SSE.esp", "flags": 0, "masters": []},
+    {"name": "Distractor1851.esp", "flags": 0, "masters": []},
+    {
+      "name": "MistySkye.esp",
+      "flags": 0,
+      "masters": [
+        "DLCIntegration Beyond Skyrim Compatibility Patch.esp",
+        "Requiem - Flora Fixes.esp",
+        "ccpewsse002-armsofchaos.esl"
+      ]
+    },
+    {"name": "Distractor9702.esm", "flags": 1, "masters": ["ccbgssse066-staves.esl"]},
+    {
+      "name": "Distractor8384.esm",
+      "flags": 1,
+      "masters": ["ccbgssse066-staves.esl", "Distractor7725.esm"]
+    },
+    {"name": "PrinceandPauperRefine_CC_Cave.esp", "flags": 0, "masters": []},
+    {"name": "Udaur Ranger Camp.esp", "flags": 0, "masters": []},
+    {
+      "name": "man_DaedricShrines_Wintersun_Patch.esp",
+      "flags": 0,
+      "masters": ["PCE - RLO Patch.esp", "ELFX - NoHjerim.esp", "CentaurMaF.esp"]
+    },
+    {"name": "ccbgssse064-ba_elven.esl", "flags": 1, "masters": []},
+    {
+      "name": "Minimalistic Follower Framework.esp",
+      "flags": 0,
+      "masters": ["Distractor8442.esm", "aaaJudgement.esp", "BUVARP SE RE.esp"]
+    },
+    {"name": "fallentreebridgesSSE.esp", "flags": 0, "masters": []},
+    {"name": "AzurasShield_SE_Eng.esp", "flags": 0, "masters": []},
+    {"name": "ClockworkCourierCounterspell.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor2165.esp",
+      "flags": 0,
+      "masters": ["Distractor8435.esm", "Distractor8232.esm", "Vanilla Script MicroOptimizations.esl"]
+    },
+    {"name": "ccafdsse001-dwesanctuary.esm", "flags": 1, "masters": []},
+    {"name": "SkyrimIsWindy-SimplyBiggerTreesSE-Patch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8435.esm", "flags": 1, "masters": ["Distractor3689.esm"]},
+    {"name": "Lux patch for FWMF.esp", "flags": 0, "masters": []},
+    {
+      "name": "College Of Winterhold - Quest Expansion.esp",
+      "flags": 0,
+      "masters": ["aaaJudgement.esp", "Distractor3707.esp"]
+    },
+    {"name": "Distractor5910.esp", "flags": 0, "masters": []},
+    {"name": "Hidden Homes- Hjaalmarch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3974.esm", "flags": 1, "masters": ["Distractor3689.esm"]},
+    {"name": "Distractor7725.esm", "flags": 1, "masters": []},
+    {
+      "name": "Distractor6526.esp",
+      "flags": 0,
+      "masters": ["ccbgssse064-ba_elven.esl", "JS Dragon Claws AE - Rayek's End.esp"]
+    },
+    {
+      "name": "Lux - Mara Valentine patch.esp",
+      "flags": 0,
+      "masters": ["Solitude Expansion.esp", "Riften_Well_House.esp", "Deadly Dragons - DDC and Splendor.esp"]
+    },
+    {"name": "Distractor3192.esp", "flags": 0, "masters": []},
+    {
+      "name": "MuirisRevenge.esp",
+      "flags": 0,
+      "masters": ["Apothecary - Fishing Patch.esp", "_ResourcePack.esl", "Unofficial Arcane Accessories Patch.esl"]
+    },
+    {
+      "name": "Better Descriptions SSE - YOT Patch.esp",
+      "flags": 0,
+      "masters": ["Laundry.esp", "Skyrim Revamped.esp"]
+    },
+    {"name": "Distinct Interiors - Guilds.esp", "flags": 0, "masters": []},
+    {"name": "Awesome Artifacts - ArteFakes Patch.esp", "flags": 0, "masters": []},
+    {"name": "Ducks and Swans.esp", "flags": 0, "masters": ["Distractor8442.esm", "EFFCore.esm"]},
+    {"name": "Distinct Interiors - Player Homes.esp", "flags": 0, "masters": ["Distractor8442.esm"]},
+    {"name": "Vanilla Script MicroOptimizations.esl", "flags": 1, "masters": ["Distractor2812.esm"]},
+    {"name": "StagPrinceBow.esp", "flags": 0, "masters": []},
+    {
+      "name": "RLGBriarHome.esp",
+      "flags": 0,
+      "masters": ["hfhometeleports.esp", "Northern Roads.esp", "Distractor5908.esm"]
+    },
+    {"name": "ESOImports - Kynesgrove Patch.esp", "flags": 0, "masters": []},
+    {"name": "ELFX - Hardcore.esp", "flags": 0, "masters": ["Distractor9815.esp", "MuirisRevenge.esp"]},
+    {"name": "Skyrim Revamped.esp", "flags": 0, "masters": []},
+    {
+      "name": "skryrimfarmhouseinns.esp",
+      "flags": 0,
+      "masters": ["Meteorokinesis.esp", "Distractor7306.esm", "_ResourcePack.esl"]
+    },
+    {"name": "True Light.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3707.esp", "flags": 0, "masters": []},
+    {"name": "Praedy's WinterholdCollegeBanner.esp", "flags": 0, "masters": []},
+    {"name": "AnnaNPCs.esp", "flags": 0, "masters": []},
+    {"name": "The Ruins.esp", "flags": 0, "masters": []},
+    {"name": "MarkekrausBarstoolBrawler.esp", "flags": 0, "masters": []},
+    {"name": "Fozars_Dragonborn_-_Requiem_Patch.esp", "flags": 0, "masters": ["Laundry.esp"]},
+    {
+      "name": "Cow_AtYourOwnPace_Patch.esp",
+      "flags": 0,
+      "masters": ["Distractor0238.esp", "Apothecary - Fishing Patch.esp"]
+    },
+    {"name": "Distractor5194.esm", "flags": 1, "masters": []},
+    {
+      "name": "Serio's Enhanced Dragons Redone.esp",
+      "flags": 0,
+      "masters": ["Distractor5194.esm", "Distractor3707.esp"]
+    },
+    {"name": "VisualAnimatedEnchants.esp", "flags": 0, "masters": []},
+    {"name": "Better Skill and Quest Books Names SE.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0484.esp", "flags": 0, "masters": []},
+    {"name": "BUVARP SE RE.esp", "flags": 0, "masters": []},
+    {"name": "CinematicFireFX.esp", "flags": 0, "masters": ["Distinct Interiors - Player Homes.esp"]},
+    {
+      "name": "Finding_VelehkSain.esp",
+      "flags": 0,
+      "masters": ["Distractor7230.esp", "EFFCore.esm", "Distinct Interiors - Miscellaneous.esp"]
+    },
+    {"name": "SkyR - Riften Interiors.esp", "flags": 0, "masters": []},
+    {"name": "ccbgssse066-staves.esl", "flags": 1, "masters": []},
+    {
+      "name": "dD-Reduced Splatter Size.esp",
+      "flags": 0,
+      "masters": [
+        "Unofficial Headmans Cleaver Patch.esl",
+        "tdgsseActivateToInteract.esl",
+        "Awesome Artifacts - ArteFakes Patch.esp"
+      ]
+    },
+    {"name": "CRAFT.esp", "flags": 0, "masters": []},
+    {"name": "ccpewsse002-armsofchaos.esl", "flags": 1, "masters": []},
+    {"name": "Apothecary - Fishing Patch.esp", "flags": 0, "masters": []},
+    {"name": "_ResourcePack.esl", "flags": 1, "masters": ["Distractor8435.esm", "Distractor7725.esm"]},
+    {"name": "ClockworkHPPMergedFixes.esp", "flags": 0, "masters": []},
+    {
+      "name": "JS Armored Circlets SE.esp",
+      "flags": 0,
+      "masters": ["Lux patch for FWMF.esp", "CEOWindhelm - Lanterns of Skyrim Patch.esp"]
+    },
+    {
+      "name": "EVE - Arvak Burning Hooves Restored.esp",
+      "flags": 0,
+      "masters": ["Northern Roads.esp", "Unofficial Elite Crossbows Patch.esl"]
+    },
+    {"name": "MoreToSay.esp", "flags": 0, "masters": []},
+    {"name": "Meteorokinesis.esp", "flags": 0, "masters": []},
+    {"name": "Windhelm Docks Pathways SE - Open Cities Skyrim Patch.esp", "flags": 0, "masters": []},
+    {"name": "Racial Body Morphs - Subtle.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5908.esm", "flags": 1, "masters": ["Distractor8232.esm", "Distractor3689.esm"]},
+    {
+      "name": "Distractor4463.esp",
+      "flags": 0,
+      "masters": ["Blacksmith Forge Water Fix SE.esp", "Distractor8232.esm", "MuirisRevenge.esp"]
+    },
+    {"name": "TavernAIFix.esp", "flags": 0, "masters": []},
+    {"name": "Secundas Kiss Cabin.esp", "flags": 0, "masters": []},
+    {
+      "name": "DBM_TreasureHunter_Patch.esp",
+      "flags": 0,
+      "masters": ["Distinct Interiors - Miscellaneous.esp"]
+    },
+    {
+      "name": "Open World Loot.esp",
+      "flags": 0,
+      "masters": ["Distractor7725.esm", "Serenity.esp", "JS_DBM_SkyrimSewers_Patch.esp"]
+    },
+    {"name": "Distractor2565.esp", "flags": 0, "masters": []},
+    {"name": "MarasRespite.esp", "flags": 0, "masters": []},
+    {"name": "More Dialogue Options.esp", "flags": 0, "masters": []},
+    {"name": "HSWhiterun - Carlotta Valentia's House.esp", "flags": 0, "masters": []},
+    {
+      "name": "Blacksmith Forge Water Fix SE.esp",
+      "flags": 0,
+      "masters": ["Ryn's Bleakfalls Tower.esp", "Deadly Wenches.esp", "Distractor2165.esp"]
+    },
+    {
+      "name": "DoS_MP_Whiterun_JK_DWM.esp",
+      "flags": 0,
+      "masters": ["Distractor9702.esm", "RLGBriarHome.esp", "Vanilla Script MicroOptimizations.esl"]
+    },
+    {"name": "Milante.esp", "flags": 0, "masters": []},
+    {"name": "Distinct Interiors - Miscellaneous.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor2812.esm",
+      "flags": 1,
+      "masters": ["Skyrim Project Optimization - Full ESL Version.esm", "ccbgssse064-ba_elven.esl"]
+    },
+    {"name": "Distractor9518.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2533.esp", "flags": 0, "masters": []},
+    {
+      "name": "MysticismJumpSpells.esp",
+      "flags": 0,
+      "masters": ["ELFX - NoHjerim.esp", "The Ruins.esp", "SlowTimeSpells.esp"]
+    },
+    {"name": "Distractor3689.esm", "flags": 1, "masters": []},
+    {
+      "name": "Daggerfall - Imp Wings FIX.esp",
+      "flags": 0,
+      "masters": ["SlowTimeSpells.esp", "Distinct Interiors - Player Homes.esp"]
+    },
+    {"name": "Distractor6185.esm", "flags": 1, "masters": ["ccbgssse064-ba_elven.esl"]},
+    {"name": "Complete Crafting Overhaul_Remastered.esp", "flags": 0, "masters": ["Distractor3598.esp"]},
+    {"name": "Blowing in the Wind SSE.esp", "flags": 0, "masters": ["Laundry.esp"]},
+    {"name": "Ecotone Dual Sheath.esl", "flags": 1, "masters": []},
+    {
+      "name": "LCO_Framework.esp",
+      "flags": 0,
+      "masters": ["dD-Reduced Splatter Size.esp", "MoreToSay.esp", "Requiem - Flora Fixes.esp"]
+    },
+    {"name": "Distractor0238.esp", "flags": 0, "masters": []},
+    {"name": "HSSolitude - The Winking Skeever.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8105.esp", "flags": 0, "masters": []},
+    {"name": "Unofficial Elite Crossbows Patch.esl", "flags": 1, "masters": ["Distractor5344.esm"]},
+    {
+      "name": "ApothecaryFoodAnniversaryUpdate.esp",
+      "flags": 0,
+      "masters": ["Daggerfall - Imp Wings FIX.esp", "The Ruins.esp", "StagPrinceBow.esp"]
+    },
+    {
+      "name": "Requiem - Flora Fixes.esp",
+      "flags": 0,
+      "masters": ["WeaponsOf3E_SSE.esp", "Deadly Dragons - DDC and Splendor.esp", "RLGBriarHome.esp"]
+    },
+    {
+      "name": "NewArmoury.esp",
+      "flags": 0,
+      "masters": ["Distractor8435.esm", "Distractor7911.esm", "Distractor3689.esm"]
+    },
+    {"name": "JS Dragon Claws AE - Rayek's End.esp", "flags": 0, "masters": []},
+    {"name": "MCWT_EarlyElementalist_ICoW.esp", "flags": 0, "masters": []},
+    {
+      "name": "SOTFull.esp",
+      "flags": 0,
+      "masters": ["MistySkye.esp", "HSWhiterun - Carlotta Valentia's House.esp", "VisualAnimatedEnchants.esp"]
+    },
+    {"name": "ECSS - Shadowrend Patch.esp", "flags": 0, "masters": []},
+    {
+      "name": "UnforgivingDevices - Security Overhaul Patch.esp",
+      "flags": 0,
+      "masters": ["Ducks and Swans.esp", "Distractor3974.esm", "Blowing in the Wind SSE.esp"]
+    },
+    {"name": "Lux - OCW College.esp", "flags": 0, "masters": []},
+    {"name": "BreezehomeBasement.esp", "flags": 0, "masters": ["hfhometeleports.esp"]},
+    {"name": "RDO Updated.esp", "flags": 0, "masters": []},
+    {"name": "EmbersHD.esp", "flags": 0, "masters": []},
+    {"name": "JS_DBM_SkyrimSewers_Patch.esp", "flags": 0, "masters": []},
+    {"name": "hfhometeleports.esp", "flags": 0, "masters": []},
+    {
+      "name": "Unofficial Arcane Accessories Patch.esl",
+      "flags": 1,
+      "masters": ["Distractor3689.esm", "Distractor7725.esm", "Unofficial The Cause Patch.esl"]
+    },
+    {"name": "Distractor7306.esm", "flags": 1, "masters": []},
+    {
+      "name": "cutting room floor.esp",
+      "flags": 0,
+      "masters": ["RLO - IC Patch.esp", "Ryn's Bleakfalls Tower.esp"]
+    },
+    {
+      "name": "mihailelementaltriad.esp",
+      "flags": 0,
+      "masters": ["SlowTimeSpells.esp", "WeaponsOf3E_SSE.esp"]
+    },
+    {
+      "name": "Deadly Wenches.esp",
+      "flags": 0,
+      "masters": ["Distractor7306.esm", "EFFCore.esm", "Laundry.esp"]
+    },
+    {"name": "BSHeartland - Unofficial Patch.esp", "flags": 0, "masters": ["Distractor7111.esp"]},
+    {"name": "ViscousGrass.esp", "flags": 0, "masters": ["ccpewsse002-armsofchaos.esl"]},
+    {"name": "Distractor8459.esp", "flags": 0, "masters": []},
+    {"name": "TWFortGS.esp", "flags": 0, "masters": []},
+    {
+      "name": "LoS II - Lantern Workers.esp",
+      "flags": 0,
+      "masters": ["ELFX - NoHjerim.esp", "ClockworkSuperiorSorting.esp", "WeaponsOf3E_SSE.esp"]
+    },
+    {"name": "WeaponsOf3E_SSE.esp", "flags": 0, "masters": []},
+    {"name": "CEOWindhelm - Lanterns of Skyrim Patch.esp", "flags": 0, "masters": []},
+    {
+      "name": "Deadly Dragons - DDC and Splendor.esp",
+      "flags": 0,
+      "masters": ["Vanilla Script MicroOptimizations.esl", "ccbgssse064-ba_elven.esl"]
+    },
+    {"name": "ogFalkreathHauntings.esp", "flags": 0, "masters": ["Ecotone Dual Sheath.esl"]},
+    {"name": "RainRepel.esp", "flags": 0, "masters": []},
+    {"name": "Distractor7111.esp", "flags": 0, "masters": ["Skyrim Revamped.esp", "Distractor5194.esm"]},
+    {"name": "Distractor9815.esp", "flags": 0, "masters": ["Distractor3974.esm"]},
+    {"name": "Distractor8674.esp", "flags": 0, "masters": []},
+    {"name": "Lost Grimoire - PraedyStaves Patch.esp", "flags": 0, "masters": []},
+    {"name": "The Cause - Rare Curios Halls Patch.esp", "flags": 0, "masters": []},
+    {"name": "Lore Weapon Expansion - Relics of the Crusader.esp", "flags": 0, "masters": []},
+    {"name": "SlowTimeSpells.esp", "flags": 0, "masters": ["Distractor2165.esp"]},
+    {"name": "Qw_ACE_CloaksOfSkyrim Patch.esp", "flags": 0, "masters": []},
+    {"name": "GRC - New Temple Tiles.esp", "flags": 0, "masters": []},
+    {"name": "YASTM_MCM.esp", "flags": 0, "masters": ["EFFCore.esm", "cutting room floor.esp"]},
+    {
+      "name": "Distractor6258.esp",
+      "flags": 0,
+      "masters": ["Rough Leather Armor.esp", "AAE Ultimate Edition.esp"]
+    },
+    {"name": "Serenity.esp", "flags": 0, "masters": []},
+    {"name": "Unofficial Headmans Cleaver Patch.esl", "flags": 1, "masters": []},
+    {
+      "name": "Distractor7911.esm",
+      "flags": 1,
+      "masters": [
+        "Skyrim Project Optimization - Full ESL Version.esm",
+        "tdgsseActivateToInteract.esl",
+        "Distractor8232.esm"
+      ]
+    },
+    {
+      "name": "Riften_Well_House.esp",
+      "flags": 0,
+      "masters": ["Finding_VelehkSain.esp", "Distinct Interiors - Guilds.esp"]
+    },
+    {
+      "name": "The Great Town of Shor's Stone.esp",
+      "flags": 0,
+      "masters": [
+        "Unofficial Elite Crossbows Patch.esl",
+        "Distractor6185.esm",
+        "Distinct Interiors - Player Homes.esp"
+      ]
+    },
+    {
+      "name": "Laundry.esp",
+      "flags": 0,
+      "masters": ["ccpewsse002-armsofchaos.esl", "Distractor5908.esm"]
+    },
+    {"name": "Distractor7230.esp", "flags": 0, "masters": []},
+    {
+      "name": "gildergreen regrown.esp",
+      "flags": 0,
+      "masters": ["Distractor5113.esp", "skryrimfarmhouseinns.esp"]
+    },
+    {
+      "name": "CentaurMaF.esp",
+      "flags": 0,
+      "masters": ["Distractor2565.esp", "tdgsseActivateToInteract.esl", "JS Dragon Claws AE - Rayek's End.esp"]
+    },
+    {
+      "name": "Run_of_the_Mill_Inn.esp",
+      "flags": 0,
+      "masters": ["Fozars_Dragonborn_-_Requiem_Patch.esp", "StagPrinceBow.esp"]
+    },
+    {"name": "Use the Force Skyrim.esp", "flags": 0, "masters": []},
+    {
+      "name": "ClockworkSorting_Ing_CCCurios_CACO.esp",
+      "flags": 0,
+      "masters": ["Distractor3974.esm", "NewArmoury.esp"]
+    },
+    {"name": "Immersive Music.esp", "flags": 0, "masters": ["CRF + Trading Posts Patch.esp"]},
+    {"name": "ELFX - Weathers.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5116.esp", "flags": 0, "masters": []},
+    {
+      "name": "RLO - IC Patch.esp",
+      "flags": 0,
+      "masters": ["Vokrus - Vokrii Expanded.esp", "_ResourcePack.esl"]
+    },
+    {
+      "name": "AlternatePerspective.esp",
+      "flags": 0,
+      "masters": ["Praedy's MageStatueFX.esp", "Distractor3192.esp", "Distinct Interiors - Miscellaneous.esp"]
+    },
+    {
+      "name": "AAE Ultimate Edition.esp",
+      "flags": 0,
+      "masters": ["JS Armored Circlets SE.esp", "ClockworkCourierCounterspell.esp"]
+    },
+    {
+      "name": "Water for ENB - Patch - FWMF Marked Old Map 4K.esp",
+      "flags": 0,
+      "masters": ["Distractor9702.esm"]
+    },
+    {"name": "LC_Citadel.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6586.esp", "flags": 0, "masters": ["Distractor3974.esm"]},
+    {
+      "name": "HSWindhelm - Temple of Talos.esp",
+      "flags": 0,
+      "masters": ["Deadly Dragons - DDC and Splendor.esp", "BUVARP SE RE.esp", "Distractor7306.esm"]
+    },
+    {
+      "name": "Distractor5113.esp",
+      "flags": 0,
+      "masters": [
+        "Lost Grimoire - PraedyStaves Patch.esp",
+        "ESOImports - Kynesgrove Patch.esp",
+        "Unofficial Arcane Accessories Patch.esl"
+      ]
+    },
+    {
+      "name": "Distractor8442.esm",
+      "flags": 1,
+      "masters": ["_ResourcePack.esl", "Unofficial Arcane Accessories Patch.esl"]
+    },
+    {"name": "Northern Roads.esp", "flags": 0, "masters": ["Distractor5344.esm"]},
+    {"name": "SurWR.esp", "flags": 0, "masters": ["Apothecary - Fishing Patch.esp"]},
+    {
+      "name": "Solitude Expansion.esp",
+      "flags": 0,
+      "masters": ["Distractor8105.esp", "ClockworkSorting_Ing_CCCurios_CACO.esp", "RLO - IC Patch.esp"]
+    },
+    {"name": "Praedy's MageStatueFX.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8974.esp", "flags": 0, "masters": []},
+    {"name": "IHarvest.esl", "flags": 1, "masters": []},
+    {"name": "Distractor8232.esm", "flags": 1, "masters": []},
+    {"name": "Better Cities Solitude.esp", "flags": 0, "masters": []},
+    {"name": "Ryn's Bleakfalls Tower.esp", "flags": 0, "masters": ["Ecotone Dual Sheath.esl"]},
+    {
+      "name": "Skyrim Project Optimization - Full ESL Version.esm",
+      "flags": 1,
+      "masters": ["Distractor8384.esm", "Distractor8435.esm"]
+    },
+    {"name": "DBM_Redcap_Patch.esp", "flags": 0, "masters": ["ELFX - NoHjerim.esp", "IHarvest.esl"]},
+    {"name": "JokerinesRedditDungeon.esp", "flags": 0, "masters": []},
+    {
+      "name": "ClockworkSuperiorSorting.esp",
+      "flags": 0,
+      "masters": ["Distractor7230.esp", "Distractor9518.esp", "Distractor0238.esp"]
+    },
+    {"name": "ETaC - Complete_JKs Skyrim_NSUTR_Patch.esp", "flags": 0, "masters": []},
+    {
+      "name": "CRF + Trading Posts Patch.esp",
+      "flags": 0,
+      "masters": ["RLO - IC Patch.esp", "Cow_AtYourOwnPace_Patch.esp", "Lux patch for FWMF.esp"]
+    },
+    {"name": "Tamrielic Distribution.esp", "flags": 0, "masters": []},
+    {"name": "DLCIntegration.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5344.esm", "flags": 1, "masters": []},
+    {"name": "Requiem - No Overencumbered Messages.esp", "flags": 0, "masters": []},
+    {"name": "SSkwy Estuary Fortress Extension.esp", "flags": 0, "masters": []},
+    {"name": "ELFX - NoHjerim.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3598.esp", "flags": 0, "masters": ["Distractor3192.esp"]},
+    {"name": "Rough Leather Armor.esp", "flags": 0, "masters": ["Distractor7911.esm"]},
+    {
+      "name": "Vokrus - Vokrii Expanded.esp",
+      "flags": 0,
+      "masters": ["BUVARP SE RE.esp", "Distractor6185.esm"]
+    },
+    {"name": "Unofficial The Cause Patch.esl", "flags": 1, "masters": []},
+    {"name": "1nivWICSkyCloaksPatch.esp", "flags": 0, "masters": []},
+    {
+      "name": "DLCIntegration Beyond Skyrim Compatibility Patch.esp",
+      "flags": 0,
+      "masters": ["IHarvest.esl"]
+    }
+  ],
+  "masterlist": null,
+  "userlist": null,
+  "prelude": null,
+  "real_masterlist": {
+    "repository": "skyrimse",
+    "bundled_sha256": "2e2da8e8373c07e0ae84c4bd2d151a272bd090230decc59a22c374b01bb3e509",
+    "stripped_sha256": "09c2c1ca1013db80ab1f5676594a0a778ed6323c56bd26d11f00368b7ee53bce",
+    "prelude_bundled_sha256": "d766b2d98565c2147bfeedf8df8385aae1c32731fc0b14b1bdb1ee54d1729711",
+    "prelude_stripped_sha256": "e4e8c81907defb24d03c7b22c8d9dc68186c6584f67aa75ce83727ff3758da85"
+  },
+  "expected": {
+    "order": [
+      "ccbgssse064-ba_elven.esl",
+      "ccafdsse001-dwesanctuary.esm",
+      "ccbgssse066-staves.esl",
+      "ccpewsse002-armsofchaos.esl",
+      "Distractor3689.esm",
+      "Distractor8435.esm",
+      "Distractor7725.esm",
+      "_ResourcePack.esl",
+      "Unofficial The Cause Patch.esl",
+      "Unofficial Arcane Accessories Patch.esl",
+      "Unofficial Headmans Cleaver Patch.esl",
+      "Distractor5344.esm",
+      "Unofficial Elite Crossbows Patch.esl",
+      "Distractor8384.esm",
+      "Skyrim Project Optimization - Full ESL Version.esm",
+      "Distractor2812.esm",
+      "Vanilla Script MicroOptimizations.esl",
+      "EFFCore.esm",
+      "Distractor8442.esm",
+      "tdgsseActivateToInteract.esl",
+      "Distractor9702.esm",
+      "Distractor3974.esm",
+      "Distractor5194.esm",
+      "Distractor8232.esm",
+      "Distractor5908.esm",
+      "Distractor6185.esm",
+      "Ecotone Dual Sheath.esl",
+      "Distractor7306.esm",
+      "Distractor7911.esm",
+      "IHarvest.esl",
+      "True Light.esp",
+      "ESOImports - Kynesgrove Patch.esp",
+      "Lost Grimoire - PraedyStaves Patch.esp",
+      "Distractor5113.esp",
+      "Meteorokinesis.esp",
+      "skryrimfarmhouseinns.esp",
+      "gildergreen regrown.esp",
+      "Laundry.esp",
+      "Blowing in the Wind SSE.esp",
+      "Ducks and Swans.esp",
+      "Lore Weapon Expansion - Relics of the Crusader.esp",
+      "DLCIntegration.esp",
+      "DLCIntegration Beyond Skyrim Compatibility Patch.esp",
+      "Infiltration QE - Bandit War Patch.esp",
+      "Skyrim Revamped.esp",
+      "Distractor7111.esp",
+      "PCE - RLO Patch.esp",
+      "BlendedRoads.esp",
+      "Bound Quiver Fire.esp",
+      "aaaJudgement.esp",
+      "Enhanced Vanilla Trees SSE.esp",
+      "Distractor1851.esp",
+      "hfhometeleports.esp",
+      "Northern Roads.esp",
+      "RLGBriarHome.esp",
+      "Fozars_Dragonborn_-_Requiem_Patch.esp",
+      "WeaponsOf3E_SSE.esp",
+      "Deadly Dragons - DDC and Splendor.esp",
+      "Requiem - Flora Fixes.esp",
+      "MistySkye.esp",
+      "PrinceandPauperRefine_CC_Cave.esp",
+      "Udaur Ranger Camp.esp",
+      "Distractor2565.esp",
+      "JS Dragon Claws AE - Rayek's End.esp",
+      "CentaurMaF.esp",
+      "ELFX - NoHjerim.esp",
+      "man_DaedricShrines_Wintersun_Patch.esp",
+      "fallentreebridgesSSE.esp",
+      "AzurasShield_SE_Eng.esp",
+      "ClockworkCourierCounterspell.esp",
+      "Distractor2165.esp",
+      "SkyrimIsWindy-SimplyBiggerTreesSE-Patch.esp",
+      "Lux patch for FWMF.esp",
+      "Distractor3707.esp",
+      "College Of Winterhold - Quest Expansion.esp",
+      "Distractor5910.esp",
+      "Hidden Homes- Hjaalmarch.esp",
+      "Distractor6526.esp",
+      "Distinct Interiors - Guilds.esp",
+      "Distinct Interiors - Miscellaneous.esp",
+      "Distractor7230.esp",
+      "Finding_VelehkSain.esp",
+      "Riften_Well_House.esp",
+      "BUVARP SE RE.esp",
+      "Vokrus - Vokrii Expanded.esp",
+      "RLO - IC Patch.esp",
+      "Distractor8105.esp",
+      "NewArmoury.esp",
+      "ClockworkSorting_Ing_CCCurios_CACO.esp",
+      "Solitude Expansion.esp",
+      "Lux - Mara Valentine patch.esp",
+      "Distractor3192.esp",
+      "Apothecary - Fishing Patch.esp",
+      "MuirisRevenge.esp",
+      "Better Descriptions SSE - YOT Patch.esp",
+      "Awesome Artifacts - ArteFakes Patch.esp",
+      "Distinct Interiors - Player Homes.esp",
+      "StagPrinceBow.esp",
+      "Praedy's WinterholdCollegeBanner.esp",
+      "AnnaNPCs.esp",
+      "The Ruins.esp",
+      "MarkekrausBarstoolBrawler.esp",
+      "Distractor0238.esp",
+      "Cow_AtYourOwnPace_Patch.esp",
+      "Serio's Enhanced Dragons Redone.esp",
+      "VisualAnimatedEnchants.esp",
+      "Better Skill and Quest Books Names SE.esp",
+      "Distractor0484.esp",
+      "CinematicFireFX.esp",
+      "SkyR - Riften Interiors.esp",
+      "dD-Reduced Splatter Size.esp",
+      "ClockworkHPPMergedFixes.esp",
+      "CEOWindhelm - Lanterns of Skyrim Patch.esp",
+      "JS Armored Circlets SE.esp",
+      "EVE - Arvak Burning Hooves Restored.esp",
+      "MoreToSay.esp",
+      "Windhelm Docks Pathways SE - Open Cities Skyrim Patch.esp",
+      "Racial Body Morphs - Subtle.esp",
+      "Deadly Wenches.esp",
+      "Ryn's Bleakfalls Tower.esp",
+      "Blacksmith Forge Water Fix SE.esp",
+      "Distractor4463.esp",
+      "TavernAIFix.esp",
+      "Secundas Kiss Cabin.esp",
+      "DBM_TreasureHunter_Patch.esp",
+      "JS_DBM_SkyrimSewers_Patch.esp",
+      "Serenity.esp",
+      "Open World Loot.esp",
+      "MarasRespite.esp",
+      "More Dialogue Options.esp",
+      "HSWhiterun - Carlotta Valentia's House.esp",
+      "DoS_MP_Whiterun_JK_DWM.esp",
+      "Milante.esp",
+      "Distractor9518.esp",
+      "Distractor2533.esp",
+      "SlowTimeSpells.esp",
+      "MysticismJumpSpells.esp",
+      "Daggerfall - Imp Wings FIX.esp",
+      "LCO_Framework.esp",
+      "HSSolitude - The Winking Skeever.esp",
+      "ApothecaryFoodAnniversaryUpdate.esp",
+      "MCWT_EarlyElementalist_ICoW.esp",
+      "SOTFull.esp",
+      "ECSS - Shadowrend Patch.esp",
+      "UnforgivingDevices - Security Overhaul Patch.esp",
+      "Lux - OCW College.esp",
+      "BreezehomeBasement.esp",
+      "RDO Updated.esp",
+      "EmbersHD.esp",
+      "cutting room floor.esp",
+      "mihailelementaltriad.esp",
+      "BSHeartland - Unofficial Patch.esp",
+      "ViscousGrass.esp",
+      "Distractor8459.esp",
+      "TWFortGS.esp",
+      "ClockworkSuperiorSorting.esp",
+      "LoS II - Lantern Workers.esp",
+      "ogFalkreathHauntings.esp",
+      "RainRepel.esp",
+      "Distractor9815.esp",
+      "Distractor8674.esp",
+      "The Cause - Rare Curios Halls Patch.esp",
+      "Qw_ACE_CloaksOfSkyrim Patch.esp",
+      "GRC - New Temple Tiles.esp",
+      "YASTM_MCM.esp",
+      "AAE Ultimate Edition.esp",
+      "Rough Leather Armor.esp",
+      "Distractor6258.esp",
+      "The Great Town of Shor's Stone.esp",
+      "Run_of_the_Mill_Inn.esp",
+      "Use the Force Skyrim.esp",
+      "CRF + Trading Posts Patch.esp",
+      "Immersive Music.esp",
+      "ELFX - Weathers.esp",
+      "Distractor5116.esp",
+      "Water for ENB - Patch - FWMF Marked Old Map 4K.esp",
+      "LC_Citadel.esp",
+      "Distractor6586.esp",
+      "HSWindhelm - Temple of Talos.esp",
+      "SurWR.esp",
+      "Praedy's MageStatueFX.esp",
+      "Distractor8974.esp",
+      "Better Cities Solitude.esp",
+      "DBM_Redcap_Patch.esp",
+      "JokerinesRedditDungeon.esp",
+      "ETaC - Complete_JKs Skyrim_NSUTR_Patch.esp",
+      "Tamrielic Distribution.esp",
+      "Requiem - No Overencumbered Messages.esp",
+      "SSkwy Estuary Fortress Extension.esp",
+      "Distractor3598.esp",
+      "1nivWICSkyCloaksPatch.esp",
+      "Complete Crafting Overhaul_Remastered.esp",
+      "CRAFT.esp",
+      "AlternatePerspective.esp",
+      "Minimalistic Follower Framework.esp",
+      "ELFX - Hardcore.esp"
+    ]
+  },
+  "groups_paths": []
+}

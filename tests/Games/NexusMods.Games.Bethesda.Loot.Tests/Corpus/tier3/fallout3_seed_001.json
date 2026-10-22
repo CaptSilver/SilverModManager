@@ -1,0 +1,848 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": 1,
+  "game_type": "Fallout3",
+  "format": "Tes4",
+  "header_version": 0.94,
+  "name": "fallout3_seed_001",
+  "plugins": [
+    {"name": "GSoS - FOOK2 Open Beta - Combat and Sneaking Overhaul.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2037.esp", "flags": 0, "masters": []},
+    {
+      "name": "Simply_Lockers_revYnotDrol.esp",
+      "flags": 0,
+      "masters": ["AWOP4FO3BOEPatch.esp", "IMCN - The Pitt.esp"]
+    },
+    {
+      "name": "3DNPC_LittleBoBeep.esm",
+      "flags": 1,
+      "masters": ["Distractor2984.esm", "Point Lookout Reborn.esm"]
+    },
+    {"name": "tubRRCompound.esp", "flags": 0, "masters": []},
+    {"name": "Blackened MMM + EVE.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3494.esm", "flags": 1, "masters": ["Distractor8851.esm"]},
+    {
+      "name": "RiPnO DLC03 Broken Steel.esp",
+      "flags": 0,
+      "masters": ["Menu Based Hacking & Picking.esp", "(TWPC) TMI-MMM-EVE-FWE Patch.esp"]
+    },
+    {"name": "3DNPC_FO3_BrokenSteel.esp", "flags": 0, "masters": ["Distractor3568.esm"]},
+    {"name": "UrgeWashingtonBoS.esp", "flags": 0, "masters": []},
+    {
+      "name": "FO3 Wanderers Edition - Main File.esp",
+      "flags": 0,
+      "masters": ["(TWPC) TMI-MMM-EVE-FWE Patch.esp", "FACE3.esm", "Distractor8851.esm"]
+    },
+    {"name": "Confessor Cromwell has a Break_EV.esp", "flags": 0, "masters": ["DC Moods.esp"]},
+    {"name": "moirared.esp", "flags": 0, "masters": []},
+    {"name": "slaveraider_newlook.esp", "flags": 0, "masters": []},
+    {
+      "name": "DK_BulletTime.esp",
+      "flags": 0,
+      "masters": ["Xepha's Darkened Interiors.esp", "Distractor0607.esm", "Point Lookout Reborn.esm"]
+    },
+    {
+      "name": "(TWPC) BBB-UUF3P-FWE Patch.esp",
+      "flags": 0,
+      "masters": ["Distractor4477.esm", "RTS NW.esm"]
+    },
+    {
+      "name": "Distractor8746.esp",
+      "flags": 0,
+      "masters": ["Distractor7837.esp", "Detect Traps - Perk.esp", "CanterburyCommonsInteriors.esp"]
+    },
+    {
+      "name": "Mart's Mutant Mod - Master Menu Module.esp",
+      "flags": 0,
+      "masters": ["RTS NW.esm", "Placable Lights v2.2.esp"]
+    },
+    {
+      "name": "Distractor4279.esp",
+      "flags": 0,
+      "masters": ["Distractor3783.esm", "ArefuExpandedByAzar-FixEyes.esp", "Distractor8733.esp"]
+    },
+    {"name": "Chems and Meds Re-Textures Pack.esp", "flags": 0, "masters": ["Distractor1925.esp"]},
+    {
+      "name": "20th Century v5 ALIVE (Talon_Regulator).esp",
+      "flags": 0,
+      "masters": ["Zeta.esm", "RobCo Certified v2 Zeta Addon.esp"]
+    },
+    {
+      "name": "RH_IronSights - Cool Lasers.esp",
+      "flags": 0,
+      "masters": ["AmyWong - DLC03 Broken Steel.esp", "WYB-DLC-PointLookout.esp"]
+    },
+    {"name": "FWEAlienWorkBenchFix.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6953.esm", "flags": 1, "masters": []},
+    {"name": "RobCo Certified v2.esm", "flags": 1, "masters": ["Distractor0962.esm"]},
+    {"name": "cyber_meat.esp", "flags": 0, "masters": []},
+    {
+      "name": "Flora Overhaul.esp",
+      "flags": 0,
+      "masters": ["DUIF3Extras.esp", "moirared.esp", "BetterFrag Grenade Physics.esp"]
+    },
+    {"name": "Laurens_Bathroom_poetry_V1.esp", "flags": 0, "masters": []},
+    {"name": "Mart's Mutant Mod - FWE Master Release + DLCs.esp", "flags": 0, "masters": []},
+    {"name": "Bottle That Water Alternative - Broken Steel.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0607.esm", "flags": 1, "masters": []},
+    {"name": "RTS NW.esm", "flags": 1, "masters": ["3DNPC_Factory.esm"]},
+    {
+      "name": "GH-HealingRebalanceMod_sleepscript.esp",
+      "flags": 0,
+      "masters": [
+        "AmyWong - DLC03 Broken Steel.esp",
+        "Distractor8746.esp",
+        "Xepha's Dynamic Weather - Broken Steel.esp"
+      ]
+    },
+    {
+      "name": "Distractor0477.esp",
+      "flags": 0,
+      "masters": ["overhead.esp", "Distractor8746.esp", "Distractor8706.esp"]
+    },
+    {"name": "Distractor0909.esp", "flags": 0, "masters": []},
+    {"name": "CantaburyCommonsGuards - DTO.esp", "flags": 0, "masters": ["Purity Crash Fix.esp"]},
+    {
+      "name": "blackrock_shooter.esp",
+      "flags": 0,
+      "masters": [
+        "Mart's Mutant Mod - FWE Master Release + Project Beauty.esp",
+        "Enhanced Weather - Weather Sounds in Interiors.esp",
+        "JIP CC&C - Crystal.esp"
+      ]
+    },
+    {"name": "Refurbish [PL].esp", "flags": 0, "masters": []},
+    {"name": "Clothed Sarah Lyons - Sleepwear.esp", "flags": 0, "masters": []},
+    {
+      "name": "The Mantis Imperative - Nasty Zeta No Scaling.esp",
+      "flags": 0,
+      "masters": ["Distractor8851.esm", "Distractor6953.esm", "Enhanced Weather - Rain and Snow.esm"]
+    },
+    {"name": "Detect Traps - Perk.esp", "flags": 0, "masters": []},
+    {"name": "Refurbishes [ALL].esm", "flags": 1, "masters": []},
+    {"name": "ArefuExpandedByAzar-FixMisc.esp", "flags": 0, "masters": []},
+    {"name": "WYB-DLC-PointLookout.esp", "flags": 0, "masters": ["RealisticBulletsWMKnoTracers.esp"]},
+    {
+      "name": "royphilipsevilwmask.esp",
+      "flags": 0,
+      "masters": ["GH-HealingRebalanceMod_sleepscript.esp", "vaultgirlrp.esp", "GaryHoloTape.esp"]
+    },
+    {"name": "ZORTS - Content Destruction - Extreme.esp", "flags": 0, "masters": ["Distractor0962.esm"]},
+    {"name": "StreetLights - Wasteland.esp", "flags": 0, "masters": []},
+    {"name": "overhead.esp", "flags": 0, "masters": []},
+    {"name": "CanterburyCommonsInteriors.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0282.esm", "flags": 1, "masters": []},
+    {"name": "Distractor4728.esp", "flags": 0, "masters": []},
+    {"name": "32S&W.esp", "flags": 0, "masters": ["DLC Enemies Freedom.esp", "Distractor2984.esm"]},
+    {"name": "FWE(v.5.04)+WMK_weapons_xCALIBRified.esp", "flags": 0, "masters": []},
+    {"name": "Xepha's Dynamic Weather - Anchorage.esp", "flags": 0, "masters": []},
+    {
+      "name": "PlasmaRifleAwesomefied.esp",
+      "flags": 0,
+      "masters": ["Phalanx-DogmeatEnemyTweaks.esp", "Arms_dealer_V1.esp", "Scenic_Loading_Background.esp"]
+    },
+    {"name": "BriannaCompanion.esp", "flags": 0, "masters": ["Refurbishes [ALL].esm"]},
+    {"name": "Distractor9492.esm", "flags": 1, "masters": ["RTS NW.esm"]},
+    {"name": "RH_IronSights_Basic_BrokenSteelPlugin.esp", "flags": 0, "masters": []},
+    {"name": "(TWPC) RRE-FWE.esp", "flags": 0, "masters": []},
+    {
+      "name": "RH_IronSights_Vanilla_NewWeapons.esp",
+      "flags": 0,
+      "masters": ["Xepha's Darkened Interiors.esp"]
+    },
+    {"name": "MiscWeightFix.esp", "flags": 0, "masters": []},
+    {"name": "7_HolsterForHandGunsV1_1.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3568.esm", "flags": 1, "masters": []},
+    {
+      "name": "Distractor2984.esm",
+      "flags": 1,
+      "masters": ["3DNPC_Factory.esm", "Distractor0962.esm", "RTS NW.esm"]
+    },
+    {"name": "Less Useless Karma Gifts.esp", "flags": 0, "masters": ["(TWPC) TMIM-DIFF Patch.esp"]},
+    {
+      "name": "Named Wasteland.esp",
+      "flags": 0,
+      "masters": ["BadAssBrats.esp", "Enhanced Weather - Rain and Snow.esm"]
+    },
+    {"name": "JIP CC&C - Kat.esp", "flags": 0, "masters": []},
+    {
+      "name": "Scavenger World - Updated v0.08.esp",
+      "flags": 0,
+      "masters": ["Distractor3675.esm", "Lings.esm", "Zeta.esm"]
+    },
+    {"name": "Temple of the Union Overhaul.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8851.esm", "flags": 1, "masters": []},
+    {
+      "name": "Distractor3783.esm",
+      "flags": 1,
+      "masters": ["Distractor0962.esm", "Distractor9492.esm", "Distractor3568.esm"]
+    },
+    {"name": "(TWPC) TMIC-FWE.esp", "flags": 0, "masters": ["overhead.esp", "Distractor7273.esm"]},
+    {"name": "Distractor3485.esp", "flags": 0, "masters": []},
+    {"name": "Purity Crash Fix.esp", "flags": 0, "masters": ["ArefuExpandedByAzar-FixEyes.esp"]},
+    {
+      "name": "Zeta.esm",
+      "flags": 1,
+      "masters": ["Distractor3675.esm", "Lings.esm", "Distractor9492.esm"]
+    },
+    {"name": "AmyWong - CALIBR 1.2.esp", "flags": 0, "masters": []},
+    {"name": "PAM.esp", "flags": 0, "masters": ["Distractor4279.esp", "tubRRCompound.esp"]},
+    {"name": "Sarah Lyons Companion.esp", "flags": 0, "masters": []},
+    {
+      "name": "EZCompanion_Type-N.esp",
+      "flags": 0,
+      "masters": ["Distractor3494.esm", "Drone Cannon Fix.esp", "Distractor3568.esm"]
+    },
+    {
+      "name": "Canterbury Commons Interiors Embiggened.esp",
+      "flags": 0,
+      "masters": ["Xepha's Dynamic Weather - Point Lookout.esp", "BadAssBrats.esp"]
+    },
+    {
+      "name": "Distractor0126.esp",
+      "flags": 0,
+      "masters": ["CanterburyCommonsInteriors.esp", "20th Century v4 ALIVE (SuperMutant).esp"]
+    },
+    {"name": "WeaponModKits - PointLookout.esp", "flags": 0, "masters": []},
+    {"name": "Menu Based Hacking & Picking.esp", "flags": 0, "masters": []},
+    {"name": "Distractor1495.esp", "flags": 0, "masters": []},
+    {"name": "Arms_dealer_V1.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3209.esp", "flags": 0, "masters": []},
+    {
+      "name": "20th Century v4 ALIVE (Chinese Ghoul).esp",
+      "flags": 0,
+      "masters": ["JIP CC&C - Kelsey.esp", "Xepha's Dynamic Weather - Anchorage.esp", "IMCN - The Pitt.esp"]
+    },
+    {"name": "Weld and Steel - Badges.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor7837.esp",
+      "flags": 0,
+      "masters": ["IMCN - The Pitt.esp", "JIP CC&C - Kelsey.esp"]
+    },
+    {"name": "BA_Repair_Xtras.esp", "flags": 0, "masters": ["BriannaCompanion.esp"]},
+    {"name": "AmyWong - DLC04 Pt.Lookout.esp", "flags": 0, "masters": []},
+    {"name": "WYB-DLC-Zeta.esp", "flags": 0, "masters": ["Distractor3568.esm"]},
+    {"name": "Dogmeat_WaitMegaton.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor1925.esp",
+      "flags": 0,
+      "masters": ["UrgeWashingtonBoS.esp", "Distractor7837.esp"]
+    },
+    {"name": "AWOP4FO3BOEPatch.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor6642.esp",
+      "flags": 0,
+      "masters": ["Distractor2633.esp", "Distractor0282.esm", "Armor Repair Kits PL - FO3.esp"]
+    },
+    {"name": "Zumbs'_Overhauled_Real_Time_Security_lockbash_only.esp", "flags": 0, "masters": []},
+    {"name": "CALIBRxMerchant.esp", "flags": 0, "masters": ["Distractor2984.esm", "Distractor9492.esm"]},
+    {"name": "mika_essential.esp", "flags": 0, "masters": ["PiPBoy Blue Light.esp"]},
+    {"name": "Gore objects Plus.esp", "flags": 0, "masters": ["Distractor8746.esp"]},
+    {"name": "Lings.esm", "flags": 1, "masters": ["Distractor2984.esm"]},
+    {"name": "Distractor6552.esp", "flags": 0, "masters": ["Zeta.esm", "Mart's Mutant Mod.esm"]},
+    {"name": "Zumbs'_Overhauled_Real_Time_Security_minigames_enabled.esp", "flags": 0, "masters": []},
+    {"name": "WeaponModKits - FWE Optional Worn Weapons.esp", "flags": 0, "masters": []},
+    {"name": "Choose your own hairstyle (load this last on FOMM).esp", "flags": 0, "masters": []},
+    {"name": "SpiderAnts.esp", "flags": 0, "masters": ["WYB-DLC-Zeta.esp", "Refurbishes [ALL].esm"]},
+    {
+      "name": "RealisticBulletsWMKnoTracers.esp",
+      "flags": 0,
+      "masters": ["vaultgirlrp.esp", "EWE Energy Weapons Enhanced.esm"]
+    },
+    {"name": "BadAssBrats.esp", "flags": 0, "masters": []},
+    {
+      "name": "Hi-Res Weapons & Ammo Textures - The Pitt.esp",
+      "flags": 0,
+      "masters": ["tubRRCompound.esp", "Distractor0962.esm", "Distractor3568.esm"]
+    },
+    {
+      "name": "xCALIBR_ammo_Override_v1_01_for_20th Century Weapons -Plus- Reborn FWE-WMK-Calibr14_V1_70RC_18668.esp",
+      "flags": 0,
+      "masters": ["Distractor6388.esp", "Vault 101 Revisited James Room.esp", "Distractor6552.esp"]
+    },
+    {"name": "Distractor7273.esm", "flags": 1, "masters": []},
+    {
+      "name": "20th Century v5 ALIVE (SuperMutant).esp",
+      "flags": 0,
+      "masters": ["ZORTS - Content Destruction - Extreme.esp"]
+    },
+    {
+      "name": "Mart's Mutant Mod - FWE Master Release + Project Beauty.esp",
+      "flags": 0,
+      "masters": ["Fellout-Anchorage.esp", "Distractor4279.esp", "Fellout-Zeta.esp"]
+    },
+    {
+      "name": "Alternate Start - Roleplayers.esp",
+      "flags": 0,
+      "masters": ["AmyWong - DLC04 Pt.Lookout.esp"]
+    },
+    {"name": "Distractor4856.esp", "flags": 0, "masters": ["DUIF3Extras.esp"]},
+    {"name": "Distractor4477.esm", "flags": 1, "masters": []},
+    {
+      "name": "RadioHotkey.esp",
+      "flags": 0,
+      "masters": ["Weld and Steel - Badges.esp", "Distractor8733.esp"]
+    },
+    {
+      "name": "delaypl.esp",
+      "flags": 0,
+      "masters": ["The Mantis Imperative - Nasty Zeta No Scaling.esp"]
+    },
+    {"name": "Headwraps Galore.esp", "flags": 0, "masters": []},
+    {"name": "JIP Companions Command & Control.esp", "flags": 0, "masters": []},
+    {
+      "name": "AmyWong - DLC03 Broken Steel.esp",
+      "flags": 0,
+      "masters": [
+        "xCALIBR_ammo_Override_v1_01_for_20th Century Weapons -Plus- Reborn FWE-WMK-Calibr14_V1_70RC_18668.esp"
+      ]
+    },
+    {"name": "T3T_MiscItemIcons.esp", "flags": 0, "masters": ["ArefuExpandedByAzar-FixEyes.esp"]},
+    {"name": "BetterFrag Grenade Physics.esp", "flags": 0, "masters": []},
+    {
+      "name": "SaveHotKey.esp",
+      "flags": 0,
+      "masters": ["WYB-DLC-PointLookout.esp", "Distractor3494.esm"]
+    },
+    {"name": "Distractor8204.esp", "flags": 0, "masters": ["Distractor4477.esm"]},
+    {"name": "Miniguns Replacer.esp", "flags": 0, "masters": []},
+    {"name": "COL Enclave Hell.esp", "flags": 0, "masters": ["Drone Cannon Fix.esp"]},
+    {
+      "name": "Xepha's Dynamic Weather - Broken Steel.esp",
+      "flags": 0,
+      "masters": ["RHKBrisaAlmodovar - DLC.esp"]
+    },
+    {"name": "Enhanced Weather - Rain and Snow in Fallout.esp", "flags": 0, "masters": []},
+    {
+      "name": "Enhanced Weather - Weather Sounds in Interiors.esp",
+      "flags": 0,
+      "masters": ["Distractor7837.esp", "AmyWong - DLC03 Broken Steel.esp"]
+    },
+    {"name": "Gore_No_More_Basic.esp", "flags": 0, "masters": []},
+    {"name": "Point Lookout Reborn.esm", "flags": 1, "masters": ["EVE.esm"]},
+    {"name": "fasttravelfromindoors.esp", "flags": 0, "masters": ["Distractor0282.esm"]},
+    {"name": "Scenic_Loading_Background_OperationAnchorageDLC.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4292.esp", "flags": 0, "masters": []},
+    {"name": "Phalanx-DogmeatEnemyTweaks.esp", "flags": 0, "masters": []},
+    {"name": "20th Century v5 ALIVE (Vendor).esp", "flags": 0, "masters": ["Distractor0126.esp"]},
+    {"name": "EnhVisionHK.esp", "flags": 0, "masters": []},
+    {
+      "name": "Scenic_Loading_Background.esp",
+      "flags": 0,
+      "masters": ["BriannaCompanion.esp", "Distractor0282.esm", "Distractor7273.esm"]
+    },
+    {"name": "EWE DLC Addon.esp", "flags": 0, "masters": []},
+    {"name": "FO3 Wanderers Edition - Optional Restore Tracers.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor8733.esp",
+      "flags": 0,
+      "masters": ["The Mantis Imperative - Nasty Zeta No Scaling.esp"]
+    },
+    {"name": "JIP CC&C - Sarah Lyons.esp", "flags": 0, "masters": []},
+    {"name": "COL Enclave VER2.esp", "flags": 0, "masters": []},
+    {"name": "JIP CC&C - Kelsey.esp", "flags": 0, "masters": []},
+    {
+      "name": "PiPBoy Light Range x2.esp",
+      "flags": 0,
+      "masters": ["Xepha's Darkened Interiors.esp", "Distractor6388.esp", "Simply_Lockers_revYnotDrol.esp"]
+    },
+    {
+      "name": "Armor Repair Kits PL - FO3.esp",
+      "flags": 0,
+      "masters": ["20th Century v4 ALIVE (SuperMutant).esp", "DK_BulletTime.esp", "Dogmeat_WaitMegaton.esp"]
+    },
+    {"name": "MMM dog lover's mod.esp", "flags": 0, "masters": []},
+    {"name": "EWE Energy Weapons Enhanced.esm", "flags": 1, "masters": []},
+    {
+      "name": "Scavenger World - FWE Edition v0.08.esp",
+      "flags": 0,
+      "masters": ["Scenic_Loading_Background.esp"]
+    },
+    {
+      "name": "CharonImproved.esp",
+      "flags": 0,
+      "masters": [
+        "(TWPC) TMIC-FWE.esp",
+        "The Mantis Imperative - Nasty Zeta No Scaling.esp",
+        "AmyWong - DLC04 Pt.Lookout.esp"
+      ]
+    },
+    {
+      "name": "(TWPC) TMI-MMM-EVE-FWE Patch.esp",
+      "flags": 0,
+      "masters": ["3DNPC_Factory.esm", "AmyWong - CALIBR 1.2.esp", "Distractor3675.esm"]
+    },
+    {"name": "JIP CC&C - Crystal.esp", "flags": 0, "masters": []},
+    {
+      "name": "BottleBrahminMilk.esp",
+      "flags": 0,
+      "masters": ["ZORTS - Content Destruction - Extreme.esp", "Distractor6388.esp", "GaryHoloTape.esp"]
+    },
+    {"name": "(TWPC) TMIM-DIFF Patch.esp", "flags": 0, "masters": []},
+    {
+      "name": "Xepha's Darkened Interiors.esp",
+      "flags": 0,
+      "masters": ["Distractor3568.esm", "AWOP4FO3BOEPatch.esp", "Distractor6865.esm"]
+    },
+    {"name": "RobCo Certified v2 Zeta Addon.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0290.esm", "flags": 1, "masters": []},
+    {"name": "Real Radiation Suit FO3.esp", "flags": 0, "masters": []},
+    {
+      "name": "FO3 Error Fixes.esp",
+      "flags": 0,
+      "masters": ["CanterburyCommonsInteriors.esp", "RobCo Certified v2.esm", "Distractor3675.esm"]
+    },
+    {
+      "name": "Distractor9787.esm",
+      "flags": 1,
+      "masters": ["Point Lookout Reborn.esm", "Distractor1254.esm", "3DNPC_LittleBoBeep.esm"]
+    },
+    {"name": "Phalanx-MainFollowerModule.esp", "flags": 0, "masters": ["Distractor1925.esp"]},
+    {"name": "DUIF3Extras.esp", "flags": 0, "masters": []},
+    {"name": "Flashlight-Performance.esp", "flags": 0, "masters": []},
+    {"name": "Vault 101 Revisited James Room.esp", "flags": 0, "masters": []},
+    {
+      "name": "CRAFTHelper_ReplaceWorkbenchScript.esp",
+      "flags": 0,
+      "masters": ["(TWPC) BBB-UUF3P-FWE Patch.esp"]
+    },
+    {"name": "Distractor1159.esp", "flags": 0, "masters": ["Distractor6498.esp", "Distractor8706.esp"]},
+    {
+      "name": "QuantumLab (MZ).esp",
+      "flags": 0,
+      "masters": ["Distractor0185.esm", "Purity Crash Fix.esp"]
+    },
+    {"name": "IMCN - The Pitt.esp", "flags": 0, "masters": []},
+    {"name": "3DNPC_Factory.esm", "flags": 1, "masters": []},
+    {"name": "Distractor7746.esp", "flags": 0, "masters": ["Distractor6388.esp"]},
+    {"name": "FACE3.esm", "flags": 1, "masters": []},
+    {
+      "name": "Distractor8706.esp",
+      "flags": 0,
+      "masters": ["UrgeWashingtonBoS.esp", "BriannaCompanion.esp"]
+    },
+    {"name": "Laboratory (BS & PL).esp", "flags": 0, "masters": []},
+    {
+      "name": "PiPBoy Cyan Light.esp",
+      "flags": 0,
+      "masters": [
+        "Scavenger World - Updated v0.08.esp",
+        "SaveHotKey.esp",
+        "GSoS - FOOK2 Open Beta - Combat and Sneaking Overhaul.esp"
+      ]
+    },
+    {"name": "Drone Cannon Fix.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6388.esp", "flags": 0, "masters": ["3DNPC_FO3_BrokenSteel.esp"]},
+    {
+      "name": "Creature Companion Fixes.esp",
+      "flags": 0,
+      "masters": ["Location 2 (Fort Constantine).esp", "Gore objects Plus.esp", "ZORTS - Disable FOOK2 activate.esp"]
+    },
+    {
+      "name": "RH_FWE_Bridge.esp",
+      "flags": 0,
+      "masters": [
+        "Vault 101 Revisited James Room.esp",
+        "Distractor4292.esp",
+        "FO3 Wanderers Edition - Optional Restore Tracers.esp"
+      ]
+    },
+    {"name": "FOOK2 - Project Beauty.esp", "flags": 0, "masters": []},
+    {"name": "ZORTS - Disable FOOK2 activate.esp", "flags": 0, "masters": []},
+    {"name": "RiPnO CorePatch.esp", "flags": 0, "masters": ["Distractor8204.esp"]},
+    {"name": "Distractor6498.esp", "flags": 0, "masters": []},
+    {"name": "20th Century v4 ALIVE (SuperMutant).esp", "flags": 0, "masters": ["Distractor0290.esm"]},
+    {"name": "Distractor2202.esm", "flags": 1, "masters": []},
+    {"name": "Mart's Mutant Mod.esm", "flags": 1, "masters": []},
+    {"name": "Fellout-Zeta.esp", "flags": 0, "masters": ["Real Radiation Suit FO3.esp"]},
+    {
+      "name": "Fairfax City Interiors.esp",
+      "flags": 0,
+      "masters": ["Chems and Meds Re-Textures Pack.esp"]
+    },
+    {"name": "CoolLasersMod.esp", "flags": 0, "masters": ["JIP Companions Command & Control.esp"]},
+    {
+      "name": "Slightly More Ammo (Explosive).esp",
+      "flags": 0,
+      "masters": ["3DNPC_Factory.esm", "Zeta.esm", "CALIBRxMerchant.esp"]
+    },
+    {
+      "name": "Enhanced Weather - Rain and Snow.esm",
+      "flags": 1,
+      "masters": ["Distractor3675.esm", "Distractor2984.esm"]
+    },
+    {
+      "name": "Laboratory (MZ).esp",
+      "flags": 0,
+      "masters": [
+        "Hi-Res Weapons & Ammo Textures - The Pitt.esp",
+        "JIP CC&C - Kelsey.esp",
+        "Mart's Mutant Mod - FWE Master Release + DLCs.esp"
+      ]
+    },
+    {"name": "PrototypePowerArmorUsesStimpaks.esp", "flags": 0, "masters": []},
+    {
+      "name": "IntoTheDeepWoods.esp",
+      "flags": 0,
+      "masters": ["GSoS - FOOK2 Open Beta - Combat and Sneaking Overhaul.esp", "Detect Traps - Perk.esp"]
+    },
+    {"name": "Distractor5345.esp", "flags": 0, "masters": ["moirared.esp", "RH_FWE_Bridge.esp"]},
+    {"name": "Replenishment.esp", "flags": 0, "masters": []},
+    {"name": "Distractor1254.esm", "flags": 1, "masters": ["Enhanced Weather - Rain and Snow.esm"]},
+    {
+      "name": "WeaponModKits - OperationAnchorage.esp",
+      "flags": 0,
+      "masters": ["Confessor Cromwell has a Break_EV.esp", "Gore objects Plus.esp"]
+    },
+    {"name": "ReillysRangerHelmetReward.esp", "flags": 0, "masters": []},
+    {"name": "Location 2 (Fort Constantine).esp", "flags": 0, "masters": []},
+    {"name": "AmyWong - CALIBR 1.3.esp", "flags": 0, "masters": ["BriannaCompanion.esp"]},
+    {"name": "Distractor0185.esm", "flags": 1, "masters": []},
+    {"name": "Tesla Metal Armor.esp", "flags": 0, "masters": []},
+    {"name": "Xepha's Dynamic Weather - Point Lookout.esp", "flags": 0, "masters": []},
+    {"name": "Fellout-Anchorage.esp", "flags": 0, "masters": ["Distractor0962.esm"]},
+    {"name": "Distractor1161.esp", "flags": 0, "masters": []},
+    {
+      "name": "Winterized_T51b_Patch.esp",
+      "flags": 0,
+      "masters": ["Distractor3494.esm", "3DNPC_FO3_BrokenSteel.esp"]
+    },
+    {"name": "BringBackBael.esp", "flags": 0, "masters": []},
+    {"name": "outcast_comp.esp", "flags": 0, "masters": []},
+    {"name": "Placable Lights v2.2.esp", "flags": 0, "masters": []},
+    {
+      "name": "Brahmin Dairy Products.esp",
+      "flags": 0,
+      "masters": ["overhead.esp", "3DNPC_Factory.esm", "WYB-DLC-Zeta.esp"]
+    },
+    {
+      "name": "RagdollOverhaulFo3.esp",
+      "flags": 0,
+      "masters": [
+        "Vault 101 Revisited James Room.esp",
+        "PiPBoy Blue Light.esp",
+        "Zumbs'_Overhauled_Real_Time_Security_minigames_enabled.esp"
+      ]
+    },
+    {
+      "name": "Blackened FWE + MMM + Project Beauty.esp",
+      "flags": 0,
+      "masters": ["Distractor3783.esm", "Vault 101 Revisited James Room.esp"]
+    },
+    {"name": "vaultgirlrp.esp", "flags": 0, "masters": ["Distractor4477.esm", "Distractor3783.esm"]},
+    {"name": "RHKBrisaAlmodovar - DLC.esp", "flags": 0, "masters": ["Distractor3494.esm"]},
+    {
+      "name": "DC Moods.esp",
+      "flags": 0,
+      "masters": ["RobCo Certified v2 Zeta Addon.esp", "Scout Outfits.esp", "Drone Cannon Fix.esp"]
+    },
+    {
+      "name": "Distractor2633.esp",
+      "flags": 0,
+      "masters": ["AmyWong - DLC04 Pt.Lookout.esp", "Purity Crash Fix.esp"]
+    },
+    {"name": "DarkerInteriorsZeta.esp", "flags": 0, "masters": []},
+    {"name": "PiPBoy Blue Light.esp", "flags": 0, "masters": []},
+    {
+      "name": "ArefuExpandedByAzar-FixEyes.esp",
+      "flags": 0,
+      "masters": ["Vault 101 Revisited James Room.esp", "Distractor3783.esm", "Distractor0185.esm"]
+    },
+    {"name": "EVE.esm", "flags": 1, "masters": []},
+    {"name": "FWE Ammo Weight for 20th Century.esp", "flags": 0, "masters": []},
+    {"name": "RobCo Certified v2 Impervious FWE.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3394.esp", "flags": 0, "masters": ["QuantumLab (MZ).esp", "Distractor0282.esm"]},
+    {
+      "name": "The Mantis Imperative - FlatVATS.esp",
+      "flags": 0,
+      "masters": [
+        "Mart's Mutant Mod - FWE Master Release + Project Beauty.esp",
+        "ZORTS - Content Destruction - Extreme.esp"
+      ]
+    },
+    {"name": "Scout Outfits.esp", "flags": 0, "masters": []},
+    {"name": "DLC Enemies Freedom.esp", "flags": 0, "masters": []},
+    {
+      "name": "Weld and Steel - Badges, only Weld hat.esp",
+      "flags": 0,
+      "masters": ["FO3 Error Fixes.esp"]
+    },
+    {"name": "FO3 Wanderers Edition - Optional VATS Halftime.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6865.esm", "flags": 1, "masters": []},
+    {"name": "SuperStim.esp", "flags": 0, "masters": []},
+    {
+      "name": "Mart's Mutant Mod.esp",
+      "flags": 0,
+      "masters": ["Distractor2633.esp", "Scout Outfits.esp", "Distractor1254.esm"]
+    },
+    {"name": "Distractor3675.esm", "flags": 1, "masters": []},
+    {"name": "Distractor0962.esm", "flags": 1, "masters": []},
+    {
+      "name": "ModBetterPArmorVanilla.esp",
+      "flags": 0,
+      "masters": ["Mart's Mutant Mod - FWE Master Release + Project Beauty.esp", "AmyWong - CALIBR 1.3.esp"]
+    },
+    {"name": "BaileysCrossingMetro.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor7766.esm",
+      "flags": 1,
+      "masters": ["RobCo Certified v2.esm", "Distractor4477.esm"]
+    },
+    {"name": "GaryHoloTape.esp", "flags": 0, "masters": []}
+  ],
+  "masterlist": null,
+  "userlist": null,
+  "prelude": null,
+  "real_masterlist": {
+    "repository": "fallout3",
+    "bundled_sha256": "4947d03d6e5dbe1e933d597eee467e7554fc5f744a207736c3964df12feb1f29",
+    "stripped_sha256": "a8493b5896496253944c7c9ce0902802cc48d540685706c768027b19e0218bfa",
+    "prelude_bundled_sha256": "d766b2d98565c2147bfeedf8df8385aae1c32731fc0b14b1bdb1ee54d1729711",
+    "prelude_stripped_sha256": "e4e8c81907defb24d03c7b22c8d9dc68186c6584f67aa75ce83727ff3758da85"
+  },
+  "expected": {
+    "order": [
+      "3DNPC_Factory.esm",
+      "RTS NW.esm",
+      "Distractor0962.esm",
+      "Distractor2984.esm",
+      "Lings.esm",
+      "Distractor9492.esm",
+      "Distractor3675.esm",
+      "Zeta.esm",
+      "EVE.esm",
+      "Point Lookout Reborn.esm",
+      "3DNPC_LittleBoBeep.esm",
+      "Distractor8851.esm",
+      "Distractor3494.esm",
+      "Distractor6953.esm",
+      "RobCo Certified v2.esm",
+      "Distractor0607.esm",
+      "Refurbishes [ALL].esm",
+      "Distractor0282.esm",
+      "Distractor3568.esm",
+      "Distractor3783.esm",
+      "Distractor7273.esm",
+      "Distractor4477.esm",
+      "EWE Energy Weapons Enhanced.esm",
+      "Distractor0290.esm",
+      "Enhanced Weather - Rain and Snow.esm",
+      "Distractor1254.esm",
+      "Distractor9787.esm",
+      "FACE3.esm",
+      "Distractor2202.esm",
+      "Mart's Mutant Mod.esm",
+      "Distractor0185.esm",
+      "Distractor6865.esm",
+      "Distractor7766.esm",
+      "CALIBRxMerchant.esp",
+      "BringBackBael.esp",
+      "CanterburyCommonsInteriors.esp",
+      "FO3 Error Fixes.esp",
+      "GSoS - FOOK2 Open Beta - Combat and Sneaking Overhaul.esp",
+      "Distractor2037.esp",
+      "AWOP4FO3BOEPatch.esp",
+      "IMCN - The Pitt.esp",
+      "Simply_Lockers_revYnotDrol.esp",
+      "tubRRCompound.esp",
+      "Blackened MMM + EVE.esp",
+      "AmyWong - CALIBR 1.2.esp",
+      "(TWPC) TMI-MMM-EVE-FWE Patch.esp",
+      "Menu Based Hacking & Picking.esp",
+      "RiPnO DLC03 Broken Steel.esp",
+      "3DNPC_FO3_BrokenSteel.esp",
+      "UrgeWashingtonBoS.esp",
+      "FO3 Wanderers Edition - Main File.esp",
+      "RobCo Certified v2 Zeta Addon.esp",
+      "Drone Cannon Fix.esp",
+      "Scout Outfits.esp",
+      "DC Moods.esp",
+      "Confessor Cromwell has a Break_EV.esp",
+      "moirared.esp",
+      "slaveraider_newlook.esp",
+      "(TWPC) BBB-UUF3P-FWE Patch.esp",
+      "Detect Traps - Perk.esp",
+      "JIP CC&C - Kelsey.esp",
+      "Distractor7837.esp",
+      "Distractor8746.esp",
+      "Vault 101 Revisited James Room.esp",
+      "ArefuExpandedByAzar-FixEyes.esp",
+      "Purity Crash Fix.esp",
+      "AmyWong - DLC04 Pt.Lookout.esp",
+      "Distractor2633.esp",
+      "Mart's Mutant Mod.esp",
+      "Placable Lights v2.2.esp",
+      "Mart's Mutant Mod - Master Menu Module.esp",
+      "The Mantis Imperative - Nasty Zeta No Scaling.esp",
+      "Distractor8733.esp",
+      "Distractor4279.esp",
+      "Distractor1925.esp",
+      "Chems and Meds Re-Textures Pack.esp",
+      "20th Century v5 ALIVE (Talon_Regulator).esp",
+      "vaultgirlrp.esp",
+      "RealisticBulletsWMKnoTracers.esp",
+      "WYB-DLC-PointLookout.esp",
+      "Distractor6552.esp",
+      "Distractor6388.esp",
+      "xCALIBR_ammo_Override_v1_01_for_20th Century Weapons -Plus- Reborn FWE-WMK-Calibr14_V1_70RC_18668.esp",
+      "AmyWong - DLC03 Broken Steel.esp",
+      "RH_IronSights - Cool Lasers.esp",
+      "FWEAlienWorkBenchFix.esp",
+      "cyber_meat.esp",
+      "BetterFrag Grenade Physics.esp",
+      "DUIF3Extras.esp",
+      "Flora Overhaul.esp",
+      "Laurens_Bathroom_poetry_V1.esp",
+      "Mart's Mutant Mod - FWE Master Release + DLCs.esp",
+      "Bottle That Water Alternative - Broken Steel.esp",
+      "RHKBrisaAlmodovar - DLC.esp",
+      "Xepha's Dynamic Weather - Broken Steel.esp",
+      "GH-HealingRebalanceMod_sleepscript.esp",
+      "overhead.esp",
+      "BriannaCompanion.esp",
+      "Distractor8706.esp",
+      "Distractor0477.esp",
+      "Distractor0909.esp",
+      "CantaburyCommonsGuards - DTO.esp",
+      "Real Radiation Suit FO3.esp",
+      "Fellout-Anchorage.esp",
+      "Fellout-Zeta.esp",
+      "Mart's Mutant Mod - FWE Master Release + Project Beauty.esp",
+      "Enhanced Weather - Weather Sounds in Interiors.esp",
+      "JIP CC&C - Crystal.esp",
+      "blackrock_shooter.esp",
+      "Refurbish [PL].esp",
+      "Clothed Sarah Lyons - Sleepwear.esp",
+      "ArefuExpandedByAzar-FixMisc.esp",
+      "GaryHoloTape.esp",
+      "royphilipsevilwmask.esp",
+      "ZORTS - Content Destruction - Extreme.esp",
+      "StreetLights - Wasteland.esp",
+      "Distractor4728.esp",
+      "DLC Enemies Freedom.esp",
+      "32S&W.esp",
+      "FWE(v.5.04)+WMK_weapons_xCALIBRified.esp",
+      "Xepha's Dynamic Weather - Anchorage.esp",
+      "Scenic_Loading_Background.esp",
+      "Arms_dealer_V1.esp",
+      "Phalanx-DogmeatEnemyTweaks.esp",
+      "PlasmaRifleAwesomefied.esp",
+      "RH_IronSights_Basic_BrokenSteelPlugin.esp",
+      "(TWPC) RRE-FWE.esp",
+      "MiscWeightFix.esp",
+      "7_HolsterForHandGunsV1_1.esp",
+      "(TWPC) TMIM-DIFF Patch.esp",
+      "Less Useless Karma Gifts.esp",
+      "BadAssBrats.esp",
+      "Named Wasteland.esp",
+      "JIP CC&C - Kat.esp",
+      "Scavenger World - Updated v0.08.esp",
+      "Temple of the Union Overhaul.esp",
+      "(TWPC) TMIC-FWE.esp",
+      "Distractor3485.esp",
+      "PAM.esp",
+      "Sarah Lyons Companion.esp",
+      "EZCompanion_Type-N.esp",
+      "Xepha's Dynamic Weather - Point Lookout.esp",
+      "Canterbury Commons Interiors Embiggened.esp",
+      "20th Century v4 ALIVE (SuperMutant).esp",
+      "Distractor0126.esp",
+      "Gore objects Plus.esp",
+      "WeaponModKits - OperationAnchorage.esp",
+      "WeaponModKits - PointLookout.esp",
+      "Distractor1495.esp",
+      "Distractor3209.esp",
+      "20th Century v4 ALIVE (Chinese Ghoul).esp",
+      "Weld and Steel - Badges.esp",
+      "BA_Repair_Xtras.esp",
+      "WYB-DLC-Zeta.esp",
+      "Dogmeat_WaitMegaton.esp",
+      "Zumbs'_Overhauled_Real_Time_Security_lockbash_only.esp",
+      "PiPBoy Blue Light.esp",
+      "mika_essential.esp",
+      "Zumbs'_Overhauled_Real_Time_Security_minigames_enabled.esp",
+      "WeaponModKits - FWE Optional Worn Weapons.esp",
+      "Choose your own hairstyle (load this last on FOMM).esp",
+      "SpiderAnts.esp",
+      "Hi-Res Weapons & Ammo Textures - The Pitt.esp",
+      "20th Century v5 ALIVE (SuperMutant).esp",
+      "Alternate Start - Roleplayers.esp",
+      "Distractor4856.esp",
+      "delaypl.esp",
+      "Headwraps Galore.esp",
+      "JIP Companions Command & Control.esp",
+      "T3T_MiscItemIcons.esp",
+      "SaveHotKey.esp",
+      "Distractor8204.esp",
+      "Miniguns Replacer.esp",
+      "COL Enclave Hell.esp",
+      "Enhanced Weather - Rain and Snow in Fallout.esp",
+      "Gore_No_More_Basic.esp",
+      "fasttravelfromindoors.esp",
+      "Scenic_Loading_Background_OperationAnchorageDLC.esp",
+      "Distractor4292.esp",
+      "20th Century v5 ALIVE (Vendor).esp",
+      "EnhVisionHK.esp",
+      "EWE DLC Addon.esp",
+      "FO3 Wanderers Edition - Optional Restore Tracers.esp",
+      "JIP CC&C - Sarah Lyons.esp",
+      "COL Enclave VER2.esp",
+      "MMM dog lover's mod.esp",
+      "Scavenger World - FWE Edition v0.08.esp",
+      "CharonImproved.esp",
+      "BottleBrahminMilk.esp",
+      "Phalanx-MainFollowerModule.esp",
+      "Flashlight-Performance.esp",
+      "CRAFTHelper_ReplaceWorkbenchScript.esp",
+      "Distractor6498.esp",
+      "Distractor1159.esp",
+      "QuantumLab (MZ).esp",
+      "Distractor7746.esp",
+      "Laboratory (BS & PL).esp",
+      "PiPBoy Cyan Light.esp",
+      "ZORTS - Disable FOOK2 activate.esp",
+      "Location 2 (Fort Constantine).esp",
+      "Creature Companion Fixes.esp",
+      "RH_FWE_Bridge.esp",
+      "FOOK2 - Project Beauty.esp",
+      "RiPnO CorePatch.esp",
+      "Fairfax City Interiors.esp",
+      "CoolLasersMod.esp",
+      "Slightly More Ammo (Explosive).esp",
+      "Laboratory (MZ).esp",
+      "PrototypePowerArmorUsesStimpaks.esp",
+      "IntoTheDeepWoods.esp",
+      "Distractor5345.esp",
+      "Replenishment.esp",
+      "ReillysRangerHelmetReward.esp",
+      "AmyWong - CALIBR 1.3.esp",
+      "Tesla Metal Armor.esp",
+      "Distractor1161.esp",
+      "Winterized_T51b_Patch.esp",
+      "outcast_comp.esp",
+      "Brahmin Dairy Products.esp",
+      "RagdollOverhaulFo3.esp",
+      "Blackened FWE + MMM + Project Beauty.esp",
+      "DarkerInteriorsZeta.esp",
+      "FWE Ammo Weight for 20th Century.esp",
+      "RobCo Certified v2 Impervious FWE.esp",
+      "Distractor3394.esp",
+      "The Mantis Imperative - FlatVATS.esp",
+      "Weld and Steel - Badges, only Weld hat.esp",
+      "FO3 Wanderers Edition - Optional VATS Halftime.esp",
+      "SuperStim.esp",
+      "ModBetterPArmorVanilla.esp",
+      "BaileysCrossingMetro.esp",
+      "Xepha's Darkened Interiors.esp",
+      "DK_BulletTime.esp",
+      "RH_IronSights_Vanilla_NewWeapons.esp",
+      "Armor Repair Kits PL - FO3.esp",
+      "Distractor6642.esp",
+      "PiPBoy Light Range x2.esp",
+      "RadioHotkey.esp"
+    ]
+  },
+  "groups_paths": []
+}

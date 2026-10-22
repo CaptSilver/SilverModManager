@@ -1,0 +1,1229 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": 1,
+  "game_type": "Skyrim",
+  "format": "Tes4",
+  "header_version": 0.94,
+  "name": "skyrim_seed_001",
+  "plugins": [
+    {
+      "name": "CrossbowsRevamped.esp",
+      "flags": 0,
+      "masters": ["TSMaleWarPaint.esp", "Improved Hjerim V2.5.esp", "Castle Brennenburgh.esp"]
+    },
+    {
+      "name": "BoundGear.esp",
+      "flags": 0,
+      "masters": ["Distractor0446.esm", "Distractor6465.esm", "Distractor5935.esm"]
+    },
+    {
+      "name": "Immersive Citizens - AI Overhaul Lite.esp",
+      "flags": 0,
+      "masters": ["Pre PaMa CCOR Patch.esp", "Distractor8484.esp"]
+    },
+    {
+      "name": "BabettesFeast - IMCN.esp",
+      "flags": 0,
+      "masters": ["Distractor5935.esm", "RWL Option - 3x Giant toes.esp"]
+    },
+    {
+      "name": "1nivWICSkyCloaksPatch.esp",
+      "flags": 0,
+      "masters": ["Distractor0961.esm", "Bugs that bug me.esp", "Distractor6938.esm"]
+    },
+    {"name": "CMCompanionLevel.esp", "flags": 0, "masters": []},
+    {"name": "EASamhairE_1_1.esm", "flags": 1, "masters": []},
+    {"name": "Distractor4172.esm", "flags": 1, "masters": []},
+    {"name": "Gold Worth Something.esp", "flags": 0, "masters": []},
+    {
+      "name": "SilentRuneSpellsUncap_v100.esp",
+      "flags": 0,
+      "masters": ["Distractor4691.esp", "Beards.esp", "more_Travelers.esm"]
+    },
+    {"name": "Dungeons 4.esp", "flags": 0, "masters": ["Requiem - Heavy Armory.esp"]},
+    {
+      "name": "BetterQuestObjectives-AlternateStartPatch.esp",
+      "flags": 0,
+      "masters": ["Complete Crafting Overhaul_Remade.esp", "The Great City of Falkreath.esp"]
+    },
+    {"name": "SaderHorses.esp", "flags": 0, "masters": ["Shrine of Azura LOD Fix.esp"]},
+    {
+      "name": "RealisticRoomRental-Basic.esp",
+      "flags": 0,
+      "masters": ["Immersive Citizens - AI Overhaul Lite.esp"]
+    },
+    {"name": "Vigilant of Stendarr Quests Master.esm", "flags": 1, "masters": ["Distractor6938.esm"]},
+    {
+      "name": "GuardAnimationsGDO.esp",
+      "flags": 0,
+      "masters": ["InfiniteShouts.esp", "Gold Worth Something.esp", "HousecarlWhiterun Sexy Lydia v0.5.esp"]
+    },
+    {"name": "Real Wildlife Skyrim 0.1.esp", "flags": 0, "masters": ["Distractor6938.esm"]},
+    {"name": "Legionettes.esp", "flags": 0, "masters": ["Vigilant of Stendarr Quests Master.esm"]},
+    {"name": "Dreagonsreach bottle fix.esp", "flags": 0, "masters": []},
+    {"name": "Immersive Sounds - Compendium.esp", "flags": 0, "masters": []},
+    {
+      "name": "DragonsReach_Hideout.esm",
+      "flags": 1,
+      "masters": ["ZZZ_Stenvar_Replacer_THAIDEN.esm", "Distractor6974.esm", "Distractor5780.esm"]
+    },
+    {"name": "Distractor6802.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor6974.esm",
+      "flags": 1,
+      "masters": ["Distractor5359.esm", "Distractor0961.esm", "Distractor3403.esm"]
+    },
+    {"name": "TMasks-JudgmentDay.esp", "flags": 0, "masters": []},
+    {"name": "Ebonita.esp", "flags": 0, "masters": []},
+    {"name": "Distractor9438.esp", "flags": 0, "masters": []},
+    {"name": "CAMPS2.esp", "flags": 0, "masters": ["Distractor9881.esp"]},
+    {"name": "CK's Companions.esm", "flags": 1, "masters": []},
+    {
+      "name": "Requiem - Book Covers Skyrim.esp",
+      "flags": 0,
+      "masters": ["Doom Heavy Set.esp", "Distractor4144.esp", "No Permanent Essentials Redux.esp"]
+    },
+    {
+      "name": "Distractor7038.esp",
+      "flags": 0,
+      "masters": ["Better Stealth AI for Followers.esp", "Bigger Cities and Villages0.1.1.esp"]
+    },
+    {"name": "The Dance of Death - Ultimate Edition.esp", "flags": 0, "masters": ["Distractor6938.esm"]},
+    {"name": "Immersive Ivarstead.esp", "flags": 0, "masters": []},
+    {
+      "name": "Helarchen Creek - No Snow Under the Roof.esp",
+      "flags": 0,
+      "masters": ["Distractor3403.esm", "The Great City of Falkreath.esp"]
+    },
+    {"name": "Realistic Lighting Overhaul - Major City Interiors.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor4432.esp",
+      "flags": 0,
+      "masters": ["brawlbug-plugin.esp", "Mage Tower.esp", "GELO_Patcher_Build.esp"]
+    },
+    {"name": "AOS2_WetandCold Patch.esp", "flags": 0, "masters": []},
+    {"name": "Vex.esp", "flags": 0, "masters": ["Khagra - Ghorbash Replacer.esp", "skymo-dawn.esp"]},
+    {"name": "MenuShoutsInDragonsLanguage.esp", "flags": 0, "masters": []},
+    {"name": "BetterRiften.esp", "flags": 0, "masters": ["Distractor3153.esp", "TheChoiceIsYours.esp"]},
+    {"name": "BentPines.esp", "flags": 0, "masters": []},
+    {"name": "RTSforSkyrim.esp", "flags": 0, "masters": []},
+    {"name": "PCE - Inconsequential NPCs Patch.esp", "flags": 0, "masters": []},
+    {"name": "DynDOLOD.esp", "flags": 0, "masters": ["Distractor7572.esm", "FAMP2.esp"]},
+    {
+      "name": "Distractor4144.esp",
+      "flags": 0,
+      "masters": ["kuerteeEatAndSleep.esp", "HarvestOverhaulCreaturesDogMeatFree.esp", "ELFX - Exteriors.esp"]
+    },
+    {"name": "Distractor1281.esp", "flags": 0, "masters": []},
+    {"name": "Winterhold Fully Restored.esp", "flags": 0, "masters": ["towPov.esp", "InfinityHall.esp"]},
+    {
+      "name": "Frodo Sam Merry & Peppin.Esp",
+      "flags": 0,
+      "masters": ["KnapsackEnhanced.esp", "More Draconic Dragon Aspect - Flying Mod Addon.esp"]
+    },
+    {"name": "Ustengrav gate removal - alternate.esp", "flags": 0, "masters": ["Distractor0961.esm"]},
+    {"name": "Distractor3153.esp", "flags": 0, "masters": []},
+    {"name": "Better Mills Tetxures - ELFX.esp", "flags": 0, "masters": []},
+    {
+      "name": "Chesko_Step418.esp",
+      "flags": 0,
+      "masters": [
+        "WardrobeRoom.esp",
+        "More Draconic Dragon Aspect - Flying Mod Addon.esp",
+        "DF127EnchantedArrowsandBolts.esp"
+      ]
+    },
+    {"name": "Better Sorting 1.12 Sboub édition.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4966.esm", "flags": 1, "masters": []},
+    {"name": "alb084ImmersiveFollowers.esp", "flags": 0, "masters": ["VolkiharTablewareReplacerA.esp"]},
+    {"name": "SDA RDO Patch.esp", "flags": 0, "masters": ["ThalmorAncanoSummon.esp"]},
+    {"name": "Distractor3403.esm", "flags": 1, "masters": []},
+    {"name": "DineWithFollowers.esp", "flags": 0, "masters": ["TheChoiceIsYours.esp"]},
+    {"name": "Distractor8113.esm", "flags": 1, "masters": ["CK's Companions.esm", "Distractor6938.esm"]},
+    {"name": "BetterStaffofCorruptionMED.esp", "flags": 0, "masters": []},
+    {"name": "PrvtI_HeavyArmory.esp", "flags": 0, "masters": ["Atmospheric Whiterun.esp"]},
+    {
+      "name": "Shrine of Azura LOD Fix.esp",
+      "flags": 0,
+      "masters": ["Distractor0961.esm", "Distractor4691.esp"]
+    },
+    {"name": "HmmWhatToWear.esp", "flags": 0, "masters": []},
+    {"name": "DF127EnchantedArrowsandBolts.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6938.esm", "flags": 1, "masters": ["DeadlyDragons.esm"]},
+    {"name": "Pre PaMa WAFR Patch.esp", "flags": 0, "masters": []},
+    {
+      "name": "Barrels and Crates.esp",
+      "flags": 0,
+      "masters": ["DeadlyDragons.esm", "furrycommentfix.esp"]
+    },
+    {"name": "ImmersiveLoot - Dragonborn.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4691.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5052.esp", "flags": 0, "masters": ["DeadManor 1.1.esp"]},
+    {"name": "Distractor6465.esm", "flags": 1, "masters": []},
+    {"name": "RIP88_Pool_Furniture_Sample.esp", "flags": 0, "masters": []},
+    {"name": "Improved Hjerim V2.5.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8632.esp", "flags": 0, "masters": []},
+    {"name": "Lighter Tools.esp", "flags": 0, "masters": []},
+    {"name": "GreatTalosHunt.esp", "flags": 0, "masters": ["Legionettes.esp", "HF-MoveSpouse.esp"]},
+    {
+      "name": "Weapons & Armor_TrueOrcish&DaedricWeapons.esp",
+      "flags": 0,
+      "masters": ["EASamhairE_1_1.esm", "Distractor9817.esm", "Distractor5472.esm"]
+    },
+    {
+      "name": "DragonfireCrossbow02.esp",
+      "flags": 0,
+      "masters": ["Distractor6712.esm", "someprivacyplease_bedroomwall_lakeview.esp", "WereWolfRing.esp"]
+    },
+    {"name": "Distractor8877.esp", "flags": 0, "masters": ["InfinityHall.esp"]},
+    {
+      "name": "CraftingSupplies_AIO_ALL.esp",
+      "flags": 0,
+      "masters": ["Prometheus_NSUTR BDS Patch.esp", "WereWolfRing.esp", "EASamhairE_1_1.esm"]
+    },
+    {"name": "BloodPotionRecipe.esp", "flags": 0, "masters": []},
+    {
+      "name": "PerkUP-Destruction.esp",
+      "flags": 0,
+      "masters": ["Distractor4348.esp", "Distractor9438.esp", "lakeviewdock1.2.esp"]
+    },
+    {"name": "NoDeathMod.esp", "flags": 0, "masters": ["SDA RDO Patch.esp"]},
+    {
+      "name": "Blackout_Skyrim.esp",
+      "flags": 0,
+      "masters": ["Distractor6974.esm", "Distractor8113.esm", "Distractor3153.esp"]
+    },
+    {
+      "name": "Dwarven War Cross Bow.esp",
+      "flags": 0,
+      "masters": ["tinyangrytrolls.esp", "DropThatGold.esp"]
+    },
+    {
+      "name": "Witcher2-v3.5 Aedirn-Whiterun.esp",
+      "flags": 0,
+      "masters": ["Vivid Snow.esp", "IMCN_CookingExpanded-FAMP.esp"]
+    },
+    {"name": "more_Travelers.esm", "flags": 1, "masters": []},
+    {
+      "name": "Essential Markarth horses.esp",
+      "flags": 0,
+      "masters": ["NonEssentialChildren.esp", "Distractor3153.esp", "Distractor1170.esm"]
+    },
+    {"name": "Distractor4675.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor6679.esp",
+      "flags": 0,
+      "masters": ["Distractor0890.esp", "Vex.esp", "WereWolfRing.esp"]
+    },
+    {
+      "name": "Distractor2453.esp",
+      "flags": 0,
+      "masters": ["Ustengrav gate removal - alternate.esp", "WereWolfRing.esp", "Nilheim_MiscQuestExpansion.esp"]
+    },
+    {"name": "hjerim_home.esp", "flags": 0, "masters": ["MeekoHuskyArmored.esp"]},
+    {
+      "name": "WolfArmorLightSA.esp",
+      "flags": 0,
+      "masters": ["BlutKult_Zwergenaexte.esp", "Distractor7811.esp", "DwarvenPowerArmor.esp"]
+    },
+    {
+      "name": "Names - enemies - impersonal  completely.esp",
+      "flags": 0,
+      "masters": ["Immersive Ivarstead.esp", "dD-No Spinning Death Animation Merged.esp"]
+    },
+    {"name": "furrycommentfix.esp", "flags": 0, "masters": ["Distractor5780.esm"]},
+    {"name": "KnapsackEnhanced.esp", "flags": 0, "masters": []},
+    {
+      "name": "lowerlevellegendaryandrevereddragons.esp",
+      "flags": 0,
+      "masters": ["DwarvenPowerArmor.esp"]
+    },
+    {
+      "name": "Better Stealth AI for Followers.esp",
+      "flags": 0,
+      "masters": ["Abundant Enchantments.esp"]
+    },
+    {"name": "The Great City of Falkreath.esp", "flags": 0, "masters": []},
+    {"name": "skyrimovens.esp", "flags": 0, "masters": ["Distractor3403.esm"]},
+    {"name": "Khagra - Ghorbash Replacer.esp", "flags": 0, "masters": []},
+    {"name": "Beards.esp", "flags": 0, "masters": []},
+    {"name": "Distractor9176.esp", "flags": 0, "masters": []},
+    {"name": "CastleDrakhur_masterfle.esm", "flags": 1, "masters": ["ZZZ_Stenvar_Replacer_THAIDEN.esm"]},
+    {"name": "No Permanent Essentials Redux.esp", "flags": 0, "masters": []},
+    {"name": "GELO_Patcher_Build.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0961.esm", "flags": 1, "masters": []},
+    {"name": "ZZZ_Stenvar_Replacer_THAIDEN.esm", "flags": 1, "masters": []},
+    {
+      "name": "SkyReVagabondArmorPlugin.esp",
+      "flags": 0,
+      "masters": ["Essential Markarth horses.esp", "Distractor6802.esp"]
+    },
+    {"name": "Lorecraft - Dragon Bone Weapons.esp", "flags": 0, "masters": ["Beards.esp"]},
+    {
+      "name": "DeadThrall.esp",
+      "flags": 0,
+      "masters": ["DragonsoulWeapons.esp", "Langsam wirkende Tränke.esp", "Better Stealth AI for Followers.esp"]
+    },
+    {
+      "name": "DeadlyDragonsCreature.esp",
+      "flags": 0,
+      "masters": ["Distractor6938.esm", "EASamhairE_1_1.esm", "Distractor2902.esm"]
+    },
+    {"name": "tinyangrytrolls.esp", "flags": 0, "masters": []},
+    {"name": "cao_DweSchematicsCheat.esp", "flags": 0, "masters": []},
+    {"name": "CK's Improved Windhelm.esp", "flags": 0, "masters": []},
+    {"name": "HeroYsgramorSummon.esp", "flags": 0, "masters": ["Better Followers - SBP.esp"]},
+    {"name": "Distractor6712.esm", "flags": 1, "masters": []},
+    {"name": "Vivid Snow.esp", "flags": 0, "masters": ["Distractor3403.esm", "Distractor5935.esm"]},
+    {
+      "name": "Immersive Dragon Bridge.esp",
+      "flags": 0,
+      "masters": ["Prometheus_NSUTR BDS Patch.esp", "Distractor3041.esp", "XCES.esp"]
+    },
+    {"name": "MorthalFortified.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8484.esp", "flags": 0, "masters": []},
+    {
+      "name": "dD-No Spinning Death Animation Merged.esp",
+      "flags": 0,
+      "masters": ["CandleLight-Minimum.esp", "BlutKult_Zwergenaexte.esp"]
+    },
+    {"name": "Distractor6212.esp", "flags": 0, "masters": []},
+    {
+      "name": "Whitewatch Tower.esp",
+      "flags": 0,
+      "masters": ["Jezebel.esp", "Prometheus_NSUTR BDS Patch.esp", "BS_DLC_patch.esp"]
+    },
+    {
+      "name": "Undeath.esp",
+      "flags": 0,
+      "masters": ["Immersive Ivarstead.esp", "Distractor6938.esm", "HousecarlWhiterun Sexy Lydia v0.5.esp"]
+    },
+    {"name": "FriendlyCreaturesv1.1.esp", "flags": 0, "masters": []},
+    {"name": "Realistic-Voice.esp", "flags": 0, "masters": []},
+    {"name": "Vr - Guard Comment Tweak.esp", "flags": 0, "masters": []},
+    {"name": "Drinking Fountains of Skyrim.esp", "flags": 0, "masters": ["BasicHorseRidingAI.esp"]},
+    {
+      "name": "CFTO-Lanterns.esp",
+      "flags": 0,
+      "masters": ["SilentRuneSpellsUncap_v100.esp", "The Dance of Death - Ultimate Edition.esp"]
+    },
+    {"name": "Distractor8930.esp", "flags": 0, "masters": []},
+    {
+      "name": "SkyRe_Plugin_isilNarsil.esp",
+      "flags": 0,
+      "masters": ["Immersive Citizens - AI Overhaul Lite.esp", "Distractor8113.esm", "MasculinizedLevelListsDG.esp"]
+    },
+    {"name": "Distractor7009.esp", "flags": 0, "masters": ["Distractor3153.esp"]},
+    {"name": "Vivid Snow Physical.esp", "flags": 0, "masters": []},
+    {"name": "BalancedCombat.esp", "flags": 0, "masters": []},
+    {"name": "SexLabAroused.esm", "flags": 1, "masters": []},
+    {"name": "ORM-Arvak.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor2255.esp",
+      "flags": 0,
+      "masters": ["Distractor5703.esm", "Distractor9817.esm", "Legionettes.esp"]
+    },
+    {
+      "name": "Blacksmiths Hideout - Honeyside Upgrade (no dialogue).esp",
+      "flags": 0,
+      "masters": ["BetterRiften.esp", "Distractor8181.esp"]
+    },
+    {"name": "Abundant Enchantments.esp", "flags": 0, "masters": []},
+    {
+      "name": "Domino_MudcrabMerchant.esp",
+      "flags": 0,
+      "masters": ["CampNewZainab.esp", "Lorecraft - Dragon Bone Weapons.esp", "CUYC_CleanUpYourCorpses.esp"]
+    },
+    {"name": "Atlas Dragonborn.esp", "flags": 0, "masters": []},
+    {"name": "DeadManor 1.1.esp", "flags": 0, "masters": []},
+    {"name": "towPov.esp", "flags": 0, "masters": []},
+    {
+      "name": "Nine_Divines_Amulet_nonOP_1.1.esp",
+      "flags": 0,
+      "masters": ["Distractor2414.esp", "lakeviewdock1.2.esp", "Brawl Bugs CE.esp"]
+    },
+    {"name": "BS-Balanced_Magic_BETA_2_0.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4400.esm", "flags": 1, "masters": []},
+    {"name": "BasicHorseRidingAI.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5208.esp", "flags": 0, "masters": []},
+    {"name": "BlutKult_Zwergenaexte.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3995.esp", "flags": 0, "masters": []},
+    {
+      "name": "Spell Absorb Fix.esp",
+      "flags": 0,
+      "masters": ["FourSeasonsInn.esp", "Distractor1854.esp", "Distractor3913.esp"]
+    },
+    {"name": "Candle Pond Ranch.esp", "flags": 0, "masters": []},
+    {"name": "Solitude Expansion.esp", "flags": 0, "masters": ["GeneralStores.esm"]},
+    {"name": "Distractor1170.esm", "flags": 1, "masters": []},
+    {"name": "RaceMenuMimic.esp", "flags": 0, "masters": []},
+    {
+      "name": "Chesko_Frostfall.esp",
+      "flags": 0,
+      "masters": ["DragonsReach_Hideout.esm", "DeadlyDragonsCreature.esp", "Distractor9817.esm"]
+    },
+    {"name": "TGBC.esp", "flags": 0, "masters": []},
+    {"name": "fishchickenlodge.esp", "flags": 0, "masters": []},
+    {"name": "ImprovedScImpUniforms - Armor Base.esp", "flags": 0, "masters": []},
+    {
+      "name": "Immersive Encounters - Open Cities Patch.esp",
+      "flags": 0,
+      "masters": ["Complete Crafting Overhaul_Remade.esp"]
+    },
+    {
+      "name": "Distractor7811.esp",
+      "flags": 0,
+      "masters": ["Distractor3153.esp", "The Great City of Falkreath.esp"]
+    },
+    {"name": "Nilheim_MiscQuestExpansion.esp", "flags": 0, "masters": ["HeartBreaker.esp"]},
+    {"name": "Deleveled Skyrim - Enemies Wildlife.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor3120.esp",
+      "flags": 0,
+      "masters": ["SilentRuneSpellsUncap_v100.esp", "hjerim_home.esp", "Distractor0446.esm"]
+    },
+    {
+      "name": "DHuntress.esp",
+      "flags": 0,
+      "masters": ["ThalmorAncanoSummon.esp", "AOS2_WetandCold Patch.esp"]
+    },
+    {"name": "Headbomb's Better Sorting - Potions (Normal Weight).esp", "flags": 0, "masters": []},
+    {
+      "name": "Override Sneak.esp",
+      "flags": 0,
+      "masters": ["Distractor0961.esm", "RealisticWhiterun.esp"]
+    },
+    {"name": "Immersive Dawnguard.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5626.esp", "flags": 0, "masters": []},
+    {
+      "name": "RealisticWhiterun.esp",
+      "flags": 0,
+      "masters": ["Distractor4966.esm", "Distractor4400.esm", "BoundGear.esp"]
+    },
+    {"name": "Distractor2965.esp", "flags": 0, "masters": ["CaranthirTowerReborn.esp"]},
+    {"name": "timek_Yumi.esp", "flags": 0, "masters": ["Serenity.esp"]},
+    {"name": "Pre PaMa CCOR Patch.esp", "flags": 0, "masters": ["Beards.esp"]},
+    {"name": "Perk_Heavy_Armor_Tree_Redone_No_Stagger.esp", "flags": 0, "masters": []},
+    {
+      "name": "Vilkas.esp",
+      "flags": 0,
+      "masters": ["KnapsackEnhanced.esp", "ShShortswords.esp", "CompanionsShields.esp"]
+    },
+    {"name": "Mage Tower.esp", "flags": 0, "masters": []},
+    {"name": "Improved Shields.esp", "flags": 0, "masters": []},
+    {"name": "BS_DLC_patch.esp", "flags": 0, "masters": []},
+    {"name": "Forge In Every House.esp", "flags": 0, "masters": []},
+    {
+      "name": "SMIM-ShackRoofFixesDragonborn.esp",
+      "flags": 0,
+      "masters": ["tinyangrytrolls.esp", "Distractor9817.esm", "Pre PaMa CCOR Patch.esp"]
+    },
+    {"name": "Distractor2354.esp", "flags": 0, "masters": []},
+    {"name": "SkyReNicoroshiCreationsPlugin.esp", "flags": 0, "masters": []},
+    {"name": "ELFX - Exteriors.esp", "flags": 0, "masters": []},
+    {"name": "Breezehome Mannequins.esp", "flags": 0, "masters": []},
+    {"name": "TheChoiceIsYours.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5092.esp", "flags": 0, "masters": ["CaranthirTowerReborn.esp"]},
+    {"name": "betterwards-nostagger.esp", "flags": 0, "masters": []},
+    {"name": "AmbrosiaFashions.esp", "flags": 0, "masters": []},
+    {
+      "name": "HBR_Argonian_Replacer.esp",
+      "flags": 0,
+      "masters": [
+        "The Dance of Death - Ultimate Edition.esp",
+        "Complete Crafting Overhaul_Remade.esp",
+        "CMCompanionLevel.esp"
+      ]
+    },
+    {
+      "name": "DragonplateHelmFix.esp",
+      "flags": 0,
+      "masters": ["Immersive Sounds - Compendium.esp", "Distractor9438.esp"]
+    },
+    {
+      "name": "CaranthirTowerReborn.esp",
+      "flags": 0,
+      "masters": ["ClimatesOfTamriel-Nights-Level-3.esp", "Distractor3403.esm", "Distractor5935.esm"]
+    },
+    {"name": "DYNAVISION Dynamic Depth of Field.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2902.esm", "flags": 1, "masters": []},
+    {"name": "NotSoFast-MainQuest.esp", "flags": 0, "masters": []},
+    {"name": "skymo-dawn.esp", "flags": 0, "masters": []},
+    {
+      "name": "GeneralStores.esm",
+      "flags": 1,
+      "masters": ["ZZZ_Stenvar_Replacer_THAIDEN.esm", "Distractor6465.esm"]
+    },
+    {"name": "Distractor4919.esp", "flags": 0, "masters": []},
+    {"name": "Kate - AnimPack 1HWeapShield.esp", "flags": 0, "masters": []},
+    {
+      "name": "Ordinator - Perks of Skyrim.esp",
+      "flags": 0,
+      "masters": ["ImprovedScImpUniforms - Armor Base.esp"]
+    },
+    {"name": "Distractor0505.esp", "flags": 0, "masters": ["ELFX - Exteriors.esp"]},
+    {"name": "HmmWhatToWearMerged.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor2414.esp",
+      "flags": 0,
+      "masters": ["Distractor4348.esp", "hearthfireextended.esp"]
+    },
+    {"name": "HeartBreaker.esp", "flags": 0, "masters": []},
+    {
+      "name": "attack commitment movement speed fluid 3.esp",
+      "flags": 0,
+      "masters": ["Serenity.esp", "furrycommentfix.esp"]
+    },
+    {
+      "name": "DragonsoulWeapons.esp",
+      "flags": 0,
+      "masters": ["Distractor5472.esm", "Distractor5340.esp", "Immersive Sounds - Compendium.esp"]
+    },
+    {"name": "Sky Haven Teleporter 1.2.esp", "flags": 0, "masters": []},
+    {"name": "Complete Crafting Overhaul_Remade.esp", "flags": 0, "masters": ["Distractor4172.esm"]},
+    {
+      "name": "Distractor5340.esp",
+      "flags": 0,
+      "masters": ["hearthfireextended.esp", "Vigilant of Stendarr Quests Master.esm"]
+    },
+    {"name": "cryptOfSkaldivar.esp", "flags": 0, "masters": ["RIP88_Pool_Furniture_Sample.esp"]},
+    {"name": "masteredmagickaboundweapons.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor9223.esm",
+      "flags": 1,
+      "masters": ["ZZZ_Stenvar_Replacer_THAIDEN.esm", "Distractor5359.esm", "Distractor6938.esm"]
+    },
+    {"name": "RVL Size Reduction.esp", "flags": 0, "masters": []},
+    {
+      "name": "Juquinha-armory.esp",
+      "flags": 0,
+      "masters": ["WereWolfRing.esp", "Wintersun - Faiths of Skyrim.esp"]
+    },
+    {"name": "Distractor8181.esp", "flags": 0, "masters": []},
+    {"name": "Requiem - Rustic Soulgems - ISC.esp", "flags": 0, "masters": []},
+    {"name": "Paralyze-1.1b.esp", "flags": 0, "masters": []},
+    {
+      "name": "Henrys Ring of Light v1-0.esp",
+      "flags": 0,
+      "masters": ["dD-No Spinning Death Animation Merged.esp"]
+    },
+    {"name": "SkyrimFixes.esp", "flags": 0, "masters": []},
+    {"name": "IMCN_CookingExpanded-FAMP.esp", "flags": 0, "masters": []},
+    {
+      "name": "TSMaleWarPaint.esp",
+      "flags": 0,
+      "masters": ["Shrine of Azura LOD Fix.esp", "CandleLight-Minimum.esp"]
+    },
+    {"name": "Ramen.esp", "flags": 0, "masters": []},
+    {"name": "Treebugfix.esp", "flags": 0, "masters": []},
+    {
+      "name": "RASS - Visual Effects.esp",
+      "flags": 0,
+      "masters": ["Blacksmiths Hideout - Honeyside Upgrade.esp"]
+    },
+    {
+      "name": "Langsam wirkende Tränke.esp",
+      "flags": 0,
+      "masters": ["SilentRuneSpellsUncap_v100.esp", "RealisticWhiterun.esp"]
+    },
+    {"name": "Distractor0446.esm", "flags": 1, "masters": ["Distractor3403.esm", "Distractor0961.esm"]},
+    {
+      "name": "MasculinizedLevelListsDG.esp",
+      "flags": 0,
+      "masters": ["The Dance of Death - Ultimate Edition.esp"]
+    },
+    {"name": "PerkUP-Lockpicking.esp", "flags": 0, "masters": []},
+    {"name": "WardrobeRoom.esp", "flags": 0, "masters": ["Distractor6974.esm"]},
+    {"name": "LakeviewManorRoad.esp", "flags": 0, "masters": []},
+    {
+      "name": "RWL Option - 3x Giant toes.esp",
+      "flags": 0,
+      "masters": ["masteredmagickaboundweapons.esp", "Bugs that bug me.esp"]
+    },
+    {"name": "LushRiverwood.esp", "flags": 0, "masters": ["Mage Tower.esp"]},
+    {"name": "FAMP2.esp", "flags": 0, "masters": ["Distractor6938.esm", "WereWolfRing.esp"]},
+    {"name": "CompanionsShields.esp", "flags": 0, "masters": []},
+    {"name": "Castle Brennenburgh.esp", "flags": 0, "masters": []},
+    {"name": "DoggyDoors.esp", "flags": 0, "masters": ["BetterRiften.esp", "PrvtI_HeavyArmory.esp"]},
+    {
+      "name": "BladesBolarSummon.esp",
+      "flags": 0,
+      "masters": ["BoundGear.esp", "Distractor6712.esm", "Distractor3041.esp"]
+    },
+    {"name": "unicorncave.esp", "flags": 0, "masters": []},
+    {"name": "More Powerful Dragons Leveled Dragons.esp", "flags": 0, "masters": []},
+    {"name": "ChildrenOSEyesHFV3A.esp", "flags": 0, "masters": ["Distractor8998.esp"]},
+    {"name": "Castle Draco.esp", "flags": 0, "masters": []},
+    {"name": "AOS2_Purity Patch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0521.esp", "flags": 0, "masters": []},
+    {
+      "name": "Invisible Aetherial Crown.esp",
+      "flags": 0,
+      "masters": ["NPO Module - Crossbows.esp", "Distractor3153.esp", "Distractor4013.esm"]
+    },
+    {"name": "Override Smithing.esp", "flags": 0, "masters": []},
+    {"name": "DropThatGold.esp", "flags": 0, "masters": ["Hjerimfix.esp", "Barrels and Crates.esp"]},
+    {"name": "StaticMeshImprovementMod.esp", "flags": 0, "masters": []},
+    {
+      "name": "ShShortswords.esp",
+      "flags": 0,
+      "masters": ["Vigilant of Stendarr Quests Master.esm", "SilentRuneSpellsUncap_v100.esp"]
+    },
+    {
+      "name": "High Level Enemies - Dragonborn.esp",
+      "flags": 0,
+      "masters": [
+        "The Dance of Death - Ultimate Edition.esp",
+        "Distractor4400.esm",
+        "Better Stealth AI for Followers.esp"
+      ]
+    },
+    {"name": "BalancedHeroWeps.esp", "flags": 0, "masters": []},
+    {"name": "CombatMoraleNoLootBag.esp", "flags": 0, "masters": []},
+    {"name": "greatweapon_speedfix.esp", "flags": 0, "masters": []},
+    {
+      "name": "ENB Weather - Exterior Fog Plugin.esp",
+      "flags": 0,
+      "masters": ["MasculinizedLevelListsDG.esp"]
+    },
+    {"name": "Prides of Skyrim.esp", "flags": 0, "masters": ["HeartBreaker.esp", "Distractor9438.esp"]},
+    {"name": "InfiniteShouts.esp", "flags": 0, "masters": []},
+    {
+      "name": "Wintersun - Faiths of Skyrim.esp",
+      "flags": 0,
+      "masters": ["Ustengrav gate removal - alternate.esp"]
+    },
+    {"name": "Mudcrab Farm.esp", "flags": 0, "masters": []},
+    {"name": "MorokeiFix.esp", "flags": 0, "masters": []},
+    {"name": "Miner's Clothes Variant Fix.esp", "flags": 0, "masters": ["Dreagonsreach bottle fix.esp"]},
+    {
+      "name": "NoEnchThievesGuild.esp",
+      "flags": 0,
+      "masters": ["Weapons & Armor_TrueOrcish&DaedricWeapons.esp"]
+    },
+    {"name": "Blacksmiths Hideout - Honeyside Upgrade.esp", "flags": 0, "masters": []},
+    {"name": "Distractor7572.esm", "flags": 1, "masters": []},
+    {
+      "name": "Prometheus_NSUTR BDS Patch.esp",
+      "flags": 0,
+      "masters": ["0db2SECOND.esm", "Beards.esp", "furrycommentfix.esp"]
+    },
+    {"name": "WereWolfRing.esp", "flags": 0, "masters": []},
+    {
+      "name": "CUYC_CleanUpYourCorpses.esp",
+      "flags": 0,
+      "masters": ["CraftingSupplies_AIO_ALL.esp", "Kate - AnimPack 1HWeapShield.esp", "DeadManor 1.1.esp"]
+    },
+    {"name": "SummonFollowers.esp", "flags": 0, "masters": ["Ustengrav gate removal - alternate.esp"]},
+    {
+      "name": "HousecarlWhiterun Sexy Lydia v0.5.esp",
+      "flags": 0,
+      "masters": [
+        "Helarchen Creek - No Snow Under the Roof.esp",
+        "VolkiharTablewareReplacerA.esp",
+        "The Great City of Falkreath.esp"
+      ]
+    },
+    {"name": "NPO Module - Crossbows.esp", "flags": 0, "masters": ["hearthfireextended.esp"]},
+    {
+      "name": "EasierRidersDungeonPack.esp",
+      "flags": 0,
+      "masters": ["PerkUP-Destruction.esp", "HF-MoveSpouse.esp", "Distractor6974.esm"]
+    },
+    {"name": "SlvrbuuMod Dawnguard.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor3041.esp",
+      "flags": 0,
+      "masters": ["Distractor4432.esp", "SMIM-ShackRoofFixesDragonborn.esp"]
+    },
+    {"name": "Jezebel.esp", "flags": 0, "masters": ["MasculinizedLevelListsDG.esp"]},
+    {
+      "name": "Bigger Cities and Villages0.1.1.esp",
+      "flags": 0,
+      "masters": ["VolkiharTablewareReplacerA.esp", "CraftingSupplies_AIO_ALL.esp"]
+    },
+    {"name": "someprivacyplease_bedroomwall_lakeview.esp", "flags": 0, "masters": []},
+    {"name": "Vaults of Skyrim Palaces Patch.esp", "flags": 0, "masters": []},
+    {"name": "DeadlyDragons.esm", "flags": 1, "masters": []},
+    {
+      "name": "BentPines_for_SFO2.0.esp",
+      "flags": 0,
+      "masters": ["Distractor0446.esm", "NonEssentialChildren.esp", "HmmWhatToWearMerged.esp"]
+    },
+    {
+      "name": "RWL_Bleedout_Perks.esp",
+      "flags": 0,
+      "masters": ["ImmersiveLoot - Dragonborn.esp", "HBR_Argonian_Replacer.esp"]
+    },
+    {"name": "Distractor1854.esp", "flags": 0, "masters": []},
+    {
+      "name": "ClimatesOfTamriel-Nights-Level-3.esp",
+      "flags": 0,
+      "masters": ["Distractor4966.esm", "Beards.esp"]
+    },
+    {"name": "Ritual Armor of Boethiah.esp", "flags": 0, "masters": []},
+    {
+      "name": "DragonsoulArmour.esp",
+      "flags": 0,
+      "masters": ["Distractor5472.esm", "Distractor6212.esp"]
+    },
+    {"name": "Distractor5359.esm", "flags": 1, "masters": []},
+    {
+      "name": "kuerteeEatAndSleep.esp",
+      "flags": 0,
+      "masters": ["Vaults of Skyrim Palaces Patch.esp", "HBR_Argonian_Replacer.esp", "Atmospheric Whiterun.esp"]
+    },
+    {"name": "CandleLight-Minimum.esp", "flags": 0, "masters": []},
+    {"name": "Better Followers - SBP.esp", "flags": 0, "masters": ["Distractor4675.esp"]},
+    {"name": "Hjerimfix.esp", "flags": 0, "masters": []},
+    {"name": "walkingstickquest.esp", "flags": 0, "masters": ["CaranthirTowerReborn.esp"]},
+    {"name": "Serenity.esp", "flags": 0, "masters": []},
+    {
+      "name": "AtronachEffectFix.esp",
+      "flags": 0,
+      "masters": ["HBR_Argonian_Replacer.esp", "Distractor8113.esm"]
+    },
+    {"name": "18 Black® Katanas HD ML.esp", "flags": 0, "masters": []},
+    {"name": "DarkNemesis.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor1318.esp",
+      "flags": 0,
+      "masters": ["RTSforSkyrim.esp", "ThalmorAncanoSummon.esp"]
+    },
+    {"name": "RND_NCVE-FAMP.esp", "flags": 0, "masters": []},
+    {"name": "Brawl Bugs CE.esp", "flags": 0, "masters": ["DeadlyDragonsCreature.esp"]},
+    {"name": "lakeviewdock1.2.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor5935.esm",
+      "flags": 1,
+      "masters": ["CastleDrakhur_masterfle.esm", "Distractor0961.esm"]
+    },
+    {"name": "ETaC - Dawnstar.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor3661.esp",
+      "flags": 0,
+      "masters": ["suspiciouscityguards.esp", "Distractor9817.esm", "Distractor2902.esm"]
+    },
+    {"name": "MeekoHuskyArmored.esp", "flags": 0, "masters": []},
+    {"name": "PerkUP-Alteration.esp", "flags": 0, "masters": []},
+    {"name": "Distractor7520.esp", "flags": 0, "masters": []},
+    {
+      "name": "Requiem - Immersive Horses.esp",
+      "flags": 0,
+      "masters": ["Distractor4400.esm", "GeneralStores.esm", "ZZZ_Stenvar_Replacer_THAIDEN.esm"]
+    },
+    {"name": "Distractor5024.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5703.esm", "flags": 1, "masters": []},
+    {"name": "Sweet&Sexy Lingerie.esp", "flags": 0, "masters": []},
+    {
+      "name": "The Force.esp",
+      "flags": 0,
+      "masters": ["WardrobeRoom.esp", "High Level Enemies - Dragonborn.esp"]
+    },
+    {"name": "The Secret of Steel - Tweaks.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8998.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5201.esp", "flags": 0, "masters": ["BalancedCombat.esp"]},
+    {"name": "InfinityHall.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3913.esp", "flags": 0, "masters": []},
+    {"name": "HF-MoveSpouse.esp", "flags": 0, "masters": ["Distractor9438.esp"]},
+    {"name": "hearthfireextended.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4040.esp", "flags": 0, "masters": ["SDA RDO Patch.esp", "Ebonita.esp"]},
+    {"name": "Distractor4013.esm", "flags": 1, "masters": []},
+    {"name": "Distractor9817.esm", "flags": 1, "masters": ["Distractor0446.esm"]},
+    {"name": "HarvestOverhaulCreaturesDogMeatFree.esp", "flags": 0, "masters": []},
+    {"name": "CampNewZainab.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor5780.esm",
+      "flags": 1,
+      "masters": ["DeadlyDragons.esm", "more_Travelers.esm", "Distractor5359.esm"]
+    },
+    {"name": "Uncapped Perks.esp", "flags": 0, "masters": []},
+    {
+      "name": "NonEssentialChildren.esp",
+      "flags": 0,
+      "masters": ["Distractor2902.esm", "DeadlySpellImpacts - Two Fire.esp", "Distractor5024.esp"]
+    },
+    {"name": "Distractor3118.esp", "flags": 0, "masters": []},
+    {
+      "name": "More Draconic Dragon Aspect - Flying Mod Addon.esp",
+      "flags": 0,
+      "masters": ["Distractor5935.esm", "FAMP2.esp", "CK's Companions.esm"]
+    },
+    {"name": "Mapseller Dragonborn.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor9881.esp",
+      "flags": 0,
+      "masters": ["Sky Haven Teleporter 1.2.esp", "BoundGear.esp"]
+    },
+    {"name": "Atmospheric Whiterun.esp", "flags": 0, "masters": []},
+    {"name": "TES5R - EvetteSansHouse.esp", "flags": 0, "masters": []},
+    {"name": "wabba-ori_proj.esp", "flags": 0, "masters": []},
+    {"name": "Breezehomedesk_ench.esp", "flags": 0, "masters": []},
+    {"name": "brawlbug-plugin.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0890.esp", "flags": 0, "masters": []},
+    {
+      "name": "Realistic Lighting Overhaul - Minor Cities and Town Interiors.esp",
+      "flags": 0,
+      "masters": []
+    },
+    {"name": "Hebrock_Der Schatten von Meresis - EV.esp", "flags": 0, "masters": []},
+    {"name": "NewBeveragesAndMiscItems.esp", "flags": 0, "masters": []},
+    {
+      "name": "Skype - Archery.esp",
+      "flags": 0,
+      "masters": ["RVL Size Reduction.esp", "Complete Crafting Overhaul_Remade.esp"]
+    },
+    {"name": "CharGen Morphs.esp", "flags": 0, "masters": []},
+    {"name": "0db2SECOND.esm", "flags": 1, "masters": []},
+    {"name": "LoversHook.esp", "flags": 0, "masters": []},
+    {"name": "HeartOfThunder.esp", "flags": 0, "masters": []},
+    {"name": "ThalmorAncanoSummon.esp", "flags": 0, "masters": []},
+    {
+      "name": "Requiem - Heavy Armory.esp",
+      "flags": 0,
+      "masters": ["Distractor4691.esp", "Breezehomedesk_ench.esp", "Whitewatch Tower.esp"]
+    },
+    {"name": "genpeople.esp", "flags": 0, "masters": ["CMCompanionLevel.esp"]},
+    {"name": "BCS - OB Patch.esp", "flags": 0, "masters": ["NonEssentialChildren.esp"]},
+    {"name": "Improved Hjerimv1.esp", "flags": 0, "masters": []},
+    {"name": "SkyR - Windhelm Interiors.esp", "flags": 0, "masters": ["Dungeons 4.esp"]},
+    {
+      "name": "SkyRe_Plugin_InsanitysCraftableDragonbane.esp",
+      "flags": 0,
+      "masters": ["Distractor5780.esm", "WereWolfRing.esp"]
+    },
+    {
+      "name": "XCES.esp",
+      "flags": 0,
+      "masters": ["Prometheus_NSUTR BDS Patch.esp", "Distractor6712.esm", "skymo-dawn.esp"]
+    },
+    {"name": "EnchantingAwakenedMCM.esp", "flags": 0, "masters": ["Legionettes.esp"]},
+    {
+      "name": "Unspontaneous-combustion.esp",
+      "flags": 0,
+      "masters": ["SlvrbuuMod Dawnguard.esp", "Distractor9881.esp", "RealisticWhiterun.esp"]
+    },
+    {"name": "FourSeasonsInn.esp", "flags": 0, "masters": []},
+    {
+      "name": "VolkiharTablewareReplacerA.esp",
+      "flags": 0,
+      "masters": ["Distractor1170.esm", "Essential Markarth horses.esp"]
+    },
+    {
+      "name": "Distractor3996.esp",
+      "flags": 0,
+      "masters": ["BentPines_for_SFO2.0.esp", "skymo-dawn.esp", "Immersive Citizens - AI Overhaul Lite.esp"]
+    },
+    {"name": "DeadlySpellImpacts - Two Fire.esp", "flags": 0, "masters": []},
+    {"name": "PerkUP-Speech.esp", "flags": 0, "masters": ["Vilkas.esp"]},
+    {"name": "suspiciouscityguards.esp", "flags": 0, "masters": []},
+    {"name": "Doom Heavy Set.esp", "flags": 0, "masters": []},
+    {
+      "name": "DwarvenPowerArmor.esp",
+      "flags": 0,
+      "masters": ["furrycommentfix.esp", "Better Stealth AI for Followers.esp"]
+    },
+    {"name": "Bugs that bug me.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4348.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5472.esm", "flags": 1, "masters": []},
+    {
+      "name": "Distractor3953.esp",
+      "flags": 0,
+      "masters": ["Headbomb's Better Sorting - Potions (Normal Weight).esp", "Distractor3661.esp"]
+    },
+    {
+      "name": "Castle Draco Lost Paladin Edition.esp",
+      "flags": 0,
+      "masters": ["Distractor4432.esp", "ImprovedScImpUniforms - Armor Base.esp"]
+    },
+    {"name": "SGR Enhanced Trees Activator.esp", "flags": 0, "masters": ["HBR_Argonian_Replacer.esp"]},
+    {"name": "Skyhighrim.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor0964.esp",
+      "flags": 0,
+      "masters": ["Vivid Snow.esp", "Abundant Enchantments.esp"]
+    }
+  ],
+  "masterlist": null,
+  "userlist": null,
+  "prelude": null,
+  "real_masterlist": {
+    "repository": "skyrim",
+    "bundled_sha256": "6d1fed6da0f598e94d9b415e2e455987b1db43beab95d25f47d4c63adbbfa6e9",
+    "stripped_sha256": "6134fd07e2b8f2ed8d019a93d65b598c9953f3afeade39773724121dc1ba8d43",
+    "prelude_bundled_sha256": "d766b2d98565c2147bfeedf8df8385aae1c32731fc0b14b1bdb1ee54d1729711",
+    "prelude_stripped_sha256": "e4e8c81907defb24d03c7b22c8d9dc68186c6584f67aa75ce83727ff3758da85"
+  },
+  "expected": {
+    "order": [
+      "EASamhairE_1_1.esm",
+      "Distractor4172.esm",
+      "DeadlyDragons.esm",
+      "Distractor6938.esm",
+      "Vigilant of Stendarr Quests Master.esm",
+      "Distractor3403.esm",
+      "Distractor0961.esm",
+      "Distractor5359.esm",
+      "Distractor6974.esm",
+      "more_Travelers.esm",
+      "Distractor5780.esm",
+      "ZZZ_Stenvar_Replacer_THAIDEN.esm",
+      "DragonsReach_Hideout.esm",
+      "CK's Companions.esm",
+      "Distractor4966.esm",
+      "Distractor8113.esm",
+      "Distractor6465.esm",
+      "CastleDrakhur_masterfle.esm",
+      "Distractor6712.esm",
+      "SexLabAroused.esm",
+      "Distractor4400.esm",
+      "Distractor1170.esm",
+      "Distractor2902.esm",
+      "GeneralStores.esm",
+      "Distractor9223.esm",
+      "Distractor0446.esm",
+      "Distractor7572.esm",
+      "Distractor5935.esm",
+      "Distractor5703.esm",
+      "Distractor4013.esm",
+      "Distractor9817.esm",
+      "0db2SECOND.esm",
+      "Distractor5472.esm",
+      "Distractor4691.esp",
+      "Shrine of Azura LOD Fix.esp",
+      "Improved Hjerim V2.5.esp",
+      "CandleLight-Minimum.esp",
+      "TSMaleWarPaint.esp",
+      "Castle Brennenburgh.esp",
+      "CrossbowsRevamped.esp",
+      "BoundGear.esp",
+      "masteredmagickaboundweapons.esp",
+      "Bugs that bug me.esp",
+      "RWL Option - 3x Giant toes.esp",
+      "BabettesFeast - IMCN.esp",
+      "1nivWICSkyCloaksPatch.esp",
+      "CMCompanionLevel.esp",
+      "Gold Worth Something.esp",
+      "Beards.esp",
+      "SilentRuneSpellsUncap_v100.esp",
+      "The Dance of Death - Ultimate Edition.esp",
+      "furrycommentfix.esp",
+      "BS_DLC_patch.esp",
+      "MasculinizedLevelListsDG.esp",
+      "Jezebel.esp",
+      "Prometheus_NSUTR BDS Patch.esp",
+      "Whitewatch Tower.esp",
+      "Breezehomedesk_ench.esp",
+      "Requiem - Heavy Armory.esp",
+      "Dungeons 4.esp",
+      "The Great City of Falkreath.esp",
+      "Complete Crafting Overhaul_Remade.esp",
+      "BetterQuestObjectives-AlternateStartPatch.esp",
+      "SaderHorses.esp",
+      "Helarchen Creek - No Snow Under the Roof.esp",
+      "Distractor3153.esp",
+      "Distractor5024.esp",
+      "DeadlySpellImpacts - Two Fire.esp",
+      "NonEssentialChildren.esp",
+      "Essential Markarth horses.esp",
+      "VolkiharTablewareReplacerA.esp",
+      "HousecarlWhiterun Sexy Lydia v0.5.esp",
+      "InfiniteShouts.esp",
+      "GuardAnimationsGDO.esp",
+      "Real Wildlife Skyrim 0.1.esp",
+      "Legionettes.esp",
+      "Dreagonsreach bottle fix.esp",
+      "Immersive Sounds - Compendium.esp",
+      "Distractor6802.esp",
+      "TMasks-JudgmentDay.esp",
+      "Ebonita.esp",
+      "Distractor9438.esp",
+      "Sky Haven Teleporter 1.2.esp",
+      "Distractor9881.esp",
+      "CAMPS2.esp",
+      "HBR_Argonian_Replacer.esp",
+      "Vaults of Skyrim Palaces Patch.esp",
+      "Atmospheric Whiterun.esp",
+      "kuerteeEatAndSleep.esp",
+      "ELFX - Exteriors.esp",
+      "HarvestOverhaulCreaturesDogMeatFree.esp",
+      "Distractor4144.esp",
+      "No Permanent Essentials Redux.esp",
+      "Doom Heavy Set.esp",
+      "Requiem - Book Covers Skyrim.esp",
+      "WereWolfRing.esp",
+      "CraftingSupplies_AIO_ALL.esp",
+      "Bigger Cities and Villages0.1.1.esp",
+      "Abundant Enchantments.esp",
+      "Better Stealth AI for Followers.esp",
+      "Distractor7038.esp",
+      "Immersive Ivarstead.esp",
+      "Realistic Lighting Overhaul - Major City Interiors.esp",
+      "AOS2_WetandCold Patch.esp",
+      "Khagra - Ghorbash Replacer.esp",
+      "skymo-dawn.esp",
+      "Vex.esp",
+      "MenuShoutsInDragonsLanguage.esp",
+      "TheChoiceIsYours.esp",
+      "BetterRiften.esp",
+      "BentPines.esp",
+      "RTSforSkyrim.esp",
+      "PCE - Inconsequential NPCs Patch.esp",
+      "Distractor1281.esp",
+      "towPov.esp",
+      "InfinityHall.esp",
+      "Winterhold Fully Restored.esp",
+      "KnapsackEnhanced.esp",
+      "FAMP2.esp",
+      "More Draconic Dragon Aspect - Flying Mod Addon.esp",
+      "Frodo Sam Merry & Peppin.Esp",
+      "Ustengrav gate removal - alternate.esp",
+      "Better Mills Tetxures - ELFX.esp",
+      "DF127EnchantedArrowsandBolts.esp",
+      "WardrobeRoom.esp",
+      "Chesko_Step418.esp",
+      "Better Sorting 1.12 Sboub édition.esp",
+      "alb084ImmersiveFollowers.esp",
+      "ThalmorAncanoSummon.esp",
+      "SDA RDO Patch.esp",
+      "DineWithFollowers.esp",
+      "BetterStaffofCorruptionMED.esp",
+      "PrvtI_HeavyArmory.esp",
+      "HmmWhatToWear.esp",
+      "Barrels and Crates.esp",
+      "ImmersiveLoot - Dragonborn.esp",
+      "DeadManor 1.1.esp",
+      "Distractor5052.esp",
+      "RIP88_Pool_Furniture_Sample.esp",
+      "Distractor8632.esp",
+      "Lighter Tools.esp",
+      "HF-MoveSpouse.esp",
+      "GreatTalosHunt.esp",
+      "Weapons & Armor_TrueOrcish&DaedricWeapons.esp",
+      "someprivacyplease_bedroomwall_lakeview.esp",
+      "DragonfireCrossbow02.esp",
+      "Distractor8877.esp",
+      "BloodPotionRecipe.esp",
+      "lakeviewdock1.2.esp",
+      "Distractor4348.esp",
+      "PerkUP-Destruction.esp",
+      "NoDeathMod.esp",
+      "Blackout_Skyrim.esp",
+      "tinyangrytrolls.esp",
+      "Hjerimfix.esp",
+      "DropThatGold.esp",
+      "Dwarven War Cross Bow.esp",
+      "Distractor4675.esp",
+      "Distractor0890.esp",
+      "Distractor6679.esp",
+      "HeartBreaker.esp",
+      "Nilheim_MiscQuestExpansion.esp",
+      "Distractor2453.esp",
+      "MeekoHuskyArmored.esp",
+      "hjerim_home.esp",
+      "DwarvenPowerArmor.esp",
+      "Distractor7811.esp",
+      "BlutKult_Zwergenaexte.esp",
+      "WolfArmorLightSA.esp",
+      "dD-No Spinning Death Animation Merged.esp",
+      "Names - enemies - impersonal  completely.esp",
+      "lowerlevellegendaryandrevereddragons.esp",
+      "skyrimovens.esp",
+      "Distractor9176.esp",
+      "SkyReVagabondArmorPlugin.esp",
+      "Lorecraft - Dragon Bone Weapons.esp",
+      "RealisticWhiterun.esp",
+      "hearthfireextended.esp",
+      "Distractor5340.esp",
+      "DragonsoulWeapons.esp",
+      "Langsam wirkende Tränke.esp",
+      "DeadThrall.esp",
+      "DeadlyDragonsCreature.esp",
+      "cao_DweSchematicsCheat.esp",
+      "CK's Improved Windhelm.esp",
+      "Better Followers - SBP.esp",
+      "HeroYsgramorSummon.esp",
+      "MorthalFortified.esp",
+      "Distractor8484.esp",
+      "Distractor6212.esp",
+      "Undeath.esp",
+      "FriendlyCreaturesv1.1.esp",
+      "Realistic-Voice.esp",
+      "Vr - Guard Comment Tweak.esp",
+      "BasicHorseRidingAI.esp",
+      "Drinking Fountains of Skyrim.esp",
+      "CFTO-Lanterns.esp",
+      "Distractor8930.esp",
+      "Distractor7009.esp",
+      "BalancedCombat.esp",
+      "ORM-Arvak.esp",
+      "Distractor2255.esp",
+      "Distractor8181.esp",
+      "Blacksmiths Hideout - Honeyside Upgrade (no dialogue).esp",
+      "Kate - AnimPack 1HWeapShield.esp",
+      "CUYC_CleanUpYourCorpses.esp",
+      "CampNewZainab.esp",
+      "Domino_MudcrabMerchant.esp",
+      "Atlas Dragonborn.esp",
+      "Distractor2414.esp",
+      "Brawl Bugs CE.esp",
+      "Nine_Divines_Amulet_nonOP_1.1.esp",
+      "BS-Balanced_Magic_BETA_2_0.esp",
+      "Distractor5208.esp",
+      "Distractor3995.esp",
+      "Distractor1854.esp",
+      "Distractor3913.esp",
+      "FourSeasonsInn.esp",
+      "Spell Absorb Fix.esp",
+      "Candle Pond Ranch.esp",
+      "Solitude Expansion.esp",
+      "RaceMenuMimic.esp",
+      "Chesko_Frostfall.esp",
+      "TGBC.esp",
+      "fishchickenlodge.esp",
+      "ImprovedScImpUniforms - Armor Base.esp",
+      "Immersive Encounters - Open Cities Patch.esp",
+      "Deleveled Skyrim - Enemies Wildlife.esp",
+      "Distractor3120.esp",
+      "DHuntress.esp",
+      "Headbomb's Better Sorting - Potions (Normal Weight).esp",
+      "Override Sneak.esp",
+      "Immersive Dawnguard.esp",
+      "Distractor5626.esp",
+      "ClimatesOfTamriel-Nights-Level-3.esp",
+      "CaranthirTowerReborn.esp",
+      "Distractor2965.esp",
+      "Serenity.esp",
+      "timek_Yumi.esp",
+      "Perk_Heavy_Armor_Tree_Redone_No_Stagger.esp",
+      "CompanionsShields.esp",
+      "ShShortswords.esp",
+      "Vilkas.esp",
+      "Mage Tower.esp",
+      "Improved Shields.esp",
+      "Forge In Every House.esp",
+      "Distractor2354.esp",
+      "SkyReNicoroshiCreationsPlugin.esp",
+      "Breezehome Mannequins.esp",
+      "Distractor5092.esp",
+      "betterwards-nostagger.esp",
+      "AmbrosiaFashions.esp",
+      "DragonplateHelmFix.esp",
+      "DYNAVISION Dynamic Depth of Field.esp",
+      "NotSoFast-MainQuest.esp",
+      "Distractor4919.esp",
+      "Distractor0505.esp",
+      "HmmWhatToWearMerged.esp",
+      "attack commitment movement speed fluid 3.esp",
+      "cryptOfSkaldivar.esp",
+      "RVL Size Reduction.esp",
+      "Wintersun - Faiths of Skyrim.esp",
+      "Juquinha-armory.esp",
+      "Requiem - Rustic Soulgems - ISC.esp",
+      "Paralyze-1.1b.esp",
+      "Henrys Ring of Light v1-0.esp",
+      "SkyrimFixes.esp",
+      "IMCN_CookingExpanded-FAMP.esp",
+      "Ramen.esp",
+      "Treebugfix.esp",
+      "Blacksmiths Hideout - Honeyside Upgrade.esp",
+      "RASS - Visual Effects.esp",
+      "PerkUP-Lockpicking.esp",
+      "LakeviewManorRoad.esp",
+      "LushRiverwood.esp",
+      "DoggyDoors.esp",
+      "unicorncave.esp",
+      "More Powerful Dragons Leveled Dragons.esp",
+      "Distractor8998.esp",
+      "ChildrenOSEyesHFV3A.esp",
+      "Castle Draco.esp",
+      "AOS2_Purity Patch.esp",
+      "Distractor0521.esp",
+      "NPO Module - Crossbows.esp",
+      "Invisible Aetherial Crown.esp",
+      "Override Smithing.esp",
+      "StaticMeshImprovementMod.esp",
+      "High Level Enemies - Dragonborn.esp",
+      "BalancedHeroWeps.esp",
+      "CombatMoraleNoLootBag.esp",
+      "greatweapon_speedfix.esp",
+      "ENB Weather - Exterior Fog Plugin.esp",
+      "Prides of Skyrim.esp",
+      "Mudcrab Farm.esp",
+      "MorokeiFix.esp",
+      "Miner's Clothes Variant Fix.esp",
+      "NoEnchThievesGuild.esp",
+      "SummonFollowers.esp",
+      "EasierRidersDungeonPack.esp",
+      "SlvrbuuMod Dawnguard.esp",
+      "BentPines_for_SFO2.0.esp",
+      "RWL_Bleedout_Perks.esp",
+      "Ritual Armor of Boethiah.esp",
+      "DragonsoulArmour.esp",
+      "walkingstickquest.esp",
+      "AtronachEffectFix.esp",
+      "18 Black® Katanas HD ML.esp",
+      "DarkNemesis.esp",
+      "Distractor1318.esp",
+      "RND_NCVE-FAMP.esp",
+      "ETaC - Dawnstar.esp",
+      "suspiciouscityguards.esp",
+      "Distractor3661.esp",
+      "PerkUP-Alteration.esp",
+      "Distractor7520.esp",
+      "Requiem - Immersive Horses.esp",
+      "Sweet&Sexy Lingerie.esp",
+      "The Force.esp",
+      "The Secret of Steel - Tweaks.esp",
+      "Distractor5201.esp",
+      "Distractor4040.esp",
+      "Uncapped Perks.esp",
+      "Distractor3118.esp",
+      "Mapseller Dragonborn.esp",
+      "TES5R - EvetteSansHouse.esp",
+      "wabba-ori_proj.esp",
+      "brawlbug-plugin.esp",
+      "Realistic Lighting Overhaul - Minor Cities and Town Interiors.esp",
+      "Hebrock_Der Schatten von Meresis - EV.esp",
+      "NewBeveragesAndMiscItems.esp",
+      "Skype - Archery.esp",
+      "CharGen Morphs.esp",
+      "LoversHook.esp",
+      "HeartOfThunder.esp",
+      "genpeople.esp",
+      "BCS - OB Patch.esp",
+      "Improved Hjerimv1.esp",
+      "SkyR - Windhelm Interiors.esp",
+      "SkyRe_Plugin_InsanitysCraftableDragonbane.esp",
+      "XCES.esp",
+      "EnchantingAwakenedMCM.esp",
+      "Unspontaneous-combustion.esp",
+      "PerkUP-Speech.esp",
+      "Distractor3953.esp",
+      "SGR Enhanced Trees Activator.esp",
+      "Skyhighrim.esp",
+      "Ordinator - Perks of Skyrim.esp",
+      "Pre PaMa CCOR Patch.esp",
+      "Immersive Citizens - AI Overhaul Lite.esp",
+      "RealisticRoomRental-Basic.esp",
+      "SMIM-ShackRoofFixesDragonborn.esp",
+      "SkyRe_Plugin_isilNarsil.esp",
+      "Distractor3996.esp",
+      "Pre PaMa WAFR Patch.esp",
+      "GELO_Patcher_Build.esp",
+      "Distractor4432.esp",
+      "Distractor3041.esp",
+      "Immersive Dragon Bridge.esp",
+      "BladesBolarSummon.esp",
+      "Castle Draco Lost Paladin Edition.esp",
+      "Vivid Snow.esp",
+      "Witcher2-v3.5 Aedirn-Whiterun.esp",
+      "Distractor0964.esp",
+      "Vivid Snow Physical.esp",
+      "DynDOLOD.esp"
+    ]
+  },
+  "groups_paths": []
+}

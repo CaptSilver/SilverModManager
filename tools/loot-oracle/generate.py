@@ -7,16 +7,23 @@ Run with the interpreter that has the `loot` module in its site-packages, in iso
 
 Each case writes synthetic plugins (headers only) into a temp Data directory, loads the case's
 masterlist, userlist and prelude, sorts, and stores the expected order or the error. The JSON goes
-under tests/Games/NexusMods.Games.Bethesda.Loot.Tests/Corpus/{tier1,tier2}/. Only the standard
+under tests/Games/NexusMods.Games.Bethesda.Loot.Tests/Corpus/{tier1,tier2,tier3}/. Only the standard
 library and `loot` are used, because that interpreter has nothing else.
+
+Tier 3 sorts synthetic plugins named after the entries of the real, condition-stripped LOOT
+masterlists. The stripped files come from the C# test WriteStrippedMasterlistsForOracle (run it with
+LOOT_ORACLE_STRIP_DIR set) and are passed with --stripped-dir; they are never committed. A tier 3 case
+keeps the SHA-256 of each bundled file and its stripped form instead of the text.
 
 The plugin byte layout matches PluginBytes in the LoadOrder test project.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import random
+import re
 import shutil
 import struct
 import sys
@@ -26,6 +33,7 @@ import loot
 
 GENERATOR_VERSION = "1"
 TIER2_SEEDS = 40
+TIER3_SEEDS = 4
 
 MASTER = 0x1
 SF_LIGHT = 0x100
@@ -40,6 +48,26 @@ GAMES = {
     "Morrowind": dict(data="Data Files", master="Morrowind.esm", format="Tes3", version=1.3),
     "Starfield": dict(data="Data", master="Starfield.esm", format="Tes4", version=0.96),
     "Fallout4": dict(data="Data", master="Fallout4.esm", format="Tes4", version=1.0),
+    "Skyrim": dict(data="Data", master="Skyrim.esm", format="Tes4", version=0.94),
+    "Fallout3": dict(data="Data", master="Fallout3.esm", format="Tes4", version=0.94),
+    "FalloutNV": dict(data="Data", master="FalloutNV.esm", format="Tes4", version=1.34),
+    "OblivionRemastered": dict(
+        data="OblivionRemastered/Content/Dev/ObvData/Data", master="Oblivion.esm", format="Tes4Oblivion", version=1.0),
+}
+
+# Bundled masterlist repository -> the binding's game type. The binding has no Enderal type, and
+# Enderal SE runs on the Skyrim SE rules.
+TIER3_GAMES = {
+    "skyrimse": "SkyrimSE",
+    "skyrim": "Skyrim",
+    "oblivion": "Oblivion",
+    "oblivion-remastered": "OblivionRemastered",
+    "fallout3": "Fallout3",
+    "falloutnv": "FalloutNV",
+    "fallout4": "Fallout4",
+    "starfield": "Starfield",
+    "morrowind": "Morrowind",
+    "enderal": "SkyrimSE",
 }
 
 
@@ -502,6 +530,100 @@ def random_case(seed):
     )
 
 
+# ---------------------------------------------------------------------- tier 3
+
+# libloot treats these characters as the mark of a regex name.
+_REGEX_CHARS = set(":\\*?|")
+_PLUGIN_FILE = re.compile(r"^[^/\\:*?\"<>|]+\.(esm|esp|esl)$", re.IGNORECASE)
+
+
+def literal_plugin_names(stripped_yaml):
+    """Literal `- name:` entries of the top-level `plugins:` sequence.
+
+    The stripped text is written by one emitter, so entries are lines of the form `- name: 'X'` at
+    column 0 inside the `plugins:` block; there is no YAML parser in this interpreter.
+    """
+    names, seen, in_plugins = [], set(), False
+    for line in stripped_yaml.split("\n"):
+        if line.startswith("plugins:"):
+            in_plugins = True
+            continue
+        if in_plugins and line and line[0] not in " -#":
+            in_plugins = False
+        if not in_plugins or not line.startswith("- name: "):
+            continue
+        name = line[len("- name: "):].strip()
+        if name.startswith("'") and name.endswith("'"):
+            name = name[1:-1].replace("''", "'")
+        if (_REGEX_CHARS & set(name)) or not _PLUGIN_FILE.match(name) or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        names.append(name)
+    return names
+
+
+def sha256_file(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+# Random masters drawn without regard to the masterlist's groups often contradict it, and libloot
+# answers with a cycle. A seed starts with plenty of masters and falls back to fewer, and finally
+# none, until the oracle can sort it; the cycle cases still in the corpus are real masterlist cycles.
+TIER3_MASTER_CHANCES = [0.5, 0.25, 0.1, 0.0]
+
+
+def real_masterlist_case(repo, seed, stripped_dir, hashes, master_chance):
+    game_type = TIER3_GAMES[repo]
+    masterlist_name = f"{repo}.masterlist.yaml"
+    masterlist_path = os.path.join(stripped_dir, masterlist_name)
+    prelude_path = os.path.join(stripped_dir, "prelude.yaml")
+    # The recorded hashes must describe the files actually sorted with.
+    for path, name in ((masterlist_path, masterlist_name), (prelude_path, "prelude.yaml")):
+        if sha256_file(path) != hashes[name]["stripped"]:
+            raise SystemExit(f"{path} does not match the stripped SHA-256 in sha256.json; rerun the export test")
+    with open(masterlist_path, encoding="utf-8", newline="") as f:
+        masterlist = f.read()
+    with open(prelude_path, encoding="utf-8", newline="") as f:
+        prelude = f.read()
+
+    r = random.Random(f"{repo}/{seed}")
+    literals = literal_plugin_names(masterlist)
+    total = r.randint(100, 400)
+    real = min(len(literals), round(total * 0.8))
+    names = r.sample(literals, real)
+    taken = {n.lower() for n in names}
+    while len(names) < real + real // 4:
+        name = f"Distractor{r.randrange(10000):04d}.{r.choice(['esp', 'esp', 'esm'])}"
+        if name.lower() not in taken:
+            taken.add(name.lower())
+            names.append(name)
+
+    # Masters are drawn from earlier plugins. A master file lists only master files, which is what
+    # the game's own tools produce and keeps the masters partition from contradicting the masters edges.
+    is_master = {n: n.lower().endswith((".esm", ".esl")) for n in names}
+    base = sorted(names, key=lambda n: (not is_master[n], r.random()))
+    plugins = []
+    for i, name in enumerate(base):
+        pool = [m for m in base[:i] if is_master[m] or not is_master[name]]
+        masters = r.sample(pool, min(len(pool), r.randint(1, 3))) if pool and r.random() < master_chance else []
+        plugins.append(P(name, masters, MASTER if is_master[name] else 0))
+    r.shuffle(plugins)
+
+    file = hashes[masterlist_name]
+    return dict(
+        name=f"{repo}_seed_{seed:03d}", tier=3, seed=seed, game_type=game_type, plugins=plugins,
+        masterlist=masterlist, prelude=prelude, userlist=None,
+        real_masterlist=dict(
+            repository=repo,
+            bundled_sha256=file["bundled"],
+            stripped_sha256=file["stripped"],
+            prelude_bundled_sha256=hashes["prelude.yaml"]["bundled"],
+            prelude_stripped_sha256=hashes["prelude.yaml"]["stripped"],
+        ),
+    )
+
+
 # ------------------------------------------------------------------------ main
 
 def main():
@@ -509,18 +631,39 @@ def main():
     default_out = os.path.join(here, "..", "..", "tests", "Games", "NexusMods.Games.Bethesda.Loot.Tests", "Corpus")
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--out", default=default_out, help="corpus directory")
-    parser.add_argument("--tier", choices=["1", "2"], action="append", help="only these tiers (default: all)")
+    parser.add_argument("--tier", choices=["1", "2", "3"], action="append",
+                        help="only these tiers (default: 1 and 2, plus 3 when --stripped-dir is given)")
+    parser.add_argument("--stripped-dir",
+                        help="directory written by the WriteStrippedMasterlistsForOracle test; enables tier 3")
     args = parser.parse_args()
-    tiers = args.tier or ["1", "2"]
+    tiers = args.tier or (["1", "2", "3"] if args.stripped_dir else ["1", "2"])
+    if "3" in tiers and not args.stripped_dir:
+        parser.error("tier 3 needs --stripped-dir")
 
     cases = []
     if "1" in tiers:
         cases += tier1_cases()
     if "2" in tiers:
         cases += [random_case(seed) for seed in range(TIER2_SEEDS)]
+    hashes = None
+    if "3" in tiers:
+        with open(os.path.join(args.stripped_dir, "sha256.json"), encoding="utf-8") as f:
+            hashes = json.load(f)
 
-    for case in cases:
-        expected, paths = run_case(case)
+    def results():
+        for case in cases:
+            yield (case, *run_case(case))
+        if "3" in tiers:
+            for repo in TIER3_GAMES:
+                for seed in range(TIER3_SEEDS):
+                    for chance in TIER3_MASTER_CHANCES:
+                        case = real_masterlist_case(repo, seed, args.stripped_dir, hashes, chance)
+                        expected, paths = run_case(case)
+                        if "order" in expected:
+                            break
+                    yield case, expected, paths
+
+    for case, expected, paths in results():
         fixture = {
             "libloot_version": loot.libloot_version(),
             "libloot_revision": loot.libloot_revision(),
@@ -531,9 +674,11 @@ def main():
             "header_version": GAMES[case["game_type"]]["version"],
             "name": case["name"],
             "plugins": case["plugins"],
-            "masterlist": case.get("masterlist"),
+            # A real masterlist is not stored; the hashes name the bundled file it came from.
+            "masterlist": None if "real_masterlist" in case else case.get("masterlist"),
             "userlist": case.get("userlist"),
-            "prelude": case.get("prelude"),
+            "prelude": None if "real_masterlist" in case else case.get("prelude"),
+            **({"real_masterlist": case["real_masterlist"]} if "real_masterlist" in case else {}),
             "expected": expected,
             "groups_paths": paths,
         }

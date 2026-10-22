@@ -1,0 +1,1247 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": 0,
+  "game_type": "Oblivion",
+  "format": "Tes4Oblivion",
+  "header_version": 1.0,
+  "name": "oblivion_seed_000",
+  "plugins": [
+    {"name": "CUO_BadGuy_Specific_Loot_DIRTY.esp", "flags": 0, "masters": []},
+    {
+      "name": "24HrArenaAliveLow.esp",
+      "flags": 0,
+      "masters": ["Hemingweys MMM Boss Chest Cape Loot.esp"]
+    },
+    {"name": "AFK_Frostcrag.esp", "flags": 0, "masters": ["Spell Failure Chance.esp"]},
+    {"name": "An Unexpected Company.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0254.esp", "flags": 0, "masters": []},
+    {"name": "DLCFrostcragCoblAlchemyTable.esp", "flags": 0, "masters": ["Distractor8401.esm"]},
+    {"name": "Mages Carry Scrolls.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5025.esp", "flags": 0, "masters": []},
+    {"name": "no wind-2578.esp", "flags": 0, "masters": []},
+    {"name": "Mart's Monster Mod - Extra Wounding.esp", "flags": 0, "masters": []},
+    {
+      "name": "CadlewChapelDungeon.esp",
+      "flags": 0,
+      "masters": [
+        "tbskGuardsFeaturesKvatchAddon.esp",
+        "MOB_Firemoth_Enemy_Mage_Rebalance.esp",
+        "LadyLis_dainties.esp"
+      ]
+    },
+    {"name": "CT-Argonian Headstyles-EE.esp", "flags": 0, "masters": []},
+    {"name": "AyleidMeteorIronWeaponsVANILLA.esp", "flags": 0, "masters": []},
+    {
+      "name": "bgMagicEVAddEnVar.esp",
+      "flags": 0,
+      "masters": ["QQuix - Rock, rock, rock your ship - V3.esp"]
+    },
+    {"name": "Mart's Monster Mod - Diverse WaterLife.esp", "flags": 0, "masters": []},
+    {"name": "LostSpiresImpeREALFortsPatch2.esp", "flags": 0, "masters": ["Distractor3646.esm"]},
+    {"name": "Leyawiin Bridge.esp", "flags": 0, "masters": []},
+    {"name": "ZUPotionsOverhaulOOO.esp", "flags": 0, "masters": []},
+    {"name": "(DC) County Sutch Reborn Master.esm", "flags": 1, "masters": []},
+    {"name": "Grashnak.esp", "flags": 0, "masters": []},
+    {"name": "ArchmageSorceress.esp", "flags": 0, "masters": ["CynthiasFantasyEyes.esp"]},
+    {
+      "name": "Distractor4396.esp",
+      "flags": 0,
+      "masters": ["Distractor0850.esm", "Crafting Skill Engine.esm"]
+    },
+    {"name": "Saerileth.esp", "flags": 0, "masters": []},
+    {
+      "name": "DiverseDremoraCoblRacesCosmetics.esp",
+      "flags": 0,
+      "masters": ["TamrielTravellersFactionAll.esp"]
+    },
+    {"name": "Distractor3646.esm", "flags": 1, "masters": []},
+    {"name": "BlackGlovesRus.esp", "flags": 0, "masters": []},
+    {"name": "Francesco's Optional Leveled Guards.esp", "flags": 0, "masters": []},
+    {"name": "Distractor7456.esp", "flags": 0, "masters": []},
+    {
+      "name": "PersuasionOverhaul_LITE.esp",
+      "flags": 0,
+      "masters": ["The Lost Spires - Rodon Dakkon Dialogue Tweak.esp", "Lima.esp", "Distractor5861.esp"]
+    },
+    {"name": "AsianElves.esp", "flags": 0, "masters": []},
+    {"name": "Ulrim's Horses - OOO.esp", "flags": 0, "masters": ["Distractor4262.esp"]},
+    {
+      "name": "M.O.E. - Icons for Mythic Dawn Armour - Fix.esp",
+      "flags": 0,
+      "masters": ["Distractor4159.esm"]
+    },
+    {"name": "1em_Vilja_corean14.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3710.esp", "flags": 0, "masters": ["Lycanthrope.esp"]},
+    {"name": "Wolvmans_Hidden_Unique_Merchant_Items.esp", "flags": 0, "masters": []},
+    {"name": "Tim_No_SI.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor0850.esm",
+      "flags": 1,
+      "masters": ["Crafting Skill Engine.esm", "Distractor0155.esm", "Distractor8133.esm"]
+    },
+    {
+      "name": "sunk ships.esp",
+      "flags": 0,
+      "masters": ["OCO Cleaned - Vanilla Hair.esp", "Tim_No_SI.esp"]
+    },
+    {
+      "name": "ULE GoldenArrowArcheryShop-RollingHills patch.esp",
+      "flags": 0,
+      "masters": ["CUO_BadGuy_Specific_Loot_DIRTY.esp", "Wearable GS and DS armor.esp", "Capes4NPCs.esm"]
+    },
+    {"name": "TR_Stirk.esp", "flags": 0, "masters": ["DarkQuest.esp"]},
+    {"name": "Colourwheels Sexy Skyrim Outpost HGEC.esp", "flags": 0, "masters": []},
+    {"name": "BAKAdventurerTorch.esp", "flags": 0, "masters": ["ToiletMod.esp", "Distractor8140.esm"]},
+    {"name": "ImpeREAL Empire - Unique Castles - Anvil.esp", "flags": 0, "masters": []},
+    {"name": "OOO-Ayleid Coin Add-on.esp", "flags": 0, "masters": ["Teenagers.esm"]},
+    {
+      "name": "Better Cities BRAVIL.esp",
+      "flags": 0,
+      "masters": ["JounksPolearms-RemixedRemastered.esp"]
+    },
+    {
+      "name": "DarkQuest.esp",
+      "flags": 0,
+      "masters": ["JounksPolearms-RemixedRemastered.esp", "Anvil beach retexture.esp", "24HrArenaAliveLow.esp"]
+    },
+    {
+      "name": "MOB_Firemoth_Enemy_Mage_Rebalance.esp",
+      "flags": 0,
+      "masters": ["xeosp++.esp", "Better Cities ANVIL.esp", "FCOM_SaferRoads.esp"]
+    },
+    {
+      "name": "Valley_View_Estate.esp",
+      "flags": 0,
+      "masters": ["OblivionFarmer'sMarket3NoHungry.esp", "Kosai's Welkynd Armor.esp"]
+    },
+    {"name": "Distractor1707.esp", "flags": 0, "masters": []},
+    {
+      "name": "High_Imperial_Trio.esp",
+      "flags": 0,
+      "masters": ["Crowded Cities 30.esp", "Saerileth.esp", "DappleClydesdaleupdate.esp"]
+    },
+    {"name": "Cyrodiil Rebuild.esp", "flags": 0, "masters": ["Ryk_Sandals.esp", "Teenagers.esm"]},
+    {"name": "Crowded Cities 30.esp", "flags": 0, "masters": []},
+    {"name": "FCOM_WarCry.esp", "flags": 0, "masters": []},
+    {"name": "SB_WeaponDropFix_OOOFilterPatch.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor3995.esm",
+      "flags": 1,
+      "masters": ["Distractor8140.esm", "Distractor8582.esm", "Distractor6071.esm"]
+    },
+    {"name": "NoBloodInside.esp", "flags": 0, "masters": []},
+    {"name": "DarelothFrontDoorFix.esp", "flags": 0, "masters": ["Assassin Tripwires.esp"]},
+    {"name": "USIPCutterFix.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor4889.esp",
+      "flags": 0,
+      "masters": ["Kosai's Welkynd Armor.esp", "Distractor9397.esm", "Saerileth.esp"]
+    },
+    {"name": "OCO v2 Balanced - Cobl.esp", "flags": 0, "masters": []},
+    {"name": "AbandonedHouse.esp", "flags": 0, "masters": ["Sexy Daedric Priestess.esp"]},
+    {"name": "Distractor9602.esm", "flags": 1, "masters": ["Distractor8582.esm"]},
+    {
+      "name": "Lycanthrope.esp",
+      "flags": 0,
+      "masters": ["Cyrodiil Rebuild.esp", "Distractor5861.esp", "Altessian.esp"]
+    },
+    {"name": "Tabaxi_Race_Default.esp", "flags": 0, "masters": []},
+    {"name": "Rowboats.esp", "flags": 0, "masters": []},
+    {"name": "Better Cities - The Lost Spires.esp", "flags": 0, "masters": []},
+    {"name": "Teleport Everywhere.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5549.esp", "flags": 0, "masters": []},
+    {"name": "CRTRenewed.esp", "flags": 0, "masters": []},
+    {
+      "name": "Diverse Wisps - Base.esm",
+      "flags": 1,
+      "masters": ["Distractor8582.esm", "Crafting Skill Engine.esm", "Distractor8133.esm"]
+    },
+    {"name": "Distractor2313.esm", "flags": 1, "masters": []},
+    {"name": "Kit Rae Weaponry.esp", "flags": 0, "masters": ["no wind-2578.esp"]},
+    {"name": "OblivionFarmer'sMarket3NoHungry.esp", "flags": 0, "masters": ["Distractor2534.esm"]},
+    {
+      "name": "ATW_Castle_Vet_v1.4.esp",
+      "flags": 0,
+      "masters": ["CarnhayGuards.esp", "Better Cities Chorrol - Oblivifall Losing My Religion.esp"]
+    },
+    {
+      "name": "Assassin Tripwires.esp",
+      "flags": 0,
+      "masters": ["CarnhayGuards.esp", "rebornaylieds.esp"]
+    },
+    {"name": "ITA - FoT & Hexaae R3.esp", "flags": 0, "masters": []},
+    {"name": "ElsweyrAnequina - Races HGEC-Robert.esp", "flags": 0, "masters": []},
+    {"name": "Lvl1Spawns.esp", "flags": 0, "masters": []},
+    {
+      "name": "Auriel's Books.esp",
+      "flags": 0,
+      "masters": ["Better Cities ANVIL.esp", "Distractor6071.esm"]
+    },
+    {"name": "Midas BeastFortify Fix OBSE.esp", "flags": 0, "masters": []},
+    {"name": "Capes4NPCs.esm", "flags": 1, "masters": ["Distractor8401.esm"]},
+    {
+      "name": "DLCVileLair - Unofficial Patch.esp",
+      "flags": 0,
+      "masters": ["ToiletMod.esp", "Thieves Arsenal.esp", "Beautiful People 2ch-Ed Vanilla Race.esp"]
+    },
+    {"name": "IshMultipleApparelEnchantments.esp", "flags": 0, "masters": ["Pretty Spriggans.esp"]},
+    {"name": "Auriel's_Retreat.esp", "flags": 0, "masters": []},
+    {"name": "All Natural.esp", "flags": 0, "masters": []},
+    {"name": "Hot Coffee and Tea-Cobl.esp", "flags": 0, "masters": []},
+    {"name": "ChapelsofCyrodiil.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor1694.esp",
+      "flags": 0,
+      "masters": ["Distractor2477.esp", "Distractor8803.esm", "Anoicaar - Tenth Anniversary Edition.esp"]
+    },
+    {
+      "name": "Distractor8487.esm",
+      "flags": 1,
+      "masters": ["Distractor2313.esm", "Distractor8366.esm", "Distractor6071.esm"]
+    },
+    {"name": "Distractor0242.esp", "flags": 0, "masters": []},
+    {"name": "ROM Patch - Alternative Start.esp", "flags": 0, "masters": []},
+    {"name": "Mart's Monster Mod - No Bone Loot.esp", "flags": 0, "masters": []},
+    {"name": "_Ren_BeautyPack_full_anime_voice.esp", "flags": 0, "masters": []},
+    {
+      "name": "Hemingweys FCOM NPC Capes Improved Regional City Guards.esp",
+      "flags": 0,
+      "masters": ["Lycanthrope.esp", "Pretty Spriggans.esp", "ConjurationTomeOBSE.esp"]
+    },
+    {
+      "name": "xulEntiusGorge.esp",
+      "flags": 0,
+      "masters": [
+        "Distractor4396.esp",
+        "Clintmichs Beautiful Imperial City Arboretum v1.1.esp",
+        "OriginalLeatherSI.esp"
+      ]
+    },
+    {"name": "rebornaylieds.esp", "flags": 0, "masters": []},
+    {
+      "name": "Beautiful People 2ch-Ed Vanilla Race.esp",
+      "flags": 0,
+      "masters": ["Distractor9961.esp", "All Natural - Indoor Weather Filter for Extra Mods.esp"]
+    },
+    {"name": "Better Dark Brotherhood Sanctuary.esp", "flags": 0, "masters": []},
+    {
+      "name": "Anvil beach retexture.esp",
+      "flags": 0,
+      "masters": ["Distractor0850.esm", "Mart's Monster Mod - Fran's leveled quests + HC.esp", "BPRace_Oblivion.esp"]
+    },
+    {"name": "AliveWaters - Koi Addon.esp", "flags": 0, "masters": []},
+    {"name": "Distractor9961.esp", "flags": 0, "masters": []},
+    {"name": "DMRA Stock Clothing Skimpy.esp", "flags": 0, "masters": ["Teleport Everywhere.esp"]},
+    {"name": "LuckBasedLootForFrans.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4262.esp", "flags": 0, "masters": []},
+    {"name": "Distractor7800.esp", "flags": 0, "masters": []},
+    {"name": "SC-TrialsofTheNine.esp", "flags": 0, "masters": []},
+    {"name": "DappleClydesdaleupdate.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4067.esm", "flags": 1, "masters": []},
+    {
+      "name": "Better Traps.esp",
+      "flags": 0,
+      "masters": ["VampireReshoveled.esp", "M.O.E. - Icons for Mythic Dawn Armour - Fix.esp"]
+    },
+    {"name": "Arcane Services.esp", "flags": 0, "masters": []},
+    {
+      "name": "NoWindSI.esp",
+      "flags": 0,
+      "masters": ["Mercantile Leveling-Fixed.esp", "More_Arrows_Recovered.esp", "Distractor6684.esm"]
+    },
+    {
+      "name": "Darkgreen Glass Armour.esp",
+      "flags": 0,
+      "masters": ["Hemingweys MMM Boss Chest Cape Loot.esp"]
+    },
+    {"name": "Distractor8140.esm", "flags": 1, "masters": []},
+    {
+      "name": "CarnhayGuards.esp",
+      "flags": 0,
+      "masters": ["DLCOrrery.esp", "1em_Vilja_corean14.esp", "Capes4NPCs.esm"]
+    },
+    {"name": "Vexend Race.esp", "flags": 0, "masters": ["Distractor2587.esm"]},
+    {"name": "Distractor3015.esp", "flags": 0, "masters": []},
+    {"name": "Arrows Remain 10min.esp", "flags": 0, "masters": []},
+    {
+      "name": "Cloud Ruler Armory - Spear Compatible.esp",
+      "flags": 0,
+      "masters": ["Loading Screens - Vanilla No Text.esp", "Borderless Cyrodiil-3578.esp"]
+    },
+    {
+      "name": "brownclydesdale.esp",
+      "flags": 0,
+      "masters": ["Mercantile Leveling-Fixed.esp", "Castle Almgard V25.esp"]
+    },
+    {"name": "Vampire Power - Light of Day.esp", "flags": 0, "masters": []},
+    {"name": "ConjurationTomeOBSE.esp", "flags": 0, "masters": []},
+    {"name": "Hemingweys VAN NPC Capes Improved Enemies.esp", "flags": 0, "masters": []},
+    {
+      "name": "Wearable GS and DS armor.esp",
+      "flags": 0,
+      "masters": ["Distractor5487.esm", "Distractor8140.esm"]
+    },
+    {
+      "name": "Mercantile Leveling-Fixed.esp",
+      "flags": 0,
+      "masters": ["OOO-Ayleid Coin Add-on.esp", "Goblin Tribal Shields.esp"]
+    },
+    {"name": "ToiletMod.esp", "flags": 0, "masters": []},
+    {
+      "name": "Ulrim's Horses - DLCHorseArmor+OOO.esp",
+      "flags": 0,
+      "masters": ["Anvil beach retexture.esp", "Distractor9961.esp", "ArmamentariumLLArmaVendor.esp"]
+    },
+    {"name": "Distractor2477.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5168.esp", "flags": 0, "masters": []},
+    {"name": "_zz_BanditCollection(50gp).esp", "flags": 0, "masters": []},
+    {"name": "Distractor5861.esp", "flags": 0, "masters": []},
+    {
+      "name": "CM Partners More NPCs.esp",
+      "flags": 0,
+      "masters": ["OgramiradTiger.esp", "1em_Vilja_corean14.esp", "LostSpiresImpeREALFortsPatch2.esp"]
+    },
+    {"name": "immersive_caves_auto.esp", "flags": 0, "masters": ["Distractor1480.esp"]},
+    {
+      "name": "Better Dungeons.esp",
+      "flags": 0,
+      "masters": ["Trail  Central.esp", "SB_WeaponDropFix_OOOFilterPatch.esp"]
+    },
+    {
+      "name": "DMRA Stock Armor Skimpy.esp",
+      "flags": 0,
+      "masters": ["The Lost Spires - Rodon Dakkon Dialogue Tweak.esp"]
+    },
+    {"name": "Distractor5544.esp", "flags": 0, "masters": ["Distractor7800.esp"]},
+    {"name": "CyrodiilUpgradeResourcePack.esm", "flags": 1, "masters": []},
+    {"name": "Distractor8366.esm", "flags": 1, "masters": ["Distractor4159.esm", "Distractor2534.esm"]},
+    {"name": "BlackGlovesEng_noNPCchanges.esp", "flags": 0, "masters": []},
+    {
+      "name": "Landmarks, w Wells.esp",
+      "flags": 0,
+      "masters": [
+        "1em_Vilja_corean14.esp",
+        "_Ren_BeautyPack_full_anime_voice.esp",
+        "(DC) County Sutch Reborn Master.esm"
+      ]
+    },
+    {"name": "Spell Failure Chance.esp", "flags": 0, "masters": ["Distractor8401.esm"]},
+    {"name": "Bounty Quests.esp", "flags": 0, "masters": []},
+    {
+      "name": "Border-Region-disabled.esp",
+      "flags": 0,
+      "masters": ["Altessian.esp", "Distractor4159.esm"]
+    },
+    {"name": "Enhanced Vegetation.esp", "flags": 0, "masters": ["Distractor6071.esm"]},
+    {"name": "Distractor7328.esp", "flags": 0, "masters": []},
+    {"name": "Mart's Monster Mod - Durzog Addon.esp", "flags": 0, "masters": []},
+    {"name": "Intelligence Overhaul.esp", "flags": 0, "masters": ["NJK_CharcoalVillage.esp"]},
+    {"name": "Zombie Island.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor0288.esp",
+      "flags": 0,
+      "masters": ["CadlewChapelDungeon.esp", "All Natural - Indoor Weather Filter For Mods.esp", "ToiletMod.esp"]
+    },
+    {"name": "Distractor2587.esm", "flags": 1, "masters": []},
+    {
+      "name": "Distractor3343.esp",
+      "flags": 0,
+      "masters": [
+        "CyrodiilUpgradeResourcePack.esm",
+        "Teenagers.esm",
+        "All Natural - Indoor Weather Filter For Mods.esp"
+      ]
+    },
+    {
+      "name": "POTSB.esp",
+      "flags": 0,
+      "masters": ["ElsweyrC&CBlackwoodPatch.esp", "DappleClydesdaleupdate.esp"]
+    },
+    {"name": "Street Vendors of Cyrodiil.esp", "flags": 0, "masters": []},
+    {
+      "name": "elven baths.esp",
+      "flags": 0,
+      "masters": ["ConjurationTomeOBSE.esp", "Open Cities Resources.esm", "Capes4NPCs.esm"]
+    },
+    {"name": "HTSClight.esm", "flags": 1, "masters": []},
+    {
+      "name": "Distractor9397.esm",
+      "flags": 1,
+      "masters": ["Distractor9132.esm", "Distractor4159.esm", "Teenagers.esm"]
+    },
+    {
+      "name": "JounksPolearms-RemixedRemastered.esp",
+      "flags": 0,
+      "masters": [
+        "Mart's Monster Mod - Fran's leveled quests + HC.esp",
+        "Loading Screens - Vanilla No Text.esp",
+        "TamrielTravellersFactionAll.esp"
+      ]
+    },
+    {"name": "MEQ_NakakitaPatch.esp", "flags": 0, "masters": ["Pretty Spriggans.esp"]},
+    {
+      "name": "Mart's Monster Mod - Fran's leveled quests + HC.esp",
+      "flags": 0,
+      "masters": ["Distractor8140.esm", "Distractor9132.esm", "Diverse Wisps - Base.esm"]
+    },
+    {"name": "ArmamentariumLLVendors.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor1321.esp",
+      "flags": 0,
+      "masters": ["TamrielTravellersFactionAll.esp", "Distractor0850.esm"]
+    },
+    {"name": "Nec - Extra Mystic Elf Face.esp", "flags": 0, "masters": []},
+    {"name": "AmidalaSaramHair.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor9558.esp",
+      "flags": 0,
+      "masters": ["Distractor2313.esm", "Distractor4067.esm", "ZUPotionsOverhaulOOO.esp"]
+    },
+    {
+      "name": "Castle Arpenia - Gold Coast.esp",
+      "flags": 0,
+      "masters": ["Armageddon.esp", "Bounty Quests.esp"]
+    },
+    {"name": "Distractor6998.esp", "flags": 0, "masters": []},
+    {"name": "EVE_KnightsoftheNine.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor5487.esm",
+      "flags": 1,
+      "masters": ["Distractor8803.esm", "Distractor2534.esm", "Armamentarium.esm"]
+    },
+    {"name": "Altessian.esp", "flags": 0, "masters": []},
+    {
+      "name": "SecretsoftheAyleidsClosure.esp",
+      "flags": 0,
+      "masters": [
+        "All Natural - Indoor Weather Filter For Mods.esp",
+        "Forgrum's Travelogue v2.0.esp",
+        "OCO Cleaned - Vanilla Hair.esp"
+      ]
+    },
+    {"name": "Borderless Cyrodiil-3578.esp", "flags": 0, "masters": []},
+    {"name": "Thieves Arsenal.esp", "flags": 0, "masters": []},
+    {"name": "Gold Road Cottage.esp", "flags": 0, "masters": []},
+    {"name": "Distractor9132.esm", "flags": 1, "masters": []},
+    {
+      "name": "WAC - ItemLootFix4v1.0b.esp",
+      "flags": 0,
+      "masters": ["Distractor1694.esp", "Diverse Wisps - Base.esm", "OOO-Ayleid Coin Add-on.esp"]
+    },
+    {"name": "Alternate Script Effect Icon.esp", "flags": 0, "masters": []},
+    {"name": "SacredOak_Settlement.esp", "flags": 0, "masters": []},
+    {"name": "TIE Weapon + Armor Filter.esp", "flags": 0, "masters": ["Castle Almgard V25.esp"]},
+    {"name": "Hammers Revised.esp", "flags": 0, "masters": []},
+    {
+      "name": "UOP Vampire Aging & Face Fix.esp",
+      "flags": 0,
+      "masters": ["Distractor0643.esp", "TFF_Clothing_Base.esp"]
+    },
+    {"name": "Exnem1 Moonwell and Mystic Night Elf.esp", "flags": 0, "masters": ["Distractor6820.esp"]},
+    {"name": "Distractor5440.esp", "flags": 0, "masters": []},
+    {"name": "Wizard'sSpellBook.esp", "flags": 0, "masters": ["Lima.esp"]},
+    {"name": "Drokk's Vampire Mod.esp", "flags": 0, "masters": ["Auriel's Books.esp"]},
+    {"name": "MP Human Eyes Vanilla Makeover.esp", "flags": 0, "masters": []},
+    {
+      "name": "Armamentarium.esm",
+      "flags": 1,
+      "masters": ["Capes4NPCs.esm", "Distractor8140.esm", "CyrodiilUpgradeResourcePack.esm"]
+    },
+    {"name": "Distractor5619.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor1480.esp",
+      "flags": 0,
+      "masters": ["TGND2 Armamentarium Replacer.esp", "Distractor5271.esp", "Open Cities Resources.esm"]
+    },
+    {"name": "Icthylean_Race.esp", "flags": 0, "masters": ["Distractor7328.esp", "Distractor8582.esm"]},
+    {"name": "DLCOrrery.esp", "flags": 0, "masters": []},
+    {
+      "name": "Better Cities Chorrol - Oblivifall Losing My Religion.esp",
+      "flags": 0,
+      "masters": ["Auriel's Books.esp", "Armamentarium.esm"]
+    },
+    {"name": "Distractor6820.esp", "flags": 0, "masters": []},
+    {"name": "xulRollingHills_EV.esp", "flags": 0, "masters": []},
+    {
+      "name": "More_Arrows_Recovered.esp",
+      "flags": 0,
+      "masters": ["ChapelsofCyrodiil.esp", "HTSCl_base.esp"]
+    },
+    {
+      "name": "Distractor5241.esp",
+      "flags": 0,
+      "masters": ["Distractor5619.esp", "Balanced NPC Level Cap.esp"]
+    },
+    {
+      "name": "Akiviri Imports MOBS.esp",
+      "flags": 0,
+      "masters": ["DiverseDremoraCoblRacesCosmetics.esp"]
+    },
+    {
+      "name": "Natural_Vegetation_200%_by_Max_Tael.esp",
+      "flags": 0,
+      "masters": ["JounksPolearms-RemixedRemastered.esp", "kuerteeAttributeAndSkillBasedDamageModifiers.esp"]
+    },
+    {"name": "DaedraShrinesProddedWithAStick.esp", "flags": 0, "masters": []},
+    {"name": "babehair_DV.esp", "flags": 0, "masters": ["ATW_Castle_Vet_v1.4.esp"]},
+    {
+      "name": "Things Found Fence.esp",
+      "flags": 0,
+      "masters": ["Crowded Cities 30.esp", "HTSClight.esm"]
+    },
+    {"name": "NewAnimation.esp", "flags": 0, "masters": ["Bundlement.esp", "1em_Vilja_corean14.esp"]},
+    {"name": "Trail  Central.esp", "flags": 0, "masters": []},
+    {"name": "GuilesScrollRenamer.esp", "flags": 0, "masters": []},
+    {"name": "xulPatch_AY_AC.esp", "flags": 0, "masters": []},
+    {"name": "CynthiasFantasyEyes.esp", "flags": 0, "masters": ["Capes4NPCs.esm"]},
+    {"name": "Asian Race.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2005.esp", "flags": 0, "masters": ["Distractor9132.esm"]},
+    {
+      "name": "Distractor4159.esm",
+      "flags": 1,
+      "masters": ["Distractor2534.esm", "(DC) County Sutch Reborn Master.esm"]
+    },
+    {
+      "name": "Unique Artifacts for Unique People - Distribution.esp",
+      "flags": 0,
+      "masters": ["Capes4NPCs - Placement.esp", "OOO-Ayleid Coin Add-on.esp"]
+    },
+    {
+      "name": "TFF_Clothing_Base.esp",
+      "flags": 0,
+      "masters": ["Valley_View_Estate.esp", "Diverse Wisps - Base.esm"]
+    },
+    {
+      "name": "Ricks CIP ICTalosPlaza.esp",
+      "flags": 0,
+      "masters": ["Distractor0917.esm", "Distractor6820.esp"]
+    },
+    {
+      "name": "Open Cities Resources.esm",
+      "flags": 1,
+      "masters": ["Distractor0917.esm", "Distractor3672.esm"]
+    },
+    {"name": "Forgrum's Travelogue v2.0.esp", "flags": 0, "masters": []},
+    {
+      "name": "FCOM_KDCircletsOOOOptimizedNPCEquip.esp",
+      "flags": 0,
+      "masters": ["Mart's Monster Mod - Fran's leveled quests + HC.esp", "Castle Almgard V25.esp"]
+    },
+    {
+      "name": "Poisoned Apple Fix.esp",
+      "flags": 0,
+      "masters": ["LuckBasedLootForFrans.esp", "Distractor1480.esp"]
+    },
+    {
+      "name": "kuerteeAutoSaveAndTime.esp",
+      "flags": 0,
+      "masters": ["Cloud Ruler Armory - Spear Compatible.esp", "Mart's Monster Mod - No Balrogs.esp"]
+    },
+    {"name": "OgramiradTiger.esp", "flags": 0, "masters": []},
+    {"name": "OOO-Level_Slow.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0155.esm", "flags": 1, "masters": []},
+    {"name": "LightSpellEvilRed.esp", "flags": 0, "masters": []},
+    {
+      "name": "ArmamentariumLLArmaVendor.esp",
+      "flags": 0,
+      "masters": ["Distractor2587.esm", "NIARA.esp", "Distractor1707.esp"]
+    },
+    {"name": "Distractor4149.esp", "flags": 0, "masters": []},
+    {"name": "Respawning Varla & Welkynd Stones.esp", "flags": 0, "masters": ["Teenagers.esm"]},
+    {
+      "name": "NIARA.esp",
+      "flags": 0,
+      "masters": ["Goblin Tribal Shields.esp", "HTSClight.esm", "M.O.E. - Icons for Mythic Dawn Armour - Fix.esp"]
+    },
+    {"name": "Distractor8259.esp", "flags": 0, "masters": []},
+    {"name": "Legion Shield Replacer - OOO.esp", "flags": 0, "masters": []},
+    {"name": "OMOBS_SI.esp", "flags": 0, "masters": []},
+    {"name": "Colourwheels Sexy Tifa.esp", "flags": 0, "masters": []},
+    {"name": "Salutrian Elves.esp", "flags": 0, "masters": ["Distractor7328.esp"]},
+    {
+      "name": "TealcCM2partner.esp",
+      "flags": 0,
+      "masters": ["Armamentarium.esm", "OriginalLeatherSI.esp", "xulEntiusGorge.esp"]
+    },
+    {"name": "Anoicaar - Tenth Anniversary Edition.esp", "flags": 0, "masters": []},
+    {"name": "Harvest[Containers] - Vanilla.esp", "flags": 0, "masters": ["Capes4NPCs - Placement.esp"]},
+    {
+      "name": "Distractor3672.esm",
+      "flags": 1,
+      "masters": ["CyrodiilUpgradeResourcePack.esm", "Distractor8582.esm", "Distractor8140.esm"]
+    },
+    {"name": "TGND2 Armamentarium Replacer.esp", "flags": 0, "masters": []},
+    {"name": "000lute.esp", "flags": 0, "masters": []},
+    {"name": "Better Cities ANVIL.esp", "flags": 0, "masters": []},
+    {"name": "MagickOverlap.esp", "flags": 0, "masters": []},
+    {"name": "kuerteeAttributeAndSkillBasedDamageModifiers.esp", "flags": 0, "masters": []},
+    {
+      "name": "BravilDeuglified.esp",
+      "flags": 0,
+      "masters": ["sunk ships.esp", "Things Found Fence.esp", "ImpeREAL Empire - Unique Castles - Anvil.esp"]
+    },
+    {"name": "tbskGuardsFeaturesKvatchAddon.esp", "flags": 0, "masters": []},
+    {
+      "name": "All Natural - Indoor Weather Filter For Mods.esp",
+      "flags": 0,
+      "masters": ["Distractor9132.esm", "Distractor9602.esm", "Distractor3995.esm"]
+    },
+    {
+      "name": "BAF - Beast Argonians Froever.esp",
+      "flags": 0,
+      "masters": ["BPRace_Oblivion.esp", "Distractor0155.esm", "Distractor5861.esp"]
+    },
+    {"name": "xeosp++.esp", "flags": 0, "masters": []},
+    {"name": "Castle Arpenia - Niben Bay.esp", "flags": 0, "masters": []},
+    {
+      "name": "ULE Blood&Mud-UniqueLandscapes merged patch.esp",
+      "flags": 0,
+      "masters": ["Teleport Everywhere.esp"]
+    },
+    {"name": "BossPhaitStygainHalls.esp", "flags": 0, "masters": ["Armamentarium.esm"]},
+    {"name": "Levelled Spell Names.esp", "flags": 0, "masters": ["Distractor6820.esp"]},
+    {"name": "Bundlement.esp", "flags": 0, "masters": []},
+    {
+      "name": "RTT-Weye Relocation Patch.esp",
+      "flags": 0,
+      "masters": ["OblivionFarmer'sMarket3NoHungry.esp", "VipCxj_HairEyeSet.esp"]
+    },
+    {"name": "ZUSwordFlameAtro_Frostcrag.esp", "flags": 0, "masters": []},
+    {"name": "TT-EquipableBeardsLEVELEDLIST.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2534.esm", "flags": 1, "masters": ["Distractor8401.esm", "Teenagers.esm"]},
+    {"name": "HOD_delayer.esp", "flags": 0, "masters": ["Mages Carry Scrolls.esp"]},
+    {
+      "name": "Distractor8401.esm",
+      "flags": 1,
+      "masters": ["Teenagers.esm", "(DC) County Sutch Reborn Master.esm", "CyrodiilUpgradeResourcePack.esm"]
+    },
+    {"name": "OOOShiveringIsles_OCO_Patch.esp", "flags": 0, "masters": []},
+    {"name": "Clintmichs Beautiful Market District MakeOver v1.4.esp", "flags": 0, "masters": []},
+    {"name": "Darbinshire Keep.esp", "flags": 0, "masters": []},
+    {"name": "Hemingweys MMM Boss Chest Cape Loot.esp", "flags": 0, "masters": []},
+    {"name": "VampireReshoveled.esp", "flags": 0, "masters": []},
+    {"name": "Ryk_Sandals.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4792.esp", "flags": 0, "masters": []},
+    {
+      "name": "TheHolePt2.esp",
+      "flags": 0,
+      "masters": ["Asian Race.esp", "MagickOverlap.esp", "All Natural - Indoor Weather Filter for Extra Mods.esp"]
+    },
+    {"name": "Distractor8803.esm", "flags": 1, "masters": ["Distractor8582.esm", "Distractor0155.esm"]},
+    {"name": "Weapons Of Morrowind.esp", "flags": 0, "masters": []},
+    {
+      "name": "Mart's Monster Mod - No Balrogs.esp",
+      "flags": 0,
+      "masters": ["Mart's Monster Mod - Fran's leveled quests + HC.esp", "Distractor4159.esm", "Distractor1480.esp"]
+    },
+    {"name": "The Lost Spires - Rodon Dakkon Dialogue Tweak.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5265.esm", "flags": 1, "masters": []},
+    {"name": "TES4Merged.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8582.esm", "flags": 1, "masters": ["Crafting Skill Engine.esm"]},
+    {"name": "Kosai's Welkynd Armor.esp", "flags": 0, "masters": []},
+    {"name": "AyleidArrows.esp", "flags": 0, "masters": []},
+    {
+      "name": "Crafting Skill Engine.esm",
+      "flags": 1,
+      "masters": ["Teenagers.esm", "CyrodiilUpgradeResourcePack.esm"]
+    },
+    {"name": "Cyrodiil Transportation Network WZ OC.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2848.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2510.esp", "flags": 0, "masters": []},
+    {"name": "Treasure Maps Blood Ransom.esp", "flags": 0, "masters": []},
+    {"name": "CSV_Farms.esp", "flags": 0, "masters": []},
+    {"name": "TamrielTravellersFactionAll.esp", "flags": 0, "masters": []},
+    {
+      "name": "Clintmichs Beautiful Imperial City Arboretum v1.1.esp",
+      "flags": 0,
+      "masters": ["MEQ_NakakitaPatch.esp", "Ryk_Sandals.esp"]
+    },
+    {"name": "SNR Crowded Roads UFF.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6389.esp", "flags": 0, "masters": []},
+    {
+      "name": "Glowing Respawning Varla & Welkynd Stones 14-28 Days.esp",
+      "flags": 0,
+      "masters": [
+        "OriginalLeatherSI.esp",
+        "Mart's Monster Mod - Fran's leveled quests + HC.esp",
+        "LostSpiresImpeREALFortsPatch2.esp"
+      ]
+    },
+    {
+      "name": "Distractor7107.esp",
+      "flags": 0,
+      "masters": ["tbskGuardsFeaturesKvatchAddon.esp", "FCOM_SaferRoads.esp"]
+    },
+    {"name": "dhsRTentwithSorter.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6684.esm", "flags": 1, "masters": ["Distractor6071.esm"]},
+    {"name": "Balanced NPC Level Cap.esp", "flags": 0, "masters": []},
+    {"name": "OriginalLeatherSI.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2293.esp", "flags": 0, "masters": ["Distractor8582.esm"]},
+    {"name": "LootableLichHelm_Lt.esp", "flags": 0, "masters": []},
+    {
+      "name": "FCOM_OMG.esp",
+      "flags": 0,
+      "masters": ["no wind-2578.esp", "Distractor5241.esp", "Distractor6684.esm"]
+    },
+    {"name": "Dschinni.esp", "flags": 0, "masters": []},
+    {"name": "FCOM_SaferRoads.esp", "flags": 0, "masters": []},
+    {"name": "Teenagers.esm", "flags": 1, "masters": []},
+    {"name": "Goblin Tribal Shields.esp", "flags": 0, "masters": []},
+    {"name": "Jail Break Escape Routes.esp", "flags": 0, "masters": []},
+    {"name": "Loading Screens - Vanilla No Text.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor8198.esp",
+      "flags": 0,
+      "masters": ["Distractor2848.esp", "DarkQuest.esp", "All Natural - Indoor Weather Filter for Extra Mods.esp"]
+    },
+    {"name": "All Natural - Indoor Weather Filter for Extra Mods.esp", "flags": 0, "masters": []},
+    {"name": "Distractor7706.esp", "flags": 0, "masters": []},
+    {
+      "name": "FranOOOMMM_FranItemLists.esp",
+      "flags": 0,
+      "masters": ["rebornaylieds.esp", "1em_Vilja_corean14.esp"]
+    },
+    {
+      "name": "QQuix - Rock, rock, rock your ship - V3.esp",
+      "flags": 0,
+      "masters": ["Distractor8487.esm", "Distractor9132.esm"]
+    },
+    {"name": "Sexy Daedric Priestess.esp", "flags": 0, "masters": []},
+    {"name": "Lima.esp", "flags": 0, "masters": []},
+    {"name": "OCOv2 - MOO Patch.esp", "flags": 0, "masters": []},
+    {"name": "SewersForEveryCity.esp", "flags": 0, "masters": []},
+    {
+      "name": "Better Cities IC Arboretum.esp",
+      "flags": 0,
+      "masters": ["VampireReshoveled.esp", "Distractor3646.esm"]
+    },
+    {"name": "ElsweyrRiverhold.esp", "flags": 0, "masters": ["Distractor5271.esp"]},
+    {"name": "Sleep to Save.esp", "flags": 0, "masters": []},
+    {"name": "Side's Backpacks.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6071.esm", "flags": 1, "masters": []},
+    {"name": "Pretty Spriggans.esp", "flags": 0, "masters": []},
+    {"name": "ElsweyrC&CBlackwoodPatch.esp", "flags": 0, "masters": []},
+    {"name": "Alluring Potion Bottles v3.esp", "flags": 0, "masters": []},
+    {"name": "NJK_CharcoalVillage.esp", "flags": 0, "masters": []},
+    {"name": "BPRace_Oblivion.esp", "flags": 0, "masters": []},
+    {"name": "P1DseeYouSleep.esp", "flags": 0, "masters": []},
+    {
+      "name": "New Frostmourne Sword by Jojjo v1_0.esp",
+      "flags": 0,
+      "masters": ["Crafting Skill Engine.esm", "_Ren_BeautyPack_full_anime_voice.esp"]
+    },
+    {
+      "name": "Cernasite - OracleEyes.esp",
+      "flags": 0,
+      "masters": ["Landmarks, w Wells.esp", "Levelled Spell Names.esp"]
+    },
+    {
+      "name": "Distractor4663.esp",
+      "flags": 0,
+      "masters": ["Distractor4889.esp", "ArmamentariumLLArmaVendor.esp", "OgramiradTiger.esp"]
+    },
+    {"name": "Better Clocks-Better Cities IC Light Overhaul.esp", "flags": 0, "masters": []},
+    {
+      "name": "Capes4NPCs - Placement.esp",
+      "flags": 0,
+      "masters": ["QQuix - Rock, rock, rock your ship - V3.esp"]
+    },
+    {"name": "Distractor0643.esp", "flags": 0, "masters": ["CyrodiilUpgradeResourcePack.esm"]},
+    {
+      "name": "CrimsonScarArmor.esp",
+      "flags": 0,
+      "masters": ["PinarusInventiusActualHunter.esp", "_zz_BanditCollection(50gp).esp"]
+    },
+    {"name": "RealTeaFilterPatch.esp", "flags": 0, "masters": []},
+    {
+      "name": "Better daedric shrines full.esp",
+      "flags": 0,
+      "masters": ["Intelligence Overhaul.esp", "OOO-Level_Slow.esp"]
+    },
+    {"name": "bgMagicBonus.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2144.esp", "flags": 0, "masters": ["Tim_No_SI.esp"]},
+    {"name": "Tyrael Companion.esp", "flags": 0, "masters": []},
+    {"name": "weather inside [silent seasons] v1.2.esp", "flags": 0, "masters": []},
+    {
+      "name": "LakesideHome.esp",
+      "flags": 0,
+      "masters": ["Colourwheels Sexy Tifa.esp", "Distractor0155.esm", "DappleClydesdaleupdate.esp"]
+    },
+    {"name": "LadyLis_dainties.esp", "flags": 0, "masters": []},
+    {
+      "name": "Better Uriel Septim For OCOv2 Vanilla Hair.esp",
+      "flags": 0,
+      "masters": ["Distractor3343.esp"]
+    },
+    {
+      "name": "Geomancy & Gem Dust OOO (No Spell Change).esp",
+      "flags": 0,
+      "masters": ["Ryk_Sandals.esp"]
+    },
+    {"name": "Legacy of Faran.esp", "flags": 0, "masters": []},
+    {
+      "name": "IABaneOils 100.esp",
+      "flags": 0,
+      "masters": ["Enhanced Vegetation.esp", "LostSpiresImpeREALFortsPatch2.esp"]
+    },
+    {"name": "RTSNoZombies.esp", "flags": 0, "masters": []},
+    {
+      "name": "Nehrim Fast Travel.esp",
+      "flags": 0,
+      "masters": ["Distractor5487.esm", "Distractor2313.esm"]
+    },
+    {
+      "name": "mrSiikas_ImperialCathedral.esp",
+      "flags": 0,
+      "masters": ["Alternate Script Effect Icon.esp", "OCO Cleaned - Vanilla Hair.esp"]
+    },
+    {"name": "SM_ShiveringIsles.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor5271.esp",
+      "flags": 0,
+      "masters": ["Distractor9602.esm", "(DC) County Sutch Reborn Master.esm", "Distractor4067.esm"]
+    },
+    {"name": "OCO Cleaned - Vanilla Hair.esp", "flags": 0, "masters": ["Armamentarium.esm"]},
+    {
+      "name": "Distractor1812.esp",
+      "flags": 0,
+      "masters": ["AliveWaters - Koi Addon.esp", "FCOM_WarCry.esp"]
+    },
+    {"name": "BladesSmithySTANDARD.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8133.esm", "flags": 1, "masters": ["Distractor8582.esm"]},
+    {"name": "Armageddon.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0917.esm", "flags": 1, "masters": ["Distractor2534.esm", "Distractor4067.esm"]},
+    {
+      "name": "Skyrim Ingredients.esp",
+      "flags": 0,
+      "masters": ["kuerteeAttributeAndSkillBasedDamageModifiers.esp"]
+    },
+    {
+      "name": "Castle Almgard V25.esp",
+      "flags": 0,
+      "masters": ["Distractor0917.esm", "Loading Screens - Vanilla No Text.esp", "VampireReshoveled.esp"]
+    },
+    {"name": "Distractor9550.esp", "flags": 0, "masters": []},
+    {"name": "Lilmothiit.esp", "flags": 0, "masters": []},
+    {
+      "name": "Inscription Profession.esp",
+      "flags": 0,
+      "masters": ["Wearable GS and DS armor.esp", "Shadowcrest_Vineyard_Guard.esp", "DMRA Stock Armor Skimpy.esp"]
+    },
+    {
+      "name": "PinarusInventiusActualHunter.esp",
+      "flags": 0,
+      "masters": ["kuerteeAutoSaveAndTime.esp", "Street Vendors of Cyrodiil.esp"]
+    },
+    {
+      "name": "Walk to Oblivion - OBSE.esp",
+      "flags": 0,
+      "masters": ["Distractor0850.esm", "Saerileth.esp"]
+    },
+    {"name": "VipCxj_HairEyeSet.esp", "flags": 0, "masters": []},
+    {"name": "HTSCl_base.esp", "flags": 0, "masters": []},
+    {"name": "ElsweyrAnequinaNoSpiders.esp", "flags": 0, "masters": []},
+    {
+      "name": "KingofMisc.esp",
+      "flags": 0,
+      "masters": ["More_Arrows_Recovered.esp", "OCOv2 - MOO Patch.esp", "Distractor5265.esm"]
+    },
+    {
+      "name": "WindowLightingSystem.esp",
+      "flags": 0,
+      "masters": ["Crafting Skill Engine.esm", "High_Imperial_Trio.esp", "ROM Patch - Alternative Start.esp"]
+    },
+    {"name": "OOO-Respawn_Two_Week.esp", "flags": 0, "masters": []},
+    {"name": "Better Cities Skingrad - Roads of Cyrodiil.esp", "flags": 0, "masters": []},
+    {
+      "name": "Shadowcrest_Vineyard_Guard.esp",
+      "flags": 0,
+      "masters": ["Capes4NPCs.esm", "Wearable GS and DS armor.esp"]
+    },
+    {
+      "name": "OgramiradsUnmarkedPlaces.esp",
+      "flags": 0,
+      "masters": ["All Natural - Indoor Weather Filter For Mods.esp", "OgramiradTiger.esp", "Distractor2313.esm"]
+    },
+    {"name": "Distractor5431.esp", "flags": 0, "masters": []}
+  ],
+  "masterlist": null,
+  "userlist": null,
+  "prelude": null,
+  "real_masterlist": {
+    "repository": "oblivion",
+    "bundled_sha256": "3e0330f4e72e977e5393ed915f6dc466b6c10d8336529330e1040ef6ad5480e0",
+    "stripped_sha256": "035295e309160ccdb3dd3c4d2a85a52769dad5440f6501c1dc2505c7df7a4565",
+    "prelude_bundled_sha256": "d766b2d98565c2147bfeedf8df8385aae1c32731fc0b14b1bdb1ee54d1729711",
+    "prelude_stripped_sha256": "e4e8c81907defb24d03c7b22c8d9dc68186c6584f67aa75ce83727ff3758da85"
+  },
+  "expected": {
+    "order": [
+      "(DC) County Sutch Reborn Master.esm",
+      "Distractor3646.esm",
+      "CyrodiilUpgradeResourcePack.esm",
+      "Teenagers.esm",
+      "Crafting Skill Engine.esm",
+      "Distractor0155.esm",
+      "Distractor8582.esm",
+      "Distractor8133.esm",
+      "Distractor0850.esm",
+      "Distractor8140.esm",
+      "Distractor6071.esm",
+      "Distractor3995.esm",
+      "Distractor9602.esm",
+      "Diverse Wisps - Base.esm",
+      "Distractor2313.esm",
+      "Distractor8401.esm",
+      "Capes4NPCs.esm",
+      "Distractor2534.esm",
+      "Distractor4159.esm",
+      "Distractor8366.esm",
+      "Distractor8487.esm",
+      "Distractor4067.esm",
+      "Distractor2587.esm",
+      "HTSClight.esm",
+      "Distractor9132.esm",
+      "Distractor9397.esm",
+      "Armamentarium.esm",
+      "Distractor8803.esm",
+      "Distractor5487.esm",
+      "Distractor3672.esm",
+      "Distractor0917.esm",
+      "Open Cities Resources.esm",
+      "Distractor5265.esm",
+      "Distractor6684.esm",
+      "ITA - FoT & Hexaae R3.esp",
+      "DLCOrrery.esp",
+      "xeosp++.esp",
+      "Distractor4396.esp",
+      "Distractor9961.esp",
+      "ToiletMod.esp",
+      "Mart's Monster Mod - Fran's leveled quests + HC.esp",
+      "TamrielTravellersFactionAll.esp",
+      "Loading Screens - Vanilla No Text.esp",
+      "JounksPolearms-RemixedRemastered.esp",
+      "Pretty Spriggans.esp",
+      "MEQ_NakakitaPatch.esp",
+      "Thieves Arsenal.esp",
+      "VampireReshoveled.esp",
+      "Ryk_Sandals.esp",
+      "Clintmichs Beautiful Imperial City Arboretum v1.1.esp",
+      "OriginalLeatherSI.esp",
+      "xulEntiusGorge.esp",
+      "xulRollingHills_EV.esp",
+      "Better Cities BRAVIL.esp",
+      "Better Cities ANVIL.esp",
+      "Better Cities IC Arboretum.esp",
+      "Nehrim Fast Travel.esp",
+      "All Natural - Indoor Weather Filter for Extra Mods.esp",
+      "Beautiful People 2ch-Ed Vanilla Race.esp",
+      "DLCVileLair - Unofficial Patch.esp",
+      "OblivionFarmer'sMarket3NoHungry.esp",
+      "Kosai's Welkynd Armor.esp",
+      "Valley_View_Estate.esp",
+      "TFF_Clothing_Base.esp",
+      "Distractor0643.esp",
+      "UOP Vampire Aging & Face Fix.esp",
+      "CUO_BadGuy_Specific_Loot_DIRTY.esp",
+      "Hemingweys MMM Boss Chest Cape Loot.esp",
+      "24HrArenaAliveLow.esp",
+      "Spell Failure Chance.esp",
+      "AFK_Frostcrag.esp",
+      "An Unexpected Company.esp",
+      "Distractor0254.esp",
+      "DLCFrostcragCoblAlchemyTable.esp",
+      "Mages Carry Scrolls.esp",
+      "Distractor5025.esp",
+      "no wind-2578.esp",
+      "Mart's Monster Mod - Extra Wounding.esp",
+      "FCOM_SaferRoads.esp",
+      "MOB_Firemoth_Enemy_Mage_Rebalance.esp",
+      "tbskGuardsFeaturesKvatchAddon.esp",
+      "LadyLis_dainties.esp",
+      "CadlewChapelDungeon.esp",
+      "CT-Argonian Headstyles-EE.esp",
+      "AyleidMeteorIronWeaponsVANILLA.esp",
+      "QQuix - Rock, rock, rock your ship - V3.esp",
+      "bgMagicEVAddEnVar.esp",
+      "Mart's Monster Mod - Diverse WaterLife.esp",
+      "LostSpiresImpeREALFortsPatch2.esp",
+      "Leyawiin Bridge.esp",
+      "ZUPotionsOverhaulOOO.esp",
+      "Grashnak.esp",
+      "CynthiasFantasyEyes.esp",
+      "ArchmageSorceress.esp",
+      "Saerileth.esp",
+      "DiverseDremoraCoblRacesCosmetics.esp",
+      "BlackGlovesRus.esp",
+      "Francesco's Optional Leveled Guards.esp",
+      "Distractor7456.esp",
+      "Distractor5861.esp",
+      "The Lost Spires - Rodon Dakkon Dialogue Tweak.esp",
+      "Lima.esp",
+      "PersuasionOverhaul_LITE.esp",
+      "AsianElves.esp",
+      "Distractor4262.esp",
+      "Ulrim's Horses - OOO.esp",
+      "M.O.E. - Icons for Mythic Dawn Armour - Fix.esp",
+      "1em_Vilja_corean14.esp",
+      "Cyrodiil Rebuild.esp",
+      "Altessian.esp",
+      "Lycanthrope.esp",
+      "Distractor3710.esp",
+      "Wolvmans_Hidden_Unique_Merchant_Items.esp",
+      "Tim_No_SI.esp",
+      "OCO Cleaned - Vanilla Hair.esp",
+      "sunk ships.esp",
+      "Wearable GS and DS armor.esp",
+      "ULE GoldenArrowArcheryShop-RollingHills patch.esp",
+      "BPRace_Oblivion.esp",
+      "Anvil beach retexture.esp",
+      "DarkQuest.esp",
+      "TR_Stirk.esp",
+      "Colourwheels Sexy Skyrim Outpost HGEC.esp",
+      "BAKAdventurerTorch.esp",
+      "ImpeREAL Empire - Unique Castles - Anvil.esp",
+      "OOO-Ayleid Coin Add-on.esp",
+      "Distractor1707.esp",
+      "Crowded Cities 30.esp",
+      "DappleClydesdaleupdate.esp",
+      "High_Imperial_Trio.esp",
+      "FCOM_WarCry.esp",
+      "SB_WeaponDropFix_OOOFilterPatch.esp",
+      "NoBloodInside.esp",
+      "rebornaylieds.esp",
+      "CarnhayGuards.esp",
+      "Assassin Tripwires.esp",
+      "DarelothFrontDoorFix.esp",
+      "USIPCutterFix.esp",
+      "Distractor4889.esp",
+      "OCO v2 Balanced - Cobl.esp",
+      "Sexy Daedric Priestess.esp",
+      "AbandonedHouse.esp",
+      "Tabaxi_Race_Default.esp",
+      "Rowboats.esp",
+      "Better Cities - The Lost Spires.esp",
+      "Teleport Everywhere.esp",
+      "Distractor5549.esp",
+      "CRTRenewed.esp",
+      "Kit Rae Weaponry.esp",
+      "Auriel's Books.esp",
+      "Better Cities Chorrol - Oblivifall Losing My Religion.esp",
+      "ATW_Castle_Vet_v1.4.esp",
+      "ElsweyrAnequina - Races HGEC-Robert.esp",
+      "Lvl1Spawns.esp",
+      "Midas BeastFortify Fix OBSE.esp",
+      "IshMultipleApparelEnchantments.esp",
+      "Auriel's_Retreat.esp",
+      "All Natural.esp",
+      "Hot Coffee and Tea-Cobl.esp",
+      "ChapelsofCyrodiil.esp",
+      "Distractor2477.esp",
+      "Anoicaar - Tenth Anniversary Edition.esp",
+      "Distractor1694.esp",
+      "Distractor0242.esp",
+      "ROM Patch - Alternative Start.esp",
+      "Mart's Monster Mod - No Bone Loot.esp",
+      "_Ren_BeautyPack_full_anime_voice.esp",
+      "ConjurationTomeOBSE.esp",
+      "Hemingweys FCOM NPC Capes Improved Regional City Guards.esp",
+      "Better Dark Brotherhood Sanctuary.esp",
+      "AliveWaters - Koi Addon.esp",
+      "DMRA Stock Clothing Skimpy.esp",
+      "LuckBasedLootForFrans.esp",
+      "Distractor7800.esp",
+      "SC-TrialsofTheNine.esp",
+      "Better Traps.esp",
+      "Arcane Services.esp",
+      "HTSCl_base.esp",
+      "More_Arrows_Recovered.esp",
+      "Goblin Tribal Shields.esp",
+      "Mercantile Leveling-Fixed.esp",
+      "NoWindSI.esp",
+      "Darkgreen Glass Armour.esp",
+      "Vexend Race.esp",
+      "Distractor3015.esp",
+      "Arrows Remain 10min.esp",
+      "Borderless Cyrodiil-3578.esp",
+      "Cloud Ruler Armory - Spear Compatible.esp",
+      "Castle Almgard V25.esp",
+      "brownclydesdale.esp",
+      "Vampire Power - Light of Day.esp",
+      "Hemingweys VAN NPC Capes Improved Enemies.esp",
+      "NIARA.esp",
+      "ArmamentariumLLArmaVendor.esp",
+      "Ulrim's Horses - DLCHorseArmor+OOO.esp",
+      "Distractor5168.esp",
+      "_zz_BanditCollection(50gp).esp",
+      "OgramiradTiger.esp",
+      "CM Partners More NPCs.esp",
+      "TGND2 Armamentarium Replacer.esp",
+      "Distractor5271.esp",
+      "Distractor1480.esp",
+      "immersive_caves_auto.esp",
+      "Bounty Quests.esp",
+      "Trail  Central.esp",
+      "Better Dungeons.esp",
+      "DMRA Stock Armor Skimpy.esp",
+      "Distractor5544.esp",
+      "BlackGlovesEng_noNPCchanges.esp",
+      "Landmarks, w Wells.esp",
+      "Border-Region-disabled.esp",
+      "Enhanced Vegetation.esp",
+      "Distractor7328.esp",
+      "Mart's Monster Mod - Durzog Addon.esp",
+      "NJK_CharcoalVillage.esp",
+      "Intelligence Overhaul.esp",
+      "Zombie Island.esp",
+      "ElsweyrC&CBlackwoodPatch.esp",
+      "POTSB.esp",
+      "Street Vendors of Cyrodiil.esp",
+      "elven baths.esp",
+      "ArmamentariumLLVendors.esp",
+      "Distractor1321.esp",
+      "Nec - Extra Mystic Elf Face.esp",
+      "AmidalaSaramHair.esp",
+      "Distractor9558.esp",
+      "Armageddon.esp",
+      "Castle Arpenia - Gold Coast.esp",
+      "Distractor6998.esp",
+      "EVE_KnightsoftheNine.esp",
+      "Gold Road Cottage.esp",
+      "WAC - ItemLootFix4v1.0b.esp",
+      "Alternate Script Effect Icon.esp",
+      "SacredOak_Settlement.esp",
+      "Hammers Revised.esp",
+      "Distractor6820.esp",
+      "Exnem1 Moonwell and Mystic Night Elf.esp",
+      "Distractor5440.esp",
+      "Wizard'sSpellBook.esp",
+      "Drokk's Vampire Mod.esp",
+      "MP Human Eyes Vanilla Makeover.esp",
+      "Distractor5619.esp",
+      "Icthylean_Race.esp",
+      "Balanced NPC Level Cap.esp",
+      "Distractor5241.esp",
+      "Akiviri Imports MOBS.esp",
+      "kuerteeAttributeAndSkillBasedDamageModifiers.esp",
+      "Natural_Vegetation_200%_by_Max_Tael.esp",
+      "DaedraShrinesProddedWithAStick.esp",
+      "babehair_DV.esp",
+      "Things Found Fence.esp",
+      "Bundlement.esp",
+      "NewAnimation.esp",
+      "GuilesScrollRenamer.esp",
+      "xulPatch_AY_AC.esp",
+      "Asian Race.esp",
+      "Distractor2005.esp",
+      "Ricks CIP ICTalosPlaza.esp",
+      "Forgrum's Travelogue v2.0.esp",
+      "FCOM_KDCircletsOOOOptimizedNPCEquip.esp",
+      "Poisoned Apple Fix.esp",
+      "Mart's Monster Mod - No Balrogs.esp",
+      "kuerteeAutoSaveAndTime.esp",
+      "OOO-Level_Slow.esp",
+      "LightSpellEvilRed.esp",
+      "Distractor4149.esp",
+      "Respawning Varla & Welkynd Stones.esp",
+      "Distractor8259.esp",
+      "Legion Shield Replacer - OOO.esp",
+      "OMOBS_SI.esp",
+      "Colourwheels Sexy Tifa.esp",
+      "Salutrian Elves.esp",
+      "TealcCM2partner.esp",
+      "000lute.esp",
+      "MagickOverlap.esp",
+      "BravilDeuglified.esp",
+      "BAF - Beast Argonians Froever.esp",
+      "Castle Arpenia - Niben Bay.esp",
+      "ULE Blood&Mud-UniqueLandscapes merged patch.esp",
+      "BossPhaitStygainHalls.esp",
+      "Levelled Spell Names.esp",
+      "VipCxj_HairEyeSet.esp",
+      "RTT-Weye Relocation Patch.esp",
+      "ZUSwordFlameAtro_Frostcrag.esp",
+      "TT-EquipableBeardsLEVELEDLIST.esp",
+      "HOD_delayer.esp",
+      "OOOShiveringIsles_OCO_Patch.esp",
+      "Clintmichs Beautiful Market District MakeOver v1.4.esp",
+      "Darbinshire Keep.esp",
+      "Distractor4792.esp",
+      "TheHolePt2.esp",
+      "Weapons Of Morrowind.esp",
+      "AyleidArrows.esp",
+      "Cyrodiil Transportation Network WZ OC.esp",
+      "Distractor2848.esp",
+      "Distractor2510.esp",
+      "Treasure Maps Blood Ransom.esp",
+      "CSV_Farms.esp",
+      "SNR Crowded Roads UFF.esp",
+      "Distractor6389.esp",
+      "Glowing Respawning Varla & Welkynd Stones 14-28 Days.esp",
+      "Distractor7107.esp",
+      "dhsRTentwithSorter.esp",
+      "Distractor2293.esp",
+      "LootableLichHelm_Lt.esp",
+      "FCOM_OMG.esp",
+      "Dschinni.esp",
+      "Jail Break Escape Routes.esp",
+      "Distractor8198.esp",
+      "Distractor7706.esp",
+      "FranOOOMMM_FranItemLists.esp",
+      "OCOv2 - MOO Patch.esp",
+      "SewersForEveryCity.esp",
+      "ElsweyrRiverhold.esp",
+      "Sleep to Save.esp",
+      "Side's Backpacks.esp",
+      "Alluring Potion Bottles v3.esp",
+      "P1DseeYouSleep.esp",
+      "New Frostmourne Sword by Jojjo v1_0.esp",
+      "Cernasite - OracleEyes.esp",
+      "Distractor4663.esp",
+      "Better Clocks-Better Cities IC Light Overhaul.esp",
+      "PinarusInventiusActualHunter.esp",
+      "CrimsonScarArmor.esp",
+      "RealTeaFilterPatch.esp",
+      "Better daedric shrines full.esp",
+      "bgMagicBonus.esp",
+      "Distractor2144.esp",
+      "Tyrael Companion.esp",
+      "weather inside [silent seasons] v1.2.esp",
+      "LakesideHome.esp",
+      "Geomancy & Gem Dust OOO (No Spell Change).esp",
+      "Legacy of Faran.esp",
+      "IABaneOils 100.esp",
+      "RTSNoZombies.esp",
+      "mrSiikas_ImperialCathedral.esp",
+      "SM_ShiveringIsles.esp",
+      "Distractor1812.esp",
+      "BladesSmithySTANDARD.esp",
+      "Skyrim Ingredients.esp",
+      "Distractor9550.esp",
+      "Lilmothiit.esp",
+      "Shadowcrest_Vineyard_Guard.esp",
+      "Inscription Profession.esp",
+      "Walk to Oblivion - OBSE.esp",
+      "ElsweyrAnequinaNoSpiders.esp",
+      "KingofMisc.esp",
+      "WindowLightingSystem.esp",
+      "OOO-Respawn_Two_Week.esp",
+      "Better Cities Skingrad - Roads of Cyrodiil.esp",
+      "Distractor5431.esp",
+      "All Natural - Indoor Weather Filter For Mods.esp",
+      "Distractor0288.esp",
+      "Distractor3343.esp",
+      "SecretsoftheAyleidsClosure.esp",
+      "Better Uriel Septim For OCOv2 Vanilla Hair.esp",
+      "OgramiradsUnmarkedPlaces.esp",
+      "Capes4NPCs - Placement.esp",
+      "Harvest[Containers] - Vanilla.esp",
+      "TIE Weapon + Armor Filter.esp",
+      "Unique Artifacts for Unique People - Distribution.esp",
+      "TES4Merged.esp"
+    ]
+  },
+  "groups_paths": []
+}

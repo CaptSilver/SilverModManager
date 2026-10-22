@@ -1,0 +1,733 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": 2,
+  "game_type": "Fallout3",
+  "format": "Tes4",
+  "header_version": 0.94,
+  "name": "fallout3_seed_002",
+  "plugins": [
+    {"name": "DUIF3Extras.esp", "flags": 0, "masters": []},
+    {"name": "Ambient Temperature.esm", "flags": 1, "masters": []},
+    {
+      "name": "(TWPC) DIFF3-RI-EVE-MMM-WMK-PRA-F3HMG-F3HF-20CWRE-IMPACT-UUF3P-FWE Patch.esp",
+      "flags": 0,
+      "masters": ["BombayTradingCo.esp", "(TWPC) CPWM-UUF3P-FWE Patch.esp"]
+    },
+    {
+      "name": "AWE_no_sneak.esp",
+      "flags": 0,
+      "masters": ["WRWC - Classic Fallout.esp", "3DNPC_Chapel.esm"]
+    },
+    {
+      "name": "Overhead3PCamera.esp",
+      "flags": 0,
+      "masters": ["CRAFTHelper_ReplaceWorkbenchScript.esp", "AnimatedFanV2f3.esp"]
+    },
+    {
+      "name": "Powered Power Armor.esp",
+      "flags": 0,
+      "masters": ["RHKBrisaAlmodovar.esm", "Companion Core.esm", "Lings.esm"]
+    },
+    {"name": "UrgeWashingtonBoS.esp", "flags": 0, "masters": []},
+    {"name": "Billboard Camps.esp", "flags": 0, "masters": []},
+    {"name": "WeaponModKits - FWE Master Release.esp", "flags": 0, "masters": []},
+    {"name": "Clothed Sarah Lyons - Sleepwear.esp", "flags": 0, "masters": ["Powered Power Armor.esp"]},
+    {"name": "Mart's Mutant Mod - Tougher Traders.esp", "flags": 0, "masters": []},
+    {
+      "name": "(TWPC) PLR-MMM Patch.esp",
+      "flags": 0,
+      "masters": ["PLweightadjust.esp", "IMCN - BLTC Compatibility and Ingestibles.esp"]
+    },
+    {"name": "RoadWardens.esp", "flags": 0, "masters": []},
+    {"name": "BeardsofFallout.esp", "flags": 0, "masters": ["3DNPC_Mortar.esm"]},
+    {"name": "Distractor7968.esm", "flags": 1, "masters": []},
+    {"name": "More308Ammo.esp", "flags": 0, "masters": []},
+    {"name": "(TWPC) BFO-UUF3P-FWE Patch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor7249.esm", "flags": 1, "masters": ["Distractor2613.esm"]},
+    {"name": "Phalanx-PointLookout-Navmesh.esm", "flags": 1, "masters": ["Distractor4798.esm"]},
+    {
+      "name": "Distractor5601.esp",
+      "flags": 0,
+      "masters": ["(TWPC) K9B-UUF3P-FWE Patch.esp", "Distractor0367.esm"]
+    },
+    {
+      "name": "(TWPC) WMK-UUF3P-FWE Patch.esp",
+      "flags": 0,
+      "masters": ["Hi-Res Weapons & Ammo Textures - The Pitt.esp"]
+    },
+    {"name": "Distractor4730.esp", "flags": 0, "masters": ["More308Ammo.esp", "Distractor2613.esm"]},
+    {"name": "3DNPC_Mortar.esm", "flags": 1, "masters": []},
+    {"name": "Modified_Races.esp", "flags": 0, "masters": []},
+    {
+      "name": "20th Century v4 ALIVE (Raider).esp",
+      "flags": 0,
+      "masters": ["Distractor8012.esp", "CRAFTHelper_ReplaceWorkbenchScriptFWE.esp"]
+    },
+    {"name": "Tenpenny Tower Alternate Endings.esp", "flags": 0, "masters": []},
+    {"name": "Fo3HirezdMinigun.esp", "flags": 0, "masters": ["Conelrad 640-1240.esp"]},
+    {
+      "name": "Compiled fixes for Fallout 3 ( compatible with UOFO3P ).esp",
+      "flags": 0,
+      "masters": ["Distractor1356.esm"]
+    },
+    {"name": "CRAFTHelper_ReplaceWorkbenchScript.esp", "flags": 0, "masters": ["RatTrapRadio.esp"]},
+    {"name": "20th Century v5 ALIVE (SuperMutant).esp", "flags": 0, "masters": []},
+    {"name": "IMCN - BLTC Compatibility and Ingestibles.esp", "flags": 0, "masters": []},
+    {"name": "BombayTradingCo.esp", "flags": 0, "masters": ["Distractor7249.esm"]},
+    {"name": "Distractor3303.esm", "flags": 1, "masters": ["RI_Core.esm", "Distractor7917.esm"]},
+    {"name": "LingsDLC.esm", "flags": 1, "masters": ["FO3 Wanderers Edition - Main File.esm"]},
+    {"name": "Mentats Re-Textures.esp", "flags": 0, "masters": []},
+    {"name": "xCALIBRuniverse.esm", "flags": 1, "masters": []},
+    {"name": "Distractor1269.esp", "flags": 0, "masters": []},
+    {"name": "Weld and Steel - Badges, only Weld hat.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4798.esm", "flags": 1, "masters": []},
+    {
+      "name": "Refurbish [OA] - FWE.esp",
+      "flags": 0,
+      "masters": ["Distractor1269.esp", "3DNPC_DotsDiner.esm", "XENH.esp"]
+    },
+    {"name": "FO3 Wanderers Edition - Main File.esm", "flags": 1, "masters": []},
+    {"name": "unique_uniquesDLC.esp", "flags": 0, "masters": []},
+    {"name": "AmmoSorter - End.esp", "flags": 0, "masters": []},
+    {"name": "tubRRCompound.esp", "flags": 0, "masters": []},
+    {"name": "CRAFTHelper_ReplaceWorkbenchScriptFWE.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4725.esp", "flags": 0, "masters": []},
+    {"name": "(TWPC) BBB-UUF3P-FWE Patch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor9740.esp", "flags": 0, "masters": []},
+    {"name": "BBBackpacks-v1.esp", "flags": 0, "masters": ["xCALIBRuniverse.esm", "Distractor7917.esm"]},
+    {"name": "ZORTS - Disable FWE activate.esp", "flags": 0, "masters": []},
+    {"name": "JIP CC&C - Quo Vagis.esp", "flags": 0, "masters": []},
+    {
+      "name": "Fo3HirezdFlamer.esp",
+      "flags": 0,
+      "masters": ["(TWPC) BFO-UUF3P-FWE Patch.esp", "ZORTS - Custom HP - FWE.esp", "schematics2.esp"]
+    },
+    {"name": "Distractor2029.esm", "flags": 1, "masters": []},
+    {
+      "name": "Named Wasteland.esp",
+      "flags": 0,
+      "masters": [
+        "xCALIBRUniverse_FWE_Tactical.esp",
+        "Phalanx-OPTIONAL-BROKENSTEEL-WeaponRepairLists.esp",
+        "Detect Traps.esm"
+      ]
+    },
+    {"name": "Distractor3811.esp", "flags": 0, "masters": []},
+    {
+      "name": "GlowingGhouls-MMM.esp",
+      "flags": 0,
+      "masters": ["EWE Supermutant Energy Weapons.esp", "Shojo Race.esp"]
+    },
+    {"name": "Distractor5668.esp", "flags": 0, "masters": []},
+    {"name": "EnhVision.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2906.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor2595.esm",
+      "flags": 1,
+      "masters": ["Companion Core.esm", "Distractor1032.esm", "Distractor0367.esm"]
+    },
+    {"name": "Conelrad 640-1240.esp", "flags": 0, "masters": ["(TWPC) CPWM-UUF3P-FWE Patch.esp"]},
+    {
+      "name": "Chinese Stealth Suit- Removable Helmet.esp",
+      "flags": 0,
+      "masters": [
+        "FO3 Wanderers Edition - Optional Restore Tracers.esp",
+        "AWE_no_sneak.esp",
+        "RH_IronSights_Pitt_NewRifleSights.esp"
+      ]
+    },
+    {"name": "SpiderAnts.esp", "flags": 0, "masters": ["Distractor2595.esm", "unique_uniquesDLC.esp"]},
+    {"name": "Mart's Mutant Mod - Master Menu Module.esp", "flags": 0, "masters": ["SpiderAnts.esp"]},
+    {
+      "name": "Stealth Kills Enabled - Pitt Compatibility.esp",
+      "flags": 0,
+      "masters": ["Weld - Badge and Hat.esp"]
+    },
+    {"name": "yaDisguisesMod.esp", "flags": 0, "masters": ["DTOForFWE.esp", "UrgeWashingtonBoS.esp"]},
+    {"name": "T3_MadLax_Outfit.esp", "flags": 0, "masters": []},
+    {"name": "SelfSurgeryKit.esp", "flags": 0, "masters": []},
+    {"name": "WRWC - Classic Fallout.esp", "flags": 0, "masters": ["BBBackpacks-v1.esp"]},
+    {
+      "name": "DIM CUSTOM RACES V2.esp",
+      "flags": 0,
+      "masters": ["Distractor7917.esm", "Distractor5545.esp", "Despicable Dashwood v2.esp"]
+    },
+    {
+      "name": "(TWPC) K9B-UUF3P-FWE Patch.esp",
+      "flags": 0,
+      "masters": ["BoSDX.esp", "Distractor8146.esm"]
+    },
+    {
+      "name": "FO3NeckChains.esp",
+      "flags": 0,
+      "masters": ["Mart's Mutant Mod - FWE Master Release + DLCs.esp", "ZORTS - Disable FWE activate.esp"]
+    },
+    {"name": "Distractor9669.esp", "flags": 0, "masters": []},
+    {
+      "name": "Blackened FWE + MMM.esp",
+      "flags": 0,
+      "masters": [
+        "Distractor8146.esm",
+        "20th Century v5 ALIVE (SuperMutant).esp",
+        "Xepha's Dynamic Weather - Main.esp"
+      ]
+    },
+    {"name": "Refugee Clothing.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0883.esp", "flags": 0, "masters": []},
+    {"name": "Laboratory (BS & MZ).esp", "flags": 0, "masters": []},
+    {
+      "name": "Sydney Follower - Recruitment Fix.esp",
+      "flags": 0,
+      "masters": ["Laboratory (BS & MZ).esp", "3DNPC_DotsDiner.esm"]
+    },
+    {
+      "name": "MegatonLightingPlusNeonSignGlow.esp",
+      "flags": 0,
+      "masters": ["Refugee Clothing.esp", "A Trail of Crumbs.esp"]
+    },
+    {
+      "name": "No Scopeless Zooming - PPA Edition.esp",
+      "flags": 0,
+      "masters": ["Hi-Res Weapons & Ammo Textures - The Pitt.esp", "3DNPC_Chapel.esm", "BringBackBael.esp"]
+    },
+    {"name": "DynamicCrosshair.esp", "flags": 0, "masters": []},
+    {"name": "DIFF.esp", "flags": 0, "masters": []},
+    {
+      "name": "RimfireRevolverCommon.esp",
+      "flags": 0,
+      "masters": ["Sydney Follower - Recruitment Fix.esp"]
+    },
+    {"name": "Distractor9884.esp", "flags": 0, "masters": ["Distractor0739.esm"]},
+    {"name": "Scenic_Loading_Background_OperationAnchorageDLC.esp", "flags": 0, "masters": []},
+    {"name": "Imp's More Complex Needs.esp", "flags": 0, "masters": ["Distractor3009.esm"]},
+    {
+      "name": "Distractor1832.esp",
+      "flags": 0,
+      "masters": ["FO3 Wanderers Edition - Main File.esm", "(TWPC) CPWM-UUF3P-FWE Patch.esp", "Distractor3974.esm"]
+    },
+    {
+      "name": "3DNPC_Chapel.esm",
+      "flags": 1,
+      "masters": ["Distractor4798.esm", "Phalanx-PointLookout-Navmesh.esm", "Distractor0367.esm"]
+    },
+    {"name": "(TWPC) K9B-MMM-UUF3P-FWE Patch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor7917.esm", "flags": 1, "masters": ["Lings.esm", "3DNPC_DotsDiner.esm"]},
+    {"name": "Xepha's Dynamic Weather - Main.esp", "flags": 0, "masters": []},
+    {"name": "(TWPC) TMI-FWE Patch.esp", "flags": 0, "masters": []},
+    {"name": "schematics2.esp", "flags": 0, "masters": ["3DNPC_DotsDiner.esm"]},
+    {"name": "Echo_UseBothGloves.esp", "flags": 0, "masters": ["Refugee Clothing.esp"]},
+    {"name": "CantaburyCommonsGuards - DTO.esp", "flags": 0, "masters": []},
+    {
+      "name": "Clothed American Soldiers.esp",
+      "flags": 0,
+      "masters": ["RHKBrisaAlmodovar.esm", "Tenpenny Tower Alternate Endings.esp", "FHVF3PL.esp"]
+    },
+    {
+      "name": "Mart's Mutant Mod - Soft Unleveler.esp",
+      "flags": 0,
+      "masters": ["Weld - Badge and Hat.esp", "More308Ammo.esp", "PLweightadjust.esp"]
+    },
+    {"name": "RobCo Universal Battery Charger Kit - Zeta.esp", "flags": 0, "masters": ["Barkskin.esp"]},
+    {
+      "name": "JIP CC&C - Angel (Slave Raider).esp",
+      "flags": 0,
+      "masters": ["Distractor7917.esm", "Refurbish [OA] - FWE.esp"]
+    },
+    {"name": "CharonImproved.esp", "flags": 0, "masters": ["PLweightadjust.esp"]},
+    {"name": "Distractor8146.esm", "flags": 1, "masters": []},
+    {"name": "Vault 101 Revisited James Room.esp", "flags": 0, "masters": []},
+    {"name": "megaton_lighting.esp", "flags": 0, "masters": []},
+    {
+      "name": "AMPUTATE!.esp",
+      "flags": 0,
+      "masters": ["BoSDX.esp", "Distractor2595.esm", "Distractor2118.esm"]
+    },
+    {"name": "Radio Active.esp", "flags": 0, "masters": []},
+    {"name": "Enhanced Weather - Sneak Bonus during Storms.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5545.esp", "flags": 0, "masters": []},
+    {"name": "Hi-Res Weapons & Ammo Textures - The Pitt.esp", "flags": 0, "masters": []},
+    {"name": "(TWPC) RIL-UUF3P-DM Patch.esp", "flags": 0, "masters": []},
+    {"name": "dD-More Gore.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor6838.esp",
+      "flags": 0,
+      "masters": ["(TWPC) K9B-UUF3P-FWE Patch.esp", "Weld - Badge and Hat.esp"]
+    },
+    {
+      "name": "unique_uniques.esp",
+      "flags": 0,
+      "masters": ["schematics2.esp", "Distractor0739.esm", "Distractor7249.esm"]
+    },
+    {"name": "Distractor6416.esp", "flags": 0, "masters": []},
+    {
+      "name": "FHVF3PL.esp",
+      "flags": 0,
+      "masters": ["Distractor3512.esp", "Sydney Follower - Recruitment Fix.esp"]
+    },
+    {"name": "(TWPC) HRWW-DIFF3-UUF3P-FWE Patch.esp", "flags": 0, "masters": ["Distractor7249.esm"]},
+    {
+      "name": "Enhanced Weather - Radioactive Rain and Snow Plugin.esp",
+      "flags": 0,
+      "masters": ["ZORTS - Custom HP - FWE.esp", "Distractor2118.esm"]
+    },
+    {"name": "Shojo Race.esp", "flags": 0, "masters": []},
+    {"name": "RH_EVE_Bridge.esp", "flags": 0, "masters": ["RimfireRevolverCommon.esp"]},
+    {"name": "Distractor3974.esm", "flags": 1, "masters": []},
+    {"name": "Distractor2846.esp", "flags": 0, "masters": ["DelayThePitt.esp"]},
+    {"name": "Arwen_Med-Tec.esp", "flags": 0, "masters": ["Vault 101 Revisited James Room.esp"]},
+    {"name": "Lings.esm", "flags": 1, "masters": []},
+    {
+      "name": "EWE Supermutant Energy Weapons.esp",
+      "flags": 0,
+      "masters": ["schematics2.esp", "Distractor9884.esp"]
+    },
+    {"name": "RH_IronSights_Basic_ZetaPlugin.esp", "flags": 0, "masters": []},
+    {
+      "name": "RHKBrisaAlmodovar.esm",
+      "flags": 1,
+      "masters": ["Companion Core.esm", "Distractor3974.esm", "Distractor3009.esm"]
+    },
+    {"name": "Mart's Mutant Mod - DLC The Pitt.esp", "flags": 0, "masters": []},
+    {
+      "name": "Weld - Badge and Hat.esp",
+      "flags": 0,
+      "masters": ["Imp's More Complex Needs.esp", "CantaburyCommonsGuards - DTO.esp", "Distractor9884.esp"]
+    },
+    {
+      "name": "Clutter Remover.esp",
+      "flags": 0,
+      "masters": ["BoSDX.esp", "Distractor5545.esp", "Chinese Stealth Suit- Removable Helmet.esp"]
+    },
+    {
+      "name": "Refurbish [PL].esp",
+      "flags": 0,
+      "masters": ["Distractor4798.esm", "(TWPC) BFO-UUF3P-FWE Patch.esp", "Weld - Badge and Hat.esp"]
+    },
+    {
+      "name": "Distractor2261.esp",
+      "flags": 0,
+      "masters": ["Distractor9424.esp", "No Scopeless Zooming - PPA Edition.esp", "AMPUTATE!.esp"]
+    },
+    {
+      "name": "20th Century v5 ALIVE (Vault 101).esp",
+      "flags": 0,
+      "masters": ["H.E.R.K..esm", "Refugee Clothing.esp", "Less_Blood.esp"]
+    },
+    {"name": "ClearAndPresentAdjustment_Beauty_Weapons_1_1-1.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor1356.esm",
+      "flags": 1,
+      "masters": ["RI_Core.esm", "Distractor4798.esm", "Distractor2595.esm"]
+    },
+    {"name": "UniqueWeaponsRetextured.esp", "flags": 0, "masters": []},
+    {"name": "Less_Blood.esp", "flags": 0, "masters": ["Echo_UseBothGloves.esp"]},
+    {"name": "RI_Core.esm", "flags": 1, "masters": ["Distractor1032.esm"]},
+    {
+      "name": "Distractor6228.esp",
+      "flags": 0,
+      "masters": ["Barkskin.esp", "Mart's Mutant Mod - FWE Master Release + DLCs.esp"]
+    },
+    {"name": "Barkskin.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor7758.esp",
+      "flags": 0,
+      "masters": ["FHVF3PL.esp", "Vault 101 Revisited James Room.esp"]
+    },
+    {
+      "name": "XENH.esp",
+      "flags": 0,
+      "masters": [
+        "Test-Weapon_additional armor.esp",
+        "ClearAndPresentAdjustment_Beauty_Weapons_1_1-1.esp",
+        "Distractor0739.esm"
+      ]
+    },
+    {"name": "RadioTenpennyTower.esp", "flags": 0, "masters": []},
+    {
+      "name": "Test-Weapon_additional armor.esp",
+      "flags": 0,
+      "masters": ["CantaburyCommonsGuards - DTO.esp"]
+    },
+    {
+      "name": "WasteWearGloves.esp",
+      "flags": 0,
+      "masters": ["RimfireRevolverCommon.esp", "RadioTenpennyTower.esp"]
+    },
+    {"name": "(TWPC) BVR-FWE Patch.esp", "flags": 0, "masters": []},
+    {"name": "Zumbs'_Overhauled_Real_Time_Security.esp", "flags": 0, "masters": []},
+    {"name": "H.E.R.K..esm", "flags": 1, "masters": []},
+    {"name": "ZORTS - Custom HP - FWE.esp", "flags": 0, "masters": ["(TWPC) BVR-FWE Patch.esp"]},
+    {"name": "3DNPC_DotsDiner.esm", "flags": 1, "masters": ["Phalanx-PointLookout-Navmesh.esm"]},
+    {
+      "name": "FO3 Wanderers Edition - Optional Restore Tracers.esp",
+      "flags": 0,
+      "masters": ["FHVF3PL.esp"]
+    },
+    {
+      "name": "Mart's Mutant Mod - FWE Master Release + DLCs.esp",
+      "flags": 0,
+      "masters": ["Distractor0367.esm", "Fo3HirezdFlamer.esp"]
+    },
+    {"name": "Companion Core.esm", "flags": 1, "masters": []},
+    {
+      "name": "dD-More Gore-The Pitt.esp",
+      "flags": 0,
+      "masters": ["Adopt Bryan DV.esp", "Mart's Mutant Mod - DLC The Pitt.esp"]
+    },
+    {"name": "Distractor2118.esm", "flags": 1, "masters": []},
+    {
+      "name": "20th_Century_Weapons -Plus- Reborn_v1_70RC-18668_Ironsights_v1_1.esp",
+      "flags": 0,
+      "masters": ["Distractor2613.esm", "Distractor1356.esm", "Test-Weapon_additional armor.esp"]
+    },
+    {
+      "name": "AnimatedFanV2f3.esp",
+      "flags": 0,
+      "masters": ["Refurbish [OA] - FWE.esp", "Distractor3303.esm", "FO3 Wanderers Edition - Main File.esm"]
+    },
+    {"name": "JIP CC&C - Brisa Almodovar.esp", "flags": 0, "masters": []},
+    {
+      "name": "FOOK2 - Main.esp",
+      "flags": 0,
+      "masters": ["BoSDX.esp", "CantaburyCommonsGuards - DTO.esp"]
+    },
+    {"name": "Distractor8012.esp", "flags": 0, "masters": []},
+    {"name": "EVE Operation Anchorage.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3512.esp", "flags": 0, "masters": []},
+    {"name": "Distractor9424.esp", "flags": 0, "masters": []},
+    {"name": "GilbertToys.esp", "flags": 0, "masters": ["SpiderAnts.esp"]},
+    {"name": "WinterizedT51bDX.esp", "flags": 0, "masters": []},
+    {"name": "RatTrapRadio.esp", "flags": 0, "masters": []},
+    {
+      "name": "A Trail of Crumbs.esp",
+      "flags": 0,
+      "masters": ["Lings.esm", "Distractor4798.esm", "Distractor2595.esm"]
+    },
+    {"name": "DelayThePitt.esp", "flags": 0, "masters": []},
+    {"name": "(TWPC) CPWM-UUF3P-FWE Patch.esp", "flags": 0, "masters": ["Distractor7968.esm"]},
+    {
+      "name": "KelseyCompanion.esp",
+      "flags": 0,
+      "masters": ["Refurbish [PL].esp", "(TWPC) CPWM-UUF3P-FWE Patch.esp"]
+    },
+    {"name": "RH_IronSights_Pitt_NewRifleSights.esp", "flags": 0, "masters": []},
+    {"name": "(TWPC) WD-UUF3P-FWE Patch.esp", "flags": 0, "masters": []},
+    {"name": "ZL-ACR.esp", "flags": 0, "masters": []},
+    {"name": "K9BreedsPatchMMM.esp", "flags": 0, "masters": []},
+    {
+      "name": "BnB special armors.esp",
+      "flags": 0,
+      "masters": ["BornAgain Outcast v3.esp", "GilbertToys.esp"]
+    },
+    {"name": "PiPBoy White Light.esp", "flags": 0, "masters": []},
+    {
+      "name": "Fellout-Anchorage.esp",
+      "flags": 0,
+      "masters": ["ClearAndPresentAdjustment_Beauty_Weapons_1_1-1.esp"]
+    },
+    {"name": "PAL - Mothership Zeta.esp", "flags": 0, "masters": []},
+    {"name": "FWE-20thCent Ammo Weight in Names.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor3624.esp",
+      "flags": 0,
+      "masters": ["Distractor1356.esm", "Fo3HirezdFlamer.esp", "schematics2.esp"]
+    },
+    {"name": "Rubble and Litter Remover.esp", "flags": 0, "masters": []},
+    {"name": "20th Century v5 ALIVE (Vendor).esp", "flags": 0, "masters": []},
+    {"name": "Distractor6188.esp", "flags": 0, "masters": ["FHVF3PL.esp"]},
+    {"name": "BringBackBael.esp", "flags": 0, "masters": ["GilbertToys.esp", "Fellout-Anchorage.esp"]},
+    {"name": "PiPBoy Purple Light.esp", "flags": 0, "masters": []},
+    {
+      "name": "BoSDX.esp",
+      "flags": 0,
+      "masters": ["IMCN - BLTC Compatibility and Ingestibles.esp", "CantaburyCommonsGuards - DTO.esp"]
+    },
+    {
+      "name": "Distractor0367.esm",
+      "flags": 1,
+      "masters": ["RI_Core.esm", "3DNPC_DotsDiner.esm", "Lings.esm"]
+    },
+    {"name": "xCALIBRUniverse_FWE_Tactical.esp", "flags": 0, "masters": []},
+    {"name": "Detect Traps.esm", "flags": 1, "masters": []},
+    {"name": "Less Useless Karma Gifts 2.0.esp", "flags": 0, "masters": []},
+    {"name": "Adopt Bryan DV.esp", "flags": 0, "masters": ["Lings.esm", "Radio Active.esp"]},
+    {"name": "EvergreenUUF3PPatch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor9323.esp", "flags": 0, "masters": []},
+    {
+      "name": "CALIBRv14 Ammunition Schematics for FWE-WMK-CRAFT-V1_3-18639.esp",
+      "flags": 0,
+      "masters": ["(TWPC) BFO-UUF3P-FWE Patch.esp", "A Trail of Crumbs.esp"]
+    },
+    {"name": "DTOForFWE.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor2613.esm",
+      "flags": 1,
+      "masters": ["RI_Core.esm", "Phalanx-PointLookout-Navmesh.esm"]
+    },
+    {
+      "name": "Distractor1032.esm",
+      "flags": 1,
+      "masters": ["3DNPC_DotsDiner.esm", "Lings.esm", "Distractor4798.esm"]
+    },
+    {"name": "X-1_Tales_of_Wonder!.esp", "flags": 0, "masters": []},
+    {"name": "Bottle That Water Alternative.esp", "flags": 0, "masters": ["EnhVision.esp"]},
+    {
+      "name": "Distractor3009.esm",
+      "flags": 1,
+      "masters": ["Lings.esm", "Distractor2595.esm", "Companion Core.esm"]
+    },
+    {
+      "name": "Distractor0739.esm",
+      "flags": 1,
+      "masters": ["Phalanx-PointLookout-Navmesh.esm", "3DNPC_DotsDiner.esm"]
+    },
+    {"name": "PLweightadjust.esp", "flags": 0, "masters": []},
+    {"name": "BornAgain Outcast v3.esp", "flags": 0, "masters": []},
+    {"name": "EZCompanion_Type-N.esp", "flags": 0, "masters": []},
+    {
+      "name": "Phalanx-OPTIONAL-BROKENSTEEL-WeaponRepairLists.esp",
+      "flags": 0,
+      "masters": ["Lings.esm", "BombayTradingCo.esp", "XENH.esp"]
+    },
+    {
+      "name": "Phalanx-DogmeatEnemyTweaks.esp",
+      "flags": 0,
+      "masters": ["Distractor7249.esm", "Tenpenny Tower Alternate Endings.esp", "Bottle That Water Alternative.esp"]
+    },
+    {
+      "name": "Real Radiation Suit FO3.esp",
+      "flags": 0,
+      "masters": ["Vault 101 Revisited James Room.esp", "unique_uniquesDLC.esp"]
+    },
+    {
+      "name": "Despicable Dashwood v2.esp",
+      "flags": 0,
+      "masters": ["Distractor9323.esp", "Clothed Sarah Lyons - Sleepwear.esp"]
+    },
+    {"name": "Gore objects Plus.esp", "flags": 0, "masters": []}
+  ],
+  "masterlist": null,
+  "userlist": null,
+  "prelude": null,
+  "real_masterlist": {
+    "repository": "fallout3",
+    "bundled_sha256": "4947d03d6e5dbe1e933d597eee467e7554fc5f744a207736c3964df12feb1f29",
+    "stripped_sha256": "a8493b5896496253944c7c9ce0902802cc48d540685706c768027b19e0218bfa",
+    "prelude_bundled_sha256": "d766b2d98565c2147bfeedf8df8385aae1c32731fc0b14b1bdb1ee54d1729711",
+    "prelude_stripped_sha256": "e4e8c81907defb24d03c7b22c8d9dc68186c6584f67aa75ce83727ff3758da85"
+  },
+  "expected": {
+    "order": [
+      "Lings.esm",
+      "FO3 Wanderers Edition - Main File.esm",
+      "LingsDLC.esm",
+      "Ambient Temperature.esm",
+      "Distractor7968.esm",
+      "Distractor4798.esm",
+      "Phalanx-PointLookout-Navmesh.esm",
+      "3DNPC_DotsDiner.esm",
+      "Distractor1032.esm",
+      "RI_Core.esm",
+      "Distractor2613.esm",
+      "Distractor7249.esm",
+      "3DNPC_Mortar.esm",
+      "Distractor7917.esm",
+      "Distractor3303.esm",
+      "xCALIBRuniverse.esm",
+      "Distractor2029.esm",
+      "Companion Core.esm",
+      "Distractor0367.esm",
+      "Distractor2595.esm",
+      "3DNPC_Chapel.esm",
+      "Distractor8146.esm",
+      "Distractor3974.esm",
+      "Distractor3009.esm",
+      "RHKBrisaAlmodovar.esm",
+      "Distractor1356.esm",
+      "H.E.R.K..esm",
+      "Distractor2118.esm",
+      "Detect Traps.esm",
+      "Distractor0739.esm",
+      "unique_uniquesDLC.esp",
+      "SpiderAnts.esp",
+      "GilbertToys.esp",
+      "ClearAndPresentAdjustment_Beauty_Weapons_1_1-1.esp",
+      "Fellout-Anchorage.esp",
+      "BringBackBael.esp",
+      "DUIF3Extras.esp",
+      "BombayTradingCo.esp",
+      "(TWPC) CPWM-UUF3P-FWE Patch.esp",
+      "(TWPC) DIFF3-RI-EVE-MMM-WMK-PRA-F3HMG-F3HF-20CWRE-IMPACT-UUF3P-FWE Patch.esp",
+      "BBBackpacks-v1.esp",
+      "WRWC - Classic Fallout.esp",
+      "AWE_no_sneak.esp",
+      "RatTrapRadio.esp",
+      "CRAFTHelper_ReplaceWorkbenchScript.esp",
+      "Distractor1269.esp",
+      "CantaburyCommonsGuards - DTO.esp",
+      "Test-Weapon_additional armor.esp",
+      "XENH.esp",
+      "Refurbish [OA] - FWE.esp",
+      "AnimatedFanV2f3.esp",
+      "Overhead3PCamera.esp",
+      "Powered Power Armor.esp",
+      "UrgeWashingtonBoS.esp",
+      "Billboard Camps.esp",
+      "WeaponModKits - FWE Master Release.esp",
+      "Clothed Sarah Lyons - Sleepwear.esp",
+      "Mart's Mutant Mod - DLC The Pitt.esp",
+      "Mart's Mutant Mod - Tougher Traders.esp",
+      "IMCN - BLTC Compatibility and Ingestibles.esp",
+      "PLweightadjust.esp",
+      "(TWPC) PLR-MMM Patch.esp",
+      "RoadWardens.esp",
+      "BeardsofFallout.esp",
+      "More308Ammo.esp",
+      "(TWPC) BFO-UUF3P-FWE Patch.esp",
+      "BoSDX.esp",
+      "(TWPC) K9B-UUF3P-FWE Patch.esp",
+      "Distractor5601.esp",
+      "Hi-Res Weapons & Ammo Textures - The Pitt.esp",
+      "(TWPC) WMK-UUF3P-FWE Patch.esp",
+      "Distractor4730.esp",
+      "Modified_Races.esp",
+      "CRAFTHelper_ReplaceWorkbenchScriptFWE.esp",
+      "Distractor8012.esp",
+      "20th Century v4 ALIVE (Raider).esp",
+      "Tenpenny Tower Alternate Endings.esp",
+      "Conelrad 640-1240.esp",
+      "Fo3HirezdMinigun.esp",
+      "Compiled fixes for Fallout 3 ( compatible with UOFO3P ).esp",
+      "20th Century v5 ALIVE (SuperMutant).esp",
+      "Mentats Re-Textures.esp",
+      "Weld and Steel - Badges, only Weld hat.esp",
+      "AmmoSorter - End.esp",
+      "tubRRCompound.esp",
+      "Distractor4725.esp",
+      "(TWPC) BBB-UUF3P-FWE Patch.esp",
+      "Distractor9740.esp",
+      "ZORTS - Disable FWE activate.esp",
+      "JIP CC&C - Quo Vagis.esp",
+      "schematics2.esp",
+      "(TWPC) BVR-FWE Patch.esp",
+      "ZORTS - Custom HP - FWE.esp",
+      "Fo3HirezdFlamer.esp",
+      "xCALIBRUniverse_FWE_Tactical.esp",
+      "Phalanx-OPTIONAL-BROKENSTEEL-WeaponRepairLists.esp",
+      "Named Wasteland.esp",
+      "Distractor3811.esp",
+      "Distractor9884.esp",
+      "EWE Supermutant Energy Weapons.esp",
+      "Shojo Race.esp",
+      "GlowingGhouls-MMM.esp",
+      "Distractor5668.esp",
+      "EnhVision.esp",
+      "Distractor2906.esp",
+      "Laboratory (BS & MZ).esp",
+      "Sydney Follower - Recruitment Fix.esp",
+      "Distractor3512.esp",
+      "FHVF3PL.esp",
+      "FO3 Wanderers Edition - Optional Restore Tracers.esp",
+      "RH_IronSights_Basic_ZetaPlugin.esp",
+      "RH_IronSights_Pitt_NewRifleSights.esp",
+      "Chinese Stealth Suit- Removable Helmet.esp",
+      "Mart's Mutant Mod - Master Menu Module.esp",
+      "Imp's More Complex Needs.esp",
+      "Weld - Badge and Hat.esp",
+      "Stealth Kills Enabled - Pitt Compatibility.esp",
+      "DTOForFWE.esp",
+      "yaDisguisesMod.esp",
+      "T3_MadLax_Outfit.esp",
+      "SelfSurgeryKit.esp",
+      "Distractor5545.esp",
+      "Distractor9323.esp",
+      "Despicable Dashwood v2.esp",
+      "DIM CUSTOM RACES V2.esp",
+      "Mart's Mutant Mod - FWE Master Release + DLCs.esp",
+      "FO3NeckChains.esp",
+      "Distractor9669.esp",
+      "Refugee Clothing.esp",
+      "Distractor0883.esp",
+      "A Trail of Crumbs.esp",
+      "MegatonLightingPlusNeonSignGlow.esp",
+      "No Scopeless Zooming - PPA Edition.esp",
+      "DynamicCrosshair.esp",
+      "DIFF.esp",
+      "RimfireRevolverCommon.esp",
+      "Scenic_Loading_Background_OperationAnchorageDLC.esp",
+      "Distractor1832.esp",
+      "(TWPC) K9B-MMM-UUF3P-FWE Patch.esp",
+      "(TWPC) TMI-FWE Patch.esp",
+      "Echo_UseBothGloves.esp",
+      "Clothed American Soldiers.esp",
+      "Mart's Mutant Mod - Soft Unleveler.esp",
+      "Barkskin.esp",
+      "RobCo Universal Battery Charger Kit - Zeta.esp",
+      "JIP CC&C - Angel (Slave Raider).esp",
+      "CharonImproved.esp",
+      "Vault 101 Revisited James Room.esp",
+      "megaton_lighting.esp",
+      "AMPUTATE!.esp",
+      "Radio Active.esp",
+      "Enhanced Weather - Sneak Bonus during Storms.esp",
+      "(TWPC) RIL-UUF3P-DM Patch.esp",
+      "dD-More Gore.esp",
+      "Distractor6838.esp",
+      "unique_uniques.esp",
+      "Distractor6416.esp",
+      "(TWPC) HRWW-DIFF3-UUF3P-FWE Patch.esp",
+      "Enhanced Weather - Radioactive Rain and Snow Plugin.esp",
+      "RH_EVE_Bridge.esp",
+      "DelayThePitt.esp",
+      "Distractor2846.esp",
+      "Arwen_Med-Tec.esp",
+      "Clutter Remover.esp",
+      "Refurbish [PL].esp",
+      "Distractor9424.esp",
+      "Distractor2261.esp",
+      "Less_Blood.esp",
+      "20th Century v5 ALIVE (Vault 101).esp",
+      "UniqueWeaponsRetextured.esp",
+      "Distractor6228.esp",
+      "Distractor7758.esp",
+      "RadioTenpennyTower.esp",
+      "WasteWearGloves.esp",
+      "Zumbs'_Overhauled_Real_Time_Security.esp",
+      "Adopt Bryan DV.esp",
+      "dD-More Gore-The Pitt.esp",
+      "20th_Century_Weapons -Plus- Reborn_v1_70RC-18668_Ironsights_v1_1.esp",
+      "JIP CC&C - Brisa Almodovar.esp",
+      "FOOK2 - Main.esp",
+      "EVE Operation Anchorage.esp",
+      "WinterizedT51bDX.esp",
+      "KelseyCompanion.esp",
+      "(TWPC) WD-UUF3P-FWE Patch.esp",
+      "ZL-ACR.esp",
+      "K9BreedsPatchMMM.esp",
+      "BornAgain Outcast v3.esp",
+      "BnB special armors.esp",
+      "PiPBoy White Light.esp",
+      "PAL - Mothership Zeta.esp",
+      "FWE-20thCent Ammo Weight in Names.esp",
+      "Distractor3624.esp",
+      "Rubble and Litter Remover.esp",
+      "20th Century v5 ALIVE (Vendor).esp",
+      "Distractor6188.esp",
+      "PiPBoy Purple Light.esp",
+      "Less Useless Karma Gifts 2.0.esp",
+      "EvergreenUUF3PPatch.esp",
+      "CALIBRv14 Ammunition Schematics for FWE-WMK-CRAFT-V1_3-18639.esp",
+      "X-1_Tales_of_Wonder!.esp",
+      "Bottle That Water Alternative.esp",
+      "EZCompanion_Type-N.esp",
+      "Phalanx-DogmeatEnemyTweaks.esp",
+      "Real Radiation Suit FO3.esp",
+      "Gore objects Plus.esp",
+      "Xepha's Dynamic Weather - Main.esp",
+      "Blackened FWE + MMM.esp"
+    ]
+  },
+  "groups_paths": []
+}

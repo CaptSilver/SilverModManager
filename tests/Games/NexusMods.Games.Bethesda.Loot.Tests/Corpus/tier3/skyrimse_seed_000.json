@@ -1,0 +1,751 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": 0,
+  "game_type": "SkyrimSE",
+  "format": "Tes4",
+  "header_version": 1.7,
+  "name": "skyrimse_seed_000",
+  "plugins": [
+    {"name": "Midwood Isle.esp", "flags": 0, "masters": []},
+    {
+      "name": "Wild World - SIC.esp",
+      "flags": 0,
+      "masters": ["Distractor1892.esm", "Particle Patch for ENB SSE.esp"]
+    },
+    {"name": "Conditional Expressions.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor7937.esm",
+      "flags": 1,
+      "masters": ["ccbgssse005-goldbrand.esl", "Distractor3321.esm", "Vigilant.esm"]
+    },
+    {"name": "EconomyOverhaulandSpeechcraftImprovementsLite.esp", "flags": 0, "masters": []},
+    {
+      "name": "RLDaggerfall.esp",
+      "flags": 0,
+      "masters": ["Distractor4619.esp", "ccbgssse045-hasedoki.esl"]
+    },
+    {"name": "Particle Patch for ENB SSE.esp", "flags": 0, "masters": []},
+    {
+      "name": "DepthsOfSkyrim.esp",
+      "flags": 0,
+      "masters": [
+        "DwemerRetextureOblivionArtifactsPatch.esp",
+        "cceejsse002-tower.esl",
+        "ccafdsse001-dwesanctuary.esm"
+      ]
+    },
+    {"name": "Eli_Breezehome.esp", "flags": 0, "masters": []},
+    {"name": "ImprovedDaedricArtifacts.esp", "flags": 0, "masters": []},
+    {"name": "RSChildren.esp", "flags": 0, "masters": []},
+    {"name": "ccbgssse005-goldbrand.esl", "flags": 1, "masters": []},
+    {
+      "name": "mihailmountainlion.esp",
+      "flags": 0,
+      "masters": ["Distractor2609.esp", "Qw_Diversity_ICoWinterhold Patch.esp", "Proudspirexyz.esp"]
+    },
+    {"name": "RW2 - Patch - FWMF for Fantasy Paper Maps.esp", "flags": 0, "masters": []},
+    {"name": "Praedy's WinterholdCollegeBanner.esp", "flags": 0, "masters": []},
+    {
+      "name": "ClockworkShadowmarksTermini.esp",
+      "flags": 0,
+      "masters": ["Lore Weapon Expansion.esp", "MFRY Litany of Larceny 3.esp"]
+    },
+    {"name": "ImprovedFog&Lighting.esp", "flags": 0, "masters": []},
+    {
+      "name": "LrsamwaysExpandedSkyrimWeaponry.esp",
+      "flags": 0,
+      "masters": ["Distractor0500.esm", "DwemerRetextureOblivionArtifactsPatch.esp", "cceejsse002-tower.esl"]
+    },
+    {"name": "Elderly&Adults.esp", "flags": 0, "masters": []},
+    {
+      "name": "Ducks and Swans.esp",
+      "flags": 0,
+      "masters": ["Distractor2031.esm", "cceejsse002-tower.esl", "Distractor2609.esp"]
+    },
+    {
+      "name": "LoS II - Lantern Workers.esp",
+      "flags": 0,
+      "masters": ["ccbgssse005-goldbrand.esl", "ccafdsse001-dwesanctuary.esm", "vikingmeadhall.esp"]
+    },
+    {
+      "name": "ccbgssse045-hasedoki.esl",
+      "flags": 1,
+      "masters": ["ccbgssse005-goldbrand.esl", "Distractor6824.esm"]
+    },
+    {"name": "CEOWindhelm - CLARALUX Patch [ESL].esp", "flags": 0, "masters": []},
+    {
+      "name": "WinterOverhaul.esp",
+      "flags": 0,
+      "masters": ["HabdsRemainsLOTDPatch.esp", "Distractor7221.esp"]
+    },
+    {"name": "CentaurMaF.esp", "flags": 0, "masters": []},
+    {"name": "Praedy's Gemstones.esp", "flags": 0, "masters": []},
+    {"name": "whistling mine.esp", "flags": 0, "masters": ["RUSTIC SOULGEMS - Unsorted - ESL.esp"]},
+    {"name": "Seashells.esp", "flags": 0, "masters": []},
+    {"name": "NSUTR_Static_fix.esp", "flags": 0, "masters": []},
+    {"name": "vikingmeadhall.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6132.esm", "flags": 1, "masters": []},
+    {
+      "name": "man_DaedricShrines_Wintersun_Patch.esp",
+      "flags": 0,
+      "masters": ["Simple Skill Books.esp", "Unofficial Headmans Cleaver Patch.esl"]
+    },
+    {
+      "name": "Realistic Lighting Overhaul - Minor Cities and Town Interiors.esp",
+      "flags": 0,
+      "masters": []
+    },
+    {
+      "name": "RUSTIC SOULGEMS - Unsorted - ESL.esp",
+      "flags": 0,
+      "masters": ["Water for ENB - Patch - Blue Volcanic Water.esp", "Distractor7937.esm"]
+    },
+    {"name": "ClefJs Karthwasten.esp", "flags": 0, "masters": ["SkyrimVR.esm"]},
+    {
+      "name": "ElvenRetreat.esp",
+      "flags": 0,
+      "masters": ["RealisticWaterTwo - Alt Volcanic Watercolor.esp", "Distractor8293.esp", "Distractor1892.esm"]
+    },
+    {"name": "Solitude Skyway SE.esp", "flags": 0, "masters": []},
+    {
+      "name": "HSWindhelm - Sadri's Used Wares.esp",
+      "flags": 0,
+      "masters": ["Hidden Hideouts of Skyrim - Merged NavMeshed.esp", "Distractor8293.esp"]
+    },
+    {"name": "GerbilMo.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4666.esm", "flags": 1, "masters": []},
+    {"name": "dawnstar.esp", "flags": 0, "masters": ["Distractor0500.esm", "ccbgssse045-hasedoki.esl"]},
+    {"name": "Immersive Speechcraft.esp", "flags": 0, "masters": []},
+    {"name": "The Great City of Solitude.esp", "flags": 0, "masters": []},
+    {"name": "HSRiverwood - Sven and Hilde's House.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0500.esm", "flags": 1, "masters": ["Distractor2222.esm"]},
+    {
+      "name": "MCWT_UnflappableFaculty.esp",
+      "flags": 0,
+      "masters": ["Distractor8447.esp", "Distractor6132.esm", "High Poly NPCs - WheelsOfLull.esp"]
+    },
+    {"name": "tpos_Riften_Exspan01.esp", "flags": 0, "masters": []},
+    {"name": "Distractor0331.esm", "flags": 1, "masters": []},
+    {
+      "name": "Distractor8293.esp",
+      "flags": 0,
+      "masters": ["RealisticWaterTwo - Alt Volcanic Watercolor.esp"]
+    },
+    {"name": "BBLuxurySuiteENM.esp", "flags": 0, "masters": []},
+    {"name": "RealisticWaterTwo - Alt Volcanic Watercolor.esp", "flags": 0, "masters": []},
+    {"name": "magic of the magna-ge.esp", "flags": 0, "masters": []},
+    {
+      "name": "UniqueGrimsever.esp",
+      "flags": 0,
+      "masters": ["ccbgssse005-goldbrand.esl", "Distractor3127.esm"]
+    },
+    {
+      "name": "Abyss.esp",
+      "flags": 0,
+      "masters": ["WhiterunHoldForest.esp", "JKs Skyrim_No Snow Under the Roof_Patch.esp", "Distractor3321.esm"]
+    },
+    {"name": "Hidden Homes- Hjaalmarch.esp", "flags": 0, "masters": []},
+    {"name": "DwemerRetextureOblivionArtifactsPatch.esp", "flags": 0, "masters": []},
+    {"name": "BBLSmusic.esp", "flags": 0, "masters": ["ccbgssse004-ruinsedge.esl"]},
+    {"name": "WhiterunHoldForest.esp", "flags": 0, "masters": ["NSUTR_Static_fix.esp"]},
+    {"name": "JerallMountainsCitadelPart2.esm", "flags": 1, "masters": []},
+    {"name": "Tomebound.esp", "flags": 0, "masters": []},
+    {"name": "EnchantingAwakened.esp", "flags": 0, "masters": []},
+    {"name": "ccvsvsse003-necroarts.esl", "flags": 1, "masters": []},
+    {"name": "Distractor0966.esp", "flags": 0, "masters": []},
+    {"name": "RUSTIC SOULGEMS - Unsorted - GIST.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8447.esp", "flags": 0, "masters": ["Distractor7937.esm"]},
+    {"name": "Distractor7719.esm", "flags": 1, "masters": ["Distractor4786.esm", "Distractor6824.esm"]},
+    {"name": "Simple Magic Rebalance.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8535.esm", "flags": 1, "masters": []},
+    {"name": "True Light - USSEP Patch.esp", "flags": 0, "masters": ["Distractor2100.esp"]},
+    {
+      "name": "Distractor5348.esp",
+      "flags": 0,
+      "masters": ["ccafdsse001-dwesanctuary.esm", "Distractor3987.esm"]
+    },
+    {
+      "name": "ccafdsse001-dwesanctuary.esm",
+      "flags": 1,
+      "masters": ["Distractor0331.esm", "Unofficial Headmans Cleaver Patch.esl", "ccbgssse005-goldbrand.esl"]
+    },
+    {"name": "Penitus_Oculatus.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor2609.esp",
+      "flags": 0,
+      "masters": ["ccbgssse012-hrsarmrstl.esl", "Distractor8535.esm", "Distractor1892.esm"]
+    },
+    {"name": "WARP.esp", "flags": 0, "masters": []},
+    {
+      "name": "Markarth Entrance Overhaul.esp",
+      "flags": 0,
+      "masters": [
+        "Tamrielic Distribution - Pirates Wield Cutlasses.esp",
+        "Distractor6132.esm",
+        "Ducks and Swans.esp"
+      ]
+    },
+    {"name": "Distractor2876.esp", "flags": 0, "masters": ["SpellResearch.esp", "Distractor7932.esm"]},
+    {"name": "Distractor4619.esp", "flags": 0, "masters": []},
+    {"name": "[pPatch] Bentpines_Navmesh.esp", "flags": 0, "masters": []},
+    {"name": "Water for ENB - Patch - Blue Volcanic Water.esp", "flags": 0, "masters": []},
+    {"name": "Toccata as Elisif.esp", "flags": 0, "masters": ["Distractor7719.esm"]},
+    {"name": "Milante.esp", "flags": 0, "masters": []},
+    {
+      "name": "CL Chillrend.esp",
+      "flags": 0,
+      "masters": ["Distractor7932.esm", "Distractor8293.esp", "Distractor4208.esm"]
+    },
+    {"name": "RLO - Major City Exteriors - No Guard Torches.esp", "flags": 0, "masters": []},
+    {"name": "FoMo.esp", "flags": 0, "masters": []},
+    {
+      "name": "AcquisitiveSoulGemMultithreaded.esp",
+      "flags": 0,
+      "masters": ["Granite Hill.esp", "Skyrim Reborn - Hjaalmarch Hold.esp"]
+    },
+    {
+      "name": "karthwasten.esp",
+      "flags": 0,
+      "masters": ["Distractor0500.esm", "Tamrielic Distribution - Pirates Wield Cutlasses.esp"]
+    },
+    {"name": "Grass Patch - All CC Mods.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3321.esm", "flags": 1, "masters": []},
+    {"name": "ZIA_Ancient Pack.esp", "flags": 0, "masters": []},
+    {"name": "RelicsofHyruleDragonborn.esp", "flags": 0, "masters": []},
+    {"name": "S3DSigns.esp", "flags": 0, "masters": ["Distractor3325.esp"]},
+    {"name": "Distractor4208.esm", "flags": 1, "masters": []},
+    {
+      "name": "Distractor5613.esp",
+      "flags": 0,
+      "masters": ["RLDaggerfall.esp", "Distractor2222.esm", "Abyss.esp"]
+    },
+    {"name": "Heritage.esp", "flags": 0, "masters": []},
+    {"name": "Immersive Movement - Wildcat Patch.esp", "flags": 0, "masters": ["CL Chillrend.esp"]},
+    {"name": "Vigilant.esm", "flags": 1, "masters": []},
+    {"name": "Hidden Hideouts of Skyrim - Merged NavMeshed.esp", "flags": 0, "masters": []},
+    {"name": "KrittaKittyHorsesForSSE.esp", "flags": 0, "masters": []},
+    {"name": "Unique Uniques.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor0840.esp",
+      "flags": 0,
+      "masters": ["Distractor2222.esm", "Immersive Wenches.esp", "JKs Skyrim_No Snow Under the Roof_Patch.esp"]
+    },
+    {"name": "Distractor5791.esp", "flags": 0, "masters": []},
+    {"name": "BenDoonSSE.esp", "flags": 0, "masters": []},
+    {"name": "Cloaks - Dawnguard.esp", "flags": 0, "masters": ["WARP.esp"]},
+    {
+      "name": "UnlimitedBookshelves.esp",
+      "flags": 0,
+      "masters": ["Tamrielic Distribution - Pirates Wield Cutlasses.esp", "MCWT_UnflappableFaculty.esp"]
+    },
+    {"name": "Solitude Docks.esp", "flags": 0, "masters": []},
+    {"name": "WhiterunMansion.esp", "flags": 0, "masters": []},
+    {"name": "SpellResearch.esp", "flags": 0, "masters": []},
+    {"name": "Lore Weapon Expansion.esp", "flags": 0, "masters": []},
+    {"name": "Requiem Record Fixes.esm", "flags": 1, "masters": ["Distractor4666.esm"]},
+    {"name": "imp_helm_USSEP.esp", "flags": 0, "masters": []},
+    {"name": "The Great City of Dawnstar.esp", "flags": 0, "masters": []},
+    {"name": "mihaillegion.esp", "flags": 0, "masters": []},
+    {"name": "Lux - Books of Skyrim.esp", "flags": 0, "masters": []},
+    {
+      "name": "ccbgssse012-hrsarmrstl.esl",
+      "flags": 1,
+      "masters": ["ccbgssse006-stendarshammer.esl", "Distractor0788.esm", "Distractor2222.esm"]
+    },
+    {"name": "Natural Waterfalls.esp", "flags": 0, "masters": []},
+    {"name": "UnderwaterShockPulse.esp", "flags": 0, "masters": []},
+    {
+      "name": "chickensbounty.esp",
+      "flags": 0,
+      "masters": ["BandolierForNPC - Realistic Enchantements.esp"]
+    },
+    {"name": "Qw_Diversity_ICoWinterhold Patch.esp", "flags": 0, "masters": ["Distractor2100.esp"]},
+    {"name": "Distractor9432.esp", "flags": 0, "masters": []},
+    {"name": "Distractor7221.esp", "flags": 0, "masters": []},
+    {"name": "Weapon AF and Summermyst Patch.esp", "flags": 0, "masters": []},
+    {"name": "TavernAIFix.esp", "flags": 0, "masters": []},
+    {"name": "Unofficial Headmans Cleaver Patch.esl", "flags": 1, "masters": []},
+    {"name": "SUDs.esp", "flags": 0, "masters": []},
+    {
+      "name": "Holds.esp",
+      "flags": 0,
+      "masters": ["Water for ENB - Patch - FWMF for Satellite Maps.esp"]
+    },
+    {"name": "Elemental_Staffs_Patch_Mysticism.esp", "flags": 0, "masters": ["Distractor8535.esm"]},
+    {"name": "Wavy Waters.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor7932.esm",
+      "flags": 1,
+      "masters": ["Distractor0788.esm", "ccbgssse012-hrsarmrstl.esl"]
+    },
+    {"name": "Distractor2031.esm", "flags": 1, "masters": []},
+    {
+      "name": "Elemental Destruction.esp",
+      "flags": 0,
+      "masters": ["DepthsOfSkyrim.esp", "Distractor6132.esm"]
+    },
+    {"name": "Distractor1892.esm", "flags": 1, "masters": []},
+    {"name": "Distractor2222.esm", "flags": 1, "masters": []},
+    {"name": "CaranthirTowerReborn.esp", "flags": 0, "masters": []},
+    {
+      "name": "Dohvakirr.esp",
+      "flags": 0,
+      "masters": ["BenDoonSSE.esp", "Proudspirexyz.esp", "Unofficial Headmans Cleaver Patch.esl"]
+    },
+    {"name": "MorthalMillFix.esp", "flags": 0, "masters": ["Bards College Expansion - Inigo Patch.esp"]},
+    {
+      "name": "ccbgssse004-ruinsedge.esl",
+      "flags": 1,
+      "masters": ["ccbgssse012-hrsarmrstl.esl", "Distractor3127.esm", "cceejsse002-tower.esl"]
+    },
+    {
+      "name": "Distractor4923.esp",
+      "flags": 0,
+      "masters": ["UniqueGrimsever.esp", "Praedy's WinterholdCollegeBanner.esp"]
+    },
+    {"name": "Distractor4962.esp", "flags": 0, "masters": []},
+    {
+      "name": "SuccubusWaifuSummons.esp",
+      "flags": 0,
+      "masters": ["Enlightened College of Winterhold.esp", "AudibleNPCDialogues.esp", "mihaillegion.esp"]
+    },
+    {"name": "Distractor6824.esm", "flags": 1, "masters": []},
+    {"name": "ccbgssse006-stendarshammer.esl", "flags": 1, "masters": []},
+    {"name": "Palaces Castles Enhanced.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4786.esm", "flags": 1, "masters": []},
+    {"name": "BUVARP.esp", "flags": 0, "masters": ["CaranthirTowerReborn.esp"]},
+    {
+      "name": "ULALPatch.esp",
+      "flags": 0,
+      "masters": ["Distractor8447.esp", "UniqueGrimsever.esp", "Distractor6132.esm"]
+    },
+    {"name": "Distractor5207.esp", "flags": 0, "masters": ["DwemerRetextureOblivionArtifactsPatch.esp"]},
+    {
+      "name": "Chanterelle World Interiors.esp",
+      "flags": 0,
+      "masters": ["Distractor2222.esm", "Distractor0966.esp"]
+    },
+    {"name": "ArteFake.esp", "flags": 0, "masters": []},
+    {
+      "name": "SAFO - RND.esp",
+      "flags": 0,
+      "masters": ["Complementary Grass Fixes.esp", "CraftingSupplies_AIO_ALL.esp"]
+    },
+    {
+      "name": "Common Clothes and Armors.esp",
+      "flags": 0,
+      "masters": ["Distractor6132.esm", "WhiterunHoldForest.esp", "man_DaedricShrines_Wintersun_Patch.esp"]
+    },
+    {"name": "Granite Hill.esp", "flags": 0, "masters": ["Unique Uniques.esp", "RavenRockReborn.esp"]},
+    {"name": "Distractor1547.esp", "flags": 0, "masters": []},
+    {
+      "name": "MajesticMountains.esp",
+      "flags": 0,
+      "masters": ["Palaces Castles Enhanced.esp", "mihailmountainlion.esp", "HSWindhelm - Sadri's Used Wares.esp"]
+    },
+    {"name": "GiantLeek.esp", "flags": 0, "masters": []},
+    {"name": "Skyrim Reborn - Hjaalmarch Hold.esp", "flags": 0, "masters": ["Distractor4930.esm"]},
+    {"name": "Winterhold Restored - Expanded Lighting Patch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3442.esp", "flags": 0, "masters": []},
+    {"name": "ccffbsse001-imperialdragon.esl", "flags": 1, "masters": []},
+    {"name": "Distractor0788.esm", "flags": 1, "masters": ["ccbgssse006-stendarshammer.esl"]},
+    {"name": "MzarkWonders.esp", "flags": 0, "masters": []},
+    {
+      "name": "MistySkye.esp",
+      "flags": 0,
+      "masters": ["JKs Skyrim_No Snow Under the Roof_Patch.esp", "Vigilant.esm"]
+    },
+    {
+      "name": "Marc.esp",
+      "flags": 0,
+      "masters": ["Distractor8447.esp", "ccbgssse045-hasedoki.esl", "ccbgssse051-ba_daedricmail.esl"]
+    },
+    {"name": "cceejsse002-tower.esl", "flags": 1, "masters": []},
+    {"name": "Requiem - Timing Is Everything.esp", "flags": 0, "masters": []},
+    {"name": "ccbgssse050-ba_daedric.esl", "flags": 1, "masters": []},
+    {"name": "DIS_Authentic_Legion.esp", "flags": 0, "masters": ["Distractor5348.esp", "Dohvakirr.esp"]},
+    {"name": "Enlightened College of Winterhold.esp", "flags": 0, "masters": []},
+    {"name": "Simple Skill Books.esp", "flags": 0, "masters": []},
+    {
+      "name": "Complementary Grass Fixes.esp",
+      "flags": 0,
+      "masters": ["ccbgssse005-goldbrand.esl", "Tamrielic Distribution - Pirates Wield Cutlasses.esp"]
+    },
+    {"name": "Distractor3987.esm", "flags": 1, "masters": ["Vigilant.esm", "Distractor4930.esm"]},
+    {
+      "name": "Bards College Expansion - Inigo Patch.esp",
+      "flags": 0,
+      "masters": ["CEOWindhelm - CLARALUX Patch [ESL].esp"]
+    },
+    {"name": "NWS_Karliah_GLAM.esp", "flags": 0, "masters": []},
+    {
+      "name": "JKs Skyrim_No Snow Under the Roof_Patch.esp",
+      "flags": 0,
+      "masters": ["Distractor8535.esm", "Distractor3321.esm", "Distractor4786.esm"]
+    },
+    {"name": "MFRY Litany of Larceny 3.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6842.esm", "flags": 1, "masters": []},
+    {"name": "Proudspirexyz.esp", "flags": 0, "masters": ["SkyrimVR.esm"]},
+    {"name": "Distractor4930.esm", "flags": 1, "masters": ["Vigilant.esm"]},
+    {"name": "Requiem - No Overencumbered Messages.esp", "flags": 0, "masters": ["Distractor4930.esm"]},
+    {"name": "Water for ENB - Patch - FWMF Marked Clean Map 4K.esp", "flags": 0, "masters": []},
+    {
+      "name": "High Poly NPCs - WheelsOfLull.esp",
+      "flags": 0,
+      "masters": ["Unofficial Headmans Cleaver Patch.esl", "Distractor3321.esm"]
+    },
+    {"name": "bee hives.esp", "flags": 0, "masters": ["Skyrim Reborn - Hjaalmarch Hold.esp"]},
+    {
+      "name": "Tamrielic Distribution - Pirates Wield Cutlasses.esp",
+      "flags": 0,
+      "masters": ["ccbgssse005-goldbrand.esl", "ccbgssse051-ba_daedricmail.esl", "ccbgssse050-ba_daedric.esl"]
+    },
+    {
+      "name": "ClimatesOfTamriel-Interiors-Cold.esp",
+      "flags": 0,
+      "masters": ["LrsamwaysExpandedSkyrimWeaponry.esp", "Lore Weapon Expansion.esp"]
+    },
+    {"name": "JS Dragon Claws AE - Skyrim Sewers.esp", "flags": 0, "masters": []},
+    {"name": "AudibleNPCDialogues.esp", "flags": 0, "masters": []},
+    {"name": "Distractor3389.esp", "flags": 0, "masters": []},
+    {
+      "name": "OPHybrid.esp",
+      "flags": 0,
+      "masters": ["ccafdsse001-dwesanctuary.esm", "Distractor0788.esm", "NSUTR_Static_fix.esp"]
+    },
+    {"name": "FWMF Skygerfall.esp", "flags": 0, "masters": []},
+    {
+      "name": "MysticOrdinator.esp",
+      "flags": 0,
+      "masters": ["Distractor7719.esm", "Distractor0840.esp", "Conditional Expressions.esp"]
+    },
+    {
+      "name": "Distractor3127.esm",
+      "flags": 1,
+      "masters": ["ccbgssse005-goldbrand.esl", "Distractor4666.esm"]
+    },
+    {"name": "CraftingSupplies_AIO_ALL.esp", "flags": 0, "masters": ["ccbgssse050-ba_daedric.esl"]},
+    {"name": "Immersive Wenches.esp", "flags": 0, "masters": []},
+    {"name": "Better Hunters.esp", "flags": 0, "masters": ["Distractor0840.esp"]},
+    {"name": "CYA_ChooseYourOwnArchMage.esp", "flags": 0, "masters": []},
+    {"name": "Resurrect.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4068.esp", "flags": 0, "masters": []},
+    {"name": "Obscura Weather and Lighting.esp", "flags": 0, "masters": []},
+    {
+      "name": "SkyrimVR.esm",
+      "flags": 1,
+      "masters": ["cceejsse002-tower.esl", "ccbgssse051-ba_daedricmail.esl"]
+    },
+    {"name": "RavenRockReborn.esp", "flags": 0, "masters": ["SkyrimVR.esm"]},
+    {"name": "Reverb and Ambiance Overhaul - Skyrim.esp", "flags": 0, "masters": []},
+    {
+      "name": "LeanWolfs Aemers Refuge SE.esp",
+      "flags": 0,
+      "masters": ["Abyss.esp", "Distractor4208.esm"]
+    },
+    {
+      "name": "Leek_Giant.esp",
+      "flags": 0,
+      "masters": ["Distractor3321.esm", "Distractor3389.esp", "DepthsOfSkyrim.esp"]
+    },
+    {"name": "Granitehall.esp", "flags": 0, "masters": []},
+    {
+      "name": "Water for ENB - Patch - FWMF for Satellite Maps.esp",
+      "flags": 0,
+      "masters": ["Distractor7937.esm", "ccbgssse051-ba_daedricmail.esl", "ccafdsse001-dwesanctuary.esm"]
+    },
+    {
+      "name": "RiverwoodHuntingCabinSE.esp",
+      "flags": 0,
+      "masters": ["Distractor4923.esp", "mihaillegion.esp", "Requiem Record Fixes.esm"]
+    },
+    {
+      "name": "ACMOS - Midwood Isle.esp",
+      "flags": 0,
+      "masters": ["Lux - Books of Skyrim.esp", "Unofficial Headmans Cleaver Patch.esl"]
+    },
+    {"name": "Requiem - Flora Fixes.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor2329.esp",
+      "flags": 0,
+      "masters": [
+        "Hidden Hideouts of Skyrim - Merged NavMeshed.esp",
+        "Distractor0788.esm",
+        "Immersive Movement - Wildcat Patch.esp"
+      ]
+    },
+    {"name": "Distractor3325.esp", "flags": 0, "masters": []},
+    {
+      "name": "Legendary Artifacts.esp",
+      "flags": 0,
+      "masters": ["ClimatesOfTamriel-Interiors-Cold.esp", "Distractor8447.esp"]
+    },
+    {"name": "ClimatesOfTamriel-Nights-L3.esp", "flags": 0, "masters": ["ccbgssse045-hasedoki.esl"]},
+    {
+      "name": "nesbits_skyrim_bridges.esp",
+      "flags": 0,
+      "masters": ["Unofficial Headmans Cleaver Patch.esl", "Distractor3442.esp"]
+    },
+    {
+      "name": "Holds - Falkreath.esp",
+      "flags": 0,
+      "masters": ["BandolierForNPC - Realistic Enchantements.esp", "Cloaks - Dawnguard.esp", "Distractor0500.esm"]
+    },
+    {"name": "Sofia - RDO Patch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2100.esp", "flags": 0, "masters": []},
+    {"name": "Distractor6882.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor0075.esp",
+      "flags": 0,
+      "masters": ["WhiterunHoldForest.esp", "UniqueGrimsever.esp"]
+    },
+    {"name": "Paradise_City_SummerWindhelm.esp", "flags": 0, "masters": []},
+    {"name": "HabdsRemainsLOTDPatch.esp", "flags": 0, "masters": []},
+    {"name": "imp_helm_legend_WACCF_AMB_Patch.esp", "flags": 0, "masters": []},
+    {
+      "name": "ccbgssse051-ba_daedricmail.esl",
+      "flags": 1,
+      "masters": ["Unofficial Headmans Cleaver Patch.esl", "Distractor4930.esm"]
+    },
+    {"name": "BandolierForNPC - Realistic Enchantements.esp", "flags": 0, "masters": []}
+  ],
+  "masterlist": null,
+  "userlist": null,
+  "prelude": null,
+  "real_masterlist": {
+    "repository": "skyrimse",
+    "bundled_sha256": "2e2da8e8373c07e0ae84c4bd2d151a272bd090230decc59a22c374b01bb3e509",
+    "stripped_sha256": "09c2c1ca1013db80ab1f5676594a0a778ed6323c56bd26d11f00368b7ee53bce",
+    "prelude_bundled_sha256": "d766b2d98565c2147bfeedf8df8385aae1c32731fc0b14b1bdb1ee54d1729711",
+    "prelude_stripped_sha256": "e4e8c81907defb24d03c7b22c8d9dc68186c6584f67aa75ce83727ff3758da85"
+  },
+  "expected": {
+    "order": [
+      "cceejsse002-tower.esl",
+      "Unofficial Headmans Cleaver Patch.esl",
+      "Vigilant.esm",
+      "Distractor4930.esm",
+      "ccbgssse051-ba_daedricmail.esl",
+      "SkyrimVR.esm",
+      "ccbgssse005-goldbrand.esl",
+      "ccvsvsse003-necroarts.esl",
+      "ccbgssse006-stendarshammer.esl",
+      "ccffbsse001-imperialdragon.esl",
+      "ccbgssse050-ba_daedric.esl",
+      "Distractor0331.esm",
+      "ccafdsse001-dwesanctuary.esm",
+      "Distractor2222.esm",
+      "Distractor0788.esm",
+      "ccbgssse012-hrsarmrstl.esl",
+      "Distractor4666.esm",
+      "Distractor3127.esm",
+      "ccbgssse004-ruinsedge.esl",
+      "Distractor6824.esm",
+      "ccbgssse045-hasedoki.esl",
+      "Requiem Record Fixes.esm",
+      "Distractor3321.esm",
+      "Distractor7937.esm",
+      "Distractor6132.esm",
+      "Distractor0500.esm",
+      "JerallMountainsCitadelPart2.esm",
+      "Distractor4786.esm",
+      "Distractor7719.esm",
+      "Distractor8535.esm",
+      "Distractor4208.esm",
+      "Distractor7932.esm",
+      "Distractor2031.esm",
+      "Distractor1892.esm",
+      "Distractor3987.esm",
+      "Distractor6842.esm",
+      "Distractor8447.esp",
+      "High Poly NPCs - WheelsOfLull.esp",
+      "MCWT_UnflappableFaculty.esp",
+      "Tamrielic Distribution - Pirates Wield Cutlasses.esp",
+      "UnlimitedBookshelves.esp",
+      "NSUTR_Static_fix.esp",
+      "Enlightened College of Winterhold.esp",
+      "OPHybrid.esp",
+      "Reverb and Ambiance Overhaul - Skyrim.esp",
+      "Immersive Wenches.esp",
+      "Distractor2609.esp",
+      "Ducks and Swans.esp",
+      "Skyrim Reborn - Hjaalmarch Hold.esp",
+      "bee hives.esp",
+      "Midwood Isle.esp",
+      "Particle Patch for ENB SSE.esp",
+      "Wild World - SIC.esp",
+      "Conditional Expressions.esp",
+      "EconomyOverhaulandSpeechcraftImprovementsLite.esp",
+      "Distractor4619.esp",
+      "RLDaggerfall.esp",
+      "DwemerRetextureOblivionArtifactsPatch.esp",
+      "DepthsOfSkyrim.esp",
+      "ImprovedDaedricArtifacts.esp",
+      "RSChildren.esp",
+      "Distractor2100.esp",
+      "Qw_Diversity_ICoWinterhold Patch.esp",
+      "Proudspirexyz.esp",
+      "mihailmountainlion.esp",
+      "RW2 - Patch - FWMF for Fantasy Paper Maps.esp",
+      "Praedy's WinterholdCollegeBanner.esp",
+      "Lore Weapon Expansion.esp",
+      "MFRY Litany of Larceny 3.esp",
+      "ClockworkShadowmarksTermini.esp",
+      "LrsamwaysExpandedSkyrimWeaponry.esp",
+      "Elderly&Adults.esp",
+      "vikingmeadhall.esp",
+      "LoS II - Lantern Workers.esp",
+      "CEOWindhelm - CLARALUX Patch [ESL].esp",
+      "Distractor7221.esp",
+      "HabdsRemainsLOTDPatch.esp",
+      "WinterOverhaul.esp",
+      "CentaurMaF.esp",
+      "Praedy's Gemstones.esp",
+      "Water for ENB - Patch - Blue Volcanic Water.esp",
+      "RUSTIC SOULGEMS - Unsorted - ESL.esp",
+      "whistling mine.esp",
+      "Seashells.esp",
+      "Simple Skill Books.esp",
+      "man_DaedricShrines_Wintersun_Patch.esp",
+      "Realistic Lighting Overhaul - Minor Cities and Town Interiors.esp",
+      "ClefJs Karthwasten.esp",
+      "RealisticWaterTwo - Alt Volcanic Watercolor.esp",
+      "Distractor8293.esp",
+      "ElvenRetreat.esp",
+      "Solitude Skyway SE.esp",
+      "Hidden Hideouts of Skyrim - Merged NavMeshed.esp",
+      "HSWindhelm - Sadri's Used Wares.esp",
+      "GerbilMo.esp",
+      "dawnstar.esp",
+      "Immersive Speechcraft.esp",
+      "The Great City of Solitude.esp",
+      "HSRiverwood - Sven and Hilde's House.esp",
+      "tpos_Riften_Exspan01.esp",
+      "BBLuxurySuiteENM.esp",
+      "magic of the magna-ge.esp",
+      "UniqueGrimsever.esp",
+      "WhiterunHoldForest.esp",
+      "JKs Skyrim_No Snow Under the Roof_Patch.esp",
+      "Abyss.esp",
+      "Hidden Homes- Hjaalmarch.esp",
+      "BBLSmusic.esp",
+      "Tomebound.esp",
+      "EnchantingAwakened.esp",
+      "Distractor0966.esp",
+      "RUSTIC SOULGEMS - Unsorted - GIST.esp",
+      "Simple Magic Rebalance.esp",
+      "True Light - USSEP Patch.esp",
+      "Distractor5348.esp",
+      "Penitus_Oculatus.esp",
+      "WARP.esp",
+      "Markarth Entrance Overhaul.esp",
+      "SpellResearch.esp",
+      "Distractor2876.esp",
+      "[pPatch] Bentpines_Navmesh.esp",
+      "Toccata as Elisif.esp",
+      "Milante.esp",
+      "CL Chillrend.esp",
+      "RLO - Major City Exteriors - No Guard Torches.esp",
+      "FoMo.esp",
+      "Unique Uniques.esp",
+      "RavenRockReborn.esp",
+      "Granite Hill.esp",
+      "AcquisitiveSoulGemMultithreaded.esp",
+      "karthwasten.esp",
+      "Grass Patch - All CC Mods.esp",
+      "ZIA_Ancient Pack.esp",
+      "RelicsofHyruleDragonborn.esp",
+      "Distractor3325.esp",
+      "S3DSigns.esp",
+      "Distractor5613.esp",
+      "Heritage.esp",
+      "Immersive Movement - Wildcat Patch.esp",
+      "KrittaKittyHorsesForSSE.esp",
+      "Distractor0840.esp",
+      "Distractor5791.esp",
+      "BenDoonSSE.esp",
+      "Cloaks - Dawnguard.esp",
+      "Solitude Docks.esp",
+      "WhiterunMansion.esp",
+      "imp_helm_USSEP.esp",
+      "The Great City of Dawnstar.esp",
+      "mihaillegion.esp",
+      "Lux - Books of Skyrim.esp",
+      "Natural Waterfalls.esp",
+      "UnderwaterShockPulse.esp",
+      "BandolierForNPC - Realistic Enchantements.esp",
+      "chickensbounty.esp",
+      "Distractor9432.esp",
+      "Weapon AF and Summermyst Patch.esp",
+      "TavernAIFix.esp",
+      "SUDs.esp",
+      "Water for ENB - Patch - FWMF for Satellite Maps.esp",
+      "Holds.esp",
+      "Elemental_Staffs_Patch_Mysticism.esp",
+      "Wavy Waters.esp",
+      "Elemental Destruction.esp",
+      "CaranthirTowerReborn.esp",
+      "Dohvakirr.esp",
+      "Bards College Expansion - Inigo Patch.esp",
+      "MorthalMillFix.esp",
+      "Distractor4923.esp",
+      "Distractor4962.esp",
+      "AudibleNPCDialogues.esp",
+      "SuccubusWaifuSummons.esp",
+      "BUVARP.esp",
+      "ULALPatch.esp",
+      "Distractor5207.esp",
+      "Chanterelle World Interiors.esp",
+      "ArteFake.esp",
+      "Complementary Grass Fixes.esp",
+      "CraftingSupplies_AIO_ALL.esp",
+      "SAFO - RND.esp",
+      "Common Clothes and Armors.esp",
+      "Distractor1547.esp",
+      "GiantLeek.esp",
+      "Winterhold Restored - Expanded Lighting Patch.esp",
+      "Distractor3442.esp",
+      "MzarkWonders.esp",
+      "MistySkye.esp",
+      "Marc.esp",
+      "Requiem - Timing Is Everything.esp",
+      "DIS_Authentic_Legion.esp",
+      "NWS_Karliah_GLAM.esp",
+      "Requiem - No Overencumbered Messages.esp",
+      "Water for ENB - Patch - FWMF Marked Clean Map 4K.esp",
+      "ClimatesOfTamriel-Interiors-Cold.esp",
+      "JS Dragon Claws AE - Skyrim Sewers.esp",
+      "Distractor3389.esp",
+      "MysticOrdinator.esp",
+      "Better Hunters.esp",
+      "CYA_ChooseYourOwnArchMage.esp",
+      "Resurrect.esp",
+      "Distractor4068.esp",
+      "Obscura Weather and Lighting.esp",
+      "LeanWolfs Aemers Refuge SE.esp",
+      "Leek_Giant.esp",
+      "Granitehall.esp",
+      "RiverwoodHuntingCabinSE.esp",
+      "ACMOS - Midwood Isle.esp",
+      "Requiem - Flora Fixes.esp",
+      "Distractor2329.esp",
+      "Legendary Artifacts.esp",
+      "ClimatesOfTamriel-Nights-L3.esp",
+      "nesbits_skyrim_bridges.esp",
+      "Holds - Falkreath.esp",
+      "Sofia - RDO Patch.esp",
+      "Distractor6882.esp",
+      "Distractor0075.esp",
+      "Paradise_City_SummerWindhelm.esp",
+      "imp_helm_legend_WACCF_AMB_Patch.esp",
+      "Palaces Castles Enhanced.esp",
+      "MajesticMountains.esp",
+      "ImprovedFog&Lighting.esp",
+      "Eli_Breezehome.esp",
+      "FWMF Skygerfall.esp"
+    ]
+  },
+  "groups_paths": []
+}

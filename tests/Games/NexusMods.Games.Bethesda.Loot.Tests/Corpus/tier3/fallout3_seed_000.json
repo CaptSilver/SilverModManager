@@ -1,0 +1,837 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": 0,
+  "game_type": "Fallout3",
+  "format": "Tes4",
+  "header_version": 0.94,
+  "name": "fallout3_seed_000",
+  "plugins": [
+    {
+      "name": "MMM - FWE_Combat Overhaul Master Release.esp",
+      "flags": 0,
+      "masters": ["Arwen_Core.esm", "Distractor2321.esm", "JIP CC&C - Jessi.esp"]
+    },
+    {
+      "name": "Distractor1057.esp",
+      "flags": 0,
+      "masters": ["MyDog.esm", "GlowingGhouls.esp", "F3ProjectRealityMkI.esp"]
+    },
+    {"name": "Distractor0246.esp", "flags": 0, "masters": ["Arwen_Core.esm", "Distractor7366.esm"]},
+    {"name": "(TWPC) 20CWRE-WMK-UUF3P-FWE Patch.esp", "flags": 0, "masters": ["BnB special armors.esp"]},
+    {
+      "name": "Sealurk Radioactive Bites & Stings v2.esp",
+      "flags": 0,
+      "masters": ["Empty Nuka-Cola Quantum Bottles.esp", "The Mantis Imperative - Nasty Zeta No Scaling.esp"]
+    },
+    {"name": "Distractor1502.esm", "flags": 1, "masters": []},
+    {"name": "llama's Vanilla Followers for Charon Improved.esp", "flags": 0, "masters": []},
+    {
+      "name": "FO3 Wanderers Edition - DLC The Pitt.esp",
+      "flags": 0,
+      "masters": ["3EFhelmlessstealthsuit.esp"]
+    },
+    {
+      "name": "Big Town Overhaul.esp",
+      "flags": 0,
+      "masters": ["dD-Reduced Dismember Force.esp", "EVE.esm", "The Mantis Imperative - Nasty Zeta No Scaling.esp"]
+    },
+    {"name": "Distractor7398.esp", "flags": 0, "masters": []},
+    {
+      "name": "Choose your own hairstyle (load this last on FOMM).esp",
+      "flags": 0,
+      "masters": ["3DNPC_Spider.esm", "Anchorage.esm", "Distractor7194.esm"]
+    },
+    {"name": "FO3 Wanderers Edition - Alternate Travel.esp", "flags": 0, "masters": []},
+    {
+      "name": "(TWPC) TMI-MMM-EVE-FWE Patch.esp",
+      "flags": 0,
+      "masters": [
+        "(TWPC) BFO-UUF3P-FWE Patch.esp",
+        "Choose your own hairstyle (load this last on FOMM).esp",
+        "MyDog.esm"
+      ]
+    },
+    {"name": "WeaponModKits - Zeta.esp", "flags": 0, "masters": ["DCInteriors_SewardSq.esm"]},
+    {"name": "WeaponModKits.esp", "flags": 0, "masters": ["EWE DLC Addon.esp"]},
+    {"name": "Clothed Sarah Lyons.esp", "flags": 0, "masters": ["Advanced Recon Range Finder.esp"]},
+    {"name": "Tenderizer Fix.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor8070.esp",
+      "flags": 0,
+      "masters": ["Distractor3198.esp", "ChineseStealthArmorFixed.esp"]
+    },
+    {"name": "GH-HealingRebalanceMod_stimpackduration.esp", "flags": 0, "masters": []},
+    {"name": "Mart's Mutant Mod - Master Menu Module.esp", "flags": 0, "masters": []},
+    {"name": "PAL - MERGED.esp", "flags": 0, "masters": ["Distractor0995.esm", "3DNPC_FO3.esm"]},
+    {
+      "name": "Distractor3522.esp",
+      "flags": 0,
+      "masters": ["FO3 Wanderers Edition - Optional VATS Halftime.esp", "Existence 2.0.esp"]
+    },
+    {"name": "ZORTS - Disable FWE activate.esp", "flags": 0, "masters": ["Distractor7194.esm"]},
+    {"name": "Distractor9920.esm", "flags": 1, "masters": ["3dnpc_ClaraBella.esm", "Anchorage.esm"]},
+    {"name": "Distractor7053.esm", "flags": 1, "masters": ["Shojo Race.esm"]},
+    {"name": "Modified_Races.esp", "flags": 0, "masters": []},
+    {"name": "Mart's Mutant Mod - FWE Master Release + Project Beauty.esp", "flags": 0, "masters": []},
+    {
+      "name": "Millenia_AK47_replacer.esp",
+      "flags": 0,
+      "masters": ["Distractor0163.esm", "FOOK2 - [DIK] DLC Improvement Kit.ESM", "3DNPC_FO3.esm"]
+    },
+    {"name": "Weld - Badge.esp", "flags": 0, "masters": ["Rivet City Realignment.esp"]},
+    {"name": "tubrrCompound.esm", "flags": 1, "masters": []},
+    {"name": "Distractor8798.esm", "flags": 1, "masters": []},
+    {
+      "name": "CALIBRxMerchant.esp",
+      "flags": 0,
+      "masters": ["Distractor8070.esp", "Distractor2475.esm", "Distractor7194.esm"]
+    },
+    {
+      "name": "Outcast DX.esp",
+      "flags": 0,
+      "masters": ["Distractor3198.esp", "Powered Power Armor.esp", "(TWPC) BFO-UUF3P-FWE Patch.esp"]
+    },
+    {
+      "name": "royphilipsevilwmask.esp",
+      "flags": 0,
+      "masters": ["Distractor0163.esm", "FOOK2 - [DIK] DLC Improvement Kit.ESM", "Distractor7651.esm"]
+    },
+    {
+      "name": "Rivet City Realignment.esp",
+      "flags": 0,
+      "masters": ["Mart's Mutant Mod - Master Menu Module.esp", "Distractor1707.esm", "Powered Power Armor.esp"]
+    },
+    {"name": "Mart's Mutant Mod - FOOK2 - DIK.esp", "flags": 0, "masters": []},
+    {"name": "DCInteriors_SewardSq.esm", "flags": 1, "masters": ["Distractor0163.esm"]},
+    {"name": "AWOP4FO3BOEPatch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4955.esm", "flags": 1, "masters": []},
+    {
+      "name": "3dnpc_ClaraBella.esm",
+      "flags": 1,
+      "masters": ["EVE.esm", "Distractor2475.esm", "Distractor0068.esm"]
+    },
+    {
+      "name": "BBBackpacks-v1-1.esp",
+      "flags": 0,
+      "masters": ["Sydney Follower - Load Order Fix.esp", "Blackened EVE + Project Beauty.esp"]
+    },
+    {"name": "Blackened EVE + Project Beauty.esp", "flags": 0, "masters": []},
+    {
+      "name": "Existence 2.0.esp",
+      "flags": 0,
+      "masters": ["JIP CC&C - Mika the Sniper (Essential).esp", "Distractor5116.esp"]
+    },
+    {
+      "name": "mesme.esp",
+      "flags": 0,
+      "masters": ["dD-Reduced Dismember Force.esp", "(TWPC) BFO-UUF3P-FWE Patch.esp"]
+    },
+    {"name": "jonasclothesreplacer.esp", "flags": 0, "masters": []},
+    {"name": "Cat Outfit Fanged.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5733.esp", "flags": 0, "masters": ["URWL.esp"]},
+    {"name": "GilbertToys.esp", "flags": 0, "masters": []},
+    {
+      "name": "ZORTS - Custom HP.esp",
+      "flags": 0,
+      "masters": ["Distractor1057.esp", "GlowingGhouls.esp", "Distractor0163.esm"]
+    },
+    {"name": "Distractor9424.esp", "flags": 0, "masters": []},
+    {"name": "PAL - BASE File.esp", "flags": 0, "masters": ["Distractor3746.esp"]},
+    {
+      "name": "The Mantis Imperative - Combat.esp",
+      "flags": 0,
+      "masters": ["3EFhelmlessstealthsuit.esp", "Xepha's Darkened Interiors - PL.esp", "Modified_Races.esp"]
+    },
+    {"name": "FOOK2 - [DIK] DLC Improvement Kit.ESM", "flags": 1, "masters": []},
+    {
+      "name": "ArefuExpandedByAzar-FixBrahmin.esp",
+      "flags": 0,
+      "masters": ["Distractor5878.esm", "ChineseStealthArmorFixed.esp"]
+    },
+    {"name": "blackrock_shooter.esp", "flags": 0, "masters": []},
+    {"name": "(TWPC) MMM-EBTMGFWE-UUF3P-FWE Patch.esp", "flags": 0, "masters": []},
+    {
+      "name": "(TWPC) RBS-MMM-FWE Patch.esp",
+      "flags": 0,
+      "masters": ["EVE.esm", "Advanced Recon Range Finder.esp"]
+    },
+    {
+      "name": "Lawbringer Boutnies Ver1.1.esp",
+      "flags": 0,
+      "masters": ["Distractor1707.esm", "The Mantis Imperative - Combat.esp", "DLC Enemies Freedom.esp"]
+    },
+    {"name": "JIP CC&C - Amata.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5992.esp", "flags": 0, "masters": []},
+    {"name": "Trooper_outfits.esp", "flags": 0, "masters": []},
+    {"name": "MTC RealWildnessLife.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5501.esp", "flags": 0, "masters": []},
+    {
+      "name": "DC Moods.esp",
+      "flags": 0,
+      "masters": ["(TWPC) RBS-MMM-FWE Patch.esp", "FireLightFix.esp", "royphilipsevilwmask.esp"]
+    },
+    {
+      "name": "20th Century v5 ALIVE (Containers).esp",
+      "flags": 0,
+      "masters": ["ZORTS - Disable FWE activate.esp", "Dree Perks.esp"]
+    },
+    {"name": "Arwen_Core.esm", "flags": 1, "masters": []},
+    {"name": "PPA - FWE 2.esp", "flags": 0, "masters": []},
+    {"name": "Inebriation.esp", "flags": 0, "masters": ["dD-More Gore-Zeta.esp", "Distractor4955.esm"]},
+    {"name": "Armor Repair Kits PL - FO3.esp", "flags": 0, "masters": []},
+    {"name": "xCALIBRUniverse - WMK.esp", "flags": 0, "masters": []},
+    {"name": "[DC RANGER ARSENAL v3] - ITEM GENERATOR.esp", "flags": 0, "masters": []},
+    {"name": "delaypl.esp", "flags": 0, "masters": ["GSoS - FOOK2 Open Beta - XP Tag Perks.esp"]},
+    {"name": "Distractor5887.esp", "flags": 0, "masters": ["JIP CC&C - Malika Kiowa.esp"]},
+    {"name": "GSoS - FOOK2 Open Beta - XP Tag Perks.esp", "flags": 0, "masters": []},
+    {"name": "(TWPC) HFA-UUF3P-FWE Patch.esp", "flags": 0, "masters": []},
+    {
+      "name": "FPS Grenade Hotkey.esp",
+      "flags": 0,
+      "masters": ["(TWPC) RBS-MMM-FWE Patch.esp", "Distractor4361.esm"]
+    },
+    {"name": "Distractor9812.esp", "flags": 0, "masters": []},
+    {
+      "name": "WeightAmmo.esp",
+      "flags": 0,
+      "masters": ["NIW_experimental.esp", "Clothed Sarah Lyons.esp", "Distractor1707.esm"]
+    },
+    {"name": "MyDog - Bypass Hire Quest.esp", "flags": 0, "masters": []},
+    {"name": "STDG.esp", "flags": 0, "masters": []},
+    {"name": "Compatibility Plugin_TalonExtraArmor_FWE.esp", "flags": 0, "masters": []},
+    {"name": "(TWPC) BFO-MMM-UUF3P-FWE Patch.esp", "flags": 0, "masters": []},
+    {
+      "name": "FO3 Wanderers Edition - Main File.esp",
+      "flags": 0,
+      "masters": ["GlowingGhouls.esp", "Arwen_Core.esm"]
+    },
+    {"name": "Blackened MMM + EVE.esp", "flags": 0, "masters": []},
+    {
+      "name": "PlasmaRifleRedesign_standardonly.esp",
+      "flags": 0,
+      "masters": ["Phalanx-OPTIONAL-WeaponChange.esp", "Shojo Race.esm", "Distractor9141.esm"]
+    },
+    {
+      "name": "FO3 Wanderers Edition - Optional VATS Halftime.esp",
+      "flags": 0,
+      "masters": ["House.esp", "AmyWong - DLC04 Pt.Lookout.esp", "FO3 Wanderers Edition - DLC The Pitt.esp"]
+    },
+    {"name": "PPA - IMCN.esp", "flags": 0, "masters": []},
+    {"name": "EWE DLC Addon.esp", "flags": 0, "masters": []},
+    {"name": "Shojo Race.esm", "flags": 1, "masters": ["Distractor0068.esm"]},
+    {"name": "Compiled fixes for Fallout 3 ( compatible with UOFO3P ).esp", "flags": 0, "masters": []},
+    {"name": "Distractor3025.esp", "flags": 0, "masters": []},
+    {
+      "name": "The Mantis Imperative - Nasty Zeta No Scaling.esp",
+      "flags": 0,
+      "masters": ["3DNPC_LittleBoBeep.esm", "JIP CC&C - Mika the Sniper (Essential).esp", "Distractor9141.esm"]
+    },
+    {"name": "BelthansQuoVagis.esm", "flags": 1, "masters": []},
+    {"name": "Arwen_Med-Tec.esp", "flags": 0, "masters": ["DTOForFWE.esp", "Distractor5878.esm"]},
+    {"name": "mika.esp", "flags": 0, "masters": []},
+    {"name": "Outcast Scribes.esp", "flags": 0, "masters": ["Stop Insulting Me Outcasts.esp"]},
+    {"name": "The Mantis Imperative - XP.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2321.esm", "flags": 1, "masters": []},
+    {"name": "WeaponModKits - PointLookout.esp", "flags": 0, "masters": []},
+    {
+      "name": "DLC Enemies Freedom.esp",
+      "flags": 0,
+      "masters": ["ArefuExpandedByAzar-FixBrahmin.esp", "Choose your own hairstyle (load this last on FOMM).esp"]
+    },
+    {"name": "Museum.esp", "flags": 0, "masters": []},
+    {"name": "DriveableMotorCycle.esp", "flags": 0, "masters": []},
+    {"name": "RI_FOSE.esp", "flags": 0, "masters": []},
+    {"name": "GlowingGhouls.esp", "flags": 0, "masters": []},
+    {"name": "Distractor1707.esm", "flags": 1, "masters": []},
+    {"name": "dD-More Gore-Zeta.esp", "flags": 0, "masters": []},
+    {"name": "Distractor9141.esm", "flags": 1, "masters": []},
+    {"name": "Powered Power Armor.esp", "flags": 0, "masters": []},
+    {"name": "Armor Repair Kits - FO3.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2307.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor8294.esp",
+      "flags": 0,
+      "masters": ["3DNPC_FO3.esm", "Big Town Overhaul.esp", "Arwen_Core.esm"]
+    },
+    {
+      "name": "Point Lookout Reborn.esm",
+      "flags": 1,
+      "masters": ["Distractor5878.esm", "RI_Core.esm", "Distractor2475.esm"]
+    },
+    {
+      "name": "Phalanx-OPTIONAL-BROKENSTEEL-WeaponRepairLists.esp",
+      "flags": 0,
+      "masters": ["URWL.esp", "tubrrCompound.esm"]
+    },
+    {"name": "F3ProjectRealityMkI.esp", "flags": 0, "masters": []},
+    {"name": "CRBSOR.esp", "flags": 0, "masters": []},
+    {"name": "Stop Insulting Me Outcasts.esp", "flags": 0, "masters": []},
+    {
+      "name": "Clarity - Dark Nights.esp",
+      "flags": 0,
+      "masters": ["Arwen_EVE_Patch.esp", "Powered Power Armor.esp", "PiPBoy Grey Light.esp"]
+    },
+    {
+      "name": "Distractor7194.esm",
+      "flags": 1,
+      "masters": ["Distractor7053.esm", "Advanced Recon Tech.esm"]
+    },
+    {"name": "PiPBoy Blue Light.esp", "flags": 0, "masters": []},
+    {"name": "Classic Fallout Weapons BETA.esp", "flags": 0, "masters": ["Distractor5672.esm"]},
+    {"name": "Dree Perks.esp", "flags": 0, "masters": []},
+    {"name": "(TWPC) RRE-FWE.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor8128.esp",
+      "flags": 0,
+      "masters": ["WeightAmmo.esp", "RaidersRedoneEvergreenPatch.esp"]
+    },
+    {"name": "URWL.esp", "flags": 0, "masters": []},
+    {"name": "ZL-MP5 Pack.esp", "flags": 0, "masters": ["The Mantis Imperative - Combat.esp"]},
+    {
+      "name": "Distractor3198.esp",
+      "flags": 0,
+      "masters": ["Distractor7651.esm", "FO3 Wanderers Edition - DLC The Pitt.esp"]
+    },
+    {"name": "Distractor0163.esm", "flags": 1, "masters": []},
+    {
+      "name": "3EFhelmlessstealthsuit.esp",
+      "flags": 0,
+      "masters": ["Modified_Races.esp", "dD-More Gore-Zeta.esp"]
+    },
+    {
+      "name": "Zumbs'_Overhauled_Real_Time_Security_minigames_enabled.esp",
+      "flags": 0,
+      "masters": ["Delay ThePitt + Anchorage.esp", "Distractor3746.esp"]
+    },
+    {"name": "A Trail of Crumbs.esp", "flags": 0, "masters": ["Distractor2347.esm", "3DNPC_Spider.esm"]},
+    {"name": "Quieter Nuka-Cola Sign.esp", "flags": 0, "masters": ["BelthansQuoVagis.esm"]},
+    {
+      "name": "Distractor3209.esp",
+      "flags": 0,
+      "masters": [
+        "JIP Realistic Weapon Overheating.esp",
+        "Rivet City Realignment.esp",
+        "ZORTS - Disable FWE activate.esp"
+      ]
+    },
+    {"name": "FWE+WMK_weapons_xCALIBRified.esp", "flags": 0, "masters": []},
+    {
+      "name": "RaidersRedoneEvergreenPatch.esp",
+      "flags": 0,
+      "masters": ["GSoS - FOOK2 Open Beta - XP Tag Perks.esp"]
+    },
+    {"name": "Phalanx-OPTIONAL-VendorChanges.esp", "flags": 0, "masters": []},
+    {"name": "The Mantis Imperative - Medical.esp", "flags": 0, "masters": []},
+    {"name": "yaDisguisesMod-DLC-Anchorage.esp", "flags": 0, "masters": []},
+    {"name": "RadioTenpennyTower.esp", "flags": 0, "masters": []},
+    {"name": "RI_Core.esm", "flags": 1, "masters": []},
+    {"name": "Fairfax City Interiors.esp", "flags": 0, "masters": ["Distractor1707.esm"]},
+    {"name": "3DNPC_LittleBoBeep.esm", "flags": 1, "masters": []},
+    {"name": "Phalanx-OPTIONAL-WeaponChange.esp", "flags": 0, "masters": ["Arwen_Core.esm"]},
+    {
+      "name": "RRFemalesRemoved.esp",
+      "flags": 0,
+      "masters": ["Distractor1707.esm", "dD-More Gore-Zeta.esp"]
+    },
+    {
+      "name": "JIP CC&C - Mika the Sniper (Essential).esp",
+      "flags": 0,
+      "masters": ["Distractor0995.esm"]
+    },
+    {"name": "Distractor2330.esm", "flags": 1, "masters": []},
+    {"name": "Distractor8439.esp", "flags": 0, "masters": []},
+    {"name": "Overhead3PCamera.esp", "flags": 0, "masters": []},
+    {
+      "name": "lexx_brahmin-variant-Fo3.esp",
+      "flags": 0,
+      "masters": ["GSoS - FOOK2 Open Beta - XP Tag Perks.esp", "DC Moods.esp"]
+    },
+    {"name": "3DNPC_Spider.esm", "flags": 1, "masters": ["Distractor2321.esm"]},
+    {"name": "AfrosNukaCola.esp", "flags": 0, "masters": []},
+    {"name": "Delay ThePitt + Anchorage.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor4934.esp",
+      "flags": 0,
+      "masters": ["(TWPC) PRA-FWE Patch.esp", "Distractor7651.esm"]
+    },
+    {"name": "(TWPC) BFO-UUF3P-FWE Patch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor5672.esm", "flags": 1, "masters": []},
+    {"name": "RH_IronSights_PL_NewItems.esp", "flags": 0, "masters": []},
+    {"name": "Weap_Spread.esp", "flags": 0, "masters": ["JIP CC&C - Malika Kiowa.esp"]},
+    {"name": "GNR Enhanced.esp", "flags": 0, "masters": []},
+    {"name": "ZumbsDarkerSunglasses_screen_effect.esp", "flags": 0, "masters": []},
+    {
+      "name": "EVE Grenade Explosion.esp",
+      "flags": 0,
+      "masters": ["The Mantis Imperative - Nasty Zeta No Scaling.esp", "Distractor4361.esm"]
+    },
+    {
+      "name": "Miniguns Non Replacer.esp",
+      "flags": 0,
+      "masters": ["FO3 Wanderers Edition - DLC The Pitt.esp"]
+    },
+    {
+      "name": "20th Century v5 ALIVE (TEST Container).esp",
+      "flags": 0,
+      "masters": ["Distractor1865.esp", "Millenia_AK47_replacer.esp"]
+    },
+    {
+      "name": "CompanionCherry.esp",
+      "flags": 0,
+      "masters": ["3dnpc_ClaraBella.esm", "(TWPC) RBS-MMM-FWE Patch.esp", "Distractor9920.esm"]
+    },
+    {
+      "name": "Mart's Mutant Mod - DLC Broken Steel.esp",
+      "flags": 0,
+      "masters": ["Dree Perks.esp", "DLC Enemies Freedom.esp"]
+    },
+    {"name": "Less Useless Karma Gifts.esp", "flags": 0, "masters": []},
+    {"name": "Enhanced Weather - Rain and Snow in Fallout.esp", "flags": 0, "masters": []},
+    {"name": "Ambient Temperature HUD.esp", "flags": 0, "masters": []},
+    {
+      "name": "PiPBoy Grey Light.esp",
+      "flags": 0,
+      "masters": ["Distractor2475.esm", "royphilipsevilwmask.esp"]
+    },
+    {
+      "name": "Arwen_EVE_Patch.esp",
+      "flags": 0,
+      "masters": ["Distractor2347.esm", "EVE.esm", "ZORTS - Disable FWE activate.esp"]
+    },
+    {"name": "3DNPC_FO3_BrokenSteel.esp", "flags": 0, "masters": []},
+    {
+      "name": "Stealth Kills Enabled.esp",
+      "flags": 0,
+      "masters": ["GNR Enhanced.esp", "Distractor5672.esm", "3dnpc_ClaraBella.esm"]
+    },
+    {"name": "JIP CC&C - Jessi.esp", "flags": 0, "masters": []},
+    {
+      "name": "JIP CC&C - Malika Kiowa.esp",
+      "flags": 0,
+      "masters": ["AmyWong - DLC04 Pt.Lookout.esp", "Distractor7194.esm", "Essential Caravan Merchants.esp"]
+    },
+    {"name": "CharonImproved.esp", "flags": 0, "masters": []},
+    {"name": "MP5ForFWE.esp", "flags": 0, "masters": ["Distractor1057.esp"]},
+    {
+      "name": "ChineseStealthArmorFixed.esp",
+      "flags": 0,
+      "masters": ["AutoAim_6000_v1.0.esp", "Anchorage.esm", "JIP CC&C - Mika the Sniper (Essential).esp"]
+    },
+    {"name": "IMCN - The Pitt.esp", "flags": 0, "masters": ["Distractor7366.esm"]},
+    {
+      "name": "Sydney Follower - FWE Dialog Fix.esp",
+      "flags": 0,
+      "masters": ["[DC RANGER ARSENAL v3] - ITEM GENERATOR.esp"]
+    },
+    {"name": "Advanced Recon Tech.esm", "flags": 1, "masters": []},
+    {"name": "jonasclothesnonrplcr.esp", "flags": 0, "masters": ["MyDog.esm"]},
+    {"name": "JIP CC&C - Bittercup.esp", "flags": 0, "masters": []},
+    {"name": "Xepha's Darkened Interiors - PL.esp", "flags": 0, "masters": []},
+    {"name": "Distractor2475.esm", "flags": 1, "masters": ["Distractor4955.esm"]},
+    {"name": "Fo3HirezdFlamer.esp", "flags": 0, "masters": []},
+    {"name": "Distractor7651.esm", "flags": 1, "masters": []},
+    {
+      "name": "Assaultrifle_replacers_WMK+RH+FWE.esp",
+      "flags": 0,
+      "masters": ["Distractor1707.esm", "Trooper_outfits.esp", "AWOP4FO3BOEPatch.esp"]
+    },
+    {"name": "WeaponModKits - FWE Talon Loot Crash Fix.esp", "flags": 0, "masters": []},
+    {"name": "tree.esp", "flags": 0, "masters": []},
+    {
+      "name": "xCALIBRUniverse_FWE_Tactical.esp",
+      "flags": 0,
+      "masters": ["A Trail of Crumbs.esp", "mika_essential.esp", "dD-Reduced Dismember Force.esp"]
+    },
+    {"name": "ThePitt.esm", "flags": 1, "masters": []},
+    {"name": "ChopShopModv13.esp", "flags": 0, "masters": ["Arwen_EVE_Patch.esp"]},
+    {
+      "name": "EVE.esm",
+      "flags": 1,
+      "masters": ["Advanced Recon Tech.esm", "Distractor7053.esm", "Distractor2475.esm"]
+    },
+    {"name": "dD-Reduced Dismember Force.esp", "flags": 0, "masters": []},
+    {
+      "name": "FireLightFix.esp",
+      "flags": 0,
+      "masters": [
+        "Advanced Recon Range Finder.esp",
+        "FO3 Wanderers Edition - Alternate Travel.esp",
+        "3dnpc_ClaraBella.esm"
+      ]
+    },
+    {"name": "UniqueItems_1.1_ENG.esp", "flags": 0, "masters": []},
+    {"name": "Distractor7366.esm", "flags": 1, "masters": ["Distractor0163.esm", "Distractor0068.esm"]},
+    {"name": "House.esp", "flags": 0, "masters": ["3DNPC_FO3.esm", "Distractor2475.esm"]},
+    {
+      "name": "MyDog.esm",
+      "flags": 1,
+      "masters": ["FOOK2 - [DIK] DLC Improvement Kit.ESM", "Distractor2475.esm", "3DNPC_LittleBoBeep.esm"]
+    },
+    {"name": "KillableChildren.esp", "flags": 0, "masters": ["Distractor5887.esp", "PAL - MERGED.esp"]},
+    {
+      "name": "(TWPC) TMI-MMM-FWE Patch.esp",
+      "flags": 0,
+      "masters": ["ArefuExpandedByAzar-FixBrahmin.esp", "3DNPC_LittleBoBeep.esm"]
+    },
+    {"name": "Anchorage.esm", "flags": 1, "masters": ["Advanced Recon Tech.esm", "Distractor0068.esm"]},
+    {"name": "JIP Realistic Weapon Overheating.esp", "flags": 0, "masters": []},
+    {"name": "(TWPC) PRA-FWE Patch.esp", "flags": 0, "masters": []},
+    {"name": "Essential Caravan Merchants.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor5439.esp",
+      "flags": 0,
+      "masters": ["JIP CC&C - Mika the Sniper (Essential).esp", "Distractor7366.esm"]
+    },
+    {"name": "Distractor1865.esp", "flags": 0, "masters": []},
+    {"name": "Distractor7376.esp", "flags": 0, "masters": []},
+    {"name": "FWE+WMKexcalibrified(Anch).esp", "flags": 0, "masters": ["Distractor0163.esm"]},
+    {
+      "name": "Towers Hill.esp",
+      "flags": 0,
+      "masters": ["Arwen_EVE_Patch.esp", "WeaponModKits - FWE Talon Loot Crash Fix.esp", "MP5ForFWE.esp"]
+    },
+    {"name": "Distractor9837.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor2347.esm",
+      "flags": 1,
+      "masters": ["Distractor5878.esm", "tubrrCompound.esm", "Distractor7651.esm"]
+    },
+    {
+      "name": "WeaponModKits - BrokenSteel.esp",
+      "flags": 0,
+      "masters": [
+        "JIP CC&C - Mika the Sniper (Essential).esp",
+        "AWOP4FO3BOEPatch.esp",
+        "Choose your own hairstyle (load this last on FOMM).esp"
+      ]
+    },
+    {"name": "BnB special armors.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor7442.esp",
+      "flags": 0,
+      "masters": ["KillableChildren.esp", "UniqueItems_1.1_ENG.esp", "xCALIBRUniverse - WMK.esp"]
+    },
+    {"name": "JIP CC&C - Kelsey.esp", "flags": 0, "masters": []},
+    {"name": "Empty Nuka-Cola Quantum Bottles.esp", "flags": 0, "masters": ["tubrrCompound.esm"]},
+    {"name": "MiscWeightFix.esp", "flags": 0, "masters": ["FWE+WMKexcalibrified(Anch).esp"]},
+    {"name": "Sydney Follower - Load Order Fix.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor0995.esm",
+      "flags": 1,
+      "masters": ["RI_Core.esm", "Distractor2475.esm", "Distractor4955.esm"]
+    },
+    {"name": "Distractor5116.esp", "flags": 0, "masters": ["FireLightFix.esp"]},
+    {"name": "ZORTS - Disable FOOK2 activate.esp", "flags": 0, "masters": []},
+    {
+      "name": "Arwen_MMM_Med-Tec_Patch.esp",
+      "flags": 0,
+      "masters": ["Distractor3025.esp", "URWL48.esp", "Weap_Spread.esp"]
+    },
+    {
+      "name": "20th Century v5 ALIVE (Talon_Regulator).esp",
+      "flags": 0,
+      "masters": [
+        "Distractor9920.esm",
+        "(TWPC) TMI-MMM-FWE Patch.esp",
+        "Mart's Mutant Mod - FWE Master Release + Project Beauty.esp"
+      ]
+    },
+    {"name": "Distractor5878.esm", "flags": 1, "masters": ["Distractor0068.esm"]},
+    {"name": "Distractor0068.esm", "flags": 1, "masters": ["Advanced Recon Tech.esm"]},
+    {
+      "name": "unique_uniquesCutDLC.esp",
+      "flags": 0,
+      "masters": ["Advanced Recon Range Finder.esp", "MyDog.esm", "Distractor5878.esm"]
+    },
+    {
+      "name": "Echo_UseBothGloves.esp",
+      "flags": 0,
+      "masters": ["Distractor2475.esm", "3EFhelmlessstealthsuit.esp", "FPS Grenade Hotkey.esp"]
+    },
+    {
+      "name": "BA_Repair_GOTY.esp",
+      "flags": 0,
+      "masters": ["Sealurk Radioactive Bites & Stings v2.esp", "JIP CC&C - Malika Kiowa.esp"]
+    },
+    {"name": "Advanced Recon Range Finder.esp", "flags": 0, "masters": []},
+    {
+      "name": "Goth Girls Multipack.esp",
+      "flags": 0,
+      "masters": ["DriveableMotorCycle.esp", "Choose your own hairstyle (load this last on FOMM).esp"]
+    },
+    {"name": "3DNPC_FO3.esm", "flags": 1, "masters": ["Distractor5672.esm", "Arwen_Core.esm"]},
+    {"name": "URWL48.esp", "flags": 0, "masters": []},
+    {"name": "mika_essential.esp", "flags": 0, "masters": ["Trooper_outfits.esp"]},
+    {"name": "Distractor6963.esp", "flags": 0, "masters": ["Clothed Sarah Lyons.esp"]},
+    {"name": "MAXdog.esp", "flags": 0, "masters": ["Distractor0068.esm", "Distractor0995.esm"]},
+    {"name": "Distractor3746.esp", "flags": 0, "masters": []},
+    {"name": "PlasmaRifleRedesign.esp", "flags": 0, "masters": []},
+    {"name": "AutoAim_6000_v1.0.esp", "flags": 0, "masters": []},
+    {"name": "Laboratory (PL & MZ).esp", "flags": 0, "masters": []},
+    {"name": "DTOForFWE.esp", "flags": 0, "masters": []},
+    {"name": "Distractor4361.esm", "flags": 1, "masters": []},
+    {"name": "Distractor7259.esp", "flags": 0, "masters": []},
+    {"name": "AmyWong - DLC04 Pt.Lookout.esp", "flags": 0, "masters": []},
+    {"name": "NIW_experimental.esp", "flags": 0, "masters": ["20th Century v5 ALIVE (Containers).esp"]}
+  ],
+  "masterlist": null,
+  "userlist": null,
+  "prelude": null,
+  "real_masterlist": {
+    "repository": "fallout3",
+    "bundled_sha256": "4947d03d6e5dbe1e933d597eee467e7554fc5f744a207736c3964df12feb1f29",
+    "stripped_sha256": "a8493b5896496253944c7c9ce0902802cc48d540685706c768027b19e0218bfa",
+    "prelude_bundled_sha256": "d766b2d98565c2147bfeedf8df8385aae1c32731fc0b14b1bdb1ee54d1729711",
+    "prelude_stripped_sha256": "e4e8c81907defb24d03c7b22c8d9dc68186c6584f67aa75ce83727ff3758da85"
+  },
+  "expected": {
+    "order": [
+      "Advanced Recon Tech.esm",
+      "Distractor0068.esm",
+      "Anchorage.esm",
+      "ThePitt.esm",
+      "Distractor1502.esm",
+      "Shojo Race.esm",
+      "Distractor7053.esm",
+      "Distractor4955.esm",
+      "Distractor2475.esm",
+      "EVE.esm",
+      "3dnpc_ClaraBella.esm",
+      "Distractor9920.esm",
+      "tubrrCompound.esm",
+      "Distractor8798.esm",
+      "Distractor0163.esm",
+      "DCInteriors_SewardSq.esm",
+      "FOOK2 - [DIK] DLC Improvement Kit.ESM",
+      "Arwen_Core.esm",
+      "BelthansQuoVagis.esm",
+      "Distractor2321.esm",
+      "Distractor1707.esm",
+      "Distractor9141.esm",
+      "RI_Core.esm",
+      "Distractor5878.esm",
+      "Point Lookout Reborn.esm",
+      "Distractor7194.esm",
+      "3DNPC_LittleBoBeep.esm",
+      "Distractor2330.esm",
+      "3DNPC_Spider.esm",
+      "Distractor5672.esm",
+      "Distractor7651.esm",
+      "Distractor7366.esm",
+      "MyDog.esm",
+      "Distractor2347.esm",
+      "Distractor0995.esm",
+      "3DNPC_FO3.esm",
+      "Distractor4361.esm",
+      "Modified_Races.esp",
+      "dD-More Gore-Zeta.esp",
+      "3EFhelmlessstealthsuit.esp",
+      "GlowingGhouls.esp",
+      "FO3 Wanderers Edition - Main File.esp",
+      "FO3 Wanderers Edition - DLC The Pitt.esp",
+      "Distractor3198.esp",
+      "JIP CC&C - Mika the Sniper (Essential).esp",
+      "AutoAim_6000_v1.0.esp",
+      "ChineseStealthArmorFixed.esp",
+      "Distractor8070.esp",
+      "CALIBRxMerchant.esp",
+      "FO3 Wanderers Edition - Alternate Travel.esp",
+      "Advanced Recon Range Finder.esp",
+      "FireLightFix.esp",
+      "Choose your own hairstyle (load this last on FOMM).esp",
+      "ArefuExpandedByAzar-FixBrahmin.esp",
+      "DLC Enemies Freedom.esp",
+      "Dree Perks.esp",
+      "Mart's Mutant Mod - DLC Broken Steel.esp",
+      "Mart's Mutant Mod - Master Menu Module.esp",
+      "JIP CC&C - Jessi.esp",
+      "MMM - FWE_Combat Overhaul Master Release.esp",
+      "F3ProjectRealityMkI.esp",
+      "Distractor1057.esp",
+      "Distractor0246.esp",
+      "BnB special armors.esp",
+      "(TWPC) 20CWRE-WMK-UUF3P-FWE Patch.esp",
+      "The Mantis Imperative - Nasty Zeta No Scaling.esp",
+      "Empty Nuka-Cola Quantum Bottles.esp",
+      "Sealurk Radioactive Bites & Stings v2.esp",
+      "llama's Vanilla Followers for Charon Improved.esp",
+      "dD-Reduced Dismember Force.esp",
+      "Big Town Overhaul.esp",
+      "Distractor7398.esp",
+      "(TWPC) BFO-UUF3P-FWE Patch.esp",
+      "(TWPC) TMI-MMM-EVE-FWE Patch.esp",
+      "AWOP4FO3BOEPatch.esp",
+      "WeaponModKits - BrokenSteel.esp",
+      "WeaponModKits - PointLookout.esp",
+      "WeaponModKits - Zeta.esp",
+      "EWE DLC Addon.esp",
+      "WeaponModKits.esp",
+      "Clothed Sarah Lyons.esp",
+      "Tenderizer Fix.esp",
+      "GH-HealingRebalanceMod_stimpackduration.esp",
+      "PAL - MERGED.esp",
+      "House.esp",
+      "AmyWong - DLC04 Pt.Lookout.esp",
+      "FO3 Wanderers Edition - Optional VATS Halftime.esp",
+      "Distractor5116.esp",
+      "Existence 2.0.esp",
+      "Distractor3522.esp",
+      "ZORTS - Disable FWE activate.esp",
+      "Mart's Mutant Mod - FWE Master Release + Project Beauty.esp",
+      "Millenia_AK47_replacer.esp",
+      "Powered Power Armor.esp",
+      "Rivet City Realignment.esp",
+      "Weld - Badge.esp",
+      "Outcast DX.esp",
+      "royphilipsevilwmask.esp",
+      "Mart's Mutant Mod - FOOK2 - DIK.esp",
+      "Blackened EVE + Project Beauty.esp",
+      "Sydney Follower - Load Order Fix.esp",
+      "BBBackpacks-v1-1.esp",
+      "mesme.esp",
+      "jonasclothesreplacer.esp",
+      "Cat Outfit Fanged.esp",
+      "URWL.esp",
+      "Distractor5733.esp",
+      "GilbertToys.esp",
+      "ZORTS - Custom HP.esp",
+      "Distractor9424.esp",
+      "Distractor3746.esp",
+      "PAL - BASE File.esp",
+      "blackrock_shooter.esp",
+      "(TWPC) MMM-EBTMGFWE-UUF3P-FWE Patch.esp",
+      "(TWPC) RBS-MMM-FWE Patch.esp",
+      "JIP CC&C - Amata.esp",
+      "Distractor5992.esp",
+      "Trooper_outfits.esp",
+      "MTC RealWildnessLife.esp",
+      "Distractor5501.esp",
+      "DC Moods.esp",
+      "20th Century v5 ALIVE (Containers).esp",
+      "PPA - FWE 2.esp",
+      "Inebriation.esp",
+      "Armor Repair Kits PL - FO3.esp",
+      "xCALIBRUniverse - WMK.esp",
+      "[DC RANGER ARSENAL v3] - ITEM GENERATOR.esp",
+      "GSoS - FOOK2 Open Beta - XP Tag Perks.esp",
+      "delaypl.esp",
+      "Essential Caravan Merchants.esp",
+      "JIP CC&C - Malika Kiowa.esp",
+      "Distractor5887.esp",
+      "(TWPC) HFA-UUF3P-FWE Patch.esp",
+      "FPS Grenade Hotkey.esp",
+      "Distractor9812.esp",
+      "NIW_experimental.esp",
+      "WeightAmmo.esp",
+      "MyDog - Bypass Hire Quest.esp",
+      "STDG.esp",
+      "Compatibility Plugin_TalonExtraArmor_FWE.esp",
+      "(TWPC) BFO-MMM-UUF3P-FWE Patch.esp",
+      "Blackened MMM + EVE.esp",
+      "Phalanx-OPTIONAL-WeaponChange.esp",
+      "PlasmaRifleRedesign_standardonly.esp",
+      "PPA - IMCN.esp",
+      "Compiled fixes for Fallout 3 ( compatible with UOFO3P ).esp",
+      "Distractor3025.esp",
+      "DTOForFWE.esp",
+      "Arwen_Med-Tec.esp",
+      "mika.esp",
+      "Stop Insulting Me Outcasts.esp",
+      "Outcast Scribes.esp",
+      "The Mantis Imperative - XP.esp",
+      "Museum.esp",
+      "DriveableMotorCycle.esp",
+      "RI_FOSE.esp",
+      "Armor Repair Kits - FO3.esp",
+      "Distractor2307.esp",
+      "Distractor8294.esp",
+      "Phalanx-OPTIONAL-BROKENSTEEL-WeaponRepairLists.esp",
+      "CRBSOR.esp",
+      "PiPBoy Grey Light.esp",
+      "Arwen_EVE_Patch.esp",
+      "Clarity - Dark Nights.esp",
+      "PiPBoy Blue Light.esp",
+      "Classic Fallout Weapons BETA.esp",
+      "(TWPC) RRE-FWE.esp",
+      "RaidersRedoneEvergreenPatch.esp",
+      "Distractor8128.esp",
+      "Delay ThePitt + Anchorage.esp",
+      "Zumbs'_Overhauled_Real_Time_Security_minigames_enabled.esp",
+      "A Trail of Crumbs.esp",
+      "Quieter Nuka-Cola Sign.esp",
+      "JIP Realistic Weapon Overheating.esp",
+      "Distractor3209.esp",
+      "FWE+WMK_weapons_xCALIBRified.esp",
+      "Phalanx-OPTIONAL-VendorChanges.esp",
+      "The Mantis Imperative - Medical.esp",
+      "yaDisguisesMod-DLC-Anchorage.esp",
+      "RadioTenpennyTower.esp",
+      "Fairfax City Interiors.esp",
+      "RRFemalesRemoved.esp",
+      "Distractor8439.esp",
+      "Overhead3PCamera.esp",
+      "lexx_brahmin-variant-Fo3.esp",
+      "AfrosNukaCola.esp",
+      "(TWPC) PRA-FWE Patch.esp",
+      "Distractor4934.esp",
+      "RH_IronSights_PL_NewItems.esp",
+      "Weap_Spread.esp",
+      "GNR Enhanced.esp",
+      "ZumbsDarkerSunglasses_screen_effect.esp",
+      "EVE Grenade Explosion.esp",
+      "Miniguns Non Replacer.esp",
+      "Distractor1865.esp",
+      "20th Century v5 ALIVE (TEST Container).esp",
+      "CompanionCherry.esp",
+      "Less Useless Karma Gifts.esp",
+      "Enhanced Weather - Rain and Snow in Fallout.esp",
+      "Ambient Temperature HUD.esp",
+      "3DNPC_FO3_BrokenSteel.esp",
+      "Stealth Kills Enabled.esp",
+      "CharonImproved.esp",
+      "MP5ForFWE.esp",
+      "IMCN - The Pitt.esp",
+      "Sydney Follower - FWE Dialog Fix.esp",
+      "jonasclothesnonrplcr.esp",
+      "JIP CC&C - Bittercup.esp",
+      "Fo3HirezdFlamer.esp",
+      "Assaultrifle_replacers_WMK+RH+FWE.esp",
+      "WeaponModKits - FWE Talon Loot Crash Fix.esp",
+      "tree.esp",
+      "mika_essential.esp",
+      "xCALIBRUniverse_FWE_Tactical.esp",
+      "ChopShopModv13.esp",
+      "UniqueItems_1.1_ENG.esp",
+      "KillableChildren.esp",
+      "(TWPC) TMI-MMM-FWE Patch.esp",
+      "Distractor5439.esp",
+      "Distractor7376.esp",
+      "FWE+WMKexcalibrified(Anch).esp",
+      "Towers Hill.esp",
+      "Distractor9837.esp",
+      "Distractor7442.esp",
+      "JIP CC&C - Kelsey.esp",
+      "MiscWeightFix.esp",
+      "ZORTS - Disable FOOK2 activate.esp",
+      "URWL48.esp",
+      "Arwen_MMM_Med-Tec_Patch.esp",
+      "20th Century v5 ALIVE (Talon_Regulator).esp",
+      "unique_uniquesCutDLC.esp",
+      "Echo_UseBothGloves.esp",
+      "BA_Repair_GOTY.esp",
+      "Goth Girls Multipack.esp",
+      "Distractor6963.esp",
+      "MAXdog.esp",
+      "PlasmaRifleRedesign.esp",
+      "Laboratory (PL & MZ).esp",
+      "Distractor7259.esp",
+      "Xepha's Darkened Interiors - PL.esp",
+      "The Mantis Imperative - Combat.esp",
+      "Lawbringer Boutnies Ver1.1.esp",
+      "ZL-MP5 Pack.esp"
+    ]
+  },
+  "groups_paths": []
+}

@@ -20,8 +20,18 @@ clones libloot at tag 0.29.6, builds the binding with maturin in the `fedora` di
 
 ## Regenerating
 
-    "$LOOT_ORACLE_PYTHON" -I tools/loot-oracle/generate.py            # both tiers
+    "$LOOT_ORACLE_PYTHON" -I tools/loot-oracle/generate.py            # tiers 1 and 2
     "$LOOT_ORACLE_PYTHON" -I tools/loot-oracle/generate.py --tier 1   # hand-written cases only
+
+Tier 3 needs the stripped masterlists, which only the C# side can produce (this interpreter has no
+YAML library). Write them, then point the generator at them:
+
+    export LOOT_ORACLE_STRIP_DIR=$(mktemp -d)
+    scripts/test.sh --project tests/Games/NexusMods.Games.Bethesda.Loot.Tests    # writes the files; the export test is skipped without the variable
+    "$LOOT_ORACLE_PYTHON" -I tools/loot-oracle/generate.py --tier 3 --stripped-dir "$LOOT_ORACLE_STRIP_DIR"
+
+The stripped YAML stays in that directory and is never committed. Regenerate tier 3 after refreshing
+the bundled masterlists: `CorpusTests` hashes the bundled files and fails until the corpus is rebuilt.
 
 `--out <dir>` writes somewhere else. The run is deterministic: the same libloot and generator give
 the same files, so a diff after regenerating is either a changed case or a changed oracle. Each file
@@ -43,13 +53,39 @@ header anyway. That also means no overlap edges, so the port's skipped overlap i
 - `tier2/`: seeded random cases, `seed_000` to `seed_039`: 20 to 200 plugins, a random masters DAG,
   a random groups DAG, random `after`/`req` entries and a random current order. Seeds divisible by 3 are
   unconstrained and end in a cycle error; the rest are built to sort.
+- `tier3/`: the real bundled masterlists and prelude with every `condition` and `constraint` removed
+  (`MasterlistStripper`), `<repo>_seed_000` to `_003` for each of the ten repositories. Each case has
+  synthetic plugins named after the masterlist's literal plugin entries (80% of up to 400, so the
+  smaller masterlists give smaller cases) plus 20% distractors, random masters drawn from earlier
+  plugins and a random current order. The case holds the SHA-256 of the bundled file and of its
+  stripped form, for the masterlist and the prelude, instead of the text. `CorpusTests` strips the
+  bundled resource itself, checks all four hashes, then sorts. Masters picked at random often
+  contradict the real group order, so a seed that ends in a cycle is retried with fewer masters (down
+  to none) and the first sortable version is kept. Enderal has no binding game type and runs as Skyrim SE.
 
 To add a hand-written case, add an `add(...)` call in `tier1_cases()`, regenerate, and look at the
 JSON before trusting it: the oracle is right by definition, so a case that does not exercise what its
 name says passes silently. A tier-2 failure is a bug in the port; look into it before touching the case.
 
+## Comparing with a real load order
+
+`sort_real.py` is a user check, not a test. Give it a repository name and a text file with one plugin
+per line in the current order (`Name.esp :: Master1.esm, Master2.esp`) and it prints libloot's order
+using the real masterlist with its conditions:
+
+    "$LOOT_ORACLE_PYTHON" -I tools/loot-oracle/sort_real.py skyrimse my-load-order.txt
+
+Use it to compare the app's Sort with LOOT against libloot on your own plugins. The plugins are
+header-only stubs, so conditions that read versions or checksums cannot match what the real files would.
+
+## Load time
+
+`MasterlistLoadTimingTests` parses the Skyrim SE masterlist with the prelude three times and asserts
+the median is under two seconds. It is about 250 ms on the development machine. Past ~400 ms the
+parsed document should be cached per masterlist revision in the store.
+
 ## What is not covered
 
 libloot logs, and does not report, a plugin pair with no edge between them after tie-breaking, so the
 oracle cannot show it. The tie-break is meant to rule that out, and `CorpusTests` asserts the port
-reports none. Conditions are not evaluated by the port, and the corpus metadata has none.
+reports none. Conditions are not evaluated by the port, and the corpus metadata has none (tier 3 strips the real ones).

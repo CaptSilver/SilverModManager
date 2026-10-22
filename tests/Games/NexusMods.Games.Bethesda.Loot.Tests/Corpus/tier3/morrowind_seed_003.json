@@ -1,0 +1,279 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": 3,
+  "game_type": "Morrowind",
+  "format": "Tes3",
+  "header_version": 1.3,
+  "name": "morrowind_seed_003",
+  "plugins": [
+    {"name": "Tamriel_Data.esm", "flags": 1, "masters": ["TR_Mainland.esm"]},
+    {
+      "name": "Distractor1122.esm",
+      "flags": 1,
+      "masters": ["Patch for Purists - Base Patch.esm", "Distractor1486.esm"]
+    },
+    {"name": "Distractor8491.esp", "flags": 0, "masters": []},
+    {"name": "Distractor8486.esp", "flags": 0, "masters": ["Distractor1486.esm"]},
+    {"name": "delta_plugin.esp", "flags": 0, "masters": []},
+    {
+      "name": "Better Propylon Teleport Warp-Master Index.esp",
+      "flags": 0,
+      "masters": ["Distractor1122.esm"]
+    },
+    {"name": "Distractor8765.esp", "flags": 0, "masters": ["Distractor2338.esp", "Distractor9720.esp"]},
+    {"name": "NOM 3.0.esp", "flags": 0, "masters": []},
+    {
+      "name": "Main_Quest_Overhaul.ESP",
+      "flags": 0,
+      "masters": ["Distractor6892.esp", "Distractor1122.esm", "TR_Mainland.esm"]
+    },
+    {
+      "name": "Distractor4046.esp",
+      "flags": 0,
+      "masters": ["Patch for Purists - Expansion Implementation.esm", "TR_Mainland.esm"]
+    },
+    {"name": "Distractor8252.esp", "flags": 0, "masters": ["distant_seafloor_2.00.esm"]},
+    {"name": "Patch for Purists - Dialogue Inconsistencies.esm", "flags": 1, "masters": []},
+    {"name": "Imperial Legion Expansion.esp", "flags": 0, "masters": []},
+    {
+      "name": "Distractor2338.esp",
+      "flags": 0,
+      "masters": ["Patch for Purists - Dialogue Inconsistencies.esm", "Tribunal.esm"]
+    },
+    {"name": "TR_Factions.esp", "flags": 0, "masters": []},
+    {"name": "Interior exterior flag reset.esp", "flags": 0, "masters": []},
+    {"name": "NoM_CoM Compatibility Patch.esp", "flags": 0, "masters": []},
+    {
+      "name": "Patch for Purists - Expansion Implementation.esm",
+      "flags": 1,
+      "masters": ["TR_Mainland.esm", "Tamriel_Data.esm"]
+    },
+    {"name": "TR_Mainland.esm", "flags": 1, "masters": []},
+    {"name": "Distractor7732.esp", "flags": 0, "masters": []},
+    {"name": "Merged Objects.esp", "flags": 0, "masters": []},
+    {"name": "LuceEdit - Guild of Vampire Hunters.esp", "flags": 0, "masters": []},
+    {"name": "Unofficial Morrowind Official Plugins Patched.ESP", "flags": 0, "masters": []},
+    {"name": "Patch for Purists.esm", "flags": 1, "masters": []},
+    {"name": "OAAB_Data.esm", "flags": 1, "masters": []},
+    {"name": "Distractor1486.esm", "flags": 1, "masters": []},
+    {"name": "LeFemmArmor.esp", "flags": 0, "masters": []},
+    {
+      "name": "Playable Game of Ur.esp",
+      "flags": 0,
+      "masters": ["The_Vanilla_Quest_Tweaks_RP_Choices_Consequences_Super_Mega_Package_-_Ultimate_Edition.ESP"]
+    },
+    {
+      "name": "Distractor9446.esm",
+      "flags": 1,
+      "masters": ["Tamriel_Data.esm", "Distractor1122.esm", "Patch for Purists - Book Typos.esm"]
+    },
+    {"name": "Patch for Purists - Statistic Typos.esm", "flags": 1, "masters": []},
+    {"name": "Immersive_corprus.esp", "flags": 0, "masters": []},
+    {
+      "name": "Better Landscapes Stonewood Pass (RP Edit).esp",
+      "flags": 0,
+      "masters": ["Distractor9720.esp"]
+    },
+    {
+      "name": "BOM_PfP_patch.ESP",
+      "flags": 0,
+      "masters": ["Merged Objects.esp", "Patch for Purists - Statistic Typos.esm", "Distractor4046.esp"]
+    },
+    {"name": "Religions Elaborated.ESP", "flags": 0, "masters": []},
+    {
+      "name": "The_Vanilla_Quest_Tweaks_RP_Choices_Consequences_Super_Mega_Package_-_Ultimate_Edition.ESP",
+      "flags": 0,
+      "masters": ["Patch for Purists.esm", "Distractor9446.esm"]
+    },
+    {
+      "name": "NoM_MC Compatibility Patch.esp",
+      "flags": 0,
+      "masters": ["Distractor9720.esp", "Patch for Purists - Base Patch.esm"]
+    },
+    {"name": "BOM_White_Suran.ESP", "flags": 0, "masters": []},
+    {"name": "OAAB_Tel Mora.esp", "flags": 0, "masters": ["Tamriel_Data.esm", "TR_Factions.esp"]},
+    {"name": "ROHT_2_0_8.ESP", "flags": 0, "masters": ["Tamriel_Data.esm"]},
+    {
+      "name": "BOM_Stavs_MGO.ESP",
+      "flags": 0,
+      "masters": ["TR_Firemoth_Vanilla_patch.esp", "BOM_pathgrid_reset.esp"]
+    },
+    {"name": "multipatch.esp", "flags": 0, "masters": []},
+    {"name": "Distractor1091.esp", "flags": 0, "masters": []},
+    {"name": "BOM_pathgrid_reset.esp", "flags": 0, "masters": []},
+    {"name": "Beautiful cities of Morrowind.ESP", "flags": 0, "masters": []},
+    {"name": "OAAB_Tel Mora_Female Guards.ESP", "flags": 0, "masters": []},
+    {"name": "SOP_RichPlaza_IziStyle.ESP", "flags": 0, "masters": []},
+    {
+      "name": "TR_Firemoth_Vanilla_patch.esp",
+      "flags": 0,
+      "masters": ["BOM_pathgrid_reset.esp", "Patch for Purists.esm", "Bloodmoon.esm"]
+    },
+    {"name": "distant_seafloor_2.00.esm", "flags": 1, "masters": []},
+    {"name": "Ministry_of_Clarity.ESP", "flags": 0, "masters": []},
+    {"name": "Vivec Lighthouse Questline.esp", "flags": 0, "masters": ["BCOM_Suran Expansion.ESP"]},
+    {"name": "BOM - Taller Lighthouse.ESP", "flags": 0, "masters": ["NoM_Creatures Loot Standard.esp"]},
+    {
+      "name": "BOM_Vanilla Trees.ESP",
+      "flags": 0,
+      "masters": ["Distractor6365.esm", "distant_seafloor_2.00.esm"]
+    },
+    {
+      "name": "SOP_Canal_02.ESP",
+      "flags": 0,
+      "masters": ["Distractor1122.esm", "Patch for Purists - Statistic Typos.esm"]
+    },
+    {
+      "name": "NoM_Creatures Loot Standard.esp",
+      "flags": 0,
+      "masters": ["Distractor4046.esp", "Patch for Purists - Book Typos.esm", "Tamriel_Data.esm"]
+    },
+    {
+      "name": "OAAB - Tombs and Towers.esp",
+      "flags": 0,
+      "masters": ["Baan_Binif.ESP", "Distractor8486.esp", "Ministry_of_Clarity.ESP"]
+    },
+    {"name": "Guild of Vampire Hunters.esp", "flags": 0, "masters": []},
+    {
+      "name": "TR_Travels_(P_M) Patch.esp",
+      "flags": 0,
+      "masters": [
+        "SOP_RichPlaza_IziStyle.ESP",
+        "NoM_Creatures Loot Standard.esp",
+        "Interior exterior flag reset.esp"
+      ]
+    },
+    {
+      "name": "Distractor9720.esp",
+      "flags": 0,
+      "masters": ["Tamriel_Data.esm", "Patch for Purists - Dialogue Inconsistencies.esm"]
+    },
+    {"name": "BCOM_Suran Expansion.ESP", "flags": 0, "masters": []},
+    {
+      "name": "Bloodmoon.esm",
+      "flags": 1,
+      "masters": ["Distractor1486.esm", "Patch for Purists - Book Typos.esm", "Patch for Purists - Base Patch.esm"]
+    },
+    {"name": "Tribunal.esm", "flags": 1, "masters": []},
+    {
+      "name": "Baan_Binif.ESP",
+      "flags": 0,
+      "masters": ["Patch for Purists - Dialogue Inconsistencies.esm", "Patch for Purists - Base Patch.esm"]
+    },
+    {"name": "Improved Argonians.esp", "flags": 0, "masters": []},
+    {"name": "Patch for Purists - Book Typos.esm", "flags": 1, "masters": []},
+    {"name": "BOM_OpenMW_plazas.esp", "flags": 0, "masters": ["multipatch.esp"]},
+    {
+      "name": "Brevur of Balmora - Finally Some Good Statue Mod.ESP",
+      "flags": 0,
+      "masters": ["TR_Factions.esp"]
+    },
+    {"name": "Distractor6365.esm", "flags": 1, "masters": []},
+    {
+      "name": "NOM3_PT SO.esp",
+      "flags": 0,
+      "masters": ["Better Landscapes Stonewood Pass (RP Edit).esp", "Bloodmoon.esm"]
+    },
+    {"name": "Distractor6892.esp", "flags": 0, "masters": ["NoM_CoM Compatibility Patch.esp"]},
+    {
+      "name": "Patch for Purists - Floating Rocks.esm",
+      "flags": 1,
+      "masters": ["Patch for Purists - Base Patch.esm", "distant_seafloor_2.00.esm", "Tribunal.esm"]
+    },
+    {"name": "Patch for Purists - Base Patch.esm", "flags": 1, "masters": []},
+    {
+      "name": "NoM_Creatures Loot PHW.esp",
+      "flags": 0,
+      "masters": ["Guild of Vampire Hunters.esp", "Tamriel_Data.esm", "Baan_Binif.ESP"]
+    }
+  ],
+  "masterlist": null,
+  "userlist": null,
+  "prelude": null,
+  "real_masterlist": {
+    "repository": "morrowind",
+    "bundled_sha256": "7ecd834f9189fe775aef6512d75692df80113b944f9d3f6d22350f00601b87ff",
+    "stripped_sha256": "2527948afb87aed979f90d1a07f5f21c34e0ababb33b4f8f9f5507d1a72aed71",
+    "prelude_bundled_sha256": "d766b2d98565c2147bfeedf8df8385aae1c32731fc0b14b1bdb1ee54d1729711",
+    "prelude_stripped_sha256": "e4e8c81907defb24d03c7b22c8d9dc68186c6584f67aa75ce83727ff3758da85"
+  },
+  "expected": {
+    "order": [
+      "Tribunal.esm",
+      "distant_seafloor_2.00.esm",
+      "Patch for Purists - Base Patch.esm",
+      "Patch for Purists - Book Typos.esm",
+      "Distractor1486.esm",
+      "Bloodmoon.esm",
+      "Patch for Purists.esm",
+      "Patch for Purists - Floating Rocks.esm",
+      "TR_Mainland.esm",
+      "Tamriel_Data.esm",
+      "Patch for Purists - Expansion Implementation.esm",
+      "Patch for Purists - Dialogue Inconsistencies.esm",
+      "Patch for Purists - Statistic Typos.esm",
+      "OAAB_Data.esm",
+      "Distractor1122.esm",
+      "Distractor9446.esm",
+      "Distractor6365.esm",
+      "Unofficial Morrowind Official Plugins Patched.ESP",
+      "LeFemmArmor.esp",
+      "Distractor8491.esp",
+      "Distractor8486.esp",
+      "Better Propylon Teleport Warp-Master Index.esp",
+      "Distractor2338.esp",
+      "Distractor9720.esp",
+      "Distractor8765.esp",
+      "NOM 3.0.esp",
+      "Distractor4046.esp",
+      "Better Landscapes Stonewood Pass (RP Edit).esp",
+      "NOM3_PT SO.esp",
+      "NoM_Creatures Loot Standard.esp",
+      "NoM_MC Compatibility Patch.esp",
+      "NoM_CoM Compatibility Patch.esp",
+      "Distractor6892.esp",
+      "Main_Quest_Overhaul.ESP",
+      "Distractor8252.esp",
+      "Imperial Legion Expansion.esp",
+      "TR_Factions.esp",
+      "Distractor7732.esp",
+      "Beautiful cities of Morrowind.ESP",
+      "LuceEdit - Guild of Vampire Hunters.esp",
+      "Religions Elaborated.ESP",
+      "The_Vanilla_Quest_Tweaks_RP_Choices_Consequences_Super_Mega_Package_-_Ultimate_Edition.ESP",
+      "Playable Game of Ur.esp",
+      "Immersive_corprus.esp",
+      "BOM_pathgrid_reset.esp",
+      "BCOM_Suran Expansion.ESP",
+      "BOM_White_Suran.ESP",
+      "OAAB_Tel Mora.esp",
+      "ROHT_2_0_8.ESP",
+      "TR_Firemoth_Vanilla_patch.esp",
+      "BOM_Stavs_MGO.ESP",
+      "Distractor1091.esp",
+      "OAAB_Tel Mora_Female Guards.ESP",
+      "SOP_RichPlaza_IziStyle.ESP",
+      "Ministry_of_Clarity.ESP",
+      "Vivec Lighthouse Questline.esp",
+      "BOM - Taller Lighthouse.ESP",
+      "BOM_Vanilla Trees.ESP",
+      "SOP_Canal_02.ESP",
+      "Baan_Binif.ESP",
+      "OAAB - Tombs and Towers.esp",
+      "Guild of Vampire Hunters.esp",
+      "Improved Argonians.esp",
+      "Brevur of Balmora - Finally Some Good Statue Mod.ESP",
+      "NoM_Creatures Loot PHW.esp",
+      "Merged Objects.esp",
+      "BOM_PfP_patch.ESP",
+      "multipatch.esp",
+      "BOM_OpenMW_plazas.esp",
+      "Interior exterior flag reset.esp",
+      "TR_Travels_(P_M) Patch.esp",
+      "delta_plugin.esp"
+    ]
+  },
+  "groups_paths": []
+}
