@@ -191,8 +191,7 @@ public class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, ITh
             foreach (var file in files)
             {
                 var item = file.AsLibraryItem();
-                if (ThunderstoreLoadoutPackages.IsLinked(_connection.Db, item, LoadoutId)) continue;
-                await _loadoutManager.InstallItem(item, LoadoutId);
+                await ThunderstoreLoadoutPackages.InstallOrEnable(_connection, item, LoadoutId, async () => await _loadoutManager.InstallItem(item, LoadoutId));
             }
         }
         catch (Exception e) when (e is not OperationCanceledException)

@@ -1,6 +1,7 @@
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Extensions;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.Thunderstore;
@@ -34,8 +35,69 @@ public static class ThunderstoreLoadoutPackages
     }
 
     /// <summary>
-    /// Whether the library item already has a group in the loadout, enabled or not.
+    /// Puts the library item into the loadout the way an install needs it: installs it when it has no group, enables
+    /// its group when that is disabled, and leaves it alone otherwise. A disabled dependency is not installed again,
+    /// but a mod that needs it would be left with a dependency that is not in the game.
     /// </summary>
-    public static bool IsLinked(IDb db, LibraryItem.ReadOnly item, LoadoutId loadoutId)
-        => LibraryLinkedLoadoutItem.FindByLibraryItem(db, item).Any(link => link.AsLoadoutItem().LoadoutId == loadoutId);
+    /// <param name="install">Runs the install when the item has no group in the loadout.</param>
+    /// <exception cref="ThunderstorePackageInDisabledGroupException">
+    /// Every group of the item sits in a disabled parent, such as a disabled collection.
+    /// </exception>
+    public static async Task<LoadoutPackageOutcome> InstallOrEnable(IConnection connection, LibraryItem.ReadOnly item, LoadoutId loadoutId, Func<Task> install)
+    {
+        var links = LibraryLinkedLoadoutItem.FindByLibraryItem(connection.Db, item)
+            .Where(link => link.AsLoadoutItem().LoadoutId == loadoutId)
+            .Select(link => link.AsLoadoutItem())
+            .ToArray();
+        if (links.Length == 0)
+        {
+            await install();
+            return LoadoutPackageOutcome.Installed;
+        }
+
+        if (links.Any(link => link.IsEnabled())) return LoadoutPackageOutcome.AlreadyEnabled;
+
+        // Only the item's own group is enabled. Enabling the disabled collection around it would also switch on
+        // every other mod the user turned off there, so that is left to the user.
+        var enableable = links.Where(link => ParentIsEnabled(connection.Db, link)).ToArray();
+        if (enableable.Length == 0)
+            throw new ThunderstorePackageInDisabledGroupException(item.Name, FirstDisabledParent(connection.Db, links[0]).Name);
+
+        using var tx = connection.BeginTransaction();
+        tx.Retract(enableable[0].Id, LoadoutItem.Disabled, Null.Instance);
+        await tx.Commit();
+        return LoadoutPackageOutcome.Enabled;
+    }
+
+    private static bool ParentIsEnabled(IDb db, LoadoutItem.ReadOnly item)
+        => !LoadoutItem.Parent.TryGetValue(item, out var parentId) || LoadoutItem.Load(db, parentId).IsEnabled();
+
+    private static LoadoutItem.ReadOnly FirstDisabledParent(IDb db, LoadoutItem.ReadOnly item)
+    {
+        var current = item;
+        while (LoadoutItem.Parent.TryGetValue(current, out var parentId))
+        {
+            current = LoadoutItem.Load(db, parentId);
+            if (current.IsDisabled) return current;
+        }
+
+        throw new InvalidOperationException($"{item.Name} has no disabled parent group.");
+    }
+}
+
+/// <summary>
+/// A Thunderstore package the install needs is in the loadout, but inside a disabled group the install will not
+/// enable on its own.
+/// </summary>
+public sealed class ThunderstorePackageInDisabledGroupException(string package, string group)
+    : Exception($"{package} is in the loadout, but '{group}', the group holding it, is disabled. Enable '{group}' and install again.");
+
+/// <summary>
+/// What <see cref="ThunderstoreLoadoutPackages.InstallOrEnable"/> did for one library item.
+/// </summary>
+public enum LoadoutPackageOutcome
+{
+    Installed,
+    Enabled,
+    AlreadyEnabled,
 }

@@ -127,7 +127,7 @@ internal static class ThunderstoreVerbs
         }
 
         var loadoutManager = provider.GetRequiredService<ILoadoutManager>();
-        var installed = 0;
+        var changed = 0;
         foreach (var file in files)
         {
             var item = file.AsLibraryItem();
@@ -137,19 +137,36 @@ internal static class ThunderstoreVerbs
 
             if (!inLibraryBefore.Contains(file.Id)) await renderer.TextLine($"[downloaded] {name}");
 
-            var linked = ThunderstoreLoadoutPackages.IsLinked(connection.Db, item, loadout.LoadoutId);
-            if (linked)
+            LoadoutPackageOutcome outcome;
+            try
             {
-                await renderer.TextLine($"[already in loadout] {name}");
-                continue;
+                outcome = await ThunderstoreLoadoutPackages.InstallOrEnable(connection, item, loadout.LoadoutId, async () => await loadoutManager.InstallItem(item, loadout.LoadoutId));
+            }
+            catch (ThunderstorePackageInDisabledGroupException e)
+            {
+                await renderer.TextLine(e.Message);
+                return 1;
             }
 
-            await loadoutManager.InstallItem(item, loadout.LoadoutId);
-            await renderer.TextLine($"[installed] {name}");
-            installed++;
+            switch (outcome)
+            {
+                case LoadoutPackageOutcome.AlreadyEnabled:
+                    await renderer.TextLine($"[already in loadout] {name}");
+                    break;
+                case LoadoutPackageOutcome.Enabled:
+                    await renderer.TextLine($"[enabled] {name}");
+                    changed++;
+                    break;
+                case LoadoutPackageOutcome.Installed:
+                    await renderer.TextLine($"[installed] {name}");
+                    changed++;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(outcome), outcome, null);
+            }
         }
 
-        if (installed == 0) await renderer.TextLine("Nothing new to install.");
+        if (changed == 0) await renderer.TextLine("Nothing new to install.");
         return 0;
     }
 

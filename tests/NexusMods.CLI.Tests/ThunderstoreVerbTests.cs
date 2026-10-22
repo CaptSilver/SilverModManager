@@ -5,9 +5,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Library;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Loadouts.Extensions;
 using NexusMods.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Networking.Thunderstore;
 using NexusMods.Networking.Thunderstore.Tests.Fixtures;
 using NexusMods.Paths;
@@ -69,6 +71,87 @@ public class ThunderstoreVerbTests(ITestOutputHelper helper) : AIsolatedGameTest
         LinkedItems(loadout).Should().HaveCount(2);
         againOutput.Should().Contain("[already in loadout] Zehs-REPOLib-4.2.0").And.NotContain("[installed]").And.NotContain("[downloaded]");
         againOutput.Should().Contain("Nothing new");
+    }
+
+    private async Task SetDisabled(Loadout.ReadOnly loadout, string package, bool disabled)
+    {
+        var link = LinkedItems(loadout).Single(item => item.LibraryItem.TryGetAsLibraryFile(out var file)
+            && file.TryGetAsThunderstoreLibraryFile(out var thunderstore)
+            && $"{thunderstore.Namespace}-{thunderstore.Name}" == package);
+        using var tx = Connection.BeginTransaction();
+        if (disabled) tx.Add(link.Id, LoadoutItem.Disabled, Null.Instance);
+        else tx.Retract(link.Id, LoadoutItem.Disabled, Null.Instance);
+        await tx.Commit();
+    }
+
+    private bool IsEnabled(Loadout.ReadOnly loadout, string package)
+        => LinkedItems(loadout).Single(item => item.LibraryItem.TryGetAsLibraryFile(out var file)
+            && file.TryGetAsThunderstoreLibraryFile(out var thunderstore)
+            && $"{thunderstore.Namespace}-{thunderstore.Name}" == package).AsLoadoutItem().IsEnabled();
+
+    [Fact]
+    public async Task InstallEnablesADisabledDependencyInsteadOfSkippingIt()
+    {
+        var loadout = await CreateLoadout();
+        await Run("thunderstore", "install", "--loadout", loadout.Name, "--package", "Zehs-REPOLib");
+        await SetDisabled(loadout, "BepInEx-BepInExPack", true);
+
+        var (code, output) = await Run("thunderstore", "install", "--loadout", loadout.Name, "--package", "Zehs-REPOLib");
+
+        code.Should().Be(0, output);
+        output.Should().Contain("[enabled] BepInEx-BepInExPack-5.4.2305").And.Contain("[already in loadout] Zehs-REPOLib-4.2.0");
+        output.Should().NotContain("Nothing new");
+        LinkedItems(loadout).Should().HaveCount(2);
+        IsEnabled(loadout, "BepInEx-BepInExPack").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task InstallEnablesADisabledRootPackage()
+    {
+        var loadout = await CreateLoadout();
+        await Run("thunderstore", "install", "--loadout", loadout.Name, "--package", "Zehs-REPOLib");
+        await SetDisabled(loadout, "Zehs-REPOLib", true);
+
+        var (code, output) = await Run("thunderstore", "install", "--loadout", loadout.Name, "--package", "Zehs-REPOLib");
+
+        code.Should().Be(0, output);
+        output.Should().Contain("[enabled] Zehs-REPOLib-4.2.0");
+        IsEnabled(loadout, "Zehs-REPOLib").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TheSharedInstallStepEnablesALinkedDisabledItemWithoutInstallingAgain()
+    {
+        var loadout = await CreateLoadout();
+        await Run("thunderstore", "install", "--loadout", loadout.Name, "--package", "Zehs-REPOLib");
+        await SetDisabled(loadout, "Zehs-REPOLib", true);
+        var item = LinkedItems(loadout).Single(link => !link.AsLoadoutItem().IsEnabled()).LibraryItem;
+
+        var first = await ThunderstoreLoadoutPackages.InstallOrEnable(Connection, item, loadout.LoadoutId, () => throw new InvalidOperationException("must not install"));
+        var second = await ThunderstoreLoadoutPackages.InstallOrEnable(Connection, item, loadout.LoadoutId, () => throw new InvalidOperationException("must not install"));
+
+        first.Should().Be(LoadoutPackageOutcome.Enabled);
+        second.Should().Be(LoadoutPackageOutcome.AlreadyEnabled);
+    }
+
+    [Fact]
+    public async Task InstallLeavesADisabledCollectionAloneAndSaysWhyTheDependencyIsNotInTheGame()
+    {
+        var loadout = await CreateLoadout();
+        await Run("thunderstore", "install", "--loadout", loadout.Name, "--package", "Zehs-REPOLib");
+        LoadoutItem.Parent.TryGetValue(LinkedItems(loadout).First().AsLoadoutItem(), out var collectionId).Should().BeTrue();
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(collectionId, LoadoutItem.Disabled, Null.Instance);
+            await tx.Commit();
+        }
+
+        var (code, output) = await Run("thunderstore", "install", "--loadout", loadout.Name, "--package", "Zehs-REPOLib");
+
+        code.Should().Be(1, output);
+        output.Should().Contain("is disabled").And.NotContain("[enabled]");
+        LoadoutItem.Load(Connection.Db, collectionId).IsDisabled.Should().BeTrue();
+        LinkedItems(loadout).Should().HaveCount(2);
     }
 
     [Fact]
