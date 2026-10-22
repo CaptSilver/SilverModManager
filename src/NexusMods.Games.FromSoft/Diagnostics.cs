@@ -16,17 +16,18 @@ internal static partial class FromSoftDiagnostics
         .WithId(new DiagnosticId(Source, number: 1))
         .WithTitle("Mods provide the same file")
         .WithSeverity(DiagnosticSeverity.Critical)
-        .WithSummary("{Packages} provide {Path}")
+        .WithSummary("{Packages} provide {Path}: {Reason}")
         .WithDetails("""
-More than one mod provides the file **{Path}**: {Packages}.{CaseNote}
+More than one mod provides the file **{Path}**: {Packages}.
 
-The game loads one of them and ignores the rest, and which one wins is not something the app can promise. The
-mods are not merged. Disable or remove all but one of them.
+The game loads one of them and ignores the rest, and which one wins is not something the app can promise. The app
+does not merge this file: {Reason}. Disable or remove all but one of them.
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Packages")
             .AddValue<string>("Path")
             .AddValue<string>("CaseNote")
+            .AddValue<string>("Reason")
         )
         .Finish();
 
@@ -218,6 +219,50 @@ Re-stamp once you have, to take the installed build as the new reference.
             .AddValue<string>("Game")
             .AddValue<string>("Kind")
             .AddValue<string>("Changes")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate MergeNote = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 11))
+        .WithTitle("A merge made a choice between mods")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("Merging {Path}: {Note}")
+        .WithDetails("""
+**{Path}** is provided by {Mods}, so the app merges the copies when the loadout is applied.
+
+{Note}
+
+Nothing is refused and the apply goes ahead; the note says which copy the merged file keeps. If that is not the one
+you want, disable the mod whose change was dropped.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Path")
+            .AddValue<string>("Mods")
+            .AddValue<string>("Note")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate MergeRefused = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 12))
+        .WithTitle("The mods can't be merged")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("{Message}")
+        .WithDetails("""
+{Message}
+
+Applying the loadout stops before anything is written, because deploying the copies whole would leave it to the game
+which one wins. Disable or remove one of the mods that provide the file.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Message")
+            .AddValue<string>("Path")
+            .AddValue<string>("Strategy")
         )
         .Finish();
 }

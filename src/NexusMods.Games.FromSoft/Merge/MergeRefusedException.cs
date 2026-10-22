@@ -13,4 +13,8 @@ public class MergeRefusedException : SynchronizerPreflightException
 
     /// <param name="reason">Why the merges could not be planned at all, so no path or strategy is to blame.</param>
     public MergeRefusedException(string reason) : base($"Can't apply the loadout's merges: {reason}") { }
+
+    /// <summary>The refusal for a plan that could not be made at all; the apply and Health Check say it in the same words.</summary>
+    public static MergeRefusedException PlanFailed(Exception cause)
+        => new($"the files the mods provide could not be merged: {cause.Message}");
 }

@@ -6,17 +6,19 @@ using NexusMods.Abstractions.Loadouts.Extensions;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.FromSoft.Diagnostics;
 using NexusMods.Games.FromSoft.Me3;
+using NexusMods.Games.FromSoft.Merge;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.Games.FromSoft.Doctor;
 
 /// <summary>
-/// Reports mods that provide the same file. Packages are not merged, so two packages with one path, or with paths
-/// that differ only in case, leave the game one file and no say in which. Two files for one place in the overlay's
-/// config layer are reported separately: the later one would silently replace the other there.
+/// Reports mods that provide the same file and the app will not merge. Which paths those are is the merge index's
+/// call, so this agrees with the apply: a path the engine merges is not a collision, and one it can't merge says why.
+/// Two files for one place in the overlay's config layer are reported separately: the later one would silently
+/// replace the other there. Neither blocks the apply.
 /// </summary>
-public class PackageCollisionEmitter : IFromSoftDiagnosticEmitter
+public class PackageCollisionEmitter(LoadoutMergeSources sources) : IFromSoftDiagnosticEmitter
 {
     private const string CaseNote = " The paths differ only in case, and the game's file lookup does not tell them apart.";
 
@@ -28,7 +30,19 @@ public class PackageCollisionEmitter : IFromSoftDiagnosticEmitter
     {
         await Task.Yield();
 
-        var packageFiles = new List<(string Package, string Path)>();
+        foreach (var candidate in sources.Index(loadout).Candidates)
+        {
+            if (candidate.Outcome.Merges) continue;
+
+            var packages = candidate.Contributors.Select(c => c.PackageId).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
+            var caseOnly = candidate.Spellings.Count > 1;
+            yield return FromSoftDiagnostics.CreatePackageCollision(
+                string.Join(", ", packages),
+                string.Join(", ", candidate.Spellings),
+                caseOnly ? CaseNote : "",
+                candidate.Outcome.Reason ?? throw new InvalidOperationException($"{candidate.Path} is not merged and says no reason"));
+        }
+
         var overlayFiles = new List<(string Mod, string Path)>();
         foreach (var item in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath())
         {
@@ -43,17 +57,6 @@ public class PackageCollisionEmitter : IFromSoftDiagnosticEmitter
 
             if (parts[0].Equals(Me3ModsLayout.OverlayFolder, StringComparison.OrdinalIgnoreCase))
                 overlayFiles.Add((loadoutItem.Parent.AsLoadoutItem().Name, parts[1]));
-            else if (!parts[0].Equals(Me3ModsLayout.NativesFolder, StringComparison.OrdinalIgnoreCase))
-                packageFiles.Add((parts[0], parts[1]));
-        }
-
-        foreach (var group in packageFiles.GroupBy(f => f.Path, StringComparer.OrdinalIgnoreCase).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
-        {
-            var packages = group.Select(f => f.Package).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
-            var paths = group.Select(f => f.Path).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
-            if (packages.Length < 2 && paths.Length < 2) continue;
-
-            yield return FromSoftDiagnostics.CreatePackageCollision(string.Join(", ", packages), string.Join(", ", paths), paths.Length > 1 ? CaseNote : "");
         }
 
         foreach (var group in overlayFiles.GroupBy(f => f.Path, StringComparer.OrdinalIgnoreCase).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))

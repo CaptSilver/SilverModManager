@@ -158,7 +158,7 @@ public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
         catch (Exception exception) when (exception is not (OperationCanceledException or MergeRefusedException))
         {
             Logger.LogError(exception, "Planning the merges of {Loadout} failed", loadout.Name);
-            throw new MergeRefusedException($"the files the mods provide could not be merged: {exception.Message}");
+            throw MergeRefusedException.PlanFailed(exception);
         }
     }
 

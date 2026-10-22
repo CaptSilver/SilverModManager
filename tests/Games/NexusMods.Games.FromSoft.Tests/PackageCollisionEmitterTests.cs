@@ -7,9 +7,11 @@ using NexusMods.Games.FromSoft.Diagnostics;
 using NexusMods.Games.FromSoft.Doctor;
 using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Installers;
+using NexusMods.Games.FromSoft.Merge;
 using NexusMods.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Games.TestFramework;
 using NexusMods.Paths;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.StandardGameLocators.TestHelpers;
 
@@ -79,6 +81,91 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
         var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageCollisionMessageData>>().Which.MessageData;
         data.CaseNote.Should().Contain("differ only in case");
         data.Path.Should().Contain("msg/engus/Item.msgbnd.dcx").And.Contain("msg/engus/item.msgbnd.dcx");
+    }
+
+    private static FromSoftDiagnostics.PackageCollisionMessageData CollisionOf(Diagnostic diagnostic)
+        => diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageCollisionMessageData>>().Which.MessageData;
+
+    [Fact]
+    public async Task AMsgbndPairTheEngineMergesIsNotACollision()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "Weapons", "msg/engus/item.msgbnd.dcx");
+        await InstallPackage(loadout, "Armor", "msg/engus/item.msgbnd.dcx");
+
+        await ShouldHaveNoDiagnostics(loadout, because: "the apply merges these, so the game is not left to pick one");
+    }
+
+    [Fact]
+    public async Task ATalkesdbndPairWithNoVanillaDumpIsCriticalAndNamesWhatIsNeeded()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "Weapons", "script/talk/m00.talkesdbnd.dcx");
+        await InstallPackage(loadout, "Armor", "script/talk/m00.talkesdbnd.dcx");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
+        CollisionOf(diagnostic).Reason.Should().Be(MergeOutcome.NoVanillaSource);
+    }
+
+    [Fact]
+    public async Task AnUnknownDcxPairIsCriticalBecauseTheAppDoesNotMergeIt()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "Weapons", "parts/wp_a.dcx");
+        await InstallPackage(loadout, "Armor", "parts/wp_a.dcx");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
+        CollisionOf(diagnostic).Reason.Should().Be(MergeOutcome.NoStrategy);
+    }
+
+    [Fact]
+    public async Task ACaseOnlyPairKeepsTheCaseNoteAsItsReason()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "Weapons", "msg/engus/Item.msgbnd.dcx");
+        await InstallPackage(loadout, "Armor", "msg/engus/item.msgbnd.dcx");
+
+        var data = CollisionOf(await GetSingleDiagnostic(loadout));
+
+        data.Reason.Should().Be(MergeOutcome.CaseOnlyCollision);
+    }
+
+    [Fact]
+    public async Task OnePackageUnderTwoSpellingsOfOnePathIsStillReported()
+    {
+        var loadout = await CreateLoadout();
+        // One archive can't hold both spellings (extraction folds them), so the same package folder is installed twice.
+        await InstallPackage(loadout, "Weapons", "msg/engus/Item.msgbnd.dcx");
+        await InstallPackage(loadout, "Weapons", "msg/engus/item.msgbnd.dcx");
+        ServiceProvider.GetRequiredService<LoadoutMergeSources>().Providers(Loadout.Load(Connection.Db, loadout))
+            .Select(p => (p.PackageId, p.RelPath)).Should().BeEquivalentTo([("Weapons", "msg/engus/Item.msgbnd.dcx"), ("Weapons", "msg/engus/item.msgbnd.dcx")]);
+
+        // The helper builds a sync tree, which refuses two items whose paths differ only in case; the emitter doesn't need one.
+        var diagnostics = new List<Diagnostic>();
+        await foreach (var d in Emitter.Diagnose(Loadout.Load(Connection.Db, loadout), CancellationToken.None)) diagnostics.Add(d);
+        var data = CollisionOf(diagnostics.Should().ContainSingle().Which);
+
+        data.Packages.Should().Be("Weapons");
+        data.Reason.Should().Be(MergeOutcome.CaseOnlyCollision);
+    }
+
+    [Fact]
+    public async Task AnOverlapTheEngineCannotMergeStillAppliesAndDeploysBothCopies()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "Weapons", "parts/wp_a.dcx");
+        await InstallPackage(loadout, "Armor", "parts/wp_a.dcx");
+        (await GetAllDiagnostics(loadout)).Should().ContainSingle();
+
+        await Synchronizer.Synchronize(Loadout.Load(Connection.Db, loadout));
+
+        var mods = GameInstallation.Locations[LocationId.Me3Mods].Path;
+        (mods / "Weapons/parts/wp_a.dcx").FileExists.Should().BeTrue();
+        (mods / "Armor/parts/wp_a.dcx").FileExists.Should().BeTrue();
     }
 
     [Fact]

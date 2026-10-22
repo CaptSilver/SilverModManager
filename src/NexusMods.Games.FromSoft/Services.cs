@@ -48,6 +48,7 @@ public static class Services
         // Emitters
         services.AddSingleton<PackageCollisionEmitter>()
             .AddSingleton<IFromSoftDiagnosticEmitter>(provider => provider.GetRequiredService<PackageCollisionEmitter>())
+            .AddSingleton<IFromSoftDiagnosticEmitter, MergeDiagnosticsEmitter>()
             .AddSingleton<Me3HostMissingEmitter>()
             .AddSingleton<IFromSoftDiagnosticEmitter>(provider => provider.GetRequiredService<Me3HostMissingEmitter>())
             .AddSingleton<UpperdirAuditEmitter>()
