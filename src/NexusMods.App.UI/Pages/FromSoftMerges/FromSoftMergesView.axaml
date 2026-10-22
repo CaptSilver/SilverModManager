@@ -1,0 +1,36 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:IFromSoftMergesViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.FromSoftMerges"
+    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+    x:Class="NexusMods.App.UI.Pages.FromSoftMerges.FromSoftMergesView">
+
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="{StaticResource Spacing-4}" MaxWidth="900" HorizontalAlignment="Left">
+
+            <TextBlock Text="Merges" Theme="{StaticResource HeadingSMSemiTheme}" />
+            <TextBlock x:Name="ProblemText" TextWrapping="Wrap" />
+            <TextBlock x:Name="RefusalText" TextWrapping="Wrap" FontWeight="SemiBold" />
+
+            <ListBox x:Name="EntriesList" />
+            <TextBlock x:Name="EmptyText" TextWrapping="Wrap" />
+            <TextBlock x:Name="HintText" TextWrapping="Wrap" />
+
+            <controls:StandardButton x:Name="RefreshButton" Type="Secondary" Size="Toolbar" Text="Refresh" HorizontalAlignment="Left" />
+
+            <Separator />
+
+            <StackPanel x:Name="DetailPanel" Spacing="{StaticResource Spacing-2}">
+                <TextBlock x:Name="DetailTitle" Theme="{StaticResource HeadingSMSemiTheme}" TextWrapping="Wrap" />
+                <TextBlock x:Name="VanillaText" TextWrapping="Wrap" />
+                <StackPanel x:Name="NotesPanel" Spacing="{StaticResource Spacing-2}" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+
+</reactive:ReactiveUserControl>

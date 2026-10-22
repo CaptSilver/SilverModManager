@@ -47,6 +47,7 @@ using NexusMods.App.UI.Pages.DebugControls;
 using NexusMods.App.UI.Pages.Diagnostics;
 using NexusMods.App.UI.Pages.Diff.ApplyDiff;
 using NexusMods.App.UI.Pages.Downloads;
+using NexusMods.App.UI.Pages.FromSoftMerges;
 using NexusMods.App.UI.Pages.FromSoftSaves;
 using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Pages.LibraryPage.Collections;
@@ -195,6 +196,8 @@ public static class Services
             .AddViewModel<ChangelogPageViewModel, IChangelogPageViewModel>()
             .AddView<ThunderstoreView, IThunderstoreViewModel>()
             .AddViewModel<ThunderstoreViewModel, IThunderstoreViewModel>()
+            .AddView<FromSoftMergesView, IFromSoftMergesViewModel>()
+            .AddViewModel<FromSoftMergesViewModel, IFromSoftMergesViewModel>()
             .AddView<FromSoftSavesView, IFromSoftSavesViewModel>()
             .AddViewModel<FromSoftSavesViewModel, IFromSoftSavesViewModel>()
             .AddView<ToolsPageView, IToolsPageViewModel>()
@@ -282,6 +285,7 @@ public static class Services
             .AddSingleton<IPageFactory, ApplyDiffPageFactory>()
             .AddSingleton<IPageFactory, SettingsPageFactory>()
             .AddSingleton<IPageFactory, ChangelogPageFactory>()
+            .AddSingleton<IPageFactory, FromSoftMergesPageFactory>()
             .AddSingleton<IPageFactory, FromSoftSavesPageFactory>()
             .AddSingleton<IPageFactory, ThunderstorePageFactory>()
             .AddSingleton<IPageFactory, ToolsPageFactory>()
