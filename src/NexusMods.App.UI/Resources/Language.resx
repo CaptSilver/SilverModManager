@@ -1379,4 +1379,26 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="CollectionComponents_InstallAction_ButtonText_Installing" xml:space="preserve">
         <value>Installing</value>
     </data>
+    <data name="LoadOrder_EnabledColumnHeader" xml:space="preserve">
+        <value>On</value>
+    </data>
+    <data name="LoadOrder_DetailsColumnHeader" xml:space="preserve">
+        <value>Details</value>
+    </data>
+    <data name="LoadOrder_LockedToolTip" xml:space="preserve">
+        <value>Always loaded by the game</value>
+    </data>
+    <data name="LoadOrder_MastersToolTip" xml:space="preserve">
+        <value>Requires:
+{0}</value>
+    </data>
+    <data name="LoadOrder_NoMastersToolTip" xml:space="preserve">
+        <value>Requires no other plugins</value>
+    </data>
+    <data name="LoadOrder_ReplacedEdit_Title" xml:space="preserve">
+        <value>Your edit to the plugin list was replaced</value>
+    </data>
+    <data name="LoadOrder_ReplacedEdit_Dismiss" xml:space="preserve">
+        <value>Dismiss</value>
+    </data>
 </root>

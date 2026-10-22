@@ -62,6 +62,48 @@ public static class LoadOrderColumns
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
     }
 
+    /// <summary>
+    /// The on/off switch of a row, for varieties whose rows can be switched.
+    /// </summary>
+    [UsedImplicitly]
+    public sealed class EnabledColumn : ICompositeColumnDefinition<EnabledColumn>
+    {
+        public const string ColumnTemplateResourceKey = nameof(LoadOrderColumns) + "_" + nameof(EnabledColumn);
+
+        public static readonly ComponentKey EnabledComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(LoadOrderToggleComponent));
+
+        public static int Compare<TKey>(CompositeItemModel<TKey> a, CompositeItemModel<TKey> b) where TKey : notnull
+        {
+            throw new NotImplementedException();
+        }
+
+        // The header is set on column creation, as it comes from the resources
+        public static string GetColumnHeader() => throw new NotSupportedException();
+
+        public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
+    }
+
+    /// <summary>
+    /// The flags and masters of a row, for rows that describe them.
+    /// </summary>
+    [UsedImplicitly]
+    public sealed class DetailsColumn : ICompositeColumnDefinition<DetailsColumn>
+    {
+        public const string ColumnTemplateResourceKey = nameof(LoadOrderColumns) + "_" + nameof(DetailsColumn);
+
+        public static readonly ComponentKey DetailsComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(LoadOrderDetailsComponent));
+
+        public static int Compare<TKey>(CompositeItemModel<TKey> a, CompositeItemModel<TKey> b) where TKey : notnull
+        {
+            throw new NotImplementedException();
+        }
+
+        // The header is set on column creation, as it comes from the resources
+        public static string GetColumnHeader() => throw new NotSupportedException();
+
+        public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
+    }
+
     public static readonly ComponentKey IsActiveComponentKey = ComponentKey.From(nameof(LoadOrderColumns) + "_" + "IsActiveComponent");
     public static readonly string IsActiveStyleTag = "IsActive";
 }

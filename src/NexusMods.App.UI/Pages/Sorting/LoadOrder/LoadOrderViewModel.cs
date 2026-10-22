@@ -13,6 +13,7 @@ using NexusMods.Sdk.Settings;
 using NexusMods.App.UI.Controls;
 using R3;
 using NexusMods.App.UI.Controls.Alerts;
+using NexusMods.App.UI.Resources;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.UI.Sdk;
@@ -44,6 +45,12 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
     public string EmptyStateMessageContents { get; }
 
     public AlertSettingsWrapper AlertSettingsWrapper { get; }
+
+    public bool SupportsToggle { get; }
+    public ReactiveUI.ReactiveCommand<ISortItemKey, Unit> ToggleEnabledCommand { get; }
+    [Reactive] public string? ReplacedEditSummary { get; private set; }
+    [Reactive] public bool HasReplacedEdit { get; private set; }
+    public ReactiveUI.ReactiveCommand<Unit, Unit> DismissReplacedEditCommand { get; }
 
     public TreeDataGridAdapter<CompositeItemModel<ISortItemKey>, ISortItemKey> Adapter { get; }
 
@@ -98,9 +105,46 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
             }
         );
 
+        var toggleable = sortOrderVariety as IToggleableSortOrderVariety;
+        SupportsToggle = toggleable is not null;
+        ToggleEnabledCommand = ReactiveCommand.CreateFromTask<ISortItemKey>(
+            async key =>
+            {
+                if (toggleable is null)
+                    throw new InvalidOperationException($"{sortOrderVariety.SortOrderVarietyId} has no switches to toggle");
+
+                // The row can be gone by the time a click is handled, as when its mod was just removed.
+                var item = sortOrderVariety.GetSortOrderItems(sortOrderId).FirstOrDefault(item => item.Key.Equals(key));
+                if (item is null) return;
+                if (item is not ISortItemDetails details)
+                    throw new InvalidOperationException($"Item {key} of {sortOrderVariety.SortOrderVarietyId} has no switch");
+
+                // The switch is disabled for these rows already; this covers a stale click.
+                if (details.IsLocked) return;
+                await toggleable.SetEnabled(sortOrderId, key, !details.IsEnabled);
+            },
+            canExecute: System.Reactive.Linq.Observable.Return(SupportsToggle)
+        );
+
+        var replacedEdits = sortOrderVariety as IReplacedGameEditSource;
+        DismissReplacedEditCommand = ReactiveCommand.CreateFromTask(
+            () => replacedEdits?.Dismiss(sortOrderId)
+                  ?? throw new InvalidOperationException($"{sortOrderVariety.SortOrderVarietyId} has no replaced-edit notice to dismiss"),
+            canExecute: System.Reactive.Linq.Observable.Return(replacedEdits is not null)
+        );
+
         this.WhenActivated(d =>
             {
                 Adapter.Activate().DisposeWith(d);
+
+                replacedEdits?.ReplacedEditSummary(sortOrderId)
+                    .ObserveOn(RxApp.MainThreadScheduler)
+                    .Subscribe(summary =>
+                        {
+                            ReplacedEditSummary = summary;
+                            HasReplacedEdit = summary is not null;
+                        })
+                    .DisposeWith(d);
 
                 sortDirectionObservable.Connect()
                     .DisposeWith(d);
@@ -133,6 +177,12 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
                             
                             await sortOrderVariety.MoveItemDelta(sortOrderId, key, delta, token: cancellationToken);
                         })
+                    .DisposeWith(d);
+
+                // Switches
+                adapter.ToggleSubject
+                    .SubscribeAwait(async (key, _) => await ToggleEnabledCommand.Execute(key),
+                        awaitOperation: AwaitOperation.Sequential)
                     .DisposeWith(d);
 
                 // Drag and drop
@@ -219,6 +269,11 @@ public class LoadOrderTreeDataGridAdapter : TreeDataGridAdapter<CompositeItemMod
 
     public Subject<OneOf<MoveUpCommandPayload, MoveDownCommandPayload>> MessageSubject { get; } = new();
 
+    /// <summary>
+    /// Emits the key of a row whose switch the user clicked.
+    /// </summary>
+    public Subject<ISortItemKey> ToggleSubject { get; } = new();
+
     public LoadOrderTreeDataGridAdapter(
         ISortOrderVariety sortOrderVariety,
         LoadoutId loadoutId,
@@ -289,6 +344,16 @@ public class LoadOrderTreeDataGridAdapter : TreeDataGridAdapter<CompositeItemMod
                 )
         );
         
+        // Switch
+        model.SubscribeToComponentAndTrack<LoadOrderToggleComponent, LoadOrderTreeDataGridAdapter>(
+            key: LoadOrderColumns.EnabledColumn.EnabledComponentKey,
+            state: this,
+            factory: static (adapter, itemModel, component) => component.Toggle
+                .Subscribe((adapter, itemModel),
+                    static (_, tuple) => tuple.adapter.ToggleSubject.OnNext(tuple.itemModel.Key)
+                )
+        );
+
         // IsActive styling
         model.SubscribeToComponentAndTrack<ValueComponent<bool>, LoadOrderTreeDataGridAdapter>(
             key: LoadOrderColumns.IsActiveComponentKey,
@@ -321,19 +386,37 @@ public class LoadOrderTreeDataGridAdapter : TreeDataGridAdapter<CompositeItemMod
         
         var expanderColumn = ITreeDataGridItemModel<CompositeItemModel<ISortItemKey>, ISortItemKey>.CreateExpanderColumn(indexColumn);
 
-        return
-        [
+        var columns = new List<IColumn<CompositeItemModel<ISortItemKey>>>
+        {
             expanderColumn,
             ColumnCreator.Create<ISortItemKey, LoadOrderColumns.DisplayNameColumn>(
                 columnHeader: _sortOrderVariety.SortOrderUiMetadata.DisplayNameColumnHeader,
                 canUserSortColumn: false,
                 canUserResizeColumn: false
             ),
-            ColumnCreator.Create<ISortItemKey, LoadOrderColumns.ModNameColumn>(
+        };
+
+        // Only a variety whose rows can be switched has anything to show in these two.
+        if (_sortOrderVariety is IToggleableSortOrderVariety)
+        {
+            columns.Add(ColumnCreator.Create<ISortItemKey, LoadOrderColumns.EnabledColumn>(
+                columnHeader: Language.LoadOrder_EnabledColumnHeader,
                 canUserSortColumn: false,
                 canUserResizeColumn: false
-            )
-        ];
+            ));
+            columns.Add(ColumnCreator.Create<ISortItemKey, LoadOrderColumns.DetailsColumn>(
+                columnHeader: Language.LoadOrder_DetailsColumnHeader,
+                canUserSortColumn: false,
+                canUserResizeColumn: false
+            ));
+        }
+
+        columns.Add(ColumnCreator.Create<ISortItemKey, LoadOrderColumns.ModNameColumn>(
+            canUserSortColumn: false,
+            canUserResizeColumn: false
+        ));
+
+        return columns.ToArray();
     }
 
     private bool _isDisposed;
@@ -344,7 +427,7 @@ public class LoadOrderTreeDataGridAdapter : TreeDataGridAdapter<CompositeItemMod
         {
             if (disposing)
             {
-                R3.Disposable.Dispose(_disposables, MessageSubject);
+                R3.Disposable.Dispose(_disposables, MessageSubject, ToggleSubject);
             }
 
             _isDisposed = true;

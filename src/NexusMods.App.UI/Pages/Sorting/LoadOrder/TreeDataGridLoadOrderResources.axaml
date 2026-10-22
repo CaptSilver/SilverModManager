@@ -24,7 +24,8 @@
                             <StackPanel x:Name="SortIndexColumnStack">
 
                                 <!-- Drag indicator -->
-                                <Border x:Name="ItemModDragBorder">
+                                <Border x:Name="ItemModDragBorder"
+                                        Classes.IsLocked="{CompiledBinding IsLocked}">
                                     <icons:UnifiedIcon Value="{x:Static icons:IconValues.DragVerticalDots}" />
                                 </Border>
 
@@ -112,6 +113,64 @@
                 </controls:ComponentControl.ComponentTemplate>
             </controls:ComponentControl>
         </Grid>
+    </DataTemplate>
+
+    <!-- Enabled Column -->
+    <DataTemplate x:Key="{x:Static local:LoadOrderColumns+EnabledColumn.ColumnTemplateResourceKey}">
+        <DataTemplate.DataType>
+            <x:Type TypeName="controls:CompositeItemModel" x:TypeArguments="games:ISortItemKey" />
+        </DataTemplate.DataType>
+        <controls:ComponentControl x:TypeArguments="games:ISortItemKey"
+                                   Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="local:LoadOrderToggleComponent"
+                                            ComponentKey="{x:Static local:LoadOrderColumns+EnabledColumn.EnabledComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate x:DataType="local:LoadOrderToggleComponent">
+                            <!-- the tooltip sits on the panel: a disabled switch does not show its own -->
+                            <Panel x:Name="EnabledPanel"
+                                   Background="Transparent"
+                                   ToolTip.Tip="{CompiledBinding ToolTip}">
+                                <ToggleSwitch x:Name="EnabledToggle"
+                                              Classes="Compact"
+                                              HorizontalAlignment="Center"
+                                              IsChecked="{CompiledBinding IsOn, Mode=OneWay}"
+                                              Command="{CompiledBinding Toggle}">
+                                    <ToggleSwitch.OnContent>
+                                        <ContentControl />
+                                    </ToggleSwitch.OnContent>
+                                    <ToggleSwitch.OffContent>
+                                        <ContentControl />
+                                    </ToggleSwitch.OffContent>
+                                </ToggleSwitch>
+                            </Panel>
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+        </controls:ComponentControl>
+    </DataTemplate>
+
+    <!-- Details Column -->
+    <DataTemplate x:Key="{x:Static local:LoadOrderColumns+DetailsColumn.ColumnTemplateResourceKey}">
+        <DataTemplate.DataType>
+            <x:Type TypeName="controls:CompositeItemModel" x:TypeArguments="games:ISortItemKey" />
+        </DataTemplate.DataType>
+        <controls:ComponentControl x:TypeArguments="games:ISortItemKey"
+                                   Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="local:LoadOrderDetailsComponent"
+                                            ComponentKey="{x:Static local:LoadOrderColumns+DetailsColumn.DetailsComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate x:DataType="local:LoadOrderDetailsComponent">
+                            <TextBlock x:Name="Details"
+                                       Text="{CompiledBinding Flags}"
+                                       ToolTip.Tip="{CompiledBinding MastersToolTip}" />
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+        </controls:ComponentControl>
     </DataTemplate>
 
     <!-- ModName Column -->

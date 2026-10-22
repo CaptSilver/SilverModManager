@@ -174,14 +174,21 @@ public static class SharedComponents
         public ReactiveCommand<Unit> MoveUp { get; }
         public ReactiveCommand<Unit> MoveDown { get; }
 
+        /// <summary>
+        /// True when the row cannot be moved, so the drag handle is shown greyed out.
+        /// </summary>
+        public bool IsLocked { get; }
+
         public IReadOnlyBindableReactiveProperty<int> SortIndex => Index.Value;
         public IReadOnlyBindableReactiveProperty<string> DisplaySortIndex => DisplaySortIndexComponent.Value;
 
         public IndexComponent(ValueComponent<int> index, 
             ValueComponent<string> displaySortIndex,
             Observable<bool> canExecuteMoveUp,
-            Observable<bool> canExecuteMoveDown)
+            Observable<bool> canExecuteMoveDown,
+            bool isLocked = false)
         {
+            IsLocked = isLocked;
             Index = index;
             DisplaySortIndexComponent = displaySortIndex;
 

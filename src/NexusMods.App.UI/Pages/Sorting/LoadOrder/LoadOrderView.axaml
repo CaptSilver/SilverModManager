@@ -43,6 +43,22 @@
                         </StackPanel>
                     </alerts:Alert>
                 </Grid>
+
+                <!-- shown only while the game's own order file was edited and the app replaced that edit -->
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MaxWidth="750" />
+                    </Grid.ColumnDefinitions>
+
+                    <alerts:Alert x:Name="ReplacedEditAlert"
+                                  Severity="Warning"
+                                  ShowDismiss="False"
+                                  IsVisible="False">
+                        <controls:StandardButton x:Name="ReplacedEditDismissButton"
+                                                 Type="Secondary"
+                                                 Fill="None" />
+                    </alerts:Alert>
+                </Grid>
             </StackPanel>
 
             <!-- treedatagrid and trophy bar -->

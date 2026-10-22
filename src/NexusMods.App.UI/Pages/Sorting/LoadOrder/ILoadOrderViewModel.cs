@@ -84,6 +84,31 @@ public interface ILoadOrderViewModel : IViewModelInterface
     string EmptyStateMessageContents { get; }
     
     /// <summary>
+    /// True when the rows can be switched on and off, so the page shows a switch and a details column.
+    /// </summary>
+    bool SupportsToggle { get; }
+
+    /// <summary>
+    /// Switches the row with the given key on or off, the opposite of how it is now. Does nothing for a locked row.
+    /// </summary>
+    ReactiveCommand<ISortItemKey, Unit> ToggleEnabledCommand { get; }
+
+    /// <summary>
+    /// What the app replaced when the game's own order file was edited outside it; null when there is no notice.
+    /// </summary>
+    string? ReplacedEditSummary { get; }
+
+    /// <summary>
+    /// True while <see cref="ReplacedEditSummary"/> has something to show.
+    /// </summary>
+    bool HasReplacedEdit { get; }
+
+    /// <summary>
+    /// Acknowledges the replaced-edit notice.
+    /// </summary>
+    ReactiveCommand<Unit, Unit> DismissReplacedEditCommand { get; }
+
+    /// <summary>
     /// AlertSettings wrapper for the Alert so it can be shown\hidden based on the settings
     /// </summary>
     AlertSettingsWrapper AlertSettingsWrapper { get; }

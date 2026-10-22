@@ -9,6 +9,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.Sdk.Resources;
 using NexusMods.App.UI.Controls;
+using NexusMods.App.UI.Resources;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Loadouts;
 using R3;
@@ -63,7 +64,7 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
             .RefCount();;
 
         return refCountedItemsChangeSet
-            .Transform(item => ToLoadOrderItemModel(item, topMostIndexObservable, bottomMostIndexObservable, _connection, _thumbnailLoader));
+            .Transform(item => ToLoadOrderItemModel(item, sortOrderVariety, topMostIndexObservable, bottomMostIndexObservable, _connection, _thumbnailLoader));
 
         static int GetLastIndex(IReadOnlyList<IReactiveSortItem> items)
         {
@@ -73,6 +74,7 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
 
     private static CompositeItemModel<ISortItemKey> ToLoadOrderItemModel(
         IReactiveSortItem reactiveSortItem,
+        ISortOrderVariety sortOrderVariety,
         R3.Observable<int> topMostIndexObservable,
         R3.Observable<int> bottomMostIndexObservable,
         IConnection connection,
@@ -105,6 +107,24 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
         compositeModel.Add(LoadOrderColumns.IsActiveComponentKey,
             new ValueComponent<bool>(reactiveSortItem.IsActive, reactiveSortItem.WhenAnyValue(item => item.IsActive)));
 
+        // Switch, flags and masters: only for rows that describe them. The row is replaced when its switch
+        // changes, so none of these follow the item.
+        var details = reactiveSortItem as ISortItemDetails;
+        if (details is not null)
+        {
+            if (sortOrderVariety is IToggleableSortOrderVariety)
+            {
+                compositeModel.Add(LoadOrderColumns.EnabledColumn.EnabledComponentKey,
+                    new LoadOrderToggleComponent(details.IsEnabled, details.IsLocked, Language.LoadOrder_LockedToolTip));
+            }
+
+            var mastersToolTip = details.Masters.Count == 0
+                ? Language.LoadOrder_NoMastersToolTip
+                : string.Format(Language.LoadOrder_MastersToolTip, string.Join(Environment.NewLine, details.Masters));
+            compositeModel.Add(LoadOrderColumns.DetailsColumn.DetailsComponentKey,
+                new LoadOrderDetailsComponent(details.Flags, mastersToolTip));
+        }
+
         // SortIndex
         var sortIndexObservable = reactiveSortItem.WhenAnyValue(item => item.SortIndex).ToObservable();
         
@@ -128,7 +148,8 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
                 new ValueComponent<int>(reactiveSortItem.SortIndex, sortIndexObservable),
                 new ValueComponent<string>(ToOneBasedOrdinalized(reactiveSortItem.SortIndex), displayIndexObservable),
                 canExecuteMoveUp,
-                canExecuteMoveDown
+                canExecuteMoveDown,
+                isLocked: details?.IsLocked ?? false
             )
         );
 

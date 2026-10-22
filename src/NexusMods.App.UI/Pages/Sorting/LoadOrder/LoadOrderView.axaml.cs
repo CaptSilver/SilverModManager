@@ -5,6 +5,7 @@ using Avalonia.ReactiveUI;
 using NexusMods.Abstractions.Games;
 using NexusMods.App.UI.Controls;
 using NexusMods.App.UI.Extensions;
+using NexusMods.App.UI.Resources;
 using ReactiveUI;
 
 namespace NexusMods.App.UI.Pages.Sorting;
@@ -112,6 +113,25 @@ public partial class LoadOrderView : ReactiveUserControl<ILoadOrderViewModel>
                     )
                     .DisposeWith(disposables);
                 
+                // Replaced-edit banner
+                this.OneWayBind(ViewModel, vm => vm.HasReplacedEdit,
+                        view => view.ReplacedEditAlert.IsVisible
+                    )
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.ReplacedEditSummary,
+                        view => view.ReplacedEditAlert.Body
+                    )
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.DismissReplacedEditCommand,
+                        view => view.ReplacedEditDismissButton.Command
+                    )
+                    .DisposeWith(disposables);
+
+                ReplacedEditAlert.Title = Language.LoadOrder_ReplacedEdit_Title;
+                ReplacedEditDismissButton.Text = Language.LoadOrder_ReplacedEdit_Dismiss;
+
                 // Alert Learn More
                 this.OneWayBind(ViewModel, vm => vm.LearnMoreAlertCommand,
                         view => view.AlertLearnMoreButton.Command

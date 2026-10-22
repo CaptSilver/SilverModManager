@@ -3947,5 +3947,68 @@ namespace NexusMods.App.UI.Resources {
                 return ResourceManager.GetString("ViewModInfoPage_Title", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to On.
+        /// </summary>
+        public static string LoadOrder_EnabledColumnHeader {
+            get {
+                return ResourceManager.GetString("LoadOrder_EnabledColumnHeader", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Details.
+        /// </summary>
+        public static string LoadOrder_DetailsColumnHeader {
+            get {
+                return ResourceManager.GetString("LoadOrder_DetailsColumnHeader", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Always loaded by the game.
+        /// </summary>
+        public static string LoadOrder_LockedToolTip {
+            get {
+                return ResourceManager.GetString("LoadOrder_LockedToolTip", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Requires:.
+        /// </summary>
+        public static string LoadOrder_MastersToolTip {
+            get {
+                return ResourceManager.GetString("LoadOrder_MastersToolTip", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Requires no other plugins.
+        /// </summary>
+        public static string LoadOrder_NoMastersToolTip {
+            get {
+                return ResourceManager.GetString("LoadOrder_NoMastersToolTip", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your edit to the plugin list was replaced.
+        /// </summary>
+        public static string LoadOrder_ReplacedEdit_Title {
+            get {
+                return ResourceManager.GetString("LoadOrder_ReplacedEdit_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Dismiss.
+        /// </summary>
+        public static string LoadOrder_ReplacedEdit_Dismiss {
+            get {
+                return ResourceManager.GetString("LoadOrder_ReplacedEdit_Dismiss", resourceCulture);
+            }
+        }
     }
 }

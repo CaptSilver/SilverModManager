@@ -1,5 +1,11 @@
 using System.Text;
 using DynamicData;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.PluginLists;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
@@ -255,6 +261,45 @@ public class PluginSortOrderVarietyTests(ITestOutputHelper helper)
         await ((IToggleableSortOrderVariety)variety).SetEnabled(id, Key("A.esp"), false);
 
         variety.GetSortOrderItems(id, Db).Single(i => i.DisplayName == "A.esp").Should().BeAssignableTo<ISortItemDetails>().Which.IsEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ToggleThroughTheInterface_Persists_AndThePluginListNoLongerStarsIt()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await AddMod(loadout, "Mod", "A.esp", "B.esp");
+        await variety.ReconcileSortOrder(id);
+
+        await ((IToggleableSortOrderVariety)variety).SetEnabled(id, Key("B.esp"), false);
+
+        // A fresh variety reads the switch back from the database rather than from anything cached.
+        var stored = NewVariety().StoredOrder(Loadout.Load(Db, loadout.LoadoutId));
+        stored.Single(row => row.Name == "B.esp").IsEnabled.Should().BeFalse();
+        stored.Single(row => row.Name == "A.esp").IsEnabled.Should().BeTrue();
+
+        var game = Substitute.For<ICreationEngineGame>();
+        game.DataPath.Returns(new GamePath(LocationId.Game, DataFolder));
+        game.PluginsFile.Returns(new GamePath(LocationId.AppData, "Plugins.txt"));
+        game.ParsePlugin(Hash.From(1), null).ReturnsForAnyArgs(call => ValueTask.FromResult<PluginHeader?>(
+            new PluginHeader(call.ArgAt<RelativePath?>(1)!.Value.FileName.ToString(), [], 0, null, null, null, null, PluginFormat.Tes4)));
+        game.IsMaster(default!, default!).ReturnsForAnyArgs(false);
+        game.IsBlueprint(default!).ReturnsForAnyArgs(false);
+        var tree = new[] { "A.esp", "B.esp" }.ToDictionary(
+            name => new GamePath(LocationId.Game, $"{DataFolder}/{name}"),
+            _ => new SyncNode
+            {
+                Loadout = new SyncNodePart { Hash = Hash.From(1), Size = Size.From(10), LastModifiedTicks = 0 },
+                SourceItemType = LoadoutSourceItemType.Game,
+            });
+
+        using var stream = new MemoryStream();
+        await new PluginsFile(NullLogger<PluginsFile>.Instance, game, new AsteriskMechanism())
+            .Render(stream, null!, [], stored.Where(row => row.Name is "A.esp" or "B.esp").ToArray(), tree);
+
+        Encoding.UTF8.GetString(stream.ToArray())
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => !line.StartsWith('#'))
+            .Should().Equal("*A.esp", "B.esp");
     }
 
     [Fact]
