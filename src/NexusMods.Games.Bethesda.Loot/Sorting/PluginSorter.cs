@@ -1,3 +1,6 @@
+using NexusMods.Games.Bethesda.Loot.Database;
+using NexusMods.Games.Bethesda.Loot.Metadata;
+
 namespace NexusMods.Games.Bethesda.Loot.Sorting;
 
 // Follows libloot's sorting/plugins.rs (sort_plugins).
@@ -56,6 +59,67 @@ public static class PluginSorter
         {
             UnlinkedNeighbours = unlinked,
         };
+    }
+
+    /// <summary>
+    /// Sorts plugins using the masterlist and userlist metadata in <paramref name="database"/>. The
+    /// current order is the order of <paramref name="pluginsInCurrentOrder"/>. Conditioned metadata
+    /// is dropped, which the result's divergences count.
+    /// </summary>
+    /// <exception cref="BuildGroupsGraphException">The database's groups do not form a valid graph.</exception>
+    /// <exception cref="UndefinedGroupException">A plugin is in a group that does not exist.</exception>
+    /// <exception cref="PluginGraphValidationException">An edge contradicts master flags.</exception>
+    /// <exception cref="CyclicInteractionException">The constraints form a cycle.</exception>
+    /// <exception cref="SortingException">The plugins cannot be sorted for another reason.</exception>
+    public static SortResult Sort<T>(
+        IReadOnlyList<T> pluginsInCurrentOrder, LootDatabase database, IReadOnlyList<string> earlyLoadingPlugins)
+        where T : ISortingPlugin
+    {
+        var unevaluated = 0;
+        var data = new List<PluginSortingData<T>>(pluginsInCurrentOrder.Count);
+        for (var i = 0; i < pluginsInCurrentOrder.Count; i++)
+        {
+            var (plugin, count) = ToPluginSortingData(database, pluginsInCurrentOrder[i], i);
+            data.Add(plugin);
+            unevaluated += count;
+        }
+
+        var groupsGraph = GroupsGraph.Build(database.Groups(MergeMode.WithoutUserMetadata), database.UserGroups);
+
+        var result = Sort(data, groupsGraph, earlyLoadingPlugins);
+
+        // Overlap edges come from what the plugins report, so a list where none reports anything
+        // was sorted without them.
+        var overlapEdgesSkipped = data.Count > 0 && data.All(d => d.OverrideRecordCount == 0 && d.AssetCount == 0);
+
+        return result with { Divergences = new KnownDivergences(overlapEdgesSkipped, unevaluated) };
+    }
+
+    /// <summary>
+    /// A plugin with its masterlist and user metadata from <paramref name="database"/>. Entries with
+    /// a condition, and load-after and requirement files with a constraint, are dropped because
+    /// neither can be evaluated; <c>UnevaluatedConditions</c> counts them.
+    /// </summary>
+    public static (PluginSortingData<T> Data, int UnevaluatedConditions) ToPluginSortingData<T>(
+        LootDatabase database, T plugin, int loadOrderIndex)
+        where T : ISortingPlugin
+    {
+        var unevaluated = 0;
+
+        PluginMetadata? DropConstrained(PluginMetadata? metadata)
+        {
+            return metadata?.FilterByConstraints(_ =>
+            {
+                unevaluated++;
+                return false;
+            });
+        }
+
+        var (masterlist, masterlistCount) = database.PluginMetadata(plugin.Name, MergeMode.WithoutUserMetadata, EvalMode.Evaluate);
+        var (user, userCount) = database.PluginUserMetadata(plugin.Name, EvalMode.Evaluate);
+
+        var data = new PluginSortingData<T>(plugin, DropConstrained(masterlist), DropConstrained(user), loadOrderIndex);
+        return (data, unevaluated + masterlistCount + userCount);
     }
 
     private readonly record struct PartitionResult(
