@@ -8,12 +8,20 @@ namespace NexusMods.Games.FromSoft.Merge;
 /// </summary>
 public static class FmgMerge
 {
+    private const string DefaultBaseName = "the preferred mod";
+    private const string DefaultOtherName = "the other mod";
+
     /// <summary>
     /// Unions the text tables of two archives. Where both define an id, base wins only if it has real text: a null in
     /// base is a structural gap, not an authored value, so it defers to the other side.
     /// </summary>
     /// <exception cref="FmgMergeException">The other archive holds a table base does not; the rebuild cannot add one, and dropping it would report a partial merge as success.</exception>
-    public static byte[] Union(ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, FromSoftFormatTraits traits)
+    /// <param name="notes">Receives a <see cref="TextKept"/> for every id both sides define with different text; null collects nothing.</param>
+    /// <param name="baseName">Who owns base, for the notes; a generic name when null.</param>
+    /// <param name="otherName">Who owns the other archive, for the notes; a generic name when null.</param>
+    public static byte[] Union(
+        ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, FromSoftFormatTraits traits,
+        ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null)
     {
         var binder = Binders.For(traits);
         var baseRaw = Dcx.Read(@base, traits);
@@ -26,6 +34,8 @@ public static class FmgMerge
             throw new FmgMergeException(
                 $"the second archive has entries [{string.Join(", ", extra)}] that the first doesn't; merging would drop them, so refusing rather than reporting a partial merge as success");
 
+        var kept = baseName ?? DefaultBaseName;
+        var dropped = otherName ?? DefaultOtherName;
         var replacements = new Dictionary<int, byte[]>();
         foreach (var entry in baseEntries)
         {
@@ -36,7 +46,12 @@ public static class FmgMerge
             var changed = false;
             foreach (var (id, text) in incoming)
             {
-                if (table.TryGetValue(id, out var own) && own is not null) continue;
+                if (table.TryGetValue(id, out var own) && own is not null)
+                {
+                    // A null on the other side is a gap as well, so base filling it loses nobody's text.
+                    if (text is not null && own != text) notes?.Add(new TextKept(entry.Id, id, kept, dropped));
+                    continue;
+                }
                 merged[id] = text;
                 changed |= !table.ContainsKey(id) || text is not null;
             }
@@ -47,11 +62,18 @@ public static class FmgMerge
 
     /// <summary>
     /// Merges two archives against the vanilla both branched from. Comparing with vanilla answers who changed a row,
-    /// which a union cannot: only a row both sides changed, differently, is a conflict.
+    /// which a union cannot: only a row both sides changed, differently, is a conflict, and base's text wins it.
     /// </summary>
-    /// <exception cref="FmgMergeException">The three archives hold different tables, or both sides changed a row to different text.</exception>
-    public static byte[] ThreeWay(ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, ReadOnlySpan<byte> vanilla, FromSoftFormatTraits traits)
+    /// <param name="notes">Receives a <see cref="TextKept"/> for every conflict base won; null collects nothing.</param>
+    /// <param name="baseName">Who owns base, for the notes; a generic name when null.</param>
+    /// <param name="otherName">Who owns the other archive, for the notes; a generic name when null.</param>
+    /// <exception cref="FmgMergeException">The three archives hold different tables.</exception>
+    public static byte[] ThreeWay(
+        ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, ReadOnlySpan<byte> vanilla, FromSoftFormatTraits traits,
+        ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null)
     {
+        var kept = baseName ?? DefaultBaseName;
+        var dropped = otherName ?? DefaultOtherName;
         var binder = Binders.For(traits);
         var baseRaw = Dcx.Read(@base, traits);
         var baseTables = Tables(binder, baseRaw);
@@ -77,8 +99,12 @@ public static class FmgMerge
                 if (Equals(o, b) || Equals(o, v)) keep = b;      // nobody disagrees, or only base moved
                 else if (Equals(b, v)) keep = o;                 // only the other side moved
                 else
-                    throw new FmgMergeException(
-                        $"entry {entryId} row {id}: both sides changed it and differ; base {Show(b)}, other {Show(o)}, vanilla {Show(v)}");
+                {
+                    // erm's fmg_three_way raises here. The loadout's priority decides a real conflict instead, so the
+                    // accumulated side keeps its text and the loss is recorded.
+                    keep = b;
+                    notes?.Add(new TextKept(entryId, id, kept, dropped));
+                }
 
                 if (keep is not Absent) merged[id] = (string?)keep;
             }
@@ -98,13 +124,6 @@ public static class FmgMerge
 
     private static object? Lookup(Dictionary<int, string?> table, int id) =>
         table.TryGetValue(id, out var text) ? text : Absent.Instance;
-
-    private static string Show(object? value) => value switch
-    {
-        Absent => "<absent>",
-        null => "None",
-        _ => $"'{value}'",
-    };
 
     private static bool SameTable(Dictionary<int, string?> a, Dictionary<int, string?> b) =>
         a.Count == b.Count && a.All(kv => b.TryGetValue(kv.Key, out var text) && text == kv.Value);

@@ -38,3 +38,19 @@ public sealed record RowConflict(int EntryId, int RowId, string KeptMod, string 
     public string Describe() =>
         $"entry {EntryId} row {RowId}: both mods changed it differently; kept {KeptMod}'s row and dropped {DroppedMod}'s edits to it";
 }
+
+/// <summary>Both mods ship a message under one id with different text; the winner's text was kept.</summary>
+/// <param name="KeptMod">Whose text stayed: the higher-priority mod.</param>
+/// <param name="DroppedMod">Whose text was dropped.</param>
+public sealed record TextKept(int EntryId, int TextId, string KeptMod, string DroppedMod) : IMergeNote
+{
+    public string Describe() =>
+        $"entry {EntryId} text {TextId}: both mods ship it and differ; kept {KeptMod}'s";
+}
+
+/// <summary>Both mods ship a texture under one name with different bytes; the winner's copy was kept.</summary>
+public sealed record TextureKept(string Name, string KeptMod, string DroppedMod) : IMergeNote
+{
+    public string Describe() =>
+        $"texture {Name}: both mods ship it and differ; kept {KeptMod}'s";
+}

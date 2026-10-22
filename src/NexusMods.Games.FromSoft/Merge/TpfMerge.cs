@@ -15,14 +15,30 @@ public static class TpfMerge
     /// names are overwhelmingly identical copies, and where they differ the preferred mod's is the one with its own
     /// icons in it.
     /// </summary>
+    /// <param name="notes">Receives a <see cref="TextureKept"/> for every shared name whose bytes differ; null collects nothing.</param>
+    /// <param name="baseName">Who owns base, for the notes; a generic name when null.</param>
+    /// <param name="otherName">Who owns the other archive, for the notes; a generic name when null.</param>
     /// <returns>The base bytes untouched when the other side adds nothing, so an unchanged file is not recompressed.</returns>
-    public static byte[] Union(ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, FromSoftFormatTraits traits)
+    public static byte[] Union(
+        ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, FromSoftFormatTraits traits,
+        ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null)
     {
         var baseArchive = Tpf.Read(Dcx.Read(@base, traits));
         var otherArchive = Tpf.Read(Dcx.Read(other, traits));
 
-        var have = baseArchive.Textures.Select(t => t.Name).ToHashSet();
-        var extra = otherArchive.Textures.Where(t => !have.Contains(t.Name)).ToArray();
+        // First copy per name: an archive can carry a name twice, and a duplicate must not abort the merge.
+        var have = new Dictionary<string, Texture>();
+        foreach (var texture in baseArchive.Textures) have.TryAdd(texture.Name, texture);
+        if (notes is not null)
+        {
+            foreach (var texture in otherArchive.Textures)
+            {
+                if (have.TryGetValue(texture.Name, out var own) && !own.Data.AsSpan().SequenceEqual(texture.Data))
+                    notes.Add(new TextureKept(texture.Name, baseName ?? "the preferred mod", otherName ?? "the other mod"));
+            }
+        }
+
+        var extra = otherArchive.Textures.Where(t => !have.ContainsKey(t.Name)).ToArray();
         if (extra.Length == 0) return @base.ToArray();
 
         return Dcx.Write(Tpf.Write(baseArchive.WithTextures([.. baseArchive.Textures, .. extra])), traits.PackedWrite);

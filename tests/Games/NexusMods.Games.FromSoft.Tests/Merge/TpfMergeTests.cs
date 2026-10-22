@@ -85,4 +85,49 @@ public class TpfMergeTests
 
         Dcx.Read(TpfMerge.Union(@base, other, t), t).Should().Equal(GoldenFilesTests.Read("tpf_union.tpf"));
     }
+
+    [Theory, MemberData(nameof(Games))]
+    public void UnionNamesTheKeptModForASharedTextureWithDifferingBytes(string game)
+    {
+        var t = TraitsOf(game);
+        var @base = Blob(t, ("A", "base-copy"), ("Same", "ss"));
+        var other = Blob(t, ("A", "other-copy"), ("Same", "ss"), ("New", "nn"));
+        var notes = new List<IMergeNote>();
+
+        var merged = TpfMerge.Union(@base, other, t, notes, "Mod A", "Mod B");
+
+        notes.Should().Equal(new TextureKept("A", "Mod A", "Mod B"));
+        merged.Should().Equal(TpfMerge.Union(@base, other, t));
+    }
+
+    [Theory, MemberData(nameof(Games))]
+    public void UnionNotesTheLossEvenWhenTheOtherSideAddsNothing(string game)
+    {
+        var t = TraitsOf(game);
+        var @base = Blob(t, ("A", "base-copy"));
+        var other = Blob(t, ("A", "other-copy"));
+        var notes = new List<IMergeNote>();
+        TpfMerge.Union(@base, other, t, notes).Should().Equal(@base);
+        notes.Should().Equal(new TextureKept("A", "the preferred mod", "the other mod"));
+    }
+
+    [Theory, MemberData(nameof(Games))]
+    public void UnionNotesNothingForIdenticalSharedTextures(string game)
+    {
+        var t = TraitsOf(game);
+        var notes = new List<IMergeNote>();
+        TpfMerge.Union(Blob(t, ("A", "aa")), Blob(t, ("A", "aa")), t, notes);
+        notes.Should().BeEmpty();
+    }
+
+    [Theory, MemberData(nameof(Games))]
+    public void UnionNotesALossWhenBaseShipsANameTwice(string game)
+    {
+        var t = TraitsOf(game);
+        var @base = Blob(t, ("A", "first"), ("A", "second"));
+        var other = Blob(t, ("A", "other-copy"));
+        var notes = new List<IMergeNote>();
+        TpfMerge.Union(@base, other, t, notes).Should().Equal(@base);
+        notes.Should().Equal(new TextureKept("A", "the preferred mod", "the other mod"));
+    }
 }

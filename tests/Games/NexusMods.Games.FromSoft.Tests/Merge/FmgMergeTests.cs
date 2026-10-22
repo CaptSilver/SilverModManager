@@ -113,6 +113,78 @@ public class FmgMergeTests
         Dcx.Read(FmgMerge.Union(@base, other, t), t).Should().Equal(GoldenFilesTests.Read("msgbnd_union.bnd"));
     }
 
+    // --- union notes ---
+
+    [Theory, MemberData(nameof(Games))]
+    public void UnionNamesTheKeptModForASharedIdWithDifferingText(string game)
+    {
+        var t = TraitsOf(game);
+        var @base = Msgbnd(t, (1, [(401106, "!!! MOD NOTE !!!"), (5, "same")]));
+        var other = Msgbnd(t, (1, [(401106, "Failed to save."), (5, "same")]));
+        var notes = new List<IMergeNote>();
+
+        var merged = FmgMerge.Union(@base, other, t, notes, "Mod A", "Mod B");
+
+        notes.Should().Equal(new TextKept(1, 401106, "Mod A", "Mod B"));
+        merged.Should().Equal(FmgMerge.Union(@base, other, t));
+    }
+
+    [Theory, MemberData(nameof(Games))]
+    public void UnionNotesNothingForIdenticalSharedText(string game)
+    {
+        var t = TraitsOf(game);
+        var @base = Msgbnd(t, (1, [(7, "same")]));
+        var other = Msgbnd(t, (1, [(7, "same")]));
+        var notes = new List<IMergeNote>();
+        FmgMerge.Union(@base, other, t, notes);
+        notes.Should().BeEmpty();
+    }
+
+    [Theory, MemberData(nameof(Games))]
+    public void UnionNotesNothingWhenBaseHasNoTextForTheId(string game)
+    {
+        var t = TraitsOf(game);
+        var @base = Msgbnd(t, (1, [(7, null)]));
+        var other = Msgbnd(t, (1, [(7, "filled in")]));
+        var notes = new List<IMergeNote>();
+        Table(FmgMerge.Union(@base, other, t, notes), t, 1)[7].Should().Be("filled in");
+        notes.Should().BeEmpty();
+    }
+
+    [Theory, MemberData(nameof(Games))]
+    public void UnionNotesUseGenericNamesWhenNoneAreGiven(string game)
+    {
+        var t = TraitsOf(game);
+        var @base = Msgbnd(t, (1, [(7, "a")]));
+        var other = Msgbnd(t, (1, [(7, "b")]));
+        var notes = new List<IMergeNote>();
+        FmgMerge.Union(@base, other, t, notes);
+        notes.Should().Equal(new TextKept(1, 7, "the preferred mod", "the other mod"));
+    }
+
+    [Theory, MemberData(nameof(Games))]
+    public void UnionNotesNothingWhenTheOtherSideHasNoTextForTheId(string game)
+    {
+        var t = TraitsOf(game);
+        var @base = Msgbnd(t, (1, [(7, "base text")]));
+        var other = Msgbnd(t, (1, [(7, null)]));
+        var notes = new List<IMergeNote>();
+        FmgMerge.Union(@base, other, t, notes);
+        notes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void NoTwoNoteKindsRenderTheSameSentence()
+    {
+        IMergeNote[] notes =
+        [
+            new RowCollision(1, 2), new RivalRow(1, 2), new UnreadableParam(1), new RowConflict(1, 2, "A", "B"),
+            new TextKept(1, 2, "A", "B"), new TextureKept("tex", "A", "B"),
+        ];
+        notes.Select(n => n.Describe()).Should().OnlyHaveUniqueItems();
+        new TextKept(1, 2, "A", "B").Describe().Should().Be("entry 1 text 2: both mods ship it and differ; kept A's");
+    }
+
     // --- three-way ---
 
     [Theory, MemberData(nameof(Games))]
@@ -136,16 +208,42 @@ public class FmgMergeTests
     }
 
     [Theory, MemberData(nameof(Games))]
-    public void ThreeWayRefusesWhenBothSidesEditedTheSameRow(string game)
+    public void ThreeWayKeepsTheLeadersTextWhenBothSidesEditedTheSameRow(string game)
+    {
+        // erm's fmg_three_way raises when both sides changed one id differently. Here the accumulated side's text
+        // wins and the loss is recorded, because the loadout's priority decides a real conflict.
+        var t = TraitsOf(game);
+        var vanilla = Msgbnd(t, (1, [(10, "vanilla")]));
+        var @base = Msgbnd(t, (1, [(10, "base version")]));
+        var other = Msgbnd(t, (1, [(10, "other version")]));
+        var notes = new List<IMergeNote>();
+
+        var merged = FmgMerge.ThreeWay(@base, other, vanilla, t, notes, "Clever's Moveset", "Item Randomizer");
+
+        Table(merged, t, 1)[10].Should().Be("base version");
+        notes.Should().Equal(new TextKept(1, 10, "Clever's Moveset", "Item Randomizer"));
+    }
+
+    [Theory, MemberData(nameof(Games))]
+    public void ThreeWayConflictWithoutANotesListStillKeepsTheLeader(string game)
     {
         var t = TraitsOf(game);
         var vanilla = Msgbnd(t, (1, [(10, "vanilla")]));
         var @base = Msgbnd(t, (1, [(10, "base version")]));
         var other = Msgbnd(t, (1, [(10, "other version")]));
-        var act = () => FmgMerge.ThreeWay(@base, other, vanilla, t);
-        act.Should().Throw<FmgMergeException>()
-            .WithMessage("*entry 1*row 10*").And.Message.Should()
-            .Contain("base version").And.Contain("other version").And.Contain("vanilla");
+        Table(FmgMerge.ThreeWay(@base, other, vanilla, t), t, 1)[10].Should().Be("base version");
+    }
+
+    [Theory, MemberData(nameof(Games))]
+    public void ThreeWayWithoutAConflictAddsNoNotes(string game)
+    {
+        var t = TraitsOf(game);
+        var vanilla = Msgbnd(t, (1, [(10, "vanilla"), (11, "v")]));
+        var @base = Msgbnd(t, (1, [(10, "same"), (11, "v")]));
+        var other = Msgbnd(t, (1, [(10, "same"), (11, "other edit")]));
+        var notes = new List<IMergeNote>();
+        FmgMerge.ThreeWay(@base, other, vanilla, t, notes);
+        notes.Should().BeEmpty();
     }
 
     [Theory, MemberData(nameof(Games))]
