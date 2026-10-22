@@ -77,6 +77,18 @@ public interface IDeploymentBackend
     Task Extract(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes);
 
     /// <summary>
+    /// Gives files that are already in the game folders the modification times a game wants, and records the
+    /// times in the disk state. Files extracted in this apply are not passed: <see cref="Extract"/> sets
+    /// <see cref="DeploymentContext.PlannedModifiedTimes"/> as it writes them.
+    /// </summary>
+    /// <remarks>
+    /// A backend that cannot present a per-file time must override this and say so: the default throws, so a
+    /// timestamp-ordered game is never silently deployed with the wrong load order.
+    /// </remarks>
+    Task StampTimestamps(DeploymentContext context, IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)> stamps) =>
+        throw new NotSupportedException($"The {Id} deployment backend cannot set file modification times, which this game needs for its load order.");
+
+    /// <summary>
     /// Writes generated files such as plugin lists. <see cref="DeploymentContext.Loadout"/> is required.
     /// </summary>
     Task WriteIntrinsics(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes);

@@ -3,13 +3,15 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Games.TestFramework.Helpers;
 using NexusMods.Sdk.Games;
 
 namespace NexusMods.Games.CreationEngine.Tests;
 
-/// <summary>Oblivion, Fallout 3 and New Vegas: folders in the prefix, no plugin list handling, launch through the script extender.</summary>
+/// <summary>Oblivion, Fallout 3 and New Vegas: folders in the prefix, plugins ordered by file time, launch through the script extender.</summary>
 public class GamebryoFalloutTests(IServiceProvider serviceProvider)
 {
     private IGame Registered(Type type) => serviceProvider.GetServices<IGame>().Single(g => g.GetType() == type);
@@ -35,18 +37,20 @@ public class GamebryoFalloutTests(IServiceProvider serviceProvider)
     public void PrimaryFileIsTheGameExecutable(Type gameType, string exe) =>
         Registered(gameType).GetPrimaryFile(default!).Should().Be(new GamePath(LocationId.Game, exe));
 
-    // No plugin header reader exists for these titles, so none writes a plugin list or checks masters.
+    // They keep their load order in the file times, with a plugins.txt that names the active plugins, and check masters.
     [Theory]
-    [InlineData(typeof(CreationEngine.Oblivion.Oblivion))]
-    [InlineData(typeof(CreationEngine.Fallout3.Fallout3))]
-    [InlineData(typeof(CreationEngine.FalloutNewVegas.FalloutNewVegas))]
-    public void OfferNoIntrinsicFilesAndCheckNoMasters(Type type)
+    [InlineData(typeof(CreationEngine.Oblivion.Oblivion), PluginFormat.Tes4Oblivion)]
+    [InlineData(typeof(CreationEngine.Fallout3.Fallout3), PluginFormat.Tes4)]
+    [InlineData(typeof(CreationEngine.FalloutNewVegas.FalloutNewVegas), PluginFormat.Tes4)]
+    public void OrderPluginsByTimestampAndCheckMasters(Type type, PluginFormat format)
     {
         var game = Registered(type);
 
-        game.Should().NotBeAssignableTo<ICreationEngineGame>();
-        ((ALoadoutSynchronizer)game.Synchronizer).IntrinsicFiles(default).Should().BeEmpty();
-        game.DiagnosticEmitters.Select(e => e.GetType()).Should().NotContain(typeof(Emitters.MissingMasterEmitter));
+        game.Should().BeAssignableTo<ICreationEngineGame>().Which.HeaderFormat.Should().Be(format);
+        game.Should().BeAssignableTo<ITimestampOrderedGame>();
+        var mechanism = ((ICreationEngineGame)game).PluginList(null!);
+        mechanism.Should().BeOfType<TimestampMechanism>().Which.OrdersByTimestamp.Should().BeTrue();
+        game.DiagnosticEmitters.Select(e => e.GetType()).Should().Contain(typeof(Emitters.MissingMasterEmitter));
     }
 
     [Fact]

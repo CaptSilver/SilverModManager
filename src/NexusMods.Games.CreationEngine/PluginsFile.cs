@@ -54,6 +54,14 @@ public class PluginsFile : IIntrinsicFile
         await Render(stream, installation, _game.EarlyLoadingPlugins(installation), Variety.StoredOrder(loadout), syncTree);
     }
 
+    /// <summary>The names of every plugin the file would list, in load order.</summary>
+    internal async Task<IReadOnlyList<string>> LoadOrder(Loadout.ReadOnly loadout, IReadOnlyDictionary<GamePath, SyncNode> syncTree)
+    {
+        var installation = loadout.InstallationInstance;
+        var listed = await Expected(installation, _game.EarlyLoadingPlugins(installation), Variety.StoredOrder(loadout), syncTree);
+        return listed.Select(e => e.Name).ToList();
+    }
+
     private IPluginSortOrderVariety Variety => _game.SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single();
 
     /// <param name="earlyLoaders">Plugins the game loads before any list, in load order.</param>
@@ -63,7 +71,7 @@ public class PluginsFile : IIntrinsicFile
         GameInstallation installation,
         IReadOnlyList<string> earlyLoaders,
         IReadOnlyList<PluginSortData> rows,
-        Dictionary<GamePath, SyncNode> syncTree)
+        IReadOnlyDictionary<GamePath, SyncNode> syncTree)
     {
         var listed = await Expected(installation, earlyLoaders, rows, syncTree);
         await using var writer = new StreamWriter(stream, leaveOpen: true);
@@ -79,7 +87,7 @@ public class PluginsFile : IIntrinsicFile
         GameInstallation installation,
         IReadOnlyList<string> earlyLoaders,
         IReadOnlyList<PluginSortData> rows,
-        Dictionary<GamePath, SyncNode> syncTree)
+        IReadOnlyDictionary<GamePath, SyncNode> syncTree)
     {
         var plugins = new List<Metadata>();
         List<string> unreadable = [];
@@ -107,6 +115,11 @@ public class PluginsFile : IIntrinsicFile
         var early = new Dictionary<string, int>(PluginNameComparer.Instance);
         for (var i = 0; i < earlyLoaders.Count; i++) early.TryAdd(earlyLoaders[i], i);
 
+        // The game switches these on whatever the list and the user's switches say.
+        var implicitlyActive = _game.ImplicitlyActivePlugins(
+                syncTree.Where(e => e.Key.Parent == _game.DataPath && e.Value.HaveLoadout).Select(e => e.Key.FileName.ToString()))
+            .ToHashSet(PluginNameComparer.Instance);
+
         var entries = plugins.Select(plugin =>
         {
             var name = plugin.Header.FileName;
@@ -130,7 +143,7 @@ public class PluginsFile : IIntrinsicFile
             var entry = byName[name];
             // A blueprint master never loads early, so the game does not know to load it without the list.
             var isEarly = entry.EarlyLoaderIndex is not null && !entry.IsBlueprintMaster;
-            var active = isEarly || !rowsByName.TryGetValue(name, out var row) || row.IsEnabled;
+            var active = isEarly || implicitlyActive.Contains(name) || !rowsByName.TryGetValue(name, out var row) || row.IsEnabled;
             return new PluginListEntry(name, active, isEarly);
         }).ToList();
     }

@@ -1,4 +1,8 @@
 using DynamicData.Kernel;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.CreationEngine.PluginLists;
+using NexusMods.Sdk.Loadouts;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -6,10 +10,9 @@ using NexusMods.Sdk.Games;
 namespace NexusMods.Games.CreationEngine.Fallout3;
 
 /// <summary>
-/// Fallout 3 keeps a plain plugins.txt in AppData, but no plugin header reader exists for it yet, so this game
-/// cannot order masters and does not write the plugin list. Apply round-trips plain files.
+/// Fallout 3 orders its plugins by file modification time and reads the active ones from plugins.txt in AppData.
 /// </summary>
-public class Fallout3(IServiceProvider provider) : ABethesdaGame<Fallout3>(provider), IGameData<Fallout3>
+public class Fallout3(IServiceProvider provider) : ACreationEngineGame<Fallout3>(provider), IGameData<Fallout3>, ITimestampOrderedGame
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.Fallout3");
     public static string DisplayName => "Fallout 3";
@@ -23,6 +26,16 @@ public class Fallout3(IServiceProvider provider) : ABethesdaGame<Fallout3>(provi
         // https://www.gogdb.org/product/1454315831 (Game of the Year Edition)
         GOGProductIds = [1454315831L],
     };
+
+    public override PluginFormat HeaderFormat => PluginFormat.Tes4;
+    public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
+    public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
+    private static readonly TimestampMechanism Mechanism = new();
+    // libloadorder game_settings.rs hardcoded_plugins: none for these games.
+    public override IReadOnlyList<string> HardcodedPlugins => [];
+
+    public Task<IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)>> PluginTimestamps(Loadout.ReadOnly loadout, IReadOnlyDictionary<GamePath, SyncNode> syncTree) =>
+        PlanPluginTimestamps(loadout, syncTree);
 
     protected override RelativePath PrimaryExe => "Fallout3.exe";
 

@@ -247,6 +247,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
             if (privateCopy) CopyToFreshFile(storeFile, target);
 
             ExecutableExtensions.ApplyTo(target);
+            PlannedTimestamps.ApplyTo(context, path, target);
 
             // The time the next index will read, which for a symlink is the staged file's.
             DeployedFileRows.Record(context.Transaction, context, path, node, FileFingerprint.Of(target).LastModified);
@@ -254,6 +255,9 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
 
         context.Job?.ReportProgress(SyncPhases.Deploying, extract.Count, extract.Count);
     }
+
+    /// <inheritdoc />
+    public Task StampTimestamps(DeploymentContext context, IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)> stamps) => copy.StampTimestamps(context, stamps);
 
     /// <inheritdoc />
     public async Task WriteIntrinsics(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes)

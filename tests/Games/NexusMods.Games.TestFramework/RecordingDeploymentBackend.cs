@@ -75,6 +75,12 @@ public sealed class RecordingDeploymentBackend(CopyDeploymentBackend inner) : ID
         return inner.Extract(context, nodes);
     }
 
+    public Task StampTimestamps(DeploymentContext context, IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)> stamps)
+    {
+        foreach (var (path, _) in stamps) Calls.Add((nameof(StampTimestamps), path));
+        return inner.StampTimestamps(context, stamps);
+    }
+
     public Task WriteIntrinsics(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes)
     {
         Record(nameof(WriteIntrinsics), Actions.WriteIntrinsic, nodes);

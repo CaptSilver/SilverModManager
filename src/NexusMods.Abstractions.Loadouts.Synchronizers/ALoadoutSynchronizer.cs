@@ -500,6 +500,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         PreflightRecordedRoots(loadout.InstallationInstance, plan, syncTree);
         await EnforceBackupLimit(syncTree);
         var foldersWithDeletedFiles = new List<IReadOnlyCollection<GamePath>>();
+        IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)> plannedTimes = loadout.InstallationInstance.Game is ITimestampOrderedGame timestamped
+            ? await timestamped.PluginTimestamps(loadout, syncTree)
+            : [];
         var context = new DeploymentContext
         {
             Synchronizer = this,
@@ -509,6 +512,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             Loadout = loadout,
             Transaction = tx,
             Job = job,
+            PlannedModifiedTimes = plannedTimes.ToDictionary(t => t.Path, t => t.Mtime),
         };
 
         foreach (var action in ActionsInOrder)
@@ -568,6 +572,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 default:
                     throw new InvalidOperationException($"Unknown action: {action}");
             }
+        }
+
+        // After the loop so every file is in place: the ones extracted got their time as they were written, the
+        // ones already there get theirs now.
+        if (plannedTimes.Count > 0)
+        {
+            foreach (var group in groups)
+                await group.Backend.StampTimestamps(context, plannedTimes.Where(t => group.Nodes.ContainsKey(t.Path)).ToList());
         }
 
         job?.SetStatus(SyncPhases.RecordingChanges);

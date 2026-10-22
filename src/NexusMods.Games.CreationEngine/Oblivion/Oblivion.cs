@@ -1,4 +1,8 @@
 using DynamicData.Kernel;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.CreationEngine.PluginLists;
+using NexusMods.Sdk.Loadouts;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -6,10 +10,11 @@ using NexusMods.Sdk.Games;
 namespace NexusMods.Games.CreationEngine.Oblivion;
 
 /// <summary>
-/// Oblivion keeps a plain plugins.txt in AppData, but no plugin header reader exists for it yet, so this game
-/// cannot order masters and does not write the plugin list. Apply round-trips plain files.
+/// Oblivion orders its plugins by file modification time and reads the active ones from Plugins.txt, which sits in
+/// AppData unless Oblivion.ini sets <c>bUseMyGamesDirectory=0</c>, and then in the game folder. The launcher writes
+/// plugins.txt and the game reads Plugins.txt; they are one file on the prefix's case-insensitive view.
 /// </summary>
-public class Oblivion(IServiceProvider provider) : ABethesdaGame<Oblivion>(provider), IGameData<Oblivion>
+public class Oblivion(IServiceProvider provider) : ACreationEngineGame<Oblivion>(provider), IGameData<Oblivion>, ITimestampOrderedGame
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.Oblivion");
     public static string DisplayName => "Oblivion";
@@ -23,6 +28,16 @@ public class Oblivion(IServiceProvider provider) : ABethesdaGame<Oblivion>(provi
         // https://www.gogdb.org/product/1458058109 (Game of the Year Edition Deluxe)
         GOGProductIds = [1458058109L],
     };
+
+    public override PluginFormat HeaderFormat => PluginFormat.Tes4Oblivion;
+    public override GamePath PluginsFile => new(LocationId.AppData, "Plugins.txt");
+    public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
+    private static readonly TimestampMechanism Mechanism = new(locationFollowsIni: true);
+    // libloadorder game_settings.rs hardcoded_plugins: none for these games.
+    public override IReadOnlyList<string> HardcodedPlugins => [];
+
+    public Task<IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)>> PluginTimestamps(Loadout.ReadOnly loadout, IReadOnlyDictionary<GamePath, SyncNode> syncTree) =>
+        PlanPluginTimestamps(loadout, syncTree);
 
     protected override RelativePath PrimaryExe => "Oblivion.exe";
 

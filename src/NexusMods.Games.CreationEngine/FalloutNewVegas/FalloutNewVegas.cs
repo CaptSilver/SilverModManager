@@ -1,4 +1,8 @@
 using DynamicData.Kernel;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.CreationEngine.PluginLists;
+using NexusMods.Sdk.Loadouts;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -6,11 +10,10 @@ using NexusMods.Sdk.Games;
 namespace NexusMods.Games.CreationEngine.FalloutNewVegas;
 
 /// <summary>
-/// New Vegas keeps a plain plugins.txt in AppData, but no plugin header reader exists for it yet, so this game
-/// cannot order masters and does not write the plugin list. Apply round-trips plain files. Tale of Two
-/// Wastelands is a mod with its own installer, not a separate game.
+/// New Vegas orders its plugins by file modification time and reads the active ones from plugins.txt in AppData.
+/// Tale of Two Wastelands is a mod with its own installer, not a separate game.
 /// </summary>
-public class FalloutNewVegas(IServiceProvider provider) : ABethesdaGame<FalloutNewVegas>(provider), IGameData<FalloutNewVegas>
+public class FalloutNewVegas(IServiceProvider provider) : ACreationEngineGame<FalloutNewVegas>(provider), IGameData<FalloutNewVegas>, ITimestampOrderedGame
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.FalloutNewVegas");
     public static string DisplayName => "Fallout: New Vegas";
@@ -25,6 +28,22 @@ public class FalloutNewVegas(IServiceProvider provider) : ABethesdaGame<FalloutN
         // https://www.gogdb.org/product/1454587428 (Ultimate Edition)
         GOGProductIds = [1454587428L],
     };
+
+    public override PluginFormat HeaderFormat => PluginFormat.Tes4;
+    public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
+    public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
+    private static readonly TimestampMechanism Mechanism = new();
+    // libloadorder game_settings.rs hardcoded_plugins: none for these games.
+    public override IReadOnlyList<string> HardcodedPlugins => [];
+
+    // libloadorder game_settings.rs (find_nam_plugins): a .nam file in Data activates the .esp and .esm of the same name.
+    public override IReadOnlyList<string> ImplicitlyActivePlugins(IEnumerable<string> dataFileNames) => dataFileNames
+        .Where(name => name.EndsWith(".nam", StringComparison.OrdinalIgnoreCase))
+        .SelectMany(name => new[] { System.IO.Path.ChangeExtension(name, ".esp"), System.IO.Path.ChangeExtension(name, ".esm") })
+        .ToList();
+
+    public Task<IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)>> PluginTimestamps(Loadout.ReadOnly loadout, IReadOnlyDictionary<GamePath, SyncNode> syncTree) =>
+        PlanPluginTimestamps(loadout, syncTree);
 
     protected override RelativePath PrimaryExe => "FalloutNV.exe";
 

@@ -45,6 +45,12 @@ public interface ICreationEngineGame : IBethesdaGame
     /// <summary>The game never reads a master flag.</summary>
     public bool MasterFlagIgnored(GameInstallation installation);
 
+    /// <summary>
+    /// Plugins the game loads whether or not a list switches them on, because of other files in Data. Takes the
+    /// names of the files in Data and returns the plugin names they activate.
+    /// </summary>
+    public IReadOnlyList<string> ImplicitlyActivePlugins(IEnumerable<string> dataFileNames);
+
     public bool IsMaster(PluginHeader header, GameInstallation installation);
     public bool IsLight(PluginHeader header);
     public bool IsMedium(PluginHeader header);

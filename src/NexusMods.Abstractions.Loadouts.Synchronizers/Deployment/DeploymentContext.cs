@@ -33,6 +33,12 @@ public sealed class DeploymentContext
     public SynchronizeLoadoutJob? Job { get; init; }
 
     /// <summary>
+    /// The modification time the game wants on each file, by path. A backend sets it when it writes the file, so
+    /// the time it records for the file is the final one; files this does not name keep the time they get.
+    /// </summary>
+    public IReadOnlyDictionary<GamePath, DateTimeOffset> PlannedModifiedTimes { get; init; } = new Dictionary<GamePath, DateTimeOffset>();
+
+    /// <summary>
     /// Created on first use and then reused by every backend and phase of the run.
     /// </summary>
     public EntityId? OverridesGroup { get; set; }

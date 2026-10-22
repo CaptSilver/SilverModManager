@@ -9,6 +9,8 @@ using NexusMods.Games.CreationEngine.Emitters;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Games.CreationEngine.SortOrder;
 using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.Bethesda.LoadOrder.Ordering;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.Sdk.FileStore;
@@ -25,9 +27,11 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     where TSelf : ACreationEngineGame<TSelf>, IGameData<TSelf>
 {
     private readonly IStreamSourceDispatcher _streamSource;
+    private readonly IServiceProvider _provider;
 
     protected ACreationEngineGame(IServiceProvider provider) : base(provider)
     {
+        _provider = provider;
         _streamSource = provider.GetRequiredService<IStreamSourceDispatcher>();
     }
 
@@ -53,6 +57,8 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     public virtual bool SupportsLightPlugins => false;
     public virtual bool MasterByExtension => false;
     public virtual bool MasterFlagIgnored(GameInstallation installation) => false;
+
+    public virtual IReadOnlyList<string> ImplicitlyActivePlugins(IEnumerable<string> dataFileNames) => [];
 
     /// <summary>Only Starfield lays its flag bits out differently, and needs the medium, update and blueprint kinds.</summary>
     protected virtual bool IsStarfield => false;
@@ -86,6 +92,36 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         }
 
         return names.Distinct(PluginNameComparer.Instance).ToList();
+    }
+
+    /// <summary>
+    /// For a game that orders its plugins by file time: the plugins in load order, the same order the plugin list
+    /// is written in, each with a time later than the one before. The plugins' own times are reused where they
+    /// can be (<see cref="TimestampAssigner"/>), so files keep roughly the dates they had.
+    /// </summary>
+    /// <remarks>
+    /// A file that is neither on disk nor about to be extracted has no time to give, and is left out.
+    /// </remarks>
+    protected async Task<IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)>> PlanPluginTimestamps(
+        Loadout.ReadOnly loadout,
+        IReadOnlyDictionary<GamePath, SyncNode> syncTree)
+    {
+        var file = PluginList(loadout.InstallationInstance).IntrinsicFiles(this, loadout, _provider).OfType<PluginsFile>().First();
+        var ordered = new List<(GamePath Path, SyncNode Node)>();
+        foreach (var name in await file.LoadOrder(loadout, syncTree))
+        {
+            var path = DataPath / name;
+            if (syncTree.TryGetValue(path, out var node) && (node.HaveDisk || node.Actions.HasFlag(Actions.ExtractToDisk)))
+                ordered.Add((path, node));
+        }
+
+        // A file about to be replaced has no time worth keeping.
+        var existing = ordered
+            .Where(o => o.Node.HaveDisk && !o.Node.Actions.HasFlag(Actions.ExtractToDisk))
+            .Select(o => new DateTimeOffset(o.Node.Disk.LastModifiedTicks, TimeSpan.Zero))
+            .ToList();
+        var times = TimestampAssigner.Assign(existing, ordered.Count);
+        return ordered.Select((o, i) => (o.Path, times[i])).ToList();
     }
 
     public async ValueTask<PluginHeader?> ParsePlugin(Hash hash, RelativePath? name = null)

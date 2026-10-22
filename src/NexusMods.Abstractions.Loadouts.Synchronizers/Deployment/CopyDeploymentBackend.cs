@@ -230,6 +230,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
                     continue;
 
                 var resolvedPath = context.Locations.ToAbsolutePath(gamePath);
+                PlannedTimestamps.ApplyTo(context, gamePath, resolvedPath);
                 var writeTimeUtc = new DateTimeOffset(resolvedPath.FileInfo.LastWriteTimeUtc);
                 
                 DeployedFileRows.Record(tx, context, gamePath, node, writeTimeUtc);
@@ -242,6 +243,13 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             var (current, max) = progress;
             context.Job?.ReportProgress(SyncPhases.Deploying, current, max);
         }
+    }
+
+    /// <inheritdoc />
+    public Task StampTimestamps(DeploymentContext context, IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)> stamps)
+    {
+        PlannedTimestamps.Stamp(context, stamps);
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
