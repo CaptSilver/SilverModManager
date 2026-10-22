@@ -54,7 +54,7 @@ public sealed class MergePathIndex
     /// The package that holds the previous apply's merge output. Its files are never providers: they came from the
     /// others, and counting them would make a merged file collide with its own inputs.
     /// </summary>
-    public const string MergedPackageId = "_merged";
+    public const string MergedPackageId = Me3.Me3ModsLayout.MergedPackageId;
 
     private readonly Dictionary<string, MergeCandidate> _byPath;
 

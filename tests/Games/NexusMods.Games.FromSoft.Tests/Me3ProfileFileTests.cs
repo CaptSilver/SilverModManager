@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Installers;
 using NexusMods.Games.FromSoft.Me3;
@@ -16,11 +17,23 @@ public class Me3ProfileFileTests(ITestOutputHelper helper) : AEldenRingTest<Me3P
     private static SyncNode InLoadout() => new()
     {
         Loadout = new SyncNodePart { Hash = Hash.From(1UL), Size = Size.From(1), LastModifiedTicks = 0 },
+        Actions = Actions.ExtractToDisk,
     };
 
-    private static SyncNode OnDiskOnly() => new()
+    private static SyncNode Intrinsic() => new() { Actions = Actions.WriteIntrinsic };
+
+    private static SyncNode ToBeDeleted() => new()
     {
         Disk = new SyncNodePart { Hash = Hash.From(1UL), Size = Size.From(1), LastModifiedTicks = 0 },
+        Actions = Actions.DeleteFromDisk,
+    };
+
+    // Still in the loadout, but taken off disk because its only file went into a merge.
+    private static SyncNode MergedAway() => new()
+    {
+        Loadout = InLoadout().Loadout,
+        Disk = InLoadout().Loadout,
+        Actions = Actions.DeleteFromDisk,
     };
 
     private static GamePath Mods(string path) => new(LocationId.Me3Mods, path);
@@ -50,7 +63,7 @@ public class Me3ProfileFileTests(ITestOutputHelper helper) : AEldenRingTest<Me3P
         var tree = new Dictionary<GamePath, SyncNode>
         {
             { Mods("kept/parts/a.dcx"), InLoadout() },
-            { Mods("leftover/parts/b.dcx"), OnDiskOnly() },
+            { Mods("leftover/parts/b.dcx"), ToBeDeleted() },
             { new GamePath(LocationId.Game, "Game/eldenring.exe"), InLoadout() },
         };
 
@@ -58,6 +71,68 @@ public class Me3ProfileFileTests(ITestOutputHelper helper) : AEldenRingTest<Me3P
 
         var modsFolder = GameInstallation.Locations[LocationId.Me3Mods].Path;
         text.Should().Contain($"id = \"kept\"\npath = '{modsFolder}/kept/'").And.NotContain("leftover").And.NotContain("eldenring.exe");
+    }
+
+    [Fact]
+    public async Task APackageWhoseOnlyFileIsDeletedThisSyncIsNotListed()
+    {
+        var loadout = await CreateLoadout();
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            { Mods("merged-away/regulation.bin"), MergedAway() },
+            { Mods("kept/parts/a.dcx"), InLoadout() },
+        };
+
+        var text = await Write(loadout, tree);
+
+        text.Should().Contain("id = \"kept\"").And.NotContain("merged-away");
+    }
+
+    [Fact]
+    public async Task AGeneratedFileUnderTheModsFolderCountsAsOnDisk()
+    {
+        var loadout = await CreateLoadout();
+        var tree = new Dictionary<GamePath, SyncNode> { { Mods("_merged/regulation.bin"), Intrinsic() } };
+
+        var text = await Write(loadout, tree);
+
+        text.Should().Contain("id = \"_merged\"");
+    }
+
+    [Fact]
+    public async Task AFileToBeExtractedIsListedBeforeItIsOnDisk()
+    {
+        var loadout = await CreateLoadout();
+        var tree = new Dictionary<GamePath, SyncNode> { { Mods("fresh/parts/a.dcx"), InLoadout() } };
+
+        var text = await Write(loadout, tree);
+
+        text.Should().Contain("id = \"fresh\"");
+    }
+
+    [Fact]
+    public async Task AFileAlreadyOnDiskAndNotBeingDeletedStaysListed()
+    {
+        var loadout = await CreateLoadout();
+        var tree = new Dictionary<GamePath, SyncNode>
+        {
+            { Mods("same/parts/a.dcx"), new SyncNode { Disk = InLoadout().Loadout, Actions = Actions.DoNothing } },
+        };
+
+        var text = await Write(loadout, tree);
+
+        text.Should().Contain("id = \"same\"");
+    }
+
+    [Fact]
+    public async Task TheProfileOwnPathIsNeverAPackage()
+    {
+        var loadout = await CreateLoadout();
+        var tree = new Dictionary<GamePath, SyncNode> { { Mods("silver.me3"), Intrinsic() } };
+
+        var text = await Write(loadout, tree);
+
+        text.Should().NotContain("[[packages]]");
     }
 
     [Fact]

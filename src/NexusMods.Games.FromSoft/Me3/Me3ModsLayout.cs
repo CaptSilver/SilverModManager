@@ -15,6 +15,12 @@ public static class Me3ModsLayout
     /// </summary>
     public const string OverlayFolder = "overlay";
 
+    /// <summary>
+    /// The package that holds the files the app merges from several mods. The profile lists it after every other
+    /// package, so even a path a contributor still provides resolves to the merged file.
+    /// </summary>
+    public const string MergedPackageId = "_merged";
+
     /// <summary>The generated profile, at the root of the mods folder.</summary>
     public const string ProfileFileName = "silver.me3";
 
@@ -23,5 +29,7 @@ public static class Me3ModsLayout
 
     /// <summary>Whether a package of this id would collide with a folder the app uses itself.</summary>
     public static bool IsReservedPackageId(string id)
-        => id.Equals(NativesFolder, StringComparison.OrdinalIgnoreCase) || id.Equals(OverlayFolder, StringComparison.OrdinalIgnoreCase);
+        => id.Equals(NativesFolder, StringComparison.OrdinalIgnoreCase)
+           || id.Equals(OverlayFolder, StringComparison.OrdinalIgnoreCase)
+           || id.Equals(MergedPackageId, StringComparison.OrdinalIgnoreCase);
 }

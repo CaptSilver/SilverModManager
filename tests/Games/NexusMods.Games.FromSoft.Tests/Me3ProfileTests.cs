@@ -18,6 +18,9 @@ public class Me3ProfileTests
 
     private static string Render(params string[] files) => Me3Profile.Render(EldenRingSpec, files, Mods(), GameFolder());
 
+    private static string RenderWith(IReadOnlyDictionary<string, ulong> priorities, params string[] files)
+        => Me3Profile.Render(EldenRingSpec, files, Mods(), GameFolder(), priorities);
+
     [Fact]
     public void TheHeaderNamesTheProfileVersionAndTheGame()
     {
@@ -46,7 +49,7 @@ public class Me3ProfileTests
     }
 
     [Fact]
-    public void ThePackagesAreSortedByIdWhateverOrderTheFilesComeIn()
+    public void PackagesWithNoPriorityAreSortedByIdWhateverOrderTheFilesComeIn()
     {
         var text = Render("zebra/parts/z.dcx", "alpha/parts/a.dcx", "Mid/parts/m.dcx");
 
@@ -54,6 +57,54 @@ public class Me3ProfileTests
 
         ids.Should().Equal("Mid", "alpha", "zebra");
         text.Should().Contain("id = \"alpha\"\npath = '/data/EldenRing/1245620/mods/alpha/'\n");
+    }
+
+    [Fact]
+    public void PackagesAreListedInAscendingPriorityWhateverTheirNames()
+    {
+        var priorities = new Dictionary<string, ulong> { ["zzz"] = 1, ["alpha"] = 3, ["mid"] = 2 };
+
+        var text = RenderWith(priorities, "alpha/a.dcx", "mid/m.dcx", "zzz/z.dcx");
+
+        Parse(text).Packages.Select(p => p.Id).Should().Equal("zzz", "mid", "alpha");
+    }
+
+    [Fact]
+    public void PackagesWithEqualPriorityAreOrderedById()
+    {
+        var priorities = new Dictionary<string, ulong> { ["b"] = 2, ["a"] = 2 };
+
+        var text = RenderWith(priorities, "b/b.dcx", "a/a.dcx");
+
+        Parse(text).Packages.Select(p => p.Id).Should().Equal("a", "b");
+    }
+
+    [Fact]
+    public void APackageWithNoPriorityFollowsTheOnesWithAPriorityAndIsOrderedById()
+    {
+        var priorities = new Dictionary<string, ulong> { ["zzz"] = 5 };
+
+        var text = RenderWith(priorities, "zzz/z.dcx", "beta/b.dcx", "alpha/a.dcx");
+
+        Parse(text).Packages.Select(p => p.Id).Should().Equal("zzz", "alpha", "beta");
+    }
+
+    [Fact]
+    public void TheMergedPackageIsLastEvenWhenItsNameSortsBeforeOrAmongTheOthers()
+    {
+        var priorities = new Dictionary<string, ulong> { ["Upper"] = 1, ["lower"] = 9 };
+
+        var text = RenderWith(priorities, "lower/l.dcx", "_merged/regulation.bin", "Upper/u.dcx", "zzz/z.dcx");
+
+        Parse(text).Packages.Select(p => p.Id).Should().Equal("Upper", "lower", "zzz", Me3ModsLayout.MergedPackageId);
+    }
+
+    [Fact]
+    public void NoLoadAfterKeyIsWritten()
+    {
+        var text = RenderWith(new Dictionary<string, ulong> { ["a"] = 1, ["b"] = 2 }, "a/a.dcx", "b/b.dcx");
+
+        text.Should().NotContain("load_after").And.NotContain("load_before");
     }
 
     [Fact]

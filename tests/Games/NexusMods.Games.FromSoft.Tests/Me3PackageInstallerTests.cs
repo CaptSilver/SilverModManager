@@ -130,6 +130,8 @@ public class Me3PackageInstallerTests(ITestOutputHelper outputHelper) : AEldenRi
     [InlineData("Natives.zip")]
     [InlineData("overlay.zip")]
     [InlineData("OVERLAY.zip")]
+    [InlineData("_merged.zip")]
+    [InlineData("_MERGED.zip")]
     public async Task AnArchiveWhoseNameIsAFolderTheLoaderGivesAMeaningIsNotSupported(string archiveName)
     {
         var archive = await AddNamed(archiveName, "parts/wp_a.dcx");

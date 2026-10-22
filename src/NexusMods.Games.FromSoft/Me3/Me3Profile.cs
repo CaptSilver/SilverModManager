@@ -33,12 +33,18 @@ public static class Me3Profile
     /// <param name="gameFolder">
     /// The game's folder. An overlay native is named inside it, a path that exists only inside the session's overlay.
     /// </param>
+    /// <param name="priorities">
+    /// Each package's loadout priority. Packages are listed in ascending priority, because me3 lets the last package
+    /// that provides a path win, which makes its winner the loadout's winner. A package with no entry follows those
+    /// with one, and ties and unlisted packages fall back to the id.
+    /// </param>
     /// <exception cref="InvalidOperationException">A native mod's folder has no single DLL to load.</exception>
-    public static string Render(Me3ProfileSpec spec, IEnumerable<string> relativePaths, AbsolutePath modsFolder, AbsolutePath gameFolder)
+    public static string Render(Me3ProfileSpec spec, IEnumerable<string> relativePaths, AbsolutePath modsFolder, AbsolutePath gameFolder, IReadOnlyDictionary<string, ulong>? priorities = null)
     {
         var packages = new SortedSet<string>(StringComparer.Ordinal);
         var nativeFiles = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
         var overlayNatives = new HashSet<Me3OverlayNative>();
+        var hasMerged = false;
 
         foreach (var path in relativePaths)
         {
@@ -60,11 +66,23 @@ public static class Me3Profile
                 if (!nativeFiles.TryGetValue(native[0], out var files)) nativeFiles.Add(native[0], files = []);
                 files.Add(native[1]);
             }
+            else if (top.Equals(Me3ModsLayout.MergedPackageId, StringComparison.Ordinal))
+            {
+                hasMerged = true;
+            }
             else
             {
                 packages.Add(top);
             }
         }
+
+        var ordered = packages
+            .OrderBy(id => priorities is not null && priorities.ContainsKey(id) ? 0 : 1)
+            .ThenBy(id => priorities is not null && priorities.TryGetValue(id, out var priority) ? priority : 0UL)
+            .ThenBy(id => id, StringComparer.Ordinal)
+            .ToList();
+        // Not part of the ordering above: the ordinal comparison puts '_' between the upper and lower case letters.
+        if (hasMerged) ordered.Add(Me3ModsLayout.MergedPackageId);
 
         var nativePaths = new List<string>();
         foreach (var native in spec.OverlayNatives.Where(overlayNatives.Contains))
@@ -76,7 +94,7 @@ public static class Me3Profile
             nativePaths.Add((modsFolder / Me3ModsLayout.NativesFolder / id / dll).ToString());
         }
 
-        var modded = packages.Count > 0 || nativePaths.Count > 0;
+        var modded = ordered.Count > 0 || nativePaths.Count > 0;
         var text = new StringBuilder();
         text.Append("profileVersion = \"v1\"\n");
         if (modded && spec.ModdedSave is not null && !overlayNatives.Any(native => native.OwnsSave))
@@ -86,7 +104,7 @@ public static class Me3Profile
         foreach (var nativePath in nativePaths)
             text.Append($"\n[[natives]]\npath = {TomlString(nativePath)}\n");
 
-        foreach (var id in packages)
+        foreach (var id in ordered)
             text.Append($"\n[[{PackageTableKey}]]\nid = {BasicString(id)}\npath = {TomlString($"{modsFolder}/{id}/")}\n");
 
         return text.ToString();
