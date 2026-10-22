@@ -414,6 +414,38 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
     }
 
+    /// <summary>
+    /// Lets a game change what the generic mapping decided, once every node's <see cref="SyncNode.Actions"/> is
+    /// set. A game uses it to keep a loadout file off disk without that reading as the user deleting it.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ProcessSyncTree"/> also runs for <see cref="ShouldSynchronize"/> and
+    /// <see cref="LoadoutToDiskDiff"/>, which have no loadout in hand and run on every refresh, so an override
+    /// has to stay cheap and must not read file bytes. Assign a node's actions as a whole rather than clearing
+    /// flags: a node left with no action must be <see cref="Actions.DoNothing"/> (bit 0), because a node whose
+    /// flags were merely cleared is 0, which <see cref="ShouldSynchronize"/> counts as pending work forever.
+    /// Nodes for intrinsic files are added by <see cref="BuildSyncTree{T}"/> with <c>Loadout</c> left at its
+    /// default and a <see cref="SyncNode.SourceItemType"/> of <see cref="LoadoutSourceItemType.Intrinsic"/>;
+    /// an override can tell them from loadout files by that.
+    /// </remarks>
+    protected virtual void AdjustActions(Dictionary<GamePath, SyncNode> tree) { }
+
+    /// <summary>
+    /// Lets a game refuse to apply a loadout before anything is written. It runs at the start of
+    /// <see cref="Synchronize"/>, ahead of the locator id update and the re-index (both write to the database)
+    /// and ahead of the loadout switch, which would otherwise deactivate the previous loadout and reset the game
+    /// before <see cref="PreflightActions"/> got the chance to refuse. Throw to refuse.
+    /// </summary>
+    protected virtual Task PreflightLoadout(Loadout.ReadOnly loadout) => Task.CompletedTask;
+
+    /// <summary>
+    /// Lets a game refuse a set of actions before the first one runs, for example when it cannot produce a
+    /// generated file. Runs in both <see cref="RunActions(Dictionary{GamePath, SyncNode}, Loadout.ReadOnly, SynchronizeLoadoutJob?)"/>
+    /// and the game installation overload (which passes no loadout), after the never-written paths are taken
+    /// off the tree and before any write. An exception propagates and leaves disk and database untouched.
+    /// </summary>
+    protected virtual Task PreflightActions(Dictionary<GamePath, SyncNode> tree, Loadout.ReadOnly? loadout) => Task.CompletedTask;
+
     /// <inheritdoc />
     public void ProcessSyncTree(Dictionary<GamePath, SyncNode> tree)
     {
@@ -443,6 +475,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             if (item.HaveDisk && item.HavePrevious && item.Disk.Hash != item.Previous.Hash && GamePathFilter.ShouldFilter(path))
                 item.Actions = Actions.ForgetDiskState;
         }
+
+        AdjustActions(tree);
     }
 
     /// <inheritdoc />
@@ -451,6 +485,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         await Preflight(loadout.InstallationInstance);
         RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
+        await PreflightActions(syncTree, loadout);
         ProbeWritableRoots(syncTree, loadout.InstallationInstance.Locations);
 
         using var _ = await _lock.LockAsync();
@@ -672,6 +707,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         await Preflight(gameInstallation);
         RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
+        await PreflightActions(syncTree, null);
         ProbeWritableRoots(syncTree, gameInstallation.Locations);
 
         using var _ = await _lock.LockAsync();
@@ -943,6 +979,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         await Preflight(loadout.InstallationInstance);
 
         loadout = loadout.Rebase();
+
+        // After the rebase so a game judges the loadout as it is now, not the snapshot the caller held.
+        await PreflightLoadout(loadout);
         
         // Update locator IDs before building the sync tree
         loadout = await UpdateLocatorIds(loadout);
