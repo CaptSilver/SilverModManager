@@ -1,0 +1,76 @@
+using System.IO.Compression;
+using System.Text;
+using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Games;
+using NexusMods.Abstractions.Library.Installers;
+using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.TestFramework;
+using NexusMods.Games.Unity.BepInEx;
+using NexusMods.Paths;
+using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Library;
+using NexusMods.StandardGameLocators.TestHelpers;
+
+namespace NexusMods.Games.Unity.Tests.Fixtures;
+
+/// <summary>Runs the loader pack installer on a test archive and reports where its files would land.</summary>
+public abstract class AUnityInstallerTests<TTest>(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<TTest, TestUnityGame>(outputHelper)
+{
+    protected override IServiceCollection AddServices(IServiceCollection services)
+    {
+        return base.AddServices(services)
+            .AddGame<TestUnityGame>()
+            .AddUniversalGameLocator<TestUnityGame>(new Version("1.0"));
+    }
+
+    /// <summary>
+    /// Like <c>AddFromPaths</c> but the zip keeps the given file name, so the library item's name is known. A path
+    /// ending in a slash becomes an empty folder entry.
+    /// </summary>
+    protected async Task<LibraryArchive.ReadOnly> AddFromPathsNamed(string archiveFileName, params string[] paths)
+    {
+        var archivePath = TemporaryFileManager.CreateFolder().Path / archiveFileName;
+        await using (var archiveStream = archivePath.Create())
+        {
+            using var zip = new ZipArchive(archiveStream, ZipArchiveMode.Create);
+            foreach (var path in paths)
+            {
+                var entry = zip.CreateEntry(path);
+                if (path.EndsWith('/')) continue;
+
+                await using var stream = entry.Open();
+                await stream.WriteAsync(Encoding.UTF8.GetBytes(path));
+            }
+        }
+
+        return await RegisterLocalArchive(archivePath);
+    }
+
+    protected BepInExPackInstaller PackInstaller => Game.LibraryItemInstallers.OfType<BepInExPackInstaller>().Single();
+
+    /// <summary>Runs the pack installer without committing when it refuses; the targets are "Location:path".</summary>
+    protected async Task<(InstallerResult Result, string[] Targets)> TryInstallPack(LibraryArchive.ReadOnly archive)
+    {
+        var loadout = await CreateLoadout();
+
+        using var tx = Connection.BeginTransaction();
+        var libraryItem = archive.AsLibraryFile().AsLibraryItem();
+        var group = new LoadoutItemGroup.New(tx, out var groupId)
+        {
+            IsGroup = true,
+            LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = libraryItem.Name, LoadoutId = loadout },
+        };
+
+        var result = await PackInstaller.ExecuteAsync(libraryItem, group, tx, loadout, CancellationToken.None);
+        if (!result.IsSuccess) return (result, []);
+
+        var committed = await tx.Commit();
+        var targets = committed.Remap(group).Children
+            .Select(child => child.TryGetAsLoadoutItemWithTargetPath(out var item) ? (GamePath)item.TargetPath : throw new InvalidOperationException("The child should have a target path."))
+            .Select(path => $"{path.LocationId}:{path.Path}")
+            .ToArray();
+        return (result, targets);
+    }
+
+    protected static string OnGame(string path) => $"{LocationId.Game}:{path}";
+}
