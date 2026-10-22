@@ -40,7 +40,7 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
         SourceItemType = LoadoutSourceItemType.Game,
     };
 
-    private static IPluginListFormat Mechanism(string marker) => marker == "*" ? (IPluginListFormat)new AsteriskMechanism() : new PlainFormat();
+    private static IPluginListCodec Mechanism(string marker) => marker == "*" ? (IPluginListCodec)new AsteriskMechanism() : new PlainFormat();
 
     private async Task<string> Write(string marker)
     {

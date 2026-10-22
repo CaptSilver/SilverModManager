@@ -68,11 +68,19 @@ public sealed class TimestampMechanism : IPluginListMechanism
 
         var active = PlainPluginList.Parse(await file.ReadAllTextAsync()).Select(e => e.Name).ToHashSet(PluginNameComparer.Instance);
 
-        var data = locations.ToAbsolutePath(game.DataPath);
+        return OrderedByTime(game, installation, active);
+    }
+
+    /// <summary>
+    /// Every plugin in the game's Data folder in the order the game loads them: by time, with the file name
+    /// settling a tie (libloadorder timestamp_based.rs). <paramref name="active"/> is what the game's list switches on.
+    /// </summary>
+    internal static GamePluginListState OrderedByTime(ICreationEngineGame game, GameInstallation installation, ISet<string> active)
+    {
+        var data = installation.Locations.ToAbsolutePath(game.DataPath);
         var dataFiles = data.DirectoryExists() ? data.EnumerateFiles().ToList() : [];
         active.UnionWith(game.ImplicitlyActivePlugins(dataFiles.Select(f => f.FileName)));
 
-        // The game sorts by time and the file name settles a tie (libloadorder timestamp_based.rs).
         var entries = dataFiles
             .Where(f => game.PluginExtensions.Contains(f.Extension))
             .Select(f => (Name: f.FileName, Mtime: f.FileInfo.LastWriteTimeUtc))

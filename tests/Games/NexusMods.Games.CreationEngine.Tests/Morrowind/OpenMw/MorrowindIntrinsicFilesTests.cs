@@ -2,7 +2,7 @@ using FluentAssertions;
 using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Sdk.Games;
 using Xunit;
 
@@ -34,34 +34,54 @@ public abstract class AMorrowindIntrinsicFilesTest<TTest>(ITestOutputHelper help
     }
 }
 
-/// <summary>No openmw.cfg anywhere: the game has no OpenMW location and offers no intrinsic file.</summary>
+/// <summary>No openmw.cfg anywhere: the game has no OpenMW location and offers Morrowind.ini alone.</summary>
 public class MorrowindWithoutOpenMwTests(ITestOutputHelper helper) : AMorrowindIntrinsicFilesTest<MorrowindWithoutOpenMwTests>(helper)
 {
     protected override int[] RootsWithConfig => [];
 
     [Fact]
-    public async Task OffersNoIntrinsicFileAndHasNoLocation()
+    public async Task OffersTheIniAndHasNoLocation()
     {
-        (await OfferedFiles()).Should().BeEmpty();
+        (await OfferedFiles()).Should().BeEquivalentTo([new GamePath(LocationId.Game, "Morrowind.ini")]);
         GameInstallation.Locations.ContainsKey(OpenMwConfig).Should().BeFalse();
     }
+
+    [Fact]
+    public void KeepsTheIniMechanismAndReadsTheMasterFlag()
+    {
+        Game.PluginList(GameInstallation).Should().BeOfType<MorrowindIniMechanism>().Which.OrdersByTimestamp.Should().BeTrue();
+        Game.MasterFlagIgnored(GameInstallation).Should().BeFalse();
+    }
+
+    [Fact]
+    public void LoadsNothingEarly() => Game.EarlyLoadingPlugins(GameInstallation).Should().BeEmpty();
 
     [Fact]
     public async Task EmitsNoDiagnostic() => (await Diagnose()).Should().BeEmpty();
 }
 
-/// <summary>One openmw.cfg: its folder is the location and the file is offered, and nothing else under it is.</summary>
+/// <summary>One openmw.cfg: its folder is the location and the file is offered with Morrowind.ini, and nothing else under it is.</summary>
 public class MorrowindWithOpenMwTests(ITestOutputHelper helper) : AMorrowindIntrinsicFilesTest<MorrowindWithOpenMwTests>(helper)
 {
     protected override int[] RootsWithConfig => [1];
 
     [Fact]
-    public async Task OffersExactlyTheConfigFile()
+    public async Task OffersTheConfigFileAndTheIni()
     {
-        (await OfferedFiles()).Should().BeEquivalentTo([new GamePath(OpenMwConfig, "openmw.cfg")]);
+        (await OfferedFiles()).Should().BeEquivalentTo([new GamePath(OpenMwConfig, "openmw.cfg"), new GamePath(LocationId.Game, "Morrowind.ini")]);
         GameInstallation.Locations[OpenMwConfig].Path.Should().Be(Roots.Candidates[1]);
         (await Diagnose()).Should().BeEmpty();
     }
+
+    [Fact]
+    public void UsesTheOpenMwMechanismAndIgnoresTheMasterFlag()
+    {
+        Game.PluginList(GameInstallation).Should().BeOfType<OpenMwMechanism>();
+        Game.MasterFlagIgnored(GameInstallation).Should().BeTrue();
+    }
+
+    [Fact]
+    public void BuiltInScriptsLoadEarly() => Game.EarlyLoadingPlugins(GameInstallation).Should().Equal("builtin.omwscripts");
 
     [Theory]
     [InlineData("settings.cfg", true)]
@@ -80,7 +100,7 @@ public class MorrowindWithTwoOpenMwConfigsTests(ITestOutputHelper helper) : AMor
     [Fact]
     public async Task HasNoLocationAndNamesBothPaths()
     {
-        (await OfferedFiles()).Should().BeEmpty();
+        (await OfferedFiles()).Should().BeEquivalentTo([new GamePath(LocationId.Game, "Morrowind.ini")]);
         GameInstallation.Locations.ContainsKey(OpenMwConfig).Should().BeFalse();
 
         var diagnostic = (await Diagnose()).Should().ContainSingle().Subject;

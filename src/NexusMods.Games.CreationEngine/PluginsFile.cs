@@ -21,12 +21,13 @@ namespace NexusMods.Games.CreationEngine;
 /// <summary>
 /// The plugin list file of a game that keeps one as text. The plugins come from the sync tree, their order and
 /// on/off switches from the loadout's plugin sort order; this only renders them and never writes to the database.
-/// A game can have several such files (plugins.txt beside loadorder.txt), each in its own <see cref="IPluginListFormat"/>.
+/// A game can have several such files (plugins.txt beside loadorder.txt), each in its own <see cref="IPluginListCodec"/>.
+/// A codec that rewrites an existing file (Morrowind.ini, openmw.cfg) gets the current file to work on.
 /// </summary>
 public class PluginsFile : IIntrinsicFile
 {
     private readonly ICreationEngineGame _game;
-    private readonly IPluginListFormat _format;
+    private readonly IPluginListCodec _codec;
     private readonly bool _comparesWithGame;
     private readonly ILogger<PluginsFile> _logger;
 
@@ -37,10 +38,10 @@ public class PluginsFile : IIntrinsicFile
     /// Whether Ingest compares the game's copy and records what differs. A file that cannot carry the switches
     /// (loadorder.txt) leaves it to the file that can, since both would write the same notice.
     /// </param>
-    public PluginsFile(ILogger<PluginsFile> logger, ICreationEngineGame game, IPluginListFormat format, GamePath? path = null, bool comparesWithGame = true)
+    public PluginsFile(ILogger<PluginsFile> logger, ICreationEngineGame game, IPluginListCodec codec, GamePath? path = null, bool comparesWithGame = true)
     {
         _game = game;
-        _format = format;
+        _codec = codec;
         _comparesWithGame = comparesWithGame;
         Path = path ?? game.PluginsFile;
         _logger = logger;
@@ -74,10 +75,32 @@ public class PluginsFile : IIntrinsicFile
         IReadOnlyDictionary<GamePath, SyncNode> syncTree)
     {
         var listed = await Expected(installation, earlyLoaders, rows, syncTree);
-        await using var writer = new StreamWriter(stream, leaveOpen: true);
-        await writer.WriteAsync(_format.Render(listed));
+        var (existing, bom) = _codec.RewritesExisting ? await ReadExisting(installation) : ("", []);
+
+        var dataPlugins = syncTree.Keys.Where(IsPluginPath).Select(path => path.FileName.ToString()).ToHashSet(PluginNameComparer.Instance);
+        var text = _codec.Render(listed, new PluginListTarget(existing, dataPlugins));
+
+        await stream.WriteAsync(bom);
+        await using var writer = new StreamWriter(stream, _codec.Encoding, leaveOpen: true);
+        await writer.WriteAsync(text);
         await writer.FlushAsync();
     }
+
+    private static readonly byte[] Utf8Bom = Encoding.UTF8.GetPreamble();
+
+    /// <summary>The text of the file now on disk, and the byte order mark it started with so a rewrite can keep it.</summary>
+    private async Task<(string Text, byte[] Bom)> ReadExisting(GameInstallation installation)
+    {
+        var onDisk = installation.Locations.ToAbsolutePath(Path);
+        if (!onDisk.FileExists) return ("", []);
+
+        var bytes = await onDisk.ReadAllBytesAsync();
+        var hasBom = bytes.AsSpan().StartsWith(Utf8Bom);
+        return (_codec.Encoding.GetString(bytes.AsSpan(hasBom ? Utf8Bom.Length : 0)), hasBom ? Utf8Bom : []);
+    }
+
+    private bool IsPluginPath(GamePath path) =>
+        path.Parent == _game.DataPath && (KnownCEExtensions.PluginFiles.Contains(path.Extension) || _game.PluginExtensions.Contains(path.Extension));
 
     /// <summary>
     /// The plugin list the app wants on disk: every plugin of the sync tree in load order, with its switch.
@@ -93,7 +116,7 @@ public class PluginsFile : IIntrinsicFile
         List<string> unreadable = [];
         foreach (var entry in syncTree)
         {
-            if (entry.Key.Parent != _game.DataPath || !KnownCEExtensions.PluginFiles.Contains(entry.Key.Extension)) continue;
+            if (!IsPluginPath(entry.Key)) continue;
             if (!entry.Value.HaveLoadout) continue;
 
             if (await MakeMetadata(entry) is { } found)
@@ -179,12 +202,12 @@ public class PluginsFile : IIntrinsicFile
         if (variety.GetSortOrderIdFor(loadout.LoadoutId, loadout.Db) is not { HasValue: true } found) return;
 
         string text;
-        using (var reader = new StreamReader(stream, leaveOpen: true))
+        using (var reader = new StreamReader(stream, _codec.Encoding, leaveOpen: true))
             text = await reader.ReadToEndAsync();
 
         var installation = loadout.InstallationInstance;
         var expected = await Expected(installation, _game.EarlyLoadingPlugins(installation), variety.StoredOrder(loadout), syncTree);
-        var difference = PluginListDifference.Between(expected, _format.Parse(text));
+        var difference = PluginListDifference.Between(expected, _codec.Parse(text));
 
         PluginListNotices.Stage(loadout.Db, found.Value, difference.IsEmpty ? null : difference.Summary(), DateTimeOffset.UtcNow, tx);
     }

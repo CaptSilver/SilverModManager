@@ -71,7 +71,7 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     public bool IsUpdate(PluginHeader header) => PluginFlags.IsUpdate(header, IsStarfield);
     public bool IsBlueprint(PluginHeader header) => PluginFlags.IsBlueprint(header, IsStarfield);
 
-    public IReadOnlyList<string> EarlyLoadingPlugins(GameInstallation installation)
+    public virtual IReadOnlyList<string> EarlyLoadingPlugins(GameInstallation installation)
     {
         var names = new List<string>(HardcodedPlugins);
         foreach (var candidate in new[] { CreationClubListFile, FallbackCreationClubListFile })
@@ -124,7 +124,7 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         return ordered.Select((o, i) => (o.Path, times[i])).ToList();
     }
 
-    public async ValueTask<PluginHeader?> ParsePlugin(Hash hash, RelativePath? name = null)
+    public virtual async ValueTask<PluginHeader?> ParsePlugin(Hash hash, RelativePath? name = null)
     {
         await using var stream = await _streamSource.OpenAsync(hash);
         if (stream is null) return null;

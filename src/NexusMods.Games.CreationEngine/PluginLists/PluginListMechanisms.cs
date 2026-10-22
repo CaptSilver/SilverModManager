@@ -11,10 +11,10 @@ using NexusMods.Sdk.Loadouts;
 namespace NexusMods.Games.CreationEngine.PluginLists;
 
 /// <summary>Active plugins are prefixed with <c>*</c> and unmarked ones are inactive (Skyrim SE, Fallout 4 and newer).</summary>
-public sealed class AsteriskMechanism : IPluginListMechanism, IPluginListFormat
+public sealed class AsteriskMechanism : IPluginListMechanism, IPluginListCodec
 {
     // The game loads its early loaders without being told, so the file leaves them out.
-    public string Render(IEnumerable<PluginListEntry> entries) => AsteriskPluginList.Render(entries, writeEarlyLoaders: false);
+    public string Render(IEnumerable<PluginListEntry> entries, PluginListTarget target) => AsteriskPluginList.Render(entries, writeEarlyLoaders: false);
 
     public IReadOnlyList<PluginListEntry> Parse(string text) => AsteriskPluginList.Parse(text);
 

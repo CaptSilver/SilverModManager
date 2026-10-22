@@ -53,7 +53,7 @@ public class PluginsFileOrderingTests
 
     private static async Task<string[]> Lines(
         ICreationEngineGame game,
-        IPluginListFormat mechanism,
+        IPluginListCodec mechanism,
         string[] tree,
         PluginSortData[] rows,
         params string[] earlyLoaders)

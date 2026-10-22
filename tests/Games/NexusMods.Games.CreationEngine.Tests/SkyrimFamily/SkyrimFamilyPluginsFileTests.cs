@@ -82,7 +82,7 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
     {
         var bytes = BethesdaPluginBytes.Bytes(release, "A.esp", "Skyrim.esm");
         var game = Reading(type, bytes, out var hash);
-        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, marker == "*" ? (IPluginListFormat)new AsteriskMechanism() : new PlainFormat());
+        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, marker == "*" ? (IPluginListCodec)new AsteriskMechanism() : new PlainFormat());
         var tree = new Dictionary<GamePath, SyncNode>
         {
             [new GamePath(LocationId.Game, "Data/A.esp")] = new()

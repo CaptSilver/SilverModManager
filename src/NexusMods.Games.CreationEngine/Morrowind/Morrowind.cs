@@ -3,8 +3,11 @@ using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.CreationEngine.Morrowind.OpenMw;
+using NexusMods.Games.CreationEngine.PluginLists;
+using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -13,18 +16,21 @@ namespace NexusMods.Games.CreationEngine.Morrowind;
 
 /// <summary>
 /// Morrowind keeps everything in the game folder: mods go into "Data Files", and Morrowind.ini and Saves sit
-/// next to the executable. Its plugin list is the [Game Files] section of Morrowind.ini; no reader for that
-/// exists yet, so Apply does not write that list.
+/// next to the executable. Its plugin list is the [Game Files] section of Morrowind.ini, and the game loads the
+/// plugins in the order of their file times.
 /// </summary>
 /// <remarks>
 /// OpenMW reads its load order from an openmw.cfg on the host. When one is found, its folder becomes the
-/// <see cref="OpenMwConfig"/> location and Apply rewrites the <c>content=</c> lines it owns (see
-/// <see cref="OpenMwConfigFile"/>); nothing else under that folder is indexed.
+/// <see cref="OpenMwConfig"/> location, openmw.cfg decides the order the app starts from, and Apply rewrites
+/// the <c>content=</c> lines it owns in the app's order (see <see cref="OpenMwMechanism"/>); nothing else under
+/// that folder is indexed. Morrowind.ini is written either way.
 /// </remarks>
-public class Morrowind(IServiceProvider provider) : ABethesdaGame<Morrowind>(provider), IGameData<Morrowind>
+public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowind>(provider), IGameData<Morrowind>, ITimestampOrderedGame
 {
     /// <summary>The folder that holds the user's openmw.cfg, present only when exactly one is found.</summary>
     public static readonly LocationId OpenMwConfig = LocationId.From("OpenMwConfig");
+
+    public static readonly GamePath OpenMwConfigFile = new(OpenMwConfig, OpenMwConfigLocation.FileName);
 
     private readonly IOpenMwConfigRoots _openMwConfigRoots = provider.GetRequiredService<IOpenMwConfigRoots>();
 
@@ -38,6 +44,57 @@ public class Morrowind(IServiceProvider provider) : ABethesdaGame<Morrowind>(pro
         // https://www.gogdb.org/product/1435828767 (The Elder Scrolls III: Morrowind GOTY Edition)
         GOGProductIds = [1435828767L],
     };
+
+    public override PluginFormat HeaderFormat => PluginFormat.Tes3;
+    public override GamePath PluginsFile => new(LocationId.Game, "Morrowind.ini");
+
+    public override IPluginListMechanism PluginList(GameInstallation installation) =>
+        installation.Locations.ContainsKey(OpenMwConfig) ? OpenMw : Ini;
+
+    private static readonly MorrowindIniMechanism Ini = new();
+    private static readonly OpenMwMechanism OpenMw = new();
+
+    // libloadorder game_settings.rs hardcoded_plugins: none for Morrowind. OpenMW's early loaders come from its config.
+    public override IReadOnlyList<string> HardcodedPlugins => [];
+
+    // OpenMW loads plugins in the order of its content= lines and ignores the master flag
+    // (libloot plugin/mod.rs is_master_file), so the flag only counts for the original game.
+    public override bool MasterFlagIgnored(GameInstallation installation) => installation.Locations.ContainsKey(OpenMwConfig);
+
+    /// <summary>
+    /// With OpenMW, <c>builtin.omwscripts</c>, which OpenMW always loads first (libloadorder game_settings.rs,
+    /// early_loading_plugins).
+    /// </summary>
+    /// <remarks>
+    /// libloadorder also counts the content of the configs loaded before the user's openmw.cfg, chiefly the
+    /// system-wide one. The app only knows where the user's own file is, so that content is not read. A config the
+    /// user's file chains to with <c>config=</c> loads after it, so its content is not early either.
+    /// </remarks>
+    public override IReadOnlyList<string> EarlyLoadingPlugins(GameInstallation installation)
+    {
+        var early = base.EarlyLoadingPlugins(installation);
+        if (!installation.Locations.ContainsKey(OpenMwConfig)) return early;
+
+        return early.Append(BuiltInScripts).Distinct(PluginNameComparer.Instance).ToList();
+    }
+
+    private const string BuiltInScripts = "builtin.omwscripts";
+
+    // OpenMW's plugin and Lua script formats load like .esp.
+    public override Extension[] PluginExtensions =>
+    [
+        KnownCEExtensions.ESM, KnownCEExtensions.ESP,
+        KnownCEExtensions.OMWAddon, KnownCEExtensions.OMWGame, KnownCEExtensions.OMWScripts,
+    ];
+
+    // A .omwscripts file is a text list of Lua scripts, with no header record to read.
+    public override ValueTask<PluginHeader?> ParsePlugin(Hash hash, RelativePath? name = null) =>
+        name is { } file && file.Extension == KnownCEExtensions.OMWScripts
+            ? ValueTask.FromResult<PluginHeader?>(new PluginHeader(file.FileName.ToString(), [], 0, null, null, null, null, HeaderFormat))
+            : base.ParsePlugin(hash, name);
+
+    public Task<IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)>> PluginTimestamps(Loadout.ReadOnly loadout, IReadOnlyDictionary<GamePath, SyncNode> syncTree) =>
+        PlanPluginTimestamps(loadout, syncTree);
 
     protected override RelativePath PrimaryExe => "Morrowind.exe";
 
@@ -74,16 +131,6 @@ public class Morrowind(IServiceProvider provider) : ABethesdaGame<Morrowind>(pro
         return OpenMwConfigLocation.Locate(_openMwConfigRoots, fileSystem) is OpenMwConfigLocation.One one
             ? locations.Add(OpenMwConfig, one.Folder)
             : locations;
-    }
-
-    public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout, IServiceProvider provider)
-    {
-        var files = base.IntrinsicFiles(loadout, provider);
-        if (!loadout.IsValid() || !loadout.InstallationInstance.Locations.ContainsKey(OpenMwConfig)) return files;
-
-        var config = new OpenMwConfigFile(this);
-        files[config.Path] = config;
-        return files;
     }
 
     protected override IEnumerable<IDiagnosticEmitter> CreateEmitters(IServiceProvider provider) =>
