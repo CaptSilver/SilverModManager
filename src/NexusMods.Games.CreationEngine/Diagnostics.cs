@@ -106,4 +106,24 @@ Remove or rename the openmw.cfg of the OpenMW you do not use, then reopen the ap
             .AddValue<string>("FlatpakPath")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate TestFileEntries = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 5))
+        .WithTitle("Game ini sets test files")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{IniKeys} set in the game's ini, so the game ignores its plugin list")
+        .WithDetails("""
+The game's ini sets **{IniKeys}**. When a test file is set, the game stops reading Plugins.txt (and the Creation Club
+list, where it has one) and loads the plugins named there instead, so the load order shown in the app does not decide what loads.
+
+The app does not model this. Remove the entries from the ini to use the load order, or leave them if you set them
+on purpose.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("IniKeys")
+        )
+        .Finish();
 }

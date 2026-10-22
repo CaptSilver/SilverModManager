@@ -200,7 +200,7 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
         diagnostics.Should().BeEmpty();
     }
 
-    private PluginsFile NewPluginsFile() => new(NullLogger<PluginsFile>.Instance, Creation, ServiceProvider.GetRequiredService<ISorter>());
+    private PluginsFile NewPluginsFile() => new(NullLogger<PluginsFile>.Instance, Creation, ServiceProvider.GetRequiredService<ISorter>(), "*");
 
     [Fact]
     public async Task PluginsFile_SortsAPluginAfterAMasterNamedInADifferentCase()

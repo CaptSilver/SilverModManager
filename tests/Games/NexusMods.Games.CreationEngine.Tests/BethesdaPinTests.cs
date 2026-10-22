@@ -26,8 +26,16 @@ public class BethesdaPinTests(IServiceProvider serviceProvider)
     [Fact]
     public void EmittersAreTheMissingMasterCheckThenTheProtonPrefixCheck()
     {
-        foreach (var game in Titles)
-            game.DiagnosticEmitters.Select(e => e.GetType()).Should().Equal(typeof(MissingMasterEmitter), typeof(ProtonPrefixEmitter));
+        GameOf<CreationEngine.SkyrimSE.SkyrimSE>().DiagnosticEmitters.Select(e => e.GetType())
+            .Should().Equal(typeof(MissingMasterEmitter), typeof(ProtonPrefixEmitter));
+    }
+
+    // Fallout 4 reads sTestFile entries from its ini, so it has one more check than Skyrim SE.
+    [Fact]
+    public void Fallout4AlsoChecksTheIniForTestFiles()
+    {
+        GameOf<CreationEngine.Fallout4.Fallout4>().DiagnosticEmitters.Select(e => e.GetType())
+            .Should().Equal(typeof(MissingMasterEmitter), typeof(TestFileEntriesEmitter), typeof(ProtonPrefixEmitter));
     }
 
     [Fact]

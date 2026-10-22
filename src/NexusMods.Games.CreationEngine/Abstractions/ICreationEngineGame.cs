@@ -1,5 +1,6 @@
 using NexusMods.Abstractions.Games;
 using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
@@ -15,8 +16,47 @@ public interface ICreationEngineGame : IBethesdaGame
 {
     public GamePath PluginsFile { get; }
 
-    /// <summary>How <see cref="PluginsFile"/> marks an active plugin.</summary>
-    public PluginListFormat PluginListFormat { get; }
+    /// <summary>The header layout this game's plugins use.</summary>
+    public PluginFormat HeaderFormat { get; }
+
+    /// <summary>
+    /// How this game keeps its load order. Takes the installation because a title may keep it in different
+    /// places depending on how it is installed.
+    /// </summary>
+    public IPluginListMechanism PluginList(GameInstallation installation);
+
+    /// <summary>Plugins the game loads whether or not any list names them, in load order.</summary>
+    public IReadOnlyList<string> HardcodedPlugins { get; }
+
+    /// <summary>The Creation Club list file, when the game has one. See <see cref="EarlyLoadingPlugins"/>.</summary>
+    public GamePath? CreationClubListFile { get; }
+
+    /// <summary>Ini files that can set <c>sTestFile1</c> to <c>sTestFile10</c>, ordered so that a later file overrides an earlier one.</summary>
+    public IReadOnlyList<GamePath> TestFileIniFiles { get; }
+
+    /// <summary>Plugin file extensions the game loads.</summary>
+    public Extension[] PluginExtensions { get; }
+
+    public bool SupportsLightPlugins { get; }
+
+    /// <summary>The game treats .esm and .esl files as masters whatever their flags say.</summary>
+    public bool MasterByExtension { get; }
+
+    /// <summary>The game never reads a master flag.</summary>
+    public bool MasterFlagIgnored(GameInstallation installation);
+
+    public bool IsMaster(PluginHeader header, GameInstallation installation);
+    public bool IsLight(PluginHeader header);
+    public bool IsMedium(PluginHeader header);
+    public bool IsUpdate(PluginHeader header);
+    public bool IsBlueprint(PluginHeader header);
+
+    /// <summary>
+    /// Plugins the game loads before any list: the hardcoded ones, then the Creation Club list. Case-insensitive
+    /// duplicates are dropped, keeping the first.
+    /// </summary>
+    public IReadOnlyList<string> EarlyLoadingPlugins(GameInstallation installation);
+
     /// <summary>
     /// Parse a plugin file. Reads only the header record of the file: its masters, flags and version
     /// </summary>

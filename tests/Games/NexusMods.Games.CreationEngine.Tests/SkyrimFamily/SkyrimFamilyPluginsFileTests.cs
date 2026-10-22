@@ -9,6 +9,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.Sdk.FileStore;
@@ -23,12 +24,12 @@ namespace NexusMods.Games.CreationEngine.Tests.SkyrimFamily;
 /// </summary>
 public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
 {
-    public static TheoryData<Type, GameRelease, string, PluginListFormat> Titles => new()
+    public static TheoryData<Type, GameRelease, string, string> Titles => new()
     {
-        { typeof(CreationEngine.SkyrimLE.SkyrimLE), GameRelease.SkyrimLE, "plugins.txt", PluginListFormat.Plain },
-        { typeof(CreationEngine.SkyrimVR.SkyrimVR), GameRelease.SkyrimVR, "plugins.txt", PluginListFormat.Star },
-        { typeof(CreationEngine.Enderal.Enderal), GameRelease.EnderalLE, "plugins.txt", PluginListFormat.Plain },
-        { typeof(CreationEngine.EnderalSE.EnderalSE), GameRelease.EnderalSE, "Plugins.txt", PluginListFormat.Star },
+        { typeof(CreationEngine.SkyrimLE.SkyrimLE), GameRelease.SkyrimLE, "plugins.txt", "" },
+        { typeof(CreationEngine.SkyrimVR.SkyrimVR), GameRelease.SkyrimVR, "plugins.txt", "*" },
+        { typeof(CreationEngine.Enderal.Enderal), GameRelease.EnderalLE, "plugins.txt", "" },
+        { typeof(CreationEngine.EnderalSE.EnderalSE), GameRelease.EnderalSE, "Plugins.txt", "*" },
     };
 
     public static TheoryData<Type, GameRelease> Releases => new()
@@ -62,12 +63,12 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
 
     [Theory]
     [MemberData(nameof(Titles))]
-    public void PluginsFileAndFormatAreTheTitlesOwn(Type type, GameRelease _, string file, PluginListFormat format)
+    public void PluginsFileAndFormatAreTheTitlesOwn(Type type, GameRelease _, string file, string marker)
     {
         var game = Registered(type);
 
         game.PluginsFile.Should().Be(new GamePath(LocationId.AppData, file));
-        game.PluginListFormat.Should().Be(format);
+        game.PluginList(null!).Should().BeOfType(marker == "*" ? typeof(AsteriskMechanism) : typeof(PlainMechanism));
         game.DataPath.Should().Be(new GamePath(LocationId.Game, "Data"));
     }
 
@@ -86,11 +87,11 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
 
     [Theory]
     [MemberData(nameof(Titles))]
-    public async Task WriteListsAPluginWithTheTitlesMarker(Type type, GameRelease release, string file, PluginListFormat format)
+    public async Task WriteListsAPluginWithTheTitlesMarker(Type type, GameRelease release, string file, string marker)
     {
         var bytes = BethesdaPluginBytes.Bytes(release, "A.esp", "Skyrim.esm");
         var game = Reading(type, bytes, out var hash);
-        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, serviceProvider.GetRequiredService<ISorter>());
+        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, serviceProvider.GetRequiredService<ISorter>(), marker);
         var tree = new Dictionary<GamePath, SyncNode>
         {
             [new GamePath(LocationId.Game, "Data/A.esp")] = new()
@@ -105,19 +106,19 @@ public class SkyrimFamilyPluginsFileTests(IServiceProvider serviceProvider)
         var lines = Encoding.UTF8.GetString(stream.ToArray()).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         plugins.Path.Should().Be(new GamePath(LocationId.AppData, file));
-        lines.Where(l => !l.StartsWith('#')).Should().Equal(format == PluginListFormat.Star ? "*A.esp" : "A.esp");
+        lines.Where(l => !l.StartsWith('#')).Should().Equal($"{marker}A.esp");
     }
 
     [Theory]
     [MemberData(nameof(Paths))]
-    public void TheSynchronizerOffersThePluginsFileAtTheTitlesPath(Type type, string file)
+    public void TheTitlesMechanismOffersThePluginsFileAtTheTitlesPath(Type type, string file)
     {
-        var game = (IGame)Registered(type);
+        var game = Registered(type);
 
-        var offered = ((ALoadoutSynchronizer)game.Synchronizer).IntrinsicFiles(default);
+        var offered = game.PluginList(null!).IntrinsicFiles(game, default, serviceProvider).ToList();
 
-        offered.Keys.Should().Equal(new GamePath(LocationId.AppData, file));
-        offered.Values.Single().Should().BeOfType<PluginsFile>();
+        offered.Select(f => f.Path).Should().Equal(new GamePath(LocationId.AppData, file));
+        offered.Single().Should().BeOfType<PluginsFile>();
     }
 
     [Theory]

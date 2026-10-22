@@ -1,6 +1,7 @@
 using DynamicData.Kernel;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 
@@ -19,8 +20,24 @@ public class Fallout4(IServiceProvider provider) : ACreationEngineGame<Fallout4>
     };
 
     protected override RelativePath PrimaryExe => "Fallout4.exe";
-    protected override PluginFormat HeaderFormat => PluginFormat.Tes4;
+    public override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override GamePath PluginsFile => Fallout4KnownPaths.PluginsFile;
+    public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
+    private static readonly IPluginListMechanism Mechanism = new AsteriskMechanism();
+    public override IReadOnlyList<string> HardcodedPlugins => [
+        "Fallout4.esm",
+        "DLCRobot.esm",
+        "DLCworkshop01.esm",
+        "DLCCoast.esm",
+        "DLCworkshop02.esm",
+        "DLCworkshop03.esm",
+        "DLCNukaWorld.esm",
+        "DLCUltraHighResolution.esm",
+    ];
+    public override bool SupportsLightPlugins => true;
+    public override bool MasterByExtension => true;
+    public override GamePath? CreationClubListFile => new(LocationId.Game, "Fallout4.ccc");
+    public override IReadOnlyList<GamePath> TestFileIniFiles => [new(LocationId.Preferences, "Fallout4.ini"), new(LocationId.Preferences, "Fallout4Custom.ini")];
 
     protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "Fallout4";
     protected override string MyGamesFolderName(GameLocatorResult gameLocatorResult) => "Fallout4";

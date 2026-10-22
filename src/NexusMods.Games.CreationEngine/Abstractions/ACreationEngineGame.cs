@@ -5,6 +5,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.CreationEngine.Emitters;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -28,11 +29,62 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         _streamSource = provider.GetRequiredService<IStreamSourceDispatcher>();
     }
 
-    /// <summary>The header layout this game's plugins use.</summary>
-    protected abstract PluginFormat HeaderFormat { get; }
+    public abstract PluginFormat HeaderFormat { get; }
 
     public abstract GamePath PluginsFile { get; }
-    public virtual PluginListFormat PluginListFormat => PluginListFormat.Star;
+    public abstract IPluginListMechanism PluginList(GameInstallation installation);
+
+    // libloadorder game_settings.rs: hardcoded_plugins.
+    public abstract IReadOnlyList<string> HardcodedPlugins { get; }
+
+    public virtual GamePath? CreationClubListFile => null;
+
+    /// <summary>A list file the game reads only when <see cref="CreationClubListFile"/> is absent from disk.</summary>
+    protected virtual GamePath? FallbackCreationClubListFile => null;
+
+    public virtual IReadOnlyList<GamePath> TestFileIniFiles => [];
+
+    public virtual Extension[] PluginExtensions => SupportsLightPlugins
+        ? [KnownCEExtensions.ESM, KnownCEExtensions.ESP, KnownCEExtensions.ESL]
+        : [KnownCEExtensions.ESM, KnownCEExtensions.ESP];
+
+    public virtual bool SupportsLightPlugins => false;
+    public virtual bool MasterByExtension => false;
+    public virtual bool MasterFlagIgnored(GameInstallation installation) => false;
+
+    /// <summary>Only Starfield lays its flag bits out differently, and needs the medium, update and blueprint kinds.</summary>
+    protected virtual bool IsStarfield => false;
+
+    public bool IsMaster(PluginHeader header, GameInstallation installation) =>
+        PluginFlags.IsMaster(header, MasterByExtension, MasterFlagIgnored(installation));
+
+    public bool IsLight(PluginHeader header) => PluginFlags.IsLight(header, SupportsLightPlugins, IsStarfield);
+    public bool IsMedium(PluginHeader header) => PluginFlags.IsMedium(header, SupportsLightPlugins, IsStarfield);
+    public bool IsUpdate(PluginHeader header) => PluginFlags.IsUpdate(header, IsStarfield);
+    public bool IsBlueprint(PluginHeader header) => PluginFlags.IsBlueprint(header, IsStarfield);
+
+    public IReadOnlyList<string> EarlyLoadingPlugins(GameInstallation installation)
+    {
+        var names = new List<string>(HardcodedPlugins);
+        foreach (var candidate in new[] { CreationClubListFile, FallbackCreationClubListFile })
+        {
+            if (candidate is not { } path || !installation.Locations.ContainsKey(path.LocationId)) continue;
+
+            var file = installation.Locations.ToAbsolutePath(path);
+            if (!file.FileExists) continue;
+
+            // The first file that exists wins even when it is empty: Starfield's My Games list overrides the game folder's.
+            using var reader = new StreamReader(file.Read());
+            while (reader.ReadLine() is { } line)
+            {
+                line = line.Trim();
+                if (line.Length > 0) names.Add(line);
+            }
+            break;
+        }
+
+        return names.Distinct(PluginNameComparer.Instance).ToList();
+    }
 
     public async ValueTask<PluginHeader?> ParsePlugin(Hash hash, RelativePath? name = null)
     {
@@ -42,14 +94,23 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         return PluginHeaderReader.Read(stream, HeaderFormat, name?.FileName.ToString() ?? "unknown.esm");
     }
 
-    protected override IEnumerable<IDiagnosticEmitter> CreateEmitters(IServiceProvider provider) =>
-        [new MissingMasterEmitter(this), .. base.CreateEmitters(provider)];
+    protected override IEnumerable<IDiagnosticEmitter> CreateEmitters(IServiceProvider provider)
+    {
+        yield return new MissingMasterEmitter(this);
+        if (TestFileIniFiles.Count > 0)
+            yield return new TestFileEntriesEmitter(this);
+        foreach (var emitter in base.CreateEmitters(provider))
+            yield return emitter;
+    }
 
     public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout, IServiceProvider provider)
     {
         var files = base.IntrinsicFiles(loadout, provider);
-        var pluginsFile = new PluginsFile(provider.GetRequiredService<ILogger<PluginsFile>>(), this, provider.GetRequiredService<ISorter>());
-        files[pluginsFile.Path] = pluginsFile;
+        // The mechanism can depend on the install, so a loadout that is not valid gets no plugin list.
+        if (!loadout.IsValid()) return files;
+
+        foreach (var file in PluginList(loadout.InstallationInstance).IntrinsicFiles(this, loadout, provider))
+            files[file.Path] = file;
         return files;
     }
 }

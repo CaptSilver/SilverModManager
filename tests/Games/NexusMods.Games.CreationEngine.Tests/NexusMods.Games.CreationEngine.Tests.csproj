@@ -17,6 +17,8 @@
       <PackageReference Include="Mutagen.Bethesda.Fallout4" />
       <PackageReference Include="Mutagen.Bethesda.Skyrim" />
       <ProjectReference Include="..\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
+      <!-- Mutagen has no Starfield support, so Starfield plugins are written with the load order project's own test writer. -->
+      <Compile Include="..\NexusMods.Games.Bethesda.LoadOrder.Tests\PluginBytes.cs" Link="PluginBytes.cs" />
     </ItemGroup>
 
 </Project>

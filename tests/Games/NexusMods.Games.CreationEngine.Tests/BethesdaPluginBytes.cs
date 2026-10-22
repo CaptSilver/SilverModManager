@@ -4,6 +4,8 @@ using Mutagen.Bethesda.Plugins;
 using Mutagen.Bethesda.Plugins.Binary.Parameters;
 using Mutagen.Bethesda.Plugins.Records;
 using Mutagen.Bethesda.Skyrim;
+using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.Bethesda.LoadOrder.Tests;
 
 namespace NexusMods.Games.CreationEngine.Tests;
 
@@ -12,6 +14,9 @@ internal static class BethesdaPluginBytes
 {
     public static byte[] Bytes(GameRelease release, string fileName, params string[] masters)
     {
+        if (release == GameRelease.Starfield)
+            return PluginBytes.Write(PluginFormat.Tes4, new PluginSpec { Masters = masters });
+
         var key = ModKey.FromFileName(fileName);
         IModGetter mod;
         switch (release)

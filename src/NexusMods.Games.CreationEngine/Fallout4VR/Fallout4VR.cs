@@ -1,6 +1,7 @@
 using DynamicData.Kernel;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 
@@ -20,8 +21,14 @@ public class Fallout4VR(IServiceProvider provider) : ACreationEngineGame<Fallout
     };
 
     protected override RelativePath PrimaryExe => "Fallout4VR.exe";
-    protected override PluginFormat HeaderFormat => PluginFormat.Tes4;
+    public override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
+    public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
+    private static readonly IPluginListMechanism Mechanism = new AsteriskMechanism();
+    public override IReadOnlyList<string> HardcodedPlugins => ["Fallout4.esm", "Fallout4_VR.esm"];
+    public override bool SupportsLightPlugins => true;
+    public override bool MasterByExtension => true;
+    public override IReadOnlyList<GamePath> TestFileIniFiles => [new(LocationId.Preferences, "Fallout4VR.ini"), new(LocationId.Preferences, "Fallout4VRCustom.ini")];
 
     // https://github.com/ModOrganizer2/modorganizer-game_fallout4vr/blob/master/src/gamefallout4vr.cpp
     // (determineMyGamesPath and the plugins.txt copy from localAppFolder both use "Fallout4VR")

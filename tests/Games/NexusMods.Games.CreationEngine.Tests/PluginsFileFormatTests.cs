@@ -7,6 +7,7 @@ using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -20,11 +21,10 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
 {
     private static readonly GamePath DataFiles = new(LocationId.Game, "Data Files");
 
-    private static ICreationEngineGame GameWith(PluginListFormat format)
+    private static ICreationEngineGame GameWith()
     {
         var game = Substitute.For<ICreationEngineGame>();
         game.DataPath.Returns(DataFiles);
-        game.PluginListFormat.Returns(format);
         game.PluginsFile.Returns(new GamePath(LocationId.AppData, "Plugins.txt"));
         game.ParsePlugin(Hash.From(1), null).ReturnsForAnyArgs(call =>
         {
@@ -41,9 +41,9 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
         SourceItemType = LoadoutSourceItemType.Game,
     };
 
-    private async Task<string> Write(PluginListFormat format)
+    private async Task<string> Write(string marker)
     {
-        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, GameWith(format), serviceProvider.GetRequiredService<ISorter>());
+        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, GameWith(), serviceProvider.GetRequiredService<ISorter>(), marker);
         var tree = new Dictionary<GamePath, SyncNode>
         {
             [new GamePath(LocationId.Game, "Data Files/A.esp")] = Node(),
@@ -58,7 +58,7 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
     [Fact]
     public async Task Write_Plain_ListsOnlyPluginsInTheGamesDataFolderWithoutAMarker()
     {
-        var lines = (await Write(PluginListFormat.Plain)).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var lines = (await Write("")).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         lines.Where(l => !l.StartsWith('#')).Should().Equal("A.esp");
     }
@@ -66,7 +66,7 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
     [Fact]
     public async Task Write_Star_MarksEachPluginActive()
     {
-        var lines = (await Write(PluginListFormat.Star)).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var lines = (await Write("*")).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         lines.Where(l => !l.StartsWith('#')).Should().Equal("*A.esp");
     }
@@ -76,7 +76,7 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
     {
         var skyrim = serviceProvider.GetServices<NexusMods.Abstractions.Games.IGame>().OfType<CreationEngine.SkyrimSE.SkyrimSE>().Single();
 
-        skyrim.PluginListFormat.Should().Be(PluginListFormat.Star);
+        skyrim.PluginList(null!).Should().BeOfType<AsteriskMechanism>();
         skyrim.DataPath.Should().Be(new GamePath(LocationId.Game, "Data"));
     }
 }

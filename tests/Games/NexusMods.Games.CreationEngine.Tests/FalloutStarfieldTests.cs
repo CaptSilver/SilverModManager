@@ -9,6 +9,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Games.TestFramework.Helpers;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -60,9 +61,9 @@ public class FalloutStarfieldTests(IServiceProvider serviceProvider)
         var game = (ICreationEngineGame)Registered(typeof(CreationEngine.Fallout4VR.Fallout4VR));
 
         game.PluginsFile.Should().Be(new GamePath(LocationId.AppData, "plugins.txt"));
-        game.PluginListFormat.Should().Be(PluginListFormat.Star);
+        game.PluginList(null!).Should().BeOfType<AsteriskMechanism>();
         game.DataPath.Should().Be(new GamePath(LocationId.Game, "Data"));
-        ((ALoadoutSynchronizer)game.Synchronizer).IntrinsicFiles(default).Keys.Should().Equal(game.PluginsFile);
+        game.PluginList(null!).IntrinsicFiles(game, default, serviceProvider).Select(f => f.Path).Should().Equal(game.PluginsFile);
         game.DiagnosticEmitters.Select(e => e.GetType()).Should().Contain(typeof(Emitters.MissingMasterEmitter));
     }
 
@@ -90,7 +91,7 @@ public class FalloutStarfieldTests(IServiceProvider serviceProvider)
         var source = Substitute.For<IStreamSourceDispatcher>();
         source.OpenAsync(stored).Returns(_ => ValueTask.FromResult<Stream?>(new MemoryStream(bytes)));
         var game = (ICreationEngineGame)System.Activator.CreateInstance(typeof(CreationEngine.Fallout4VR.Fallout4VR), new WithStreamSource(serviceProvider, source))!;
-        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, serviceProvider.GetRequiredService<ISorter>());
+        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, game, serviceProvider.GetRequiredService<ISorter>(), "*");
         var tree = new Dictionary<GamePath, SyncNode>
         {
             [new GamePath(LocationId.Game, "Data/A.esp")] = new()
@@ -107,17 +108,26 @@ public class FalloutStarfieldTests(IServiceProvider serviceProvider)
         lines.Where(l => !l.StartsWith('#')).Should().Equal("*A.esp");
     }
 
-    // Neither title is a Creation Engine game with a plugin reader yet, so neither writes a plugin list or checks masters.
-    [Theory]
-    [InlineData(typeof(CreationEngine.Fallout76.Fallout76))]
-    [InlineData(typeof(CreationEngine.Starfield.Starfield))]
-    public void TitlesWithoutAPluginReaderOfferNoIntrinsicFilesAndCheckNoMasters(Type type)
+    // Fallout 76 has no plugin reader, so it writes no plugin list and checks no masters.
+    [Fact]
+    public void Fallout76_OffersNoIntrinsicFilesAndChecksNoMasters()
     {
-        var game = Registered(type);
+        var game = Registered(typeof(CreationEngine.Fallout76.Fallout76));
 
         game.Should().NotBeAssignableTo<ICreationEngineGame>();
         ((ALoadoutSynchronizer)game.Synchronizer).IntrinsicFiles(default).Should().BeEmpty();
         game.DiagnosticEmitters.Select(e => e.GetType()).Should().NotContain(typeof(Emitters.MissingMasterEmitter));
+    }
+
+    [Fact]
+    public void Starfield_WritesAStarListAtItsOwnPathAndChecksMasters()
+    {
+        var game = (ICreationEngineGame)Registered(typeof(CreationEngine.Starfield.Starfield));
+
+        game.PluginsFile.Should().Be(new GamePath(LocationId.AppData, "Plugins.txt"));
+        game.PluginList(null!).Should().BeOfType<AsteriskMechanism>();
+        game.PluginList(null!).IntrinsicFiles(game, default, serviceProvider).Select(f => f.Path).Should().Equal(game.PluginsFile);
+        game.DiagnosticEmitters.Select(e => e.GetType()).Should().Contain(typeof(Emitters.MissingMasterEmitter));
     }
 
     [Fact]

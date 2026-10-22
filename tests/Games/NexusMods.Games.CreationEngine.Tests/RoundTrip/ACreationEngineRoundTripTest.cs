@@ -2,6 +2,7 @@ using FluentAssertions;
 using Mutagen.Bethesda;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -61,6 +62,17 @@ public abstract class ACreationEngineRoundTripTest<TTest, TGame>(ITestOutputHelp
         await LoadoutManager.RemoveItems([second.LoadoutItemGroupId]);
         await Apply(loadout);
         (await PluginLines()).Should().NotContain(line => line.EndsWith(".esp"));
+    }
+
+    [Fact]
+    public async Task TheSynchronizerOffersThePluginsFileForARealLoadout()
+    {
+        var loadout = await CreateLoadout();
+
+        var offered = ((ALoadoutSynchronizer)Synchronizer).IntrinsicFiles(loadout);
+
+        offered.Keys.Should().Equal(PluginsFile);
+        offered.Values.Single().Should().BeOfType<CreationEngine.PluginsFile>();
     }
 
     [Fact]

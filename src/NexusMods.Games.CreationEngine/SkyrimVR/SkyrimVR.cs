@@ -1,6 +1,7 @@
 using DynamicData.Kernel;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 
@@ -20,8 +21,13 @@ public class SkyrimVR(IServiceProvider provider) : ACreationEngineGame<SkyrimVR>
     };
 
     protected override RelativePath PrimaryExe => "SkyrimVR.exe";
-    protected override PluginFormat HeaderFormat => PluginFormat.Tes4;
+    public override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
+    public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
+    private static readonly IPluginListMechanism Mechanism = new AsteriskMechanism();
+    public override IReadOnlyList<string> HardcodedPlugins => ["Skyrim.esm", "Update.esm", "Dawnguard.esm", "HearthFires.esm", "Dragonborn.esm", "SkyrimVR.esm"];
+    public override bool SupportsLightPlugins => true;
+    public override bool MasterByExtension => true;
 
     protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "Skyrim VR";
     protected override string MyGamesFolderName(GameLocatorResult gameLocatorResult) => "Skyrim VR";
