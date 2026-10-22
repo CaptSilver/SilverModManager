@@ -27,7 +27,14 @@ public abstract class AUnityInstallerTests<TTest>(ITestOutputHelper outputHelper
     /// Like <c>AddFromPaths</c> but the zip keeps the given file name, so the library item's name is known. A path
     /// ending in a slash becomes an empty folder entry.
     /// </summary>
-    protected async Task<LibraryArchive.ReadOnly> AddFromPathsNamed(string archiveFileName, params string[] paths)
+    protected Task<LibraryArchive.ReadOnly> AddFromPathsNamed(string archiveFileName, params string[] paths)
+        => AddNamed(archiveFileName, null, paths);
+
+    /// <summary>Like <see cref="AddFromPathsNamed"/> but the archive's root manifest.json holds <paramref name="manifestJson"/>.</summary>
+    protected Task<LibraryArchive.ReadOnly> AddWithManifest(string archiveFileName, string manifestJson, params string[] paths)
+        => AddNamed(archiveFileName, manifestJson, [.. paths, "manifest.json"]);
+
+    private async Task<LibraryArchive.ReadOnly> AddNamed(string archiveFileName, string? manifestJson, string[] paths)
     {
         var archivePath = TemporaryFileManager.CreateFolder().Path / archiveFileName;
         await using (var archiveStream = archivePath.Create())
@@ -39,17 +46,24 @@ public abstract class AUnityInstallerTests<TTest>(ITestOutputHelper outputHelper
                 if (path.EndsWith('/')) continue;
 
                 await using var stream = entry.Open();
-                await stream.WriteAsync(Encoding.UTF8.GetBytes(path));
+                var content = path == "manifest.json" && manifestJson is not null ? manifestJson : path;
+                await stream.WriteAsync(Encoding.UTF8.GetBytes(content));
             }
         }
 
         return await RegisterLocalArchive(archivePath);
     }
 
+    protected BepInExPluginInstaller PluginInstaller => Game.LibraryItemInstallers.OfType<BepInExPluginInstaller>().Single();
+
     protected BepInExPackInstaller PackInstaller => Game.LibraryItemInstallers.OfType<BepInExPackInstaller>().Single();
 
     /// <summary>Runs the pack installer without committing when it refuses; the targets are "Location:path".</summary>
-    protected async Task<(InstallerResult Result, string[] Targets)> TryInstallPack(LibraryArchive.ReadOnly archive)
+    protected Task<(InstallerResult Result, string[] Targets)> TryInstallPack(LibraryArchive.ReadOnly archive)
+        => TryInstall(PackInstaller, archive);
+
+    /// <summary>Runs <paramref name="installer"/> without committing when it refuses; the targets are "Location:path".</summary>
+    protected async Task<(InstallerResult Result, string[] Targets)> TryInstall(ALibraryArchiveInstaller installer, LibraryArchive.ReadOnly archive)
     {
         var loadout = await CreateLoadout();
 
@@ -61,7 +75,7 @@ public abstract class AUnityInstallerTests<TTest>(ITestOutputHelper outputHelper
             LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = libraryItem.Name, LoadoutId = loadout },
         };
 
-        var result = await PackInstaller.ExecuteAsync(libraryItem, group, tx, loadout, CancellationToken.None);
+        var result = await installer.ExecuteAsync(libraryItem, group, tx, loadout, CancellationToken.None);
         if (!result.IsSuccess) return (result, []);
 
         var committed = await tx.Commit();

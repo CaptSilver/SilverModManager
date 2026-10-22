@@ -21,4 +21,22 @@ public class BepInExPackageFolderTests
     [Fact]
     public void AManifestNamespaceIsPrefixed() =>
         BepInExPackageFolder.For("REPOLib.zip", "Zehs", "REPOLib").Should().Be("Zehs-REPOLib");
+
+    [Fact]
+    public async Task TheManifestIsNotReadWhenTheNameCarriesAVersion()
+    {
+        var read = false;
+        var folder = await BepInExPackageFolder.FromLibraryItemName("Zehs-REPOLib-4.2.0.zip", () => { read = true; return ValueTask.FromResult<BepInExPackageFolder.Manifest?>(null); });
+
+        folder.Should().Be("Zehs-REPOLib");
+        read.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TheManifestIsReadWhenTheNameHasNoVersion()
+    {
+        var folder = await BepInExPackageFolder.FromLibraryItemName("MyMod.zip", () => ValueTask.FromResult<BepInExPackageFolder.Manifest?>(new("Me", "MyMod")));
+
+        folder.Should().Be("Me-MyMod");
+    }
 }

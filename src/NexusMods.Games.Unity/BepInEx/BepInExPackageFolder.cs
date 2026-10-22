@@ -25,6 +25,22 @@ public static class BepInExPackageFolder
         return stem;
     }
 
+    /// <summary>The "namespace" and "name" fields of a package's manifest.json.</summary>
+    public readonly record struct Manifest(string? Namespace, string? Name);
+
+    /// <summary>
+    /// The folder for a library item. <paramref name="readManifest"/> is called only when the item's name has no version
+    /// suffix, because the manifest is then the only source of the namespace and reading it costs a file store load.
+    /// </summary>
+    public static async ValueTask<string> FromLibraryItemName(string libraryItemName, Func<ValueTask<Manifest?>> readManifest)
+    {
+        var stem = Path.GetFileNameWithoutExtension(libraryItemName);
+        if (StripVersion(stem).Length != stem.Length) return For(libraryItemName);
+
+        var manifest = await readManifest();
+        return For(libraryItemName, manifest?.Namespace, manifest?.Name);
+    }
+
     // Namespaces may contain "-" but versions cannot, so only the part after the last dash can be the version.
     private static string StripVersion(string stem)
     {

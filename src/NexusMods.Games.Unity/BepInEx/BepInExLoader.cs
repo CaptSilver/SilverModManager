@@ -52,7 +52,7 @@ public sealed class BepInExLoader(UnityGameDefinition definition) : IWineDllOver
             ? [new WineDllOverride("winhttp", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn])]
             : [];
 
-    public ILibraryItemInstaller[] Installers(IServiceProvider provider) => [new BepInExPackInstaller(provider, this)];
+    public ILibraryItemInstaller[] Installers(IServiceProvider provider) => [new BepInExPackInstaller(provider, this), new BepInExPluginInstaller(provider, this)];
 
     private static IEnumerable<GamePath> EnabledTargets(Loadout.ReadOnly loadout)
         => LoadoutItem.FindByLoadout(loadout.Db, loadout)
