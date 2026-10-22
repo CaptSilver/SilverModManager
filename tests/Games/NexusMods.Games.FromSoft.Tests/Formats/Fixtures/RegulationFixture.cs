@@ -23,4 +23,22 @@ public static class RegulationFixture
 
     public static byte[] BuildFromEntries(IReadOnlyList<(int Id, string Name, byte[] Data)> entries, string version, FromSoftFormatTraits traits)
         => Regulation.Pack(Payload(entries, version), ZeroIv, traits);
+
+    /// <summary>
+    /// A regulation whose members are param tables, one per key of <paramref name="tables"/> (the binder entry id), named
+    /// after their type and in ascending id order.
+    /// </summary>
+    public static byte[] Build(
+        IReadOnlyDictionary<int, (string ParamType, IReadOnlyDictionary<int, byte[]> Rows, int Stride)> tables,
+        string version,
+        FromSoftFormatTraits traits)
+    {
+        var entries = tables.OrderBy(t => t.Key).Select(t =>
+        {
+            var (paramType, rows, stride) = t.Value;
+            var blob = ParamFixture.Make(rows.Keys.Order().ToArray(), stride, paramType, fill: id => rows[id]);
+            return (t.Key, $"{paramType}.param", blob);
+        }).ToList();
+        return BuildFromEntries(entries, version, traits);
+    }
 }

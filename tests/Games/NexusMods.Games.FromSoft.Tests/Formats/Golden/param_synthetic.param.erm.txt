@@ -1,0 +1,3 @@
+Produced once with erm (read-only), working directory outside both repos:
+  from tests.test_param import make_param
+  make_param([1, 2, 5], stride=8, tail=b"SP_")

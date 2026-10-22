@@ -1,0 +1,5 @@
+Produced once with erm (read-only), working directory outside both repos:
+  from tests.test_merge import _regulation
+  SP = b"SP_EFFECT_PARAM_ST"
+  _regulation({1: (SP, {1: b"\x01" * 8, 5: b"\x05" * 8}, 8), 2: (b"OTHER_ST", {9: b"\x09" * 4}, 4)}, b"11701000")
+Compared byte-for-byte.
