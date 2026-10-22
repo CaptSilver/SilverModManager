@@ -1,0 +1,1 @@
+group 24: the other mod changed vanilla state 27, which the preferred mod deleted -- that change was not applied

@@ -102,4 +102,45 @@ public class EsdMergeRealArchiveTests
             .Should().BeEquivalentTo(vanilla.States.Select(s => s.Id));
         aligned.Pairs.Values.Concat(aligned.RightOnly).Should().BeSubsetOf(bossRes.States.Select(s => s.Id));
     }
+
+    [Fact]
+    public void CheckAcceptsTheThreeRealFiles()
+    {
+        // The invariants have to be ones a shipped file already satisfies, or they are this module's opinion and
+        // not invariants.
+        EsdCheck.Check(Vanilla());
+        EsdCheck.Check(Real(BossRes, TalkBinder));
+        EsdCheck.Check(Real(Melina, TalkBinder));
+    }
+
+    [Fact]
+    public void TheRealSharedGroupReplaysMelinaOntoBossRes()
+    {
+        // The one group both mods change, and the whole reason the merge exists. Boss Res deletes vanilla 26, 27 and
+        // 41 and renumbers the survivors down; Melina hooks vanilla 26 and 29 into two states she adds. One of her
+        // hooks lands on a state Boss Res deleted and is named; the other survives, and with it the path into her
+        // machine.
+        var (merged, notes) = EsdMerge.Merge(Real(BossRes, TalkBinder), Real(Melina, TalkBinder), Vanilla());
+        var group = ById(merged)[SharedEditedGroup];
+
+        // Boss Res's survivors, plus Melina's two additions at their own ids.
+        group.States.Select(s => s.Id).Order().Should().Equal(Enumerable.Range(0, 40).Select(i => (long)i).Concat([43L, 44L]));
+
+        // Vanilla 29 is Boss Res's 27, so her redirect had to move with the renumbering.
+        Targets(group.States.Single(s => s.Id == 27)).Should().Equal(43L);
+        Targets(group.States.Single(s => s.Id == 43)).Should().Equal(44L);
+        Targets(group.States.Single(s => s.Id == 44)).Should().Equal(15L);
+        group.States.Single(s => s.Id == 44).Entry.Select(c => (c.Bank, c.Id)).Should().Equal((6, 2147482648));
+
+        // The machine she calls came across with her, so the call resolves.
+        merged.Groups.Select(g => g.Id).Should().Contain(2147482648L);
+        // Her machine is still entered: nothing above is worth anything if the surviving hook sits on an orphan.
+        EsdCheck.Reachable(group).Should().Contain([27L, 43L, 44L]);
+
+        // Her other hook was on vanilla 26, which Boss Res deleted. That is the only thing wrong with the merge, and
+        // neither state she added arrives orphaned.
+        notes.Should().ContainSingle().Which.Should().Be(new EsdNote(SharedEditedGroup, 26, EsdNoteReason.NotInBase));
+    }
+
+    private static IReadOnlyList<long> Targets(State state) => EsdMergeFixture.Targets(state);
 }

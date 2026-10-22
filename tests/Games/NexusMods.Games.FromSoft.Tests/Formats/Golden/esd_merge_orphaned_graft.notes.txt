@@ -1,0 +1,2 @@
+group 24: both mods changed vanilla state 0 -- kept the preferred mod's version
+group 24: the other mod's state 3 came across as state 3, but nothing in the merged group reaches it -- whatever it does will not run

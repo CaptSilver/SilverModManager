@@ -1,0 +1,5 @@
+Produced once with erm (read-only), working directory outside both repos. The base, other and vanilla machines are
+the ones EsdMergeGoldenCases builds for "group_decisions", built there and here with the same ermlib.formats.esd records:
+  merged, notes = esdmerge.merge(base, other, vanilla)
+This file holds the merged machine, written with esd.write.
+Compared byte-for-byte (the machine) or line-for-line (the notes).

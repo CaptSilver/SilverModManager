@@ -1,0 +1,2 @@
+group 24: several of the other mod's states look like vanilla state 1 and nothing separates them, so any change it made there was not applied
+group 24: several of the other mod's states look like vanilla state 2 and nothing separates them, so any change it made there was not applied

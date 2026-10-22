@@ -1,0 +1,1 @@
+group 24: the other mod's change to vanilla state 0 jumps to its state 2, which has no counterpart in the merged group -- that change was not applied
