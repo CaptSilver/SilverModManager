@@ -184,6 +184,42 @@ public sealed class ReleaseDatabaseTests : IDisposable
     }
 
     [Fact]
+    public async Task FirstRun_EmbeddedExtractionFails_ReleaseDownloadIsAttemptedInsteadOfThrowing()
+    {
+        // The release is older than any build date, so only the missing local database can force the download.
+        var zip = BuildZip(("db/data.bin", "aa"));
+        var manifest = await ManifestFor(zip);
+        manifest.CreatedAt = DateTimeOffset.UnixEpoch;
+        var tampered = BuildZip(("db/data.bin", "bb"));
+        var requests = new List<Uri>();
+
+        using var service = CreateService(new StubHandler(request =>
+        {
+            requests.Add(request.RequestUri!);
+            return request.RequestUri!.AbsolutePath.EndsWith("manifest.json", StringComparison.Ordinal)
+                ? JsonSerializer.SerializeToUtf8Bytes(manifest, AppJsonOptions)
+                : tampered;
+        }));
+        service.EmbeddedDatabaseSource = () => throw new InvalidDataException("embedded archive is corrupt");
+
+        await service.Invoking(s => s.CheckForUpdate()).Should().NotThrowAsync();
+
+        requests.Select(r => Path.GetFileName(r.AbsolutePath)).Should().Equal("manifest.json", "game_hashes_db.zip");
+        _logger.Messages.Should().Contain(m => m.Contains("no other database is available"));
+    }
+
+    [Fact]
+    public async Task FirstRun_EmbeddedExtractionFails_WithDownloadsOff_StopsCleanly()
+    {
+        using var service = CreateService(new StubHandler(_ => []), _settings with { SkipUpdateCheck = true });
+        service.EmbeddedDatabaseSource = () => throw new InvalidDataException("embedded archive is corrupt");
+
+        await service.Invoking(s => s.CheckForUpdate()).Should().NotThrowAsync();
+
+        _logger.Messages.Should().Contain(m => m.Contains("game hashes functionality will be unavailable"));
+    }
+
+    [Fact]
     public async Task SkipUpdateCheck_FirstRun_UsesEmbeddedDatabaseWithoutNetwork()
     {
         var requests = new List<Uri>();

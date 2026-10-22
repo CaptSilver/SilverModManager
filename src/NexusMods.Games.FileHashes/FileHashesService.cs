@@ -289,12 +289,8 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 return;
             }
 
-            Debug.Assert(latestReleaseManifest is not null, "should've returned if we didn't have a manifest");
-            if (embeddedDatabaseInfo.HasValue)
-            {
-                existingDatabases = Readable();
-                Debug.Assert(existingDatabases.Length >= 1, $"should have at least one database but found {existingDatabases.Length}");
-            }
+            // A failed extraction leaves existingDatabases empty even when the manifest fetch succeeded.
+            if (embeddedDatabaseInfo.HasValue) existingDatabases = Readable();
         }
 
         if (latestReleaseManifest is null && existingDatabases.Length == 0)
@@ -303,19 +299,28 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             return;
         }
 
-        if (latestReleaseManifest is null || existingDatabases[0].CreationTime.ToUnixTimeSeconds() >= latestReleaseManifest.CreatedAt.ToUnixTimeSeconds())
+        // With nothing local to compare against, the release is the only database there is.
+        var hasLocalDatabase = existingDatabases.TryGetFirst(out var newestExisting);
+        if (hasLocalDatabase && (latestReleaseManifest is null || newestExisting.CreationTime.ToUnixTimeSeconds() >= latestReleaseManifest.CreatedAt.ToUnixTimeSeconds()))
         {
-            SetCurrent(OpenDb(existingDatabases[0]));
+            SetCurrent(OpenDb(newestExisting));
             return;
         }
 
+        Debug.Assert(latestReleaseManifest is not null, "no local database and no manifest should have returned above");
         _logger.LogInformation("Fetching latest games hashes database");
         var releaseDatabaseInfo = await AddReleaseDatabase(latestReleaseManifest, cancellationToken);
         if (!releaseDatabaseInfo.HasValue)
         {
+            if (!hasLocalDatabase)
+            {
+                _logger.LogError("Failed to add the latest game hashes database and no other database is available, game hashes functionality will be unavailable");
+                return;
+            }
+
             // Without this, a first run (or a call that skipped StartAsync) leaves no database connected.
             _logger.LogWarning("Failed to add the latest game hashes database, using the existing one which may be out-of-date");
-            SetCurrent(OpenDb(existingDatabases[0]));
+            SetCurrent(OpenDb(newestExisting));
             return;
         }
 
@@ -347,12 +352,20 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         }
     }
 
+    /// <summary>Replaces the embedded archive as the source of the first-run database, so a test can make extraction fail.</summary>
+    internal Func<ValueTask<Stream>>? EmbeddedDatabaseSource { get; set; }
+
+    private static async ValueTask<Stream> OpenEmbeddedDatabase()
+    {
+        var streamFactory = new EmbeddedResourceStreamFactory<FileHashesService>(resourceName: "games_hashes_db.zip");
+        return await streamFactory.GetStreamAsync();
+    }
+
     private async ValueTask<Optional<DatabaseInfo>> AddEmbeddedDatabase(CancellationToken cancellationToken)
     {
         try
         {
-            var streamFactory = new EmbeddedResourceStreamFactory<FileHashesService>(resourceName: "games_hashes_db.zip");
-            await using var archiveStream = await streamFactory.GetStreamAsync();
+            await using var archiveStream = await (EmbeddedDatabaseSource ?? OpenEmbeddedDatabase)();
             var creationTime = ApplicationConstants.IsDebug ? DateTimeOffset.UnixEpoch : ApplicationConstants.BuildDate;
 
             var path = await AddDatabase(archiveStream, creationTime, cancellationToken);
