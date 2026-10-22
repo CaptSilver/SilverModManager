@@ -80,7 +80,7 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
                 {
                     var fingerprint = gameBase.Fingerprint;
                     inputs.Live = () => Identify(loadout, fingerprint);
-                    refusal = TamperedReason(loadout, candidate.Path, inputs);
+                    refusal = TamperedReason(loadout, candidate.Path, inputs, traits);
                 }
             }
             if (MergeStrategies.NeedsVanilla(strategy))
@@ -98,7 +98,7 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
     // A stamp that says the game's data moved while the install did not means something wrote to it. Without a stamp
     // there is nothing to compare with, so the build is not even identified. With one, a build that can't be read
     // refuses too: the check that it was not tampered with could not be made.
-    private string? TamperedReason(Loadout.ReadOnly loadout, string path, Inputs inputs)
+    private string? TamperedReason(Loadout.ReadOnly loadout, string path, Inputs inputs, FromSoftFormatTraits traits)
     {
         var stamped = stamps.Find(loadout.InstallationId);
         inputs.Stamps[path] = $"{stamped?.ToString() ?? "none"}/{loadout.InstallationInstance.LocatorResult.StoreBuildId}";
@@ -114,7 +114,7 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
             return exception.Message;
         }
         return BuildIdentity.Classify(stamped, identity) == BuildChangeKind.Tampered
-            ? TamperedRegulation.Describe(path, identity)
+            ? HealPlan.TamperedRefusal(identity, traits)
             : null;
     }
 

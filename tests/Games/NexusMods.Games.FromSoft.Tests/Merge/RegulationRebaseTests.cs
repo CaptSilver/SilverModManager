@@ -240,7 +240,7 @@ public class RegulationRebaseLoadoutTests(ITestOutputHelper helper) : AVanillaDu
     {
         var loadout = await TwoRegulations(GameVersion);
         await StampAsTampered(loadout);
-        var expected = TamperedRegulation.Describe(RegulationPath, BuildIdentity.Identify(GameInstallation));
+        var expected = HealPlan.TamperedRefusal(BuildIdentity.Identify(GameInstallation), ((IFromSoftGame)GameInstallation.Game).Formats);
 
         var plan = Plans.Current(loadout, MergeSourceMode.Report);
 
@@ -270,7 +270,7 @@ public class RegulationRebaseLoadoutTests(ITestOutputHelper helper) : AVanillaDu
     {
         var loadout = await TwoRegulations(GameVersion);
         await StampAsTampered(loadout);
-        var expected = TamperedRegulation.Describe(RegulationPath, BuildIdentity.Identify(GameInstallation));
+        var expected = HealPlan.TamperedRefusal(BuildIdentity.Identify(GameInstallation), ((IFromSoftGame)GameInstallation.Game).Formats);
 
         var diagnostics = new List<Diagnostic>();
         await foreach (var diagnostic in Emitter.Diagnose(Refresh(loadout), CancellationToken.None)) diagnostics.Add(diagnostic);
