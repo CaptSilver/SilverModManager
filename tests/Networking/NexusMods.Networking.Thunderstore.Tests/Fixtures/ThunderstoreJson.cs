@@ -51,6 +51,9 @@ internal static class ThunderstoreJson
     public static string RepoConfig => Listing("nickklmao", "REPOConfig",
         ChunkVersion("nickklmao", "REPOConfig", "1.2.6", ["BepInEx-BepInExPack-5.4.2100", "nickklmao-MenuLib-2.5.2"]));
 
+    public static string MenuLib => Listing("nickklmao", "MenuLib",
+        ChunkVersion("nickklmao", "MenuLib", "2.5.2", ["BepInEx-BepInExPack-5.4.2305"]));
+
     public static string BepInExPack => Listing("BepInEx", "BepInExPack",
         ChunkVersion("BepInEx", "BepInExPack", "5.4.2305", []),
         ChunkVersion("BepInEx", "BepInExPack", "5.4.2100", []));

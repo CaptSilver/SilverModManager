@@ -22,6 +22,7 @@ public static class Services
             .AddSingleton<IThunderstoreApi>(p => new ThunderstoreApi(p.GetRequiredService<HttpClient>()))
             .AddSingleton<IPackageLookup>(p => new ApiPackageLookup(p.GetRequiredService<IThunderstoreApi>()))
             .AddSingleton<ThunderstoreDependencyResolver>()
+            .AddSingleton<ThunderstoreUpdateChecker>()
             .AddSingleton(p => new ThunderstoreIndexCache(
                 p.GetRequiredService<IThunderstoreApi>(),
                 p.GetRequiredService<NexusMods.Paths.IFileSystem>(),

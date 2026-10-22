@@ -1,9 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <PackageReference Include="NexusMods.Paths.TestingHelpers"/>
+    <PackageReference Include="NexusMods.MnemonicDB"/>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\NexusMods.Networking.Thunderstore\NexusMods.Networking.Thunderstore.csproj" />
     <ProjectReference Include="..\..\..\src\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+    <ProjectReference Include="..\..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
+    <ProjectReference Include="..\..\..\src\NexusMods.Backend\NexusMods.Backend.csproj" />
   </ItemGroup>
 </Project>
