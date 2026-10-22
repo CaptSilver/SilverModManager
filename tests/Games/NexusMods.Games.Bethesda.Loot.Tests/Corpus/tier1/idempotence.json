@@ -1,0 +1,58 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": null,
+  "game_type": "SkyrimSE",
+  "format": "Tes4",
+  "header_version": 1.7,
+  "name": "idempotence",
+  "plugins": [
+    {"name": "I4.esp", "flags": 0, "masters": ["I2.esp"]},
+    {"name": "I12.esp", "flags": 0, "masters": ["I6.esp"]},
+    {"name": "I2.esp", "flags": 0, "masters": ["I1.esp"]},
+    {"name": "I9.esp", "flags": 0, "masters": []},
+    {"name": "I11.esp", "flags": 0, "masters": []},
+    {"name": "I1.esp", "flags": 0, "masters": []},
+    {"name": "I7.esp", "flags": 0, "masters": []},
+    {"name": "I3.esp", "flags": 0, "masters": []},
+    {"name": "I10.esp", "flags": 0, "masters": ["I5.esp"]},
+    {"name": "I5.esp", "flags": 0, "masters": []},
+    {"name": "I8.esp", "flags": 0, "masters": ["I4.esp"]},
+    {"name": "I6.esp", "flags": 0, "masters": ["I3.esp"]}
+  ],
+  "masterlist": "groups:\n  - name: late\n    after: [default]\nplugins:\n  - name: I3.esp\n    group: late\n  - name: I9.esp\n    after: [I1.esp]\n",
+  "userlist": null,
+  "prelude": null,
+  "expected": {
+    "order": [
+      "I1.esp",
+      "I2.esp",
+      "I4.esp",
+      "I9.esp",
+      "I11.esp",
+      "I7.esp",
+      "I5.esp",
+      "I10.esp",
+      "I8.esp",
+      "I3.esp",
+      "I6.esp",
+      "I12.esp"
+    ],
+    "resorted": [
+      "I1.esp",
+      "I2.esp",
+      "I4.esp",
+      "I9.esp",
+      "I11.esp",
+      "I7.esp",
+      "I5.esp",
+      "I10.esp",
+      "I8.esp",
+      "I3.esp",
+      "I6.esp",
+      "I12.esp"
+    ]
+  },
+  "groups_paths": []
+}

@@ -1,0 +1,27 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": null,
+  "game_type": "SkyrimSE",
+  "format": "Tes4",
+  "header_version": 1.7,
+  "name": "cycle_user_load_after_and_requirement",
+  "plugins": [
+    {"name": "A.esp", "flags": 0, "masters": []},
+    {"name": "B.esp", "flags": 0, "masters": []},
+    {"name": "C.esp", "flags": 0, "masters": []}
+  ],
+  "masterlist": "plugins:\n  - name: A.esp\n    req: [B.esp]\n",
+  "userlist": "plugins:\n  - name: B.esp\n    after: [A.esp]\n",
+  "prelude": null,
+  "expected": {
+    "error": {
+      "kind": "CyclicInteractionError",
+      "message": "([Vertex(A.esp, EdgeType.UserLoadAfter), Vertex(B.esp, EdgeType.MasterlistRequirement)], 'found a cycle: A.esp --[User Load After]-> B.esp --[Masterlist Requirement]-> A.esp')",
+      "cycle": [["A.esp", "UserLoadAfter"], ["B.esp", "MasterlistRequirement"]],
+      "cycle_text": "A.esp --[User Load After]-> B.esp --[Masterlist Requirement]-> A.esp"
+    }
+  },
+  "groups_paths": []
+}

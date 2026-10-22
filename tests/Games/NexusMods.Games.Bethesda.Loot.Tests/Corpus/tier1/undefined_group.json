@@ -1,0 +1,18 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": null,
+  "game_type": "SkyrimSE",
+  "format": "Tes4",
+  "header_version": 1.7,
+  "name": "undefined_group",
+  "plugins": [{"name": "A.esp", "flags": 0, "masters": []}],
+  "masterlist": "plugins:\n  - name: A.esp\n    group: nowhere\n",
+  "userlist": null,
+  "prelude": null,
+  "expected": {
+    "error": {"kind": "UndefinedGroupError", "message": "('nowhere', 'the group \"nowhere\" does not exist')"}
+  },
+  "groups_paths": []
+}

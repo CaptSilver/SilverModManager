@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
         <ProjectReference Include="..\..\..\src\NexusMods.Games.Bethesda.Loot\NexusMods.Games.Bethesda.Loot.csproj" />
+        <ProjectReference Include="..\..\..\src\NexusMods.Games.Bethesda.LoadOrder\NexusMods.Games.Bethesda.LoadOrder.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="Corpus\**\*.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 </Project>

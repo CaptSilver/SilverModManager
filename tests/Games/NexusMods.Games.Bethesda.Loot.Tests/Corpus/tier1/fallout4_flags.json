@@ -1,0 +1,22 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": null,
+  "game_type": "Fallout4",
+  "format": "Tes4",
+  "header_version": 1.0,
+  "name": "fallout4_flags",
+  "plugins": [
+    {"name": "A.esp", "flags": 0, "masters": []},
+    {"name": "Light.esl", "flags": 0, "masters": []},
+    {"name": "Master.esm", "flags": 1, "masters": []},
+    {"name": "Flagged.esp", "flags": 1, "masters": []},
+    {"name": "B.esp", "flags": 0, "masters": ["Master.esm"]}
+  ],
+  "masterlist": null,
+  "userlist": null,
+  "prelude": null,
+  "expected": {"order": ["Light.esl", "Master.esm", "Flagged.esp", "A.esp", "B.esp"]},
+  "groups_paths": []
+}

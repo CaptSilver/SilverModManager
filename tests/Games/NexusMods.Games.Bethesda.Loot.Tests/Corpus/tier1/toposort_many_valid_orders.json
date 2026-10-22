@@ -1,0 +1,28 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": null,
+  "game_type": "SkyrimSE",
+  "format": "Tes4",
+  "header_version": 1.7,
+  "name": "toposort_many_valid_orders",
+  "plugins": [
+    {"name": "N8.esp", "flags": 0, "masters": []},
+    {"name": "N3.esp", "flags": 0, "masters": []},
+    {"name": "N6.esp", "flags": 0, "masters": []},
+    {"name": "N1.esp", "flags": 0, "masters": []},
+    {"name": "N9.esp", "flags": 0, "masters": []},
+    {"name": "N4.esp", "flags": 0, "masters": []},
+    {"name": "N7.esp", "flags": 0, "masters": []},
+    {"name": "N2.esp", "flags": 0, "masters": []},
+    {"name": "N5.esp", "flags": 0, "masters": []}
+  ],
+  "masterlist": "plugins:\n  - name: N1.esp\n    after: [N9.esp]\n  - name: N2.esp\n    after: [N8.esp]\n  - name: N4.esp\n    after: [N7.esp]\n",
+  "userlist": null,
+  "prelude": null,
+  "expected": {
+    "order": ["N8.esp", "N3.esp", "N6.esp", "N9.esp", "N1.esp", "N7.esp", "N4.esp", "N2.esp", "N5.esp"]
+  },
+  "groups_paths": []
+}

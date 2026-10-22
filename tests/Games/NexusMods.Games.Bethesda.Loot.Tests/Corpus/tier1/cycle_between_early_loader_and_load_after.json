@@ -1,0 +1,27 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": null,
+  "game_type": "SkyrimSE",
+  "format": "Tes4",
+  "header_version": 1.7,
+  "name": "cycle_between_early_loader_and_load_after",
+  "plugins": [
+    {"name": "Skyrim.esm", "flags": 1, "masters": []},
+    {"name": "Dragonborn.esm", "flags": 1, "masters": []},
+    {"name": "Mod.esm", "flags": 1, "masters": []}
+  ],
+  "masterlist": "plugins:\n  - name: Skyrim.esm\n    after: [Mod.esm]\n",
+  "userlist": null,
+  "prelude": null,
+  "expected": {
+    "error": {
+      "kind": "CyclicInteractionError",
+      "message": "([Vertex(Dragonborn.esm, EdgeType.Hardcoded), Vertex(Mod.esm, EdgeType.MasterlistLoadAfter), Vertex(Skyrim.esm, EdgeType.Hardcoded)], 'found a cycle: Dragonborn.esm --[Hardcoded]-> Mod.esm --[Masterlist Load After]-> Skyrim.esm --[Hardcoded]-> Dragonborn.esm')",
+      "cycle": [["Dragonborn.esm", "Hardcoded"], ["Mod.esm", "MasterlistLoadAfter"], ["Skyrim.esm", "Hardcoded"]],
+      "cycle_text": "Dragonborn.esm --[Hardcoded]-> Mod.esm --[Masterlist Load After]-> Skyrim.esm --[Hardcoded]-> Dragonborn.esm"
+    }
+  },
+  "groups_paths": []
+}

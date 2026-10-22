@@ -1,0 +1,23 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": null,
+  "game_type": "SkyrimSE",
+  "format": "Tes4",
+  "header_version": 1.7,
+  "name": "master_listed_after_a_non_master",
+  "plugins": [{"name": "N.esp", "flags": 0, "masters": []}, {"name": "M.esm", "flags": 1, "masters": []}],
+  "masterlist": "plugins:\n  - name: M.esm\n    after: [N.esp]\n",
+  "userlist": null,
+  "prelude": null,
+  "expected": {
+    "error": {
+      "kind": "CyclicInteractionError",
+      "message": "([Vertex(N.esp, EdgeType.MasterlistLoadAfter), Vertex(M.esm, EdgeType.MasterFlag)], 'found a cycle: N.esp --[Masterlist Load After]-> M.esm --[Master Flag]-> N.esp')",
+      "cycle": [["N.esp", "MasterlistLoadAfter"], ["M.esm", "MasterFlag"]],
+      "cycle_text": "N.esp --[Masterlist Load After]-> M.esm --[Master Flag]-> N.esp"
+    }
+  },
+  "groups_paths": []
+}

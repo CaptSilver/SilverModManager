@@ -1,0 +1,24 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": null,
+  "game_type": "SkyrimSE",
+  "format": "Tes4",
+  "header_version": 1.7,
+  "name": "tie_break_ladder",
+  "plugins": [
+    {"name": "P5.esp", "flags": 0, "masters": []},
+    {"name": "P2.esp", "flags": 0, "masters": []},
+    {"name": "P7.esp", "flags": 0, "masters": []},
+    {"name": "P1.esp", "flags": 0, "masters": []},
+    {"name": "P6.esp", "flags": 0, "masters": []},
+    {"name": "P3.esp", "flags": 0, "masters": []},
+    {"name": "P4.esp", "flags": 0, "masters": []}
+  ],
+  "masterlist": "plugins:\n  - name: P3.esp\n    after: [P1.esp, P2.esp]\n  - name: P4.esp\n    after: [P3.esp, P5.esp]\n  - name: P6.esp\n    after: [P4.esp]\n  - name: P7.esp\n    after: [P5.esp, P6.esp]\n",
+  "userlist": null,
+  "prelude": null,
+  "expected": {"order": ["P5.esp", "P2.esp", "P1.esp", "P3.esp", "P4.esp", "P6.esp", "P7.esp"]},
+  "groups_paths": []
+}
