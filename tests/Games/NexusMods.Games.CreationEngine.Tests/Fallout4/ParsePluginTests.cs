@@ -15,7 +15,7 @@ public class ParsePluginTests(ITestOutputHelper helper) : AIsolatedGameTest<Pars
     {
         return base.AddServices(services)
             .AddCreationEngine()
-            .AddUniversalGameLocator<CreationEngine.Fallout4.Fallout4>(new Version("1.10.163"));
+            .AddUniversalGameLocator<CreationEngine.Fallout4.Fallout4>(new Version("1.10.163"), locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
     [Fact]

@@ -23,7 +23,7 @@ public class CollectionTests(ITestOutputHelper outputHelper) : AIsolatedGameTest
         return base.AddServices(services)
             .AddCreationEngine()
             .AddAdapters()
-            .AddUniversalGameLocator<CreationEngine.Fallout4.Fallout4>(new Version("1.10.163"));
+            .AddUniversalGameLocator<CreationEngine.Fallout4.Fallout4>(new Version("1.10.163"), locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
 

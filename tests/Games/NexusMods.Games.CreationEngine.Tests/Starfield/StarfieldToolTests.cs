@@ -13,7 +13,7 @@ public class StarfieldToolTests(ITestOutputHelper helper) : AIsolatedGameTest<St
 {
     protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services)
         .AddCreationEngine()
-        .AddUniversalGameLocator<CreationEngine.Starfield.Starfield>(new Version("1.15.222"));
+        .AddUniversalGameLocator<CreationEngine.Starfield.Starfield>(new Version("1.15.222"), locationsFileSystem: IsolatedKnownFolders.Create);
 
     private RunGameTool<CreationEngine.Starfield.Starfield> Tool => ServiceProvider.GetServices<ITool>()
         .OfType<RunGameViaScriptExtenderTool<CreationEngine.Starfield.Starfield>>().Single();

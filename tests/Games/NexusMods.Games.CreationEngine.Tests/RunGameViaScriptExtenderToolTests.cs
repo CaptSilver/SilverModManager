@@ -22,7 +22,7 @@ public class RunGameViaScriptExtenderToolTests(ITestOutputHelper helper) : AIsol
     {
         return base.AddServices(services)
             .AddCreationEngine()
-            .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"));
+            .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"), locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
     private RunGameTool<CreationEngine.SkyrimSE.SkyrimSE> Tool => ServiceProvider.GetServices<ITool>()

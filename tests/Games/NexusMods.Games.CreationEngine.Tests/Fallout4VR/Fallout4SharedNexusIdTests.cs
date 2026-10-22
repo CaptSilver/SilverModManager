@@ -14,8 +14,8 @@ public class Fallout4SharedNexusIdTests(ITestOutputHelper helper)
 {
     protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services)
         .AddCreationEngine()
-        .AddUniversalGameLocator<CreationEngine.Fallout4.Fallout4>(new Version("1.10.163"))
-        .AddUniversalGameLocator<CreationEngine.Fallout4VR.Fallout4VR>(new Version("1.2.72"));
+        .AddUniversalGameLocator<CreationEngine.Fallout4.Fallout4>(new Version("1.10.163"), locationsFileSystem: IsolatedKnownFolders.Create)
+        .AddUniversalGameLocator<CreationEngine.Fallout4VR.Fallout4VR>(new Version("1.2.72"), locationsFileSystem: IsolatedKnownFolders.Create);
 
     [Fact]
     public async Task EachGameKeepsItsOwnInstallationAndLoadout()

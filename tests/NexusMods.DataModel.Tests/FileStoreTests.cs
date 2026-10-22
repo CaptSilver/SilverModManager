@@ -32,6 +32,23 @@ public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
     
     
     [Fact]
+    public async Task AFileThatChangedAfterItWasHashedIsRejectedAndNotIndexed()
+    {
+        // The bytes a caller packs must be the bytes it hashed: a file rewritten in between would otherwise be
+        // stored under a hash that names different content.
+        var hashed = "bytes the caller hashed"u8.ToArray();
+        var packed = "bytes that replaced them"u8.ToArray();
+        var hash = hashed.xxHash3();
+        var entry = new ArchivedFileEntry(new MemoryStreamFactory("changed.bin", new MemoryStream(packed)), hash, Size.FromLong(packed.Length));
+
+        var act = async () => await _fileStore.BackupFiles([entry]);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+        (await _fileStore.HaveFile(hash)).Should().BeFalse();
+        (await _fileStore.HaveFile(packed.xxHash3())).Should().BeFalse();
+    }
+
+    [Fact]
     [GithubIssue(2944)]
     public async Task DeletingModWithSharedFileDoesNotCorrupt()
     {

@@ -19,7 +19,7 @@ public class LibraryArchiveInstallerTests(ITestOutputHelper outputHelper) : AIso
         return base.AddServices(services)
             .AddCreationEngine()
             .AddAdapters()
-            .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1"));
+            .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1"), locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
     [Theory]

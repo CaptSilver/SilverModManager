@@ -36,15 +36,7 @@ public abstract class ABethesdaRoundTripTest<TTest, TGame>(ITestOutputHelper hel
             .AddUniversalGameLocator<TGame>(GameVersion, new Dictionary<RelativePath, byte[]>
             {
                 { PrimaryExe, "game executable"u8.ToArray() },
-            }, locationsFileSystem: provider =>
-            {
-                var pfx = provider.GetRequiredService<TemporaryFileManager>().CreateFolder("pfx");
-                var prefix = new WinePrefix { ConfigurationDirectory = pfx.Path };
-                var overlay = prefix.CreateOverlayFileSystem(NexusMods.Paths.FileSystem.Shared);
-                overlay.GetKnownPath(KnownPath.MyDocumentsDirectory).CreateDirectory();
-                overlay.GetKnownPath(KnownPath.LocalApplicationDataDirectory).CreateDirectory();
-                return overlay;
-            });
+            }, locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
     // The stub locator does not create folders, so the vanilla file goes in here. It is deliberately not a

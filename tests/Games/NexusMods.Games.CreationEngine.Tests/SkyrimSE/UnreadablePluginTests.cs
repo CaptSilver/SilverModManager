@@ -42,7 +42,7 @@ public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest
     {
         return base.AddServices(services)
             .AddCreationEngine()
-            .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"));
+            .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"), locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
     private ICreationEngineGame Creation => Game;

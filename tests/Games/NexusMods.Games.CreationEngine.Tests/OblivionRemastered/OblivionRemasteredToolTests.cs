@@ -21,7 +21,7 @@ public class OblivionRemasteredToolTests(ITestOutputHelper helper)
     {
         return base.AddServices(services)
             .AddCreationEngine()
-            .AddUniversalGameLocator<CreationEngine.OblivionRemastered.OblivionRemastered>(new Version("1.2.0.0"));
+            .AddUniversalGameLocator<CreationEngine.OblivionRemastered.OblivionRemastered>(new Version("1.2.0.0"), locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
     private RunGameTool<CreationEngine.OblivionRemastered.OblivionRemastered> Tool => ServiceProvider.GetServices<ITool>()

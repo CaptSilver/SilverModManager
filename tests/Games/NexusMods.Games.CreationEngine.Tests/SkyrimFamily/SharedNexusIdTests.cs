@@ -14,8 +14,8 @@ public class SharedNexusIdTests(ITestOutputHelper helper)
 {
     protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services)
         .AddCreationEngine()
-        .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"))
-        .AddUniversalGameLocator<CreationEngine.SkyrimVR.SkyrimVR>(new Version("1.4.15"));
+        .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"), locationsFileSystem: IsolatedKnownFolders.Create)
+        .AddUniversalGameLocator<CreationEngine.SkyrimVR.SkyrimVR>(new Version("1.4.15"), locationsFileSystem: IsolatedKnownFolders.Create);
 
     [Fact]
     public async Task EachGameKeepsItsOwnInstallationAndLoadout()

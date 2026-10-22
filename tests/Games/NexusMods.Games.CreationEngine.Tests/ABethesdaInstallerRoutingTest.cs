@@ -24,7 +24,7 @@ public abstract class ABethesdaInstallerRoutingTest<TTest, TGame>(ITestOutputHel
     {
         return base.AddServices(services)
             .AddCreationEngine()
-            .AddUniversalGameLocator<TGame>(GameVersion);
+            .AddUniversalGameLocator<TGame>(GameVersion, locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
     /// <summary>The installed targets as "Location/path", sorted, so a test reads as one list.</summary>
