@@ -1,0 +1,11 @@
+Produced once with erm (read-only), working directory outside both repos, by conflicts.resolve over a scratch me3 dir
+holding the planner_high_* and planner_low_* inputs as the packages "high" and "low". Declared per path with
+prefer = "high" and mods = ["high", "low"] so erm's fold has the same order as the app's priority order:
+
+  resolve(me3, ["high", "low"], merges, lock={"vmod": {"asset": "v.zip"}}, notes=[], bases={"regulation.bin": game})
+
+regulation.bin: strategy param-rows, vanilla = planner_vanilla_regulation.bin out of vendor/v.zip, and bases= carrying
+planner_game_regulation.bin. erm supplies a base only on build drift; the app always folds the regulation onto the
+game's file, so the golden passes it explicitly. msg/engus/item.msgbnd.dcx: fmg-union. menu/hi/01_common.tpf.dcx:
+tpf-union. The file erm wrote to mods/_merged is stored here; the msgbnd and tpf are stored DCX-decoded because the
+compressed body of a rewritten archive is not byte-stable across zlib implementations. Cases erm refuses are not in it.

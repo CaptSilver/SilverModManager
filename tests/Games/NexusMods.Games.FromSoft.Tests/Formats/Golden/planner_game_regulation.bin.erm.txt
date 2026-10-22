@@ -1,0 +1,3 @@
+Input to the planner golden, produced once with erm (read-only), working directory outside both repos. The helpers are
+_regulation and SP in tests/test_merge.py and _synthetic_bnd4 in tests/test_bnd4.py; messages are fmg.write tables per
+entry, textures are tpf.write archives, both wrapped with dcx.write_dflt.
