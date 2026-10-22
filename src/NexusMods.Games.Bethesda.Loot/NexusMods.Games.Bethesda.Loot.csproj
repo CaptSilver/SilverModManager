@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="YamlDotNet" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="NexusMods.Games.Bethesda.Loot.Tests" />
+    </ItemGroup>
+</Project>

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\NexusMods.Games.Bethesda.Loot\NexusMods.Games.Bethesda.Loot.csproj" />
+    </ItemGroup>
+</Project>
