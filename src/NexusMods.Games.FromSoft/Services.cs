@@ -10,6 +10,7 @@ using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Heal;
 using NexusMods.Games.FromSoft.Launch;
 using NexusMods.Games.FromSoft.Me3;
+using NexusMods.Games.FromSoft.Merge;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Games.FromSoft.Saves;
 using NexusMods.Paths;
@@ -70,6 +71,9 @@ public static class Services
             var fileSystem = provider.GetRequiredService<IFileSystem>();
             return new RegulationBaselines(() => settings.Get<FromSoftSettings>().DataRoot.ToPath(fileSystem) / "baselines");
         });
+
+        // What the merge index and planner read from a loadout
+        services.AddSingleton<LoadoutMergeSources>();
 
         // Launch gates, in run order
         services.AddSingleton<IExecutableLocator, PathExecutableLocator>()

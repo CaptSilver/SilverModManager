@@ -19,6 +19,18 @@ internal static class TestArchives
         }
     }
 
+    /// <summary>Writes a zip at the path with each entry holding the bytes given for it.</summary>
+    public static async Task WriteEntries(AbsolutePath path, params (string Path, byte[] Content)[] entries)
+    {
+        await using var stream = path.Create();
+        using var zip = new ZipArchive(stream, ZipArchiveMode.Create);
+        foreach (var (entryPath, content) in entries)
+        {
+            await using var entry = zip.CreateEntry(entryPath).Open();
+            await entry.WriteAsync(content);
+        }
+    }
+
     /// <summary>
     /// Writes a gzipped tar at the path with one entry per path, each holding its own path as content. The names are
     /// stored exactly as given, so a leading "./" stays in the archive.

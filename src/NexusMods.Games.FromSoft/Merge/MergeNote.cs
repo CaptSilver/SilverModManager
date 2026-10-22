@@ -54,3 +54,10 @@ public sealed record TextureKept(string Name, string KeptMod, string DroppedMod)
     public string Describe() =>
         $"texture {Name}: both mods ship it and differ; kept {KeptMod}'s";
 }
+
+/// <summary>A read-only look at the merge used the installed game's regulation as the vanilla one; applying keeps a copy of it.</summary>
+public sealed record BaselineWillBeKept(string Version) : IMergeNote
+{
+    public string Describe() =>
+        $"the next apply keeps this regulation as the version {Version} baseline";
+}
