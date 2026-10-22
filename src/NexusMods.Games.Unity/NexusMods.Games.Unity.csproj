@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\NexusMods.Abstractions.Games\NexusMods.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\NexusMods.Games.FileHashes\NexusMods.Games.FileHashes.csproj" />
+        <ProjectReference Include="..\NexusMods.Games.Generic\NexusMods.Games.Generic.csproj" />
+        <ProjectReference Include="..\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
+        <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+    </ItemGroup>
+</Project>
