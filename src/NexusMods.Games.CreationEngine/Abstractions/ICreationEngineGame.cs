@@ -1,5 +1,6 @@
 using NexusMods.Abstractions.Games;
 using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -24,6 +25,12 @@ public interface ICreationEngineGame : IBethesdaGame
     /// places depending on how it is installed.
     /// </summary>
     public IPluginListMechanism PluginList(GameInstallation installation);
+
+    /// <summary>
+    /// Which LOOT masterlist applies to this install. Takes the installation because Morrowind sorts as OpenMW
+    /// when the install uses it.
+    /// </summary>
+    public LootGame LootGame(GameInstallation installation);
 
     /// <summary>Plugins the game loads whether or not any list names them, in load order.</summary>
     public IReadOnlyList<string> HardcodedPlugins { get; }

@@ -4,6 +4,7 @@ using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.Bethesda.LoadOrder.Tests;
+using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Paths;
@@ -61,6 +62,22 @@ public class PluginRulesTests(IServiceProvider serviceProvider)
         game.MasterByExtension.Should().Be(masterByExtension);
         game.MasterFlagIgnored(null!).Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData(typeof(CreationEngine.SkyrimLE.SkyrimLE), LootGame.Skyrim)]
+    [InlineData(typeof(CreationEngine.SkyrimSE.SkyrimSE), LootGame.SkyrimSE)]
+    [InlineData(typeof(CreationEngine.SkyrimVR.SkyrimVR), LootGame.SkyrimVR)]
+    [InlineData(typeof(CreationEngine.Enderal.Enderal), LootGame.Enderal)]
+    [InlineData(typeof(CreationEngine.EnderalSE.EnderalSE), LootGame.EnderalSE)]
+    [InlineData(typeof(CreationEngine.Fallout3.Fallout3), LootGame.Fallout3)]
+    [InlineData(typeof(CreationEngine.FalloutNewVegas.FalloutNewVegas), LootGame.FalloutNV)]
+    [InlineData(typeof(CreationEngine.Fallout4.Fallout4), LootGame.Fallout4)]
+    [InlineData(typeof(CreationEngine.Fallout4VR.Fallout4VR), LootGame.Fallout4VR)]
+    [InlineData(typeof(CreationEngine.Starfield.Starfield), LootGame.Starfield)]
+    [InlineData(typeof(CreationEngine.Oblivion.Oblivion), LootGame.Oblivion)]
+    [InlineData(typeof(CreationEngine.OblivionRemastered.OblivionRemastered), LootGame.OblivionRemastered)]
+    public void EachTitleSortsWithItsOwnLootGame(Type type, LootGame expected) =>
+        Registered(type).LootGame(null!).Should().Be(expected);
 
     [Theory]
     [InlineData(typeof(CreationEngine.SkyrimSE.SkyrimSE), "Skyrim.ccc")]

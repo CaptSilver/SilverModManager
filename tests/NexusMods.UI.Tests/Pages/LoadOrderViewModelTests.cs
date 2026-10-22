@@ -8,7 +8,14 @@ using OneOf;
 using System.ComponentModel;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.App.UI.Dialog;
+using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Pages.Sorting;
+using NexusMods.App.UI.Resources;
+using NexusMods.App.UI.Windows;
+using NexusMods.UI.Sdk.Dialog;
+using NexusMods.UI.Sdk.Dialog.Enums;
+using NSubstitute;
 using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -75,6 +82,34 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
             Dismissals++;
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class FakeLootVariety(LootSortOutcome outcome) : FakeVariety, ILootSortSource
+    {
+        public int Sorts { get; private set; }
+        public Exception? Throws { get; init; }
+
+        public Task<LootSortOutcome> SortAsync(SortOrderId sortOrderId, CancellationToken token = default)
+        {
+            Sorts++;
+            return Throws is null ? Task.FromResult(outcome) : Task.FromException<LootSortOutcome>(Throws);
+        }
+    }
+
+    private sealed class WindowManagerProvider(IServiceProvider inner, IWindowManager windows) : IServiceProvider
+    {
+        public object? GetService(Type serviceType) => serviceType == typeof(IWindowManager) ? windows : inner.GetService(serviceType);
+    }
+
+    private static readonly LootSortOutcome Sorted = new(true, null, OverlapEdgesSkipped: true, UnevaluatedConditions: 3, MasterlistRevision: "skyrimse 4a3a51a216 (bundled, retrieved 2026-10-22)");
+    private static readonly LootSortOutcome Cyclic = new(false, "A.esp --[Masterlist Load After]-> B.esp --[Masterlist Load After]-> A.esp", OverlapEdgesSkipped: true, UnevaluatedConditions: 0, MasterlistRevision: "rev");
+
+    private (LoadOrderViewModel ViewModel, IWindowManager Windows) LootViewModel(LootSortOutcome outcome, out FakeLootVariety variety)
+    {
+        variety = new FakeLootVariety(outcome);
+        var windows = Substitute.For<IWindowManager>();
+        windows.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>()).Returns(new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept });
+        return (new LoadOrderViewModel(new WindowManagerProvider(Provider, windows), variety, LoadoutId.From(1)), windows);
     }
 
     private sealed class FakeItem(bool isEnabled, bool isLocked) : IReactiveSortItem, ISortItemDetails
@@ -219,6 +254,88 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
 
         // The adapter builds its grid source on the UI thread.
         await EventuallyOnUi(() => ColumnHeaders(vm).Should().Equal("#", "Plugin", "On", "Details", "Parent mod"));
+    }
+
+    [Fact]
+    public void AVarietyThatSortsWithLoot_OffersTheButton()
+    {
+        var vm = LootViewModel(Sorted, out _).ViewModel;
+
+        vm.SupportsLootSort.Should().BeTrue();
+        var canExecute = false;
+        using var subscription = vm.SortWithLootCommand.CanExecute.Subscribe(value => canExecute = value);
+        canExecute.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AVarietyWithoutLoot_HasNoButtonAndCannotSort()
+    {
+        var vm = NewViewModel(new FakeVariety());
+
+        vm.SupportsLootSort.Should().BeFalse();
+        var canExecute = true;
+        using var _ = vm.SortWithLootCommand.CanExecute.Subscribe(value => canExecute = value);
+        canExecute.Should().BeFalse();
+        vm.HasLootOutcome.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Sorting_ShowsTheRevisionAndTheDivergencesAndOpensNoDialog()
+    {
+        var (vm, windows) = LootViewModel(Sorted, out var variety);
+
+        await vm.SortWithLootCommand.Execute();
+
+        variety.Sorts.Should().Be(1);
+        vm.HasLootOutcome.Should().BeTrue();
+        vm.LootOutcomeSummary.Should().Contain("skyrimse 4a3a51a216").And.Contain(Language.LoadOrder_SortWithLoot_OverlapSkipped).And.Contain("3 masterlist rules");
+        await windows.DidNotReceive().ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
+    }
+
+    [Fact]
+    public async Task ACycle_OpensADialogWithTheCycleAndStillShowsThePanel()
+    {
+        var (vm, windows) = LootViewModel(Cyclic, out _);
+
+        await vm.SortWithLootCommand.Execute();
+
+        await windows.Received(1).ShowDialog(Arg.Any<IDialog>(), DialogWindowType.Modal);
+        vm.HasLootOutcome.Should().BeTrue();
+        vm.LootOutcomeSummary.Should().Contain("A.esp --[Masterlist Load After]-> B.esp");
+        vm.LootOutcomeTitle.Should().NotBe(Language.LoadOrder_SortWithLoot_Title, "the sort did not happen");
+    }
+
+    [Fact]
+    public async Task ASortThatFailsForAnotherReason_ShowsTheErrorInThePanel()
+    {
+        var variety = new FakeLootVariety(Sorted) { Throws = new InvalidOperationException("the group \"late\" does not exist") };
+        var vm = new LoadOrderViewModel(Provider, variety, LoadoutId.From(1));
+
+        await vm.SortWithLootCommand.Execute();
+
+        vm.HasLootOutcome.Should().BeTrue();
+        vm.LootOutcomeTitle.Should().Be(Language.LoadOrder_SortWithLoot_FailedTitle);
+        vm.LootOutcomeSummary.Should().Contain("the group \"late\" does not exist");
+    }
+
+    [Fact]
+    public async Task DismissingThePanel_HidesTheOutcome()
+    {
+        var (vm, _) = LootViewModel(Sorted, out _);
+        await vm.SortWithLootCommand.Execute();
+
+        await vm.DismissLootOutcomeCommand.Execute();
+
+        vm.HasLootOutcome.Should().BeFalse();
+        vm.LootOutcomeSummary.Should().BeNull();
+    }
+
+    [Fact]
+    public void TheSummary_OmitsAnyDivergenceThatDidNotHappen()
+    {
+        var text = LootOutcomeText.Describe(new LootSortOutcome(true, null, OverlapEdgesSkipped: false, UnevaluatedConditions: 0, MasterlistRevision: "rev 1"));
+
+        text.Should().Contain("rev 1").And.NotContain(Language.LoadOrder_SortWithLoot_OverlapSkipped).And.NotContain("masterlist rules");
     }
 
     [Fact]

@@ -11,9 +11,15 @@ namespace NexusMods.Games.Bethesda.Loot.Masterlists;
 public sealed class BundledMasterlistStore : IMasterlistStore
 {
     private static readonly Assembly Assembly = typeof(BundledMasterlistStore).Assembly;
-    private readonly IReadOnlyDictionary<string, DateTimeOffset> _retrieved = ReadLock();
+    private readonly IReadOnlyDictionary<string, LockEntry> _lock = ReadLock();
 
-    public MasterlistContent Current(LootGame game) => new(MasterlistText(game.MasterlistRepository()), PreludeText());
+    private readonly record struct LockEntry(DateTimeOffset Retrieved, string Commit);
+
+    public MasterlistContent Current(LootGame game)
+    {
+        var repository = game.MasterlistRepository();
+        return new MasterlistContent(MasterlistText(repository), PreludeText(), BundledRevision(repository));
+    }
 
     /// <param name="repository">A name from <see cref="LootGameExtensions.BundledRepositories"/>.</param>
     public string MasterlistText(string repository) => ReadResource($"loot/{repository}/masterlist.yaml");
@@ -23,9 +29,20 @@ public sealed class BundledMasterlistStore : IMasterlistStore
     /// <summary>
     /// When the bundled copy of <paramref name="repository"/> was downloaded, as a UTC date.
     /// </summary>
-    public DateTimeOffset RetrievedOn(string repository) =>
-        _retrieved.TryGetValue(repository, out var date)
-            ? date
+    public DateTimeOffset RetrievedOn(string repository) => Entry(repository).Retrieved;
+
+    /// <summary>
+    /// Names the bundled copy of <paramref name="repository"/> by the commit the lock records for it.
+    /// </summary>
+    public string BundledRevision(string repository)
+    {
+        var entry = Entry(repository);
+        return $"{repository} {entry.Commit[..Math.Min(entry.Commit.Length, 10)]} (bundled, retrieved {entry.Retrieved:yyyy-MM-dd})";
+    }
+
+    private LockEntry Entry(string repository) =>
+        _lock.TryGetValue(repository, out var entry)
+            ? entry
             : throw new KeyNotFoundException($"No lock entry for LOOT repository \"{repository}\"");
 
     private static string ReadResource(string name)
@@ -36,14 +53,14 @@ public sealed class BundledMasterlistStore : IMasterlistStore
         return reader.ReadToEnd();
     }
 
-    private static Dictionary<string, DateTimeOffset> ReadLock()
+    private static Dictionary<string, LockEntry> ReadLock()
     {
         using var document = JsonDocument.Parse(ReadResource("loot/masterlists.lock.json"));
-        var result = new Dictionary<string, DateTimeOffset>();
+        var result = new Dictionary<string, LockEntry>();
         foreach (var file in document.RootElement.GetProperty("files").EnumerateArray())
         {
             var date = DateTime.ParseExact(LockString(file, "retrieved"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
-            result[LockString(file, "repo")] = new DateTimeOffset(date);
+            result[LockString(file, "repo")] = new LockEntry(new DateTimeOffset(date), LockString(file, "commit"));
         }
         return result;
     }

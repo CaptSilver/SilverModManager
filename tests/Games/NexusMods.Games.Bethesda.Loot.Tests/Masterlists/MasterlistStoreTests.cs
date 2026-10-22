@@ -51,6 +51,33 @@ public class MasterlistStoreTests : IDisposable
     }
 
     [Fact]
+    public void TheBundledRevisionNamesTheCommitFromTheLock()
+    {
+        var lockText = new StreamReader(typeof(BundledMasterlistStore).Assembly.GetManifestResourceStream("loot/masterlists.lock.json")!).ReadToEnd();
+        using var lockFile = System.Text.Json.JsonDocument.Parse(lockText);
+        var commit = lockFile.RootElement.GetProperty("files").EnumerateArray()
+            .Single(file => file.GetProperty("repo").GetString() == "skyrim").GetProperty("commit").GetString()!;
+
+        var revision = _bundled.Current(Game).Revision;
+
+        revision.Should().StartWith("skyrim ").And.Contain(commit[..10]).And.Contain("bundled");
+    }
+
+    [Fact]
+    public void ARevisionFromTheCacheSaysItWasDownloadedAndWhen()
+    {
+        WriteCache(MasterlistCache, ValidMasterlist, new DateTime(2099, 3, 4, 0, 0, 0, DateTimeKind.Utc));
+
+        Store().Current(Game).Revision.Should().Be("skyrim (downloaded 2099-03-04)");
+    }
+
+    [Fact]
+    public void WithoutACacheTheRevisionIsTheBundledOne()
+    {
+        Store().Current(Game).Revision.Should().Be(_bundled.Current(Game).Revision);
+    }
+
+    [Fact]
     public void WithoutACacheTheBundledCopyIsUsed()
     {
         Store().Current(Game).Masterlist.Should().Be(_bundled.Current(Game).Masterlist);

@@ -132,6 +132,40 @@ public partial class LoadOrderView : ReactiveUserControl<ILoadOrderViewModel>
                 ReplacedEditAlert.Title = Language.LoadOrder_ReplacedEdit_Title;
                 ReplacedEditDismissButton.Text = Language.LoadOrder_ReplacedEdit_Dismiss;
 
+                // Sort with LOOT
+                this.OneWayBind(ViewModel, vm => vm.SupportsLootSort,
+                        view => view.SortWithLootButton.IsVisible
+                    )
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.SortWithLootCommand,
+                        view => view.SortWithLootButton.Command
+                    )
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.HasLootOutcome,
+                        view => view.LootOutcomeAlert.IsVisible
+                    )
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.LootOutcomeTitle,
+                        view => view.LootOutcomeAlert.Title
+                    )
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.LootOutcomeSummary,
+                        view => view.LootOutcomeAlert.Body
+                    )
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.DismissLootOutcomeCommand,
+                        view => view.LootOutcomeDismissButton.Command
+                    )
+                    .DisposeWith(disposables);
+
+                SortWithLootButton.Text = Language.LoadOrder_SortWithLoot_Button;
+                LootOutcomeDismissButton.Text = Language.LoadOrder_SortWithLoot_Dismiss;
+
                 // Alert Learn More
                 this.OneWayBind(ViewModel, vm => vm.LearnMoreAlertCommand,
                         view => view.AlertLearnMoreButton.Command

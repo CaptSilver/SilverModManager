@@ -2,6 +2,7 @@ using DynamicData.Kernel;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.CreationEngine.Installers;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Games.FOMOD;
@@ -45,6 +46,7 @@ public class OblivionRemastered(IServiceProvider provider) : ACreationEngineGame
     public override GamePath DataPath => new(LocationId.Game, $"{ProjectFolder}/Content/Dev/ObvData/Data");
 
     public override PluginFormat HeaderFormat => PluginFormat.Tes4Oblivion;
+    public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.OblivionRemastered;
     public override GamePath PluginsFile => DataPath / "Plugins.txt";
     public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
     private static readonly IPluginListMechanism Mechanism = new TextfileMechanism();

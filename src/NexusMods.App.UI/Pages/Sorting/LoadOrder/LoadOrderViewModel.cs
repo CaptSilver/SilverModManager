@@ -7,13 +7,19 @@ using DynamicData;
 using DynamicData.Binding;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Sdk.Settings;
 using NexusMods.App.UI.Controls;
 using R3;
 using NexusMods.App.UI.Controls.Alerts;
+using NexusMods.App.UI.Dialog;
+using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Resources;
+using NexusMods.App.UI.Windows;
+using NexusMods.UI.Sdk.Dialog;
+using NexusMods.UI.Sdk.Dialog.Enums;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.UI.Sdk;
@@ -51,6 +57,13 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
     [Reactive] public string? ReplacedEditSummary { get; private set; }
     [Reactive] public bool HasReplacedEdit { get; private set; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> DismissReplacedEditCommand { get; }
+
+    public bool SupportsLootSort { get; }
+    public ReactiveUI.ReactiveCommand<Unit, Unit> SortWithLootCommand { get; }
+    [Reactive] public bool HasLootOutcome { get; private set; }
+    [Reactive] public string? LootOutcomeTitle { get; private set; }
+    [Reactive] public string? LootOutcomeSummary { get; private set; }
+    public ReactiveUI.ReactiveCommand<Unit, Unit> DismissLootOutcomeCommand { get; }
 
     public TreeDataGridAdapter<CompositeItemModel<ISortItemKey>, ISortItemKey> Adapter { get; }
 
@@ -132,6 +145,47 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
                   ?? throw new InvalidOperationException($"{sortOrderVariety.SortOrderVarietyId} has no replaced-edit notice to dismiss"),
             canExecute: System.Reactive.Linq.Observable.Return(replacedEdits is not null)
         );
+
+        var lootSource = sortOrderVariety as ILootSortSource;
+        SupportsLootSort = lootSource is not null;
+        SortWithLootCommand = ReactiveCommand.CreateFromTask(
+            async () =>
+            {
+                if (lootSource is null)
+                    throw new InvalidOperationException($"{sortOrderVariety.SortOrderVarietyId} cannot be sorted with LOOT");
+
+                LootSortOutcome outcome;
+                try
+                {
+                    outcome = await lootSource.SortAsync(sortOrderId);
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    // Bad metadata (an unknown group, a rule that contradicts master flags, a broken userlist) is
+                    // something the user can fix, so it goes in the panel rather than only into the log.
+                    serviceProvider.GetRequiredService<ILogger<LoadOrderViewModel>>().LogError(e, "Sorting {Variety} with LOOT failed", sortOrderVariety.SortOrderVarietyId);
+                    LootOutcomeTitle = Language.LoadOrder_SortWithLoot_FailedTitle;
+                    LootOutcomeSummary = e.Message;
+                    HasLootOutcome = true;
+                    return;
+                }
+
+                LootOutcomeTitle = outcome.Succeeded ? Language.LoadOrder_SortWithLoot_Title : Language.LoadOrder_SortWithLoot_FailedTitle;
+                LootOutcomeSummary = LootOutcomeText.Describe(outcome);
+                HasLootOutcome = true;
+
+                if (!outcome.Succeeded)
+                    await ShowCycleDialog(serviceProvider, outcome);
+            },
+            canExecute: System.Reactive.Linq.Observable.Return(SupportsLootSort)
+        );
+
+        DismissLootOutcomeCommand = ReactiveCommand.Create(() =>
+        {
+            HasLootOutcome = false;
+            LootOutcomeTitle = null;
+            LootOutcomeSummary = null;
+        });
 
         this.WhenActivated(d =>
             {
@@ -243,6 +297,19 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
                     .DisposeWith(d);
             }
         );
+    }
+
+    private static async Task ShowCycleDialog(IServiceProvider serviceProvider, LootSortOutcome outcome)
+    {
+        var dialog = DialogFactory.CreateStandardDialog(
+            Language.LoadOrder_SortWithLoot_FailedTitle,
+            new StandardDialogParameters
+            {
+                Text = string.Format(Language.LoadOrder_SortWithLoot_CycleDialog_Text, outcome.CycleText),
+            },
+            [DialogStandardButtons.Ok]
+        );
+        await serviceProvider.GetRequiredService<IWindowManager>().ShowDialog(dialog, DialogWindowType.Modal);
     }
 
     private static bool PointerIsInVerticalTopHalf(TreeDataGridRowDragEventArgs eventArgs)

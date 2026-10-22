@@ -10,6 +10,7 @@ using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Games.CreationEngine.SortOrder;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.Bethesda.LoadOrder.Ordering;
+using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -38,6 +39,8 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     public abstract PluginFormat HeaderFormat { get; }
 
     public abstract GamePath PluginsFile { get; }
+
+    public abstract LootGame LootGame(GameInstallation installation);
     public abstract IPluginListMechanism PluginList(GameInstallation installation);
 
     // libloadorder game_settings.rs: hardcoded_plugins.

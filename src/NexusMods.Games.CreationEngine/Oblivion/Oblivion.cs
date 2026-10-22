@@ -1,6 +1,7 @@
 using DynamicData.Kernel;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Games.CreationEngine.Abstractions;
@@ -30,6 +31,7 @@ public class Oblivion(IServiceProvider provider) : ACreationEngineGame<Oblivion>
     };
 
     public override PluginFormat HeaderFormat => PluginFormat.Tes4Oblivion;
+    public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.Oblivion;
     public override GamePath PluginsFile => new(LocationId.AppData, "Plugins.txt");
     public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
     private static readonly TimestampMechanism Mechanism = new(locationFollowsIni: true);

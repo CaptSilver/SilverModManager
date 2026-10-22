@@ -1,5 +1,6 @@
 using DynamicData.Kernel;
 using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Paths;
@@ -22,6 +23,7 @@ public class Fallout4VR(IServiceProvider provider) : ACreationEngineGame<Fallout
 
     protected override RelativePath PrimaryExe => "Fallout4VR.exe";
     public override PluginFormat HeaderFormat => PluginFormat.Tes4;
+    public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.Fallout4VR;
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
     public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
     private static readonly IPluginListMechanism Mechanism = new AsteriskMechanism();

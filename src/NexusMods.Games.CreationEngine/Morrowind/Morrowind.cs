@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.CreationEngine.Morrowind.OpenMw;
 using NexusMods.Games.CreationEngine.PluginLists;
@@ -47,6 +48,10 @@ public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowin
 
     public override PluginFormat HeaderFormat => PluginFormat.Tes3;
     public override GamePath PluginsFile => new(LocationId.Game, "Morrowind.ini");
+
+    // OpenMW has no masterlist of its own; it shares Morrowind's, but sorts without the master flag.
+    public override LootGame LootGame(GameInstallation installation) =>
+        installation.Locations.ContainsKey(OpenMwConfig) ? Bethesda.Loot.Masterlists.LootGame.OpenMW : Bethesda.Loot.Masterlists.LootGame.Morrowind;
 
     public override IPluginListMechanism PluginList(GameInstallation installation) =>
         installation.Locations.ContainsKey(OpenMwConfig) ? OpenMw : Ini;

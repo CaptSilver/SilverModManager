@@ -7,11 +7,14 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.Bethesda.LoadOrder;
+using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.Loot;
 using NexusMods.Games.CreationEngine.Models;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using NexusMods.Sdk.Settings;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using OneOf;
@@ -25,10 +28,11 @@ namespace NexusMods.Games.CreationEngine.SortOrder;
 /// (see <see cref="Reconcile"/>), and every row has its own on/off switch.
 /// </summary>
 public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<string>, PluginReactiveSortItem, PluginLoadoutData, PluginSortData>,
-    IPluginSortOrderVariety, IToggleableSortOrderVariety, IReplacedGameEditSource
+    IPluginSortOrderVariety, IToggleableSortOrderVariety, IReplacedGameEditSource, ILootSortSource
 {
     private static readonly SortOrderVarietyId StaticVarietyId = SortOrderVarietyId.From(new Guid("6F2B1C0E-7D3A-4B8E-9A61-3C5D2E8F4A17"));
 
+    private readonly IServiceProvider _serviceProvider;
     private readonly ICreationEngineGame _game;
     private readonly PluginHeaderCache _headers;
     private readonly ILogger<PluginSortOrderVariety> _logger;
@@ -36,6 +40,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
     public PluginSortOrderVariety(IServiceProvider serviceProvider, ICreationEngineGame game) : base(serviceProvider)
     {
+        _serviceProvider = serviceProvider;
         _game = game;
         _headers = new PluginHeaderCache(game);
         _logger = serviceProvider.GetRequiredService<ILogger<PluginSortOrderVariety>>();
@@ -218,6 +223,31 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
     /// <inheritdoc />
     Task IReplacedGameEditSource.Dismiss(SortOrderId sortOrderId) => ClearReplacedGameEdit(sortOrderId);
+
+    /// <inheritdoc />
+    public Task<LootSortOutcome> SortAsync(SortOrderId sortOrderId, CancellationToken token = default)
+    {
+        var store = _serviceProvider.GetRequiredService<IMasterlistStore>();
+        var dataDirectory = _serviceProvider.GetRequiredService<LootDataDirectory>().Path;
+        return new LootSortService(_game, this, Connection, store, dataDirectory, MasterlistRefresh(store), _logger).SortAsync(sortOrderId, token);
+    }
+
+    /// <summary>
+    /// Downloads a newer masterlist when the store keeps downloaded copies and the user has not turned that off.
+    /// </summary>
+    private Func<LootGame, CancellationToken, Task>? MasterlistRefresh(IMasterlistStore store)
+    {
+        if (store is not CachingMasterlistStore caching) return null;
+        if (!_serviceProvider.GetRequiredService<ISettingsManager>().Get<LootMasterlistSettings>().LootMasterlistRefresh) return null;
+
+        var client = _serviceProvider.GetRequiredService<HttpClient>();
+        return async (game, token) =>
+        {
+            var result = await caching.RefreshAsync(game, client, token);
+            if (result == MasterlistRefreshResult.Failed)
+                _logger.LogWarning("Refreshing the LOOT masterlist for {Game} failed; the previous copy stays in use", game);
+        };
+    }
 
     /// <summary>
     /// Refuses a list in which the plugins the game always loads first are not the first rows, in their own order.

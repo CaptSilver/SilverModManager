@@ -41,9 +41,13 @@ public sealed class CachingMasterlistStore(AbsolutePath dataDir, BundledMasterli
     {
         var repo = game.MasterlistRepository();
 
-        var masterlist = ReadIfNewer(MasterlistPath(repo), bundled.RetrievedOn(repo)) ?? bundled.MasterlistText(repo);
+        var cached = ReadIfNewer(MasterlistPath(repo), bundled.RetrievedOn(repo));
+        var masterlist = cached ?? bundled.MasterlistText(repo);
         var prelude = ReadIfNewer(PreludePath, bundled.RetrievedOn(PreludeRepository)) ?? bundled.PreludeText();
-        return new MasterlistContent(masterlist, prelude);
+        var revision = cached is null
+            ? bundled.BundledRevision(repo)
+            : $"{repo} (downloaded {IoFile.GetLastWriteTimeUtc(MasterlistPath(repo)):yyyy-MM-dd})";
+        return new MasterlistContent(masterlist, prelude, revision);
     }
 
     /// <summary>

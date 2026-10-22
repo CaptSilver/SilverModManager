@@ -59,6 +59,30 @@
                                                  Fill="None" />
                     </alerts:Alert>
                 </Grid>
+
+                <!-- shown only for orders LOOT can sort -->
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                    <controls:StandardButton x:Name="SortWithLootButton"
+                                             Type="Secondary"
+                                             Fill="Weak"
+                                             IsVisible="False" />
+                </StackPanel>
+
+                <!-- the result of the last LOOT sort -->
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MaxWidth="750" />
+                    </Grid.ColumnDefinitions>
+
+                    <alerts:Alert x:Name="LootOutcomeAlert"
+                                  Severity="Info"
+                                  ShowDismiss="False"
+                                  IsVisible="False">
+                        <controls:StandardButton x:Name="LootOutcomeDismissButton"
+                                                 Type="Secondary"
+                                                 Fill="None" />
+                    </alerts:Alert>
+                </Grid>
             </StackPanel>
 
             <!-- treedatagrid and trophy bar -->

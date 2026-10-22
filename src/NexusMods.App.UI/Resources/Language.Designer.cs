@@ -4010,5 +4010,77 @@ namespace NexusMods.App.UI.Resources {
                 return ResourceManager.GetString("LoadOrder_ReplacedEdit_Dismiss", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Sort with LOOT.
+        /// </summary>
+        public static string LoadOrder_SortWithLoot_Button {
+            get {
+                return ResourceManager.GetString("LoadOrder_SortWithLoot_Button", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Sorted with LOOT.
+        /// </summary>
+        public static string LoadOrder_SortWithLoot_Title {
+            get {
+                return ResourceManager.GetString("LoadOrder_SortWithLoot_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to LOOT could not sort the plugins.
+        /// </summary>
+        public static string LoadOrder_SortWithLoot_FailedTitle {
+            get {
+                return ResourceManager.GetString("LoadOrder_SortWithLoot_FailedTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Got it.
+        /// </summary>
+        public static string LoadOrder_SortWithLoot_Dismiss {
+            get {
+                return ResourceManager.GetString("LoadOrder_SortWithLoot_Dismiss", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Masterlist: {0}.
+        /// </summary>
+        public static string LoadOrder_SortWithLoot_Revision {
+            get {
+                return ResourceManager.GetString("LoadOrder_SortWithLoot_Revision", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Overlap rules (plugins that change the same records or assets) were not applied..
+        /// </summary>
+        public static string LoadOrder_SortWithLoot_OverlapSkipped {
+            get {
+                return ResourceManager.GetString("LoadOrder_SortWithLoot_OverlapSkipped", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} masterlist rules depend on files or versions the app cannot check yet and were skipped..
+        /// </summary>
+        public static string LoadOrder_SortWithLoot_UnevaluatedConditions {
+            get {
+                return ResourceManager.GetString("LoadOrder_SortWithLoot_UnevaluatedConditions", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The masterlist and userlist rules contradict each other, so the load order was left as it was..
+        /// </summary>
+        public static string LoadOrder_SortWithLoot_CycleDialog_Text {
+            get {
+                return ResourceManager.GetString("LoadOrder_SortWithLoot_CycleDialog_Text", resourceCulture);
+            }
+        }
     }
 }

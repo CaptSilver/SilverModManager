@@ -2,6 +2,7 @@ using FluentAssertions;
 using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Sdk.Games;
 using Xunit;
@@ -54,6 +55,9 @@ public class MorrowindWithoutOpenMwTests(ITestOutputHelper helper) : AMorrowindI
     }
 
     [Fact]
+    public void SortsWithTheMorrowindMasterlist() => Game.LootGame(GameInstallation).Should().Be(LootGame.Morrowind);
+
+    [Fact]
     public void LoadsNothingEarly() => Game.EarlyLoadingPlugins(GameInstallation).Should().BeEmpty();
 
     [Fact]
@@ -79,6 +83,9 @@ public class MorrowindWithOpenMwTests(ITestOutputHelper helper) : AMorrowindIntr
         Game.PluginList(GameInstallation).Should().BeOfType<OpenMwMechanism>();
         Game.MasterFlagIgnored(GameInstallation).Should().BeTrue();
     }
+
+    [Fact]
+    public void SortsAsOpenMw() => Game.LootGame(GameInstallation).Should().Be(LootGame.OpenMW);
 
     [Fact]
     public void BuiltInScriptsLoadEarly() => Game.EarlyLoadingPlugins(GameInstallation).Should().Equal("builtin.omwscripts");

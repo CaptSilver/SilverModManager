@@ -1401,4 +1401,30 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="LoadOrder_ReplacedEdit_Dismiss" xml:space="preserve">
         <value>Dismiss</value>
     </data>
+    <data name="LoadOrder_SortWithLoot_Button" xml:space="preserve">
+        <value>Sort with LOOT</value>
+    </data>
+    <data name="LoadOrder_SortWithLoot_Title" xml:space="preserve">
+        <value>Sorted with LOOT</value>
+    </data>
+    <data name="LoadOrder_SortWithLoot_FailedTitle" xml:space="preserve">
+        <value>LOOT could not sort the plugins</value>
+    </data>
+    <data name="LoadOrder_SortWithLoot_Dismiss" xml:space="preserve">
+        <value>Got it</value>
+    </data>
+    <data name="LoadOrder_SortWithLoot_Revision" xml:space="preserve">
+        <value>Masterlist: {0}</value>
+    </data>
+    <data name="LoadOrder_SortWithLoot_OverlapSkipped" xml:space="preserve">
+        <value>Overlap rules (plugins that change the same records or assets) were not applied.</value>
+    </data>
+    <data name="LoadOrder_SortWithLoot_UnevaluatedConditions" xml:space="preserve">
+        <value>{0} masterlist rules depend on files or versions the app cannot check yet and were skipped.</value>
+    </data>
+    <data name="LoadOrder_SortWithLoot_CycleDialog_Text" xml:space="preserve">
+        <value>The masterlist and userlist rules contradict each other, so the load order was left as it was.
+
+{0}</value>
+    </data>
 </root>

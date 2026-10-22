@@ -3,7 +3,8 @@ namespace NexusMods.Games.Bethesda.Loot.Masterlists;
 /// <summary>
 /// The text of a masterlist and of the shared prelude it is loaded with.
 /// </summary>
-public sealed record MasterlistContent(string Masterlist, string Prelude);
+/// <param name="Revision">Says which copy of the masterlist this is: the bundled commit, or the date a refreshed copy was saved.</param>
+public sealed record MasterlistContent(string Masterlist, string Prelude, string Revision);
 
 /// <summary>
 /// Where the current masterlist for a game comes from.

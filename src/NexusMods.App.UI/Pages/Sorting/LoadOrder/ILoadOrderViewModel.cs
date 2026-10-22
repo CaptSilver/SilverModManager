@@ -109,6 +109,37 @@ public interface ILoadOrderViewModel : IViewModelInterface
     ReactiveCommand<Unit, Unit> DismissReplacedEditCommand { get; }
 
     /// <summary>
+    /// True when the variety can be sorted by LOOT's rules, so the page shows the Sort with LOOT button.
+    /// </summary>
+    bool SupportsLootSort { get; }
+
+    /// <summary>
+    /// Sorts the order with LOOT's rules and shows what the sort did. A sort that found no valid order also opens a
+    /// dialog with the reason.
+    /// </summary>
+    ReactiveCommand<Unit, Unit> SortWithLootCommand { get; }
+
+    /// <summary>
+    /// True while <see cref="LootOutcomeSummary"/> has the result of a sort to show.
+    /// </summary>
+    bool HasLootOutcome { get; }
+
+    /// <summary>
+    /// Heading for the result of the last LOOT sort; null when there is none.
+    /// </summary>
+    string? LootOutcomeTitle { get; }
+
+    /// <summary>
+    /// The masterlist the last LOOT sort used and what it could not apply, or the cycle that stopped it; null when there is none.
+    /// </summary>
+    string? LootOutcomeSummary { get; }
+
+    /// <summary>
+    /// Hides the result of the last LOOT sort.
+    /// </summary>
+    ReactiveCommand<Unit, Unit> DismissLootOutcomeCommand { get; }
+
+    /// <summary>
     /// AlertSettings wrapper for the Alert so it can be shown\hidden based on the settings
     /// </summary>
     AlertSettingsWrapper AlertSettingsWrapper { get; }

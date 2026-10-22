@@ -1,9 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.Bethesda.Loot.Masterlists;
+using NexusMods.Games.CreationEngine.Loot;
 using NexusMods.Games.CreationEngine.Models;
 using NexusMods.Games.CreationEngine.SortOrder;
+using NexusMods.Paths;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Settings;
 
 namespace NexusMods.Games.CreationEngine;
 
@@ -26,6 +31,13 @@ public static class Services
         services.AddSingleton<Morrowind.OpenMw.IOpenMwConfigRoots, Morrowind.OpenMw.OpenMwConfigRoots>();
         services.AddBethesdaGame<Morrowind.Morrowind>(null);
         services.AddBethesdaGame<OblivionRemastered.OblivionRemastered>(KnownPaths.OBSE64Loader);
+
+        services.AddSettings<LootMasterlistSettings>();
+        services.AddSingleton(s => new LootDataDirectory(
+            s.GetRequiredService<IFileSystem>().GetKnownPath(KnownPath.XDG_DATA_HOME) / ApplicationConstants.DataDirectoryName));
+        services.AddSingleton<IMasterlistStore>(s => new CachingMasterlistStore(
+            s.GetRequiredService<LootDataDirectory>().Path,
+            new BundledMasterlistStore()));
 
         services.AddPluginSortOrderModel()
             .AddPluginSortOrderItemModel()
