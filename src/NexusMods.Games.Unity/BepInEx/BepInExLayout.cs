@@ -41,7 +41,7 @@ public sealed class BepInExLayout
 
     /// <summary>Maps each archive path to its place in the game folder.</summary>
     /// <param name="packageFolder">The package's folder name, see <see cref="BepInExPackageFolder"/>.</param>
-    /// <exception cref="BepInExLayoutException">Two paths resolve to the same target.</exception>
+    /// <exception cref="BepInExLayoutException">Two paths resolve to the same target, or a path has a "." or ".." segment.</exception>
     public static IReadOnlyDictionary<RelativePath, GamePath> Route(IEnumerable<RelativePath> paths, string packageFolder)
     {
         var result = new Dictionary<RelativePath, GamePath>();
@@ -91,6 +91,10 @@ public sealed class BepInExLayout
     {
         var parts = path.ToString().Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
         var file = parts[^1];
+
+        // Archive paths come from the mod, and the target is a plain join onto the game folder.
+        if (parts.Any(p => p is "." or ".."))
+            throw new BepInExLayoutException($"'{path}' has a '.' or '..' segment and cannot be installed");
 
         // Only folders can match; the last part is the file, so a file called "plugins" is not a folder.
         for (var i = 0; i < parts.Length - 1; i++)

@@ -449,6 +449,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     public async Task<Loadout.ReadOnly> RunActions(Dictionary<GamePath, SyncNode> syncTree, Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
     {
         await Preflight(loadout.InstallationInstance);
+        RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
         ProbeWritableRoots(syncTree, loadout.InstallationInstance.Locations);
 
@@ -669,6 +670,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     public async Task RunActions(Dictionary<GamePath, SyncNode> syncTree, GameInstallation gameInstallation)
     {
         await Preflight(gameInstallation);
+        RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
         ProbeWritableRoots(syncTree, gameInstallation.Locations);
 
@@ -1347,7 +1349,38 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             cleared.Count, string.Join(", ", cleared.Take(listed)), cleared.Count > listed ? $" and {cleared.Count - listed} more" : "");
     }
 
-    private string NeverWrittenMessage(GamePath path, SyncNode node)
+    /// <summary>
+    /// Whether the path could address something outside its location: a "." or ".." segment, a segment that is
+    /// a drive, or a rooted path. RelativePath keeps "." and ".." as written and accepts ':' inside a path, and
+    /// the paths are joined onto a location folder when written, so a mod could otherwise place files anywhere
+    /// the player can write.
+    /// </summary>
+    internal static bool IsTraversalPath(GamePath path)
+    {
+        var text = path.Path.ToString();
+        if (text.StartsWith('/') || text.StartsWith('\\')) return true;
+
+        foreach (var segment in text.Split('/', '\\'))
+        {
+            if (segment is "." or ".." || segment.Contains(':')) return true;
+        }
+        return false;
+    }
+
+    private void RefuseTraversalPaths(Dictionary<GamePath, SyncNode> syncTree)
+    {
+        foreach (var (path, node) in syncTree)
+        {
+            if (node.SourceItemType is not (LoadoutSourceItemType.Loadout or LoadoutSourceItemType.Intrinsic)) continue;
+            if (!IsTraversalPath(path)) continue;
+
+            throw new SynchronizerPreflightException(
+                $"Cannot apply: {DescribeProvider(node)} provides '{path.Path}', whose '.', '..' or drive segment could reach outside the {path.LocationId} location. " +
+                "Every sync fails until that mod is removed from the loadout.");
+        }
+    }
+
+    private string DescribeProvider(SyncNode node)
     {
         var provider = "an intrinsic file of the game";
         if (node.HaveLoadout && node.Loadout.HaveEntityId)
@@ -1355,6 +1388,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             var item = LoadoutItem.Load(Connection.Db, node.Loadout.EntityId);
             if (item.IsValid() && item.HasParent()) provider = $"the mod '{item.Parent.AsLoadoutItem().Name}'";
         }
+        return provider;
+    }
+
+    private string NeverWrittenMessage(GamePath path, SyncNode node)
+    {
+        var provider = DescribeProvider(node);
 
         return $"Cannot apply: {provider} provides '{path.Path}', but files in the {path.LocationId} location are never written for this game. " +
                "Every sync fails until that mod is removed from the loadout.";

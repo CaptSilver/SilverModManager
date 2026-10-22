@@ -39,4 +39,52 @@ public class BepInExPackageFolderTests
 
         folder.Should().Be("Me-MyMod");
     }
+
+    [Theory]
+    [InlineData("../../x")]
+    [InlineData("a/b")]
+    [InlineData("a\\b")]
+    [InlineData("..")]
+    [InlineData("/etc/cron.d")]
+    [InlineData("C:\\Windows")]
+    [InlineData("has space")]
+    public void AManifestNameThatIsNotAThunderstoreNameFallsBackToTheArchiveName(string name) =>
+        BepInExPackageFolder.For("Mod.zip", null, name).Should().Be("Mod");
+
+    [Theory]
+    [InlineData("../evil")]
+    [InlineData("a/b")]
+    [InlineData("..")]
+    public void AManifestNamespaceThatIsNotAThunderstoreNamespaceFallsBackToTheArchiveName(string ns) =>
+        BepInExPackageFolder.For("Mod.zip", ns, "Name").Should().Be("Mod");
+
+    [Fact]
+    public void ANamespaceAndNameThatAreValidMakeTheAuthorNameFolder() =>
+        BepInExPackageFolder.For("Mod.zip", "Author", "Name").Should().Be("Author-Name");
+
+    [Fact]
+    public void ANamespaceMayContainDashes() =>
+        BepInExPackageFolder.For("Mod.zip", "Some-Team", "Name_2").Should().Be("Some-Team-Name_2");
+
+    [Theory]
+    [InlineData("a\\b.zip")]
+    [InlineData("C:evil.zip")]
+    [InlineData("..zip")]
+    [InlineData(".zip")]
+    [InlineData("..-1.0.zip")]
+    [InlineData("a\\b-1.0.zip")]
+    public void AnArchiveNameThatCannotBeAFolderNameIsRefusedNamingTheArchive(string archive)
+    {
+        var act = () => BepInExPackageFolder.For(archive);
+
+        act.Should().Throw<BepInExLayoutException>().Which.Message.Should().Contain(archive);
+    }
+
+    [Fact]
+    public void AnEmptyArchiveNameIsRefused()
+    {
+        var act = () => BepInExPackageFolder.For("");
+
+        act.Should().Throw<BepInExLayoutException>();
+    }
 }

@@ -110,4 +110,23 @@ public class BepInExLayoutTests
     [Fact]
     public void FilesUnderDifferentRootsAreNotALoaderPack() =>
         BepInExLayout.IsLoaderPack(Paths("A/winhttp.dll", "B/doorstop_config.ini", "B/BepInEx/core/BepInEx.Preloader.dll"), out _).Should().BeFalse();
+
+    [Theory]
+    [InlineData("plugins/../../evil.dll")]
+    [InlineData("../evil.dll")]
+    [InlineData("plugins/./x.dll")]
+    public void AnArchiveEntryWithADotSegmentIsRefused(string path)
+    {
+        var act = () => BepInExLayout.Route(Paths(path), Package);
+
+        act.Should().Throw<BepInExLayoutException>().Which.Message.Should().Contain(path);
+    }
+
+    [Fact]
+    public void BackslashSeparatedDotSegmentsAreRefusedToo()
+    {
+        var act = () => BepInExLayout.Route(Paths("plugins\\..\\..\\evil.dll"), Package);
+
+        act.Should().Throw<BepInExLayoutException>();
+    }
 }

@@ -13,16 +13,34 @@ public static class BepInExPackageFolder
     /// <param name="archiveFileName">The archive's file name, with its extension.</param>
     /// <param name="manifestNamespace">The manifest's optional namespace field.</param>
     /// <param name="manifestName">The manifest's name field, if the archive has a manifest.</param>
+    /// <exception cref="BepInExLayoutException">The archive name cannot be used as a folder name.</exception>
     public static string For(string archiveFileName, string? manifestNamespace = null, string? manifestName = null)
     {
         var stem = Path.GetFileNameWithoutExtension(archiveFileName);
         var withoutVersion = StripVersion(stem);
-        if (withoutVersion.Length != stem.Length) return withoutVersion;
+        if (withoutVersion.Length != stem.Length) return RequireSafeFolderName(withoutVersion, archiveFileName);
 
-        if (!string.IsNullOrWhiteSpace(manifestName))
-            return string.IsNullOrWhiteSpace(manifestNamespace) ? manifestName : $"{manifestNamespace}-{manifestName}";
+        // The manifest comes from the archive, so its fields only count when they are valid Thunderstore names.
+        // Anything else would let "../../x" put the folder outside BepInEx.
+        if (manifestName is not null && IsThunderstoreName(manifestName))
+        {
+            if (string.IsNullOrWhiteSpace(manifestNamespace)) return manifestName;
+            if (IsThunderstoreNamespace(manifestNamespace)) return $"{manifestNamespace}-{manifestName}";
+        }
 
-        return stem;
+        return RequireSafeFolderName(stem, archiveFileName);
+    }
+
+    // Thunderstore package names are letters, digits and underscores; namespaces may also hold dashes.
+    private static bool IsThunderstoreName(string value) => value.Length > 0 && value.All(c => char.IsAsciiLetterOrDigit(c) || c == '_');
+
+    private static bool IsThunderstoreNamespace(string value) => value.All(c => char.IsAsciiLetterOrDigit(c) || c == '_' || c == '-');
+
+    private static string RequireSafeFolderName(string folder, string archiveFileName)
+    {
+        if (folder.Length == 0 || folder is "." or ".." || folder.IndexOfAny(['/', '\\', ':']) >= 0)
+            throw new BepInExLayoutException($"'{archiveFileName}' cannot be installed: its name does not make a valid folder name");
+        return folder;
     }
 
     /// <summary>The "namespace" and "name" fields of a package's manifest.json.</summary>
