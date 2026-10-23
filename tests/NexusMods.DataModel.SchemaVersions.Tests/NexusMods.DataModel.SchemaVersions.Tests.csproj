@@ -10,6 +10,12 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Update="Resources\PackageBuildDatabase.zip">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
+    <ItemGroup>
       <PackageReference Include="Verify" />
       <PackageReference Include="Verify.XunitV3" />  
     </ItemGroup>

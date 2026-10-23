@@ -19,6 +19,13 @@ internal sealed class OnDiskDataFolder : IDisposable
 {
     private readonly string _name = $"FreshDataDirectory-{Guid.NewGuid()}";
 
+    /// <summary>
+    /// Where the provider opens the database. Fill it before calling <see cref="CreateProvider"/> to start from an existing one.
+    /// </summary>
+    public AbsolutePath DatabaseFolder => DatabasePath.ToPath(FileSystem.Shared);
+
+    private ConfigurablePath DatabasePath => new(KnownPath.EntryDirectory, $"{_name}/MnemonicDB.rocksdb");
+
     public static StartupMode Gui => new() { RunAsMain = true, ShowUI = true, SecretBackend = SecretBackendChoice.Memory };
     public static StartupMode Headless => new() { RunAsMain = true, ShowUI = false, SecretBackend = SecretBackendChoice.Memory };
 
@@ -35,7 +42,7 @@ internal sealed class OnDiskDataFolder : IDisposable
             .OverrideSettingsForTests<DataModelSettings>(settings => settings with
             {
                 UseInMemoryDataModel = false,
-                MnemonicDBPath = new ConfigurablePath(KnownPath.EntryDirectory, $"{_name}/MnemonicDB.rocksdb"),
+                MnemonicDBPath = DatabasePath,
                 ArchiveLocations = [new ConfigurablePath(KnownPath.EntryDirectory, $"{_name}/Archives")],
             });
 
