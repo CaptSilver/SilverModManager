@@ -41,6 +41,14 @@ public class LoadoutGroupFilesProvider
             .ChangeKey(FileToGamePath);
     }
 
+    private IObservable<IChangeSet<GameInstalledFile.ReadOnly, GamePath>> FilteredGameInstalledFiles(ModFilesFilter filesFilter)
+    {
+        return GameInstalledFile
+            .ObserveAll(_connection)
+            .Filter(x => LoadoutFilesObservableExtensions.FilterEntityId(_connection, filesFilter, x.Id))
+            .ChangeKey(file => (GamePath)file.Path);
+    }
+
     /// <summary>
     /// Listens to all available mod files within MnemonicDB.
     /// </summary>
@@ -48,8 +56,14 @@ public class LoadoutGroupFilesProvider
     /// <param name="useFullFilePaths">Renders the file names as full file paths, for when the data is viewed outside a tree.</param>
     public IObservable<IChangeSet<CompositeItemModel<GamePath>, GamePath>> ObserveModFiles(ModFilesFilter filesFilter, bool useFullFilePaths)
     {
-        var filesObservable = FilteredModFiles(filesFilter)
+        var modFiles = FilteredModFiles(filesFilter)
             .Transform(x => ToModFileItemModel(new LoadoutItemWithTargetPath.ReadOnly(x.Db, x.EntitySegment, x.Id), useFullFilePaths));
+
+        // The files of content the game installed are not mod files, so they come from their own model.
+        var gameInstalledFiles = FilteredGameInstalledFiles(filesFilter)
+            .Transform(file => ToGameInstalledFileItemModel(file, useFullFilePaths));
+
+        var filesObservable = new[] { modFiles, gameInstalledFiles }.MergeChangeSets();
 
         // If we are requesting a flat view, we can skip folder generation.
         if (useFullFilePaths)
@@ -94,6 +108,30 @@ public class LoadoutGroupFilesProvider
         //              Will see how this goes once the columns are actually there.
         
         return fileItemModel;
+    }
+
+    private CompositeItemModel<GamePath> ToGameInstalledFileItemModel(GameInstalledFile.ReadOnly file, bool useFullFilePaths)
+    {
+        GamePath gamePath = file.Path;
+        var fileName = ((RelativePath)gamePath.Path).FileName;
+        var model = new CompositeItemModel<GamePath>(gamePath)
+        {
+            HasChildrenObservable = System.Reactive.Linq.Observable.Return(false),
+            ChildrenObservable = System.Reactive.Linq.Observable.Empty<IChangeSet<CompositeItemModel<GamePath>, GamePath>>(),
+        };
+
+        // The size is whatever the game's copy was at the last reconcile, so it follows the row.
+        var sizeUpdates = GameInstalledFile.Observe(_connection, file.Id).Select(x => x.Size);
+
+        model.Add(SharedColumns.NameWithFileIcon.FileEntryComponentKey,
+            new FileEntryComponent(
+                new StringComponent(useFullFilePaths ? gamePath.Path.ToString() : fileName),
+                new ValueComponent<bool>(false)
+            ));
+        model.Add(SharedColumns.NameWithFileIcon.IconComponentKey,
+            new UnifiedIconComponent(((RelativePath)gamePath.Path).Extension.GetIconType().GetIconValue()));
+        model.Add(SharedColumns.ItemSizeOverGamePath.ComponentKey, new SizeComponent(initialValue: file.Size, valueObservable: sizeUpdates));
+        return model;
     }
 }
 

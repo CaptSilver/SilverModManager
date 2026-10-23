@@ -109,6 +109,21 @@ public interface ILoadOrderViewModel : IViewModelInterface
     ReactiveCommand<Unit, Unit> DismissReplacedEditCommand { get; }
 
     /// <summary>
+    /// Why the variety stopped writing its list and handed the file back to the game; null when it is writing.
+    /// </summary>
+    string? HoldSummary { get; }
+
+    /// <summary>
+    /// True while <see cref="HoldSummary"/> has something to show.
+    /// </summary>
+    bool HasHold { get; }
+
+    /// <summary>
+    /// Ends the hold so the variety writes the loadout's order again.
+    /// </summary>
+    ReactiveCommand<Unit, Unit> ReleaseHoldCommand { get; }
+
+    /// <summary>
     /// True when the variety can be sorted by LOOT's rules, so the page shows the Sort with LOOT button.
     /// </summary>
     bool SupportsLootSort { get; }

@@ -30,6 +30,8 @@ public sealed record CleanFolderPrompt(string Title, string Markdown, bool Offer
             - The existing files will be placed in **External Changes**.
             - Files in External Changes **override any mods you install later**.
             - If you stop managing this game or uninstall the app, those **files will be permanently removed**.
+
+            Content the game installed itself (Creations, the in-game mod manager) is kept either way.
             """,
             OffersClean: true
         );

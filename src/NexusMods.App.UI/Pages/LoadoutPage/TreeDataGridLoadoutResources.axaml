@@ -53,6 +53,22 @@
             </controls:ComponentControl.ComponentTemplate>
         </controls:ComponentControl>
         
+        <!-- Treat as my file action -->
+        <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="local:LoadoutComponents+TreatAsMineAction"
+                                            ComponentKey="{x:Static local:LoadoutColumns+EnabledState.TreatAsMineComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type local:LoadoutComponents+TreatAsMineAction}">
+                            <MenuItem Header="{x:Static resources:Language.GameInstalled_TreatAsMine}"
+                                      Command="{CompiledBinding Command}"
+                                      ToolTip.Tip="{x:Static resources:Language.GameInstalled_TreatAsMine_ToolTip}" />
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+        </controls:ComponentControl>
+
         <!-- Allow save files action -->
         <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
             <controls:ComponentControl.ComponentTemplate>
@@ -171,7 +187,7 @@
                                 RightIcon="{x:Static icons:IconValues.ToggleOn}"
                                 ShowIcon="Both"
                                 ShowLabel="False"
-                                ToolTip.Tip="Mod cannot be turned off as it is as part of a read only collection. Switch off the collection to turn off this mod"/>
+                                ToolTip.Tip="{CompiledBinding ToolTip}"/>
                         </DataTemplate>
                     </controls:ComponentTemplate.DataTemplate>
                 </controls:ComponentTemplate>

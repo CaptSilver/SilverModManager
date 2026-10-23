@@ -31,6 +31,9 @@ public partial class LoadoutGroupFilesView : ReactiveUserControl<ILoadoutGroupFi
             
             this.BindCommand(ViewModel, vm => vm.RemoveCommand, view => view.RemoveButton)
                 .AddTo(disposables);
+
+            this.BindCommand(ViewModel, vm => vm.UndoTreatAsMineCommand, view => view.UndoTreatAsMineButton)
+                .AddTo(disposables);
         });
     }
 }

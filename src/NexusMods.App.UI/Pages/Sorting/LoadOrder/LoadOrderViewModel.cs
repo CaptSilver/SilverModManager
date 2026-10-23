@@ -57,6 +57,9 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
     [Reactive] public string? ReplacedEditSummary { get; private set; }
     [Reactive] public bool HasReplacedEdit { get; private set; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> DismissReplacedEditCommand { get; }
+    [Reactive] public string? HoldSummary { get; private set; }
+    [Reactive] public bool HasHold { get; private set; }
+    public ReactiveUI.ReactiveCommand<Unit, Unit> ReleaseHoldCommand { get; }
 
     public bool SupportsLootSort { get; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> SortWithLootCommand { get; }
@@ -164,7 +167,7 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
                     throw new InvalidOperationException($"Item {key} of {sortOrderVariety.SortOrderVarietyId} has no switch");
 
                 // The switch is disabled for these rows already; this covers a stale click.
-                if (details.IsLocked) return;
+                if (details.IsLocked || details.LockReason is not null) return;
                 await RunEdit(() => toggleable.SetEnabled(sortOrderId, key, !details.IsEnabled));
             },
             canExecute: System.Reactive.Linq.Observable.Return(SupportsToggle)
@@ -175,6 +178,13 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
             () => replacedEdits?.Dismiss(sortOrderId)
                   ?? throw new InvalidOperationException($"{sortOrderVariety.SortOrderVarietyId} has no replaced-edit notice to dismiss"),
             canExecute: System.Reactive.Linq.Observable.Return(replacedEdits is not null)
+        );
+
+        var heldEdits = sortOrderVariety as IHeldGameEditSource;
+        ReleaseHoldCommand = ReactiveCommand.CreateFromTask(
+            () => RunEdit(() => heldEdits?.Release(sortOrderId)
+                                ?? throw new InvalidOperationException($"{sortOrderVariety.SortOrderVarietyId} holds nothing back to release")),
+            canExecute: System.Reactive.Linq.Observable.Return(heldEdits is not null)
         );
 
         var lootSource = sortOrderVariety as ILootSortSource;
@@ -228,6 +238,15 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
                         {
                             ReplacedEditSummary = summary;
                             HasReplacedEdit = summary is not null;
+                        })
+                    .DisposeWith(d);
+
+                heldEdits?.HoldSummary(sortOrderId)
+                    .ObserveOn(RxApp.MainThreadScheduler)
+                    .Subscribe(summary =>
+                        {
+                            HoldSummary = summary;
+                            HasHold = summary is not null;
                         })
                     .DisposeWith(d);
 

@@ -27,4 +27,13 @@ public class CleanFolderPromptTests
         prompt.Markdown.Should().Contain("We found 7 files in the game folder that aren’t part of a clean install");
         prompt.Markdown.Should().Contain("we recommend starting with a clean folder");
     }
+
+    [Fact]
+    public void CleanFolderPromptSaysContentTheGameInstalledIsKept()
+    {
+        var prompt = CleanFolderPrompt.For(buildCovered: true, fileCount: 7, gameName: "Skyrim Special Edition");
+
+        prompt.Markdown.Should().Contain("installed itself");
+        prompt.Markdown.Should().Contain("is kept");
+    }
 }

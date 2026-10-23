@@ -132,6 +132,25 @@ public partial class LoadOrderView : ReactiveUserControl<ILoadOrderViewModel>
                 ReplacedEditAlert.Title = Language.LoadOrder_ReplacedEdit_Title;
                 ReplacedEditDismissButton.Text = Language.LoadOrder_ReplacedEdit_Dismiss;
 
+                // Hold banner
+                this.OneWayBind(ViewModel, vm => vm.HasHold,
+                        view => view.HoldAlert.IsVisible
+                    )
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.HoldSummary,
+                        view => view.HoldAlert.Body
+                    )
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.ReleaseHoldCommand,
+                        view => view.HoldRestoreButton.Command
+                    )
+                    .DisposeWith(disposables);
+
+                HoldAlert.Title = Language.LoadOrder_Hold_Title;
+                HoldRestoreButton.Text = Language.LoadOrder_HoldRestore;
+
                 // Sort with LOOT
                 this.OneWayBind(ViewModel, vm => vm.SupportsLootSort,
                         view => view.SortWithLootButton.IsVisible

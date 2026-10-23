@@ -114,8 +114,13 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
         {
             if (sortOrderVariety is IToggleableSortOrderVariety)
             {
+                // A row can be movable and still have a locked switch (a game-installed plugin follows its group), so
+                // the switch looks at the reason as well; the drag handle below keeps reading IsLocked alone.
+                var toolTip = details.LockReason == SortItemLockReason.GameInstalledGroup
+                    ? Language.LoadOrder_GameInstalledLockedToolTip
+                    : Language.LoadOrder_LockedToolTip;
                 compositeModel.Add(LoadOrderColumns.EnabledColumn.EnabledComponentKey,
-                    new LoadOrderToggleComponent(details.IsEnabled, details.IsLocked, Language.LoadOrder_LockedToolTip));
+                    new LoadOrderToggleComponent(details.IsEnabled, details.IsLocked || details.LockReason is not null, toolTip));
             }
 
             var mastersToolTip = details.Masters.Count == 0

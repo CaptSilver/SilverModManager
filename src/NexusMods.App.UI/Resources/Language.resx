@@ -1388,6 +1388,48 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="LoadOrder_LockedToolTip" xml:space="preserve">
         <value>Always loaded by the game</value>
     </data>
+    <data name="GameInstalled_GroupName" xml:space="preserve">
+        <value>Installed by the game</value>
+    </data>
+    <data name="GameInstalled_GroupToolTip" xml:space="preserve">
+        <value>Content the game downloaded itself (Creations, the in-game mod manager). The app never moves or deletes these files. Switch the group off to stop the game loading them; items listed in the game's Creation Club list may load anyway.</value>
+    </data>
+    <data name="GameInstalled_DepotShipped" xml:space="preserve">
+        <value>Ships with the game</value>
+    </data>
+    <data name="GameInstalled_ProbablyInGame" xml:space="preserve">
+        <value>Probably from the in-game mod manager</value>
+    </data>
+    <data name="GameInstalled_TreatAsMine" xml:space="preserve">
+        <value>Treat as my file</value>
+    </data>
+    <data name="GameInstalled_TreatAsMine_ToolTip" xml:space="preserve">
+        <value>Move these files to External Changes and stop managing them as game-installed content.</value>
+    </data>
+    <data name="GameInstalled_TreatAsMine_Failed" xml:space="preserve">
+        <value>Could not treat these files as yours: {0}</value>
+    </data>
+    <data name="GameInstalled_UndoTreatAsMine" xml:space="preserve">
+        <value>Undo: treat as installed by the game</value>
+    </data>
+    <data name="GameInstalled_UndoTreatAsMine_Failed" xml:space="preserve">
+        <value>Could not undo: {0}</value>
+    </data>
+    <data name="GameInstalled_LockedToolTip" xml:space="preserve">
+        <value>Installed by the game, so it follows the Installed by the game switch above</value>
+    </data>
+    <data name="LoadOrder_GameInstalledLockedToolTip" xml:space="preserve">
+        <value>Installed by the game. Use the Installed by the game switch in My Mods to turn it on or off</value>
+    </data>
+    <data name="LoadOrder_Hold_Title" xml:space="preserve">
+        <value>The mod list is back with the game</value>
+    </data>
+    <data name="LoadOrder_HoldRestore" xml:space="preserve">
+        <value>Restore the mod list</value>
+    </data>
+    <data name="Loadout_LockedEnabledState_ReadOnlyCollection_ToolTip" xml:space="preserve">
+        <value>Mod cannot be turned off as it is as part of a read only collection. Switch off the collection to turn off this mod</value>
+    </data>
     <data name="LoadOrder_MastersToolTip" xml:space="preserve">
         <value>Requires:
 {0}</value>

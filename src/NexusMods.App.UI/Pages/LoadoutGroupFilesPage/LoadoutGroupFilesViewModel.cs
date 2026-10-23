@@ -5,12 +5,16 @@ using DynamicData;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Controls;
 using NexusMods.App.UI.Controls.Navigation;
 using NexusMods.App.UI.Pages.TextEdit;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
+using NexusMods.UI.Sdk;
 using NexusMods.UI.Sdk.Icons;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.ElementComparers;
@@ -32,6 +36,7 @@ public class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFilesViewM
     [Reactive] public LoadoutGroupFilesPageContext? Context { get; set; }
     [Reactive] public ReactiveCommand<NavigationInformation> OpenEditorCommand { get; [UsedImplicitly] set; } = null!;
     [Reactive] public ReactiveCommand<Unit> RemoveCommand { get; [UsedImplicitly] set; } = null!;
+    public ReactiveCommand<Unit> UndoTreatAsMineCommand { get; }
     [Reactive] public CompositeItemModel<GamePath>? SelectedItem { get; set; }
     [Reactive] public ViewLoadoutGroupFilesTreeDataGridAdapter? FileTreeAdapter { get; set; }
     
@@ -43,6 +48,24 @@ public class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFilesViewM
     {
         TabIcon = IconValues.FolderOpen;
         TabTitle = "File Tree";
+
+        // A file the user claimed from the game's own content can be handed back. Built here rather than on
+        // activation: it only watches this view model, so it needs no disposal and the property is never unset.
+        UndoTreatAsMineCommand = this.ObservePropertyChanged(vm => vm.SelectedItem)
+            .Select((this, connection), static (item, state) =>
+                item is not null && FindClaim(state.connection, state.Item1.Context, item.Key).HasValue)
+            .ToReactiveCommand<Unit>(async (_, _) =>
+                {
+                    if (SelectedItem is null) return;
+                    var claim = FindClaim(connection, Context, SelectedItem.Key);
+                    if (!claim.HasValue) return;
+
+                    var outcome = await provider.GetRequiredService<IGameInstalledContentService>().Unclaim(claim.Value);
+                    if (!outcome.Restored)
+                        provider.GetRequiredService<IWindowNotificationService>()
+                            .ShowToast(string.Format(Language.GameInstalled_UndoTreatAsMine_Failed, outcome.Reason));
+                }
+            );
 
         this.WhenActivated(disposables =>
         {
@@ -166,6 +189,15 @@ public class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFilesViewM
         });
     }
     
+    private static Optional<GameInstalledClaimId> FindClaim(IConnection connection, LoadoutGroupFilesPageContext? context, GamePath path)
+    {
+        if (context is null) return Optional<GameInstalledClaimId>.None;
+        var group = LoadoutItemGroupHelpers.GetFirstValidGroup(connection, context.GroupIds);
+        return group is null
+            ? Optional<GameInstalledClaimId>.None
+            : GameInstalledClaimLookup.Find(connection.Db, group.Value.AsLoadoutItem().LoadoutId, path);
+    }
+
     /// <summary>
     /// Returns the appropriate LoadoutItemGroup of files if the selection contains a LoadoutItemGroup containing files,
     /// if the selection contains multiple LoadoutItemGroups of files, returns None.

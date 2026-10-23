@@ -509,7 +509,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                     var ids = Adapter.SelectedModels
                         .SelectMany(static itemModel => GetLoadoutItemIds(itemModel))
                         .ToHashSet()
-                        .Where(id => !IsRequired(id, _connection))
+                        .Where(id => !CannotRemove(id, _connection))
                         .Select(x => (LoadoutItemGroupId)x.Value)
                         .ToArray();
 
@@ -706,10 +706,10 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
     {
         var toggleableItems = ids
             .Select(loadoutItemId => LoadoutItem.Load(connection.Db, loadoutItemId))
-            // Exclude collection required items
-            .Where(item => !IsRequired(item.Id, connection))
-            // Exclude items that are part of a collection that is disabled
-            .Where(item => !(item.Parent.TryGetAsCollectionGroup(out var collectionGroup)
+            // Exclude collection required items and game-installed items, which follow their group's switch
+            .Where(item => !IsToggleLocked(item.Id, connection))
+            // Exclude items that are part of a collection that is disabled (the game-installed group has no parent)
+            .Where(item => !(item.HasParent() && item.Parent.TryGetAsCollectionGroup(out var collectionGroup)
                              && collectionGroup.AsLoadoutItemGroup().AsLoadoutItem().IsDisabled)
             )
             .ToArray();
@@ -796,7 +796,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
     {
         var isReadonly = group.AsLoadoutItem()
             .GetThisAndParents()
-            .Any(item => IsRequired(item.LoadoutItemId, connection));
+            .Any(item => IsToggleLocked(item.LoadoutItemId, connection));
 
         var pageData = new PageData
         {
@@ -839,7 +839,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         
         var removableIds = ids
             .ToHashSet()
-            .Where(id => !IsRequired(id, connection))
+            .Where(id => !CannotRemove(id, connection))
             .Select(x => (LoadoutItemGroupId)x.Value)
             .ToArray();
         
@@ -877,9 +877,14 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         return itemModel.Get<LoadoutComponents.LoadoutItemIds>(LoadoutColumns.EnabledState.LoadoutItemIdsComponentKey).ItemIds;
     }
 
-    private static bool IsRequired(LoadoutItemId id, IConnection connection)
+    private static bool IsToggleLocked(LoadoutItemId id, IConnection connection)
     {
-        return NexusCollectionItemLoadoutGroup.IsRequired.TryGetValue(LoadoutItem.Load(connection.Db, id), out var isRequired) && isRequired;
+        return LoadoutDataProviderHelper.IsToggleLocked(LoadoutItem.Load(connection.Db, id));
+    }
+
+    private static bool CannotRemove(LoadoutItemId id, IConnection connection)
+    {
+        return LoadoutDataProviderHelper.CannotRemove(LoadoutItem.Load(connection.Db, id));
     }
 
     // private static IClipboard GetClipboard()

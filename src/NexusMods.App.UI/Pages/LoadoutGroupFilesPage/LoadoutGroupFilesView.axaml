@@ -30,6 +30,14 @@
                                               Type="Tertiary"
                                               Fill="WeakAlt"/>
                 
+                <controls:StandardButton x:Name="UndoTreatAsMineButton"
+                                         Text="{x:Static resources:Language.GameInstalled_UndoTreatAsMine}"
+                                         LeftIcon="{x:Static icons:IconValues.Undo}"
+                                         ShowIcon="Left"
+                                         Size="Toolbar"
+                                         Type="Tertiary"
+                                         Fill="WeakAlt"/>
+
                 <controls:StandardButton x:Name="RemoveButton" 
                                          Text="Delete"
                                          LeftIcon="{x:Static icons:IconValues.DeleteForever}"

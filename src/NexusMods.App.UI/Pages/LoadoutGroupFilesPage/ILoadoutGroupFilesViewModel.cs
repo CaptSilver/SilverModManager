@@ -10,6 +10,12 @@ public interface ILoadoutGroupFilesViewModel : IPageViewModelInterface
     R3.ReactiveCommand<NavigationInformation> OpenEditorCommand { get; }
 
     R3.ReactiveCommand<R3.Unit> RemoveCommand { get; }
+
+    /// <summary>
+    /// Gives the selected file back to the game when it was claimed with "Treat as my file". Only runnable
+    /// for a file a claim exists for.
+    /// </summary>
+    R3.ReactiveCommand<R3.Unit> UndoTreatAsMineCommand { get; }
     
     ViewLoadoutGroupFilesTreeDataGridAdapter? FileTreeAdapter { get; set; }
 }

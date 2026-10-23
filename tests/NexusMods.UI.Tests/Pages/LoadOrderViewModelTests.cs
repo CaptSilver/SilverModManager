@@ -57,7 +57,7 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
         public IReadOnlyList<IReactiveSortItem> GetSortOrderItems(SortOrderId sortOrderId, IDb? db = null) => items;
 
         public ValueTask<SortOrderId> GetOrCreateSortOrderFor(LoadoutId loadoutId, OneOf<LoadoutId, CollectionGroupId> parentEntity, CancellationToken token = default) => throw new NotSupportedException();
-        public IObservable<IChangeSet<IReactiveSortItem, ISortItemKey>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId) => throw new NotSupportedException();
+        public virtual IObservable<IChangeSet<IReactiveSortItem, ISortItemKey>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId) => throw new NotSupportedException();
         public Exception? MoveFailure { get; init; }
         public Task MoveItems(SortOrderId sortOrderId, ISortItemKey[] itemsToMove, ISortItemKey dropTargetItem, TargetRelativePosition relativePosition, IDb? db = null, CancellationToken token = default) => Task.FromException(MoveFailure ?? new NotSupportedException());
         public Task MoveItemDelta(SortOrderId sortOrderId, ISortItemKey sourceItem, int delta, IDb? db = null, CancellationToken token = default) => Task.FromException(MoveFailure ?? new NotSupportedException());
@@ -86,6 +86,29 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
             Dismissals++;
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class FakeHeldVariety(params IReactiveSortItem[] items) : FakeVariety(items), IHeldGameEditSource
+    {
+        public int Releases { get; private set; }
+        public BehaviorSubject<string?> Holds { get; } = new(null);
+
+        public IObservable<string?> HoldSummary(SortOrderId sortOrderId) => Holds;
+
+        public Task Release(SortOrderId sortOrderId)
+        {
+            Releases++;
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>A variety whose rows reach the page through the change set, the way the real ones do.</summary>
+    private sealed class ListedVariety(params IReactiveSortItem[] items) : FakeVariety(items), IToggleableSortOrderVariety
+    {
+        public Task SetEnabled(SortOrderId sortOrderId, ISortItemKey item, bool enabled, CancellationToken token = default) => Task.CompletedTask;
+
+        public override IObservable<IChangeSet<IReactiveSortItem, ISortItemKey>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId) =>
+            items.AsObservableChangeSet(item => item.Key);
     }
 
     private sealed class FakeLootVariety(LootSortOutcome outcome) : FakeVariety, ILootSortSource
@@ -128,6 +151,7 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
         public string? Flags => null;
         public IReadOnlyList<string> Masters => [];
         public bool IsLocked { get; } = isLocked;
+        public SortItemLockReason? LockReason { get; init; }
         public bool IsEnabled { get; } = isEnabled;
     }
 
@@ -170,6 +194,107 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
         await vm.ToggleEnabledCommand.Execute(PluginKey);
 
         variety.Switched.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ToggleEnabledCommand_RefusesARowWithALockReasonEvenWhenItCanBeMoved()
+    {
+        var variety = new FakePluginVariety(new FakeItem(isEnabled: true, isLocked: false) { LockReason = SortItemLockReason.GameInstalledGroup });
+        var vm = NewViewModel(variety);
+
+        await vm.ToggleEnabledCommand.Execute(PluginKey);
+
+        variety.Switched.Should().BeEmpty();
+    }
+
+    private async Task<CompositeItemModel<ISortItemKey>> RowFor(FakeItem item)
+    {
+        var provider = new LoadOrderDataProvider(Provider);
+        var cache = provider
+            .ObserveLoadOrder(new ListedVariety(item), LoadoutId.From(1), R3.Observable.Return(ListSortDirection.Ascending))
+            .AsObservableCache();
+        await Eventually(() => cache.Count.Should().Be(1));
+        return cache.Items.Single();
+    }
+
+    [Fact]
+    public async Task ALockReasonLocksTheToggleWithItsOwnToolTipAndLeavesTheDragHandleAlone()
+    {
+        var row = await RowFor(new FakeItem(isEnabled: true, isLocked: false) { LockReason = SortItemLockReason.GameInstalledGroup });
+
+        var toggle = row.Get<LoadOrderToggleComponent>(LoadOrderColumns.EnabledColumn.EnabledComponentKey);
+        toggle.IsLocked.Should().BeTrue();
+        toggle.ToolTip.Should().Be(Language.LoadOrder_GameInstalledLockedToolTip);
+        row.Get<SharedComponents.IndexComponent>(LoadOrderColumns.IndexColumn.IndexComponentKey).IsLocked.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AnAlwaysLoadedRowKeepsTheDefaultToolTip()
+    {
+        var row = await RowFor(new FakeItem(isEnabled: true, isLocked: true) { LockReason = SortItemLockReason.AlwaysLoaded });
+
+        var toggle = row.Get<LoadOrderToggleComponent>(LoadOrderColumns.EnabledColumn.EnabledComponentKey);
+        toggle.IsLocked.Should().BeTrue();
+        toggle.ToolTip.Should().Be(Language.LoadOrder_LockedToolTip);
+        row.Get<SharedComponents.IndexComponent>(LoadOrderColumns.IndexColumn.IndexComponentKey).IsLocked.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ALockedRowWithoutAReasonKeepsTheDefaultToolTip()
+    {
+        var row = await RowFor(new FakeItem(isEnabled: true, isLocked: true));
+
+        row.Get<LoadOrderToggleComponent>(LoadOrderColumns.EnabledColumn.EnabledComponentKey).ToolTip.Should().Be(Language.LoadOrder_LockedToolTip);
+    }
+
+    [Fact]
+    public async Task AnUnlockedRowWithoutAReasonHasAWorkingToggle()
+    {
+        var row = await RowFor(new FakeItem(isEnabled: true, isLocked: false));
+
+        var toggle = row.Get<LoadOrderToggleComponent>(LoadOrderColumns.EnabledColumn.EnabledComponentKey);
+        toggle.IsLocked.Should().BeFalse();
+        toggle.ToolTip.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task TheHoldBanner_ShowsTheSummaryWhileOneIsHeldAndHidesWhenItClears()
+    {
+        var variety = new FakeHeldVariety();
+        var vm = NewViewModel(variety);
+        using var _ = vm.Activator.Activate();
+
+        vm.HasHold.Should().BeFalse();
+
+        variety.Holds.OnNext("The game reset the mod list twice");
+        await WaitUntil(() => vm.HasHold);
+        vm.HoldSummary.Should().Be("The game reset the mod list twice");
+
+        variety.Holds.OnNext(null);
+        await WaitUntil(() => !vm.HasHold);
+        vm.HoldSummary.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task TheHoldBannersButton_ReleasesTheHold()
+    {
+        var variety = new FakeHeldVariety();
+        var vm = NewViewModel(variety);
+
+        await vm.ReleaseHoldCommand.Execute();
+
+        variety.Releases.Should().Be(1);
+    }
+
+    [Fact]
+    public void AVarietyWithoutAHold_HasNoHoldBannerAndNothingToRelease()
+    {
+        var vm = NewViewModel(new FakeVariety());
+
+        vm.HasHold.Should().BeFalse();
+        var canExecute = true;
+        using var _ = vm.ReleaseHoldCommand.CanExecute.Subscribe(value => canExecute = value);
+        canExecute.Should().BeFalse();
     }
 
     [Fact]

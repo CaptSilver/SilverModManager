@@ -60,6 +60,22 @@
                     </alerts:Alert>
                 </Grid>
 
+                <!-- shown only while the variety holds back its list and has handed the file to the game -->
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MaxWidth="750" />
+                    </Grid.ColumnDefinitions>
+
+                    <alerts:Alert x:Name="HoldAlert"
+                                  Severity="Warning"
+                                  ShowDismiss="False"
+                                  IsVisible="False">
+                        <controls:StandardButton x:Name="HoldRestoreButton"
+                                                 Type="Secondary"
+                                                 Fill="None" />
+                    </alerts:Alert>
+                </Grid>
+
                 <!-- shown only for orders LOOT can sort -->
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                     <controls:StandardButton x:Name="SortWithLootButton"

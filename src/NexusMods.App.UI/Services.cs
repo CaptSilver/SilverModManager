@@ -337,6 +337,7 @@ public static class Services
             .AddSingleton<ILibraryDataProvider, ThunderstoreDataProvider>()
             .AddSingleton<ILoadoutDataProvider, ThunderstoreDataProvider>()
             .AddSingleton<ILoadoutDataProvider, BundledDataProvider>()
+            .AddSingleton<ILoadoutDataProvider, GameInstalledDataProvider>()
             .AddSingleton<ILoadOrderDataProvider, LoadOrderDataProvider>()
             .AddSingleton<IDownloadsDataProvider, DownloadsDataProvider>()
             .AddSingleton<IAvaloniaInterop, AvaloniaInterop>()

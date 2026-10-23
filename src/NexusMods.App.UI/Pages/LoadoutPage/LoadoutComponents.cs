@@ -4,6 +4,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.App.UI.Controls;
 using NexusMods.App.UI.Controls.Navigation;
 using NexusMods.App.UI.Extensions;
+using NexusMods.App.UI.Resources;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.UI.Sdk;
 using ObservableCollections;
@@ -65,7 +66,45 @@ public static class LoadoutComponents
     {
         public ReactiveCommand<NavigationInformation, NavigationInformation> ButtonCommand { get; } = new(info => info);
 
+        /// <summary>
+        /// Why the switch is locked. Defaults to the read-only collection explanation.
+        /// </summary>
+        public string ToolTip { get; }
+
+        public LockedEnabledState(string? toolTip = null)
+        {
+            ToolTip = toolTip ?? Language.Loadout_LockedEnabledState_ReadOnlyCollection_ToolTip;
+        }
+
         public int CompareTo(LockedEnabledState? other) => 0;
+    }
+
+    /// <summary>
+    /// Context menu entry that takes a game-installed item's files over as the user's own.
+    /// </summary>
+    public sealed class TreatAsMineAction : ReactiveR3Object, IItemModelComponent<TreatAsMineAction>, IComparable<TreatAsMineAction>
+    {
+        public ReactiveCommand<Unit> Command { get; }
+
+        public int CompareTo(TreatAsMineAction? other) => 0;
+
+        public TreatAsMineAction(Func<Task> treatAsMine)
+        {
+            // The service call runs inside the command so the menu entry needs no message through the adapter.
+            Command = new ReactiveCommand<Unit>(async (_, _) => await treatAsMine());
+        }
+
+        private bool _isDisposed;
+        protected override void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                _isDisposed = true;
+                if (disposing) Command.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
     }
 
     public sealed class MixLockedAndParentDisabled : ReactiveR3Object, IItemModelComponent<MixLockedAndParentDisabled>, IComparable<MixLockedAndParentDisabled>
@@ -161,6 +200,7 @@ public static class LoadoutColumns
         public static readonly ComponentKey ViewModPageComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.ViewModPageAction));
         public static readonly ComponentKey ViewModFilesComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.ViewModFilesAction));
         public static readonly ComponentKey UninstallItemComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.UninstallItemAction));
+        public static readonly ComponentKey TreatAsMineComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(LoadoutComponents.TreatAsMineAction));
         public static readonly ComponentKey AllowProtectedPathsComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.AllowProtectedPathsAction));
         public static string GetColumnHeader() => "Actions";
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;

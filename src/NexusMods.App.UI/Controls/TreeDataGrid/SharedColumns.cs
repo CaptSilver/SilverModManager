@@ -21,6 +21,11 @@ public static class SharedColumns
         public static readonly ComponentKey NameComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(NameComponent));
         public static readonly ComponentKey ImageComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(ImageComponent));
 
+        /// <summary>
+        /// Muted text after the name, for rows that say where they came from. Optional.
+        /// </summary>
+        public static readonly ComponentKey SubtitleComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_Subtitle");
+
         public static string GetColumnHeader() => "Name";
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
     }

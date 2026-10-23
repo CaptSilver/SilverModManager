@@ -3976,6 +3976,132 @@ namespace NexusMods.App.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Installed by the game.
+        /// </summary>
+        public static string GameInstalled_GroupName {
+            get {
+                return ResourceManager.GetString("GameInstalled_GroupName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Content the game downloaded itself (Creations, the in-game mod manager). The app never moves or deletes these files. Switch the group off to stop the game loading them; items listed in the game's Creation Club list may load anyway..
+        /// </summary>
+        public static string GameInstalled_GroupToolTip {
+            get {
+                return ResourceManager.GetString("GameInstalled_GroupToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Ships with the game.
+        /// </summary>
+        public static string GameInstalled_DepotShipped {
+            get {
+                return ResourceManager.GetString("GameInstalled_DepotShipped", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Probably from the in-game mod manager.
+        /// </summary>
+        public static string GameInstalled_ProbablyInGame {
+            get {
+                return ResourceManager.GetString("GameInstalled_ProbablyInGame", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Treat as my file.
+        /// </summary>
+        public static string GameInstalled_TreatAsMine {
+            get {
+                return ResourceManager.GetString("GameInstalled_TreatAsMine", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Move these files to External Changes and stop managing them as game-installed content..
+        /// </summary>
+        public static string GameInstalled_TreatAsMine_ToolTip {
+            get {
+                return ResourceManager.GetString("GameInstalled_TreatAsMine_ToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Undo: treat as installed by the game.
+        /// </summary>
+        public static string GameInstalled_UndoTreatAsMine {
+            get {
+                return ResourceManager.GetString("GameInstalled_UndoTreatAsMine", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Could not treat these files as yours: {0}.
+        /// </summary>
+        public static string GameInstalled_TreatAsMine_Failed {
+            get {
+                return ResourceManager.GetString("GameInstalled_TreatAsMine_Failed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Could not undo: {0}.
+        /// </summary>
+        public static string GameInstalled_UndoTreatAsMine_Failed {
+            get {
+                return ResourceManager.GetString("GameInstalled_UndoTreatAsMine_Failed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installed by the game, so it follows the Installed by the game switch above.
+        /// </summary>
+        public static string GameInstalled_LockedToolTip {
+            get {
+                return ResourceManager.GetString("GameInstalled_LockedToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installed by the game. Use the Installed by the game switch in My Mods to turn it on or off.
+        /// </summary>
+        public static string LoadOrder_GameInstalledLockedToolTip {
+            get {
+                return ResourceManager.GetString("LoadOrder_GameInstalledLockedToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The mod list is back with the game.
+        /// </summary>
+        public static string LoadOrder_Hold_Title {
+            get {
+                return ResourceManager.GetString("LoadOrder_Hold_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Restore the mod list.
+        /// </summary>
+        public static string LoadOrder_HoldRestore {
+            get {
+                return ResourceManager.GetString("LoadOrder_HoldRestore", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mod cannot be turned off as it is as part of a read only collection. Switch off the collection to turn off this mod.
+        /// </summary>
+        public static string Loadout_LockedEnabledState_ReadOnlyCollection_ToolTip {
+            get {
+                return ResourceManager.GetString("Loadout_LockedEnabledState_ReadOnlyCollection_ToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Requires:.
         /// </summary>
         public static string LoadOrder_MastersToolTip {

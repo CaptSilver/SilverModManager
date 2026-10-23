@@ -8,6 +8,7 @@ using NexusMods.Abstractions.Loadouts.Extensions;
 using NexusMods.App.UI.Controls;
 using NexusMods.App.UI.Extensions;
 using NexusMods.App.UI.Pages.LoadoutPage;
+using NexusMods.App.UI.Resources;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.DatomIterators;
 using NexusMods.MnemonicDB.Abstractions.IndexSegments;
@@ -151,8 +152,11 @@ public static class LoadoutDataProviderHelper
 
     public static void AddLockedEnabledState(CompositeItemModel<EntityId> itemModel, LoadoutItem.ReadOnly loadoutItem)
     {
-        if (IsLocked(loadoutItem))
-            itemModel.Add(LoadoutColumns.EnabledState.LockedEnabledStateComponentKey, new LoadoutComponents.LockedEnabledState());
+        if (IsToggleLocked(loadoutItem))
+        {
+            var toolTip = IsGameInstalledContent(loadoutItem) ? Language.GameInstalled_LockedToolTip : null;
+            itemModel.Add(LoadoutColumns.EnabledState.LockedEnabledStateComponentKey, new LoadoutComponents.LockedEnabledState(toolTip));
+        }
     }
 
     public static void AddEnabledStateToggle(IConnection connection, CompositeItemModel<EntityId> itemModel, LoadoutItem.ReadOnly loadoutItem)
@@ -225,14 +229,14 @@ public static class LoadoutDataProviderHelper
 
     public static void AddUninstallItemComponent(CompositeItemModel<EntityId> itemModel, LoadoutItem.ReadOnly loadoutItem)
     {
-        var canDelete = !IsLocked(loadoutItem);
+        var canDelete = !CannotRemove(loadoutItem);
         itemModel.Add(LoadoutColumns.EnabledState.UninstallItemComponentKey, new SharedComponents.UninstallItemAction(isEnabled: canDelete));
     }
     
     public static void AddUninstallItemComponent(CompositeItemModel<EntityId> itemModel, IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedItemsObservable)
     {
        var canUninstallObservable = linkedItemsObservable
-           .TransformImmutable(static item => IsLocked(item))
+           .TransformImmutable(static item => CannotRemove(item))
            // Show uninstall if at least one item is not locked
            .QueryWhenChanged(static query => !query.Items.All(isLocked => isLocked))
            .ToObservable();
@@ -272,7 +276,7 @@ public static class LoadoutDataProviderHelper
         IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedItemsObservable)
     {
         var isLockedObservable = linkedItemsObservable
-            .TransformImmutable(static item => IsLocked(item))
+            .TransformImmutable(static item => IsToggleLocked(item))
             .QueryWhenChanged(static query => query.Items.All(isLocked => isLocked))
             .ToObservable();
 
@@ -291,7 +295,7 @@ public static class LoadoutDataProviderHelper
         var shouldAddObservable = linkedItemsObservable
             .TransformOnObservable(item =>
                 {
-                    var isLocked = IsLocked(item);
+                    var isLocked = IsToggleLocked(item);
                     if (!item.Parent.TryGetAsCollectionGroup(out var collectionGroup))
                         return System.Reactive.Linq.Observable.Return((IsLocked: isLocked, IsParentDisabled: false));
                     
@@ -381,8 +385,31 @@ public static class LoadoutDataProviderHelper
         });
     }
 
-    public static bool IsLocked<T>(T entity) where T : struct, IReadOnlyModel<T>
+    /// <summary>
+    /// True when the item's switch cannot be used: a required collection item, or content the game installed
+    /// (its items and files follow the group's switch).
+    /// </summary>
+    public static bool IsToggleLocked<T>(T entity) where T : struct, IReadOnlyModel<T>
+    {
+        return IsRequiredCollectionItem(entity) || IsGameInstalledContent(entity);
+    }
+
+    /// <summary>
+    /// True when the item cannot be removed: everything <see cref="IsToggleLocked{T}"/> covers, plus the
+    /// game-installed group itself, which has a switch but is not the user's to delete.
+    /// </summary>
+    public static bool CannotRemove<T>(T entity) where T : struct, IReadOnlyModel<T>
+    {
+        return IsToggleLocked(entity) || GameInstalledGroup.InstalledFor.TryGetValue(entity, out _);
+    }
+
+    private static bool IsRequiredCollectionItem<T>(T entity) where T : struct, IReadOnlyModel<T>
     {
         return NexusCollectionItemLoadoutGroup.IsRequired.GetOptional(entity).ValueOr(false);
+    }
+
+    private static bool IsGameInstalledContent<T>(T entity) where T : struct, IReadOnlyModel<T>
+    {
+        return GameInstalledItem.SourceId.TryGetValue(entity, out _) || GameInstalledFile.Hash.TryGetValue(entity, out _);
     }
 }
