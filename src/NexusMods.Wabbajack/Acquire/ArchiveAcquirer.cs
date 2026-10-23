@@ -25,6 +25,7 @@ public sealed class ArchiveAcquirer(
     private readonly Lock _lock = new();
     private ArchivePlanRow[] _rows = [];
     private IDisposable? _subscription;
+    private bool _expecting;
 
     public event Action<ArchivePlan>? PlanChanged;
 
@@ -33,16 +34,28 @@ public sealed class ArchiveAcquirer(
         get { lock (_lock) return new ArchivePlan(_rows.ToArray()); }
     }
 
-    public async Task Run(ArchivePlan plan, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken)
+    public void Show(ArchivePlan plan) => Adopt(plan, expecting: false);
+
+    // Downloads of a plan this replaces still hold their own array, so they cannot write into this one.
+    private ArchivePlanRow[] Adopt(ArchivePlan plan, bool expecting)
     {
         Release();
-        // Downloads of a plan this run replaces still hold their own array, so they cannot write into this one.
         var rows = plan.Rows.ToArray();
-        lock (_lock) _rows = rows;
+        lock (_lock)
+        {
+            _rows = rows;
+            _expecting = expecting;
+        }
         UpdateExpected();
         _subscription = connection.Revisions.Subscribe(_ => Recheck());
         // Files that arrived between building the plan and now.
         Recheck();
+        return rows;
+    }
+
+    public async Task Run(ArchivePlan plan, IProgress<AcquireProgress>? progress, CancellationToken cancellationToken)
+    {
+        var rows = Adopt(plan, expecting: true);
 
         var automatic = Enumerable.Range(0, plan.Rows.Count).Where(i => plan.Rows[i].State == ArchiveState.Automatic).ToArray();
         var finished = 0;
@@ -166,7 +179,10 @@ public sealed class ArchiveAcquirer(
     private void UpdateExpected()
     {
         ArchivePlanRow[] rows;
-        lock (_lock) rows = _rows.ToArray();
+        lock (_lock)
+        {
+            rows = _expecting ? _rows.ToArray() : [];
+        }
 
         expectedDownloads.Set(this, rows
             .Where(r => r.State == ArchiveState.Browser)

@@ -148,6 +148,35 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
     }
 
     [Fact]
+    public async Task ShowingAPlanStartsNoDownloadOpensNoPageAndExpectsNoFile()
+    {
+        var (automatic, _) = TenHttpRows();
+        var browser = await BrowserPlan([new NexusState("Skyrim", 5, 6, null, null, null, false)]);
+        var opened = ServiceProvider.GetRequiredService<OpenedUris>();
+        var expected = ServiceProvider.GetRequiredService<IExpectedNexusDownloads>();
+
+        Acquirer.Show(new ArchivePlan(automatic.Rows.Concat(browser.Rows).ToArray()));
+
+        Acquirer.Plan.Rows.Should().HaveCount(11);
+        Acquirer.Plan.Rows.Take(10).Should().OnlyContain(r => r.State == ArchiveState.Automatic);
+        _jobs.Requested.Should().BeEmpty();
+        opened.Opened.Should().BeEmpty();
+        expected.IsExpected(GameDomain.From("skyrim"), ModId.From(5), FileId.From(6)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ARunAfterShowingThePlanExpectsItsBrowserRows()
+    {
+        var plan = await BrowserPlan([new NexusState("Skyrim", 5, 6, null, null, null, false)]);
+        var expected = ServiceProvider.GetRequiredService<IExpectedNexusDownloads>();
+        Acquirer.Show(plan);
+
+        await Acquirer.Run(plan, null, CancellationToken.None);
+
+        expected.IsExpected(GameDomain.From("skyrim"), ModId.From(5), FileId.From(6)).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task DownloadsOfAReplacedPlanDoNotTouchTheNewPlan()
     {
         var (first, _) = TenHttpRows();

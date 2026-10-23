@@ -41,13 +41,16 @@ public interface IWabbajackModlistService
 {
     Task<WabbajackModlistDetails> Open(LibraryFileId file, CancellationToken cancellationToken);
 
-    /// <summary>Matches the list's archives to the library and the loadout's game files.</summary>
-    Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId target, CancellationToken cancellationToken);
+    /// <summary>
+    /// Matches the list's archives to the library and the loadout's game files. A null <paramref name="target"/> is a
+    /// loadout that does not exist yet: the game files come from the game's installation.
+    /// </summary>
+    Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, CancellationToken cancellationToken);
 
     /// <summary>The files of the game folder the list would overwrite, which exist in the loadout's game folder now.</summary>
-    Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, LoadoutId target, CancellationToken cancellationToken);
+    Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, LoadoutId? target, CancellationToken cancellationToken);
 
-    /// <summary>Adds a loadout for <paramref name="game"/> and returns its id.</summary>
+    /// <summary>Adds a loadout for <paramref name="game"/> and returns its id. Nothing is created before this is called.</summary>
     Task<LoadoutId> CreateLoadout(GameId game, CancellationToken cancellationToken);
 
     IWabbajackInstallRun StartInstall(LibraryFileId file, LoadoutId target, InstallOptions options);

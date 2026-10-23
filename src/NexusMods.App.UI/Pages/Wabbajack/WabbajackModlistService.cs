@@ -101,17 +101,33 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
         return banner;
     }
 
-    public async Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId target, CancellationToken cancellationToken)
+    public async Task<ArchivePlan> BuildPlan(LibraryFileId file, LoadoutId? target, CancellationToken cancellationToken)
     {
         var list = await ReadList(file, cancellationToken);
         var db = _connection.Db;
-        return await provider.GetRequiredService<ArchiveInventory>().Build(list, db, Loadout.Load(db, target), cancellationToken);
+        var inventory = provider.GetRequiredService<ArchiveInventory>();
+        var gameFiles = target is { } loadoutId
+            ? inventory.GameFilesFor(Loadout.Load(db, loadoutId))
+            // The loadout does not exist yet; it will be created on this installation.
+            : inventory.GameFilesFor(InstallationFor(file));
+        return await inventory.Build(list, db, gameFiles, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, LoadoutId target, CancellationToken cancellationToken)
+    private GameInstallation InstallationFor(LibraryFileId file)
+    {
+        var game = WabbajackGames.GameIdFor(Modlist(file).GameType)
+            ?? throw new InvalidOperationException("The app has no title for the list's game");
+        return InstallationOf(game);
+    }
+
+    private GameInstallation InstallationOf(GameId game)
+        => provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().FirstOrDefault(i => i.Game.GameId == game)
+            ?? throw new InvalidOperationException("The game is not installed, so there is nothing to create a loadout for");
+
+    public async Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, LoadoutId? target, CancellationToken cancellationToken)
     {
         var list = await ReadList(file, cancellationToken);
-        var installation = Loadout.Load(_connection.Db, target).InstallationInstance;
+        var installation = target is { } loadoutId ? Loadout.Load(_connection.Db, loadoutId).InstallationInstance : InstallationFor(file);
         if (installation.Game is not IMo2InstanceTarget mo2) return [];
 
         var gameFolder = installation.Locations[LocationId.Game].Path;
@@ -150,9 +166,7 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
 
     public async Task<LoadoutId> CreateLoadout(GameId game, CancellationToken cancellationToken)
     {
-        var installation = provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().FirstOrDefault(i => i.Game.GameId == game)
-            ?? throw new InvalidOperationException("The game is not installed, so there is nothing to create a loadout for");
-        var loadout = await provider.GetRequiredService<ILoadoutManager>().CreateLoadout(installation);
+        var loadout = await provider.GetRequiredService<ILoadoutManager>().CreateLoadout(InstallationOf(game));
         return loadout.LoadoutId;
     }
 

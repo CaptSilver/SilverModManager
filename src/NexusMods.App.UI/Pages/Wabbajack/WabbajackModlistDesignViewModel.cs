@@ -28,6 +28,7 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public IReadOnlyList<WabbajackGameFileChoice> GameFilesReplaced => [];
     public bool SkipMissingArchives { get; set; }
     public bool CanInstall => false;
+    public bool CanDownload => true;
     public bool IsInstalling => false;
     public string ProgressText => "";
     public double ProgressFraction => 0;
@@ -35,6 +36,7 @@ public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistV
     public bool CanResume => false;
     public bool IsInstalled => false;
     public IReadOnlyList<WabbajackSkippedRow> SkippedFiles => [];
+    public ReactiveCommand<Unit, Unit> DownloadCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> InstallCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; } = ReactiveCommand.Create<WabbajackArchiveRow>(_ => { });
     public ReactiveCommand<Unit, Unit> OpenNextFiveCommand { get; } = ReactiveCommand.Create(() => { });

@@ -26,7 +26,7 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
     IReadOnlyList<WabbajackLoadoutChoice> LoadoutChoices { get; }
     WabbajackLoadoutChoice? SelectedLoadout { get; }
 
-    /// <summary>Picks the loadout to install into; the "Create new loadout" entry adds one and picks that.</summary>
+    /// <summary>Picks the loadout to install into. The "Create new loadout" entry only records the choice; Install creates it.</summary>
     ReactiveCommand<WabbajackLoadoutChoice, Unit> SelectLoadoutCommand { get; }
 
     IReadOnlyList<WabbajackArchiveRow> Archives { get; }
@@ -47,6 +47,9 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
     bool SkipMissingArchives { get; set; }
 
     bool CanInstall { get; }
+
+    /// <summary>At least one archive can be fetched by the app or through the browser, and no download is running.</summary>
+    bool CanDownload { get; }
     bool IsInstalling { get; }
     string ProgressText { get; }
     double ProgressFraction { get; }
@@ -63,6 +66,9 @@ public interface IWabbajackModlistViewModel : IPageViewModelInterface
 
     /// <summary>Installs, or continues an install, into <see cref="SelectedLoadout"/>.</summary>
     ReactiveCommand<Unit, Unit> InstallCommand { get; }
+
+    /// <summary>Downloads the archives the app can fetch itself and starts expecting the ones the user fetches in the browser.</summary>
+    ReactiveCommand<Unit, Unit> DownloadCommand { get; }
 
     ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; }
 

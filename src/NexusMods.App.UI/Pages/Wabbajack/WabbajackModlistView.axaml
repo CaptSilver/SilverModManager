@@ -27,6 +27,7 @@
 
             <TextBlock x:Name="AcquireText" />
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                <controls:StandardButton x:Name="DownloadButton" Type="Primary" Size="Toolbar" Text="Download" />
                 <controls:StandardButton x:Name="OpenNextFiveButton" Type="Secondary" Size="Toolbar" Text="Open next five" />
                 <controls:StandardButton x:Name="CheckInboxButton" Type="Secondary" Size="Toolbar" Text="Check inbox" />
                 <controls:StandardButton x:Name="OpenInboxButton" Type="Secondary" Size="Toolbar" Text="Open inbox folder" />

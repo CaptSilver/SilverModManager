@@ -16,8 +16,15 @@ namespace NexusMods.Wabbajack.Acquire;
 /// so the original the app backed up wins when there is one; a loadout that never applied has no backups and reads the
 /// game folder.
 /// </summary>
-public sealed class GameFileSourceLookup(Loadout.ReadOnly loadout, IConnection connection, IFileStore fileStore, IFileHashesService fileHashes)
+/// <remarks>
+/// <paramref name="installationId"/> is null for an installation the app has not managed yet; it has no backups, so
+/// the game folder is all there is to read.
+/// </remarks>
+public sealed class GameFileSourceLookup(GameInstallation installation, EntityId? installationId, IConnection connection, IFileStore fileStore, IFileHashesService fileHashes)
 {
+    public GameFileSourceLookup(Loadout.ReadOnly loadout, IConnection connection, IFileStore fileStore, IFileHashesService fileHashes)
+        : this(loadout.InstallationInstance, (EntityId)loadout.InstallationId, connection, fileStore, fileHashes) { }
+
     private static readonly MultiHasherBuilder<Hash, System.IO.Hashing.XxHash3, Xx3Hasher, Hash, System.IO.Hashing.XxHash64, Xx64Hasher> Hasher
         = MultiHasherBuilder.Start()
             .AddHasher<Hash, System.IO.Hashing.XxHash3, Xx3Hasher>()
@@ -33,7 +40,6 @@ public sealed class GameFileSourceLookup(Loadout.ReadOnly loadout, IConnection c
     {
         get
         {
-            var installation = loadout.InstallationInstance;
             var version = installation.Game.GetLocalVersion(installation);
             return version.HasValue ? version.Value : null;
         }
@@ -89,7 +95,7 @@ public sealed class GameFileSourceLookup(Loadout.ReadOnly loadout, IConnection c
     }
 
     private AbsolutePath LivePath(RelativePath gameFile)
-        => loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, gameFile));
+        => installation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, gameFile));
 
     /// <summary>
     /// The store key of the file's original: the hash it had when the game was first indexed, if that copy was backed
@@ -97,23 +103,24 @@ public sealed class GameFileSourceLookup(Loadout.ReadOnly loadout, IConnection c
     /// </summary>
     private async ValueTask<Hash?> FindBackup(RelativePath gameFile)
     {
-        _initialState ??= ReadInitialState();
+        if (installationId is not { } owner) return null;
+        _initialState ??= ReadInitialState(owner);
         if (!_initialState.TryGetValue(new GamePath(LocationId.Game, gameFile), out var original)) return null;
 
         var pinned = GameBackedUpFile.All(connection.Db)
-            .Any(f => f.Hash == original && f.GameInstallId.Value == (EntityId)loadout.InstallationId);
+            .Any(f => f.Hash == original && f.GameInstallId.Value == owner);
         if (!pinned || !await fileStore.HaveFile(original)) return null;
         return original;
     }
 
-    private Dictionary<GamePath, Hash> ReadInitialState()
+    private Dictionary<GamePath, Hash> ReadInitialState(EntityId owner)
     {
         var result = new Dictionary<GamePath, Hash>();
-        var metadata = GameInstallMetadata.Load(connection.Db, loadout.InstallationId);
+        var metadata = GameInstallMetadata.Load(connection.Db, owner);
         if (!GameInstallMetadata.InitialDiskStateTransaction.TryGetValue(metadata, out var initialTx)) return result;
 
         var asOf = connection.AsOf(TxId.From(initialTx.Value));
-        var oldMetadata = GameInstallMetadata.Load(asOf, loadout.InstallationId);
+        var oldMetadata = GameInstallMetadata.Load(asOf, owner);
         foreach (var entry in DiskStateEntry.FindByGame(asOf, oldMetadata))
         {
             GamePath path = entry.Path;

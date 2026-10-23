@@ -28,6 +28,7 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
             // The view model changes from download and job threads.
             IObservable<T> OnUi<T>(Func<IWabbajackModlistViewModel, IObservable<T>> select) => select(viewModel).ObserveOn(RxApp.MainThreadScheduler);
 
+            this.BindCommand(ViewModel, vm => vm.DownloadCommand, view => view.DownloadButton).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.OpenNextFiveCommand, view => view.OpenNextFiveButton).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.CheckInboxCommand, view => view.CheckInboxButton).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.OpenInboxFolderCommand, view => view.OpenInboxButton).DisposeWith(disposables);

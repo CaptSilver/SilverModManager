@@ -17,6 +17,12 @@ public interface IArchiveAcquirer
     event Action<ArchivePlan>? PlanChanged;
 
     /// <summary>
+    /// Makes <paramref name="plan"/> current and keeps its rows matched against the library, but starts no download,
+    /// opens no page and expects no Nexus Mods file. Replaces the current plan.
+    /// </summary>
+    void Show(ArchivePlan plan);
+
+    /// <summary>
     /// Makes <paramref name="plan"/> current and downloads its Automatic rows. A download that fails turns its row
     /// into a Manual one rather than failing the run. The plan stays current, and its other rows keep being matched
     /// against the library, until <see cref="Release"/> or the next run.

@@ -71,6 +71,9 @@ public class WabbajackModlistViewModel : APageViewModel<IWabbajackModlistViewMod
 
     [Reactive] public bool SkipMissingArchives { get; set; }
     [Reactive] public bool CanInstall { get; private set; }
+    [Reactive] public bool CanDownload { get; private set; }
+    [Reactive] public bool IsDownloading { get; private set; }
+    [Reactive] public bool HasStartedDownloads { get; private set; }
     [Reactive] public bool IsInstalling { get; private set; }
     [Reactive] public string ProgressText { get; private set; } = "";
     [Reactive] public double ProgressFraction { get; private set; }
@@ -81,6 +84,7 @@ public class WabbajackModlistViewModel : APageViewModel<IWabbajackModlistViewMod
 
     public ReactiveCommand<WabbajackLoadoutChoice, Unit> SelectLoadoutCommand { get; }
     public ReactiveCommand<Unit, Unit> InstallCommand { get; }
+    public ReactiveCommand<Unit, Unit> DownloadCommand { get; }
     public ReactiveCommand<WabbajackArchiveRow, Unit> OpenPageCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenNextFiveCommand { get; }
     public ReactiveCommand<Unit, Unit> CheckInboxCommand { get; }
@@ -113,7 +117,12 @@ public class WabbajackModlistViewModel : APageViewModel<IWabbajackModlistViewMod
         {
             if (row.Plan.Page is { } page) _provider.GetRequiredService<IOSInterop>().OpenUri(page);
         });
-        OpenNextFiveCommand = ReactiveCommand.Create(() => { _acquirer.OpenNext(5); });
+        // Not while a pick is still planning: its plan would replace the one Download starts on.
+        DownloadCommand = ReactiveCommand.CreateFromTask(
+            async () => await Guarded(DownloadAsync),
+            this.WhenAnyValue(vm => vm.CanDownload).CombineLatest(SelectLoadoutCommand.IsExecuting, (can, picking) => can && !picking));
+        // The nxm handler only expects the files once Download has run, so opening their pages before that would be refused.
+        OpenNextFiveCommand = ReactiveCommand.Create(() => { _acquirer.OpenNext(5); }, this.WhenAnyValue(vm => vm.HasStartedDownloads));
         CheckInboxCommand = ReactiveCommand.CreateFromTask(async () => await Guarded(async token => ShowUnmatched(await _service.CheckInbox(token))));
         OpenInboxFolderCommand = ReactiveCommand.Create(() => _service.OpenInboxFolder());
         OpenHealthCheckCommand = ReactiveCommand.Create(OpenHealthCheck);
@@ -173,43 +182,67 @@ public class WabbajackModlistViewModel : APageViewModel<IWabbajackModlistViewMod
         }, cancellationToken);
     }
 
-    /// <summary>Picks the loadout to install into, builds the archive table against it, and starts getting the archives.</summary>
+    /// <summary>
+    /// Picks the loadout to install into and builds the archive table against it. Nothing is downloaded and, for
+    /// "Create new loadout", nothing is created: that waits for Download and Install.
+    /// </summary>
     public async Task SelectLoadoutAsync(WabbajackLoadoutChoice choice, CancellationToken cancellationToken)
     {
-        var details = _details ?? throw new InvalidOperationException("The list was not opened yet");
-        LoadoutId target;
-        if (choice.Id is { } picked)
-        {
-            target = picked;
-        }
-        else
-        {
-            var game = details.Game ?? throw new InvalidOperationException($"The app has no title for the list's game ({details.GameType})");
-            target = await _service.CreateLoadout(game, cancellationToken);
-            RefreshLoadoutChoices();
-            choice = LoadoutChoices.First(c => c.Id == target);
-        }
+        if (_details is null) throw new InvalidOperationException("The list was not opened yet");
 
         SelectedLoadout = choice;
 
+        // Downloads for the previous pick are not wanted any more.
         _acquireCancellation?.Cancel();
         _acquireCancellation = new CancellationTokenSource();
+        HasStartedDownloads = false;
+        IsDownloading = false;
 
-        var plan = await _service.BuildPlan(FileId, target, cancellationToken);
-        GameFilesReplaced = (await _service.GameFilesReplaced(FileId, target, cancellationToken))
+        var plan = await _service.BuildPlan(FileId, choice.Id, cancellationToken);
+        GameFilesReplaced = (await _service.GameFilesReplaced(FileId, choice.Id, cancellationToken))
             .Select(path => new WabbajackGameFileChoice(path))
             .ToArray();
 
-        // Run is what makes the plan the acquirer's current one: it starts the downloads that need no one,
-        // and from here on it matches the other rows to whatever reaches the library.
+        // Show is what makes the plan the acquirer's current one: from here on it matches the rows to whatever
+        // reaches the library, without fetching anything.
         _downloads = null;
-        var run = _acquirer.Run(plan, new Progress<AcquireProgress>(OnDownloadProgress), _acquireCancellation.Token);
+        _acquirer.Show(plan);
         ApplyPlan(_acquirer.Plan);
-        _ = ObserveDownloads(run);
         RefreshInstalledState();
     }
 
-    private async Task ObserveDownloads(Task run)
+    /// <summary>
+    /// Starts the downloads that need no one and expects the Nexus Mods files the user fetches in the browser. The
+    /// list is planned again first, so a download that failed earlier is tried again.
+    /// </summary>
+    private async Task DownloadAsync(CancellationToken cancellationToken)
+    {
+        ErrorText = "";
+        _acquireCancellation?.Cancel();
+        _acquireCancellation = new CancellationTokenSource();
+        var token = _acquireCancellation.Token;
+
+        ArchivePlan plan;
+        try
+        {
+            plan = await _service.BuildPlan(FileId, SelectedLoadout?.Id, token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return;
+        }
+        // Another loadout was picked while planning; its own plan is the one on the page now.
+        if (token.IsCancellationRequested) return;
+
+        _downloads = null;
+        HasStartedDownloads = true;
+        IsDownloading = true;
+        var run = _acquirer.Run(plan, new Progress<AcquireProgress>(OnDownloadProgress), token);
+        ApplyPlan(_acquirer.Plan);
+        _ = ObserveDownloads(run, token);
+    }
+
+    private async Task ObserveDownloads(Task run, CancellationToken token)
     {
         try
         {
@@ -222,6 +255,15 @@ public class WabbajackModlistViewModel : APageViewModel<IWabbajackModlistViewMod
         {
             _logger?.LogWarning(e, "Getting the archives of '{List}' failed", Name);
             ErrorText = e.Message;
+        }
+        finally
+        {
+            // A run that a newer pick cancelled must not clear the flag of the run that replaced it.
+            if (!token.IsCancellationRequested)
+            {
+                IsDownloading = false;
+                Recompute();
+            }
         }
     }
 
@@ -257,7 +299,8 @@ public class WabbajackModlistViewModel : APageViewModel<IWabbajackModlistViewMod
 
     private void Recompute()
     {
-        CanInstall = SelectedLoadout?.Id is not null && !IsInstalling && WabbajackModlistText.CanInstall(_plan, SkipMissingArchives);
+        CanInstall = SelectedLoadout is not null && !IsInstalling && WabbajackModlistText.CanInstall(_plan, SkipMissingArchives);
+        CanDownload = !IsDownloading && _plan.Rows.Any(row => row.State is ArchiveState.Automatic or ArchiveState.Browser);
     }
 
     private void RefreshLoadoutChoices()
@@ -309,7 +352,7 @@ public class WabbajackModlistViewModel : APageViewModel<IWabbajackModlistViewMod
 
     private async Task InstallAsync()
     {
-        var target = SelectedLoadout?.Id ?? throw new InvalidOperationException("No loadout is selected");
+        var picked = SelectedLoadout ?? throw new InvalidOperationException("No loadout is selected");
         ErrorText = "";
         ProgressText = WabbajackModlistText.Progress(ModlistInstallProgress.Snapshot.Empty);
         ProgressFraction = 0;
@@ -319,6 +362,7 @@ public class WabbajackModlistViewModel : APageViewModel<IWabbajackModlistViewMod
         var keep = GameFilesReplaced.Where(file => file.Keep).Select(file => file.Path).ToHashSet();
         try
         {
+            var target = picked.Id ?? await CreatePickedLoadout();
             var run = _service.StartInstall(FileId, target, new InstallOptions(SkipMissingArchives, keep));
             using var _ = run.Progress.Subscribe(snapshot =>
             {
@@ -344,6 +388,16 @@ public class WabbajackModlistViewModel : APageViewModel<IWabbajackModlistViewMod
             RefreshInstalledState();
             Recompute();
         }
+    }
+
+    // "Create new loadout" is only a pick until Install; this is where the loadout comes into being.
+    private async Task<LoadoutId> CreatePickedLoadout()
+    {
+        var game = _details?.Game ?? throw new InvalidOperationException($"The app has no title for the list's game ({_details?.GameType})");
+        var created = await _service.CreateLoadout(game, CancellationToken.None);
+        RefreshLoadoutChoices();
+        SelectedLoadout = LoadoutChoices.First(choice => choice.Id == created);
+        return created;
     }
 
     private void OpenHealthCheck()

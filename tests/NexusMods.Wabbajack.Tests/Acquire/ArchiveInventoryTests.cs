@@ -266,8 +266,30 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
     {
         var state = new GameFileSourceState("SkyrimSpecialEdition", GameBsa, Hash64(GameBsaBytes), GameVersion);
         var loadout = await CreateLoadout();
+        await BackUpGameBsaAndChangeTheLiveFile(loadout);
 
-        // What a previous Apply leaves: the original in the store, pinned, and the live file replaced.
+        var plan = await Inventory().Build(ListWith(Entry(state, Hash64(GameBsaBytes), GameBsaBytes.Length)), Connection.Db, loadout);
+
+        plan.Rows.Single().State.Should().Be(ArchiveState.GameFile, "the backup is read before the live file");
+    }
+
+    [Fact]
+    public async Task AGameFileReadThroughTheInstallationAloneStillFindsItsBackedUpOriginal()
+    {
+        // A plan for a loadout the user has picked but not created yet only has the installation to go on.
+        var state = new GameFileSourceState("SkyrimSpecialEdition", GameBsa, Hash64(GameBsaBytes), GameVersion);
+        var loadout = await CreateLoadout();
+        await BackUpGameBsaAndChangeTheLiveFile(loadout);
+        var inventory = Inventory();
+
+        var plan = await inventory.Build(ListWith(Entry(state, Hash64(GameBsaBytes), GameBsaBytes.Length)), Connection.Db, inventory.GameFilesFor(loadout.InstallationInstance));
+
+        plan.Rows.Single().State.Should().Be(ArchiveState.GameFile, "the backups belong to the installation, not to a loadout");
+    }
+
+    // What a previous Apply leaves: the original in the store, pinned, and the live file replaced.
+    private async Task BackUpGameBsaAndChangeTheLiveFile(Loadout.ReadOnly loadout)
+    {
         var original = GameBsaBytes.xxHash3();
         await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(GameBsa, new MemoryStream(GameBsaBytes)), original, Size.FromLong(GameBsaBytes.Length))]);
         using (var tx = Connection.BeginTransaction())
@@ -278,10 +300,6 @@ public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<A
         var changed = (byte[])GameBsaBytes.Clone();
         changed[10] ^= 0xFF;
         await GameBsaPath(loadout).WriteAllBytesAsync(changed);
-
-        var plan = await Inventory().Build(ListWith(Entry(state, Hash64(GameBsaBytes), GameBsaBytes.Length)), Connection.Db, loadout);
-
-        plan.Rows.Single().State.Should().Be(ArchiveState.GameFile, "the backup is read before the live file");
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Sdk.Loadouts;
@@ -7,6 +8,7 @@ using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.FileStore;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.NexusModsApi;
 using NexusMods.Wabbajack.Format;
@@ -28,9 +30,23 @@ public sealed class ArchiveInventory(
     /// <summary>The reader of the loadout's game files that <see cref="Build"/> checked the list against.</summary>
     public GameFileSourceLookup GameFilesFor(Loadout.ReadOnly loadout) => new(loadout, connection, fileStore, fileHashes);
 
-    public async Task<ArchivePlan> Build(ModList list, IDb db, Loadout.ReadOnly loadout, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The reader of an installation's game files when there is no loadout to go through, such as one the user picked
+    /// but has not created yet. Backups are pinned to the installation, so they still count.
+    /// </summary>
+    public GameFileSourceLookup GameFilesFor(GameInstallation installation)
     {
-        var gameFiles = GameFilesFor(loadout);
+        // An installation the app has never managed has no metadata row, and so no backups: the game folder is all there is.
+        var registry = connection.ServiceProvider.GetRequiredService<IGameRegistry>();
+        EntityId? installationId = registry.TryGetMetadata(installation, out var metadata) ? metadata.Id : null;
+        return new GameFileSourceLookup(installation, installationId, connection, fileStore, fileHashes);
+    }
+
+    public Task<ArchivePlan> Build(ModList list, IDb db, Loadout.ReadOnly loadout, CancellationToken cancellationToken = default)
+        => Build(list, db, GameFilesFor(loadout), cancellationToken);
+
+    public async Task<ArchivePlan> Build(ModList list, IDb db, GameFileSourceLookup gameFiles, CancellationToken cancellationToken = default)
+    {
         var rows = new List<ArchivePlanRow>(list.Archives.Count);
         foreach (var archive in list.Archives)
         {
