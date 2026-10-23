@@ -20,6 +20,7 @@ using NexusMods.Wabbajack.Acquire;
 using NexusMods.Wabbajack.Format;
 using NexusMods.Wabbajack.Mapping;
 using NexusMods.Wabbajack.Models;
+using PatchException = NexusMods.Wabbajack.Transforms.PatchException;
 
 namespace NexusMods.Wabbajack.Install;
 
@@ -481,10 +482,15 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             throw new DirectiveSkipped(SkipKind.MemberNotFound, e.Message);
         }
 
-        if (directive.GetType() != typeof(FromArchive)) return member;
-
-        // A plain copy has to be the very file the list recorded; patches and textures change it anyway.
-        if (member.XxHash64 != directive.XxHash64)
+        // A plain copy has to be the very file the list recorded, and a patch the very file it was cut against.
+        var expected = directive switch
+        {
+            PatchedFromArchive patched => patched.FromHash,
+            _ when directive.GetType() == typeof(FromArchive) => directive.XxHash64,
+            _ => (Hash?)null,
+        };
+        if (expected is null) return member;
+        if (member.XxHash64 != expected)
             throw new DirectiveSkipped(SkipKind.HashMismatch, $"'{(directive.Source.Parts.Count > 0 ? directive.Source.Parts[^1].ToString() : row.Archive.Name)}' in '{row.Archive.Name}' is not the file the list was made with");
         return member;
     }
@@ -498,8 +504,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     private sealed class WriteState
     {
-        /// <summary>Directive destinations, folded, to the file store hash written for them, for merges to read back.</summary>
-        public Dictionary<string, Hash> Written { get; } = new();
+        /// <summary>Directive destinations, folded, to the file store hash and xxHash64 of what was written, for merges to read back and check.</summary>
+        public Dictionary<string, (Hash Store, Hash XxHash64)> Written { get; } = new();
 
         /// <summary>Generated files waiting for the next batch to the file store.</summary>
         public List<GeneratedFile> Pending { get; } = new();
@@ -608,13 +614,17 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             if (placement.Group is not { } groupName || placement.Path is not { } path)
                 throw new InvalidOperationException($"'{placement.To}' reached the write phase without a place in the loadout");
 
-            var (hash, size) = await Produce(check, state, extras, item, cancellationToken);
-            state.Written[Fold(placement.To)] = hash;
+            var (hash, size, xxHash64) = await Produce(check, state, extras, item, cancellationToken);
+            state.Written[Fold(placement.To)] = (hash, xxHash64);
             AddFile(tx, modlistGroup, state, groupName, path, hash, size);
         }
         catch (DirectiveSkipped skipped)
         {
             AddSkip(tx, modlistGroup, state, placement, skipped.Kind, skipped.Message, check);
+        }
+        catch (PatchException patchFailed)
+        {
+            AddSkip(tx, modlistGroup, state, placement, SkipKind.Transform, $"the patch for '{placement.To}' could not be applied: {patchFailed.Message}", check);
         }
         catch (TransformUnavailableException unavailable)
         {
@@ -936,7 +946,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     }
 
     /// <summary>The file store hash and size of what the directive writes, producing and storing the bytes when they are not a member already in the store.</summary>
-    private async Task<(Hash Hash, Size Size)> Produce(Checked check, WriteState state, ExtrasFolder extras, Prepared item, CancellationToken cancellationToken)
+    private async Task<(Hash Hash, Size Size, Hash XxHash64)> Produce(Checked check, WriteState state, ExtrasFolder extras, Prepared item, CancellationToken cancellationToken)
     {
         var directive = item.Placement.Directive;
         switch (directive)
@@ -944,7 +954,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             case FromArchive when directive.GetType() == typeof(FromArchive):
             {
                 var member = RequireMember(item.Placement, item.Member);
-                return (member.StoreHash, member.Size);
+                return (member.StoreHash, member.Size, member.XxHash64 ?? directive.XxHash64);
             }
 
             case MergedPatch merged:
@@ -962,7 +972,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     private static bool IsHashUnchecked(Directive directive)
         => directive is InlineFile or ArchiveMeta && HashUnchecked.Contains(directive.To.FileName.ToString(), StringComparer.OrdinalIgnoreCase);
 
-    private async Task<(Hash, Size)> Generated(WriteState state, Directive directive, Func<Stream, Task> produce, bool checkHash, CancellationToken cancellationToken)
+    private async Task<(Hash, Size, Hash)> Generated(WriteState state, Directive directive, Func<Stream, Task> produce, bool checkHash, CancellationToken cancellationToken)
     {
         var file = await Writer.Generate(produce, cancellationToken);
         if (checkHash && file.XxHash64 != directive.XxHash64)
@@ -977,7 +987,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
         state.Pending.Add(file);
         if (state.Pending.Count >= GeneratedFileWriter.StoreBatchSize) await FlushPending(state, cancellationToken);
-        return (file.XxHash3, file.Size);
+        return (file.XxHash3, file.Size, file.XxHash64);
     }
 
     /// <summary>The bytes of one directive other than a merge or an archive, written to <paramref name="output"/>.</summary>
@@ -1052,9 +1062,11 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var hashes = new List<Hash>(merged.Sources.Count);
         foreach (var source in merged.Sources)
         {
-            if (!state.Written.TryGetValue(Fold(source.Path), out var hash))
-                throw new DirectiveSkipped(SkipKind.MemberNotFound, $"'{source.Path}', which '{merged.To}' merges, was not installed");
-            hashes.Add(hash);
+            if (!state.Written.TryGetValue(Fold(source.Path), out var written))
+                throw new DirectiveSkipped(SkipKind.Transform, $"'{source.Path}', which '{merged.To}' merges, was not installed");
+            if (written.XxHash64 != source.XxHash64)
+                throw new DirectiveSkipped(SkipKind.Transform, $"'{source.Path}', which '{merged.To}' merges, is not the file the list was made with");
+            hashes.Add(written.Store);
         }
 
         return async output =>

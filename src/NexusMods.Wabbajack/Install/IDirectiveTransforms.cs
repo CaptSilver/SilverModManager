@@ -22,16 +22,3 @@ public sealed class TransformUnavailableException(string kind) : Exception($"thi
 {
     public string Kind { get; } = kind;
 }
-
-/// <summary>Stands in for every transform until the codecs are wired in: each one says it is not there.</summary>
-public sealed class UnavailableDirectiveTransforms : IDirectiveTransforms
-{
-    public Task Patch(Stream basis, Stream delta, Stream output, CancellationToken cancellationToken)
-        => throw new TransformUnavailableException("patch files");
-
-    public Task Recompress(Stream dds, ImageState target, Stream output, CancellationToken cancellationToken)
-        => throw new TransformUnavailableException("recompress textures");
-
-    public Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
-        => throw new TransformUnavailableException("build archives");
-}

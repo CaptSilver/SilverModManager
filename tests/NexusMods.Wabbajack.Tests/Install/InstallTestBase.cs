@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Octodiff.Core;
+using Octodiff.Diagnostics;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
@@ -124,6 +126,27 @@ public sealed class ListBuilder
 
     public FromArchive Member(string to, ArchiveEntry archive, string part, byte[] bytes)
         => new(P(to), Xx(bytes), bytes.Length, new ArchiveHashPath(archive.XxHash64, [P(part)]));
+
+    /// <summary>A directive that patches a member of <paramref name="archive"/> (whose bytes are <paramref name="basis"/>) into <paramref name="result"/>.</summary>
+    public PatchedFromArchive Patched(string to, ArchiveEntry archive, string part, byte[] basis, byte[] result)
+        => new(P(to), Xx(result), result.Length, new ArchiveHashPath(archive.XxHash64, [P(part)]), Xx(basis), Blob(Delta(basis, result)));
+
+    /// <summary>A merge of <paramref name="sources"/>, in order, patched into <paramref name="result"/>.</summary>
+    public MergedPatch Merged(string to, byte[] result, params (string Path, byte[] Bytes)[] sources)
+        => new(P(to), Xx(result), result.Length, Blob(Delta(sources.SelectMany(s => s.Bytes).ToArray(), result)),
+            sources.Select(s => new MergedPatchSource(Xx(s.Bytes), P(s.Path))).ToArray());
+
+    /// <summary>An Octodiff delta that turns <paramref name="basis"/> into <paramref name="result"/>.</summary>
+    public static byte[] Delta(byte[] basis, byte[] result)
+    {
+        using var signature = new MemoryStream();
+        new SignatureBuilder().Build(new MemoryStream(basis), new SignatureWriter(signature));
+        signature.Position = 0;
+        using var delta = new MemoryStream();
+        new DeltaBuilder().BuildDelta(new MemoryStream(result), new SignatureReader(signature, new NullProgressReporter()),
+            new AggregateCopyOperationsDecorator(new BinaryDeltaWriter(delta)));
+        return delta.ToArray();
+    }
 
     public InlineFile Inline(string to, string text) => Inline(to, System.Text.Encoding.UTF8.GetBytes(text));
 

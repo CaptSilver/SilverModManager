@@ -72,7 +72,7 @@ public class InstallConvergenceTests(ITestOutputHelper helper) : InstallTestBase
         var first = List("+A\n", ("mods/A/x.bin", "one"));
         var second = List("+A\n");
         second.Archives.Add(archive);
-        second.Directives.Add(new PatchedFromArchive(P("mods/A/x.bin"), Hash64(new byte[] { 1, 2, 3, 4 }), 4, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), Hash64(new byte[] { 1, 2, 3 }), second.Blob([4])));
+        second.Directives.Add(new TransformedTexture(P("mods/A/x.bin"), Hash64(new byte[] { 1, 2, 3, 4 }), 4, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), new ImageState(1, 1, 1, "BC7_UNORM")));
 
         var (_, _, again) = await Reinstall(first, second);
 

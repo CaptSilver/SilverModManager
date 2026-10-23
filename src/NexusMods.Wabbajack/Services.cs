@@ -31,7 +31,7 @@ public static class Services
             .AddSingleton<WabbajackPaths>()
             .AddSingleton<ILibraryArchiveLocator, LibraryArchiveLocator>()
             .AddSingleton<ArchiveInventory>()
-            .AddSingleton<IDirectiveTransforms, UnavailableDirectiveTransforms>()
+            .AddSingleton<IDirectiveTransforms, DirectiveTransforms>()
             .AddSingleton<ExpectedNexusDownloads>()
             .AddSingleton<IExpectedNexusDownloads>(provider => provider.GetRequiredService<ExpectedNexusDownloads>())
             .AddSingleton<IArchiveDownloadJobs, ArchiveDownloadJobs>()

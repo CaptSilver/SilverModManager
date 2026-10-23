@@ -172,13 +172,51 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
     }
 
     [Fact]
-    public async Task APatchedDirectiveWithoutATransformLeavesOneTransformRow()
+    public async Task APatchedDirectiveInstallsTheFileTheDeltaMakesWithNoSkipRow()
     {
         var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3] });
         var list = new ListBuilder();
         list.Archives.Add(archive);
-        var patch = list.Blob("delta"u8.ToArray());
-        list.Directives.Add(new PatchedFromArchive(P("mods/A/patched.bin"), Hash64(new byte[] { 1, 2, 3, 4 }), 4, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), Hash64(new byte[] { 1, 2, 3 }), patch));
+        list.Directives.Add(list.Patched("mods/A/patched.bin", archive, "base.bin", [1, 2, 3], [1, 2, 3, 4]));
+        list.Directives.Add(list.Member("mods/A/plain.bin", archive, "base.bin", [1, 2, 3]));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().BeEmpty();
+        var tree = TreeOf(group);
+        tree["A"].Keys.Should().BeEquivalentTo("Game/Data/patched.bin", "Game/Data/plain.bin");
+        tree["A"]["Game/Data/patched.bin"].Should().Be(new byte[] { 1, 2, 3, 4 }.xxHash3());
+        group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task APatchCutAgainstAnotherFileThanTheMemberIsAHashMismatch()
+    {
+        var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3] });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(list.Patched("mods/A/patched.bin", archive, "base.bin", [9, 9, 9], [9, 9, 9, 4]));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        var skip = SkipsOf(group).Should().ContainSingle().Subject;
+        skip.Kind.Should().Be(SkipKind.HashMismatch);
+        skip.To.Should().Be("mods/A/patched.bin");
+        TreeOf(group).Should().NotContainKey("A");
+    }
+
+    [Fact]
+    public async Task ADeltaThatDoesNotFitItsFileLeavesATransformRowNotAFailedInstall()
+    {
+        var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3] });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        var broken = list.Patched("mods/A/patched.bin", archive, "base.bin", [1, 2, 3], [1, 2, 3, 4]) with { PatchId = list.Blob("not a delta"u8.ToArray()) };
+        list.Directives.Add(broken);
         list.Directives.Add(list.Member("mods/A/plain.bin", archive, "base.bin", [1, 2, 3]));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
@@ -188,9 +226,86 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         var skip = SkipsOf(group).Should().ContainSingle().Subject;
         skip.Kind.Should().Be(SkipKind.Transform);
         skip.To.Should().Be("mods/A/patched.bin");
-        skip.Reason.Should().Be("this build cannot patch files yet");
         TreeOf(group)["A"].Keys.Should().BeEquivalentTo("Game/Data/plain.bin");
-        group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AMergedPatchIsBuiltFromTheInstalledSourcesEvenWhenTheListNamesItFirst()
+    {
+        var archive = await AddZip("a.zip", new() { ["one.bin"] = [1, 2], ["two.bin"] = [3, 4] });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        byte[] merged = [1, 2, 3, 4, 5];
+        list.Directives.Add(list.Merged("mods/M/merged.bin", merged, ("mods/A/one.bin", [1, 2]), ("mods/A/two.bin", [3, 4])));
+        list.Directives.Add(list.Member("mods/A/one.bin", archive, "one.bin", [1, 2]));
+        list.Directives.Add(list.Member("mods/A/two.bin", archive, "two.bin", [3, 4]));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().BeEmpty();
+        TreeOf(group)["M"]["Game/Data/merged.bin"].Should().Be(merged.xxHash3());
+    }
+
+    [Fact]
+    public async Task AMergedPatchNamingASourceTheListNeverWritesLeavesATransformRowNamingIt()
+    {
+        var archive = await AddZip("a.zip", new() { ["one.bin"] = [1, 2] });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(list.Member("mods/A/one.bin", archive, "one.bin", [1, 2]));
+        list.Directives.Add(list.Merged("mods/M/merged.bin", [1, 2, 3, 4, 5], ("mods/A/one.bin", [1, 2]), ("mods/A/absent.bin", [3, 4])));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        var skip = SkipsOf(group).Should().ContainSingle().Subject;
+        skip.Kind.Should().Be(SkipKind.Transform);
+        skip.To.Should().Be("mods/M/merged.bin");
+        skip.Reason.Should().Contain("mods/A/absent.bin");
+    }
+
+    [Fact]
+    public async Task AMergedPatchWhoseSourceIsNotTheFileTheListRecordedLeavesATransformRowNamingIt()
+    {
+        var archive = await AddZip("a.zip", new() { ["one.bin"] = [1, 2], ["two.bin"] = [3, 4] });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(list.Member("mods/A/one.bin", archive, "one.bin", [1, 2]));
+        list.Directives.Add(list.Member("mods/A/two.bin", archive, "two.bin", [3, 4]));
+        // The merge was cut against a different two.bin than the one installed.
+        list.Directives.Add(list.Merged("mods/M/merged.bin", [1, 2, 7, 7, 5], ("mods/A/one.bin", [1, 2]), ("mods/A/two.bin", [7, 7])));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        var skip = SkipsOf(group).Should().ContainSingle().Subject;
+        skip.Kind.Should().Be(SkipKind.Transform);
+        skip.Reason.Should().Contain("mods/A/two.bin");
+    }
+
+    [Fact]
+    public async Task ATextureAndABuiltArchiveStillLeaveTransformRows()
+    {
+        var archive = await AddZip("a.zip", new() { ["t.dds"] = [1, 2, 3] });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(new TransformedTexture(P("mods/A/t.dds"), Hash64(new byte[] { 1, 2, 3 }), 3, new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(1, 1, 1, "BC7_UNORM")));
+        list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/one.txt", "1"));
+        list.Directives.Add(new CreateBsa(P("mods/A/pack.bsa"), Hash.From(1), 1, P("pack"), JsonDocument.Parse("{}").RootElement, []));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Select(s => (s.To, s.Kind, s.Reason)).Should().BeEquivalentTo(
+        [
+            ("mods/A/t.dds", SkipKind.Transform, "this build cannot recompress textures yet"),
+            ("mods/A/pack.bsa", SkipKind.Transform, "this build cannot build archives yet"),
+        ]);
     }
 
     [Fact]
@@ -244,7 +359,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         list.Archives.Add(archive);
         list.Directives.Add(list.Member("mods/A/plain.bin", archive, "base.bin", [1, 2, 3]));
         list.Directives.Add(list.Inline("mods/A/inline.txt", "inline"));
-        list.Directives.Add(new PatchedFromArchive(P("mods/A/patched.bin"), Hash64(new byte[] { 1, 2, 3, 4 }), 4, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), Hash64(new byte[] { 1, 2, 3 }), list.Blob([4])));
+        list.Directives.Add(new TransformedTexture(P("mods/A/patched.bin"), Hash64(new byte[] { 1, 2, 3, 4 }), 4, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), new ImageState(1, 1, 1, "BC7_UNORM")));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
         var options = new InstallOptions(false, new HashSet<RelativePath>());

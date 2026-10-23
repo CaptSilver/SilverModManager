@@ -227,7 +227,7 @@ public class InstallOrderTests(ITestOutputHelper helper) : InstallTestBase<Insta
         var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3] });
         var list = List();
         list.Archives.Add(archive);
-        list.Directives.Add(new PatchedFromArchive(P("mods/A/patched.bin"), Hash64(new byte[] { 1, 2, 3, 4 }), 4, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), Hash64(new byte[] { 1, 2, 3 }), list.Blob([4])));
+        list.Directives.Add(new TransformedTexture(P("mods/A/patched.bin"), Hash64(new byte[] { 1, 2, 3, 4 }), 4, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), new ImageState(1, 1, 1, "BC7_UNORM")));
         var (_, skipped) = await InstallList(list);
 
         SkipsOf(skipped).Should().ContainSingle(s => s.Kind == SkipKind.Transform);

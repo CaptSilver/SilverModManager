@@ -5,16 +5,20 @@ using NexusMods.Wabbajack.Install;
 
 namespace NexusMods.Wabbajack.Tests.Install;
 
-public class UnavailableDirectiveTransformsTests
+public class DirectiveTransformsTests
 {
-    private readonly IDirectiveTransforms _transforms = new UnavailableDirectiveTransforms();
+    private readonly IDirectiveTransforms _transforms = new DirectiveTransforms();
 
     [Fact]
-    public async Task PatchingSaysThisBuildCannotPatchYet()
+    public async Task PatchingAppliesAnOctodiffDelta()
     {
-        var failure = await Record.ExceptionAsync(() => _transforms.Patch(Stream.Null, Stream.Null, Stream.Null, CancellationToken.None));
+        byte[] basis = [1, 2, 3];
+        byte[] result = [1, 2, 3, 4, 5];
+        using var output = new MemoryStream();
 
-        failure.Should().BeOfType<TransformUnavailableException>().Which.Message.Should().Be("this build cannot patch files yet");
+        await _transforms.Patch(new MemoryStream(basis), new MemoryStream(ListBuilder.Delta(basis, result)), output, CancellationToken.None);
+
+        output.ToArray().Should().Equal(result);
     }
 
     [Fact]
