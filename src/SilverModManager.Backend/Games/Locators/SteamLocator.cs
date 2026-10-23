@@ -40,7 +40,10 @@ internal class SteamLocator : IGameLocator
 
     private IEnumerable<GameLocatorResult> LocateGames()
     {
-        foreach (var gameFinderGame in FindAllGames())
+        var allGames = FindAllGames().ToArray();
+        var libraries = allGames.Select(g => g.LibraryFolder.Path).Concat(allGames.Select(g => g.SteamPath)).Distinct().ToArray();
+
+        foreach (var gameFinderGame in allGames)
         {
             var storeIdentifier = gameFinderGame.AppId.Value;
             _logger.LogDebug("Found game '{GameName}' with store identifier '{StoreIdentifier}'", gameFinderGame.Name, storeIdentifier);
@@ -55,7 +58,7 @@ internal class SteamLocator : IGameLocator
             // Proton has written anything into it. Build the prefix from the manifest instead and ask
             // ProtonPrefix.IsReady, so a game that was never launched still resolves its known folders
             // into the prefix it will get rather than silently into the host's home.
-            var protonDirectory = gameFinderGame.AppManifest.GetCompatabilityDataDirectoryPath();
+            var protonDirectory = CompatDataDirectory(gameFinderGame, libraries);
             var prefix = new ProtonWinePrefix { ProtonDirectory = protonDirectory, ConfigurationDirectory = protonDirectory.Combine("pfx") };
             var prefixReady = ProtonPrefix.IsReady(prefix.ConfigurationDirectory);
             var isWindowsBuild = prefixReady || !game.HasNativeLinuxBuild;
@@ -85,6 +88,38 @@ internal class SteamLocator : IGameLocator
             };
         }
     }
+
+    /// <summary>
+    /// The game's compatdata folder. Steam moves a game's files to another library but leaves compatdata/&lt;appid&gt;
+    /// in the library where Proton first created it, so when the game's own library holds no ready prefix, a ready one
+    /// in another library is used. With none ready anywhere, the game's own library is where the prefix will appear.
+    /// </summary>
+    private AbsolutePath CompatDataDirectory(SteamGame game, IReadOnlyList<AbsolutePath> libraries)
+    {
+        var own = game.AppManifest.GetCompatabilityDataDirectoryPath();
+        if (ProtonPrefix.IsReady(own.Combine("pfx"))) return own;
+
+        var relative = own.RelativeTo(game.LibraryFolder.Path);
+        foreach (var library in libraries)
+        {
+            var candidate = library.Combine(relative);
+            try
+            {
+                if (ProtonPrefix.IsReady(candidate.Combine("pfx")))
+                {
+                    _logger.LogDebug("Found the Proton prefix of {AppId} in another library: {Path}", game.AppId, candidate);
+                    return candidate;
+                }
+            }
+            catch (Exception e) when (IsStorageFailure(e))
+            {
+                // A library on an unplugged drive can't hold the prefix we need.
+            }
+        }
+
+        return own;
+    }
+
 
     /// <summary>
     /// Walks every library folder in <c>libraryfolders.vdf</c>, as GameFinder's <c>SteamHandler.FindAllGames</c> does,

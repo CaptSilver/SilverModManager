@@ -310,7 +310,38 @@ public class SteamLocatorTests
         ReadingAnything,
     }
 
-    private sealed record ThreeLibrariesFixture(SteamLocator Locator, AbsolutePath UnavailableLibrary)
+    [Fact]
+    public void Locate_GameMovedToAnotherLibrary_FindsItsPrefixInTheLibraryItWasFirstRunFrom()
+    {
+        // Steam moves a game's files to another library but leaves compatdata/<appid> in the library where Proton
+        // first created it, so a game in /mnt/steam can have its prefix under the Steam root.
+        var fixture = ThreeLibraries();
+        var fileSystem = fixture.FileSystem;
+        var rootPrefix = fixture.SteamDirectory.Combine($"steamapps/compatdata/{SecondAppId}/pfx");
+        WriteFile(fileSystem, rootPrefix.Combine("system.reg"), "WINE REGISTRY Version 2");
+
+        var result = fixture.Locate().Single(r => r.StoreIdentifier == SecondAppId.ToString());
+
+        result.WinePrefixPath.Should().Be(rootPrefix);
+        result.Compatibility.Should().Be(new CompatibilityLayer(CompatibilityLayerKind.SteamProton, rootPrefix));
+        result.LinuxCompatabilityDataProvider.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Locate_ReadyPrefixInTheGamesOwnLibrary_WinsOverOneElsewhere()
+    {
+        var fixture = ThreeLibraries();
+        var fileSystem = fixture.FileSystem;
+        var ownPrefix = fixture.Mounted.Combine($"steamapps/compatdata/{SecondAppId}/pfx");
+        WriteFile(fileSystem, ownPrefix.Combine("system.reg"), "WINE REGISTRY Version 2");
+        WriteFile(fileSystem, fixture.SteamDirectory.Combine($"steamapps/compatdata/{SecondAppId}/pfx/system.reg"), "WINE REGISTRY Version 2");
+
+        var result = fixture.Locate().Single(r => r.StoreIdentifier == SecondAppId.ToString());
+
+        result.WinePrefixPath.Should().Be(ownPrefix);
+    }
+
+    private sealed record ThreeLibrariesFixture(SteamLocator Locator, AbsolutePath UnavailableLibrary, IFileSystem FileSystem, AbsolutePath SteamDirectory, AbsolutePath Mounted)
     {
         public GameLocatorResult[] Locate() => Locator.Locate().ToArray();
     }
@@ -364,7 +395,7 @@ public class SteamLocatorTests
             return game;
         }).ToArray();
 
-        return new ThreeLibrariesFixture(new SteamLocator(games, loggerFactory ?? NullLoggerFactory.Instance, fileSystem, registry: null), external);
+        return new ThreeLibrariesFixture(new SteamLocator(games, loggerFactory ?? NullLoggerFactory.Instance, fileSystem, registry: null), external, fileSystem, steamDirectory, mounted);
     }
 
     private static void AddInstalledGame(IFileSystem fileSystem, AbsolutePath libraryDirectory, uint appId)
