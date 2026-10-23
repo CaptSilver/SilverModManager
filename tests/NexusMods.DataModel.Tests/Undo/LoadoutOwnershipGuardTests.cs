@@ -40,6 +40,8 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
     [
         "SilverModManager.Loadouts.LoadoutItem/Parent",
         "SilverModManager.Loadouts.LoadoutOverridesGroup/OverridesFor",
+        "SilverModManager.Loadouts.GameInstalledGroup/InstalledFor",
+        "SilverModManager.Loadouts.GameInstalledClaim/Loadout",
         "SilverModManager.Loadouts.LoadoutItemGroupPriority/Target",
         "SilverModManager.Loadouts.GameMetadata/LastSyncedLoadout",
         "SilverModManager.Loadouts.LoadoutSnapshot/Snapshot",

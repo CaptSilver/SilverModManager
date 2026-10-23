@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x24AD7610C3481318
-   - Total attributes: 291
-   - Total namespaces: 86
+   - Fingerprint: 0xD72B63F3CEACB4AE
+   - Total attributes: 306
+   - Total namespaces: 90
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -163,6 +163,21 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.DiskStateEntry/LastModified                                     | Int64                   | False   | False | False     | 
 | SilverModManager.Loadouts.DiskStateEntry/Path                                             | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 
 | SilverModManager.Loadouts.DiskStateEntry/Size                                             | UInt64                  | False   | False | False     | 
+| SilverModManager.Loadouts.GameInstalledClaim/ClaimedAt                                    | Int64                   | False   | False | False     | 
+| SilverModManager.Loadouts.GameInstalledClaim/Loadout                                      | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.GameInstalledClaim/Path                                         | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 
+| SilverModManager.Loadouts.GameInstalledClaim/Source                                       | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.GameInstalledClaim/SourceId                                     | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.GameInstalledFile/Hash                                          | UInt64                  | False   | False | False     | 
+| SilverModManager.Loadouts.GameInstalledFile/Path                                          | Tuple3_Ref_UShort_Utf8I | True    | False | False     | 
+| SilverModManager.Loadouts.GameInstalledFile/Size                                          | UInt64                  | False   | False | False     | 
+| SilverModManager.Loadouts.GameInstalledGroup/InstalledFor                                 | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.GameInstalledItem/CanBeClaimed                                  | UInt8                   | False   | False | False     | 
+| SilverModManager.Loadouts.GameInstalledItem/Confidence                                    | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.GameInstalledItem/DepotShipped                                  | UInt8                   | False   | False | False     | 
+| SilverModManager.Loadouts.GameInstalledItem/Source                                        | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.GameInstalledItem/SourceId                                      | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.GameInstalledItem/Version                                       | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.GameMetadata/Game                                               | UInt64                  | True    | False | False     | 
 | SilverModManager.Loadouts.GameMetadata/GameId                                             | UInt32                  | True    | False | False     | 
 | SilverModManager.Loadouts.GameMetadata/InitialDiskStateTransaction                        | Reference               | False   | False | False     | 
