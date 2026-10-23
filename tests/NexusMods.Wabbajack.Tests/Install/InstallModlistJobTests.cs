@@ -76,7 +76,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
     }
 
     [Fact]
-    public async Task AListInstallsAsMo2LaysItOutAndStaysDisabled()
+    public async Task AListInstallsAsMo2LaysItOutAndIsEnabledOnceOrdered()
     {
         var (fixture, archiveA, archiveB, enb) = await FixtureList();
         var loadout = await CreateLoadout();
@@ -95,14 +95,14 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         tree["Stock Game"].Keys.Should().BeEquivalentTo("Game/d3d11.dll");
 
         WabbajackSkippedFile.All(Connection.Db).Should().BeEmpty();
-        group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled.Should().BeTrue("the order has not been applied yet");
+        group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().IsDisabled.Should().BeFalse("nothing was skipped, so the ordered list is enabled");
         group.AsCollectionGroup().IsReadOnly.Should().BeFalse();
 
         job.Progress.DroppedCount.Should().Be(9, "four seeds, four Mod Organizer files at the root and one download's .meta");
         var members = new[] { PluginA, MeshA, RootDll, PluginB, EnbDll }.Sum(b => (long)b.Length);
         job.Progress.EstimatedExtractedSize.Value.Should().Be((ulong)members);
         job.Progress.IsEstimateLowerBound.Should().BeFalse();
-        job.Progress.Phase.Should().Be(InstallPhase.Write);
+        job.Progress.Phase.Should().Be(InstallPhase.Order);
         job.Progress.DoneItems.Should().Be(job.Progress.TotalItems);
     }
 

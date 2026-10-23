@@ -4,8 +4,10 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Games.Modlists;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.ToolRunner;
@@ -24,8 +26,9 @@ namespace NexusMods.Wabbajack.Install;
 /// <summary>
 /// Installs a modlist's archive members and inline files into a loadout as mod groups under a
 /// <see cref="WabbajackModlistLoadoutGroup"/>. A directive the app cannot execute leaves a
-/// <see cref="WabbajackSkippedFile"/> row; the group is left disabled, because ordering and enabling it is a
-/// later step. Running the job again on the same loadout continues in the same group and adds only what is missing.
+/// <see cref="WabbajackSkippedFile"/> row. Once the files are written the groups are put in the order the profile's
+/// modlist.txt gives, the profile's plugin list is staged, and the list is enabled unless something was skipped.
+/// Running the job again on the same loadout continues in the same group and adds only what is missing.
 /// </summary>
 public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>
 {
@@ -87,6 +90,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
         var prepared = await Resolve(check, cancellationToken);
         await Write(check, group, prepared, cancellationToken);
+        await Order(check, group, cancellationToken);
 
         return WabbajackModlistLoadoutGroup.Load(Connection.Db, group.Value);
     }
@@ -113,6 +117,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var loadout = Loadout.Load(Connection.Db, TargetLoadout);
         var installation = loadout.InstallationInstance;
         var target = RequireTarget(installation);
+        _ = RequirePluginVariety(installation);
 
         if (!Modlist.AsLibraryFile().TryGetAsLibraryArchive(out var listArchive))
             throw new UnsupportedModlistException("The modlist file is not an expanded archive, so it cannot be read");
@@ -150,6 +155,15 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         if (target.UnsupportedReason(installation) is { } reason)
             throw new UnsupportedModlistException($"Wabbajack lists for {name} are not supported yet: {reason}");
         return target;
+    }
+
+    /// <summary>The game's one load order, which the profile's plugin list is staged on.</summary>
+    private static ISortOrderVariety RequirePluginVariety(GameInstallation installation)
+    {
+        var varieties = installation.GetGame().SortOrderManager.GetSortOrderVarieties();
+        if (varieties.Count != 1)
+            throw new UnsupportedModlistException($"Wabbajack lists for {installation.Game.DisplayName} are not supported yet: the game has {varieties.Count} load orders and a profile carries one plugin list");
+        return varieties[0];
     }
 
     private static void RequireGame(GameInstallation installation, ModList list)
@@ -596,6 +610,137 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Size = size,
         };
         known.Add((path, hash));
+    }
+
+    #endregion
+
+    #region Order
+
+    private sealed record ProfileTexts(string? ModlistTxt, string? PluginsTxt, string? LoadorderTxt);
+
+    /// <summary>
+    /// Puts the mod groups in the order MO2 would give them, stages the profile's plugin list on the loadout's own plugin
+    /// order, and enables the list when every directive was executed. Every write is in one transaction, so a failure
+    /// leaves the list disabled and the next run does it again.
+    /// </summary>
+    private async Task Order(Checked check, LoadoutItemGroupId modlistGroup, CancellationToken cancellationToken)
+    {
+        Progress.Enter(InstallPhase.Order, 0, 0);
+        var installation = check.Loadout.InstallationInstance;
+        var target = RequireTarget(installation);
+        var texts = await ReadProfileTexts(check, cancellationToken);
+
+        // The sort order manager creates the loadout's order a moment after the loadout appears, so it may not be there yet.
+        var sortOrderId = await RequirePluginVariety(installation).GetOrCreateSortOrderFor(TargetLoadout, TargetLoadout, cancellationToken);
+
+        var db = Connection.Db;
+        var children = LoadoutItem.FindByParent(db, modlistGroup).OfTypeLoadoutItemGroup().ToArray();
+        var entries = texts.ModlistTxt is null ? [] : ModlistTxt.Parse(texts.ModlistTxt);
+        var ordered = PriorityOrder(check, children, entries);
+
+        using var tx = Connection.BeginTransaction();
+        WritePriorities(db, tx, ordered);
+
+        var disabledByList = entries.Where(e => !e.Enabled && !e.IsSeparator && !e.IsForeign).Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var child in children.Where(c => disabledByList.Contains(c.AsLoadoutItem().Name)))
+            tx.Add(child.Id, LoadoutItem.Disabled, Null.Instance);
+
+        if (texts.PluginsTxt is not null || texts.LoadorderTxt is not null)
+            target.StagePluginList(Loadout.Load(db, TargetLoadout), sortOrderId, texts.PluginsTxt, texts.LoadorderTxt, tx);
+        else
+            Logger.LogWarning("The profile of '{List}' has neither a plugins.txt nor a loadorder.txt, so the plugin order is left as it was", check.List.Name);
+
+        tx.Add(modlistGroup.Value, WabbajackModlistLoadoutGroup.InstalledAt, DateTimeOffset.UtcNow);
+        if (!WabbajackSkippedFile.FindByGroup(db, modlistGroup).Any() && LoadoutItem.Load(db, modlistGroup).IsDisabled)
+            tx.Retract(modlistGroup.Value, LoadoutItem.Disabled, Null.Instance);
+
+        await tx.Commit();
+    }
+
+    /// <summary>
+    /// The groups from lowest priority to highest: game-root groups, profile settings, mods with no line in modlist.txt,
+    /// the listed mods bottom-up (modlist.txt is written top-down, and the first line wins), then Overwrite.
+    /// </summary>
+    private List<LoadoutItemGroup.ReadOnly> PriorityOrder(Checked check, IReadOnlyList<LoadoutItemGroup.ReadOnly> children, IReadOnlyList<ModlistTxtEntry> entries)
+    {
+        var byName = children.ToDictionary(c => c.AsLoadoutItem().Name, StringComparer.OrdinalIgnoreCase);
+        var rootNames = check.Placements.Select(p => p.Target).OfType<Mo2Target.GameRootFile>().Select(t => t.GroupName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var ordered = new List<LoadoutItemGroup.ReadOnly>(children.Count);
+        var placed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void Place(string name)
+        {
+            if (byName.TryGetValue(name, out var group) && placed.Add(name)) ordered.Add(group);
+        }
+
+        foreach (var name in rootNames.Order(StringComparer.OrdinalIgnoreCase)) Place(name);
+        Place(Mo2Layout.ProfileSettingsGroup);
+
+        var listed = entries.Where(e => !e.IsSeparator && !e.IsForeign).Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var unlisted = children
+            .Select(c => c.AsLoadoutItem().Name)
+            .Where(name => !placed.Contains(name) && !listed.Contains(name) && !name.Equals(Mo2Layout.OverwriteGroup, StringComparison.OrdinalIgnoreCase))
+            .Order(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        foreach (var name in unlisted)
+        {
+            Logger.LogWarning("Mod '{Mod}' of '{List}' has no line in modlist.txt, so it is placed below the listed mods", name, check.List.Name);
+            Place(name);
+        }
+
+        foreach (var entry in entries.Reverse().Where(e => !e.IsSeparator && !e.IsForeign)) Place(entry.Name);
+        Place(Mo2Layout.OverwriteGroup);
+        return ordered;
+    }
+
+    /// <summary>
+    /// Gives each group one priority row, counting up from above every row the loadout holds for other groups. A
+    /// group that has a row from an earlier run keeps it and takes the new value.
+    /// </summary>
+    private void WritePriorities(IDb db, ITransaction tx, IReadOnlyList<LoadoutItemGroup.ReadOnly> ordered)
+    {
+        var own = ordered.Select(g => g.LoadoutItemGroupId).ToHashSet();
+        var rows = LoadoutItemGroupPriority.FindByLoadout(db, TargetLoadout).ToArray();
+        var next = rows.Where(r => !own.Contains(r.TargetId)).Select(r => r.Priority.Value).DefaultIfEmpty(0UL).Max() + 1;
+        var mine = rows.Where(r => own.Contains(r.TargetId)).ToLookup(r => r.TargetId);
+
+        foreach (var group in ordered)
+        {
+            var priority = ConflictPriority.From(next++);
+            if (mine.Contains(group.LoadoutItemGroupId))
+            {
+                tx.Add(mine[group.LoadoutItemGroupId].First().Id, LoadoutItemGroupPriority.Priority, priority);
+                continue;
+            }
+
+            _ = new LoadoutItemGroupPriority.New(tx)
+            {
+                LoadoutId = TargetLoadout,
+                TargetId = group.LoadoutItemGroupId,
+                Priority = priority,
+            };
+        }
+    }
+
+    private async Task<ProfileTexts> ReadProfileTexts(Checked check, CancellationToken cancellationToken)
+    {
+        string? modlist = null, plugins = null, loadorder = null;
+        foreach (var placement in check.Placements)
+        {
+            if (placement.Target is not Mo2Target.Seed seed || placement.Directive is not InlineFile inline) continue;
+            if (seed.Kind is not (SeedKind.ModlistTxt or SeedKind.PluginsTxt or SeedKind.LoadorderTxt)) continue;
+
+            await using var stream = await ModlistArchive.ReadBlob(FileStore, check.ListArchive, inline.SourceDataId, cancellationToken);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            var text = await reader.ReadToEndAsync(cancellationToken);
+            switch (seed.Kind)
+            {
+                case SeedKind.ModlistTxt: modlist = text; break;
+                case SeedKind.PluginsTxt: plugins = text; break;
+                default: loadorder = text; break;
+            }
+        }
+        return new ProfileTexts(modlist, plugins, loadorder);
     }
 
     #endregion
