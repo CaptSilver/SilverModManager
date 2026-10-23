@@ -153,6 +153,13 @@ public class PluginsFile : IIntrinsicFileWithReset
         return (_codec.Decode(bytes.AsSpan(hasBom ? Utf8Bom.Length : 0)), hasBom ? Utf8Bom : []);
     }
 
+    /// <summary>
+    /// A file that is on disk but not yet in the loadout, which this sync takes in (a plugin that was in the Data
+    /// folder before the game was managed). It is listed now so the first list does not switch it off.
+    /// </summary>
+    private static bool IsAdoptedFromDisk(SyncNode node) =>
+        !node.HaveLoadout && node.HaveDisk && node.Actions.HasFlag(Actions.IngestFromDisk);
+
     private bool IsPluginPath(GamePath path) =>
         path.Parent == _game.DataPath && (KnownCEExtensions.PluginFiles.Contains(path.Extension) || _game.PluginExtensions.Contains(path.Extension));
 
@@ -173,10 +180,15 @@ public class PluginsFile : IIntrinsicFileWithReset
         foreach (var entry in syncTree)
         {
             if (!IsPluginPath(entry.Key)) continue;
-            if (!entry.Value.HaveLoadout) continue;
+            var adopted = IsAdoptedFromDisk(entry.Value);
+            if (!entry.Value.HaveLoadout && !adopted) continue;
 
             if (await MakeMetadata(entry) is { } found)
                 plugins.Add(found);
+            // A file the sync is about to take into the loadout may not be readable before it is stored; it is
+            // listed on the next Apply instead of blocking this one.
+            else if (adopted)
+                _logger.LogDebug("The header of {Plugin}, already in the Data folder, could not be read yet", entry.Key.FileName);
             else if (gameInstalled.Contains(entry.Key.FileName))
                 unreadableInstalled.Add(entry.Key.FileName);
             else
@@ -198,7 +210,7 @@ public class PluginsFile : IIntrinsicFileWithReset
 
         // The game switches these on whatever the list and the user's switches say.
         var implicitlyActive = _game.ImplicitlyActivePlugins(
-                syncTree.Where(e => e.Key.Parent == _game.DataPath && e.Value.HaveLoadout).Select(e => e.Key.FileName.ToString()))
+                syncTree.Where(e => e.Key.Parent == _game.DataPath && (e.Value.HaveLoadout || IsAdoptedFromDisk(e.Value))).Select(e => e.Key.FileName.ToString()))
             .ToHashSet(PluginNameComparer.Instance);
 
         var entries = plugins.Select(plugin =>
@@ -226,7 +238,7 @@ public class PluginsFile : IIntrinsicFileWithReset
 
         var order = PluginOrderResolver.Resolve(entries);
         Debug.Assert(PluginOrderValidation.Validate(order, entries, earlyLoaders) is null,
-            "The resolver produced a load order that libloadorder would reject.");
+            "The resolver produced a load order that PluginOrderValidation rejects.");
         _logger.LogDebug("Ordered {Count} plugin files", order.Count);
 
         var byName = entries.ToDictionary(e => e.Name, PluginNameComparer.Instance);
@@ -234,7 +246,7 @@ public class PluginsFile : IIntrinsicFileWithReset
         {
             var entry = byName[name];
             // A blueprint master never loads early, so the game does not know to load it without the list.
-            var isEarly = entry.EarlyLoaderIndex is not null && !entry.IsBlueprintMaster;
+            var isEarly = entry.LoadsEarly;
             var installed = gameInstalled.Contains(name);
             if (installed && !gameInstalled.GroupEnabled && isEarly && !implicitlyActive.Contains(name))
             {

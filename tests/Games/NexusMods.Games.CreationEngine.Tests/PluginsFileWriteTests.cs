@@ -2,6 +2,7 @@ using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Games.CreationEngine.Creations;
@@ -51,6 +52,14 @@ public class PluginsFileWriteTests
             Loadout = new SyncNodePart { Hash = Hash.From(1), Size = NexusMods.Paths.Size.From(10), LastModifiedTicks = 0 },
             SourceItemType = LoadoutSourceItemType.Game,
         });
+
+    /// <summary>A file already in the Data folder that the sync is about to take into the loadout.</summary>
+    private static void AddLoose(Dictionary<GamePath, SyncNode> tree, string name) =>
+        tree[new GamePath(LocationId.Game, "Data/" + name)] = new SyncNode
+        {
+            Disk = new SyncNodePart { Hash = Hash.From(2), Size = NexusMods.Paths.Size.From(10), LastModifiedTicks = 0 },
+            Actions = Actions.IngestFromDisk,
+        };
 
     private static PluginSortData Row(string name, int index, bool enabled = true) => new(name, index, enabled);
 
@@ -104,6 +113,45 @@ public class PluginsFileWriteTests
         var lines = await Lines(Game(), ["Skyrim.esm", Listed, "Mod.esp"], [Row("Mod.esp", 0)], Installed(true, Listed), "Skyrim.esm", Listed);
 
         lines.Should().Equal("*Mod.esp");
+    }
+
+    [Fact]
+    public async Task APluginAlreadyInTheDataFolder_IsListedOnTheSyncThatTakesItIntoTheLoadout()
+    {
+        var tree = Tree("Mod.esp");
+        AddLoose(tree, "Loose.esp");
+        var file = new PluginsFile(NullLogger<PluginsFile>.Instance, Game(), new AsteriskMechanism());
+        using var stream = new MemoryStream();
+
+        await file.Render(stream, null!, [], [Row("Mod.esp", 0), Row("Loose.esp", 1)], tree);
+
+        Encoding.UTF8.GetString(stream.ToArray()).Should().Contain("*Mod.esp\n*Loose.esp\n");
+    }
+
+    [Fact]
+    public async Task AHardcodedEarlyLoaderAlreadyInTheDataFolder_IsWrittenToAPlainList()
+    {
+        var tree = Tree("Mod.esp");
+        AddLoose(tree, "Skyrim.esm");
+        var file = new PluginsFile(NullLogger<PluginsFile>.Instance, Game(), new PlainFormat());
+        using var stream = new MemoryStream();
+
+        await file.Render(stream, null!, ["Skyrim.esm"], [Row("Mod.esp", 0)], tree);
+
+        Encoding.UTF8.GetString(stream.ToArray()).Should().Contain("Skyrim.esm\nMod.esp\n");
+    }
+
+    [Fact]
+    public async Task APluginAlreadyInTheDataFolderThatCannotBeRead_IsLeftOutInsteadOfBlockingTheSync()
+    {
+        var tree = Tree("Mod.esp");
+        AddLoose(tree, "Broken.esp");
+        var file = new PluginsFile(NullLogger<PluginsFile>.Instance, Game(unreadable: "Broken.esp"), new AsteriskMechanism());
+        using var stream = new MemoryStream();
+
+        await file.Render(stream, null!, [], [Row("Mod.esp", 0)], tree);
+
+        Encoding.UTF8.GetString(stream.ToArray()).Should().Contain("*Mod.esp").And.NotContain("Broken.esp");
     }
 
     [Fact]
