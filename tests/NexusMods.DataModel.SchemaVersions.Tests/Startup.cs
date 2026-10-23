@@ -27,7 +27,7 @@ public class Startup
         path.CreateDirectory();
 
         container
-            .AddApp(startupMode: mode)
+            .AddApp(addStandardGameLocators: false, startupMode: mode)
             .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with { UseInMemoryLocalBaseline = true, })
             .OverrideSettingsForTests<DataModelSettings>(settings => settings with
                 {

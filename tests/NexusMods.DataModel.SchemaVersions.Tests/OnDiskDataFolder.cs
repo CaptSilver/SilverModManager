@@ -26,7 +26,7 @@ internal sealed class OnDiskDataFolder : IDisposable
         mode ??= Gui;
         var services = new ServiceCollection()
             .AddLogging()
-            .AddApp(startupMode: mode)
+            .AddApp(addStandardGameLocators: false, startupMode: mode)
             .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with
             {
                 LocalBaselineLocation = new ConfigurablePath(KnownPath.EntryDirectory, $"{_name}/LocalVanillaBaseline"),

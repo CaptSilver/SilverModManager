@@ -26,9 +26,10 @@ public class Startup
         path.CreateDirectory();
 
         // Steam as well, so loadouts seeded as installed from Steam land on the stub's folder. The app's own
-        // locators are in this graph too and find whatever Steam games the machine has.
+        // store locators stay out (addStandardGameLocators: false): they read the machine's real Steam,
+        // Heroic and Lutris folders.
         services.AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"), stores: [GameStore.Unknown, GameStore.Steam])
-                .AddApp(startupMode: new StartupMode()
+                .AddApp(addStandardGameLocators: false, startupMode: new StartupMode()
                 {
                     ShowUI = true,
                     ExecuteCli = false,

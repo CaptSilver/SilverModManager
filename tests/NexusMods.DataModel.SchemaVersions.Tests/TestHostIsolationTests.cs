@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NexusMods.StandardGameLocators.TestHelpers;
 
 namespace NexusMods.DataModel.SchemaVersions.Tests;
 
@@ -24,5 +25,21 @@ public class TestHostIsolationTests(IServiceProvider serviceProvider)
         serviceProvider.GetServices<IHostedService>()
             .Select(service => service.GetType().Name)
             .Should().NotContain("RuntimeDependencyChecker");
+    }
+
+    [Fact]
+    public void Test_TheTestHostRegistersNoStoreLocators()
+        => TestHostGameStoreGuard.AssertOnlyStubbedLocators(serviceProvider);
+
+    [Fact]
+    public void Test_TheTestHostLocatesNothingOutsideTheTestFolders()
+        => TestHostGameStoreGuard.AssertInstallationsAreInTestFolders(serviceProvider);
+
+    [Fact]
+    public async Task Test_AnOnDiskHostRegistersNoStoreLocators()
+    {
+        using var folder = new OnDiskDataFolder();
+        await using var provider = folder.CreateProvider();
+        TestHostGameStoreGuard.AssertIsolated(provider);
     }
 }
