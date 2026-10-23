@@ -2,8 +2,10 @@ using System.Reactive.Linq;
 using FluentAssertions;
 using NexusMods.App.UI.LeftMenu.Items;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.App.UI.Helpers;
+using NexusMods.App.UI.Pages;
 using NexusMods.App.UI.LeftMenu.Loadout;
 using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Pages.LoadoutPage;
@@ -152,5 +154,39 @@ public class WabbajackLoadoutGroupUiTests(IServiceProvider provider) : AUiTest(p
 
         LibraryViewModel.IsInstallTarget(CollectionGroup.Load(db, group.Id)).Should().BeFalse("the group stays disabled until the list is installed");
         LibraryViewModel.IsInstallTarget(CollectionGroup.Load(db, result.Remap(mine).Id)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RemovingAGame_DoesNotTakeAListForAGameTheAppHasNoTitleFor()
+    {
+        using var tx = Connection.BeginTransaction();
+        var bytes = System.Text.Encoding.UTF8.GetBytes("unknown game list");
+        var file = new LibraryFile.New(tx, out var fileId)
+        {
+            FileName = "unknown.wabbajack",
+            Hash = bytes.xxHash3(),
+            Size = Size.From((ulong)bytes.Length),
+            LibraryItem = new LibraryItem.New(tx, fileId) { Name = "unknown.wabbajack" },
+        };
+        _ = new WabbajackModlistLibraryFile.New(tx, fileId)
+        {
+            LibraryFile = file,
+            Name = "Unknown game list",
+            Author = "Someone",
+            Version = "1.0",
+            GameType = "NoSuchGame",
+            ArchiveCount = 0,
+            ArchiveSize = Size.Zero,
+            InstallSize = Size.Zero,
+            IsNsfw = false,
+        };
+        var result = await tx.Commit();
+        var listId = result.Remap(file).Id;
+
+        // Removing a game deletes what GetAllFiles returns for it.
+        var provider = new WabbajackModlistDataProvider(Provider);
+        var game = Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First().Game.GameId;
+
+        provider.GetAllFiles(game).Select(f => f.Id).Should().NotContain(listId);
     }
 }

@@ -28,12 +28,14 @@ internal class WabbajackModlistDataProvider : ILibraryDataProvider
         _connection = serviceProvider.GetRequiredService<IConnection>();
     }
 
+    // Removing a game deletes these files, so only the lists made for that game count; a list whose game the app has
+    // no title for belongs to no game and must not go with whichever one is removed.
     public LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null)
     {
         db ??= _connection.Db;
         return WabbajackModlistLibraryFile
             .All(db)
-            .Where(file => IsForGame(file, gameId))
+            .Where(file => WabbajackGames.GameIdFor(file.GameType) == gameId)
             .Select(static file => file.AsLibraryFile())
             .ToArray();
     }
