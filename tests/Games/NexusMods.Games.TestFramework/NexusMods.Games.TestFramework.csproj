@@ -11,6 +11,7 @@
         <ProjectReference Include="..\..\..\src\NexusMods.Networking.HttpDownloader\NexusMods.Networking.HttpDownloader.csproj" />
         <ProjectReference Include="..\..\..\src\NexusMods.Networking.NexusWebApi\NexusMods.Networking.NexusWebApi.csproj" />
         <ProjectReference Include="..\..\..\src\NexusMods.Networking.Steam\NexusMods.Networking.Steam.csproj" />
+        <ProjectReference Include="..\..\..\src\NexusMods.Secrets\NexusMods.Secrets.csproj" />
         <ProjectReference Include="..\..\..\src\NexusMods.App.UI\NexusMods.App.UI.csproj" />
         <ProjectReference Include="..\..\..\src\NexusMods.Collections\NexusMods.Collections.csproj" />
         <ProjectReference Include="..\..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />

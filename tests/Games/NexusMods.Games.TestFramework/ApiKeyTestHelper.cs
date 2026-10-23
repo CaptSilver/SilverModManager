@@ -14,7 +14,7 @@ public static class ApiKeyTestHelper
     public static bool IsApiKeyAvailable() 
     {
         return !string.IsNullOrWhiteSpace(
-            Environment.GetEnvironmentVariable(ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable)
+            Environment.GetEnvironmentVariable(NexusSecretKeys.ApiKeyEnvironmentVariable)
         );
     }
     
@@ -25,6 +25,6 @@ public static class ApiKeyTestHelper
     public static void RequireApiKey()
     {
         if (!IsApiKeyAvailable())
-            throw new InvalidOperationException($"Test requires {ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable} environment variable to be set");
+            throw new InvalidOperationException($"Test requires {NexusSecretKeys.ApiKeyEnvironmentVariable} environment variable to be set");
     }
 }

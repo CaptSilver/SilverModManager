@@ -2,7 +2,7 @@ using System.Net;
 using System.Text.Json;
 using FluentAssertions;
 using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
-using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Networking.NexusWebApi.Auth;
 using NexusMods.Sdk.Jobs;
 using NSubstitute;
@@ -12,27 +12,29 @@ namespace NexusMods.Networking.NexusWebApi.Tests;
 [Collection(AuthStateCollection.Name)]
 public class NexusAuthHandlerTests : IAsyncLifetime
 {
-    private readonly IConnection _conn;
+    private readonly InMemorySecretStore _store = new();
+    private readonly NexusCredentialCache _cache;
     private readonly IJobMonitor _jobMonitor;
     private string? _savedEnvironmentKey;
 
-    public NexusAuthHandlerTests(IConnection conn, IJobMonitor jobMonitor)
+    public NexusAuthHandlerTests(IJobMonitor jobMonitor)
     {
-        _conn = conn;
         _jobMonitor = jobMonitor;
+        _cache = AuthTestSupport.CreateCache(_store);
     }
 
     public async ValueTask InitializeAsync()
     {
-        _savedEnvironmentKey = Environment.GetEnvironmentVariable(ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable);
-        Environment.SetEnvironmentVariable(ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable, null);
-        await AuthTestSupport.ClearCredentials(_conn);
+        _savedEnvironmentKey = Environment.GetEnvironmentVariable(NexusSecretKeys.ApiKeyEnvironmentVariable);
+        Environment.SetEnvironmentVariable(NexusSecretKeys.ApiKeyEnvironmentVariable, null);
+        await AuthTestSupport.ClearCredentials(_store);
     }
 
     public async ValueTask DisposeAsync()
     {
-        await AuthTestSupport.ClearCredentials(_conn);
-        Environment.SetEnvironmentVariable(ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable, _savedEnvironmentKey);
+        _cache.Dispose();
+        await AuthTestSupport.ClearCredentials(_store);
+        Environment.SetEnvironmentVariable(NexusSecretKeys.ApiKeyEnvironmentVariable, _savedEnvironmentKey);
     }
 
     private static MockHttpMessageHandler RecordingHandler(List<HttpRequestMessage> seen, HttpStatusCode status = HttpStatusCode.OK)
@@ -48,7 +50,7 @@ public class NexusAuthHandlerTests : IAsyncLifetime
 
     private HttpClient CreateClient(MockHttpMessageHandler inner, HttpMessageHandler oauthHandler)
     {
-        var router = AuthTestSupport.CreateRouter(_conn, AuthTestSupport.CreateOAuth(_jobMonitor, oauthHandler));
+        var router = AuthTestSupport.CreateRouter(_cache, AuthTestSupport.CreateOAuth(_jobMonitor, oauthHandler));
         var handler = new NexusAuthHandler(router) { InnerHandler = inner };
         return new HttpClient(handler) { BaseAddress = new Uri("https://example.invalid/") };
     }
@@ -56,7 +58,7 @@ public class NexusAuthHandlerTests : IAsyncLifetime
     [Fact]
     public async Task StoredKeySendsApiKeyOnGraphQlShapedPost()
     {
-        await new ApiKeyMessageFactory(_conn).SetApiKey("the-key");
+        await new ApiKeyMessageFactory(_cache).SetApiKey("the-key");
         var seen = new List<HttpRequestMessage>();
         using var client = CreateClient(RecordingHandler(seen), new MockHttpMessageHandler());
 
@@ -85,7 +87,7 @@ public class NexusAuthHandlerTests : IAsyncLifetime
     [Fact]
     public async Task ExpiredTokenIsRefreshedBeforeTheRequestGoesOut()
     {
-        await AuthTestSupport.StoreToken(_conn, "stale-token", TimeSpan.FromHours(-1));
+        await AuthTestSupport.StoreToken(_store, "stale-token", TimeSpan.FromHours(-1));
 
         var refresh = Substitute.ForPartsOf<MockHttpMessageHandler>();
         refresh.SendMock(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>()).Returns(_ =>

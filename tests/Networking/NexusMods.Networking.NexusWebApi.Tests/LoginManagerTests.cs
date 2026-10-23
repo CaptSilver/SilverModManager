@@ -4,8 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Networking.NexusWebApi.Auth;
+using NexusMods.Secrets.Overlay;
 using NexusMods.Sdk.Jobs;
 using NSubstitute;
 using R3;
@@ -20,6 +22,10 @@ public class LoginManagerTests : IAsyncLifetime
 
     private readonly IConnection _conn;
     private readonly IJobMonitor _jobMonitor;
+    private readonly InMemorySecretStore _store = new();
+    private readonly List<IDisposable> _disposables = [];
+    private NexusCredentialCache? _cacheInstance;
+    private readonly System.Collections.Concurrent.ConcurrentBag<string> _seenKeys = [];
     private string? _savedEnvironmentKey;
 
     public LoginManagerTests(IConnection conn, IJobMonitor jobMonitor)
@@ -28,21 +34,28 @@ public class LoginManagerTests : IAsyncLifetime
         _jobMonitor = jobMonitor;
     }
 
+    // Created on first use, so a test fills the store before the cache exists: a cache that is already
+    // listening would also react to each write while the test is still setting up.
+    private NexusCredentialCache _cache => _cacheInstance ??= AuthTestSupport.CreateCache(_store);
+
     public async ValueTask InitializeAsync()
     {
-        _savedEnvironmentKey = Environment.GetEnvironmentVariable(ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable);
-        Environment.SetEnvironmentVariable(ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable, null);
-        await AuthTestSupport.ClearCredentials(_conn);
+        _savedEnvironmentKey = Environment.GetEnvironmentVariable(NexusSecretKeys.ApiKeyEnvironmentVariable);
+        Environment.SetEnvironmentVariable(NexusSecretKeys.ApiKeyEnvironmentVariable, null);
+        await AuthTestSupport.ClearCredentials(_store);
     }
 
     public async ValueTask DisposeAsync()
     {
-        await AuthTestSupport.ClearCredentials(_conn);
-        Environment.SetEnvironmentVariable(ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable, _savedEnvironmentKey);
+        foreach (var disposable in _disposables) disposable.Dispose();
+        _cacheInstance?.Dispose();
+        await AuthTestSupport.ClearCredentials(_store);
+        Environment.SetEnvironmentVariable(NexusSecretKeys.ApiKeyEnvironmentVariable, _savedEnvironmentKey);
     }
 
-    private LoginManager CreateLoginManager(IApiKeyPrompt? prompt = null, string oauthClientId = "", HttpStatusCode validateStatus = HttpStatusCode.OK)
+    private LoginManager CreateLoginManager(IApiKeyPrompt? prompt = null, string oauthClientId = "", HttpStatusCode validateStatus = HttpStatusCode.OK, NexusCredentialCache? cache = null)
     {
+        cache ??= _cache;
         var rest = Substitute.ForPartsOf<MockHttpMessageHandler>();
         rest.SendMock(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -56,15 +69,18 @@ public class LoginManagerTests : IAsyncLifetime
 
                 // The server rejects one specific key and never answers for another, whatever else is stored.
                 var keys = request.Headers.TryGetValues("apikey", out var values) ? values.ToArray() : [];
+                foreach (var seen in keys) _seenKeys.Add(seen);
                 if (keys.Contains("slow-key")) return Task.FromException<HttpResponseMessage>(new TaskCanceledException("The request timed out"));
                 var rejected = keys.Contains("wrong-key");
                 return Task.FromResult(new HttpResponseMessage(rejected ? HttpStatusCode.Unauthorized : validateStatus) { Content = new StringContent(ValidateJson) });
             });
 
         var oauth = AuthTestSupport.CreateOAuth(_jobMonitor, new MockHttpMessageHandler(), oauthClientId);
-        var router = AuthTestSupport.CreateRouter(_conn, oauth);
+        var router = AuthTestSupport.CreateRouter(cache, oauth);
         var apiClient = new NexusApiClient(NullLogger<NexusApiClient>.Instance, router, new HttpClient(rest), Substitute.For<IGraphQlClient>());
-        return new LoginManager(_conn, apiClient, router, oauth, prompt ?? Substitute.For<IApiKeyPrompt>(), NullLogger<LoginManager>.Instance);
+        var loginManager = new LoginManager(_conn, apiClient, router, oauth, cache, prompt ?? Substitute.For<IApiKeyPrompt>(), NullLogger<LoginManager>.Instance);
+        _disposables.Add(loginManager);
+        return loginManager;
     }
 
     /// <summary>
@@ -96,7 +112,7 @@ public class LoginManagerTests : IAsyncLifetime
         var loggedIn = new TaskCompletionSource<UserInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
         using var subscription = loginManager.UserInfoObservable.Subscribe(info => { if (info is not null) loggedIn.TrySetResult(info); });
 
-        await new ApiKeyMessageFactory(_conn).SetApiKey("the-key");
+        await new ApiKeyMessageFactory(_cache).SetApiKey("the-key");
 
         var info = await loggedIn.Task.WaitAsync(TimeSpan.FromSeconds(10));
         info.Name.Should().Be("silver");
@@ -106,7 +122,7 @@ public class LoginManagerTests : IAsyncLifetime
     public async Task KeyOnlyLoginIsNotEvictedByTheEmptyTokenStream()
     {
         using var loginManager = CreateLoginManager();
-        await new ApiKeyMessageFactory(_conn).SetApiKey("the-key");
+        await new ApiKeyMessageFactory(_cache).SetApiKey("the-key");
 
         // Give both datom streams time to emit; a merged stream would let the token stream's
         // "empty" signal clear the user info after the key stream's "present" one.
@@ -125,7 +141,7 @@ public class LoginManagerTests : IAsyncLifetime
         await loginManager.LoginAsync();
 
         await prompt.Received(1).PromptAsync(Arg.Any<Func<string, CancellationToken, ValueTask<string?>>>(), Arg.Any<CancellationToken>());
-        ApiKey.Get(_conn.Db).Should().Be("typed-key");
+        (await AuthTestSupport.ReadKey(_store)).Should().Be("typed-key");
         (await loginManager.GetIsUserLoggedInAsync()).Should().BeTrue();
     }
 
@@ -137,7 +153,7 @@ public class LoginManagerTests : IAsyncLifetime
 
         await loginManager.LoginAsync();
 
-        ApiKey.Get(_conn.Db).Should().Be("typed-key");
+        (await AuthTestSupport.ReadKey(_store)).Should().Be("typed-key");
     }
 
     [Fact]
@@ -148,7 +164,7 @@ public class LoginManagerTests : IAsyncLifetime
 
         await loginManager.LoginAsync();
 
-        ApiKey.Get(_conn.Db).Should().BeNull();
+        (await AuthTestSupport.ReadKey(_store)).Should().BeNull();
         (await loginManager.GetIsUserLoggedInAsync()).Should().BeFalse();
     }
 
@@ -182,7 +198,7 @@ public class LoginManagerTests : IAsyncLifetime
         await Task.WhenAll(logins).WaitAsync(TimeSpan.FromSeconds(10));
 
         await prompt.Received(1).PromptAsync(Arg.Any<Func<string, CancellationToken, ValueTask<string?>>>(), Arg.Any<CancellationToken>());
-        ApiKey.Get(_conn.Db).Should().Be("typed-key");
+        (await AuthTestSupport.ReadKey(_store)).Should().Be("typed-key");
     }
 
     [Fact]
@@ -202,7 +218,7 @@ public class LoginManagerTests : IAsyncLifetime
         await first.Awaiting(t => t).Should().ThrowAsync<OperationCanceledException>();
         await second.WaitAsync(TimeSpan.FromSeconds(10));
         await prompt.Received(1).PromptAsync(Arg.Any<Func<string, CancellationToken, ValueTask<string?>>>(), Arg.Any<CancellationToken>());
-        ApiKey.Get(_conn.Db).Should().Be("typed-key");
+        (await AuthTestSupport.ReadKey(_store)).Should().Be("typed-key");
     }
 
     [Fact]
@@ -237,29 +253,31 @@ public class LoginManagerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task LogoutRemovesAndExcisesTheStoredApiKey()
+    public async Task LogoutRemovesTheStoredApiKeyAndToken()
     {
         using var loginManager = CreateLoginManager();
-        await new ApiKeyMessageFactory(_conn).SetApiKey("the-key");
+        await new ApiKeyMessageFactory(_cache).SetApiKey("the-key");
+        await AuthTestSupport.StoreToken(_store, "stored-access", TimeSpan.FromHours(1));
 
         await loginManager.Logout();
 
-        ApiKey.Get(_conn.Db).Should().BeNull();
-        ApiKey.All(_conn.Db).Should().BeEmpty();
+        (await AuthTestSupport.ReadToken(_store)).Should().BeNull();
+
+        (await AuthTestSupport.ReadKey(_store)).Should().BeNull();
     }
 
     [Fact]
     public async Task ARejectedKeyIsNeverStoredAndTheDialogGetsAMessage()
     {
         string? shown = null;
-        await AuthTestSupport.StoreToken(_conn, "stored-access", TimeSpan.FromHours(1));
+        await AuthTestSupport.StoreToken(_store, "stored-access", TimeSpan.FromHours(1));
         using var loginManager = CreateLoginManager(PromptTyping("wrong-key", error => shown = error));
 
         await loginManager.LoginWithApiKeyAsync();
 
         shown.Should().NotBeNullOrWhiteSpace("a bad key is explained in the dialog, not closed silently");
-        ApiKey.All(_conn.Db).Should().BeEmpty();
-        JWTToken.All(_conn.Db).Should().ContainSingle();
+        (await AuthTestSupport.ReadKey(_store)).Should().BeNull();
+        (await AuthTestSupport.ReadToken(_store)).Should().NotBeNull();
     }
 
     [Fact]
@@ -277,7 +295,7 @@ public class LoginManagerTests : IAsyncLifetime
         await second.LoginWithApiKeyAsync();
 
         shown.Should().NotBeNullOrWhiteSpace();
-        ApiKey.Get(_conn.Db).Should().Be("good-key");
+        (await AuthTestSupport.ReadKey(_store)).Should().Be("good-key");
         (await second.GetIsUserLoggedInAsync()).Should().BeTrue("the earlier sign-in is untouched");
     }
 
@@ -290,7 +308,7 @@ public class LoginManagerTests : IAsyncLifetime
         await loginManager.LoginWithApiKeyAsync();
 
         shown.Should().NotBeNullOrWhiteSpace();
-        ApiKey.All(_conn.Db).Should().BeEmpty();
+        (await AuthTestSupport.ReadKey(_store)).Should().BeNull();
         (await loginManager.GetIsUserLoggedInAsync()).Should().BeFalse();
     }
 
@@ -304,7 +322,7 @@ public class LoginManagerTests : IAsyncLifetime
         await loginManager.LoginWithApiKeyAsync();
 
         shown.Should().NotBeNullOrWhiteSpace("a check that never got an answer is explained, not dropped");
-        ApiKey.All(_conn.Db).Should().BeEmpty();
+        (await AuthTestSupport.ReadKey(_store)).Should().BeNull();
     }
 
     [Fact]
@@ -312,7 +330,7 @@ public class LoginManagerTests : IAsyncLifetime
     {
         // The OAuth session's user is cached; the verified key's account must take its place
         // immediately, not wait out the cache.
-        await AuthTestSupport.StoreToken(_conn, "stored-access", TimeSpan.FromHours(1));
+        await AuthTestSupport.StoreToken(_store, "stored-access", TimeSpan.FromHours(1));
         using var loginManager = CreateLoginManager(PromptTyping("good-key"));
         var names = new List<string?>();
         var oauthUserShown = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -327,35 +345,179 @@ public class LoginManagerTests : IAsyncLifetime
 
         loginManager.UserInfo!.Name.Should().Be("silver");
         lock (names) names.Last().Should().Be("silver");
-        ApiKey.Get(_conn.Db).Should().Be("good-key");
+        (await AuthTestSupport.ReadKey(_store)).Should().Be("good-key");
     }
 
     [Fact]
     public async Task AnExpiredTokenWithoutAClientIdIsLeftAloneAndNeedsANewSignIn()
     {
-        await AuthTestSupport.StoreToken(_conn, "stale-access", TimeSpan.FromHours(-1));
+        await AuthTestSupport.StoreToken(_store, "stale-access", TimeSpan.FromHours(-1));
         var http = Substitute.ForPartsOf<MockHttpMessageHandler>();
         var oauth = AuthTestSupport.CreateOAuth(_jobMonitor, http, oauthClientId: "");
-        var factory = new OAuth2MessageFactory(_conn, oauth, NullLogger<OAuth2MessageFactory>.Instance);
+        var factory = AuthTestSupport.CreateOAuthFactory(_cache, oauth);
 
         (await factory.IsAuthenticated()).Should().BeFalse("the token cannot be refreshed, so the user must sign in again or use an API key");
 
         await http.DidNotReceive().SendMock(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>());
-        JWTToken.All(_conn.Db).Should().ContainSingle().Which.AccessToken.Should().Be("stale-access");
+        (await AuthTestSupport.ReadToken(_store))!.AccessToken.Should().Be("stale-access");
     }
 
     [Fact]
     public async Task ARefreshThatRepliesWithJsonNullLeavesTheStoredTokenAndReportsNoCredential()
     {
-        await AuthTestSupport.StoreToken(_conn, "stale-access", TimeSpan.FromHours(-1));
+        await AuthTestSupport.StoreToken(_store, "stale-access", TimeSpan.FromHours(-1));
         var http = Substitute.ForPartsOf<MockHttpMessageHandler>();
         http.SendMock(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("null") }));
         var oauth = AuthTestSupport.CreateOAuth(_jobMonitor, http);
-        var factory = new OAuth2MessageFactory(_conn, oauth, NullLogger<OAuth2MessageFactory>.Instance);
+        var factory = AuthTestSupport.CreateOAuthFactory(_cache, oauth);
 
         (await factory.IsAuthenticated()).Should().BeFalse("the token endpoint returned no token to store");
 
-        JWTToken.All(_conn.Db).Should().ContainSingle().Which.AccessToken.Should().Be("stale-access");
+        (await AuthTestSupport.ReadToken(_store))!.AccessToken.Should().Be("stale-access");
+    }
+
+    private static async Task<UserInfo> NextUser(LoginManager loginManager)
+    {
+        var signedIn = new TaskCompletionSource<UserInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var subscription = loginManager.UserInfoObservable.Subscribe(info => { if (info is not null) signedIn.TrySetResult(info); });
+        return await signedIn.Task.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task ALoginManagerBuiltBeforeAnythingIsPrimedSeesTheStoredKey()
+    {
+        await AuthTestSupport.StoreKey(_store, "the-key");
+
+        using var loginManager = CreateLoginManager();
+        var info = await NextUser(loginManager);
+
+        info.Name.Should().Be("silver");
+        loginManager.UserInfo.Should().NotBeNull();
+        _cache.ApiKeySource.Should().Be(CredentialSource.Stored);
+    }
+
+    [Fact]
+    public async Task ALoginManagerBuiltBeforeATokenIsPrimedSeesTheStoredToken()
+    {
+        await AuthTestSupport.StoreToken(_store, "stored-access", TimeSpan.FromHours(1));
+
+        using var loginManager = CreateLoginManager();
+        var info = await NextUser(loginManager);
+
+        info.Name.Should().Be("oauth-user");
+    }
+
+    [Fact]
+    public async Task AStoreThatIsUnavailableAtLoadLeavesTheUserSignedOutAndDoesNotEvictAKeySetAfterwards()
+    {
+        _store.Availability = (SecretUnavailableKind.Locked, "wallet is locked");
+        using var loginManager = CreateLoginManager();
+        (await loginManager.GetIsUserLoggedInAsync()).Should().BeFalse();
+        loginManager.UserInfo.Should().BeNull();
+
+        var written = await _cache.SetApiKeyAsync("session-key", CancellationToken.None);
+
+        written.Should().BeOfType<SecretWriteResult.Unavailable>();
+        _cache.ApiKeySource.Should().Be(CredentialSource.Memory);
+        (await NextUser(loginManager)).Name.Should().Be("silver");
+
+        // The store coming back empty must not sign the session out.
+        _store.Availability = null;
+        _store.Status = _store.Status with { Locked = false };
+        await Task.Delay(TimeSpan.FromMilliseconds(500));
+        loginManager.UserInfo.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AnUnlockAfterAnUnavailableLoadReloadsAndSignsIn()
+    {
+        await AuthTestSupport.StoreKey(_store, "the-key");
+        _store.Availability = (SecretUnavailableKind.Locked, "wallet is locked");
+        using var cache = AuthTestSupport.CreateCache(_store);
+        using var loginManager = CreateLoginManager(cache: cache);
+        (await loginManager.GetIsUserLoggedInAsync()).Should().BeFalse();
+
+        _store.Availability = null;
+        _store.Status = _store.Status with { Locked = false };
+
+        (await NextUser(loginManager)).Name.Should().Be("silver");
+    }
+
+    [Fact]
+    public async Task TheSignedInSignalFollowsSettingAndClearingTheKey()
+    {
+        var signal = new List<bool>();
+        using var subscription = _cache.HasCredential.Subscribe(value => { lock (signal) signal.Add(value); });
+        await _cache.EnsureLoadedAsync(CancellationToken.None);
+
+        await _cache.SetApiKeyAsync("the-key", CancellationToken.None);
+        _cache.HasCredential.CurrentValue.Should().BeTrue();
+
+        await _cache.ClearAsync(CancellationToken.None);
+        _cache.HasCredential.CurrentValue.Should().BeFalse();
+
+        lock (signal) signal.Should().Equal(false, true, false);
+    }
+
+    [Fact]
+    public async Task ClearingTheTokenWhileAKeyStaysDoesNotFlapTheSignedInSignal()
+    {
+        await AuthTestSupport.StoreKey(_store, "the-key");
+        await AuthTestSupport.StoreToken(_store, "stored-access", TimeSpan.FromHours(1));
+        await _cache.EnsureLoadedAsync(CancellationToken.None);
+        var signal = new List<bool>();
+        using var subscription = _cache.HasCredential.Subscribe(value => { lock (signal) signal.Add(value); });
+
+        await _store.DeleteAsync(NexusSecretKeys.OAuth, CancellationToken.None);
+        await Task.Delay(TimeSpan.FromMilliseconds(300));
+
+        lock (signal) signal.Should().Equal(true);
+        _cache.HasCredential.CurrentValue.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AKeyPinnedByTheEnvironmentIsReportedByThePromptAndNexusIsNeverAsked()
+    {
+        var overlay = new OverlaySecretStore(_store, new FakeEnvironment((NexusSecretKeys.ApiKeyEnvironmentVariable, "pinned-key")), null,
+            new Dictionary<SecretKey, string> { [NexusSecretKeys.ApiKey] = NexusSecretKeys.ApiKeyEnvironmentVariable });
+        using var pinned = AuthTestSupport.CreateCache(overlay);
+        string? shown = null;
+        using var loginManager = CreateLoginManager(PromptTyping("typed-key", error => shown = error), cache: pinned);
+
+        await loginManager.LoginWithApiKeyAsync();
+
+        shown.Should().Be("The API key is set by environment variable NEXUS_API_KEY; unset it to store a different one");
+        _seenKeys.Should().NotContain("typed-key");
+        (await AuthTestSupport.ReadKey(_store)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LogoutLeavesAnEnvironmentKeyInPlace()
+    {
+        var overlay = new OverlaySecretStore(_store, new FakeEnvironment((NexusSecretKeys.ApiKeyEnvironmentVariable, "pinned-key")), null,
+            new Dictionary<SecretKey, string> { [NexusSecretKeys.ApiKey] = NexusSecretKeys.ApiKeyEnvironmentVariable });
+        using var pinned = AuthTestSupport.CreateCache(overlay);
+        using var loginManager = CreateLoginManager(cache: pinned);
+        (await NextUser(loginManager)).Name.Should().Be("silver");
+
+        await loginManager.Logout();
+
+        (await loginManager.GetIsUserLoggedInAsync()).Should().BeTrue("the variable still holds the key");
+    }
+
+    [Fact]
+    public async Task AKeyStoredWhileTheStoreIsUnavailableStaysUsableByTheRouter()
+    {
+        _store.Availability = (SecretUnavailableKind.NoBus, "no session bus");
+        var router = AuthTestSupport.CreateRouter(_cache, AuthTestSupport.CreateOAuth(_jobMonitor, new MockHttpMessageHandler()));
+
+        var written = await new ApiKeyMessageFactory(_cache).SetApiKey("session-key");
+
+        written.Should().BeOfType<SecretWriteResult.Unavailable>();
+        _cache.ApiKeySource.Should().Be(CredentialSource.Memory);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://example.invalid/graphql");
+        await router.ApplyAuthentication(request, CancellationToken.None);
+        request.Headers.GetValues("apikey").Should().ContainSingle().Which.Should().Be("session-key");
     }
 }

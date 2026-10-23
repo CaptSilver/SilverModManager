@@ -220,6 +220,43 @@ public class CommandLineConfigurator
         return true;
     }
 
+    private const string Redacted = "\u2026";
+
+    /// <summary>
+    /// The command line as it may appear in a log: the verb name and the option names, with every value and
+    /// positional argument replaced by an ellipsis. A key or password typed on the command line must not reach a
+    /// log file, and a log file is what people attach to bug reports.
+    /// </summary>
+    /// <remarks>
+    /// A value that itself starts with '-' is indistinguishable from an option here and is kept; the verbs that take
+    /// secrets read them from stdin for that reason.
+    /// </remarks>
+    internal static string Redact(string[] args)
+    {
+        var parts = new List<string>(args.Length);
+        var afterSeparator = false;
+
+        for (var i = 0; i < args.Length; i++)
+        {
+            var arg = args[i];
+            if (i == 0 && !arg.StartsWith('-')) parts.Add(arg);
+            else if (afterSeparator) parts.Add(Redacted);
+            else if (arg == "--")
+            {
+                afterSeparator = true;
+                parts.Add(arg);
+            }
+            else if (arg.StartsWith('-'))
+            {
+                var equals = arg.IndexOf('=');
+                parts.Add(equals < 0 ? arg : $"{arg[..equals]}={Redacted}");
+            }
+            else parts.Add(Redacted);
+        }
+
+        return string.Join(' ', parts);
+    }
+
     /// <summary>
     /// Runs the commandline parser and executes the verb using the given renderer and arguments.
     /// </summary>
@@ -230,7 +267,7 @@ public class CommandLineConfigurator
     public async Task<int> RunAsync(string[] args, IRenderer renderer, CancellationToken token)
     {
         if (await RunLink(args, token)) return 0;
-        if (_logger.IsEnabled(LogLevel.Debug)) _logger.LogDebug("Received command `{Command}`", string.Join(" ", args));
+        if (_logger.IsEnabled(LogLevel.Debug)) _logger.LogDebug("Received command `{Command}`", Redact(args));
 
         // The builder adds the help option to the root command it is given, so every invocation gets its own
         // tree. Sharing one would let concurrent invocations modify it while another renders help.

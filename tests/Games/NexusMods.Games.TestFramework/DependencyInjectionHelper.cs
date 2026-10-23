@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Games.FileHashes.Models;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Abstractions.Serialization;
 using NexusMods.Backend;
 using NexusMods.Collections;
@@ -21,6 +22,7 @@ using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Settings;
+using NexusMods.Secrets;
 using NexusMods.StandardGameLocators;
 using NexusMods.StandardGameLocators.TestHelpers;
 using Xunit.DependencyInjection.Logging;
@@ -69,6 +71,8 @@ public static class DependencyInjectionHelper
             .AddFileSystem()
             .AddSingleton<ICoreDelegates, MockDelegates>()
             .AddSingleton<TemporaryFileManager>(_ => new TemporaryFileManager(FileSystem.Shared, prefix))
+            // Credentials come from NEXUS_API_KEY through the overlay; nothing reaches a real keyring or file.
+            .AddSecrets(new SecretStoreOptions { Mode = SecretStoreMode.NonInteractive, Backend = SecretBackendChoice.Memory })
             .AddNexusWebApi()
             .AddNexusModsCollections()
             .AddOSInterop()

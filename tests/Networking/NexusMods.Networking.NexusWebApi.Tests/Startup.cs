@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Secrets;
+using NexusMods.Secrets;
 using NexusMods.Abstractions.Serialization;
 using NexusMods.Backend;
 using NexusMods.CrossPlatform;
@@ -30,6 +32,7 @@ public class Startup
             .AddHttpDownloader()
             .AddSingleton<TemporaryFileManager>()
             .AddSingleton<LocalHttpServer>()
+            .AddSecrets(new SecretStoreOptions { Mode = SecretStoreMode.NonInteractive, Backend = SecretBackendChoice.Memory })
             .AddNexusWebApi()
             .AddOSInterop()
             .AddRuntimeDependencies()

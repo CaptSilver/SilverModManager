@@ -1,6 +1,5 @@
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions;
 
 namespace NexusMods.Networking.NexusWebApi.Auth;
 
@@ -9,18 +8,18 @@ namespace NexusMods.Networking.NexusWebApi.Auth;
 /// an OAuth token without rebuilding the container.
 /// </summary>
 /// <remarks>
-/// A personal API key (stored, or from <c>NEXUS_API_KEY</c>) wins over a stored OAuth token: it is
+/// A personal API key (stored, or supplied from outside by the secret overlay) wins over a stored OAuth token: it is
 /// the credential the user manages directly.
 /// </remarks>
 public class CredentialRoutedMessageFactory(
-    IConnection conn,
+    NexusCredentialCache cache,
     ApiKeyMessageFactory apiKeyFactory,
     OAuth2MessageFactory oAuthFactory) : IAuthenticatingMessageFactory
 {
-    private IAuthenticatingMessageFactory? Route()
+    private async ValueTask<IAuthenticatingMessageFactory?> Route(CancellationToken cancellationToken = default)
     {
-        if (apiKeyFactory.HasApiKey) return apiKeyFactory;
-        if (JWTToken.TryFind(conn.Db, out _)) return oAuthFactory;
+        if (await apiKeyFactory.HasApiKey(cancellationToken)) return apiKeyFactory;
+        if (await cache.GetTokenAsync(cancellationToken) is not null) return oAuthFactory;
         return null;
     }
 
@@ -31,14 +30,14 @@ public class CredentialRoutedMessageFactory(
     /// </remarks>
     public async ValueTask<HttpRequestMessage> Create(HttpMethod method, Uri uri)
     {
-        var route = Route() ?? apiKeyFactory;
+        var route = await Route() ?? apiKeyFactory;
         return await route.Create(method, uri);
     }
 
     /// <inheritdoc/>
     public async ValueTask ApplyAuthentication(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var route = Route();
+        var route = await Route(cancellationToken);
         if (route is null) return;
 
         await route.ApplyAuthentication(request, cancellationToken);
@@ -47,14 +46,14 @@ public class CredentialRoutedMessageFactory(
     /// <inheritdoc/>
     public async ValueTask<bool> IsAuthenticated()
     {
-        var route = Route();
+        var route = await Route();
         return route is not null && await route.IsAuthenticated();
     }
 
     /// <inheritdoc/>
     public async ValueTask<UserInfo?> Verify(INexusApiClient nexusApiNexusApiClient, CancellationToken token)
     {
-        var route = Route();
+        var route = await Route(token);
         return route is null ? null : await route.Verify(nexusApiNexusApiClient, token);
     }
 }

@@ -5,7 +5,9 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Networking.NexusWebApi.Auth;
+using NexusMods.Networking.NexusWebApi.Migration;
 using NexusMods.Networking.NexusWebApi.UpdateFilters;
 using NexusMods.Networking.NexusWebApi.V1Interop;
 using NexusMods.Sdk;
@@ -43,8 +45,17 @@ public static class Services
         collection.TryAddSingleton<IApiKeyPrompt, NoInteractiveApiKeyPrompt>();
         collection.AddSingleton<IIDGenerator, IDGenerator>();
 
+        // The models stay registered so the migration steps can find and excise the rows older versions wrote.
         collection.AddJWTTokenModel();
         collection.AddApiKeyModel();
+
+        collection
+            .AddSecretKeys(NexusSecretKeys.All)
+            .AddSingleton<ISecretMigrationStep, NexusApiKeyMigration>()
+            .AddSingleton<ISecretMigrationStep, NexusOAuthTokenMigration>()
+            .AddSingleton<NexusCredentialCache>()
+            .AddSingleton<ISecretPrimable>(sp => sp.GetRequiredService<NexusCredentialCache>())
+            .AddSingleton<INexusCredentialSummary>(sp => sp.GetRequiredService<NexusCredentialCache>());
         collection.AddSingleton(TimeProvider.System);
         collection.AddIgnoreFileUpdateModel();
 

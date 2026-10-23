@@ -1,14 +1,12 @@
 using System.Diagnostics;
 using System.Net;
-using DynamicData.Aggregation;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Networking.NexusWebApi.Auth;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Threading;
@@ -25,6 +23,7 @@ public sealed class LoginManager : IDisposable, ILoginManager
 {
     private readonly ILogger<LoginManager> _logger;
     private readonly OAuth _oauth;
+    private readonly NexusCredentialCache _credentials;
     private readonly NexusApiClient _nexusApiClient;
     private readonly IAuthenticatingMessageFactory _msgFactory;
     private readonly IApiKeyPrompt _apiKeyPrompt;
@@ -70,23 +69,21 @@ public sealed class LoginManager : IDisposable, ILoginManager
         NexusApiClient nexusApiClient,
         IAuthenticatingMessageFactory msgFactory,
         OAuth oauth,
+        NexusCredentialCache credentials,
         IApiKeyPrompt apiKeyPrompt,
         ILogger<LoginManager> logger)
     {
         _oauth = oauth;
+        _credentials = credentials;
         _apiKeyPrompt = apiKeyPrompt;
         _conn = conn;
         _msgFactory = msgFactory;
         _nexusApiClient = nexusApiClient;
         _logger = logger;
 
-        // Signed in means a token or a key is stored. A plain merge of the two streams would let the
-        // token stream's "empty" evict the user info right after the key stream's "present".
-        var hasToken = _conn.ObserveDatoms(JWTToken.PrimaryAttribute).IsNotEmpty().ToObservable();
-        var hasKey = _conn.ObserveDatoms(ApiKey.PrimaryAttribute).IsNotEmpty().ToObservable();
-
-        _observeDatomDisposable = hasToken
-            .CombineLatest(hasKey, static (token, key) => token || key)
+        // Signed in means the cache holds a token or a key. It is one signal for both, so clearing the token
+        // while a key stays does not evict the user info.
+        _observeDatomDisposable = credentials.HasCredential
             .DistinctUntilChanged()
             .SubscribeAwait(async (hasValue, cancellationToken) =>
             {
@@ -116,6 +113,10 @@ public sealed class LoginManager : IDisposable, ILoginManager
                 }
             }, awaitOperation: AwaitOperation.Sequential, configureAwait: false);
 
+        // The cache loads on first use. Start it now so a host that never ran the start-up priming still
+        // signs the stored credential in without anyone asking.
+        _ = LoadCredentialsAsync();
+
         // Set up periodic refresh to prevent cache expiry
         _periodicRefreshDisposable = Observable
             .Timer(TimeSpan.FromMinutes(PeriodicRefreshIntervalMinutes), TimeSpan.FromMinutes(PeriodicRefreshIntervalMinutes))
@@ -123,6 +124,18 @@ public sealed class LoginManager : IDisposable, ILoginManager
             {
                 await TryRefreshUserInfoSafely(cancellationToken, "periodic update");
             }, configureAwait: false);
+    }
+
+    private async Task LoadCredentialsAsync()
+    {
+        try
+        {
+            await _credentials.EnsureLoadedAsync(CancellationToken.None);
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning(e, "Unable to load the stored Nexus credentials");
+        }
     }
 
     private CachedObject<UserInfo> _cachedUserInfo = new(TimeSpan.FromMinutes(CacheExpiryMinutes));
@@ -295,16 +308,16 @@ public sealed class LoginManager : IDisposable, ILoginManager
             return;
         }
         
-        using var tx = _conn.BeginTransaction();
-
-        var newTokenEntity = JWTToken.Create(_conn.Db, tx, jwtToken);
-        if (!newTokenEntity.HasValue)
+        var newToken = NexusOAuthToken.FromReply(jwtToken);
+        if (newToken is null)
         {
             _logger.LogError("Invalid new token data");
             return;
         }
 
-        await tx.Commit();
+        var result = await _credentials.SetTokenAsync(newToken, CancellationToken.None);
+        if (result is not SecretWriteResult.Written)
+            _logger.LogWarning("The OAuth token was not saved ({Result}); it is used until the app closes", Describe(result));
     }
 
     /// <inheritdoc />
@@ -345,6 +358,11 @@ public sealed class LoginManager : IDisposable, ILoginManager
         var key = (await _apiKeyPrompt.PromptAsync(async (typed, cancellationToken) =>
         {
             verified = null;
+
+            // A key supplied from outside wins over any stored one, so a typed key would silently do nothing.
+            await _credentials.EnsureLoadedAsync(cancellationToken);
+            if (_credentials.PinnedApiKeySource is { } pinned) return PinnedKeyMessage(pinned);
+
             try
             {
                 var response = await _nexusApiClient.Validate(typed.Trim(), cancellationToken);
@@ -377,7 +395,9 @@ public sealed class LoginManager : IDisposable, ILoginManager
         using var _ = await _verifySemaphore.WaitAsyncDisposable(CancellationToken.None);
         _cachedUserInfo.Store(verified);
         _userInfo.OnNext(verified);
-        await ApiKey.Set(_conn, key);
+        var stored = await _credentials.SetApiKeyAsync(key, CancellationToken.None);
+        if (stored is not SecretWriteResult.Written)
+            _logger.LogWarning("The API key was not saved ({Result}); it is used until the app closes", Describe(stored));
         await AddUserToDb(verified);
     }
 
@@ -386,25 +406,25 @@ public sealed class LoginManager : IDisposable, ILoginManager
     /// </summary>
     public async Task Logout()
     {
-        _cachedUserInfo.Evict();
+        var result = await _credentials.ClearAsync(CancellationToken.None);
+        if (result is not SecretWriteResult.Written)
+            _logger.LogWarning("Not every credential was removed on sign-out ({Result})", Describe(result));
 
-        // The key is a stored secret, so it is excised along with the token rather than only retracted.
-        await ExciseCredentials(JWTToken.All(_conn.Db).Select(e => e.Id).Concat(ApiKey.All(_conn.Db).Select(e => e.Id)));
+        // A key supplied from outside survives a sign-out and keeps the user signed in.
+        if (!_credentials.HasCredential.CurrentValue) _cachedUserInfo.Evict();
     }
 
-    private async Task ExciseCredentials(IEnumerable<EntityId> entities)
+    /// <summary>
+    /// What the dialog and the <c>nexus-api-key</c> verb say when the key cannot be replaced.
+    /// </summary>
+    internal static string PinnedKeyMessage(string source) => $"The API key is set by {source}; unset it to store a different one";
+
+    private static string Describe(SecretWriteResult result) => result switch
     {
-        var tokenEntities = entities.ToArray();
-
-        // Retract the entities first, so the UI updates, then excise them
-        using var tx = _conn.BeginTransaction();
-        foreach (var entity in tokenEntities)
-            tx.Delete(entity, false);
-        await tx.Commit();
-
-
-        await _conn.Excise(tokenEntities);
-    }
+        SecretWriteResult.Unavailable unavailable => $"{unavailable.Kind}: {unavailable.Reason}",
+        SecretWriteResult.ReadOnly readOnly => $"set by {readOnly.Source}",
+        _ => "written",
+    };
 
     /// <inheritdoc />
     public async Task<bool> EnsureLoggedIn(string message, CancellationToken token = default)

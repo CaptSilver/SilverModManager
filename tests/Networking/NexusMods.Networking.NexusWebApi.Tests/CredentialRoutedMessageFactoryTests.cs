@@ -1,6 +1,6 @@
 using FluentAssertions;
 using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Networking.NexusWebApi.Auth;
 using NexusMods.Sdk.Jobs;
 
@@ -11,30 +11,32 @@ public class CredentialRoutedMessageFactoryTests : IAsyncLifetime
 {
     private static readonly Uri RequestUri = new("https://example.invalid/graphql");
 
-    private readonly IConnection _conn;
+    private readonly InMemorySecretStore _store = new();
+    private readonly NexusCredentialCache _cache;
     private readonly ApiKeyMessageFactory _keyFactory;
     private readonly IAuthenticatingMessageFactory _router;
     private string? _savedEnvironmentKey;
 
-    public CredentialRoutedMessageFactoryTests(IConnection conn, IJobMonitor jobMonitor)
+    public CredentialRoutedMessageFactoryTests(IJobMonitor jobMonitor)
     {
-        _conn = conn;
-        _keyFactory = new ApiKeyMessageFactory(conn);
-        _router = AuthTestSupport.CreateRouter(conn, AuthTestSupport.CreateOAuth(jobMonitor, new MockHttpMessageHandler()));
+        _cache = AuthTestSupport.CreateCache(_store);
+        _keyFactory = new ApiKeyMessageFactory(_cache);
+        _router = AuthTestSupport.CreateRouter(_cache, AuthTestSupport.CreateOAuth(jobMonitor, new MockHttpMessageHandler()));
     }
 
     public async ValueTask InitializeAsync()
     {
         // The environment key counts as a stored key, so a developer's own NEXUS_API_KEY would change every result here.
-        _savedEnvironmentKey = Environment.GetEnvironmentVariable(ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable);
-        Environment.SetEnvironmentVariable(ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable, null);
-        await AuthTestSupport.ClearCredentials(_conn);
+        _savedEnvironmentKey = Environment.GetEnvironmentVariable(NexusSecretKeys.ApiKeyEnvironmentVariable);
+        Environment.SetEnvironmentVariable(NexusSecretKeys.ApiKeyEnvironmentVariable, null);
+        await AuthTestSupport.ClearCredentials(_store);
     }
 
     public async ValueTask DisposeAsync()
     {
-        await AuthTestSupport.ClearCredentials(_conn);
-        Environment.SetEnvironmentVariable(ApiKeyMessageFactory.NexusApiKeyEnvironmentVariable, _savedEnvironmentKey);
+        _cache.Dispose();
+        await AuthTestSupport.ClearCredentials(_store);
+        Environment.SetEnvironmentVariable(NexusSecretKeys.ApiKeyEnvironmentVariable, _savedEnvironmentKey);
     }
 
     private static HttpRequestMessage NewRequest() => new(HttpMethod.Post, RequestUri);
@@ -78,7 +80,7 @@ public class CredentialRoutedMessageFactoryTests : IAsyncLifetime
     [Fact]
     public async Task StoredTokenAddsBearerHeader()
     {
-        await AuthTestSupport.StoreToken(_conn, "the-token", TimeSpan.FromHours(1));
+        await AuthTestSupport.StoreToken(_store, "the-token", TimeSpan.FromHours(1));
 
         (await _router.IsAuthenticated()).Should().BeTrue();
         using var request = NewRequest();
@@ -93,7 +95,7 @@ public class CredentialRoutedMessageFactoryTests : IAsyncLifetime
     [Fact]
     public async Task KeyWinsOverToken()
     {
-        await AuthTestSupport.StoreToken(_conn, "the-token", TimeSpan.FromHours(1));
+        await AuthTestSupport.StoreToken(_store, "the-token", TimeSpan.FromHours(1));
         await _keyFactory.SetApiKey("the-key");
 
         using var request = NewRequest();

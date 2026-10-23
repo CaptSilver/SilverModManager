@@ -7,7 +7,9 @@ using NexusMods.MnemonicDB.Abstractions.Models;
 namespace NexusMods.Networking.NexusWebApi.Auth;
 
 /// <summary>
-/// Represents a JWT Token in our DataStore.
+/// The row an older version kept the OAuth token in. The token lives in the secret store now; this model
+/// stays registered, with its attribute ids, so the migration can find and excise the rows, and so the schema
+/// does not change. Nothing else should read or write it.
 /// </summary>
 public partial class JWTToken : IModelDefinition
 {

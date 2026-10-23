@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
 using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Abstractions.Secrets;
 
 namespace NexusMods.Networking.NexusWebApi.Auth;
 
@@ -14,26 +14,37 @@ public class OAuth2MessageFactory : BaseHttpMessageFactory, IAuthenticatingMessa
 {
     private readonly ILogger<OAuth2MessageFactory> _logger;
     private readonly OAuth _auth;
+    private readonly NexusCredentialCache _cache;
+    private readonly SecretStoreOptions _options;
 
     /// <summary>
     /// Constructor.
     /// </summary>
     public OAuth2MessageFactory(
-        IConnection conn,
+        NexusCredentialCache cache,
         OAuth auth,
+        SecretStoreOptions options,
         ILogger<OAuth2MessageFactory> logger)
     {
-        _conn = conn;
+        _cache = cache;
         _auth = auth;
+        _options = options;
         _logger = logger;
     }
 
-    private readonly IConnection _conn;
-
     private async ValueTask<string?> GetOrRefreshToken(CancellationToken cancellationToken)
     {
-        if (!JWTToken.TryFind(_conn.Db, out var token)) return null;
+        var token = await _cache.GetTokenAsync(cancellationToken);
+        if (token is null) return null;
         if (!token.HasExpired) return token.AccessToken;
+
+        // OAuth refresh tokens are single use. A background process whose store cannot take the new token would
+        // spend the stored one and leave the app with a dead token, so it stays anonymous instead.
+        if (_options.Mode == SecretStoreMode.NonInteractive && !_cache.Writable)
+        {
+            _logger.LogWarning("The OAuth token has expired and the secret store cannot take a refreshed one; continuing without a credential");
+            return null;
+        }
 
         if (!_auth.HasClientId)
         {
@@ -43,29 +54,27 @@ public class OAuth2MessageFactory : BaseHttpMessageFactory, IAuthenticatingMessa
             return null;
         }
 
+        // Another process (the app next to a game launch) may have refreshed it already, and its refresh
+        // token is the live one.
+        token = await _cache.ReloadTokenAsync(cancellationToken);
+        if (token is null) return null;
+        if (!token.HasExpired) return token.AccessToken;
+
         _logger.LogDebug("Refreshing expired OAuth token");
 
-        var newToken = await _auth.RefreshToken(token.RefreshToken, cancellationToken);
+        var reply = await _auth.RefreshToken(token.RefreshToken, cancellationToken);
+        var newToken = reply is null ? null : NexusOAuthToken.FromReply(reply);
         if (newToken is null)
         {
-            _logger.LogError("The OAuth token endpoint replied to a refresh with no token");
-            return null;
+            _logger.LogError("The OAuth token endpoint did not return a usable token for the refresh");
+
+            // Nexus may have refused because the other process got there first.
+            var stored = await _cache.ReloadTokenAsync(cancellationToken);
+            return stored is { HasExpired: false } ? stored.AccessToken : null;
         }
 
-        var db = _conn.Db;
-        using var tx = _conn.BeginTransaction();
-
-        var newTokenEntity = JWTToken.Create(db, tx, newToken);
-        if (!newTokenEntity.HasValue)
-        {
-            _logger.LogError("Invalid new token in OAuth2MessageFactory");
-            return null;
-        }
-
-        var result = await tx.Commit();
-
-        token = JWTToken.Load(result.Db, result[newTokenEntity.Value]);
-        return token.AccessToken;
+        await _cache.SetTokenAsync(newToken, cancellationToken);
+        return newToken.AccessToken;
     }
 
     /// <inheritdoc/>

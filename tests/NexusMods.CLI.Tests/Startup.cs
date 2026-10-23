@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Abstractions.Serialization;
 using NexusMods.Backend;
 using NexusMods.CrossPlatform;
@@ -16,6 +17,7 @@ using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Settings;
+using NexusMods.Secrets;
 using NexusMods.SingleProcess;
 using NexusMods.StandardGameLocators;
 using NexusMods.StandardGameLocators.TestHelpers;
@@ -53,6 +55,7 @@ public class Startup
                 .AddCLI()
                 .AddWabbajackVerbs()
                 .AddHttpDownloader()
+                .AddSecrets(new SecretStoreOptions { Mode = SecretStoreMode.NonInteractive, Backend = SecretBackendChoice.Memory })
                 .AddNexusWebApi()
                 .AddLoadoutAbstractions()
                 .AddSerializationAbstractions()
