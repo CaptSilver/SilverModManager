@@ -35,7 +35,7 @@ public class PluginRulesTests(IServiceProvider serviceProvider)
     public static TheoryData<Type, Type, string[], bool, bool> Titles => new()
     {
         { typeof(CreationEngine.SkyrimLE.SkyrimLE), typeof(TextfileMechanism), ["Skyrim.esm", "Update.esm"], false, false },
-        { typeof(CreationEngine.Enderal.Enderal), typeof(TextfileMechanism), ["Skyrim.esm"], false, false },
+        { typeof(CreationEngine.Enderal.Enderal), typeof(TextfileMechanism), ["Skyrim.esm", "Update.esm"], false, false },
         { typeof(CreationEngine.SkyrimSE.SkyrimSE), typeof(AsteriskMechanism), SkyrimSeHardcoded, true, true },
         { typeof(CreationEngine.EnderalSE.EnderalSE), typeof(AsteriskMechanism), SkyrimSeHardcoded, true, true },
         { typeof(CreationEngine.SkyrimVR.SkyrimVR), typeof(AsteriskMechanism), [.. SkyrimSeHardcoded, "SkyrimVR.esm"], true, true },

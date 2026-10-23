@@ -11,5 +11,5 @@ public class EnderalRoundTripTests(ITestOutputHelper helper)
     protected override GamePath DataPath => new(LocationId.Game, "Data");
     protected override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
     protected override GameRelease Release => GameRelease.EnderalLE;
-    protected override string[] LeadingPlugins => ["Skyrim.esm"];
+    protected override string[] LeadingPlugins => ["Skyrim.esm", "Update.esm"];
 }

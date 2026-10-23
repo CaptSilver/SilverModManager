@@ -30,7 +30,9 @@ public class Enderal(IServiceProvider provider) : ACreationEngineGame<Enderal>(p
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");
     public override IPluginListMechanism PluginList(GameInstallation installation) => Mechanism;
     private static readonly IPluginListMechanism Mechanism = new TextfileMechanism();
-    public override IReadOnlyList<string> HardcodedPlugins => ["Skyrim.esm"];
+    // libloadorder treats Enderal as Skyrim: Skyrim.esm is hardcoded and Update.esm is always active, the same
+    // as Skyrim LE.
+    public override IReadOnlyList<string> HardcodedPlugins => ["Skyrim.esm", "Update.esm"];
 
     protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "enderal";
     // Both names are from gameenderal.cpp: plugins.txt lives under LocalAppData/enderal (lower case, which
