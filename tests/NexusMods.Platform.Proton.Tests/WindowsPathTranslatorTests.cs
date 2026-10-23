@@ -66,4 +66,31 @@ public class WindowsPathTranslatorTests
     {
         WindowsPathTranslator.Translate(argument, Prefix).Should().Be(argument);
     }
+
+    [Fact]
+    public void Test_PathAfterAFlagPrefixIsTranslated()
+    {
+        WindowsPathTranslator.Translate("-D:/game/data", Prefix).Should().Be(@"-D:Z:\game\data");
+    }
+
+    [Fact]
+    public void Test_QuotedPathAfterAFlagPrefixIsTranslated()
+    {
+        WindowsPathTranslator.Translate("-D:\"/game/my data\"", Prefix).Should().Be("-D:\"Z:\\game\\my data\"");
+    }
+
+    [Fact]
+    public void Test_QuotedPathInsideALongerArgumentIsTranslated()
+    {
+        WindowsPathTranslator.Translate($"-D:\"/game/data\" -O:\"{Prefix}/drive_c/out\" -q", Prefix)
+            .Should().Be("-D:\"Z:\\game\\data\" -O:\"C:\\out\" -q");
+    }
+
+    [Fact]
+    public void Test_FlagsAndQuotedWordsWithoutPathsAreUntouched()
+    {
+        WindowsPathTranslator.Translate("-quickautoclean", Prefix).Should().Be("-quickautoclean");
+        WindowsPathTranslator.Translate("-D:data", Prefix).Should().Be("-D:data");
+        WindowsPathTranslator.Translate("\"two words\"", Prefix).Should().Be("\"two words\"");
+    }
 }

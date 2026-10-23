@@ -77,12 +77,24 @@ public static class Mo2Ini
             .ToList();
     }
 
+    /// <summary>Qt wraps a value holding a comma in quotes; escaped quotes inside it are left for <see cref="Unescape"/>.</summary>
+    private static string StripWrappingQuotes(string value)
+    {
+        if (value.Length < 2 || value[0] != '"' || value[^1] != '"') return value;
+
+        // A closing quote preceded by an odd number of backslashes is itself escaped, so the value is not wrapped.
+        var backslashes = 0;
+        for (var i = value.Length - 2; i >= 1 && value[i] == '\\'; i--) backslashes++;
+        return backslashes % 2 == 0 ? value[1..^1] : value;
+    }
+
     private static string Unescape(string value)
     {
         value = value.TrimEnd('\r');
         if (value.StartsWith(ByteArrayPrefix, StringComparison.Ordinal) && value.EndsWith(')'))
             value = value[ByteArrayPrefix.Length..^1];
 
+        value = StripWrappingQuotes(value);
         if (!value.Contains('\\')) return value;
 
         var result = new StringBuilder(value.Length);

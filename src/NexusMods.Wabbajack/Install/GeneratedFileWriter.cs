@@ -80,14 +80,23 @@ public sealed class GeneratedFileWriter(IFileStore store, TemporaryFileManager t
         }
     }
 
-    /// <summary>Backs the files up in the file store and deletes their temp files.</summary>
+    /// <summary>Backs the files up in the file store and deletes their temp files, including those of batches a failure kept it from reaching.</summary>
     public async Task Store(IReadOnlyList<GeneratedFile> files, CancellationToken cancellationToken)
     {
-        foreach (var batch in files.Chunk(StoreBatchSize))
+        var stored = 0;
+        try
         {
-            var entries = batch.Select(f => new ArchivedFileEntry(new NativeFileStreamFactory(f.Path), f.XxHash3, f.Size));
-            await store.BackupFiles(entries, deduplicate: true, cancellationToken);
-            foreach (var file in batch) await file.DisposeAsync();
+            foreach (var batch in files.Chunk(StoreBatchSize))
+            {
+                var entries = batch.Select(f => new ArchivedFileEntry(new NativeFileStreamFactory(f.Path), f.XxHash3, f.Size));
+                await store.BackupFiles(entries, deduplicate: true, cancellationToken);
+                foreach (var file in batch) await file.DisposeAsync();
+                stored += batch.Length;
+            }
+        }
+        finally
+        {
+            for (var i = stored; i < files.Count; i++) await files[i].DisposeAsync();
         }
     }
 }

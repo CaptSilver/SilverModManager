@@ -52,4 +52,22 @@ public class Mo2IniTests
 
         Mo2Ini.CustomExecutables(document).Select(e => e.Title).Should().Equal("Two", "Ten");
     }
+
+    [Fact]
+    public void AValueQtWrappedInQuotes_LosesTheQuotesAndKeepsItsCommas()
+    {
+        var document = Mo2Ini.Parse("[General]\nlist=\"a, b\"\nplain=x\n");
+
+        document.Get("General", "list").Should().Be("a, b");
+        document.Get("General", "plain").Should().Be("x");
+    }
+
+    [Fact]
+    public void AnEscapedQuoteInsideAWrappedValue_StaysAndAnEscapedClosingQuoteIsNotAWrapper()
+    {
+        var document = Mo2Ini.Parse("[General]\nwrapped=\"say \\\"hi\\\"\"\nunwrapped=\"open\\\"\n");
+
+        document.Get("General", "wrapped").Should().Be("say \"hi\"");
+        document.Get("General", "unwrapped").Should().Be("\"open\"");
+    }
 }

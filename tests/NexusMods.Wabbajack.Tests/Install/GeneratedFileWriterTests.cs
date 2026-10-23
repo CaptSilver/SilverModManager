@@ -63,4 +63,23 @@ public class GeneratedFileWriterTests(ITestOutputHelper helper) : InstallTestBas
         await temporary.DisposeAsync();
         path.FileExists.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task AFailedStoreStillRemovesTheTemporaryFilesOfBatchesItNeverReached()
+    {
+        var generated = new List<GeneratedFile>();
+        for (var i = 0; i < GeneratedFileWriter.StoreBatchSize + 3; i++)
+        {
+            var bytes = BitConverter.GetBytes(i).Concat(Enumerable.Repeat((byte)i, 20)).ToArray();
+            generated.Add(await Writer.Generate(async output => await output.WriteAsync(bytes), CancellationToken.None));
+        }
+        var paths = generated.Select(g => g.Path).ToArray();
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        var store = () => Writer.Store(generated, cancelled.Token);
+
+        await store.Should().ThrowAsync<OperationCanceledException>();
+        paths.Should().OnlyContain(p => !p.FileExists);
+    }
 }
