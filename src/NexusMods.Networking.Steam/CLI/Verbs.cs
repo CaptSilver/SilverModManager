@@ -21,7 +21,8 @@ public static class Verbs
             .AddModule("steam", "Verbs for interacting with Steam")
             .AddModule("steam app", "Verbs for querying app data")
             .AddVerb(() => IndexSteamApp)
-            .AddVerb(() => Login);
+            .AddVerb(() => Login)
+            .AddVerb(() => Logout);
     
     [Verb("steam login", "Starts the login process for Steam")]
     private static async Task<int> Login(
@@ -33,7 +34,27 @@ public static class Verbs
         return 0;
     }
     
-    
+
+    [Verb("steam logout", "Forgets the stored Steam login")]
+    private static async Task<int> Logout(
+        [Injected] IRenderer renderer,
+        [Injected] IAuthStorage authStorage,
+        [Injected] CancellationToken token)
+    {
+        try
+        {
+            await authStorage.DeleteAsync(token);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await renderer.Text(ex.Message);
+            return 1;
+        }
+
+        await renderer.Text("The stored Steam login was removed.");
+        return 0;
+    }
+
     [Verb("steam app index", "Indexes a Steam app and updates the given output folder")]
     private static async Task<int> IndexSteamApp(
         [Injected] IRenderer renderer,

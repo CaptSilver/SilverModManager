@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Networking.HttpDownloader;
 using NexusMods.Paths;
 using Xunit.DependencyInjection.Logging;
@@ -14,7 +15,8 @@ public class Startup
             .AddHttpDownloader()
             .AddSteam()
             .AddLoggingAuthenticationHandler()
-            .AddLocalAuthFileStorage()
+            .AddSingleton<ISecretStore>(new InMemorySecretStore())
+            .AddSecretStoreAuthStorage()
             .AddFileSystem()
             .AddLogging(builder => builder.AddXunitOutput().SetMinimumLevel(LogLevel.Trace));
     }

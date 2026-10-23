@@ -6,12 +6,39 @@ namespace NexusMods.Abstractions.Steam;
 public interface IAuthStorage
 {
     /// <summary>
-    /// Tries to load the authentication data, if it does not exist or fails to load, returns false.
+    /// Loads the authentication data. <see cref="AuthLoadResult.None"/> means nothing is stored;
+    /// <see cref="AuthLoadResult.Unavailable"/> means the storage could not answer, which says nothing about whether data exists.
     /// </summary>
-    public Task<(bool Success, byte[] Data)> TryLoad();
-    
+    public Task<AuthLoadResult> TryLoadAsync(CancellationToken cancellationToken);
+
     /// <summary>
-    /// Saves the authentication data.
+    /// Saves the authentication data. Throws when the storage cannot take it.
     /// </summary>
-    public Task SaveAsync(byte[] data);
+    public Task SaveAsync(byte[] data, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Forgets the stored authentication data. Throws when the storage cannot be changed.
+    /// </summary>
+    public Task DeleteAsync(CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// The outcome of <see cref="IAuthStorage.TryLoadAsync"/>.
+/// </summary>
+public abstract record AuthLoadResult
+{
+    private AuthLoadResult() { }
+
+    /// <summary>Stored data was found.</summary>
+    public sealed record Loaded(byte[] Data) : AuthLoadResult
+    {
+        // Results end up in logs and test failure output; never print the token.
+        public override string ToString() => "Loaded { Data = <redacted> }";
+    }
+
+    /// <summary>The storage answered and holds nothing.</summary>
+    public sealed record None : AuthLoadResult;
+
+    /// <summary>The storage could not answer, for example because the keyring is locked.</summary>
+    public sealed record Unavailable(string Reason) : AuthLoadResult;
 }

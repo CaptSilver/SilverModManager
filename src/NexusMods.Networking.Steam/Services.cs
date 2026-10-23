@@ -1,8 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Abstractions.Steam;
 using NexusMods.Abstractions.Steam.Values;
 using NexusMods.Networking.Steam.CLI;
+using NexusMods.Networking.Steam.Migration;
 using NexusMods.Sdk.ProxyConsole;
 
 namespace NexusMods.Networking.Steam;
@@ -29,11 +31,14 @@ public static class Services
     }
     
     /// <summary>
-    /// Adds auth storage to the DI container that stores the auth data in the app directory
+    /// Adds auth storage to the DI container that keeps the auth data in the secret store, and moves
+    /// a login from the file older versions used into it.
     /// </summary>
-    public static IServiceCollection AddLocalAuthFileStorage(this IServiceCollection services)
+    public static IServiceCollection AddSecretStoreAuthStorage(this IServiceCollection services)
     {
-        services.AddSingleton<IAuthStorage, AppDirectoryAuthStorage>();
+        services.AddSecretKeys(SteamSecretKeys.Auth);
+        services.AddSingleton<IAuthStorage, SecretStoreAuthStorage>();
+        services.AddSingleton<ISecretMigrationStep, SteamAuthFileMigration>();
         return services;
     }
     
@@ -48,7 +53,7 @@ public static class Services
         );
         services.AddSteam();
         services.AddSingleton<IAuthInterventionHandler, RenderingAuthenticationHandler>();
-        services.AddLocalAuthFileStorage();
+        services.AddSecretStoreAuthStorage();
         services.AddSteamVerbs();
         return services;
     }

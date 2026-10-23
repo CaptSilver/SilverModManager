@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Steam;
 using NexusMods.Abstractions.Steam.DTOs;
@@ -25,6 +26,7 @@ public class Session : ISteamSession
 {
     private bool _isConnected = false;
     private bool _isLoggedOn = false;
+    private volatile ExceptionDispatchInfo? _loginFailure;
 
     internal readonly ILogger<Session> _logger;
     private readonly IAuthInterventionHandler _handler;
@@ -128,65 +130,55 @@ public class Session : ISteamSession
     private async Task ConnectedCallback(SteamClient.ConnectedCallback callback)
     {
         _isConnected = true;
-        var (success, data) = await _authStorage.TryLoad();
-        if (success)
+        try
         {
-            _logger.LogInformation("Using saved auth data to log in.");
-            var authData = AuthData.Load(data);
-            
-            _steamUser.LogOn(new SteamUser.LogOnDetails
-                {
-                    Username = authData.Username,
-                    AccessToken = authData.RefreshToken,
-                }
-            );
+            await new SteamLogin(_authStorage, new SteamKitAuthenticator(this), _logger, Environment.GetEnvironmentVariable).RunAsync();
         }
-        else if (Environment.GetEnvironmentVariable("STEAM_USER") != null)
+        catch (Exception ex)
         {
-            _logger.LogInformation("Using environment variables to log in.");
-            var authSession = await _steamClient.Authentication.BeginAuthSessionViaCredentialsAsync(new AuthSessionDetails
+            // This runs detached from the caller, so an exception left here would vanish and leave ConnectedAsync
+            // waiting forever. Hand it over instead; disconnecting delivers a callback so the waiter wakes up and
+            // sees it, and the next ConnectedAsync starts a fresh connection.
+            _logger.LogWarning(ex, "Steam login failed");
+            _loginFailure = ExceptionDispatchInfo.Capture(ex);
+            _isConnected = false;
+            _steamClient.Disconnect();
+        }
+    }
+
+    /// <summary>
+    /// Runs the authentication steps against the real Steam network.
+    /// </summary>
+    private sealed class SteamKitAuthenticator(Session session) : ISteamAuthenticator
+    {
+        public async Task<SteamCredentials> AuthenticateWithPasswordAsync(string username, string password)
+        {
+            var authSession = await session._steamClient.Authentication.BeginAuthSessionViaCredentialsAsync(new AuthSessionDetails
             {
-                Username = Environment.GetEnvironmentVariable("STEAM_USER"),
-                Password = Environment.GetEnvironmentVariable("STEAM_PASS"),
+                Username = username,
+                Password = password,
             });
-            
+
             var pollResponse = await authSession.PollingWaitForResultAsync();
-            await _authStorage.SaveAsync(new AuthData
-            {
-                Username = pollResponse.AccountName,
-                RefreshToken = pollResponse.RefreshToken,
-            }.Save());
-            
-            _steamUser.LogOn(new SteamUser.LogOnDetails
-                {
-                    Username = pollResponse.AccountName,
-                    AccessToken = pollResponse.RefreshToken,
-                }
-            );
+            return new SteamCredentials(pollResponse.AccountName, pollResponse.RefreshToken);
         }
-        else
+
+        public async Task<SteamCredentials> AuthenticateWithQrAsync()
         {
-            _logger.LogInformation("No saved auth data, logging in via QR code.");
-            var authSession = await _steamClient.Authentication.BeginAuthSessionViaQRAsync(new AuthSessionDetails());
+            var authSession = await session._steamClient.Authentication.BeginAuthSessionViaQRAsync(new AuthSessionDetails());
 
-            authSession.ChallengeURLChanged = () => { _handler.ShowQRCode(new Uri(authSession.ChallengeURL, UriKind.Absolute), CancellationToken.None); };
+            authSession.ChallengeURLChanged = () => { session._handler.ShowQRCode(new Uri(authSession.ChallengeURL, UriKind.Absolute), CancellationToken.None); };
 
-            _handler.ShowQRCode(new Uri(authSession.ChallengeURL, UriKind.Absolute), CancellationToken.None);
+            session._handler.ShowQRCode(new Uri(authSession.ChallengeURL, UriKind.Absolute), CancellationToken.None);
             var pollResponse = await authSession.PollingWaitForResultAsync();
-
-            await _authStorage.SaveAsync(new AuthData
-            {
-                Username = pollResponse.AccountName,
-                RefreshToken = pollResponse.RefreshToken,
-            }.Save());
-            
-            _steamUser.LogOn(new SteamUser.LogOnDetails
-                {
-                    Username = pollResponse.AccountName,
-                    AccessToken = pollResponse.RefreshToken,
-                }
-            );
+            return new SteamCredentials(pollResponse.AccountName, pollResponse.RefreshToken);
         }
+
+        public void LogOn(SteamCredentials credentials) => session._steamUser.LogOn(new SteamUser.LogOnDetails
+        {
+            Username = credentials.AccountName,
+            AccessToken = credentials.RefreshToken,
+        });
     }
 
     // SteamClient registers these handlers itself; a missing one means the SteamKit version changed its defaults.
@@ -227,11 +219,13 @@ public class Session : ISteamSession
     {
         if (!_isConnected)
         {
+            _loginFailure = null;
             _steamClient.Connect();
         }
         
         while (!_isLoggedOn)
         {
+            _loginFailure?.Throw();
             await _callbacks.RunWaitCallbackAsync(cancellationToken);
         }
     }
