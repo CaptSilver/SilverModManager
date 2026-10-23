@@ -1,7 +1,9 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NexusMods.Sdk.Settings;
 using NexusMods.Abstractions.Diagnostics;
+using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.GC;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Sorting;
@@ -120,6 +122,7 @@ public static class Services
 
         coll.AddSingleton<ILoadoutManager, LoadoutManager>();
         coll.AddSingleton<IGameInstalledContentService, GameInstalledContentService>();
+        coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, GameInstalledGroupDisabledEmitter>());
 
         // Verbs
         coll.AddLoadoutManagementVerbs()
