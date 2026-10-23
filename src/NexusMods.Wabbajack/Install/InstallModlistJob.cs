@@ -28,7 +28,8 @@ namespace NexusMods.Wabbajack.Install;
 /// <see cref="WabbajackModlistLoadoutGroup"/>. A directive the app cannot execute leaves a
 /// <see cref="WabbajackSkippedFile"/> row. Once the files are written the groups are put in the order the profile's
 /// modlist.txt gives, the profile's plugin list is staged, and the list is enabled unless something was skipped.
-/// Running the job again on the same loadout continues in the same group and adds only what is missing.
+/// Running the job again on the same loadout continues in the same group and brings it in line with the list: files the
+/// list still installs are kept, ones whose content changed or that the list no longer installs are removed.
 /// </summary>
 public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>
 {
@@ -509,7 +510,14 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         public HashSet<string> NewGroups { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>Per group, the files an earlier run (or this one) already created, as path and hash.</summary>
-        public Dictionary<string, HashSet<(GamePath Path, Hash Hash)>> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, Dictionary<(GamePath Path, Hash Hash), KnownFile>> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>A file row of a group. <see cref="Ids"/> is empty for one made in this run, and <see cref="Wanted"/> is set once this run's list asks for it.</summary>
+    private sealed class KnownFile
+    {
+        public List<EntityId> Ids { get; } = [];
+        public bool Wanted { get; set; }
     }
 
     private async Task Write(Checked check, LoadoutItemGroupId groupId, AbsolutePath extrasFolder, IReadOnlyList<Prepared> prepared, CancellationToken cancellationToken)
@@ -533,6 +541,29 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             foreach (var name in state.NewGroups) state.Groups[name] = result[state.Groups[name]];
             state.NewGroups.Clear();
         }
+
+        await RemoveStaleFiles(state);
+    }
+
+    /// <summary>
+    /// Deletes the rows an earlier run made that this run did not ask for again: a file whose content changed has a row
+    /// for the old hash next to the new one, and a file the list dropped would otherwise stay installed. Runs only after
+    /// every batch committed, so an install that failed part way keeps what it had.
+    /// </summary>
+    private async Task RemoveStaleFiles(WriteState state)
+    {
+        using var tx = Connection.BeginTransaction();
+        var any = false;
+        foreach (var known in state.Files.Values.SelectMany(files => files.Values))
+        {
+            // Rows beyond the first of a wanted file are duplicates a past run left.
+            foreach (var id in known.Wanted ? known.Ids.Skip(1) : known.Ids)
+            {
+                tx.Delete(id, recursive: false);
+                any = true;
+            }
+        }
+        if (any) await tx.Commit();
     }
 
     private WriteState LoadExisting(LoadoutItemGroupId groupId)
@@ -545,7 +576,11 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             state.Groups[name] = child.LoadoutItemGroupId;
             var files = state.Files[name] = new();
             foreach (var file in LoadoutItem.FindByParent(db, child.Id).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
-                files.Add((file.AsLoadoutItemWithTargetPath().TargetPath, file.Hash));
+            {
+                var key = (file.AsLoadoutItemWithTargetPath().TargetPath, file.Hash);
+                if (!files.TryGetValue(key, out var known)) files[key] = known = new KnownFile();
+                known.Ids.Add(file.Id);
+            }
         }
         return state;
     }
@@ -579,15 +614,15 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         }
         catch (DirectiveSkipped skipped)
         {
-            AddSkip(tx, modlistGroup, placement, skipped.Kind, skipped.Message, check);
+            AddSkip(tx, modlistGroup, state, placement, skipped.Kind, skipped.Message, check);
         }
         catch (TransformUnavailableException unavailable)
         {
-            AddSkip(tx, modlistGroup, placement, SkipKind.Transform, unavailable.Message, check);
+            AddSkip(tx, modlistGroup, state, placement, SkipKind.Transform, unavailable.Message, check);
         }
         catch (MemberNotFoundException notFound)
         {
-            AddSkip(tx, modlistGroup, placement, SkipKind.MemberNotFound, notFound.Message, check);
+            AddSkip(tx, modlistGroup, state, placement, SkipKind.MemberNotFound, notFound.Message, check);
         }
     }
 
@@ -603,8 +638,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         await WriteBytes(check, extras, item.Placement, item.Member, output, cancellationToken);
     }
 
-    private void AddSkip(ITransaction tx, LoadoutItemGroupId group, Placement placement, SkipKind kind, string reason, Checked check)
+    private void AddSkip(ITransaction tx, LoadoutItemGroupId group, WriteState state, Placement placement, SkipKind kind, string reason, Checked check)
     {
+        KeepEarlierRows(state, placement);
         _ = new WabbajackSkippedFile.New(tx, out var id)
         {
             LoadoutItem = new LoadoutItem.New(tx, id)
@@ -623,9 +659,27 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Progress.AddDropped(inputs.Count);
     }
 
+    /// <summary>
+    /// A skip means this run could not produce the file, not that the list stopped asking for it, so whatever an earlier
+    /// run installed at that path stays until a run can replace it.
+    /// </summary>
+    private static void KeepEarlierRows(WriteState state, Placement placement)
+    {
+        if (placement.Group is not { } groupName || placement.Path is not { } path) return;
+        if (!state.Files.TryGetValue(groupName, out var files)) return;
+        foreach (var (key, known) in files)
+        {
+            if (key.Path == path) known.Wanted = true;
+        }
+    }
+
     private void AddFile(ITransaction tx, LoadoutItemGroupId modlistGroup, WriteState state, string groupName, GamePath path, Hash hash, Size size)
     {
-        if (state.Files.TryGetValue(groupName, out var known) && known.Contains((path, hash))) return;
+        if (state.Files.TryGetValue(groupName, out var known) && known.TryGetValue((path, hash), out var existing))
+        {
+            existing.Wanted = true;
+            return;
+        }
 
         if (!state.Groups.TryGetValue(groupName, out var group))
         {
@@ -660,7 +714,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Hash = hash,
             Size = size,
         };
-        known.Add((path, hash));
+        known[(path, hash)] = new KnownFile { Wanted = true };
     }
 
     #endregion
@@ -749,8 +803,16 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         WritePriorities(db, tx, ordered);
 
         var disabledByList = entries.Where(e => !e.Enabled && !e.IsSeparator && !e.IsForeign).Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var child in children.Where(c => disabledByList.Contains(c.AsLoadoutItem().Name)))
-            tx.Add(child.Id, LoadoutItem.Disabled, Null.Instance);
+        var enabledByList = entries.Where(e => e.Enabled && !e.IsSeparator && !e.IsForeign).Select(e => e.Name)
+            .Where(name => !disabledByList.Contains(name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var child in children)
+        {
+            var name = child.AsLoadoutItem().Name;
+            if (disabledByList.Contains(name))
+                tx.Add(child.Id, LoadoutItem.Disabled, Null.Instance);
+            else if (enabledByList.Contains(name) && child.AsLoadoutItem().IsDisabled)
+                tx.Retract(child.Id, LoadoutItem.Disabled, Null.Instance);
+        }
 
         if (texts.PluginsTxt is not null || texts.LoadorderTxt is not null)
             target.StagePluginList(Loadout.Load(db, TargetLoadout), sortOrderId, texts.PluginsTxt, texts.LoadorderTxt, tx);
@@ -801,19 +863,22 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     }
 
     /// <summary>
-    /// Gives each group one priority row, counting up from above every row the loadout holds for other groups. A
-    /// group that has a row from an earlier run keeps it and takes the new value.
+    /// Gives each group one priority row. A first install counts up from above every row the loadout holds for other
+    /// groups. A repeat install hands the same values back out in the new order, so the list keeps its place below mods
+    /// installed since; only groups past the count it already held take fresh values above every row.
     /// </summary>
     private void WritePriorities(IDb db, ITransaction tx, IReadOnlyList<LoadoutItemGroup.ReadOnly> ordered)
     {
         var own = ordered.Select(g => g.LoadoutItemGroupId).ToHashSet();
         var rows = LoadoutItemGroupPriority.FindByLoadout(db, TargetLoadout).ToArray();
-        var next = rows.Where(r => !own.Contains(r.TargetId)).Select(r => r.Priority.Value).DefaultIfEmpty(0UL).Max() + 1;
+        var held = rows.Where(r => own.Contains(r.TargetId)).Select(r => r.Priority.Value).Order().ToArray();
+        var next = rows.Select(r => r.Priority.Value).DefaultIfEmpty(0UL).Max() + 1;
         var mine = rows.Where(r => own.Contains(r.TargetId)).ToLookup(r => r.TargetId);
 
-        foreach (var group in ordered)
+        for (var i = 0; i < ordered.Count; i++)
         {
-            var priority = ConflictPriority.From(next++);
+            var group = ordered[i];
+            var priority = ConflictPriority.From(i < held.Length ? held[i] : next++);
             if (mine.Contains(group.LoadoutItemGroupId))
             {
                 tx.Add(mine[group.LoadoutItemGroupId].First().Id, LoadoutItemGroupPriority.Priority, priority);
