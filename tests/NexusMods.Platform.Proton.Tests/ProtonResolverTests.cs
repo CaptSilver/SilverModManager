@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NexusMods.Paths;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 
 namespace NexusMods.Platform.Proton.Tests;

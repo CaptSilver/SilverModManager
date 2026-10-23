@@ -1,3 +1,5 @@
+using NexusMods.Sdk;
+
 namespace NexusMods.Platform.Proton.Launch;
 
 /// <summary>

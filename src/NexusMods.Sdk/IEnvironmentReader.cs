@@ -1,4 +1,4 @@
-namespace NexusMods.Platform.Proton;
+namespace NexusMods.Sdk;
 
 /// <summary>
 /// Reads environment variables, so code that depends on them can be tested without touching the process.
@@ -14,7 +14,7 @@ public interface IEnvironmentReader
 /// <summary>
 /// Reads the real process environment.
 /// </summary>
-internal sealed class ProcessEnvironmentReader : IEnvironmentReader
+public sealed class ProcessEnvironmentReader : IEnvironmentReader
 {
     public string? Get(string name) => Environment.GetEnvironmentVariable(name);
 }

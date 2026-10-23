@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Steam;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Steam;
 

@@ -9,6 +9,7 @@ using NexusMods.Games.TestFramework;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Platform.Proton.Verbs;
+using NexusMods.Sdk;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.IO;

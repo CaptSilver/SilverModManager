@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using NexusMods.Abstractions.Games;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 
