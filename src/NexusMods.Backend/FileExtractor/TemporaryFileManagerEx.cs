@@ -11,8 +11,12 @@ namespace NexusMods.FileExtractor;
 internal class TemporaryFileManagerEx : TemporaryFileManager
 {
     public TemporaryFileManagerEx(IFileSystem fileSystem, ISettingsManager settingsManager)
-        : base(
-            fileSystem,
-            basePath: settingsManager.Get<FileExtractorSettings>().TempFolderLocation.ToPath(fileSystem)
-        ) { }
+        : this(fileSystem, settingsManager.Get<FileExtractorSettings>().TempFolderLocation.ToPath(fileSystem)) { }
+
+    // The folder can vanish while the app runs, see TemporaryFolderFileSystem.
+    private TemporaryFileManagerEx(IFileSystem fileSystem, AbsolutePath basePath)
+        : this(new TemporaryFolderFileSystem(fileSystem, basePath), basePath) { }
+
+    private TemporaryFileManagerEx(TemporaryFolderFileSystem fileSystem, AbsolutePath basePath)
+        : base(fileSystem, basePath: fileSystem.FromUnsanitizedFullPath(basePath.GetFullPath())) { }
 }
