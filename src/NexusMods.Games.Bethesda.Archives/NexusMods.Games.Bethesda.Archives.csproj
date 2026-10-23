@@ -12,5 +12,6 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="NexusMods.Games.Bethesda.Archives.Tests" />
+        <InternalsVisibleTo Include="NexusMods.Wabbajack.Tests" />
     </ItemGroup>
 </Project>
