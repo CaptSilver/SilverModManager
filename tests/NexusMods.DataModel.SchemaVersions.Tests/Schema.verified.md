@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xD72B63F3CEACB4AE
-   - Total attributes: 306
-   - Total namespaces: 90
+   - Fingerprint: 0x7592E126BFA3B889
+   - Total attributes: 322
+   - Total namespaces: 94
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -99,6 +99,22 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.FromSoft.BuildStamp/SteamBuildId                                         | Utf8                    | False   | False | False     | 
 | SilverModManager.GC.BackedUpFile/GameInstall                                              | Reference               | False   | False | False     | 
 | SilverModManager.GC.BackedUpFile/Hash                                                     | UInt64                  | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3ModListNotice/LastWrittenPaks                      | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3ModListNotice/PreviousWrittenPaks                  | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3ModListNotice/ReplacedAt                           | Int64                   | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3ModListNotice/ResetCount                           | Int32                   | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3ModListNotice/SortOrder                            | Reference               | True    | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3ModListNotice/Summary                              | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3ModuleEntry/Folder                                 | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3ModuleEntry/Md5                                    | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3ModuleEntry/ModuleName                             | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3ModuleEntry/PublishHandle                          | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3ModuleEntry/Uuid                                   | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3ModuleEntry/Version64                              | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3PakSortOrder/Marker                                | Null                    | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3PakSortOrder/SeededFromGameFile                    | UInt8                   | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3PakSortOrderItem/IsEnabled                         | UInt8                   | False   | False | False     | 
+| SilverModManager.Games.BaldursGate3.Bg3PakSortOrderItem/PakName                           | Utf8                    | False   | False | False     | 
 | SilverModManager.Games.CreationEngine.PluginListNotice/ReplacedAt                         | Int64                   | False   | False | False     | 
 | SilverModManager.Games.CreationEngine.PluginListNotice/SortOrder                          | Reference               | True    | False | False     | 
 | SilverModManager.Games.CreationEngine.PluginListNotice/Summary                            | Utf8                    | False   | False | False     | 
