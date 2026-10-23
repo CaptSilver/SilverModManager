@@ -1,10 +1,14 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Diagnostics;
+using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.CreationEngine.Tests.Creations;
+using NexusMods.Games.CreationEngine.Models;
+using NexusMods.Games.CreationEngine.SortOrder;
 using NexusMods.Games.TestFramework;
 using NexusMods.Games.TestFramework.Helpers;
+using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -72,6 +76,33 @@ public class SteamInstalledSkyrimWithCreationsTests(ITestOutputHelper helper)
     private string[] ExternalChanges(Loadout.ReadOnly loadout) => CreationsLoadout.ExternalChanges(Connection.Db, loadout.LoadoutId);
 
     private async Task Apply(Loadout.ReadOnly loadout) => await Synchronizer.Synchronize(Refresh(loadout));
+
+    private const string Garden = "ccinvented001-garden.esm";
+    private const string Shed = "ccinvented002-shed.esm";
+    private const string Chest = "ccinvented003-chest.esp";
+
+    private AbsolutePath PluginsTxt => GameInstallation.Locations.ToAbsolutePath(Game.PluginsFile);
+
+    private async Task SwitchGroup(Loadout.ReadOnly loadout, bool on)
+    {
+        var group = GameInstalledGroup.FindByInstalledFor(Connection.Db, loadout.LoadoutId).Single().AsLoadoutItemGroup().AsLoadoutItem().Id;
+        if (on) await EnableItem(group);
+        else await DisableItem(group);
+    }
+
+    private string[] PluginListNotices(Loadout.ReadOnly loadout)
+    {
+        var variety = Game.SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single();
+        var order = variety.GetSortOrderIdFor(loadout.LoadoutId, Connection.Db).Value;
+        return Connection.Db.Datoms(PluginListNotice.SortOrder, order)
+            .Select(d => PluginListNotice.Load(Connection.Db, d.E).Summary).ToArray();
+    }
+
+    private async Task GameRewritesPluginsTxt(Func<string, bool> keep, Func<string, string>? map = null)
+    {
+        var lines = (await PluginsTxt.ReadAllTextAsync()).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        await PluginsTxt.WriteAllTextAsync(string.Join('\n', lines.Where(keep).Select(l => map?.Invoke(l) ?? l)) + "\n");
+    }
 
     private async Task<string[]> PluginsTxtLines()
     {
@@ -199,5 +230,92 @@ public class SteamInstalledSkyrimWithCreationsTests(ITestOutputHelper helper)
         external.Should().NotContain(path => path.Contains("ccinvented", StringComparison.OrdinalIgnoreCase));
         Items(Refresh(loadout)).Should().HaveCount(3);
         foreach (var file in (string[])[.. GardenFiles, .. ShedFiles, .. ChestFiles]) OnDisk(file).FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SwitchingTheGroupOffUnstarsTheCreationsAndWritesTheCccListedOneExplicitly()
+    {
+        var loadout = await AppliedLoadout();
+
+        await SwitchGroup(loadout, on: false);
+        await Apply(loadout);
+
+        var lines = await PluginsTxtLines();
+        lines.Should().Contain([Garden, Shed, Chest], "the garden is listed in the Creation Club file, which would otherwise leave it out");
+        lines.Should().NotContain(["*" + Garden, "*" + Shed, "*" + Chest]);
+    }
+
+    [Fact]
+    public async Task SwitchingTheGroupBackOnRestoresTheStars()
+    {
+        var loadout = await AppliedLoadout();
+        await SwitchGroup(loadout, on: false);
+        await Apply(loadout);
+
+        await SwitchGroup(loadout, on: true);
+        await Apply(loadout);
+
+        var lines = await PluginsTxtLines();
+        lines.Should().Contain(["*" + Shed, "*" + Chest]);
+        lines.Should().NotContain(line => line.Contains(Garden), "an early loader is not written to the list");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TheGameDroppingOrRestarringTheCccListedLineIsNotAnEdit(bool restar)
+    {
+        var loadout = await AppliedLoadout();
+        await SwitchGroup(loadout, on: false);
+        await Apply(loadout);
+
+        await GameRewritesPluginsTxt(
+            keep: line => restar || !line.Contains(Garden),
+            map: line => restar && line.Contains(Garden) ? "*" + line.TrimStart('*') : line);
+        await Apply(loadout);
+
+        PluginListNotices(loadout).Should().BeEmpty();
+        (await PluginsTxtLines()).Should().Contain(Shed);
+    }
+
+    [Fact]
+    public async Task TheGameUnstarringACreationIsANoticeAndTheSameApplyStarsItAgain()
+    {
+        var loadout = await AppliedLoadout();
+
+        await GameRewritesPluginsTxt(keep: _ => true, map: line => line == "*" + Shed ? Shed : line);
+        await Apply(loadout);
+
+        PluginListNotices(loadout).Should().ContainSingle().Which.Should().Contain(Shed);
+        (await PluginsTxtLines()).Should().Contain("*" + Shed);
+    }
+
+    [Fact]
+    public async Task UnmanagingWithTheGroupOffLeavesTheCreationsStarred()
+    {
+        var loadout = await AppliedLoadout();
+        await SwitchGroup(loadout, on: false);
+        await Apply(loadout);
+        (await PluginsTxtLines()).Should().Contain(Shed);
+
+        await LoadoutManager.UnManage(GameInstallation);
+
+        var lines = await PluginsTxtLines();
+        lines.Should().Contain(["*" + Shed, "*" + Chest]);
+    }
+
+    [Fact]
+    public async Task AResetWithTheGroupOffLeavesTheCreationsStarred()
+    {
+        var loadout = await AppliedLoadout();
+        await SwitchGroup(loadout, on: false);
+        await Apply(loadout);
+        (await PluginsTxtLines()).Should().Contain("*Present.esp");
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, GameInstallation.LocatorResult.LocatorIds.ToArray());
+
+        var lines = await PluginsTxtLines();
+        lines.Should().Contain(["*" + Shed, "*" + Chest]);
+        lines.Should().NotContain("*Present.esp", "the reset removes the plugin the user added");
     }
 }

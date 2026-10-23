@@ -8,6 +8,7 @@ using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.Bethesda.LoadOrder.Formats;
 using NexusMods.Games.Bethesda.LoadOrder.Ordering;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.Creations;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Games.CreationEngine.SortOrder;
 using NexusMods.Hashing.xxHash3;
@@ -24,7 +25,7 @@ namespace NexusMods.Games.CreationEngine;
 /// A game can have several such files (plugins.txt beside loadorder.txt), each in its own <see cref="IPluginListCodec"/>.
 /// A codec that rewrites an existing file (Morrowind.ini, openmw.cfg) gets the current file to work on.
 /// </summary>
-public class PluginsFile : IIntrinsicFile
+public class PluginsFile : IIntrinsicFileWithReset
 {
     private readonly ICreationEngineGame _game;
     private readonly IPluginListCodec _codec;
@@ -56,14 +57,34 @@ public class PluginsFile : IIntrinsicFile
     public async Task Write(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree)
     {
         var installation = loadout.InstallationInstance;
-        await Render(stream, installation, _game.EarlyLoadingPlugins(installation), Variety.StoredOrder(loadout), syncTree);
+        await Render(stream, installation, _game.EarlyLoadingPlugins(installation), Variety.StoredOrder(loadout), syncTree, InstalledByGame(loadout));
     }
+
+    /// <summary>
+    /// After a reset the game is handed back to itself, so the Creations it installed are written active whatever
+    /// the group's switch said: a plugin left unstarred would not load, and nothing in the app would be left to say why.
+    /// </summary>
+    public async Task<byte[]?> RenderForReset(Loadout.ReadOnly lastSyncedLoadout, IReadOnlyDictionary<GamePath, SyncNode> desiredState)
+    {
+        var installed = InstalledByGame(lastSyncedLoadout) with { GroupEnabled = true };
+
+        // With no Creations to keep active there is nothing to say: leave the file to the reset's usual handling,
+        // which puts back the one the user had or removes the one the app wrote.
+        var keepsACreation = desiredState.Any(e => e.Value.HaveLoadout && IsPluginPath(e.Key) && installed.Contains(e.Key.FileName));
+        if (!keepsACreation) return null;
+
+        var installation = lastSyncedLoadout.InstallationInstance;
+        var (bom, bytes) = await RenderBytes(installation, _game.EarlyLoadingPlugins(installation), Variety.StoredOrder(lastSyncedLoadout), desiredState, installed);
+        return [.. bom, .. bytes];
+    }
+
+    private GameInstalledPlugins InstalledByGame(Loadout.ReadOnly loadout) => GameInstalledPlugins.For(loadout.Db, loadout.LoadoutId, _game.DataPath);
 
     /// <summary>The names of every plugin the file would list, in load order.</summary>
     internal async Task<IReadOnlyList<string>> LoadOrder(Loadout.ReadOnly loadout, IReadOnlyDictionary<GamePath, SyncNode> syncTree)
     {
         var installation = loadout.InstallationInstance;
-        var listed = await Expected(installation, _game.EarlyLoadingPlugins(installation), Variety.StoredOrder(loadout), syncTree);
+        var listed = await Expected(installation, _game.EarlyLoadingPlugins(installation), Variety.StoredOrder(loadout), syncTree, InstalledByGame(loadout));
         return listed.Select(e => e.Name).ToList();
     }
 
@@ -71,22 +92,34 @@ public class PluginsFile : IIntrinsicFile
 
     /// <param name="earlyLoaders">Plugins the game loads before any list, in load order.</param>
     /// <param name="rows">The stored order and switches; a plugin without a row is on and goes where the resolver puts it.</param>
+    /// <param name="gameInstalled">The plugins the game installed itself; none when omitted.</param>
     internal async Task Render(
         Stream stream,
         GameInstallation installation,
         IReadOnlyList<string> earlyLoaders,
         IReadOnlyList<PluginSortData> rows,
-        IReadOnlyDictionary<GamePath, SyncNode> syncTree)
+        IReadOnlyDictionary<GamePath, SyncNode> syncTree,
+        GameInstalledPlugins? gameInstalled = null)
     {
-        var listed = await Expected(installation, earlyLoaders, rows, syncTree);
+        var (bom, bytes) = await RenderBytes(installation, earlyLoaders, rows, syncTree, gameInstalled ?? GameInstalledPlugins.None);
+        await stream.WriteAsync(bom);
+        await stream.WriteAsync(bytes);
+    }
+
+    private async Task<(byte[] Bom, byte[] Bytes)> RenderBytes(
+        GameInstallation installation,
+        IReadOnlyList<string> earlyLoaders,
+        IReadOnlyList<PluginSortData> rows,
+        IReadOnlyDictionary<GamePath, SyncNode> syncTree,
+        GameInstalledPlugins gameInstalled)
+    {
+        var listed = await Expected(installation, earlyLoaders, rows, syncTree, gameInstalled);
         var (existing, bom) = _codec.RewritesExisting ? await ReadExisting(installation) : ("", []);
 
         var dataPlugins = syncTree.Keys.Where(IsPluginPath).Select(path => path.FileName.ToString()).ToHashSet(PluginNameComparer.Instance);
         var text = _codec.Render(listed, new PluginListTarget(existing, dataPlugins));
 
-        var bytes = Encode(text, listed);
-        await stream.WriteAsync(bom);
-        await stream.WriteAsync(bytes);
+        return (bom, Encode(text, listed));
     }
 
     /// <summary>The file's bytes. A name the encoding can't hold is reported by name instead of written as a substitute.</summary>
@@ -131,10 +164,12 @@ public class PluginsFile : IIntrinsicFile
         GameInstallation installation,
         IReadOnlyList<string> earlyLoaders,
         IReadOnlyList<PluginSortData> rows,
-        IReadOnlyDictionary<GamePath, SyncNode> syncTree)
+        IReadOnlyDictionary<GamePath, SyncNode> syncTree,
+        GameInstalledPlugins gameInstalled)
     {
         var plugins = new List<Metadata>();
         List<string> unreadable = [];
+        List<string> unreadableInstalled = [];
         foreach (var entry in syncTree)
         {
             if (!IsPluginPath(entry.Key)) continue;
@@ -142,6 +177,8 @@ public class PluginsFile : IIntrinsicFile
 
             if (await MakeMetadata(entry) is { } found)
                 plugins.Add(found);
+            else if (gameInstalled.Contains(entry.Key.FileName))
+                unreadableInstalled.Add(entry.Key.FileName);
             else
                 unreadable.Add(entry.Key.FileName);
         }
@@ -176,6 +213,17 @@ public class PluginsFile : IIntrinsicFile
                 early.TryGetValue(name, out var earlyIndex) ? earlyIndex : null);
         }).ToList();
 
+        // A Creation the game is still downloading has no readable header yet. It must not block every Apply, so it
+        // is listed where its row puts it, as a plugin with no masters.
+        foreach (var name in unreadableInstalled)
+        {
+            _logger.LogWarning("The header of {Plugin}, installed by the game, could not be read; listing it without masters", name);
+            entries.Add(new PluginOrderEntry(
+                name, false, false, [],
+                rowsByName.TryGetValue(name, out var row) ? row.SortIndex : null,
+                early.TryGetValue(name, out var earlyIndex) ? earlyIndex : null));
+        }
+
         var order = PluginOrderResolver.Resolve(entries);
         Debug.Assert(PluginOrderValidation.Validate(order, entries, earlyLoaders) is null,
             "The resolver produced a load order that libloadorder would reject.");
@@ -187,7 +235,18 @@ public class PluginsFile : IIntrinsicFile
             var entry = byName[name];
             // A blueprint master never loads early, so the game does not know to load it without the list.
             var isEarly = entry.EarlyLoaderIndex is not null && !entry.IsBlueprintMaster;
-            var active = isEarly || implicitlyActive.Contains(name) || !rowsByName.TryGetValue(name, out var row) || row.IsEnabled;
+            var installed = gameInstalled.Contains(name);
+            if (installed && !gameInstalled.GroupEnabled && isEarly && !implicitlyActive.Contains(name))
+            {
+                // Every Creation on a typical Anniversary install is listed in the .ccc file, and the asterisk format
+                // leaves early loaders out, so without an explicit line the group's switch would not change the file.
+                // Still an early loader so the game rewriting the line away is not reported as an edit on every Apply.
+                return new PluginListEntry(name, false, IsEarlyLoader: true, RenderExplicitly: true);
+            }
+
+            // The group's switch alone decides a plugin the game installed; its own row is ignored.
+            var active = isEarly || implicitlyActive.Contains(name)
+                || (installed ? gameInstalled.GroupEnabled : !rowsByName.TryGetValue(name, out var row) || row.IsEnabled);
             return new PluginListEntry(name, active, isEarly);
         }).ToList();
     }
@@ -235,7 +294,7 @@ public class PluginsFile : IIntrinsicFile
         }
 
         var installation = loadout.InstallationInstance;
-        var expected = await Expected(installation, _game.EarlyLoadingPlugins(installation), variety.StoredOrder(loadout), syncTree);
+        var expected = await Expected(installation, _game.EarlyLoadingPlugins(installation), variety.StoredOrder(loadout), syncTree, InstalledByGame(loadout));
 
         var differences = new List<PluginListDifference>();
         foreach (var file in _noticeGroup.Files)

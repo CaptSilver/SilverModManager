@@ -7,9 +7,13 @@ namespace NexusMods.Games.Bethesda.LoadOrder.Formats;
 /// </summary>
 public static class AsteriskPluginList
 {
+    /// <remarks>
+    /// An early loader is left out unless <paramref name="writeEarlyLoaders"/> or the entry's own
+    /// <see cref="PluginListEntry.RenderExplicitly"/> asks for it.
+    /// </remarks>
     public static string Render(IEnumerable<PluginListEntry> entries, bool writeEarlyLoaders) =>
         PluginListText.Render(entries
-            .Where(e => writeEarlyLoaders || !e.IsEarlyLoader)
+            .Where(e => writeEarlyLoaders || !e.IsEarlyLoader || e.RenderExplicitly)
             .Select(e => e.Active ? "*" + e.Name : e.Name));
 
     public static IReadOnlyList<PluginListEntry> Parse(string text) =>
