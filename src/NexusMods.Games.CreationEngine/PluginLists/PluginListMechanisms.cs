@@ -50,9 +50,10 @@ public sealed class TextfileMechanism : IPluginListMechanism
     public IEnumerable<IIntrinsicFile> IntrinsicFiles(ICreationEngineGame game, Loadout.ReadOnly loadout, IServiceProvider provider)
     {
         var logger = provider.GetRequiredService<ILogger<PluginsFile>>();
-        yield return new PluginsFile(logger, game, new PlainFormat());
-        // The replaced-edits warning compares plugins.txt: a loadorder.txt entry carries no switch to compare.
-        yield return new PluginsFile(logger, game, new LoadOrderFormat(), LoadOrderPath(game), comparesWithGame: false);
+        // Both files report into one notice: an edit to either replaces the game's order, and the notice says so once.
+        var notice = new PluginListNoticeGroup();
+        yield return new PluginsFile(logger, game, new PlainFormat(), noticeGroup: notice);
+        yield return new PluginsFile(logger, game, new LoadOrderFormat(), LoadOrderPath(game), noticeGroup: notice);
     }
 
     public async Task<GamePluginListState?> ReadGameState(ICreationEngineGame game, Loadout.ReadOnly loadout)

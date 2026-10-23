@@ -28,6 +28,12 @@ public interface IPluginListCodec
     /// on disk, changes only the list and writes the rest back as it was.
     /// </summary>
     bool RewritesExisting => false;
+
+    /// <summary>
+    /// Whether an entry's active flag means anything. A file that lists every plugin regardless (loadorder.txt)
+    /// marks them all active when parsed, so only its order can differ from the app's.
+    /// </summary>
+    bool CarriesSwitches => true;
 }
 
 /// <summary>A plugins.txt that names only the active plugins.</summary>
@@ -45,6 +51,8 @@ public sealed class LoadOrderFormat : IPluginListCodec
     public Encoding Encoding => PluginListEncoding.StrictUtf8;
 
     public string Decode(ReadOnlySpan<byte> bytes) => PluginListEncoding.DecodeUtf8OrWindows1252(bytes);
+
+    public bool CarriesSwitches => false;
 
     public string Render(IEnumerable<PluginListEntry> entries, PluginListTarget target) => LoadOrderTxt.Render(entries);
 

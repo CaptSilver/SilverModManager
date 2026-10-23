@@ -1,5 +1,9 @@
 using FluentAssertions;
+using NexusMods.Abstractions.Loadouts;
+using NexusMods.Sdk.Loadouts;
+using NexusMods.Games.CreationEngine.Models;
 using NexusMods.Games.CreationEngine.Tests.SortOrder;
+using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Games;
 using Xunit;
 
@@ -85,6 +89,87 @@ public abstract class ATextfileRoundTripTest<TTest, TGame>(ITestOutputHelper hel
 
         (await LoadOrderLines()).Skip(1).Should().Equal("C.esp", "A.esp", "B.esp");
         (await PluginLines()).Skip(1).Should().Equal("C.esp", "B.esp");
+    }
+
+    private string[] Notices(Loadout.ReadOnly loadout)
+    {
+        var id = Game.PluginVariety().SortOrderOf(Refresh(loadout), Connection);
+        return Connection.Db.Datoms(PluginListNotice.SortOrder, id)
+            .Select(d => PluginListNotice.Load(Connection.Db, d.E).Summary).ToArray();
+    }
+
+    private async Task<Loadout.ReadOnly> AppliedLoadoutOfThree()
+    {
+        var loadout = await CreateLoadoutOn("default");
+        await InstallPlugin(loadout, "A.esp");
+        await InstallPlugin(loadout, "B.esp");
+        await InstallPlugin(loadout, "C.esp");
+        await Apply(loadout);
+        return loadout;
+    }
+
+    [Fact]
+    public async Task AnEditOfLoadOrderTxt_IsReplacedAndReportedAsMovedPlugins()
+    {
+        var loadout = await AppliedLoadoutOfThree();
+
+        await GameHas(LoadOrderFile, "C.esp\nA.esp\nB.esp\n");
+        await Apply(loadout);
+
+        (await LoadOrderLines()).Skip(1).Should().Equal("A.esp", "B.esp", "C.esp");
+        var notice = Notices(loadout).Should().ContainSingle().Subject;
+        notice.Should().Contain("moved").And.Contain("C.esp").And.NotContain("switched");
+    }
+
+    [Fact]
+    public async Task AnUntouchedLoadOrderTxt_WithAPluginSwitchedOff_ProducesNoNotice()
+    {
+        var loadout = await AppliedLoadoutOfThree();
+        var variety = Game.PluginVariety();
+        await variety.SetEnabled(variety.SortOrderOf(Refresh(loadout), Connection), PluginSortOrderTestHelpers.Key("B.esp"), false);
+
+        await Apply(loadout);
+        await Apply(loadout);
+
+        Notices(loadout).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AnEditOfLoadOrderTxt_DoesNotReportASwitchMadeInTheAppAsTheGames()
+    {
+        var loadout = await AppliedLoadoutOfThree();
+        var variety = Game.PluginVariety();
+        await variety.SetEnabled(variety.SortOrderOf(Refresh(loadout), Connection), PluginSortOrderTestHelpers.Key("B.esp"), false);
+
+        await GameHas(LoadOrderFile, "C.esp\nA.esp\nB.esp\n");
+        await Apply(loadout);
+
+        var notice = Notices(loadout).Should().ContainSingle().Subject;
+        notice.Should().Contain("moved").And.Contain("C.esp").And.NotContain("switched");
+    }
+
+    [Fact]
+    public async Task EditsOfBothFiles_AreOneNoticeThatNamesBothChanges()
+    {
+        var loadout = await AppliedLoadoutOfThree();
+
+        await GameHas(LoadOrderFile, "C.esp\nA.esp\nB.esp\n");
+        await GameHas(PluginsFile, "A.esp\nC.esp\n");
+        await Apply(loadout);
+
+        var notice = Notices(loadout).Should().ContainSingle().Subject;
+        notice.Should().Contain("1 switched off").And.Contain("moved").And.Contain("B.esp").And.Contain("C.esp");
+    }
+
+    [Fact]
+    public async Task APluginsTxtEdit_IsStillReportedWhenLoadOrderTxtIsUntouched()
+    {
+        var loadout = await AppliedLoadoutOfThree();
+
+        await GameHas(PluginsFile, "A.esp\nC.esp\n");
+        await Apply(loadout);
+
+        Notices(loadout).Should().ContainSingle().Which.Should().Contain("1 switched off").And.Contain("B.esp");
     }
 
     [Fact]

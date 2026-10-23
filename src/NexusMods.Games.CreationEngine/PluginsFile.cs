@@ -29,20 +29,24 @@ public class PluginsFile : IIntrinsicFile
     private readonly ICreationEngineGame _game;
     private readonly IPluginListCodec _codec;
     private readonly bool _comparesWithGame;
+    private readonly PluginListNoticeGroup _noticeGroup;
     private readonly ILogger<PluginsFile> _logger;
 
     private record struct Metadata(RelativePath FileName, Hash Hash, PluginHeader Header);
 
     /// <param name="path">Where the file lives; the game's plugins file when omitted.</param>
+    /// <param name="noticeGroup">The files whose differences make up one notice; a file that is not given one reports alone.</param>
     /// <param name="comparesWithGame">
-    /// Whether Ingest compares the game's copy and records what differs. A file that cannot carry the switches
-    /// (loadorder.txt) leaves it to the file that can, since both would write the same notice.
+    /// Whether Ingest compares the game's copy and records what differs. False for a file that holds more than the
+    /// list (Morrowind.ini) or that has no notice of its own.
     /// </param>
-    public PluginsFile(ILogger<PluginsFile> logger, ICreationEngineGame game, IPluginListCodec codec, GamePath? path = null, bool comparesWithGame = true)
+    public PluginsFile(ILogger<PluginsFile> logger, ICreationEngineGame game, IPluginListCodec codec, GamePath? path = null, PluginListNoticeGroup? noticeGroup = null, bool comparesWithGame = true)
     {
         _game = game;
         _codec = codec;
         _comparesWithGame = comparesWithGame;
+        _noticeGroup = noticeGroup ?? new PluginListNoticeGroup();
+        if (comparesWithGame) _noticeGroup.Add(this);
         Path = path ?? game.PluginsFile;
         _logger = logger;
     }
@@ -205,11 +209,16 @@ public class PluginsFile : IIntrinsicFile
     }
 
     /// <summary>
-    /// Compares the game's file with the list the app would write and records what differs as a notice. The order
-    /// and switches in the database are never changed from here: the same Apply rewrites the file from them, which
+    /// Compares the game's files with the list the app would write and records what differs as a notice. The order
+    /// and switches in the database are never changed from here: the same Apply rewrites the files from them, which
     /// replaces the game's edits. With no previous state (first manage, or after a reset) the file is not the app's
     /// to compare, and the order it was seeded with has to win.
     /// </summary>
+    /// <remarks>
+    /// The notice covers every file of the group the game changed, whichever of them is ingested first, so a sibling
+    /// the game also changed is read from disk here. A sibling the game left alone is skipped: it still holds what
+    /// the app last wrote, so all it could differ by is a change the user made in the app since.
+    /// </remarks>
     public async Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
     {
         if (!_comparesWithGame) return;
@@ -227,8 +236,25 @@ public class PluginsFile : IIntrinsicFile
 
         var installation = loadout.InstallationInstance;
         var expected = await Expected(installation, _game.EarlyLoadingPlugins(installation), variety.StoredOrder(loadout), syncTree);
-        var difference = PluginListDifference.Between(expected, _codec.Parse(text));
 
+        var differences = new List<PluginListDifference>();
+        foreach (var file in _noticeGroup.Files)
+        {
+            var fileText = ReferenceEquals(file, this) ? text : await file.TextOnDisk(installation, syncTree);
+            if (fileText is null) continue;
+            differences.Add(PluginListDifference.Between(expected, file._codec.Parse(fileText), file._codec.CarriesSwitches));
+        }
+
+        if (!_noticeGroup.TryClaim(tx)) return;
+        var difference = PluginListDifference.Combine(differences.ToArray());
         PluginListNotices.Stage(loadout.Db, found.Value, difference.IsEmpty ? null : difference.Summary(), DateTimeOffset.UtcNow, tx);
+    }
+
+    /// <summary>The file as the game left it, or null when the game did not change it since the app last wrote it.</summary>
+    private async Task<string?> TextOnDisk(GameInstallation installation, IReadOnlyDictionary<GamePath, SyncNode> syncTree)
+    {
+        if (!syncTree.TryGetValue(Path, out var node) || !node.HavePrevious || !node.Actions.HasFlag(Actions.AdaptLoadout)) return null;
+        var file = installation.Locations.ToAbsolutePath(Path);
+        return file.FileExists ? _codec.Decode(await file.ReadAllBytesAsync()) : null;
     }
 }

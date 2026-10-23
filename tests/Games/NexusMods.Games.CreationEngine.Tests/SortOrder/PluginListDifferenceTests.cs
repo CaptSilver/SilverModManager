@@ -35,6 +35,29 @@ public class PluginListDifferenceTests
     }
 
     [Fact]
+    public void WhenTheFileCannotCarrySwitches_OnlyTheOrderIsCompared()
+    {
+        var expected = new[] { On("A.esp"), Off("B.esp"), On("C.esp") };
+        var onDisk = new[] { On("A.esp"), On("B.esp"), On("C.esp") };
+
+        PluginListDifference.Between(expected, onDisk, comparesSwitches: false).IsEmpty.Should().BeTrue();
+        PluginListDifference.Between(expected, [On("C.esp"), On("A.esp"), On("B.esp")], comparesSwitches: false).Moved.Should().Equal("C.esp");
+    }
+
+    [Fact]
+    public void Combining_UnitesEachKindAndKeepsTheNamesDistinct()
+    {
+        var first = new PluginListDifference(["A.esp"], [], ["C.esp"]);
+        var second = new PluginListDifference([], ["B.esp"], ["c.esp", "D.esp"]);
+
+        var both = PluginListDifference.Combine(first, second);
+
+        both.SwitchedOff.Should().Equal("A.esp");
+        both.SwitchedOn.Should().Equal("B.esp");
+        both.Moved.Should().Equal("C.esp", "D.esp");
+    }
+
+    [Fact]
     public void NamesAreComparedIgnoringCase()
     {
         PluginListDifference.Between([On("Mine.esp")], [On("mine.ESP")]).IsEmpty.Should().BeTrue();

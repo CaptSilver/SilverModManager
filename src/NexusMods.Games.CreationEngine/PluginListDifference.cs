@@ -19,7 +19,11 @@ public sealed record PluginListDifference(
 
     /// <param name="expected">The app's list, in load order.</param>
     /// <param name="onDisk">The game's file in file order. A plugin it does not list is inactive.</param>
-    public static PluginListDifference Between(IReadOnlyList<PluginListEntry> expected, IReadOnlyList<PluginListEntry> onDisk)
+    /// <param name="comparesSwitches">
+    /// False for a file that lists every plugin whether it is on or not (loadorder.txt), where only the order says
+    /// anything.
+    /// </param>
+    public static PluginListDifference Between(IReadOnlyList<PluginListEntry> expected, IReadOnlyList<PluginListEntry> onDisk, bool comparesSwitches = true)
     {
         var known = expected.Where(e => !e.IsEarlyLoader).ToList();
 
@@ -31,8 +35,12 @@ public sealed record PluginListDifference(
                 disk.TryAdd(onDisk[i].Name, (i, onDisk[i].Active));
         }
 
-        var off = known.Where(e => e.Active && !(disk.TryGetValue(e.Name, out var d) && d.Active)).Select(e => e.Name).ToList();
-        var on = known.Where(e => !e.Active && disk.TryGetValue(e.Name, out var d) && d.Active).Select(e => e.Name).ToList();
+        var off = comparesSwitches
+            ? known.Where(e => e.Active && !(disk.TryGetValue(e.Name, out var d) && d.Active)).Select(e => e.Name).ToList()
+            : [];
+        var on = comparesSwitches
+            ? known.Where(e => !e.Active && disk.TryGetValue(e.Name, out var d) && d.Active).Select(e => e.Name).ToList()
+            : [];
 
         // A plugin that stayed in the longest run still in the app's order did not move; the others did. That
         // counts a plugin dragged across forty others as one move, not forty-one.
@@ -42,6 +50,14 @@ public sealed record PluginListDifference(
 
         return new PluginListDifference(off, on, moved);
     }
+
+    /// <summary>What several files of one game, each compared on its own, add up to.</summary>
+    public static PluginListDifference Combine(params PluginListDifference[] differences) => new(
+        Union(differences.SelectMany(d => d.SwitchedOff)),
+        Union(differences.SelectMany(d => d.SwitchedOn)),
+        Union(differences.SelectMany(d => d.Moved)));
+
+    private static IReadOnlyList<string> Union(IEnumerable<string> names) => names.Distinct(PluginNameComparer.Instance).ToList();
 
     /// <summary>
     /// The text shown to the user, e.g. <c>1 switched off, 2 moved: A.esp, B.esp, C.esp</c>. Counts of zero are left
