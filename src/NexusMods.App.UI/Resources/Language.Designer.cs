@@ -4039,6 +4039,15 @@ namespace NexusMods.App.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to The load order could not be changed.
+        /// </summary>
+        public static string LoadOrder_EditFailedTitle {
+            get {
+                return ResourceManager.GetString("LoadOrder_EditFailedTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Got it.
         /// </summary>
         public static string LoadOrder_SortWithLoot_Dismiss {

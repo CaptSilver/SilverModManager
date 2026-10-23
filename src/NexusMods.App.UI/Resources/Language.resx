@@ -1410,6 +1410,9 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="LoadOrder_SortWithLoot_FailedTitle" xml:space="preserve">
         <value>LOOT could not sort the plugins</value>
     </data>
+    <data name="LoadOrder_EditFailedTitle" xml:space="preserve">
+        <value>The load order could not be changed</value>
+    </data>
     <data name="LoadOrder_SortWithLoot_Dismiss" xml:space="preserve">
         <value>Got it</value>
     </data>

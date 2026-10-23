@@ -8,6 +8,7 @@ using OneOf;
 using System.ComponentModel;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.App.UI.Controls;
 using NexusMods.App.UI.Dialog;
 using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Pages.Sorting;
@@ -57,8 +58,9 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
 
         public ValueTask<SortOrderId> GetOrCreateSortOrderFor(LoadoutId loadoutId, OneOf<LoadoutId, CollectionGroupId> parentEntity, CancellationToken token = default) => throw new NotSupportedException();
         public IObservable<IChangeSet<IReactiveSortItem, ISortItemKey>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId) => throw new NotSupportedException();
-        public Task MoveItems(SortOrderId sortOrderId, ISortItemKey[] itemsToMove, ISortItemKey dropTargetItem, TargetRelativePosition relativePosition, IDb? db = null, CancellationToken token = default) => throw new NotSupportedException();
-        public Task MoveItemDelta(SortOrderId sortOrderId, ISortItemKey sourceItem, int delta, IDb? db = null, CancellationToken token = default) => throw new NotSupportedException();
+        public Exception? MoveFailure { get; init; }
+        public Task MoveItems(SortOrderId sortOrderId, ISortItemKey[] itemsToMove, ISortItemKey dropTargetItem, TargetRelativePosition relativePosition, IDb? db = null, CancellationToken token = default) => Task.FromException(MoveFailure ?? new NotSupportedException());
+        public Task MoveItemDelta(SortOrderId sortOrderId, ISortItemKey sourceItem, int delta, IDb? db = null, CancellationToken token = default) => Task.FromException(MoveFailure ?? new NotSupportedException());
         public ValueTask ReconcileSortOrder(SortOrderId sortOrderId, IDb? db = null, CancellationToken token = default) => throw new NotSupportedException();
         public ValueTask DeleteSortOrder(SortOrderId sortOrderId, CancellationToken token = default) => throw new NotSupportedException();
     }
@@ -66,11 +68,13 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
     private sealed class FakePluginVariety(params IReactiveSortItem[] items) : FakeVariety(items), IToggleableSortOrderVariety, IReplacedGameEditSource
     {
         public List<(ISortItemKey Key, bool Enabled)> Switched { get; } = [];
+        public Exception? SwitchFailure { get; init; }
         public int Dismissals { get; private set; }
         public BehaviorSubject<string?> Summaries { get; } = new(null);
 
         public Task SetEnabled(SortOrderId sortOrderId, ISortItemKey item, bool enabled, CancellationToken token = default)
         {
+            if (SwitchFailure is not null) throw SwitchFailure;
             Switched.Add((item, enabled));
             return Task.CompletedTask;
         }
@@ -177,6 +181,53 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
         await vm.ToggleEnabledCommand.Execute(PluginKey);
 
         variety.Switched.Should().BeEmpty();
+    }
+
+    private const string NotPersisted = "Plugin 'a.esp' is not in sort order 42.";
+
+    private static FakePluginVariety VarietyWhoseEditsFail() =>
+        new(new FakeItem(isEnabled: true, isLocked: false))
+        {
+            SwitchFailure = new InvalidOperationException(NotPersisted),
+            MoveFailure = new InvalidOperationException(NotPersisted),
+        };
+
+    [Fact]
+    public async Task ToggleEnabledCommand_ForARowThatIsNotStoredYet_ShowsTheErrorInsteadOfThrowing()
+    {
+        var vm = NewViewModel(VarietyWhoseEditsFail());
+
+        await vm.ToggleEnabledCommand.Execute(PluginKey);
+
+        vm.HasLootOutcome.Should().BeTrue();
+        vm.LootOutcomeTitle.Should().Be(Language.LoadOrder_EditFailedTitle);
+        vm.LootOutcomeSummary.Should().Contain(NotPersisted);
+    }
+
+    [Fact]
+    public async Task MovingARowThatIsNotStoredYet_ShowsTheErrorInsteadOfThrowing()
+    {
+        var vm = NewViewModel(VarietyWhoseEditsFail());
+        using var _ = vm.Activator.Activate();
+
+        ((LoadOrderTreeDataGridAdapter)vm.Adapter).MessageSubject.OnNext(
+            new LoadOrderTreeDataGridAdapter.MoveUpCommandPayload(new CompositeItemModel<ISortItemKey>(PluginKey)));
+
+        await WaitUntil(() => vm.HasLootOutcome);
+        vm.LootOutcomeTitle.Should().Be(Language.LoadOrder_EditFailedTitle);
+        vm.LootOutcomeSummary.Should().Contain(NotPersisted);
+    }
+
+    [Fact]
+    public async Task DroppingARowThatIsNotStoredYet_ShowsTheErrorInsteadOfThrowing()
+    {
+        var vm = NewViewModel(VarietyWhoseEditsFail());
+
+        await vm.MoveDropped([PluginKey], new SortItemKey<string>("b.esp"), TargetRelativePosition.AfterTarget, CancellationToken.None);
+
+        vm.HasLootOutcome.Should().BeTrue();
+        vm.LootOutcomeTitle.Should().Be(Language.LoadOrder_EditFailedTitle);
+        vm.LootOutcomeSummary.Should().Contain(NotPersisted);
     }
 
     [Fact]

@@ -67,6 +67,34 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
 
     public TreeDataGridAdapter<CompositeItemModel<ISortItemKey>, ISortItemKey> Adapter { get; }
 
+    private readonly ILogger<LoadOrderViewModel> _logger;
+    private readonly ISortOrderVariety _variety;
+    private readonly SortOrderId _sortOrderId;
+
+    /// <summary>
+    /// Runs a change to the order. A row can be listed before it is stored (a plugin that joined the loadout since
+    /// the last sync), so the change fails; the user sees the error in the panel the LOOT sort uses, instead of it
+    /// reaching the unhandled-exception handler.
+    /// </summary>
+    private async Task RunEdit(Func<Task> edit)
+    {
+        try
+        {
+            await edit();
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _logger.LogError(e, "Changing the {Variety} order failed", _variety.SortOrderVarietyId);
+            LootOutcomeTitle = Language.LoadOrder_EditFailedTitle;
+            LootOutcomeSummary = e.Message;
+            HasLootOutcome = true;
+        }
+    }
+
+    /// <summary>Moves rows dropped on <paramref name="target"/>, showing the error instead of throwing when it fails.</summary>
+    internal Task MoveDropped(ISortItemKey[] keys, ISortItemKey target, TargetRelativePosition position, CancellationToken token) =>
+        RunEdit(() => _variety.MoveItems(_sortOrderId, keys, target, position, token: token));
+
     [UsedImplicitly]
     public LoadOrderViewModel(
         IServiceProvider serviceProvider,
@@ -77,10 +105,13 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
         var settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
 
         SortOrderVariety = sortOrderVariety;
+        _variety = sortOrderVariety;
+        _logger = serviceProvider.GetRequiredService<ILogger<LoadOrderViewModel>>();
         var optionalSortOrderId = sortOrderVariety.GetSortOrderIdFor(loadoutId);
         if (!optionalSortOrderId.HasValue)
             throw new InvalidOperationException($"No sort order found for loadout {loadoutId} and variety {sortOrderVariety.SortOrderVarietyId}");
         var sortOrderId = optionalSortOrderId.Value;
+        _sortOrderId = sortOrderId;
         
         SortOrderName = sortOrderVariety.SortOrderUiMetadata.SortOrderName;
         InfoAlertTitle = sortOrderVariety.SortOrderUiMetadata.OverrideInfoTitle;
@@ -134,7 +165,7 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
 
                 // The switch is disabled for these rows already; this covers a stale click.
                 if (details.IsLocked) return;
-                await toggleable.SetEnabled(sortOrderId, key, !details.IsEnabled);
+                await RunEdit(() => toggleable.SetEnabled(sortOrderId, key, !details.IsEnabled));
             },
             canExecute: System.Reactive.Linq.Observable.Return(SupportsToggle)
         );
@@ -229,7 +260,7 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
                                 }
                             );
                             
-                            await sortOrderVariety.MoveItemDelta(sortOrderId, key, delta, token: cancellationToken);
+                            await RunEdit(() => sortOrderVariety.MoveItemDelta(sortOrderId, key, delta, token: cancellationToken));
                         })
                     .DisposeWith(d);
 
@@ -291,7 +322,7 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
                                     return;
                             }
                             
-                            await sortOrderVariety.MoveItems(sortOrderId, keysToMove, dropTargetKey, relativePosition, token: cancellationToken);
+                            await MoveDropped(keysToMove, dropTargetKey, relativePosition, cancellationToken);
                         },
                         awaitOperation: AwaitOperation.Drop)
                     .DisposeWith(d);
