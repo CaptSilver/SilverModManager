@@ -1,3 +1,4 @@
+using NexusMods.Games.Bethesda.Loot.Database;
 using NexusMods.Games.Bethesda.Loot.Metadata;
 using YamlDotNet.RepresentationModel;
 
@@ -88,9 +89,22 @@ internal static class YamlGetters
     }
 
     /// <summary>
-    /// A condition or constraint string. libloot also parses it here and rejects one that is not a
-    /// valid condition expression; this keeps the text as written.
+    /// A condition or constraint string, kept as written once it parses as a condition expression.
     /// </summary>
-    public static string? ReadCondition(YamlMappingNode mapping, string key, YamlObjectType type) =>
-        GetString(mapping, key, type)?.Value;
+    /// <exception cref="MetadataParseException">The string is not a valid condition.</exception>
+    public static string? ReadCondition(YamlMappingNode mapping, string key, YamlObjectType type)
+    {
+        if (GetString(mapping, key, type) is not var (position, value)) return null;
+
+        try
+        {
+            _ = ConditionExpression.Parse(value);
+        }
+        catch (ConditionParseException e)
+        {
+            throw MetadataParseException.InvalidCondition(position, value, e);
+        }
+
+        return value;
+    }
 }

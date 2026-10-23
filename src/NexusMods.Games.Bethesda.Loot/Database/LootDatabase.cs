@@ -141,8 +141,14 @@ public sealed class LootDatabase
             return kept;
         }
 
-        // The cleaning entries' own condition is checked here; LOOT also requires the plugin's checksum
-        // to match, which cannot be checked without reading the plugin.
+        EquatableArray<T> DropAll<T>(EquatableArray<T> items)
+        {
+            dropped += items.Count;
+            return [];
+        }
+
+        // LOOT wraps every cleaning entry in checksum(<plugin>, <crc>) and keeps it only when the plugin's
+        // CRC matches. That needs the plugin's bytes, so none can be kept, with or without a condition of their own.
         var evaluated = metadata with
         {
             LoadAfter = KeepUnconditioned(metadata.LoadAfter, f => f.Condition),
@@ -150,8 +156,8 @@ public sealed class LootDatabase
             Incompatibilities = KeepUnconditioned(metadata.Incompatibilities, f => f.Condition),
             Messages = KeepUnconditioned(metadata.Messages, m => m.Condition),
             Tags = KeepUnconditioned(metadata.Tags, t => t.Condition),
-            DirtyInfo = KeepUnconditioned(metadata.DirtyInfo, c => c.Condition),
-            CleanInfo = KeepUnconditioned(metadata.CleanInfo, c => c.Condition),
+            DirtyInfo = DropAll(metadata.DirtyInfo),
+            CleanInfo = DropAll(metadata.CleanInfo),
         };
 
         return (evaluated.HasNameOnly ? null : evaluated, dropped);

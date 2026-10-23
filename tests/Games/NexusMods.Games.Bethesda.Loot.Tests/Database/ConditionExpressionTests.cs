@@ -311,4 +311,57 @@ public class ConditionExpressionTests
     {
         Parsing(condition).Should().NotThrow();
     }
+
+    [Theory]
+    [InlineData("description_contains(\"a.esp\", \"(?>a)b\")", "atomic group")]
+    [InlineData("many(\"(?(a)b|c)\\.esp\")", "conditional")]
+    [InlineData("many(\"a(?#comment)\\.esp\")", "comment")]
+    [InlineData("many(\"\\Ga\\.esp\")", "escape")]
+    [InlineData("many(\"a\\.esp\\Z\")", "escape")]
+    [InlineData("many(\"a\\q\\.esp\")", "escape")]
+    [InlineData("many(\"a\\e\\.esp\")", "escape")]
+    [InlineData("many(\"a{\\.esp\")", "repetition")]
+    [InlineData("many(\"a{x}\\.esp\")", "repetition")]
+    [InlineData("many(\"a{,3}\\.esp\")", "repetition")]
+    [InlineData("many(\"(?'n'a)\\.esp\")", "group")]
+    [InlineData("many(\"(?P=n)\\.esp\")", "group")]
+    [InlineData("description_contains(\"a.esp\", \"[\\<]\")", "escape")]
+    public void ShouldRejectRegexSyntaxTheRustRegexCrateRejectsButDotNetAccepts(string condition, string construct)
+    {
+        Parsing(condition).Should().Throw<ConditionParseException>().WithMessage($"*{construct}*does not support*");
+    }
+
+    // Rust reads these as syntax .NET does not share (most of them valid there), so a condition using one
+    // is refused rather than evaluated differently from LOOT.
+    [Theory]
+    [InlineData("many(\"[[]a\\.esp\")", "nested")]
+    [InlineData("many(\"[a-z-[aeiou]]\\.esp\")", "nested")]
+    [InlineData("many(\"[[:alpha:]]\\.esp\")", "nested")]
+    [InlineData("many(\"[a&&b]\\.esp\")", "set operation")]
+    [InlineData("many(\"[a--b]\\.esp\")", "set operation")]
+    [InlineData("many(\"[a~~b]\\.esp\")", "set operation")]
+    [InlineData("description_contains(\"a.esp\", \"\\<a\")", "word boundary")]
+    [InlineData("description_contains(\"a.esp\", \"a\\>\")", "word boundary")]
+    public void ShouldRejectRegexSyntaxTheRustRegexCrateReadsDifferently(string condition, string construct)
+    {
+        Parsing(condition).Should().Throw<ConditionParseException>().WithMessage($"*{construct}*reads differently*");
+    }
+
+    [Theory]
+    [InlineData("many(\"a{2}\\.esp\")")]
+    [InlineData("many(\"a{2,}\\.esp\")")]
+    [InlineData("many(\"a{2,3}\\.esp\")")]
+    [InlineData("many(\"a\\{b\\.esp\")")]
+    [InlineData("many(\"[a{]\\.esp\")")]
+    [InlineData("many(\"a\\-b\\.esp\")")]
+    [InlineData("many(\"[a\\[]\\.esp\")")]
+    [InlineData("many(\"[]a]\\.esp\")")]
+    [InlineData("many(\"[a-z-]\\.esp\")")]
+    [InlineData("many(\"(?i:a)\\.esp\")")]
+    [InlineData("many(\"\\d\\w\\s\\b\\x41\\.esp\")")]
+    [InlineData("many(\"\\p{L}\\.esp\")")]
+    public void ShouldAcceptRegexSyntaxBothEnginesShare(string condition)
+    {
+        Parsing(condition).Should().NotThrow();
+    }
 }

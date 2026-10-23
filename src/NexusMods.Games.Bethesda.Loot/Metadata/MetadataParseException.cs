@@ -58,4 +58,7 @@ public sealed class MetadataParseException : Exception
 
     internal static MetadataParseException InvalidRegex(SourcePosition position, string name, Exception inner) =>
         new(position, $"invalid regex in \"name\" key with value \"{name}\"", inner);
+
+    internal static MetadataParseException InvalidCondition(SourcePosition position, string condition, Exception inner) =>
+        new(position, $"the condition string \"{condition}\" is invalid", inner);
 }

@@ -179,7 +179,7 @@ internal static class MetadataYaml
             ? ReadMessageContents(detailNode, "detail", YamlObjectType.PluginCleaningData)
             : default;
 
-        var condition = ReadCondition(mapping, "condition", YamlObjectType.File);
+        var condition = ReadCondition(mapping, "condition", YamlObjectType.PluginCleaningData);
 
         return new PluginCleaningData(crc, util)
         {

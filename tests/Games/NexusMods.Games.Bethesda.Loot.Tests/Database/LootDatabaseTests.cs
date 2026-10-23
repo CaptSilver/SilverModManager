@@ -353,7 +353,7 @@ public class LootDatabaseTests
         }
 
         [Fact]
-        public void ShouldDropConditionedFilesTagsAndCleaningDataAndCountEachWhenEvaluating()
+        public void ShouldDropConditionedFilesTagsAndEveryCleaningEntryAndCountEachWhenEvaluating()
         {
             var database = new LootDatabase();
             database.LoadMasterlist("""
@@ -380,14 +380,14 @@ public class LootDatabaseTests
 
             var (metadata, unevaluated) = database.PluginMetadata("A.esp", MergeMode.WithUserMetadata, EvalMode.Evaluate);
 
-            unevaluated.Should().Be(7);
+            unevaluated.Should().Be(8);
             LoadAfterNames(metadata).Should().Equal("C.esp");
             metadata!.Requirements.Should().BeEmpty();
             metadata.Incompatibilities.Should().BeEmpty();
             metadata.Tags.Select(t => t.Name).Should().Equal("Delev");
             metadata.Messages.Should().BeEmpty();
             metadata.DirtyInfo.Should().BeEmpty();
-            metadata.CleanInfo.Select(c => c.Crc).Should().Equal(3u);
+            metadata.CleanInfo.Should().BeEmpty();
         }
 
         [Fact]

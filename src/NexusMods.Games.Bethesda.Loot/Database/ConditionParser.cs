@@ -370,11 +370,11 @@ internal sealed class ConditionParser
         return anchored;
     }
 
-    // Rust's regex crate is the engine in LOOT, and it refuses constructs .NET accepts.
+    // Rust's regex crate is the engine in LOOT; it refuses some constructs .NET accepts and reads others differently.
     private void CheckRegex(string source, string pattern, int errorPosition)
     {
         if (ConditionRegex.FindUnsupportedConstruct(source) is { } construct)
-            throw Failure($"the regex \"{source}\" uses {construct}, which LOOT's regex engine does not support", errorPosition);
+            throw Failure($"the regex \"{source}\" uses {construct}", errorPosition);
 
         try
         {

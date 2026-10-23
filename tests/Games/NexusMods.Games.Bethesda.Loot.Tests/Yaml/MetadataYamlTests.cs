@@ -4,8 +4,8 @@ using static NexusMods.Games.Bethesda.Loot.Tests.Metadata.TestNames;
 
 namespace NexusMods.Games.Bethesda.Loot.Tests.Yaml;
 
-// libloot's try_from_yaml tests for each metadata type. The tests for an invalid condition or
-// constraint string are not here: conditions are kept as written until the condition parser exists.
+// libloot's try_from_yaml tests for each metadata type. The invalid condition and constraint cases
+// are in ConditionValidationTests.
 public class MetadataYamlTests
 {
     private static Func<object> Reading<T>(Func<YamlDotNet.RepresentationModel.YamlNode, T> read, string yaml)
