@@ -17,8 +17,11 @@ public interface IPluginListCodec
     /// <summary>The entries of the file in file order.</summary>
     IReadOnlyList<PluginListEntry> Parse(string text);
 
-    /// <summary>The encoding the game reads the file in.</summary>
-    Encoding Encoding => new UTF8Encoding(false);
+    /// <summary>The encoding the file is written in. Windows-1252 unless the file says otherwise.</summary>
+    Encoding Encoding => PluginListEncoding.Windows1252;
+
+    /// <summary>The text of the file's bytes as they are read back.</summary>
+    string Decode(ReadOnlySpan<byte> bytes) => Encoding.GetString(bytes);
 
     /// <summary>
     /// Whether the file holds more than the plugin list (Morrowind.ini, openmw.cfg). The app then reads what is
@@ -38,6 +41,11 @@ public sealed class PlainFormat : IPluginListCodec
 /// <summary>A loadorder.txt: every plugin in order. It cannot say which are active, so every parsed entry is marked active.</summary>
 public sealed class LoadOrderFormat : IPluginListCodec
 {
+    // libloadorder writes loadorder.txt as UTF-8 and reads it as UTF-8 with a Windows-1252 fallback.
+    public Encoding Encoding => PluginListEncoding.StrictUtf8;
+
+    public string Decode(ReadOnlySpan<byte> bytes) => PluginListEncoding.DecodeUtf8OrWindows1252(bytes);
+
     public string Render(IEnumerable<PluginListEntry> entries, PluginListTarget target) => LoadOrderTxt.Render(entries);
 
     public IReadOnlyList<PluginListEntry> Parse(string text) =>
@@ -47,9 +55,10 @@ public sealed class LoadOrderFormat : IPluginListCodec
 /// <summary>The <c>[Game Files]</c> section of Morrowind.ini, which the game writes in Windows-1252.</summary>
 public sealed class MorrowindIniFormat : IPluginListCodec
 {
-    // Latin-1 maps every byte to a char and back, so the rest of the ini survives a rewrite untouched; the
-    // plugin names are file names from Data Files and sit in the range where Latin-1 and Windows-1252 agree.
-    public Encoding Encoding => Encoding.Latin1;
+    // libloadorder reads and writes Morrowind.ini as Windows-1252. 0x80-0x9F hold real characters there (the euro
+    // sign, Š, Œ), which Latin-1 would read as control characters and write back as '?'. Every byte still
+    // round-trips, so the rest of the ini survives a rewrite untouched.
+    public Encoding Encoding => PluginListEncoding.Windows1252;
 
     public bool RewritesExisting => true;
 
@@ -63,6 +72,23 @@ public sealed class MorrowindIniFormat : IPluginListCodec
 /// <summary>The <c>content=</c> lines of openmw.cfg for the plugins in Data Files.</summary>
 public sealed class OpenMwConfigFormat : IPluginListCodec
 {
+    public const string FileName = "openmw.cfg";
+
+    // openmw.cfg is UTF-8, and libloadorder refuses one that isn't rather than rewrite it with substitutes.
+    public Encoding Encoding => PluginListEncoding.StrictUtf8;
+
+    public string Decode(ReadOnlySpan<byte> bytes)
+    {
+        try
+        {
+            return PluginListEncoding.DecodeUtf8(bytes);
+        }
+        catch (DecoderFallbackException)
+        {
+            throw new UndecodablePluginListException(FileName, "UTF-8");
+        }
+    }
+
     public bool RewritesExisting => true;
 
     public string Render(IEnumerable<PluginListEntry> entries, PluginListTarget target) =>

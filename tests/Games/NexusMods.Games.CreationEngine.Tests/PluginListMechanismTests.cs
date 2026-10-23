@@ -32,6 +32,19 @@ public class AsteriskMechanismTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task ReadGameState_ReadsPluginsTxtAsWindows1252()
+    {
+        var loadout = await CreateLoadout();
+        var file = GameInstallation.Locations.ToAbsolutePath(Game.PluginsFile);
+        file.Parent.CreateDirectory();
+        await file.WriteAllBytesAsync([(byte)'*', 0xDC, (byte)'n', 0xEF, (byte)'c', 0xF6, (byte)'d', 0xE9, (byte)'.', (byte)'e', (byte)'s', (byte)'p', (byte)'\n']);
+
+        var state = await new AsteriskMechanism().ReadGameState(Game, loadout);
+
+        state!.Entries.Should().Equal(("\u00dcn\u00efc\u00f6d\u00e9.esp", true));
+    }
+
+    [Fact]
     public async Task ReadGameState_IsNullWhenTheGameHasNoListYet()
     {
         var loadout = await CreateLoadout();
@@ -79,6 +92,32 @@ public class TextfileMechanismTests(ITestOutputHelper helper)
         var state = await new TextfileMechanism().ReadGameState(Game, loadout);
 
         state!.Entries.Should().Equal(("Skyrim.esm", true), ("B.esp", false), ("A.esp", true), ("C.esp", false));
+    }
+
+    [Fact]
+    public async Task ReadGameState_ReadsPluginsTxtAsWindows1252AndLoadOrderTxtAsUtf8()
+    {
+        var loadout = await CreateLoadout();
+        await Write(OrderFile, "Skyrim.esm\n\u00dcn\u00efc\u00f6d\u00e9.esp\n");
+        ActiveFile.Parent.CreateDirectory();
+        await ActiveFile.WriteAllBytesAsync([.. "Skyrim.esm\n"u8, 0xDC, (byte)'n', 0xEF, (byte)'c', 0xF6, (byte)'d', 0xE9, (byte)'.', (byte)'e', (byte)'s', (byte)'p', (byte)'\n']);
+
+        var state = await new TextfileMechanism().ReadGameState(Game, loadout);
+
+        state!.Entries.Should().Equal(("Skyrim.esm", true), ("\u00dcn\u00efc\u00f6d\u00e9.esp", true));
+    }
+
+    [Fact]
+    public async Task ReadGameState_FallsBackToWindows1252ForALoadOrderTxtThatIsNotUtf8()
+    {
+        var loadout = await CreateLoadout();
+        OrderFile.Parent.CreateDirectory();
+        await OrderFile.WriteAllBytesAsync([.. "Skyrim.esm\n"u8, 0xDC, (byte)'n', 0xEF, (byte)'c', 0xF6, (byte)'d', 0xE9, (byte)'.', (byte)'e', (byte)'s', (byte)'p', (byte)'\n']);
+        await Write(ActiveFile, "Skyrim.esm\n");
+
+        var state = await new TextfileMechanism().ReadGameState(Game, loadout);
+
+        state!.Entries.Should().Equal(("Skyrim.esm", true), ("\u00dcn\u00efc\u00f6d\u00e9.esp", false));
     }
 
     [Fact]

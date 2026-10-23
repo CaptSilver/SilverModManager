@@ -56,6 +56,66 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
         return Encoding.UTF8.GetString(stream.ToArray());
     }
 
+    private static async Task<byte[]> WriteNamed(IPluginListCodec codec, string name)
+    {
+        var plugins = new PluginsFile(NullLogger<PluginsFile>.Instance, GameWith(), codec);
+        var tree = new Dictionary<GamePath, SyncNode> { [new GamePath(LocationId.Game, $"Data Files/{name}")] = Node() };
+
+        using var stream = new MemoryStream();
+        await plugins.Render(stream, null!, [], [], tree);
+        return stream.ToArray();
+    }
+
+    [Fact]
+    public async Task Write_PluginsTxt_EncodesNamesAsWindows1252()
+    {
+        var bytes = await WriteNamed(new PlainFormat(), "\u00dcn\u00efc\u00f6d\u00e9.esp");
+
+        bytes.Should().Contain(0xDC).And.Contain(0xE9);
+        Encoding.UTF8.GetString(bytes).Should().NotContain("\u00dc");
+    }
+
+    [Fact]
+    public async Task Write_LoadOrderTxt_EncodesNamesAsUtf8()
+    {
+        var bytes = await WriteNamed(new LoadOrderFormat(), "\u00dcn\u00efc\u00f6d\u00e9.esp");
+
+        Encoding.UTF8.GetString(bytes).Should().Contain("\u00dcn\u00efc\u00f6d\u00e9.esp");
+    }
+
+    [Fact]
+    public async Task Write_PluginsTxt_RefusesANameWindows1252CannotHold_NamingThePlugin()
+    {
+        var act = () => WriteNamed(new AsteriskMechanism(), "\u65e5\u672c.esp");
+
+        (await act.Should().ThrowAsync<UnencodablePluginNamesException>()).Which.PluginNames.Should().Equal("\u65e5\u672c.esp");
+    }
+
+    [Fact]
+    public void MorrowindIni_RoundTripsWindows1252NamesThatLatin1WouldLose()
+    {
+        IPluginListCodec codec = new MorrowindIniFormat();
+        byte[] bytes = [0x80, 0x8A, (byte)'.', (byte)'e', (byte)'s', (byte)'p'];
+
+        codec.Decode(bytes).Should().Be("\u20ac\u0160.esp");
+        codec.Encoding.GetBytes("\u20ac\u0160.esp").Should().Equal(bytes);
+    }
+
+    [Fact]
+    public void OpenMwConfig_RefusesBytesThatArentUtf8_NamingTheFile()
+    {
+        var act = () => new OpenMwConfigFormat().Decode([.. "content="u8, 0xDC, .. ".esp\n"u8]);
+
+        act.Should().Throw<UndecodablePluginListException>().Which.FileName.Should().Be("openmw.cfg");
+    }
+
+    [Fact]
+    public void OpenMwConfig_ReadsUtf8WithoutItsBom()
+    {
+        new OpenMwConfigFormat().Decode([0xEF, 0xBB, 0xBF, .. Encoding.UTF8.GetBytes("content=\u00dc.esp\n")])
+            .Should().Be("content=\u00dc.esp\n");
+    }
+
     [Fact]
     public async Task Write_Plain_ListsOnlyPluginsInTheGamesDataFolderWithoutAMarker()
     {

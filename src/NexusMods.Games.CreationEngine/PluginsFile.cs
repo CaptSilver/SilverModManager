@@ -80,10 +80,27 @@ public class PluginsFile : IIntrinsicFile
         var dataPlugins = syncTree.Keys.Where(IsPluginPath).Select(path => path.FileName.ToString()).ToHashSet(PluginNameComparer.Instance);
         var text = _codec.Render(listed, new PluginListTarget(existing, dataPlugins));
 
+        var bytes = Encode(text, listed);
         await stream.WriteAsync(bom);
-        await using var writer = new StreamWriter(stream, _codec.Encoding, leaveOpen: true);
-        await writer.WriteAsync(text);
-        await writer.FlushAsync();
+        await stream.WriteAsync(bytes);
+    }
+
+    /// <summary>The file's bytes. A name the encoding can't hold is reported by name instead of written as a substitute.</summary>
+    private byte[] Encode(string text, IEnumerable<PluginListEntry> listed)
+    {
+        try
+        {
+            return _codec.Encoding.GetBytes(text);
+        }
+        catch (EncoderFallbackException)
+        {
+            var offenders = listed
+                .Select(e => e.Name)
+                .Where(name => text.Contains(name, StringComparison.Ordinal) && !PluginListEncoding.CanEncode(_codec.Encoding, name))
+                .Distinct(PluginNameComparer.Instance)
+                .ToList();
+            throw new UnencodablePluginNamesException(Path.FileName.ToString(), _codec.Encoding.WebName, offenders);
+        }
     }
 
     private static readonly byte[] Utf8Bom = Encoding.UTF8.GetPreamble();
@@ -96,7 +113,7 @@ public class PluginsFile : IIntrinsicFile
 
         var bytes = await onDisk.ReadAllBytesAsync();
         var hasBom = bytes.AsSpan().StartsWith(Utf8Bom);
-        return (_codec.Encoding.GetString(bytes.AsSpan(hasBom ? Utf8Bom.Length : 0)), hasBom ? Utf8Bom : []);
+        return (_codec.Decode(bytes.AsSpan(hasBom ? Utf8Bom.Length : 0)), hasBom ? Utf8Bom : []);
     }
 
     private bool IsPluginPath(GamePath path) =>
@@ -202,8 +219,11 @@ public class PluginsFile : IIntrinsicFile
         if (variety.GetSortOrderIdFor(loadout.LoadoutId, loadout.Db) is not { HasValue: true } found) return;
 
         string text;
-        using (var reader = new StreamReader(stream, _codec.Encoding, leaveOpen: true))
-            text = await reader.ReadToEndAsync();
+        using (var buffer = new MemoryStream())
+        {
+            await stream.CopyToAsync(buffer);
+            text = _codec.Decode(buffer.GetBuffer().AsSpan(0, (int)buffer.Length));
+        }
 
         var installation = loadout.InstallationInstance;
         var expected = await Expected(installation, _game.EarlyLoadingPlugins(installation), variety.StoredOrder(loadout), syncTree);

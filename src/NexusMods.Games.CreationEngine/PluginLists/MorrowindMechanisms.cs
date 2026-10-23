@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
@@ -35,7 +34,7 @@ public sealed class MorrowindIniMechanism : IPluginListMechanism
         return TimestampMechanism.OrderedByTime(game, installation, active);
     }
 
-    internal static async Task<string> ReadIni(AbsolutePath file) => Encoding.Latin1.GetString(await file.ReadAllBytesAsync());
+    internal static async Task<string> ReadIni(AbsolutePath file) => PluginListEncoding.DecodeWindows1252(await file.ReadAllBytesAsync());
 }
 
 /// <summary>
@@ -61,7 +60,7 @@ public sealed class OpenMwMechanism : IPluginListMechanism
         var file = loadout.InstallationInstance.Locations.ToAbsolutePath(Morrowind.Morrowind.OpenMwConfigFile);
         if (!file.FileExists) return null;
 
-        var names = OpenMwContentWriter.ContentNames(await file.ReadAllTextAsync());
+        var names = OpenMwContentWriter.ContentNames(new OpenMwConfigFormat().Decode(await file.ReadAllBytesAsync()));
         return new GamePluginListState(names.Select(name => (name, true)).ToList());
     }
 }

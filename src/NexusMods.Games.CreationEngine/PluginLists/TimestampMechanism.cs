@@ -66,7 +66,7 @@ public sealed class TimestampMechanism : IPluginListMechanism
         var file = locations.ToAbsolutePath(PluginsFilePath(game, installation));
         if (!file.FileExists) return null;
 
-        var active = PlainPluginList.Parse(await file.ReadAllTextAsync()).Select(e => e.Name).ToHashSet(PluginNameComparer.Instance);
+        var active = PlainPluginList.Parse(PluginListEncoding.DecodeWindows1252(await file.ReadAllBytesAsync())).Select(e => e.Name).ToHashSet(PluginNameComparer.Instance);
 
         return OrderedByTime(game, installation, active);
     }

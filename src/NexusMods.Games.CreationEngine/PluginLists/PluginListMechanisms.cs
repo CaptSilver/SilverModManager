@@ -30,7 +30,7 @@ public sealed class AsteriskMechanism : IPluginListMechanism, IPluginListCodec
         var file = loadout.InstallationInstance.Locations.ToAbsolutePath(game.PluginsFile);
         if (!file.FileExists) return null;
 
-        var entries = Parse(await file.ReadAllTextAsync()).Select(e => (e.Name, e.Active)).ToList();
+        var entries = Parse(PluginListEncoding.DecodeWindows1252(await file.ReadAllBytesAsync())).Select(e => (e.Name, e.Active)).ToList();
         return new GamePluginListState(entries);
     }
 }
@@ -63,13 +63,13 @@ public sealed class TextfileMechanism : IPluginListMechanism
         if (!activeFile.FileExists && !orderFile.FileExists) return null;
 
         var active = activeFile.FileExists
-            ? PlainPluginList.Parse(await activeFile.ReadAllTextAsync()).Select(e => e.Name).ToList()
+            ? PlainPluginList.Parse(PluginListEncoding.DecodeWindows1252(await activeFile.ReadAllBytesAsync())).Select(e => e.Name).ToList()
             : [];
         // With no loadorder.txt the game's own order is plugins.txt's.
         if (!orderFile.FileExists) return new GamePluginListState(active.Select(name => (name, true)).ToList());
 
         var activeSet = active.ToHashSet(PluginNameComparer.Instance);
-        var order = LoadOrderTxt.Parse(await orderFile.ReadAllTextAsync());
+        var order = LoadOrderTxt.Parse(PluginListEncoding.DecodeUtf8OrWindows1252(await orderFile.ReadAllBytesAsync()));
         var listed = order.ToHashSet(PluginNameComparer.Instance);
 
         // An active plugin loadorder.txt does not know is still loaded; libloadorder appends it after the listed ones.
