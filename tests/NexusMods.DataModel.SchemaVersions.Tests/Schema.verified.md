@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x7592E126BFA3B889
-   - Total attributes: 322
-   - Total namespaces: 94
+   - Fingerprint: 0xC7B2B2BD234AE6C1
+   - Total attributes: 331
+   - Total namespaces: 95
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -156,6 +156,7 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Library.LibraryFile/Md5                                                  | UInt128                 | True    | False | False     | 
 | SilverModManager.Library.LibraryFile/Sha256                                               | Blob                    | True    | False | False     | 
 | SilverModManager.Library.LibraryFile/Size                                                 | UInt64                  | False   | False | False     | 
+| SilverModManager.Library.LibraryFile/XxHash64                                             | UInt64                  | True    | False | False     | 
 | SilverModManager.Library.LibraryItem/Name                                                 | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.LocalFile/OriginalPath                                           | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.ManuallyCreatedArchive/CreationSource                            | Int32                   | False   | False | False     | 
@@ -332,3 +333,11 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.StardewValley.SMAPIManifestLoadoutFile/ManifestFile                      | Null                    | True    | False | False     | 
 | SilverModManager.StardewValley.SMAPIModDatabaseLoadoutFile/ModDatabaseFile                | Null                    | False   | False | False     | 
 | SilverModManager.StardewValley.SMAPIModLoadoutItem/Manifest                               | Reference               | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLibraryFile/ArchiveCount                                | Int32                   | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLibraryFile/ArchiveSize                                 | UInt64                  | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLibraryFile/Author                                      | Utf8                    | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLibraryFile/GameType                                    | Utf8                    | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLibraryFile/InstallSize                                 | UInt64                  | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLibraryFile/IsNsfw                                      | UInt8                   | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLibraryFile/Name                                        | Utf8                    | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLibraryFile/Version                                     | Utf8                    | False   | False | False     | 

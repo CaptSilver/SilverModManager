@@ -38,6 +38,7 @@ using NexusMods.Sdk.Library;
 using NexusMods.Sdk.ProxyConsole;
 using NexusMods.Sdk.Settings;
 using NexusMods.SingleProcess;
+using NexusMods.Wabbajack;
 
 namespace NexusMods.App;
 
@@ -179,7 +180,8 @@ public static class Services
             .AddGOG()
             .AddFileHashes()
             .AddGitHubApi()
-            .AddThunderstore();
+            .AddThunderstore()
+            .AddWabbajack();
     }
 
     /// <summary>

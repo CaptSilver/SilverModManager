@@ -14,7 +14,7 @@ using NexusMods.Sdk.Threading;
 
 namespace NexusMods.Library.Tests;
 
-public class LibraryFileDigestsTests(IConnection connection)
+public class LibraryFileDigestsTests(IConnection connection, IServiceProvider serviceProvider, TemporaryFileManager temporaryFileManager)
 {
     private static readonly byte[] Content = Enumerable.Range(0, 3000).Select(i => (byte)(i * 7 + 1)).ToArray();
 
@@ -79,6 +79,74 @@ public class LibraryFileDigestsTests(IConnection connection)
 
         result.Should().BeNull();
         LibraryFile.Load(connection.Db, old.Id).Sha256.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task EnsureXxHash64FillsANonArchiveRowFromTheStore()
+    {
+        var old = await AddOldRow(Content);
+        old.XxHash64.HasValue.Should().BeFalse("the row predates the attribute");
+        var store = new CountingFileStore(old.Hash, Content);
+        var digests = new LibraryFileDigests(store, connection);
+
+        var first = await digests.EnsureXxHash64(old, TestContext.Current.CancellationToken);
+
+        first.Should().Be(Xx64Hasher.Hash(Content));
+        store.Reads.Should().Be(1);
+        LibraryFile.Load(connection.Db, old.Id).XxHash64.Value.Should().Be(Xx64Hasher.Hash(Content), "the value is written back");
+
+        var second = await digests.EnsureXxHash64(LibraryFile.Load(connection.Db, old.Id), TestContext.Current.CancellationToken);
+        second.Should().Be(first);
+        store.Reads.Should().Be(1, "the recorded value answers the second call");
+    }
+
+    [Fact]
+    public async Task EnsureXxHash64IsNullForANonArchiveRowWhoseBytesAreNotInTheStore()
+    {
+        var old = await AddOldRow(Content);
+        var digests = new LibraryFileDigests(new CountingFileStore(default, []), connection);
+
+        var result = await digests.EnsureXxHash64(old, TestContext.Current.CancellationToken);
+
+        result.Should().BeNull();
+        LibraryFile.Load(connection.Db, old.Id).XxHash64.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task EnsureXxHash64IsNullForAnArchiveRowWithoutOneAndDoesNotReadTheStore()
+    {
+        await using var folder = temporaryFileManager.CreateFolder();
+        var zipPath = folder.Path.Combine("pack.zip");
+        using (var zip = new System.IO.Compression.ZipArchive(File.Create(zipPath.ToString()), System.IO.Compression.ZipArchiveMode.Create))
+        {
+            using var entry = zip.CreateEntry("a.txt").Open();
+            entry.Write("hello"u8);
+        }
+        LibraryFile.ReadOnly added;
+        using (var addTx = connection.BeginTransaction())
+        {
+            var newFile = await AddLibraryFileJob.Create(serviceProvider, addTx, zipPath);
+            added = (await addTx.Commit()).Remap(newFile);
+        }
+        added.XxHash64.HasValue.Should().BeTrue();
+
+        // A row added before the attribute existed has no value.
+        using (var tx = connection.BeginTransaction())
+        {
+            tx.Retract(added.Id, LibraryFile.XxHash64, added.XxHash64.Value);
+            await tx.Commit();
+        }
+        var archiveRow = LibraryFile.Load(connection.Db, added.Id);
+        archiveRow.XxHash64.HasValue.Should().BeFalse();
+
+        var store = new CountingFileStore(archiveRow.Hash, Content);
+        var digests = new LibraryFileDigests(store, connection);
+
+        var result = await digests.EnsureXxHash64(archiveRow, TestContext.Current.CancellationToken);
+
+        result.Should().BeNull();
+        store.Reads.Should().Be(0);
+        LibraryFile.Load(connection.Db, added.Id).XxHash64.HasValue.Should().BeFalse();
     }
 
     private sealed class CountingFileStore(Hash known, byte[] content) : IFileStore

@@ -3,6 +3,7 @@ using System.IO.Hashing;
 using System.Security.Cryptography;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Library;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
@@ -41,11 +42,13 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
             Connection = provider.GetRequiredService<IConnection>(),
             TemporaryFileManager = provider.GetRequiredService<TemporaryFileManager>(),
             FileStore = provider.GetRequiredService<IFileStore>(),
+            Recognisers = provider.GetServices<ILibraryFileRecogniser>().ToArray(),
         };
         return monitor.Begin<AddLibraryFileJob, LibraryFile.New>(job);
     }
 
     internal required IFileStore FileStore { get; set; }
+    internal required ILibraryFileRecogniser[] Recognisers { get; init; }
     internal required TemporaryFileManager TemporaryFileManager { get; init; }
     internal required IFileExtractor FileExtractor { get; init; }
     public required IConnection Connection { get; set; }
@@ -60,31 +63,37 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
         return topFile;
     }
 
-    private static readonly MultiHasherBuilder<Hash, XxHash3, Xx3Hasher, Md5Value, MD5, Md5Hasher, Sha256Value, SHA256, Sha256Hasher> Hasher = MultiHasherBuilder.Start()
+    private static readonly MultiHasherBuilder<Hash, XxHash3, Xx3Hasher, Md5Value, MD5, Md5Hasher, Sha256Value, SHA256, Sha256Hasher, Hash, XxHash64, Xx64Hasher> Hasher = MultiHasherBuilder.Start()
         .AddHasher<Hash, XxHash3, Xx3Hasher>()
         .AddHasher<Md5Value, MD5, Md5Hasher>()
-        .AddHasher<Sha256Value, SHA256, Sha256Hasher>();
+        .AddHasher<Sha256Value, SHA256, Sha256Hasher>()
+        .AddHasher<Hash, XxHash64, Xx64Hasher>();
 
-    private static async ValueTask<(Hash, Optional<Md5Value>, Optional<Sha256Value>)> HashAsync(AbsolutePath filePath, bool isNestedFile, CancellationToken cancellationToken)
+    // Nested members are hashed with the two xxHash variants only, in one pass.
+    private static readonly MultiHasherBuilder<Hash, XxHash3, Xx3Hasher, Hash, XxHash64, Xx64Hasher> NestedHasher = MultiHasherBuilder.Start()
+        .AddHasher<Hash, XxHash3, Xx3Hasher>()
+        .AddHasher<Hash, XxHash64, Xx64Hasher>();
+
+    private static async ValueTask<(Hash, Optional<Md5Value>, Optional<Sha256Value>, Hash)> HashAsync(AbsolutePath filePath, bool isNestedFile, CancellationToken cancellationToken)
     {
         await using var stream = filePath.Read();
 
         if (isNestedFile)
         {
-            var hash = await Xx3Hasher.HashAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-            return (hash, Optional<Md5Value>.None, Optional<Sha256Value>.None);
+            var nested = await NestedHasher.HashAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return (nested.Hash1, Optional<Md5Value>.None, Optional<Sha256Value>.None, nested.Hash2);
         }
 
         var multiHash = await Hasher.HashAsync(stream, cancellationToken: cancellationToken);
-        return (multiHash.Hash1, multiHash.Hash2, multiHash.Hash3);
+        return (multiHash.Hash1, multiHash.Hash2, multiHash.Hash3, multiHash.Hash4);
     }
 
     private async Task<LibraryFile.New> AnalyzeFile(IJobContext<AddLibraryFileJob> context, AbsolutePath filePath, bool isNestedFile = false)
     {
         var isArchive = isNestedFile ? await CheckIfNestedArchiveAsync(filePath) : await CheckIfArchiveAsync(filePath);
 
-        var (hash, md5, sha256) = await HashAsync(filePath, isNestedFile: isNestedFile, cancellationToken: context.CancellationToken);
-        var libraryFile = CreateLibraryFile(Transaction, filePath, hash, md5, sha256);
+        var (hash, md5, sha256, xxHash64) = await HashAsync(filePath, isNestedFile: isNestedFile, cancellationToken: context.CancellationToken);
+        var libraryFile = CreateLibraryFile(Transaction, filePath, hash, md5, sha256, xxHash64);
 
         if (isArchive)
         {
@@ -112,15 +121,28 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
                     ParentId = libraryArchive.Id,
                 };
             }
+
+            // The extraction folder is only around until the job is disposed, so recognisers see it now.
+            if (!isNestedFile) await RecogniseAsync(libraryFile, extractionFolder.Path, context.CancellationToken);
         }
         else
         {
             var size = filePath.FileInfo.Size;
             if (!await FileStore.HaveFile(hash))
                 ToArchive.Add(new ArchivedFileEntry(new NativeFileStreamFactory(filePath), hash, size));
+
+            if (!isNestedFile) await RecogniseAsync(libraryFile, extractedFolder: null, context.CancellationToken);
         }
 
         return libraryFile;
+    }
+
+    private async ValueTask RecogniseAsync(LibraryFile.New libraryFile, AbsolutePath? extractedFolder, CancellationToken cancellationToken)
+    {
+        foreach (var recogniser in Recognisers)
+        {
+            await recogniser.Recognise(Transaction, libraryFile, extractedFolder, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -145,13 +167,14 @@ internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, Li
         return false;
     }
 
-    private static LibraryFile.New CreateLibraryFile(ITransaction tx, AbsolutePath filePath, Hash hash, Optional<Md5Value> md5, Optional<Sha256Value> sha256)
+    private static LibraryFile.New CreateLibraryFile(ITransaction tx, AbsolutePath filePath, Hash hash, Optional<Md5Value> md5, Optional<Sha256Value> sha256, Hash xxHash64)
     {
         var libraryFile = new LibraryFile.New(tx, out var id)
         {
             FileName = filePath.FileName,
             Hash = hash,
             Md5 = md5.ValueOrDefault(),
+            XxHash64 = xxHash64,
             Size = filePath.FileInfo.Size,
             LibraryItem = new LibraryItem.New(tx, id)
             {
