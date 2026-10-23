@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.App;
 using NexusMods.Backend;
 using NexusMods.Paths;
@@ -18,7 +19,7 @@ public class Startup
     public void ConfigureServices(IServiceCollection container)
     {
         // The GUI graph: the schema under test is everything a real app start registers, the UI's models included.
-        var mode = new StartupMode { RunAsMain = true, ShowUI = true };
+        var mode = new StartupMode { RunAsMain = true, ShowUI = true, SecretBackend = SecretBackendChoice.Memory };
         
         const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"NexusMods.UI.Tests.Tests-{Guid.NewGuid()}";

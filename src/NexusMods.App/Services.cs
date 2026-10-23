@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.GuidedInstallers;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Abstractions.Serialization;
 using NexusMods.App.Commandline;
 using NexusMods.App.UI;
@@ -35,6 +36,7 @@ using NexusMods.Platform.Proton;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.ProxyConsole;
 using NexusMods.Sdk.Library;
+using NexusMods.Secrets;
 using NexusMods.Sdk.ProxyConsole;
 using NexusMods.Sdk.Settings;
 using NexusMods.SingleProcess;
@@ -96,7 +98,7 @@ public static class Services
         if (profile is HostProfile.Gui or HostProfile.Designer)
             services.AddInteractiveServices();
 
-        services.AddMainServices(registerNxmHandler: profile != HostProfile.Headless);
+        services.AddMainServices(registerNxmHandler: profile != HostProfile.Headless, profile, startupMode);
 
         switch (profile)
         {
@@ -137,7 +139,7 @@ public static class Services
     /// <summary>
     /// Everything a main process needs, with or without a window.
     /// </summary>
-    private static IServiceCollection AddMainServices(this IServiceCollection services, bool registerNxmHandler)
+    private static IServiceCollection AddMainServices(this IServiceCollection services, bool registerNxmHandler, HostProfile profile, StartupMode startupMode)
     {
         return services
             .AddEpicGameStore()
@@ -170,6 +172,13 @@ public static class Services
             .AddGenericGameSupport()
             .AddLoadoutAbstractions()
             .AddFomod()
+            // Before the consumers of credentials: the window can show an unlock prompt, every other process never does.
+            .AddSecrets(new SecretStoreOptions
+            {
+                Mode = profile == HostProfile.Gui ? SecretStoreMode.Interactive : SecretStoreMode.NonInteractive,
+                SecretsFile = startupMode.SecretsFile,
+                Backend = startupMode.SecretBackend,
+            })
             .AddNexusWebApi(registerNxmHandler)
             .AddHttpDownloader()
             // .AddAdvancedHttpDownloader()

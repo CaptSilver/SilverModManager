@@ -28,6 +28,7 @@ using NexusMods.Platform.Proton.Launch;
 using NexusMods.Platform.Proton.Verbs;
 using NexusMods.ProxyConsole;
 using NexusMods.Sdk;
+using NexusMods.Secrets;
 using NexusMods.SingleProcess;
 using NexusMods.SingleProcess.Exceptions;
 using NLog.Extensions.Logging;
@@ -175,6 +176,9 @@ public class Program
             // Otherwise, perform the initial setup
             migration.InitialSetup().Wait();
         }
+
+        // Bounded and never prompting: a keyring that is down leaves the app signed out, it does not stop it starting.
+        SecretStartup.PrimeAsync(services, CancellationToken.None).Wait();
     }
 
     private static async Task<bool> CanConnectToProcess(ILogger logger, int port, TimeSpan timeout, IServiceProvider services)

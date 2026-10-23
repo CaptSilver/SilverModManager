@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NexusMods.Abstractions.GuidedInstallers;
 using NexusMods.Abstractions.NexusWebApi;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Games.AdvancedInstaller;
 using NexusMods.DataModel;
 using NexusMods.App;
@@ -12,6 +13,7 @@ using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
 using NexusMods.Sdk.ProxyConsole;
 using NexusMods.Sdk.Settings;
+using NexusMods.Secrets.Overlay;
 using NexusMods.SingleProcess;
 using NexusMods.StandardGameLocators.TestHelpers;
 
@@ -19,7 +21,13 @@ namespace NexusMods.CLI.Tests;
 
 public class HeadlessHostProfileTests
 {
-    private static StartupMode Mode(params string[] args) => StartupMode.Parse(args);
+    // The in-memory secret backend keeps these hosts off the session bus and the user's keyring.
+    private static StartupMode Mode(params string[] args)
+    {
+        var mode = StartupMode.Parse(args);
+        mode.SecretBackend = SecretBackendChoice.Memory;
+        return mode;
+    }
 
     private static IHost BuildHost(StartupMode mode, IFileSystem? fileSystem = null)
     {
@@ -97,6 +105,22 @@ public class HeadlessHostProfileTests
         }
 
         missing.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void HeadlessGraphRegistersNoSecretServiceStore()
+    {
+        Describe(Mode("as-main")).Where(d => d.ServiceType == typeof(ISecretServiceStore)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void HeadlessGraphKeepsSecretsInMemory()
+    {
+        using var host = BuildHost(Mode("as-main"));
+
+        host.Services.GetRequiredService<ISecretStore>()
+            .Should().BeOfType<OverlaySecretStore>()
+            .Which.Inner.Should().BeOfType<InMemorySecretStore>();
     }
 
     [Fact]

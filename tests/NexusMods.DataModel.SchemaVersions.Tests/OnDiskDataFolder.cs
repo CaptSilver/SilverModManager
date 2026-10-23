@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.App;
 using NexusMods.Backend;
 using NexusMods.DataModel;
@@ -18,8 +19,8 @@ internal sealed class OnDiskDataFolder : IDisposable
 {
     private readonly string _name = $"FreshDataDirectory-{Guid.NewGuid()}";
 
-    public static StartupMode Gui => new() { RunAsMain = true, ShowUI = true };
-    public static StartupMode Headless => new() { RunAsMain = true, ShowUI = false };
+    public static StartupMode Gui => new() { RunAsMain = true, ShowUI = true, SecretBackend = SecretBackendChoice.Memory };
+    public static StartupMode Headless => new() { RunAsMain = true, ShowUI = false, SecretBackend = SecretBackendChoice.Memory };
 
     public ServiceProvider CreateProvider(StartupMode? mode = null)
     {

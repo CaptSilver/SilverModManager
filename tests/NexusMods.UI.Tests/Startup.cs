@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.App;
 using NexusMods.Backend;
 using NexusMods.DataModel;
@@ -34,6 +35,7 @@ public class Startup
                     ShowUI = true,
                     ExecuteCli = false,
                     RunAsMain = true,
+                    SecretBackend = SecretBackendChoice.Memory,
                 })
                 .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with { UseInMemoryLocalBaseline = true, })
                 .OverrideSettingsForTests<DataModelSettings>(settings => settings with

@@ -11,6 +11,7 @@
     <ItemGroup>
         <ProjectReference Include="..\NexusMods.Abstractions.Games.FileHashes\NexusMods.Abstractions.Games.FileHashes.csproj" />
         <ProjectReference Include="..\NexusMods.Abstractions.Logging\NexusMods.Abstractions.Logging.csproj" />
+        <ProjectReference Include="..\NexusMods.Abstractions.Secrets\NexusMods.Abstractions.Secrets.csproj" />
         <ProjectReference Include="..\NexusMods.Backend\NexusMods.Backend.csproj" />
         <ProjectReference Include="..\NexusMods.Games.AdvancedInstaller.UI\NexusMods.Games.AdvancedInstaller.UI.csproj" />
         <ProjectReference Include="..\NexusMods.Games.CreationEngine\NexusMods.Games.CreationEngine.csproj" />
@@ -37,6 +38,7 @@
         <ProjectReference Include="..\NexusMods.Networking.GitHub\NexusMods.Networking.GitHub.csproj" />
         <ProjectReference Include="..\NexusMods.Networking.Thunderstore\NexusMods.Networking.Thunderstore.csproj" />
         <ProjectReference Include="..\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
+        <ProjectReference Include="..\NexusMods.Secrets\NexusMods.Secrets.csproj" />
         <ProjectReference Include="..\NexusMods.ProxyConsole\NexusMods.ProxyConsole.csproj" />
         <ProjectReference Include="..\NexusMods.SingleProcess\NexusMods.SingleProcess.csproj" />
         <ProjectReference Include="..\NexusMods.Themes.NexusFluentDark\NexusMods.Themes.NexusFluentDark.csproj" />

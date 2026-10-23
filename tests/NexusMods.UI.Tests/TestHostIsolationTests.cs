@@ -1,10 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.App;
 using NexusMods.Backend;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
+using NexusMods.Secrets.Overlay;
 using NexusMods.StandardGameLocators.TestHelpers;
 
 namespace NexusMods.UI.Tests;
@@ -42,6 +44,26 @@ public class TestHostIsolationTests(IServiceProvider serviceProvider)
     [Fact]
     public void Test_TheTestHostDoesNotReadCoverArtFromSteam()
         => TestHostGameStoreGuard.AssertGameArtIsNotReadFromSteam(serviceProvider);
+
+    [Fact]
+    public void Test_TheTestHostRegistersNoSecretServiceStore()
+    {
+        // A Secret Service store in the graph would reach the machine's session bus and keyring. The test
+        // host asks for the in-memory backend, so the service backend must leave the graph alone.
+        var services = new ServiceCollection().AddLogging().AddApp(
+            addStandardGameLocators: false,
+            new StartupMode { RunAsMain = true, ShowUI = true, ExecuteCli = false, SecretBackend = SecretBackendChoice.Memory });
+
+        services.Where(d => d.ServiceType == typeof(ISecretServiceStore)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Test_TheTestHostKeepsSecretsInMemory()
+    {
+        serviceProvider.GetRequiredService<ISecretStore>()
+            .Should().BeOfType<OverlaySecretStore>()
+            .Which.Inner.Should().BeOfType<InMemorySecretStore>();
+    }
 
     [Fact]
     public void Test_TheAppsOwnGraphKeepsTheStoreLocatorsWithoutDuplicates()

@@ -45,6 +45,8 @@ scripts/test.sh --project tests/NexusMods.CLI.Tests      # one test project
 - `RequiresApiKey`: needs a Nexus Mods API key in the `NEXUS_API_KEY` environment variable.
   Put it on the test with `[Trait("RequiresApiKey", "True")]`, plus `RequiresNetworking` if it
   also goes online.
+- `RequiresSecretService`: needs a Secret Service on a private session bus; the fixture starts one
+  with `dbus-run-session` inside the box.
 - `FlakeyTest`: fails intermittently and is excluded until someone fixes it. Don't add this to
   hide a test you broke.
 

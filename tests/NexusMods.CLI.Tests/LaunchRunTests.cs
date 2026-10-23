@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.App;
 using NexusMods.Backend;
 using NexusMods.Paths;
@@ -19,10 +20,12 @@ public class LaunchRunTests
     {
         const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"LaunchRunTests-{Guid.NewGuid()}";
+        var mode = StartupMode.Parse(["run", "x", "--", "y"]);
+        mode.SecretBackend = SecretBackendChoice.Memory;
 
         return new HostBuilder()
             .ConfigureServices(services => services
-                .AddApp(addStandardGameLocators: false, startupMode: StartupMode.Parse(["run", "x", "--", "y"]))
+                .AddApp(addStandardGameLocators: false, startupMode: mode)
                 .Validate()
                 .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with { UseInMemoryLocalBaseline = true, })
                 .OverrideSettingsForTests<DataModelSettings>(settings => settings with

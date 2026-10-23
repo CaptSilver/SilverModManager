@@ -1,3 +1,6 @@
+using NexusMods.Abstractions.Secrets;
+using NexusMods.Paths;
+
 namespace NexusMods.App;
 
 public class StartupMode
@@ -28,6 +31,17 @@ public class StartupMode
     public bool ShowUI { get; set; } = true;
     
     public bool IsAvaloniaDesigner { get; set; } = false;
+
+    /// <summary>
+    /// A secrets file named on the command line (<c>--secrets-file</c>); it wins over <c>SILVERMM_SECRETS_FILE</c>.
+    /// </summary>
+    public AbsolutePath? SecretsFile { get; set; }
+
+    /// <summary>
+    /// Overrides the user's secret storage setting. Test hosts set <see cref="SecretBackendChoice.Memory"/>
+    /// so they never reach the machine's keyring.
+    /// </summary>
+    public SecretBackendChoice? SecretBackend { get; set; }
 
     /// <summary>
     /// True for <c>run</c>: the process is the main process for the lifetime of one game

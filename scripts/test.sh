@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs the offline test suite (everything except RequiresNetworking, RequiresApiKey,
-# RequiresProton and FlakeyTest) through Microsoft.Testing.Platform, inside the
+# RequiresProton, RequiresSecretService and FlakeyTest) through Microsoft.Testing.Platform, inside the
 # distrobox named by SILVER_BOX (default fedora) unless already in a container.
 # Extra arguments go to `dotnet test`, e.g.
 #   scripts/test.sh --project tests/NexusMods.CLI.Tests
@@ -26,6 +26,11 @@ trap 'rm -rf "$xdg_root"' EXIT
 export XDG_DATA_HOME="$xdg_root/data" XDG_CONFIG_HOME="$xdg_root/config" \
        XDG_STATE_HOME="$xdg_root/state" XDG_CACHE_HOME="$xdg_root/cache"
 unset DISPLAY WAYLAND_DISPLAY
+# The distrobox shares the host's session bus, and Tmds.DBus.Protocol finds it only through this
+# variable. A dead address means a secret store that slips past the in-memory backend gets
+# Unavailable instead of the user's keyring. AvaloniaDBusTests starts its own dbus-daemon and
+# connects to that address explicitly, so nothing in the suite needs the real bus.
+export DBUS_SESSION_BUS_ADDRESS="unix:path=$xdg_root/no-bus"
 
 # Exit code 8 is MTP's "zero tests ran". Helper projects and projects whose tests
 # are all filtered out hit it, so it must not fail the run.
@@ -40,5 +45,5 @@ for arg in "$@"; do
 done
 
 dotnet test "${target[@]}" --ignore-exit-code 8 \
-    -p:XunitArgs="--filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait RequiresProton=True --filter-not-trait FlakeyTest=True" \
+    -p:XunitArgs="--filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait RequiresProton=True --filter-not-trait RequiresSecretService=True --filter-not-trait FlakeyTest=True" \
     "$@"
