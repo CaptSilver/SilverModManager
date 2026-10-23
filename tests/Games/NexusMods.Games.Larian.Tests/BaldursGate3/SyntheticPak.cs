@@ -65,7 +65,14 @@ public static class SyntheticPak
     public static byte[] ForModule(string folder, string name, string uuid, ulong version, params Dependency[] dependencies)
         => Build(($"Mods/{folder}/meta.lsx", MetaLsx(folder, name, uuid, version, dependencies)));
 
+    /// <summary>Like <see cref="ForModule(string,string,string,ulong,Dependency[])"/> for a module published on mod.io.</summary>
+    public static byte[] ForPublishedModule(string folder, string name, string uuid, ulong version, string publishHandle)
+        => Build(($"Mods/{folder}/meta.lsx", MetaLsx(folder, name, uuid, version, publishHandle)));
+
     public static string MetaLsx(string folder, string name, string uuid, ulong version, params Dependency[] dependencies)
+        => MetaLsx(folder, name, uuid, version, "0", dependencies);
+
+    public static string MetaLsx(string folder, string name, string uuid, ulong version, string publishHandle, params Dependency[] dependencies)
     {
         var deps = string.Concat(dependencies.Select(d => $"""
                     <node id="ModuleShortDesc">
@@ -93,7 +100,7 @@ public static class SyntheticPak
                                 <attribute id="Folder" type="LSString" value="{folder}" />
                                 <attribute id="MD5" type="LSString" value="" />
                                 <attribute id="Name" type="LSString" value="{name}" />
-                                <attribute id="PublishHandle" type="uint64" value="0" />
+                                <attribute id="PublishHandle" type="uint64" value="{publishHandle}" />
                                 <attribute id="UUID" type="FixedString" value="{uuid}" />
                                 <attribute id="Version64" type="int64" value="{version}" />
                             </node>
