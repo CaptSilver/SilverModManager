@@ -65,6 +65,9 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
             this.OneWayBind(ViewModel, vm => vm.DevelopmentBuildBanner, v => v.DevelopmentBuildBanner.ViewModel)
                 .DisposeWith(disposables);
 
+            this.OneWayBind(ViewModel, vm => vm.SecretStoreNotice, v => v.SecretStoreNotice.ViewModel)
+                .DisposeWith(disposables);
+
             this.OneWayBind(ViewModel, vm => vm.WorkspaceController.ActiveWorkspace, view => view.WorkspaceView.ViewModel)
                 .DisposeWith(disposables);
 

@@ -26,7 +26,7 @@
         <windows:MainWindowViewModel />
     </Design.DataContext>
 
-    <Grid ColumnDefinitions="72, 232, *" RowDefinitions="Auto, *, 48">
+    <Grid ColumnDefinitions="72, 232, *" RowDefinitions="Auto, *, Auto, 48">
 
         <Border x:Name="OverlayBorder"
                 Background="{StaticResource BrandTranslucentDark800Brush}"
@@ -74,10 +74,15 @@
             <workspace:WorkspaceView x:Name="WorkspaceView" />
         </Border>
 
-        <reactiveUi:ViewModelViewHost x:Name="DevelopmentBuildBanner"
+        <reactiveUi:ViewModelViewHost x:Name="SecretStoreNotice"
                                       Grid.Column="0"
                                       Grid.ColumnSpan="3"
                                       Grid.Row="2" />
+
+        <reactiveUi:ViewModelViewHost x:Name="DevelopmentBuildBanner"
+                                      Grid.Column="0"
+                                      Grid.ColumnSpan="3"
+                                      Grid.Row="3" />
     </Grid>
 
 </reactiveUi:ReactiveWindow>

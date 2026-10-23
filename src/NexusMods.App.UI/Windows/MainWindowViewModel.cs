@@ -15,6 +15,7 @@ using NexusMods.Abstractions.Logging;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Sdk.Settings;
 using NexusMods.App.UI.Controls.DevelopmentBuildBanner;
+using NexusMods.App.UI.Controls.SecretStoreNotice;
 using NexusMods.App.UI.Controls.Spine;
 using NexusMods.App.UI.Controls.TopBar;
 using NexusMods.App.UI.Extensions;
@@ -83,6 +84,7 @@ public class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMainWindow
 
         Spine = serviceProvider.GetRequiredService<ISpineViewModel>();
         DevelopmentBuildBanner = serviceProvider.GetRequiredService<IDevelopmentBuildBannerViewModel>();
+        SecretStoreNotice = serviceProvider.GetRequiredService<ISecretStoreNoticeViewModel>();
 
         BringWindowToFront = ReactiveCommand.Create(() => settingsManager.Get<BehaviorSettings>().BringWindowToFront);
         RegisterStorageProvider = ReactiveCommand.Create<IStorageProvider>(storageProvider => avaloniaInterop.RegisterStorageProvider(storageProvider));
@@ -377,4 +379,7 @@ public class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMainWindow
 
     [Reactive]
     public IDevelopmentBuildBannerViewModel DevelopmentBuildBanner { get; set; }
+
+    [Reactive]
+    public ISecretStoreNoticeViewModel SecretStoreNotice { get; set; }
 }

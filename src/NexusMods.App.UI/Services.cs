@@ -6,6 +6,7 @@ using NexusMods.Sdk.EventBus;
 using NexusMods.Abstractions.Serialization.ExpressionGenerator;
 using NexusMods.Abstractions.Serialization.Json;
 using NexusMods.App.UI.Controls.DevelopmentBuildBanner;
+using NexusMods.App.UI.Controls.SecretStoreNotice;
 using NexusMods.App.UI.Controls.Diagnostics;
 using NexusMods.App.UI.Controls.GameWidget;
 using NexusMods.App.UI.Controls.LoadoutBadge;
@@ -110,6 +111,7 @@ public static class Services
             .AddViewModel<CollectionCardDesignViewModel, ICollectionCardViewModel>()
 
             .AddViewModel<DevelopmentBuildBannerViewModel, IDevelopmentBuildBannerViewModel>()
+            .AddViewModel<SecretStoreNoticeViewModel, ISecretStoreNoticeViewModel>()
             .AddViewModel<GameWidgetViewModel, IGameWidgetViewModel>()
             .AddViewModel<MiniGameWidgetViewModel, IMiniGameWidgetViewModel>()
             .AddViewModel<ComingSoonMiniGameWidgetViewModel, IComingSoonMiniGameWidgetViewModel>()
@@ -137,6 +139,7 @@ public static class Services
             // Views
             .AddView<CollectionCardView, ICollectionCardViewModel>()
             .AddView<DevelopmentBuildBannerView, IDevelopmentBuildBannerViewModel>()
+            .AddView<SecretStoreNoticeView, ISecretStoreNoticeViewModel>()
             .AddView<GameWidget, IGameWidgetViewModel>()
             .AddView<MiniGameWidget, IMiniGameWidgetViewModel>()
             .AddView<ComingSoonMiniGameWidget, IComingSoonMiniGameWidgetViewModel>()
