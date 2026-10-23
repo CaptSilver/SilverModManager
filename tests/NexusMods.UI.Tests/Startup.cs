@@ -6,6 +6,7 @@ using NexusMods.DataModel;
 using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.Paths;
 using NexusMods.Sdk;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Settings;
 using NexusMods.StandardGameLocators.TestHelpers;
 using NexusMods.UI.Tests.Framework;
@@ -24,7 +25,9 @@ public class Startup
         var path = FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine("temp").Combine(Guid.NewGuid().ToString());
         path.CreateDirectory();
 
-        services.AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"))
+        // Steam as well, so loadouts seeded as installed from Steam land on the stub's folder. The app's own
+        // locators are in this graph too and find whatever Steam games the machine has.
+        services.AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"), stores: [GameStore.Unknown, GameStore.Steam])
                 .AddApp(startupMode: new StartupMode()
                 {
                     ShowUI = true,

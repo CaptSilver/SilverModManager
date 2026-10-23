@@ -10,6 +10,8 @@ using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
+using NexusMods.StandardGameLocators.TestHelpers;
+using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.UI.Sdk;
 using NexusMods.UI.Tests.Framework;
 using Loadout = NexusMods.Sdk.Loadouts.Loadout;
@@ -33,12 +35,20 @@ public class AUiTest
     }
 
     /// <summary>
-    /// A loadout row on the test game's installation, recorded as installed from <paramref name="store"/>.
+    /// A loadout row on the test game's folder, recorded as installed from <paramref name="store"/>.
     /// Nothing is applied, since the test game has no files to apply.
     /// </summary>
+    /// <remarks>
+    /// The folder comes from the stub locator only: the app's own locators also run here and can find the
+    /// machine's real copy of the game, which no test may attach a loadout to. A store the stub does not report
+    /// gives a loadout whose install is not found, which is what those tests are about.
+    /// </remarks>
     protected async Task<Loadout.ReadOnly> SeedLoadoutRow(GameStore store, string name)
     {
-        var installation = Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First();
+        var stubbed = Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations()
+            .Where(located => located.LocatorResult.Locator is UniversalStubbedGameLocator<Cyberpunk2077Game>)
+            .ToArray();
+        var installation = stubbed.FirstOrDefault(located => located.LocatorResult.Store == store) ?? stubbed.First();
         using var tx = Connection.BeginTransaction();
         var metadata = new GameInstallMetadata.New(tx)
         {
