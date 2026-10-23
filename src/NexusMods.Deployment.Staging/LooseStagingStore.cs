@@ -351,12 +351,16 @@ public sealed class LooseStagingStore : ILooseStagingStore
 
     /// <inheritdoc/>
     public int Sweep(Func<IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>>> liveFactory)
+        => Sweep(() => StagingLiveness.Everywhere(liveFactory()));
+
+    /// <inheritdoc/>
+    public int Sweep(Func<StagingLiveness> liveFactory)
     {
         if (_parent is not null) return _parent.Sweep(liveFactory);
 
         using var exclusive = _sweepLock.WriteLock();
 
-        IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>>? live = null;
+        StagingLiveness? live = null;
         var sweepStart = default(DateTime);
         var deleted = 0;
         foreach (var store in new[] { this }.Concat(PerFilesystemStores()))
@@ -374,7 +378,7 @@ public sealed class LooseStagingStore : ILooseStagingStore
                 live = liveFactory();
                 sweepStart = DateTime.UtcNow;
             }
-            deleted += store.SweepOne(live, sweepStart);
+            deleted += store.SweepOne(live.For(store.Root), sweepStart);
         }
 
         if (deleted > 0) _logger.LogInformation("Removed {Count} unreferenced staged files", deleted);

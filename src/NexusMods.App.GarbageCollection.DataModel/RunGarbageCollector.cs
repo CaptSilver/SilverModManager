@@ -26,6 +26,7 @@ public static class RunGarbageCollector
     /// <param name="stagingStore">The loose staging store, swept of files no loadout or disk state needs.</param>
     /// <param name="plans">Reads which backend deploys each root of an installation.</param>
     /// <param name="stagingBackends">The backends that deploy from <paramref name="stagingStore"/>.</param>
+    /// <param name="storeFor">Finds the staging store a folder's deployed files link from. Without it, a staged file is kept in every store.</param>
     public static void Do(
         ILogger logger,
         Span<ConfigurablePath> archiveLocations,
@@ -33,7 +34,8 @@ public static class RunGarbageCollector
         IConnection connection,
         ILooseStagingStore stagingStore,
         IDeploymentPlanStore plans,
-        IReadOnlySet<DeploymentBackendId> stagingBackends)
+        IReadOnlySet<DeploymentBackendId> stagingBackends,
+        StagingStoreLookup? storeFor = null)
     {
         // See 'SAFETY' comment below for explanation of 'gcLock'
         using var gcLock = _gcLock.WriteLock();
@@ -71,7 +73,7 @@ public static class RunGarbageCollector
         // archives to extract, so sweeping (which waits for that hold) while holding the archive write
         // lock would leave each side waiting for the other. 'gcLock' still keeps runs apart. Liveness is
         // read inside Sweep, after the holds are gone, so it includes what the apply just committed.
-        var swept = stagingStore.Sweep(() => StagingReferenceMarker.LiveHashes(connection.Db, plans, stagingBackends));
+        var swept = stagingStore.Sweep(() => StagingReferenceMarker.LiveHashes(connection.Db, plans, stagingBackends, storeFor));
         if (swept > 0)
             logger.LogInformation("Removed {Count} unused files from the loose staging store", swept);
     }

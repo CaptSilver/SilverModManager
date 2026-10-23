@@ -77,6 +77,13 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     /// </summary>
     protected virtual ILooseStagingStore StoreFor(AbsolutePath root) => store.ForRoot(root);
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// The store this backend would stage from for the folder, which stays right when the game moves to
+    /// another filesystem: it is asked of the folder's current location, not of where files were staged before.
+    /// </remarks>
+    public ILooseStagingStore StagingStoreFor(ILooseStagingStore defaultStore, AbsolutePath folder) => StoreFor(folder);
+
     /// <summary>
     /// Creates <paramref name="target"/> as a link to, or clone of, <paramref name="storeFile"/>. The target
     /// does not exist, and an existing file must never be opened. Returns 0 or the errno.

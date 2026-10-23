@@ -87,6 +87,16 @@ public interface ILooseStagingStore
     /// calls <paramref name="live"/> only after that, so the set reflects everything those holders
     /// committed. Does nothing, and creates nothing, when no store directory exists.
     /// </summary>
+    /// <remarks>
+    /// The same set applies to every store. Use the <see cref="StagingLiveness"/> overload to keep a hash
+    /// only in the store its deployed file links from.
+    /// </remarks>
     /// <returns>The number of staged files deleted.</returns>
     int Sweep(Func<IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>>> live);
+
+    /// <summary>
+    /// <see cref="Sweep(Func{IReadOnlyDictionary{GameInstallMetadataId, IReadOnlySet{Hash}}})"/>, with a
+    /// live set of its own for each store.
+    /// </summary>
+    int Sweep(Func<StagingLiveness> live);
 }

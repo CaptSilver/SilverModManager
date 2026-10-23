@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.GC;
 using NexusMods.Abstractions.Loadouts.Deployment;
 using NexusMods.Deployment.Links.Tests.Fixtures;
+using NexusMods.Deployment.Links.Backends;
 using NexusMods.Deployment.Staging;
 using NexusMods.DataModel.Synchronizer;
 using NexusMods.Hashing.xxHash3;
@@ -75,6 +77,56 @@ public class ReflinkThroughAGameFilesystemStoreTests(ITestOutputHelper helper)
         perFilesystem.Contains(MetadataId, hashes["a/x.txt"]).Should().BeTrue();
         perFilesystem.Contains(MetadataId, hashes["a/y.txt"]).Should().BeFalse();
         defaultFile.FileExists.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task StagingStoreFor_ReflinkUsesTheGameFilesystemStoreAndSymlinkTheDefaultOne()
+    {
+        var loadout = await NewLoadout();
+        await AddMod(loadout, "Mod", ("a/x.txt", "bytes of the mod file"));
+        await Synchronizer.Synchronize(loadout);
+        var folder = OnDisk("a");
+
+        Backend<ReflinkDeploymentBackend>().StagingStoreFor(Store, folder).Root.Should().Be(GameFilesystemStore);
+        Backend<SymlinkDeploymentBackend>().StagingStoreFor(Store, folder).Should().BeSameAs(Store);
+    }
+
+    [Fact]
+    public async Task Sweep_WithTheBackendsStoreLookup_DropsTheCopyInTheDefaultStoreOfAReflinkedGame()
+    {
+        var loadout = await NewLoadout();
+        var (_, hashes) = await AddMod(loadout, "Mod", ("a/x.txt", "bytes of the mod file"));
+        await Synchronizer.Synchronize(loadout);
+        var perFilesystem = Store.ForRoot(OnDisk(""));
+        var backend = Backend<ReflinkDeploymentBackend>();
+        var staleCopy = await Store.Ensure(MetadataId, hashes["a/x.txt"], TestContext.Current.CancellationToken);
+
+        Store.Sweep(() =>
+        {
+            var liveness = new StagingLiveness();
+            liveness.Add(backend.StagingStoreFor(Store, OnDisk("a")).Root, MetadataId, hashes["a/x.txt"]);
+            return liveness;
+        });
+
+        perFilesystem.Contains(MetadataId, hashes["a/x.txt"]).Should().BeTrue();
+        staleCopy.FileExists.Should().BeFalse("the deployed file links from the store on the game's filesystem");
+        File.ReadAllText(OnDisk("a/x.txt").ToString()).Should().Be("bytes of the mod file");
+    }
+
+    [Fact]
+    public async Task GarbageCollection_DropsTheDefaultStoreCopyOfAReflinkedFile()
+    {
+        var loadout = await NewLoadout();
+        var (_, hashes) = await AddMod(loadout, "Mod", ("a/x.txt", "bytes of the mod file"));
+        await Synchronizer.Synchronize(loadout);
+        var hash = hashes["a/x.txt"];
+        var staleCopy = await Store.Ensure(MetadataId, hash, TestContext.Current.CancellationToken);
+
+        ServiceProvider.GetRequiredService<IGarbageCollectorRunner>().Run();
+
+        Store.ForRoot(OnDisk("")).Contains(MetadataId, hash).Should().BeTrue();
+        staleCopy.FileExists.Should().BeFalse("the store the game's folder links from is the one on its own filesystem");
+        File.ReadAllText(OnDisk("a/x.txt").ToString()).Should().Be("bytes of the mod file");
     }
 }
 

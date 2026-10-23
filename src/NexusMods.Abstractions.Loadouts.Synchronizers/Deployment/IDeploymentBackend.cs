@@ -34,6 +34,13 @@ public interface IDeploymentBackend
     bool UsesLooseStaging { get; }
 
     /// <summary>
+    /// The staging store that files deployed to <paramref name="folder"/> link from, given the default
+    /// store. Garbage collection keeps a staged file only in this store. A backend whose files link into
+    /// the default store regardless of filesystem keeps this answer.
+    /// </summary>
+    ILooseStagingStore StagingStoreFor(ILooseStagingStore defaultStore, AbsolutePath folder) => defaultStore;
+
+    /// <summary>
     /// Whether this backend can deploy <paramref name="root"/> on this machine right now. May create and
     /// delete probe files under the root and the staging store, so it must not run while the game does.
     /// </summary>

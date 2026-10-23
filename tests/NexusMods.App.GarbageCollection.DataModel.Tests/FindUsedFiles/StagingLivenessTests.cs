@@ -212,6 +212,160 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
         }
     }
 
+    [Fact]
+    public async Task SweepDropsCopiesInTheStoreOfTheFilesystemTheGameLeft()
+    {
+        var loadout = await CreateLoadout();
+        var installation = loadout.InstallationId;
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, ["mods/moved-game"], loadout, "Mods");
+            _plans.Write(tx, Connection.Db, installation, new GamePath(LocationId.Game, "mods"), StagingBackend, chosen: false);
+            await tx.Commit();
+        }
+        var hash = Hash("mods/moved-game");
+
+        using var stores = await TwoFilesystems.Create(serviceProvider, _fileStore, installation, hash);
+
+        // The game now lives on the second filesystem; the copies on the first are what it left behind.
+        RunGc(stores.Default, (_, _, _) => stores.Second);
+
+        stores.Second.Contains(installation, hash).Should().BeTrue("deployed files link from the store of the filesystem the game is on");
+        stores.First.Contains(installation, hash).Should().BeFalse("nothing deployed links to it any more");
+        stores.Default.Contains(installation, hash).Should().BeFalse("nothing deployed links to it any more");
+    }
+
+    [Fact]
+    public async Task SweepKeepsCopiesInTheStoreAFolderStillLinksFrom()
+    {
+        var loadout = await CreateLoadout();
+        var installation = loadout.InstallationId;
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, ["moved/on-second", "kept/on-first"], loadout, "Mods");
+            _plans.Write(tx, Connection.Db, installation, new GamePath(LocationId.Game, "moved"), StagingBackend, chosen: false);
+            _plans.Write(tx, Connection.Db, installation, new GamePath(LocationId.Game, "kept"), StagingBackend, chosen: false);
+            await tx.Commit();
+        }
+        var onSecond = Hash("moved/on-second");
+        var onFirst = Hash("kept/on-first");
+
+        using var stores = await TwoFilesystems.Create(serviceProvider, _fileStore, installation, onSecond, onFirst);
+
+        RunGc(stores.Default, (_, _, folder) => folder.Path.Path.StartsWith("moved", StringComparison.Ordinal) ? stores.Second : stores.First);
+
+        stores.Second.Contains(installation, onSecond).Should().BeTrue();
+        stores.First.Contains(installation, onFirst).Should().BeTrue("a root on that filesystem still links from it");
+        stores.First.Contains(installation, onSecond).Should().BeFalse();
+        stores.Second.Contains(installation, onFirst).Should().BeFalse();
+        stores.Default.Contains(installation, onSecond).Should().BeFalse();
+        stores.Default.Contains(installation, onFirst).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SweepKeepsDefaultStoreCopiesOfFilesTheLookupSendsThereLikeSymlinks()
+    {
+        var loadout = await CreateLoadout();
+        var installation = loadout.InstallationId;
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, ["mods/symlinked"], loadout, "Mods");
+            _plans.Write(tx, Connection.Db, installation, new GamePath(LocationId.Game, "mods"), StagingBackend, chosen: false);
+            await tx.Commit();
+        }
+        var hash = Hash("mods/symlinked");
+
+        using var stores = await TwoFilesystems.Create(serviceProvider, _fileStore, installation, hash);
+
+        RunGc(stores.Default, (_, _, _) => stores.Default);
+
+        stores.Default.Contains(installation, hash).Should().BeTrue("symlinks point into the default store");
+        stores.First.Contains(installation, hash).Should().BeFalse();
+        stores.Second.Contains(installation, hash).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SweepKeepsFilesInEveryStoreWhenTheLookupCannotSayWhereTheyLink()
+    {
+        var loadout = await CreateLoadout();
+        var installation = loadout.InstallationId;
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, ["mods/unlocated"], loadout, "Mods");
+            _plans.Write(tx, Connection.Db, installation, new GamePath(LocationId.Game, "mods"), StagingBackend, chosen: false);
+            await tx.Commit();
+        }
+        var hash = Hash("mods/unlocated");
+
+        using var stores = await TwoFilesystems.Create(serviceProvider, _fileStore, installation, hash);
+
+        RunGc(stores.Default, (_, _, _) => null);
+
+        stores.Default.Contains(installation, hash).Should().BeTrue();
+        stores.First.Contains(installation, hash).Should().BeTrue();
+        stores.Second.Contains(installation, hash).Should().BeTrue();
+    }
+
+    // A default store and two others, each on a made-up filesystem (a temp directory the locator calls another device).
+    private sealed class TwoFilesystems : IDisposable
+    {
+        private AbsolutePath _temp;
+
+        public required ILooseStagingStore Default { get; init; }
+        public required ILooseStagingStore First { get; init; }
+        public required ILooseStagingStore Second { get; init; }
+
+        public static async Task<TwoFilesystems> Create(IServiceProvider serviceProvider, IFileStore fileStore, GameInstallMetadataId installation, params Hash[] hashes)
+        {
+            var fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
+            var temp = fileSystem.GetKnownPath(KnownPath.TempDirectory).Combine($"gc-moved-game-{Guid.NewGuid():N}");
+            var (first, second) = (temp.Combine("first"), temp.Combine("second"));
+            first.CreateDirectory();
+            second.CreateDirectory();
+
+            var settings = NSubstitute.Substitute.For<ISettingsManager>();
+            settings.Get<LooseStagingStoreSettings>().Returns(new LooseStagingStoreSettings
+            {
+                Location = new ConfigurablePath(null, temp.Combine("default").ToString()),
+            });
+            var locator = new DevicesLocator([(first, 2UL), (second, 3UL)]);
+            var staging = new LooseStagingStore(settings, fileStore, fileSystem, locator, serviceProvider.GetRequiredService<ILogger<LooseStagingStore>>());
+            var stores = new TwoFilesystems
+            {
+                _temp = temp,
+                Default = staging,
+                First = staging.ForRoot(first.Combine("game")),
+                Second = staging.ForRoot(second.Combine("game")),
+            };
+            stores.First.Should().NotBeSameAs(staging);
+            stores.Second.Should().NotBeSameAs(stores.First);
+
+            foreach (var store in new[] { stores.Default, stores.First, stores.Second })
+            {
+                foreach (var hash in hashes) await store.Ensure(installation, hash);
+            }
+            return stores;
+        }
+
+        public void Dispose() => _temp.DeleteDirectory(recursive: true);
+    }
+
+    private sealed class DevicesLocator((AbsolutePath Root, ulong Device)[] mounts) : IFilesystemLocator
+    {
+        private (AbsolutePath Root, ulong Device)? Find(AbsolutePath path)
+        {
+            foreach (var mount in mounts)
+            {
+                if (path == mount.Root || path.InFolder(mount.Root)) return mount;
+            }
+            return null;
+        }
+
+        public ulong? DeviceOf(AbsolutePath path) => Find(path)?.Device ?? 1UL;
+
+        public AbsolutePath? RootOf(AbsolutePath path) => Find(path)?.Root;
+    }
+
     private sealed class MountLocator(AbsolutePath mount) : IFilesystemLocator
     {
         public ulong? DeviceOf(AbsolutePath path) => path == mount || path.InFolder(mount) ? 2UL : 1UL;
@@ -233,7 +387,7 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
 
     private void RunGc() => RunGc(_staging);
 
-    private void RunGc(ILooseStagingStore staging) => RunGarbageCollector.Do(_logger, _dataModelSettings.ArchiveLocations, _fileStore, Connection, staging, _plans, new HashSet<DeploymentBackendId> { StagingBackend });
+    private void RunGc(ILooseStagingStore staging, StagingStoreLookup? storeFor = null) => RunGarbageCollector.Do(_logger, _dataModelSettings.ArchiveLocations, _fileStore, Connection, staging, _plans, new HashSet<DeploymentBackendId> { StagingBackend }, storeFor);
 
     private static Hash Hash(string content) => Encoding.UTF8.GetBytes(content).xxHash3();
 

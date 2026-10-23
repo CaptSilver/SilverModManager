@@ -215,6 +215,74 @@ public class PerFilesystemStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Sweep_LivenessPerStore_DropsTheCopyInAStoreTheFileNoLongerLinksFrom()
+    {
+        var (one, two) = (AddFilesystem("one", device: 2), AddFilesystem("two", device: 3));
+        var hash = Add(0x61);
+        var store = NewStore();
+        var (stale, current) = (store.ForRoot(one), store.ForRoot(two));
+        var token = TestContext.Current.CancellationToken;
+        await stale.Ensure(InstallA, hash, token);
+        await current.Ensure(InstallA, hash, token);
+
+        var deleted = store.Sweep(() =>
+        {
+            var liveness = new StagingLiveness();
+            liveness.Add(current.Root, InstallA, hash);
+            return liveness;
+        });
+
+        deleted.Should().Be(1);
+        current.Contains(InstallA, hash).Should().BeTrue();
+        stale.Contains(InstallA, hash).Should().BeFalse();
+        stale.Installations().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Sweep_LivenessEverywhere_KeepsTheHashInEveryStore()
+    {
+        var steam = AddFilesystem("steam", device: 2);
+        var hash = Add(0x62);
+        var store = NewStore();
+        var other = store.ForRoot(steam);
+        var token = TestContext.Current.CancellationToken;
+        await store.Ensure(InstallA, hash, token);
+        await other.Ensure(InstallA, hash, token);
+
+        var deleted = store.Sweep(() =>
+        {
+            var liveness = new StagingLiveness();
+            liveness.AddEverywhere(InstallA, hash);
+            return liveness;
+        });
+
+        deleted.Should().Be(0);
+        store.Contains(InstallA, hash).Should().BeTrue();
+        other.Contains(InstallA, hash).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Sweep_LivenessPerStore_StoreNobodyMentionsLosesEverything()
+    {
+        var (one, two) = (AddFilesystem("one", device: 2), AddFilesystem("two", device: 3));
+        var hash = Add(0x63);
+        var store = NewStore();
+        var token = TestContext.Current.CancellationToken;
+        await store.ForRoot(one).Ensure(InstallA, hash, token);
+        await store.Ensure(InstallA, hash, token);
+
+        var deleted = store.Sweep(() =>
+        {
+            var liveness = new StagingLiveness();
+            liveness.Add(store.ForRoot(two).Root, InstallA, hash);
+            return liveness;
+        });
+
+        deleted.Should().Be(2);
+        store.Installations().Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Sweep_ReachesAStoreCreatedByAnEarlierRun()
     {
         var steam = AddFilesystem("steam", device: 2);
