@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <Using Include="Xunit"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\NexusMods.Wabbajack.Transforms\NexusMods.Wabbajack.Transforms.csproj" />
+    </ItemGroup>
+</Project>

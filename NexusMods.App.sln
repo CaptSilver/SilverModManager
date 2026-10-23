@@ -296,6 +296,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusMods.Wabbajack", "src\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusMods.Wabbajack.Tests", "tests\NexusMods.Wabbajack.Tests\NexusMods.Wabbajack.Tests.csproj", "{8C5E1D72-4A93-4B06-9F18-2E7D6A0C3B54}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusMods.Wabbajack.Transforms", "src\NexusMods.Wabbajack.Transforms\NexusMods.Wabbajack.Transforms.csproj", "{15610D8E-89A1-4E6A-BA61-02B33B8C0255}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusMods.Wabbajack.Transforms.Tests", "tests\NexusMods.Wabbajack.Transforms.Tests\NexusMods.Wabbajack.Transforms.Tests.csproj", "{A63CDF0C-8CBC-4DA2-8C48-30FEE018BD0C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -790,6 +794,14 @@ Global
 		{8C5E1D72-4A93-4B06-9F18-2E7D6A0C3B54}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C5E1D72-4A93-4B06-9F18-2E7D6A0C3B54}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C5E1D72-4A93-4B06-9F18-2E7D6A0C3B54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{15610D8E-89A1-4E6A-BA61-02B33B8C0255}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15610D8E-89A1-4E6A-BA61-02B33B8C0255}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15610D8E-89A1-4E6A-BA61-02B33B8C0255}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15610D8E-89A1-4E6A-BA61-02B33B8C0255}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A63CDF0C-8CBC-4DA2-8C48-30FEE018BD0C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A63CDF0C-8CBC-4DA2-8C48-30FEE018BD0C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A63CDF0C-8CBC-4DA2-8C48-30FEE018BD0C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A63CDF0C-8CBC-4DA2-8C48-30FEE018BD0C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -929,6 +941,8 @@ Global
 		{9143B958-4C6F-4E04-B607-5FB5122F22EB} = {05B06AC1-7F2B-492F-983E-5BC63CDBF20D}
 		{3F2A9C41-7B1D-4E58-A6C3-5D0E8B1F9A27} = {E7BAE287-D505-4D6D-A090-665A64309B2D}
 		{8C5E1D72-4A93-4B06-9F18-2E7D6A0C3B54} = {52AF9D62-7D5B-4AD0-BA12-86F2AA67428B}
+		{15610D8E-89A1-4E6A-BA61-02B33B8C0255} = {E7BAE287-D505-4D6D-A090-665A64309B2D}
+		{A63CDF0C-8CBC-4DA2-8C48-30FEE018BD0C} = {52AF9D62-7D5B-4AD0-BA12-86F2AA67428B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9F9F8352-34DD-42C0-8564-EE9AF34A3501}

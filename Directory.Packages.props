@@ -10,6 +10,7 @@
     <PackageVersion Include="Jitbit.FastCache" Version="1.1.0" />
     <PackageVersion Include="K4os.Compression.LZ4" Version="1.3.8" />
     <PackageVersion Include="K4os.Compression.LZ4.Streams" Version="1.3.8" />
+    <PackageVersion Include="Octopus.Octodiff" Version="2.0.549" />
     <PackageVersion Include="Bannerlord.ModuleManager" Version="6.0.246" />
     <PackageVersion Include="BsDiff" Version="1.1.0" />
     <PackageVersion Include="LinqGen" Version="0.3.1" />
