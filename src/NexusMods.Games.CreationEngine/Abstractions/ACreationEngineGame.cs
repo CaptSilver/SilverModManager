@@ -2,10 +2,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Games;
+using NexusMods.Abstractions.Games.Modlists;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.CreationEngine.Emitters;
+using NexusMods.Games.CreationEngine.Modlists;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Games.CreationEngine.SortOrder;
 using NexusMods.Games.Bethesda.LoadOrder;
@@ -13,6 +15,7 @@ using NexusMods.Games.Bethesda.LoadOrder.Ordering;
 using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Hashing.xxHash3;
+using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
@@ -24,7 +27,7 @@ namespace NexusMods.Games.CreationEngine.Abstractions;
 /// A Bethesda title whose plugin headers the load order reader can parse: adds the Plugins.txt intrinsic file and the
 /// missing-master check on top of <see cref="ABethesdaGame{TSelf}"/>.
 /// </summary>
-public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame
+public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget
     where TSelf : ACreationEngineGame<TSelf>, IGameData<TSelf>
 {
     private readonly IStreamSourceDispatcher _streamSource;
@@ -145,6 +148,21 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
 
         return PluginHeaderReader.Read(stream, HeaderFormat, name?.FileName.ToString() ?? "unknown.esm");
     }
+
+    string? IMo2InstanceTarget.UnsupportedReason(GameInstallation installation) => CreationEngineMo2Target.UnsupportedReason(TSelf.GameId);
+
+    GamePath IMo2InstanceTarget.ModFilePath(GameInstallation installation, RelativePath modRelative) => CreationEngineMo2Target.ModFilePath(this, modRelative);
+
+    IReadOnlyList<GamePath> IMo2InstanceTarget.ProfileSettingsFiles(GameInstallation installation) => CreationEngineMo2Target.ProfileSettingsFiles(TSelf.GameId);
+
+    bool IMo2InstanceTarget.IsGameRootFolder(GameInstallation installation, string folderName, IReadOnlySet<RelativePath> filesDirectlyInside) =>
+        CreationEngineMo2Target.IsGameRootFolder(this, installation, filesDirectlyInside);
+
+    void IMo2InstanceTarget.StagePluginList(Loadout.ReadOnly loadout, SortOrderId sortOrderId, string? pluginsTxt, string? loadorderTxt, ITransaction tx) =>
+        CreationEngineMo2Target.StagePluginList(
+            this,
+            SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single(),
+            loadout, sortOrderId, pluginsTxt, loadorderTxt, tx);
 
     // One instance per game: it owns a header cache, so it is never a shared service.
     protected override ISortOrderVariety[] CreateSortOrderVarieties(IServiceProvider provider) => [new PluginSortOrderVariety(provider, this)];

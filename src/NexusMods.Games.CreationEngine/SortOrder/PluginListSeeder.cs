@@ -51,29 +51,10 @@ internal static class PluginListSeeder
         else
         {
             var early = game.EarlyLoadingPlugins(loadout.InstallationInstance).ToHashSet(PluginNameComparer.Instance);
-            var rowsByKey = rows.ToDictionary(row => row.Key);
-            var seen = new HashSet<SortItemKey<string>>();
-            var listed = new List<(string Name, bool? IsEnabled)>();
-            foreach (var (name, active) in state.Entries)
-            {
-                var key = PluginSortData.KeyFor(name);
-                if (!seen.Add(key)) continue;
-
-                // The early loaders stay in the locked block at the top, whatever the file says about them.
-                if (rowsByKey.TryGetValue(key, out var row))
-                {
-                    if (!row.IsLocked) listed.Add((row.DisplayName, active));
-                }
-                else if (!early.Contains(name))
-                {
-                    listed.Add((name, active));
-                }
-            }
-
-            var order = rows.Where(row => row.IsLocked).Select(row => (row.DisplayName, (bool?)null))
-                .Concat(listed)
-                .Concat(rows.Where(row => !row.IsLocked && !seen.Contains(row.Key)).Select(row => (row.DisplayName, (bool?)null)))
+            var existing = rows
+                .Select(row => new PluginSortData(row.DisplayName, row.SortIndex, row.IsEnabled, (row.LoadoutData as PluginLoadoutData)?.EarlyLoaderIndex))
                 .ToList();
+            var order = PluginOrderMerge.Build(existing, state.Entries.Select(e => (e.Name, (bool?)e.Active)).ToList(), early);
             variety.StageOrder(sortOrderId, order, tx);
         }
 
