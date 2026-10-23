@@ -5,6 +5,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\..\src\NexusMods.Games.FOMOD\NexusMods.Games.FOMOD.csproj" />
+        <ProjectReference Include="..\..\..\src\NexusMods.Games.FOMOD.UI\NexusMods.Games.FOMOD.UI.csproj" />
         <ProjectReference Include="..\..\..\src\NexusMods.Games.Generic\NexusMods.Games.Generic.csproj" />
         <ProjectReference Include="..\..\..\src\NexusMods.Games.RedEngine\NexusMods.Games.RedEngine.csproj" />
         <ProjectReference Include="..\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
