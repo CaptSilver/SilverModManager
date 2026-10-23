@@ -19,12 +19,17 @@ namespace SilverModManager.Platform.Proton.Launch;
 /// DLL overrides the game needs, merged into the inherited <c>WINEDLLOVERRIDES</c> so the user's own entries
 /// survive. Null or empty leaves the variable as it came.
 /// </param>
+/// <param name="BaseEnvironment">
+/// The environment to inherit instead of this process's own, for a launch that runs here on behalf of another
+/// process (<c>run</c> handing Steam's variables to the window). Null inherits ours.
+/// </param>
 public sealed record GameProcessSpec(
     IReadOnlyList<string> Argv,
     string? WorkingDirectory = null,
     IReadOnlyDictionary<string, string>? Environment = null,
     IReadOnlyList<string>? FilesystemRoots = null,
-    IReadOnlyList<WineDllOverride>? WineDllOverrides = null);
+    IReadOnlyList<WineDllOverride>? WineDllOverrides = null,
+    IReadOnlyDictionary<string, string>? BaseEnvironment = null);
 
 /// <summary>
 /// How a <see cref="GameProcess"/> ended.
@@ -54,10 +59,12 @@ public sealed partial class GameProcess : IGameProcess
     private readonly GameInstallation? _installation;
     private readonly TimeSpan _grace;
     private readonly bool _forwardTermination;
+    private readonly bool _leaveSignalsAlone;
 
-    private GameProcess(Process process, IProcessTracker? tracker, GameInstallation? installation, TimeSpan grace, bool forwardTermination)
+    private GameProcess(Process process, IProcessTracker? tracker, GameInstallation? installation, TimeSpan grace, bool forwardTermination, bool leaveSignalsAlone)
     {
         _forwardTermination = forwardTermination;
+        _leaveSignalsAlone = leaveSignalsAlone;
         _process = process;
         _tracker = tracker;
         _installation = installation;
@@ -77,15 +84,20 @@ public sealed partial class GameProcess : IGameProcess
     /// Whether <see cref="WaitAsync"/> passes SIGTERM and SIGHUP on to the child. Turn it off when the owner
     /// already stops the child on those signals, or the child would get each of them twice.
     /// </param>
+    /// <param name="leaveSignalsAlone">
+    /// Whether <see cref="WaitAsync"/> registers no signal handling at all. For the window, whose own shutdown must
+    /// not be swallowed while a game runs; it stops the child through the launch session instead.
+    /// </param>
     public static GameProcess Start(
         GameProcessSpec spec,
         IProcessTracker tracker,
         GameInstallation installation,
         IReadOnlyDictionary<string, string>? baseEnvironment = null,
         TimeSpan? grace = null,
-        bool forwardTermination = true)
+        bool forwardTermination = true,
+        bool leaveSignalsAlone = false)
     {
-        return Spawn(spec, tracker, installation, baseEnvironment, grace, forwardTermination);
+        return Spawn(spec, tracker, installation, baseEnvironment, grace, forwardTermination, leaveSignalsAlone);
     }
 
     /// <summary>
@@ -95,7 +107,7 @@ public sealed partial class GameProcess : IGameProcess
     /// </summary>
     public static GameProcess PassThrough(GameProcessSpec spec, IReadOnlyDictionary<string, string>? baseEnvironment = null)
     {
-        return Spawn(spec, tracker: null, installation: null, baseEnvironment, grace: null, forwardTermination: true);
+        return Spawn(spec, tracker: null, installation: null, baseEnvironment, grace: null, forwardTermination: true, leaveSignalsAlone: false);
     }
 
     private static GameProcess Spawn(
@@ -104,7 +116,8 @@ public sealed partial class GameProcess : IGameProcess
         GameInstallation? installation,
         IReadOnlyDictionary<string, string>? baseEnvironment,
         TimeSpan? grace,
-        bool forwardTermination)
+        bool forwardTermination,
+        bool leaveSignalsAlone)
     {
         if (spec.Argv.Count == 0) throw new ArgumentException("The command has no program.", nameof(spec));
 
@@ -112,12 +125,12 @@ public sealed partial class GameProcess : IGameProcess
         foreach (var arg in spec.Argv.Skip(1)) startInfo.ArgumentList.Add(arg);
         if (spec.WorkingDirectory is not null) startInfo.WorkingDirectory = spec.WorkingDirectory;
 
-        var environment = BuildEnvironment(baseEnvironment ?? CurrentEnvironment(), spec);
+        var environment = BuildEnvironment(baseEnvironment ?? spec.BaseEnvironment ?? CurrentEnvironment(), spec);
         startInfo.Environment.Clear();
         foreach (var (key, value) in environment) startInfo.Environment[key] = value;
 
         var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start {spec.Argv[0]}");
-        return new GameProcess(process, tracker, installation, grace ?? DefaultGrace, forwardTermination);
+        return new GameProcess(process, tracker, installation, grace ?? DefaultGrace, forwardTermination, leaveSignalsAlone);
     }
 
     private static Dictionary<string, string> CurrentEnvironment()
@@ -195,14 +208,14 @@ public sealed partial class GameProcess : IGameProcess
         // process group; forwarding them as well would deliver Ctrl-C twice. They only need to stop
         // killing us. SIGTERM and SIGHUP are sent to one pid, so those are passed on.
         // An owner that stops the child itself leaves these two out, or the child would get each signal twice.
-        using var term = _forwardTermination
+        using var term = _forwardTermination && !_leaveSignalsAlone
             ? PosixSignalRegistration.Create(PosixSignal.SIGTERM, context => { context.Cancel = true; Signal(SigTerm); })
             : null;
-        using var hup = _forwardTermination
+        using var hup = _forwardTermination && !_leaveSignalsAlone
             ? PosixSignalRegistration.Create(PosixSignal.SIGHUP, context => { context.Cancel = true; Signal(SigHup); })
             : null;
-        using var interrupt = PosixSignalRegistration.Create(PosixSignal.SIGINT, context => context.Cancel = true);
-        using var quit = PosixSignalRegistration.Create(PosixSignal.SIGQUIT, context => context.Cancel = true);
+        using var interrupt = _leaveSignalsAlone ? null : PosixSignalRegistration.Create(PosixSignal.SIGINT, context => context.Cancel = true);
+        using var quit = _leaveSignalsAlone ? null : PosixSignalRegistration.Create(PosixSignal.SIGQUIT, context => context.Cancel = true);
 
         await _process.WaitForExitAsync(cancellationToken);
         var exitCode = _process.ExitCode;

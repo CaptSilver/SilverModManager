@@ -31,6 +31,11 @@ public class ProcessStartupTests
         public int? PassThroughExitCode { get; set; }
         public Exception? PassThroughException { get; set; }
         public List<int> PassThroughHolders { get; } = [];
+
+        /// <summary>What handing the launch to the window answers. Defaults to a window that cannot be asked.</summary>
+        public ForwardedLaunchOutcome ForwardOutcome { get; set; } = new ForwardedLaunchOutcome.Unavailable("it is too old");
+        public Exception? ForwardException { get; set; }
+        public List<LaunchArgs> Forwards { get; } = [];
         public List<(MainKind Kind, int Pid)> Described { get; } = [];
         public Func<MainKind, int, string>? Describe { get; set; }
         public bool CanConnect { get; set; } = true;
@@ -107,6 +112,13 @@ public class ProcessStartupTests
                 PassThroughHolders.Add(holderPid);
                 if (PassThroughException is not null) throw PassThroughException;
                 return Task.FromResult(PassThroughExitCode);
+            },
+            ForwardLaunch = (_, launch) =>
+            {
+                Calls.Add("forward-launch");
+                Forwards.Add(launch);
+                if (ForwardException is not null) throw ForwardException;
+                return Task.FromResult(ForwardOutcome);
             },
             DescribeHeadlessMain = (_, kind, pid) =>
             {
@@ -600,19 +612,107 @@ public class ProcessStartupTests
         recorder.Errors.Should().BeEmpty();
     }
 
+    private static readonly string[] NothingStarted = ["claim", "host-start", "open-database", "run-launch", "can-connect", "kill", "release-main"];
+
     [Fact]
-    public void RunAgainstALiveWindowRefusesWithTheOpenMessageAndTouchesNothing()
+    public void RunAgainstALiveWindowHandsTheLaunchToItAndExitsWithTheGamesExitCode()
     {
-        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234), CanConnect = false };
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            ForwardOutcome = new ForwardedLaunchOutcome.Exited(7, null),
+        };
+
+        Run(recorder, Command("run")).Should().Be(7);
+
+        recorder.Forwards.Should().ContainSingle().Which.LoadoutName.Should().Be("a loadout");
+        recorder.Errors.Should().BeEmpty();
+        recorder.Notifications.Should().BeEmpty();
+        recorder.Calls.Should().NotContain(NothingStarted, "the window keeps the database and the game folder");
+    }
+
+    [Fact]
+    public void AForwardedLaunchThatFailedPrintsTheWindowsMessageButDoesNotNotifyAgain()
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            ForwardOutcome = new ForwardedLaunchOutcome.Exited(125, "Test Game is already being launched by another SilverModManager process."),
+        };
 
         Run(recorder, Command("run")).Should().Be(125);
 
-        recorder.Errors.Should().ContainSingle().Which.Should().Be(ProcessStartup.GuiOpenMessage);
+        recorder.Errors.Should().ContainSingle().Which.Should().Be("Test Game is already being launched by another SilverModManager process.");
+        recorder.Notifications.Should().BeEmpty("the window already told the desktop");
+        recorder.Calls.Should().NotContain(NothingStarted);
+    }
+
+    [Fact]
+    public void ALaunchTheWindowDeclinesIsRefusedWithItsReason_OnStderrAndTheDesktop()
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            ForwardOutcome = new ForwardedLaunchOutcome.Declined("SilverModManager is applying a loadout to Test Game."),
+        };
+
+        Run(recorder, Command("run")).Should().Be(125);
+
+        var expected = ProcessStartup.GuiDeclinedMessage("SilverModManager is applying a loadout to Test Game.");
+        expected.Should().Contain("is applying a loadout to Test Game");
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(expected);
         // Steam starts the launch option without a terminal, so the desktop has to hear about it too.
-        recorder.Notifications.Should().ContainSingle().Which.Should().Be(ProcessStartup.GuiOpenMessage);
-        recorder.Calls.Should()
-            .NotContain("claim").And.NotContain("host-start").And.NotContain("open-database").And.NotContain("run-launch")
-            .And.NotContain("can-connect").And.NotContain("kill").And.NotContain("release-main");
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be(expected);
+        recorder.Calls.Should().NotContain(NothingStarted);
+    }
+
+    [Fact]
+    public void AWindowThatCannotBeAskedIsRefusedWithTheReason_AndTouchesNothing()
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            ForwardOutcome = new ForwardedLaunchOutcome.Unavailable("it is probably an older build"),
+            CanConnect = false,
+        };
+
+        Run(recorder, Command("run")).Should().Be(125);
+
+        var expected = ProcessStartup.GuiUnavailableMessage("it is probably an older build");
+        expected.Should().Contain("older build").And.Contain("Close SilverModManager");
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(expected);
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be(expected);
+        recorder.Calls.Should().NotContain(NothingStarted);
+    }
+
+    [Fact]
+    public void AForwardThatThrowsIsAFailedLaunch_NotAHeadlessStart()
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            ForwardException = new InvalidOperationException("no main process"),
+        };
+
+        Run(recorder, Command("run")).Should().Be(125);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Contain("no main process");
+        recorder.Notifications.Should().ContainSingle().Which.Should().Contain("no main process");
+        recorder.Calls.Should().NotContain(NothingStarted);
+    }
+
+    [Fact]
+    public void ASecretsFileOnAForwardedLaunchIsIgnoredWithAWarning()
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            ForwardOutcome = new ForwardedLaunchOutcome.Exited(0, null),
+        };
+
+        Run(recorder, "run", "a loadout", "--secrets-file", "/tmp/secrets.env", "--", "a-game").Should().Be(0);
+
+        recorder.Warnings.Should().ContainSingle(w => w.Contains("--secrets-file") && w.Contains("ignored"));
     }
 
     [Fact]
@@ -623,6 +723,7 @@ public class ProcessStartupTests
         Run(recorder, Command("run")).Should().Be(7);
 
         recorder.PassThroughHolders.Should().Equal(Environment.ProcessId);
+        recorder.Calls.Should().NotContain("forward-launch", "the window already owns this launch");
         recorder.Errors.Should().BeEmpty();
         recorder.Notifications.Should().BeEmpty();
         recorder.Calls.Should()
@@ -631,25 +732,34 @@ public class ProcessStartupTests
     }
 
     [Fact]
-    public void DryRunAgainstALiveWindowNeverPassesThrough_SoNothingIsStarted()
+    public void DryRunAgainstALiveWindowNeverPassesThroughOrForwards_SoNothingIsStarted()
     {
-        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234), PassThroughExitCode = 0 };
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            PassThroughExitCode = 0,
+            ForwardOutcome = new ForwardedLaunchOutcome.Exited(0, null),
+        };
 
         Run(recorder, "run", "a loadout", "--dry-run", "--", "a-game").Should().Be(125);
 
-        recorder.Calls.Should().NotContain("pass-through").And.NotContain("run-launch");
-        recorder.Errors.Should().ContainSingle().Which.Should().Be(ProcessStartup.GuiOpenMessage);
+        recorder.Calls.Should().NotContain("pass-through").And.NotContain("forward-launch").And.NotContain("run-launch");
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(ProcessStartup.DryRunNeedsHeadlessMessage);
     }
 
     [Fact]
-    public void RunAgainstAWindowThatDoesNotOwnThisLaunchStillRefusesWithTheOpenMessage()
+    public void RunAgainstAWindowThatDoesNotOwnThisLaunchTriesPassThroughFirst_ThenForwards()
     {
-        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234), PassThroughExitCode = null };
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            PassThroughExitCode = null,
+            ForwardOutcome = new ForwardedLaunchOutcome.Exited(3, null),
+        };
 
-        Run(recorder, Command("run")).Should().Be(125);
+        Run(recorder, Command("run")).Should().Be(3);
 
-        recorder.Calls.Should().Contain("pass-through");
-        recorder.Errors.Should().ContainSingle().Which.Should().Be(ProcessStartup.GuiOpenMessage);
+        recorder.Calls.Should().ContainInOrder("pass-through", "forward-launch");
         recorder.Calls.Should().NotContain("run-launch");
     }
 
@@ -662,7 +772,7 @@ public class ProcessStartupTests
 
         Run(recorder, Command("run")).Should().Be(125);
 
-        recorder.Calls.Should().NotContain("pass-through");
+        recorder.Calls.Should().NotContain("pass-through").And.NotContain("forward-launch");
     }
 
     [Fact]
@@ -682,9 +792,11 @@ public class ProcessStartupTests
     }
 
     [Fact]
-    public void TheOpenMessageDiffersFromTheOpenedMeanwhileMessage()
+    public void TheMessagesForAnOpenWindowDifferFromTheOpenedMeanwhileMessage()
     {
-        ProcessStartup.GuiOpenMessage.Should().NotBe(ProcessStartup.OpenedMeanwhileMessage);
+        ProcessStartup.GuiDeclinedMessage("x").Should().NotBe(ProcessStartup.OpenedMeanwhileMessage);
+        ProcessStartup.GuiUnavailableMessage("x").Should().NotBe(ProcessStartup.OpenedMeanwhileMessage);
+        ProcessStartup.DryRunNeedsHeadlessMessage.Should().NotBe(ProcessStartup.OpenedMeanwhileMessage);
     }
 
     [Theory]

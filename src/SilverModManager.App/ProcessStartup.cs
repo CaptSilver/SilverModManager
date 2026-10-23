@@ -63,6 +63,12 @@ public sealed record ProcessStartupSteps
     public required Func<IServiceProvider, LaunchArgs, int, Task<int?>> TryPassThrough { get; init; }
 
     /// <summary>
+    /// Hands the launch to the window with the given pid, which runs it and keeps the database. Returns once the
+    /// game has ended. The stop signals this process receives meanwhile are passed on to the window.
+    /// </summary>
+    public required Func<IServiceProvider, LaunchArgs, Task<ForwardedLaunchOutcome>> ForwardLaunch { get; init; }
+
+    /// <summary>
     /// The text that tells why a live headless main of this kind and pid is in the way.
     /// </summary>
     public required Func<IServiceProvider, MainKind, int, string> DescribeHeadlessMain { get; init; }
@@ -81,10 +87,21 @@ public static class ProcessStartup
 
     private const int ClaimAttempts = 3;
 
-    public const string GuiOpenMessage = "SilverModManager is open, so it cannot launch this game from Steam. Close SilverModManager, or start the game from inside it.";
+    public const string DryRunNeedsHeadlessMessage = "SilverModManager is open, so --dry-run cannot read its loadouts. Close SilverModManager and run it again.";
     public const string StartingMessage = "SilverModManager is starting...";
     public const string SecretsFileNeedsHeadlessMessage = "a secrets file applies to a headless process; close the window first";
     public const string OpenedMeanwhileMessage = "SilverModManager opened while this command was starting. Run it again.";
+
+    /// <summary>
+    /// Why an open window turned a launch away after looking at it.
+    /// </summary>
+    public static string GuiDeclinedMessage(string reason) => $"SilverModManager is open and could not take this launch from Steam: {reason}";
+
+    /// <summary>
+    /// Why an open window could not even be asked, which includes a window from a build that does not take launches.
+    /// </summary>
+    public static string GuiUnavailableMessage(string reason) =>
+        $"SilverModManager is open but could not take this launch from Steam ({reason}). Close SilverModManager, or start the game from inside it.";
 
     public static int Run(StartupMode startupMode, string[] args, ProcessStartupSteps steps)
     {
@@ -141,23 +158,42 @@ public static class ProcessStartup
         // A launch never takes over from a live main: the window or the other launch keeps the database and the game folder.
         if (startupMode.IsHeadlessRun && syncInfo.Process is { } holder)
         {
-            // A dry run starts nothing, and passing through would run the command.
+            // A dry run starts nothing, and passing through or forwarding would run the command.
             if (syncInfo.Kind == MainKind.Gui && launch is { DryRun: false })
             {
-                // The window started this game through Steam and owns the session; the wrapper only reports in.
                 try
                 {
+                    // The window started this game through Steam and owns the session; the wrapper only reports in.
                     if (steps.TryPassThrough(services, launch, holder.Id).GetAwaiter().GetResult() is { } exitCode)
                     {
                         // The launch needs no Nexus credential, and failing a Steam launch because the window is open would be worse.
-                        if (launch.SecretsFile is { } ignored)
-                            logger.LogWarning("--secrets-file {Path} is ignored: the running window owns this launch and keeps its own credentials", ignored);
+                        WarnSecretsFileIgnored(logger, launch);
                         return exitCode;
                     }
+
+                    // Steam's own Play: the window runs the launch the way a headless main would, and this process
+                    // stays only to hold Steam's session open and to relay its stop.
+                    var outcome = steps.ForwardLaunch(services, launch).GetAwaiter().GetResult();
+                    if (outcome is ForwardedLaunchOutcome.Exited exited)
+                    {
+                        WarnSecretsFileIgnored(logger, launch);
+
+                        // The window has already told the desktop; Steam's log gets the words too.
+                        if (exited.Message is { } message) steps.WriteError(message);
+                        return exited.ExitCode;
+                    }
+
+                    var windowRefusal = outcome switch
+                    {
+                        ForwardedLaunchOutcome.Declined declined => GuiDeclinedMessage(declined.Reason),
+                        ForwardedLaunchOutcome.Unavailable unavailable => GuiUnavailableMessage(unavailable.Reason),
+                        _ => throw new InvalidOperationException($"Unknown outcome {outcome}"),
+                    };
+                    return Refuse(services, logger, steps, windowRefusal);
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Could not pass the launch through to the running window");
+                    logger.LogError(ex, "Could not hand the launch to the running window");
                     var failure = $"The launch failed: {ex.Message}";
                     steps.WriteError(failure);
                     steps.Notify(services, failure);
@@ -166,14 +202,9 @@ public static class ProcessStartup
             }
 
             var refusal = syncInfo.Kind == MainKind.Gui
-                ? GuiOpenMessage
+                ? DryRunNeedsHeadlessMessage
                 : steps.DescribeHeadlessMain(services, syncInfo.Kind, holder.Id);
-            logger.LogWarning("Not launching: {Message}", refusal);
-            steps.WriteError(refusal);
-
-            // Steam starts a launch option without a terminal to print to.
-            steps.Notify(services, refusal);
-            return RunFailureExitCode;
+            return Refuse(services, logger, steps, refusal);
         }
 
         // NOTE(erri120): has to come before host startup
@@ -291,6 +322,22 @@ public static class ProcessStartup
         }
 
         return false;
+    }
+
+    private static int Refuse(IServiceProvider services, ILogger logger, ProcessStartupSteps steps, string refusal)
+    {
+        logger.LogWarning("Not launching: {Message}", refusal);
+        steps.WriteError(refusal);
+
+        // Steam starts a launch option without a terminal to print to.
+        steps.Notify(services, refusal);
+        return RunFailureExitCode;
+    }
+
+    private static void WarnSecretsFileIgnored(ILogger logger, LaunchArgs launch)
+    {
+        if (launch.SecretsFile is { } ignored)
+            logger.LogWarning("--secrets-file {Path} is ignored: the running window owns this launch and keeps its own credentials", ignored);
     }
 
     private static bool HasSecretsFileOverride(StartupMode startupMode, IServiceProvider services)

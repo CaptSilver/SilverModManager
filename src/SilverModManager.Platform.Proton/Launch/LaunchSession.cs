@@ -347,6 +347,14 @@ public sealed class LaunchSession
         return null;
     }
 
+    /// <summary>
+    /// Stops the launch the way a termination signal would, for an owner that has no <see cref="StopHandler"/>
+    /// (the window, asked to stop over IPC). Same phase rules as the signal: a launch still applying finishes
+    /// the apply and never starts the game, a running game is terminated, and a launch already finishing is left
+    /// alone. Safe to call before the launch starts and more than once.
+    /// </summary>
+    public void RequestStop() => OnStopping(PosixSignal.SIGTERM, LaunchPhase.Preparing);
+
     private bool StopRequested
     {
         get { lock (_stateGate) return _stopRequested; }

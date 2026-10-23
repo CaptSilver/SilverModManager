@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.ProxyConsole.Exceptions;
 using SilverModManager.ProxyConsole.Messages;
 using SilverModManager.Sdk.ProxyConsole;
 
@@ -24,9 +25,27 @@ public class ProxiedRenderer : IRenderer
     /// <returns></returns>
     public static async Task<(string[]? Arguments, IRenderer Renderer)> Create(IServiceProvider provider, Stream duplexStream)
     {
-        var renderer = new ProxiedRenderer(new Serializer(duplexStream, provider.GetRequiredService<IEnumerable<IRenderableDefinition>>()));
-        var arguments = await renderer._serializer.SendAndReceiveAsync<ProgramArgumentsResponse, ProgramArgumentsRequest>(new ProgramArgumentsRequest());
-        return (arguments.Arguments, renderer);
+        var (reply, renderer, _) = await Accept(provider, duplexStream);
+        if (reply is not ProgramArgumentsResponse response)
+        {
+            UnexpectedMessageException.Throw(typeof(ProgramArgumentsResponse), reply?.GetType() ?? typeof(object));
+            return default; // Throw never returns
+        }
+
+        return (response.Arguments, renderer);
+    }
+
+    /// <summary>
+    /// Asks the client what it wants and returns its first reply unexamined, with the renderer and serializer over
+    /// the same stream. A client that wants to run a verb answers with <see cref="ProgramArgumentsResponse"/>;
+    /// anything else is the caller's to interpret.
+    /// </summary>
+    public static async Task<(IMessage? Reply, IRenderer Renderer, Serializer Serializer)> Accept(IServiceProvider provider, Stream duplexStream)
+    {
+        var serializer = new Serializer(duplexStream, provider.GetRequiredService<IEnumerable<IRenderableDefinition>>());
+        await serializer.SendAsync(new ProgramArgumentsRequest());
+        var reply = await serializer.ReceiveAsync();
+        return (reply, new ProxiedRenderer(serializer), serializer);
     }
 
     /// <summary>

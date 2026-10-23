@@ -15,6 +15,7 @@ public class SyncFile
     private const ulong PortMask = 0xFFFF;
 
     private readonly MultiProcessSharedArray _sharedArray;
+    private readonly AbsolutePath _path;
     private readonly ILogger<SyncFile> _logger;
 
     /// <summary>
@@ -26,9 +27,16 @@ public class SyncFile
     internal SyncFile(ILogger<SyncFile> logger, AbsolutePath path)
     {
         _logger = logger;
+        _path = path;
         _logger.LogDebug("Using Sync File: {SyncFile}", path);
         _sharedArray = new MultiProcessSharedArray(path, itemCount: 8);
     }
+
+    /// <summary>
+    /// Where the main process leaves the token a client must present to hand it a game launch. Next to the sync file
+    /// so that both find it from the same setting.
+    /// </summary>
+    internal AbsolutePath TokenPath => _path.AppendExtension(new Extension(".launch-token"));
 
     /// <summary>
     /// The raw slot 0 word, for tests that need to plant or inspect it.

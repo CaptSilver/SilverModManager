@@ -106,6 +106,10 @@ public static class Services
             case HostProfile.Gui:
                 // Only the window-showing process knows which executable Steam launch lines should come back to.
                 services.AddSingleProcess(Mode.Main).AddLauncherShim();
+                // A Steam launch option's `run` hands its game to the window, which owns the database.
+                services.AddSingleton<IForwardedLaunchHandler, ForwardedLaunchHandler>();
+                // A game started here must leave the window's own shutdown signals alone.
+                services.LeaveSignalsToHost();
                 // The host's console lifetime swallows SIGTERM/SIGINT; the window has to be told to close.
                 services.TryAddSingleton<DesktopShutdownOnHostStop>();
                 // Steam updates games while the app is closed, so managed games are checked once at startup.

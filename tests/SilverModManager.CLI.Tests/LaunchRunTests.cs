@@ -16,7 +16,7 @@ namespace SilverModManager.CLI.Tests;
 
 public class LaunchRunTests
 {
-    private static IHost BuildRunHost()
+    internal static IHost BuildRunHost()
     {
         const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"LaunchRunTests-{Guid.NewGuid()}";

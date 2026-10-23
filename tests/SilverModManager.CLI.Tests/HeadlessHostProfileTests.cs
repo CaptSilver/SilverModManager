@@ -206,6 +206,29 @@ public class HeadlessHostProfileTests
         services.Should().Contain(d => d.ImplementationType != null && d.ImplementationType.Name == "HandlerRegistration");
     }
 
+    [Theory]
+    [InlineData("as-main", false)]
+    [InlineData("run", false)]
+    [InlineData("as-main-ui", true)]
+    public void OnlyTheGuiProfileTakesLaunchesFromSteam(string input, bool registered)
+    {
+        var services = Describe(Mode(input.Split(' ')));
+
+        // A headless main already is the launch; only the window has to take one on behalf of a `run` process.
+        services.Where(d => d.ServiceType == typeof(IForwardedLaunchHandler)).Select(d => d.ImplementationType)
+            .Should().Equal(registered ? [typeof(ForwardedLaunchHandler)] : []);
+    }
+
+    [Fact]
+    public void GuiGraphLeavesItsOwnSignalsAloneWhileAGameRuns()
+    {
+        var factory = Describe(Mode("as-main-ui")).Last(d => d.ServiceType == typeof(IGameProcessFactory));
+
+        // The headless registration is a type; the window replaces it with a factory built to leave signals alone.
+        factory.ImplementationType.Should().BeNull();
+        factory.ImplementationFactory.Should().NotBeNull();
+    }
+
     [Fact]
     public void GuiGraphRegistersOnlyTheWindowsApiKeyPrompt()
     {

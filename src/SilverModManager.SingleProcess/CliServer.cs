@@ -4,7 +4,10 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Sdk.Settings;
+using MemoryPack;
+using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.ProxyConsole;
+using SilverModManager.ProxyConsole.Messages;
 using SilverModManager.SingleProcess.Exceptions;
 
 namespace SilverModManager.SingleProcess;
@@ -21,6 +24,7 @@ public sealed class CliServer : IHostedService, IDisposable
     private bool _started;
 
     private TcpListener? _tcpListener;
+    private string? _launchToken;
     private readonly ConcurrentDictionary<Guid, Task> _runningClients = [];
 
     private readonly IServiceProvider _serviceProvider;
@@ -61,6 +65,9 @@ public sealed class CliServer : IHostedService, IDisposable
 
     private Task StartTcpListenerAsync()
     {
+        // Before the port is published, so a client that finds the port also finds the token.
+        _launchToken = LaunchToken.Create(_syncFile.TokenPath);
+
         _tcpListener = new TcpListener(IPAddress.Loopback, 0);
         _tcpListener.Start();
         Task.Run(async () => await StartListeningAsync(), _cancellationTokenSource.Token);
@@ -112,13 +119,128 @@ public sealed class CliServer : IHostedService, IDisposable
         {
             var stream = client.GetStream();
 
-            var (arguments, renderer) = await ProxiedRenderer.Create(_serviceProvider, stream);
-            await _configurator.RunAsync(arguments ?? [], renderer, Token);
+            var (reply, renderer, serializer) = await ProxiedRenderer.Accept(_serviceProvider, stream);
+            switch (reply)
+            {
+                case ProgramArgumentsResponse arguments:
+                    await _configurator.RunAsync(arguments.Arguments ?? [], renderer, Token);
+                    break;
+                case LaunchRequest launch:
+                    await RunForwardedLaunchAsync(serializer, launch);
+                    break;
+                default:
+                    _logger.LogWarning("Dropping a client that answered with {Message}", reply?.GetType().Name ?? "nothing");
+                    break;
+            }
         }
         finally
         {
             client.Dispose();
             _runningClients.Remove(id, out _);
+        }
+    }
+
+    /// <summary>
+    /// Runs a game launch for a <c>run</c> process: asks the handler, tells the client whether it was taken, and
+    /// reports how it ended. A stop request, a client that goes away and the server shutting down all stop the launch.
+    /// </summary>
+    private async Task RunForwardedLaunchAsync(Serializer serializer, LaunchRequest request)
+    {
+        if (_launchToken is null || !LaunchToken.Matches(_launchToken, request.Token))
+        {
+            _logger.LogWarning("Refusing a launch request that did not present the launch token");
+            await TrySendAsync(serializer, new LaunchDeclined { Reason = "the launch did not present this SilverModManager's launch token" });
+            return;
+        }
+
+        var handler = _serviceProvider.GetService<IForwardedLaunchHandler>();
+        if (handler is null)
+        {
+            await TrySendAsync(serializer, new LaunchDeclined { Reason = "this SilverModManager cannot run a game launch" });
+            return;
+        }
+
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        void RequestStop()
+        {
+            try
+            {
+                stop.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // The launch is over and so is anything left to stop.
+            }
+        }
+
+        // The client says stop with a message, and a client that vanished (killed, or its session ended) has nobody
+        // left to wait for the game, so both end the launch.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (true)
+                {
+                    if (await serializer.ReceiveAsync() is LaunchStop)
+                    {
+                        _logger.LogInformation("The client of a forwarded launch asked to stop it");
+                        RequestStop();
+                    }
+                }
+            }
+            catch (Exception e) when (e is EndOfStreamException or IOException or ObjectDisposedException or MemoryPackSerializationException)
+            {
+                _logger.LogInformation("The client of a forwarded launch is gone");
+                RequestStop();
+            }
+        }, CancellationToken.None);
+
+        ForwardedLaunchAdmission admission;
+        try
+        {
+            admission = await handler.AdmitAsync(new ForwardedLaunch(request.LoadoutName, request.Game, request.Command, request.Environment, request.WorkingDirectory));
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Deciding whether to run a forwarded launch failed");
+            await TrySendAsync(serializer, new LaunchDeclined { Reason = $"the launch failed: {e.Message}" });
+            return;
+        }
+
+        if (admission.DeclineReason is { } reason)
+        {
+            await TrySendAsync(serializer, new LaunchDeclined { Reason = reason });
+            return;
+        }
+
+        await TrySendAsync(serializer, new LaunchAccepted());
+
+        ForwardedLaunchExit exit;
+        try
+        {
+            exit = await admission.RunAsync(stop.Token);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "A forwarded launch failed");
+            exit = new ForwardedLaunchExit(LaunchFailureExitCode, $"The launch failed: {e.Message}");
+        }
+
+        await TrySendAsync(serializer, new LaunchExited { ExitCode = exit.ExitCode, Message = exit.Message });
+    }
+
+    /// <summary>The exit code of a launch that failed, as <c>run</c> reports it.</summary>
+    private const int LaunchFailureExitCode = 125;
+
+    private async Task TrySendAsync(Serializer serializer, IMessage message)
+    {
+        try
+        {
+            await serializer.SendAsync(message);
+        }
+        catch (Exception e) when (e is IOException or ObjectDisposedException)
+        {
+            _logger.LogInformation(e, "Could not send {Message}: the client is gone", message.GetType().Name);
         }
     }
 

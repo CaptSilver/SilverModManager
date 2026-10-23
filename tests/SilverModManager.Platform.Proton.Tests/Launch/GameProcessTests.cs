@@ -334,6 +334,47 @@ public class GameProcessTests : IDisposable
         (await File.ReadAllTextAsync(File_("argv"))).Should().Be("a b||$HOME|--x=\"y\"|");
     }
 
+    [Fact]
+    public async Task ASpecsBaseEnvironmentReplacesOurOwn_AndIsStillCleanedOfAppImageAndSecretVariables()
+    {
+        const string windowOnly = "SILVERMM_TEST_WINDOW_ONLY";
+        Environment.SetEnvironmentVariable(windowOnly, "from-the-window");
+        try
+        {
+            var forwarded = new Dictionary<string, string>(BasicEnvironment)
+            {
+                ["SteamAppId"] = "1091500",
+                ["APPDIR"] = "/tmp/.mount_app",
+                ["NEXUS_API_KEY"] = "secret",
+            };
+            var spec = Sh($"env > '{File_("env")}'") with { BaseEnvironment = forwarded };
+
+            using var process = GameProcess.Start(spec, Substitute.For<IProcessTracker>(), Installation(), grace: Grace);
+            await process.WaitAsync();
+
+            var lines = await File.ReadAllLinesAsync(File_("env"));
+            lines.Should().Contain("SteamAppId=1091500");
+            lines.Should().NotContain(l => l.StartsWith(windowOnly + "="), "the launch runs in Steam's environment, not the window's");
+            lines.Should().NotContain(l => l.StartsWith("APPDIR=") || l.StartsWith("NEXUS_API_KEY="));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(windowOnly, null);
+        }
+    }
+
+    [Fact]
+    public async Task AnExplicitBaseEnvironmentArgumentStillWinsOverTheSpecs()
+    {
+        var spec = Sh($"env > '{File_("env")}'") with { BaseEnvironment = new Dictionary<string, string>(BasicEnvironment) { ["WHO"] = "spec" } };
+        var argument = new Dictionary<string, string>(BasicEnvironment) { ["WHO"] = "argument" };
+
+        using var process = GameProcess.Start(spec, Substitute.For<IProcessTracker>(), Installation(), argument, Grace);
+        await process.WaitAsync();
+
+        (await File.ReadAllLinesAsync(File_("env"))).Should().Contain("WHO=argument");
+    }
+
     private static readonly WineDllOverride Winmm = new("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]);
 
     private async Task<string[]> EnvironmentOf(GameProcessSpec spec, IReadOnlyDictionary<string, string> inherited)

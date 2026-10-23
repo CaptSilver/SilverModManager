@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
@@ -8,6 +10,7 @@ using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
+using SilverModManager.SingleProcess;
 
 namespace SilverModManager.App;
 
@@ -56,6 +59,78 @@ public static class LaunchRun
     /// </summary>
     public static Task<int?> TryPassThroughAsync(IServiceProvider services, LaunchArgs args, int guiPid) =>
         WrapperPassThrough.TryRunAsync(args.Command, services.GetRequiredService<IEnvironmentReader>(), guiPid, services.GetRequiredService<ILogger<LaunchSession>>(), notifier: services.GetRequiredService<IDesktopNotifier>());
+
+    /// <summary>
+    /// Hands the launch to the running window and waits for the game to end, passing Steam's stop on to it. The
+    /// window runs the same launch session a headless <c>run</c> would, so this process only keeps Steam's own
+    /// session open and relays the exit code.
+    /// </summary>
+    public static async Task<ForwardedLaunchOutcome> ForwardAsync(IServiceProvider services, LaunchArgs args)
+    {
+        using var stop = new CancellationTokenSource();
+        void Stop(PosixSignalContext context)
+        {
+            // Steam's Stop sends SIGTERM to this process alone; the game is the window's child, so the window has to end it.
+            context.Cancel = true;
+            stop.Cancel();
+        }
+
+        using var term = PosixSignalRegistration.Create(PosixSignal.SIGTERM, Stop);
+        using var hup = PosixSignalRegistration.Create(PosixSignal.SIGHUP, Stop);
+        using var interrupt = PosixSignalRegistration.Create(PosixSignal.SIGINT, Stop);
+
+        var client = services.GetRequiredService<CliClient>();
+        return await client.ForwardLaunchAsync(ToForwardedLaunch(args, CurrentEnvironment(), Environment.CurrentDirectory), stop.Token);
+    }
+
+    /// <summary>
+    /// What the window needs to run <paramref name="args"/> as this process would: the environment Steam gave it and
+    /// the directory Steam started it in.
+    /// </summary>
+    public static ForwardedLaunch ToForwardedLaunch(LaunchArgs args, IReadOnlyDictionary<string, string> environment, string? workingDirectory)
+        => new(args.LoadoutName, args.Game, args.Command, environment, workingDirectory);
+
+    private static Dictionary<string, string> CurrentEnvironment()
+    {
+        var result = new Dictionary<string, string>();
+        foreach (DictionaryEntry entry in Environment.GetEnvironmentVariables())
+            result[(string)entry.Key] = (string?)entry.Value ?? "";
+        return result;
+    }
+
+    /// <summary>
+    /// Runs a launch a <c>run</c> process handed over, in this process and in the environment that process had. The
+    /// window keeps its database open, so the session lets go of the installation as soon as the game is done.
+    /// <paramref name="stop"/> ends the game the way Steam's Stop would have.
+    /// </summary>
+    public static async Task<ForwardedLaunchExit> RunForwardedAsync(IServiceProvider services, Loadout.ReadOnly loadout, GameInstallation installation, ForwardedLaunch launch, CancellationToken stop)
+    {
+        var wineDllOverrides = WineDllOverrideRequirements.For(installation.Game, loadout);
+        var context = new LaunchContext(installation, loadout.LoadoutId, loadout.Name, wineDllOverrides);
+
+        var session = services.GetRequiredService<LaunchSession>();
+        try
+        {
+            using var stopping = stop.Register(session.RequestStop);
+            var result = await session.RunAsync(context, () => InForwardedEnvironment(PlanFor(services, loadout, installation, launch.Command, wineDllOverrides), launch));
+            return new ForwardedLaunchExit(result.ExitCode, result.Message);
+        }
+        finally
+        {
+            session.Release();
+        }
+    }
+
+    // The game runs in what Steam gave the run process, in the folder Steam started it in; the window's own are unrelated.
+    private static LaunchPlan InForwardedEnvironment(LaunchPlan plan, ForwardedLaunch launch)
+        => plan with
+        {
+            Process = plan.Process with
+            {
+                BaseEnvironment = launch.Environment,
+                WorkingDirectory = plan.Process.WorkingDirectory ?? launch.WorkingDirectory,
+            },
+        };
 
     private static LaunchPlan PlanFor(IServiceProvider services, Loadout.ReadOnly loadout, GameInstallation installation, IReadOnlyList<string> command, IReadOnlyList<WineDllOverride> wineDllOverrides)
     {

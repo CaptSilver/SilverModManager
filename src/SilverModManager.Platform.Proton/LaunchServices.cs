@@ -12,6 +12,14 @@ namespace SilverModManager.Platform.Proton;
 public static class LaunchServices
 {
     /// <summary>
+    /// For a process that starts games but is not the launch: its own SIGTERM, SIGINT and SIGHUP keep their
+    /// meaning while a game runs, instead of being swallowed or forwarded to the game. The window stops its games
+    /// through the launch session.
+    /// </summary>
+    public static IServiceCollection LeaveSignalsToHost(this IServiceCollection services)
+        => services.Replace(ServiceDescriptor.Singleton<IGameProcessFactory>(s => new GameProcessFactory(s.GetRequiredService<IProcessTracker>(), stop: null, leaveSignalsAlone: true)));
+
+    /// <summary>
     /// Registers the services that let a game launch run without the GUI.
     /// </summary>
     public static IServiceCollection AddHeadlessLaunch(this IServiceCollection services)

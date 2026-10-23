@@ -36,13 +36,13 @@ public interface IGameProcessFactory
     Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, CancellationToken cancellationToken);
 }
 
-internal sealed class GameProcessFactory(IProcessTracker tracker, StopHandler? stop = null) : IGameProcessFactory
+internal sealed class GameProcessFactory(IProcessTracker tracker, StopHandler? stop = null, bool leaveSignalsAlone = false) : IGameProcessFactory
 {
     // A stop handler already terminates the game on SIGTERM and SIGHUP, in the phase-aware way.
     internal bool ForwardTermination => stop is null;
 
     public IGameProcess Start(GameProcessSpec spec, GameInstallation installation)
-        => GameProcess.Start(spec, tracker, installation, forwardTermination: ForwardTermination);
+        => GameProcess.Start(spec, tracker, installation, forwardTermination: ForwardTermination, leaveSignalsAlone: leaveSignalsAlone);
 
     public Task<TrackedProcess?> ShutDownGameAsync(GameInstallation installation, CancellationToken cancellationToken)
         => StragglerShutdown.RunAsync(tracker, installation, GameProcess.DefaultGrace, cancellationToken);

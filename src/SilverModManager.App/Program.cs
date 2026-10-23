@@ -115,6 +115,7 @@ public class Program
         RunCliRemotely = (services, startupMode) => RunCliTaskRemotely(services, startupMode),
         RunLaunch = LaunchRun.RunAsync,
         TryPassThrough = LaunchRun.TryPassThroughAsync,
+        ForwardLaunch = LaunchRun.ForwardAsync,
         DescribeHeadlessMain = (services, kind, pid) => HeadlessMainRefusal.Describe(kind, pid, services.GetRequiredService<IEnvironmentReader>().Get("XDG_RUNTIME_DIR")),
         RunUi = services => Startup.Main(services, []),
     };
