@@ -2,12 +2,15 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Diagnostics.Emitters;
+using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.App.UI.DiagnosticSystem;
 using NexusMods.Games.Larian.BaldursGate3;
 using NexusMods.Games.Larian.BaldursGate3.Emitters;
+using NexusMods.Games.Larian.BaldursGate3.GameInstalled;
+using NexusMods.Games.Larian.BaldursGate3.ModList;
 using NexusMods.Games.Larian.BaldursGate3.Models;
 using NexusMods.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
@@ -166,6 +169,29 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
 
         Items(loadout).Select(i => i.SourceId).Should().Contain("newer-ab99.pak", "the sync did rewrite the group");
         ItemTransactions(loadout).Should().Equal(before, "the item and its stored entry are not rewritten when nothing about them changed");
+    }
+
+    [Fact]
+    public async Task AnEntryWithAnEmptyChecksumEqualsWhatWasStored()
+    {
+        var loadout = await CreateLoadout();
+        await WritePak(RecordedPak, SyntheticPak.ForPublishedModule("MyMod", "My Mod", RecordUuid, SyntheticPak.Version(1, 2, 3), "4242"));
+        await WriteModsettings(RecordedEntry("MyMod", "My Mod", "4242", md5: ""));
+        await Apply(loadout);
+
+        // A rewrite of an unchanged item adds no datoms, so only the comparison shows whether an empty stored
+        // value reads as a change, which would open a reconcile transaction on every Apply.
+        var entry = new ModsettingsDocument.ModuleEntry("MyMod", "My Mod", "4242", RecordUuid, SyntheticPak.Version(1, 2, 3).ToString(), "");
+        var content = new GameInstalledContent("Test", RecordedPak, "My Mod", null, GameInstalledConfidence.GameRecord, false, [], entry);
+        var probe = new SynchronizerProbe(ServiceProvider, Game);
+
+        probe.ExtrasDiffer(Connection.Db, Item(Refresh(loadout), RecordedPak).Id, content).Should().BeFalse();
+    }
+
+    private sealed class SynchronizerProbe(IServiceProvider provider, IGame game)
+        : BaldursGate3Synchronizer(provider, game, new Bg3PakModules(provider))
+    {
+        public bool ExtrasDiffer(IDb db, EntityId itemId, GameInstalledContent content) => GameInstalledExtrasDiffer(db, itemId, content);
     }
 
     [Fact]

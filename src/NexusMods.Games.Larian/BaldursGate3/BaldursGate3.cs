@@ -9,6 +9,7 @@ using NexusMods.Games.Generic.Diagnostics;
 using NexusMods.Games.Generic.Installers;
 using NexusMods.Games.Larian.BaldursGate3.Emitters;
 using NexusMods.Games.Larian.BaldursGate3.Installers;
+using NexusMods.Games.Larian.BaldursGate3.ModList;
 using NexusMods.Games.Larian.BaldursGate3.SortOrder;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
@@ -46,7 +47,9 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequ
         var art = provider.GetRequiredService<IGameArtSource>();
         IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
         TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
-        _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new BaldursGate3Synchronizer(provider, this));
+        // One instance, so the synchronizer and the diagnostic read each pak from disk once between them.
+        var modules = new Bg3PakModules(provider);
+        _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new BaldursGate3Synchronizer(provider, this, modules));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {
             var sortOrderManager = provider.GetRequiredService<SortOrderManager>();
@@ -58,7 +61,7 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequ
         [
             provider.GetRequiredService<DependencyDiagnosticEmitter>(),
             provider.GetRequiredService<ProtonPrefixEmitter>(),
-            new DuplicateModuleEmitter(this, provider),
+            new DuplicateModuleEmitter(this, modules),
             new Bg3ModListReplacedEmitter(this),
             new Bg3ModListResetEmitter(this),
         ];

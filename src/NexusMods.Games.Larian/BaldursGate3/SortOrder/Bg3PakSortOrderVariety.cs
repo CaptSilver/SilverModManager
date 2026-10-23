@@ -28,11 +28,8 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     // Reconciling stores an order too, but it is the app tidying up, not the user changing anything.
     private static readonly AsyncLocal<bool> Reconciling = new();
 
-    private readonly IGame _game;
-
     public Bg3PakSortOrderVariety(IServiceProvider serviceProvider, IGame game) : base(serviceProvider)
     {
-        _game = game;
     }
 
     public override SortOrderVarietyId SortOrderVarietyId => StaticVarietyId;

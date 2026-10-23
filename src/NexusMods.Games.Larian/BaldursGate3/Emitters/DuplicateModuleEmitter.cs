@@ -17,10 +17,10 @@ public sealed class DuplicateModuleEmitter : ILoadoutDiagnosticEmitter
     private readonly IGame _game;
     private readonly Bg3PakModules _modules;
 
-    public DuplicateModuleEmitter(IGame game, IServiceProvider provider)
+    public DuplicateModuleEmitter(IGame game, Bg3PakModules modules)
     {
         _game = game;
-        _modules = new Bg3PakModules(provider);
+        _modules = modules;
     }
 
     public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, [EnumeratorCancellation] CancellationToken cancellationToken)

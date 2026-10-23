@@ -28,12 +28,12 @@ public class BaldursGate3Synchronizer : ALoadoutSynchronizer
     private readonly Bg3PakModules _modules;
     private readonly ModsettingsFile _modsettings;
 
-    public BaldursGate3Synchronizer(IServiceProvider provider, IGame game) : base(provider)
+    public BaldursGate3Synchronizer(IServiceProvider provider, IGame game, Bg3PakModules modules) : base(provider)
     {
         var settingsManager = provider.GetRequiredService<ISettingsManager>();
         _settings = settingsManager.Get<BaldursGate3Settings>();
         _game = game;
-        _modules = new Bg3PakModules(provider);
+        _modules = modules;
         _modsettings = new ModsettingsFile(game, _modules, provider.GetRequiredService<ILogger<ModsettingsFile>>());
     }
 
