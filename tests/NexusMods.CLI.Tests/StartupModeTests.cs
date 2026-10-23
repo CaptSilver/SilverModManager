@@ -148,4 +148,62 @@ public class StartupModeTests
         mode.IsHeadlessRun.Should().BeFalse();
         mode.Args.Should().Equal("hold-lock", "/x", "5");
     }
+
+    [Theory]
+    [InlineData("nexus-whoami --secrets-file /x/s.env", "nexus-whoami --secrets-file /x/s.env", false)]
+    [InlineData("secrets-status --secrets-file=/x/s.env", "secrets-status --secrets-file=/x/s.env", false)]
+    [InlineData("as-main nexus-whoami --secrets-file /x/s.env", "nexus-whoami --secrets-file /x/s.env", true)]
+    [InlineData("as-main secrets-status --secrets-file=/x/s.env", "secrets-status --secrets-file=/x/s.env", true)]
+    public void CredentialVerbsTakeTheirSecretsFileBeforeAnyHostExistsAndKeepItInTheArguments(string input, string finalArgs, bool asMain)
+    {
+        var mode = StartupMode.Parse(input.Split(' '));
+
+        mode.SecretsFile!.Value.GetFullPath().Should().Be("/x/s.env");
+        mode.SecretsFileError.Should().BeNull();
+        mode.UsesOwnCredentials.Should().BeTrue();
+        mode.RunAsMain.Should().Be(asMain);
+        // The headless main a forwarded verb starts is built from these, so the option has to survive in them.
+        string.Join(' ', mode.Args).Should().Be(finalArgs);
+        string.Join(' ', mode.HeadlessMainArgs).Should().Be("as-main " + finalArgs);
+    }
+
+    [Theory]
+    [InlineData("nexus-whoami")]
+    [InlineData("secrets-status")]
+    [InlineData("as-main secrets-status")]
+    public void CredentialVerbsWithoutAnOptionHaveNoSecretsFile(string input)
+    {
+        var mode = StartupMode.Parse(input.Split(' '));
+
+        mode.SecretsFile.Should().BeNull();
+        mode.SecretsFileError.Should().BeNull();
+        mode.UsesOwnCredentials.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("nexus-whoami --secrets-file")]
+    [InlineData("nexus-whoami --secrets-file=")]
+    [InlineData("secrets-status --secrets-file a --secrets-file b")]
+    public void AMalformedSecretsFileIsRecordedAsAnErrorNotThrown(string input)
+    {
+        var mode = StartupMode.Parse(input.Split(' '));
+
+        mode.SecretsFile.Should().BeNull();
+        mode.SecretsFileError.Should().Contain("--secrets-file");
+    }
+
+    [Theory]
+    [InlineData("loadouts list --secrets-file /x/s.env")]
+    [InlineData("nexus-login --secrets-file /x/s.env")]
+    [InlineData("status --secrets-file /x/s.env")]
+    [InlineData("run nexus-whoami -- game.exe")]
+    [InlineData("run --help --secrets-file /x/s.env")]
+    public void OtherStartsDoNotTakeASecretsFileHere(string input)
+    {
+        var mode = StartupMode.Parse(input.Split(' '));
+
+        mode.SecretsFile.Should().BeNull();
+        mode.SecretsFileError.Should().BeNull();
+        mode.UsesOwnCredentials.Should().BeFalse();
+    }
 }

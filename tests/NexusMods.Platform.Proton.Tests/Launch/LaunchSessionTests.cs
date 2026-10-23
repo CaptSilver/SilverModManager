@@ -8,6 +8,7 @@ using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
+using NexusMods.Sdk.NexusModsApi;
 using NSubstitute;
 
 namespace NexusMods.Platform.Proton.Tests.Launch;
@@ -454,6 +455,20 @@ public class LaunchSessionTests : IDisposable
         await NewSession().RunAsync(_context, () => new LaunchPlan(new GameProcessSpec(["game.exe"]), null, substitution));
 
         _log.Entries.Should().Contain(e => e.Contains("refused: no exe slot in the command"));
+    }
+
+    [Fact]
+    public async Task ARealRunLogsWhichNexusCredentialItHolds()
+    {
+        var credentials = Substitute.For<INexusCredentialSummary>();
+        credentials.Kind.Returns(NexusCredentialKind.ApiKey);
+        credentials.Source.Returns("environment variable NEXUS_API_KEY");
+        var session = new LaunchSession(_lockFactory, _active, _synchronizer, _processes, _gates, _notifier, _log, _error, credentials: credentials);
+        _sessions.Add(session);
+
+        await Run(session);
+
+        _log.Entries.Should().Contain("Nexus credential: API key from environment variable NEXUS_API_KEY");
     }
 
     private sealed class RecordingLogger : ILogger<LaunchSession>

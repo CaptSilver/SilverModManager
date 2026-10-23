@@ -2,5 +2,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\NexusMods.Networking.GitHub\NexusMods.Networking.GitHub.csproj" />
     <ProjectReference Include="..\..\src\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+    <ProjectReference Include="..\..\src\NexusMods.Secrets\NexusMods.Secrets.csproj" />
   </ItemGroup>
 </Project>

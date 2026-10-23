@@ -1,5 +1,6 @@
 using NexusMods.Abstractions.Secrets;
 using NexusMods.Paths;
+using NexusMods.Platform.Proton.Launch;
 
 namespace NexusMods.App;
 
@@ -36,6 +37,19 @@ public class StartupMode
     /// A secrets file named on the command line (<c>--secrets-file</c>); it wins over <c>SILVERMM_SECRETS_FILE</c>.
     /// </summary>
     public AbsolutePath? SecretsFile { get; set; }
+
+    /// <summary>
+    /// Why the <c>--secrets-file</c> option of a credential verb could not be read, or null. It is reported before
+    /// any host is built, because the option decides how the host's secret store is made.
+    /// </summary>
+    public string? SecretsFileError { get; set; }
+
+    /// <summary>
+    /// True for the verbs that use this process's own credentials and nobody else's (<c>nexus-whoami</c>,
+    /// <c>secrets-status</c>). Run in another process they would answer from that process's store, which never
+    /// saw this process's <c>--secrets-file</c>.
+    /// </summary>
+    public bool UsesOwnCredentials { get; set; } = false;
 
     /// <summary>
     /// Overrides the user's secret storage setting. Test hosts set <see cref="SecretBackendChoice.Memory"/>
@@ -151,7 +165,22 @@ public class StartupMode
             mode.ShowUI = false;
         }
 
+        ReadCredentialVerb(mode);
         return mode;
+    }
+
+    private static readonly string[] CredentialVerbs = ["nexus-whoami", "secrets-status"];
+
+    // The option stays in Args: a verb that is forwarded to a new headless main is started from them, and
+    // that process has to read the option again to build its own store.
+    private static void ReadCredentialVerb(StartupMode mode)
+    {
+        if (!mode.ExecuteCli || mode.IsHeadlessRun || mode.IsRunHelp || mode.IsStatus || mode.IsSelftestHelper) return;
+        if (!CredentialVerbs.Contains(mode.Args[0], StringComparer.Ordinal)) return;
+
+        mode.UsesOwnCredentials = true;
+        if (SecretsFileOption.TryFind(mode.Args.AsSpan(1).ToArray(), out var path, out var error)) mode.SecretsFile = path;
+        else mode.SecretsFileError = error;
     }
 
     private static bool AsksForHelpBeforeSeparator(string[] runArgs)

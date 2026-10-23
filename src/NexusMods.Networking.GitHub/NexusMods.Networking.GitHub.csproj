@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+        <ProjectReference Include="..\NexusMods.Abstractions.Secrets\NexusMods.Abstractions.Secrets.csproj" />
     </ItemGroup>
 
     <ItemGroup>

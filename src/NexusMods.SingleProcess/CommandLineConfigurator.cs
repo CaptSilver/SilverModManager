@@ -128,7 +128,7 @@ public class CommandLineConfigurator
     /// </summary>
     private const int LaunchFailureExitCode = 125;
 
-    private const string RunSynopsis = "run <loadout> [--game <appid|name>] [--dry-run] -- <command> [args...]";
+    private const string RunSynopsis = "run <loadout> [--game <appid|name>] [--secrets-file <path>] [--dry-run] -- <command> [args...]";
 
     /// <summary>
     /// <c>run</c> never reaches the verb parser: the process start-up takes it before any verb is parsed. This
@@ -141,6 +141,7 @@ public class CommandLineConfigurator
         {
             new Argument<string>("loadout", "The name of the loadout to run"),
             new Option<string>("--game", "The Steam app id or name of the game, when the loadout name is not unique"),
+            new Option<string>("--secrets-file", "Read credentials from this NAME=value file instead of the secret store (SILVERMM_SECRETS_FILE does the same for every process)"),
             new Option<bool>("--dry-run", "Print the command that would be started and exit, without locking, applying or starting anything"),
             new Argument<string[]>("command", "The command to run, after '--'") { Arity = ArgumentArity.ZeroOrMore },
         };
@@ -173,7 +174,10 @@ public class CommandLineConfigurator
 
     private Option MakeOption<T>(OptionDefinition optionDefinition) where T : notnull
     {
-        var aliases = new[] { "-" + optionDefinition.ShortName, "--" + optionDefinition.LongName };
+        // An option may have no short form; `--secrets-file` must not be reachable as anything the pre-host scan misses.
+        var aliases = string.IsNullOrEmpty(optionDefinition.ShortName)
+            ? new[] { "--" + optionDefinition.LongName }
+            : new[] { "-" + optionDefinition.ShortName, "--" + optionDefinition.LongName };
 
         ParseArgument<T> parser = result =>
         {

@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Sdk;
 using Xunit;
 using Xunit;
@@ -39,12 +40,7 @@ public class GitHubApiTests
         client.DefaultRequestHeaders.UserAgent.Add(ApplicationConstants.UserAgent);
 
         var logger = _serviceProvider.GetRequiredService<ILogger<GitHubApi>>();
-        var api = new GitHubApi(logger, client);
-
-        // if (GitHubApi.TryGetGitHubToken(out var token))
-        // {
-        //     api.AuthenticationHeaderValue = new AuthenticationHeaderValue(scheme: "token", token);
-        // }
+        var api = new GitHubApi(logger, client, new InMemorySecretStore());
 
         var releases = await api.FetchReleases("CaptSilver", "SilverModManager");
         releases.Should().NotBeNullOrEmpty();

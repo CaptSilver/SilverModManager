@@ -8,6 +8,7 @@ using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
+using NexusMods.Sdk.NexusModsApi;
 using NSubstitute;
 
 namespace NexusMods.Platform.Proton.Tests.Launch;
@@ -23,6 +24,7 @@ public class DryRunTests : IDisposable
     private readonly IDesktopNotifier _notifier = Substitute.For<IDesktopNotifier>();
     private readonly StringWriter _output = new();
     private readonly StringWriter _error = new();
+    private readonly INexusCredentialSummary _credentials = Substitute.For<INexusCredentialSummary>();
     private readonly LaunchSession _session;
     private readonly LaunchContext _context;
 
@@ -43,7 +45,7 @@ public class DryRunTests : IDisposable
         }, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, folder)));
 
         _context = new LaunchContext(installation, LoadoutId.From(1), "My Loadout", []);
-        _session = new LaunchSession(_lockFactory, new ActiveLaunchSessions(), _synchronizer, _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error);
+        _session = new LaunchSession(_lockFactory, new ActiveLaunchSessions(), _synchronizer, _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error, credentials: _credentials);
     }
 
     public void Dispose() => Directory.Delete(_runtimeDir, recursive: true);
@@ -144,5 +146,31 @@ public class DryRunTests : IDisposable
         _session.DryRun(_context, () => new LaunchPlan(new GameProcessSpec(["/usr/bin/true"])), _output);
 
         _output.ToString().ReplaceLineEndings("\n").Split('\n').Should().Contain("Wine DLL overrides: none");
+    }
+
+    [Theory]
+    [InlineData(NexusCredentialKind.ApiKey, "--secrets-file /run/secrets.env", "Nexus credential: API key from --secrets-file /run/secrets.env")]
+    [InlineData(NexusCredentialKind.ApiKey, "environment variable NEXUS_API_KEY", "Nexus credential: API key from environment variable NEXUS_API_KEY")]
+    [InlineData(NexusCredentialKind.OAuthToken, "Secret Service", "Nexus credential: OAuth token from Secret Service")]
+    [InlineData(NexusCredentialKind.OAuthToken, "private file", "Nexus credential: OAuth token from private file")]
+    [InlineData(NexusCredentialKind.None, "", "Nexus credential: none")]
+    public void ThePlanNamesTheNexusCredentialAndWhereItCameFrom(NexusCredentialKind kind, string source, string expected)
+    {
+        _credentials.Kind.Returns(kind);
+        _credentials.Source.Returns(source);
+
+        _session.DryRun(_context, () => new LaunchPlan(new GameProcessSpec(["/usr/bin/true"])), _output);
+
+        _output.ToString().ReplaceLineEndings("\n").Split('\n').Should().Contain(expected);
+    }
+
+    [Fact]
+    public void WithoutACredentialSummaryTheCredentialLineSaysNone()
+    {
+        var session = new LaunchSession(_lockFactory, new ActiveLaunchSessions(), _synchronizer, _processes, [], _notifier, NullLogger<LaunchSession>.Instance, _error);
+
+        session.DryRun(_context, () => new LaunchPlan(new GameProcessSpec(["/usr/bin/true"])), _output);
+
+        _output.ToString().ReplaceLineEndings("\n").Split('\n').Should().Contain("Nexus credential: none");
     }
 }

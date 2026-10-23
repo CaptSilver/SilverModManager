@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.NexusModsApi;
 
 namespace NexusMods.Platform.Proton.Launch;
 
@@ -46,6 +47,7 @@ public sealed class LaunchSession
     private readonly TextWriter _error;
     private readonly object _releaseLock = new();
     private readonly StopHandler? _stop;
+    private readonly INexusCredentialSummary? _credentials;
 
     // Guards the phase, the stop flag and the process handle together: a signal must never see a phase that
     // disagrees with whether there is a child to terminate.
@@ -71,7 +73,8 @@ public sealed class LaunchSession
         IDesktopNotifier notifier,
         ILogger<LaunchSession> logger,
         TextWriter? error = null,
-        StopHandler? stop = null)
+        StopHandler? stop = null,
+        INexusCredentialSummary? credentials = null)
     {
         _lockFactory = lockFactory;
         _activeSessions = activeSessions;
@@ -82,6 +85,7 @@ public sealed class LaunchSession
         _logger = logger;
         _error = error ?? Console.Error;
         _stop = stop;
+        _credentials = credentials;
     }
 
     /// <summary>
@@ -152,6 +156,7 @@ public sealed class LaunchSession
         output.WriteLine("Dry run: nothing was locked, applied or started.");
         output.WriteLine($"Game: {game}");
         output.WriteLine($"Loadout: {context.LoadoutName}");
+        output.WriteLine(DescribeCredential());
         output.WriteLine("Before the game starts: one synchronize applies the loadout. After it exits: one synchronize takes its changes back.");
 
         if (plan.Resolved is { } resolved)
@@ -442,8 +447,18 @@ public sealed class LaunchSession
         });
     }
 
+    /// <summary>
+    /// Which Nexus credential this process holds and where it comes from, read from what is already loaded.
+    /// A launch itself calls Nexus never; the line is how a headless run shows its credential path works.
+    /// </summary>
+    private string DescribeCredential() => _credentials is { Kind: not NexusCredentialKind.None } credentials
+        ? $"Nexus credential: {(credentials.Kind == NexusCredentialKind.ApiKey ? "API key" : "OAuth token")} from {credentials.Source}"
+        : "Nexus credential: none";
+
     private void LogPlan(LaunchPlan plan, string game)
     {
+        _logger.LogInformation("{Credential}", DescribeCredential());
+
         if (plan.Resolved is { } resolved)
             _logger.LogInformation("Launch spec for {Game}: exe {Exe}, extra arguments [{ExtraArgs}]", game, resolved.Exe, string.Join(' ', resolved.ExtraArgs));
         else

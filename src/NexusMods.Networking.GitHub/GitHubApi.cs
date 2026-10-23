@@ -1,8 +1,8 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Networking.GitHub.DTOs;
 
 namespace NexusMods.Networking.GitHub;
@@ -18,33 +18,47 @@ internal class GitHubApi : IGitHubApi
 
     private readonly ILogger _logger;
     private readonly HttpClient _httpClient;
+    private readonly ISecretStore _secrets;
 
     public AuthenticationHeaderValue? AuthenticationHeader { get; set; }
 
-    public GitHubApi(ILogger<GitHubApi> logger, HttpClient httpClient)
+    public GitHubApi(ILogger<GitHubApi> logger, HttpClient httpClient, ISecretStore secrets)
     {
         _logger = logger;
         _httpClient = httpClient;
+        _secrets = secrets;
     }
 
-    public static bool TryGetGitHubToken([NotNullWhen(true)] out string? token)
+    /// <summary>
+    /// The GitHub token the secret store holds or an override supplies (<c>GITHUB_TOKEN</c> is an alias of the key),
+    /// or null when there is none or the store cannot answer. A lookup that fails must not fail the request it is for.
+    /// </summary>
+    public async ValueTask<string?> TryGetTokenAsync(CancellationToken cancellationToken = default)
     {
-        try
+        var result = await _secrets.GetAsync(GitHubSecretKeys.Token, cancellationToken).ConfigureAwait(false);
+        switch (result)
         {
-            var environmentVariable = Environment.GetEnvironmentVariable("GITHUB_TOKEN");
-            if (!string.IsNullOrWhiteSpace(environmentVariable))
-            {
-                token = environmentVariable;
-                return true;
-            }
+            case SecretResult.Found { Value: { Length: > 0 } token }:
+                return token;
+            case SecretResult.Unavailable unavailable:
+                _logger.LogDebug("No GitHub token: the secret store is unavailable ({Kind}: {Reason})", unavailable.Kind, unavailable.Reason);
+                return null;
+            default:
+                return null;
         }
-        catch (Exception)
+    }
+
+    // A header set on the instance wins; otherwise a token from the store makes the request authenticated.
+    private async ValueTask AuthenticateAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (AuthenticationHeader is not null)
         {
-            // ignored
+            request.Headers.Authorization = AuthenticationHeader;
+            return;
         }
 
-        token = null;
-        return false;
+        if (await TryGetTokenAsync(cancellationToken).ConfigureAwait(false) is { } token)
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
     public async ValueTask<Release[]?> FetchReleases(string organization, string repository, CancellationToken cancellationToken = default)
@@ -57,7 +71,7 @@ internal class GitHubApi : IGitHubApi
             var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Add(HeaderApiVersion, ApiVersion);
 
-            if (AuthenticationHeader is not null) request.Headers.Authorization = AuthenticationHeader;
+            await AuthenticateAsync(request, cancellationToken).ConfigureAwait(false);
 
             var response = await _httpClient.SendAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
@@ -131,7 +145,7 @@ internal class GitHubApi : IGitHubApi
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Add(HeaderApiVersion, ApiVersion);
 
-            if (AuthenticationHeader is not null) request.Headers.Authorization = AuthenticationHeader;
+            await AuthenticateAsync(request, cancellationToken).ConfigureAwait(false);
 
             using var response = await _httpClient.SendAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)

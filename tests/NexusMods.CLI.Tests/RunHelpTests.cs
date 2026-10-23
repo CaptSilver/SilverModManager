@@ -41,7 +41,7 @@ public class RunHelpTests(IServiceProvider provider)
         await provider.GetRequiredService<CommandLineConfigurator>()
             .RunAsync(["run", "--help"], renderer, CancellationToken.None);
 
-        string.Concat(renderer.Logs.OfType<Text>().Select(t => t.Template)).Should().Contain("--dry-run");
+        string.Concat(renderer.Logs.OfType<Text>().Select(t => t.Template)).Should().Contain("--dry-run").And.Contain("--secrets-file");
     }
 
     [Fact]

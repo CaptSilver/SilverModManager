@@ -2,10 +2,12 @@ using System.Diagnostics;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
 using NexusMods.App;
 using NexusMods.Platform.Proton.Launch;
+using NexusMods.Sdk;
 using NexusMods.SingleProcess;
 using NexusMods.SingleProcess.Exceptions;
 
@@ -37,6 +39,9 @@ public class ProcessStartupTests
         public bool OpenDatabaseThrows { get; set; }
         public List<string> Errors { get; } = [];
         public List<string> Notifications { get; } = [];
+        public List<StartupMode> HostModes { get; } = [];
+        public List<string> Warnings { get; } = [];
+        public Dictionary<string, string> Environment { get; } = [];
 
         /// <summary>The outcomes of successive claim attempts; the last one repeats.</summary>
         public List<bool> Claims { get; set; } = [true];
@@ -46,11 +51,15 @@ public class ProcessStartupTests
 
         public ProcessStartupSteps Steps() => new()
         {
-            BuildHost = _ =>
+            BuildHost = mode =>
             {
                 Calls.Add("build-host");
+                HostModes.Add(mode);
                 return new HostBuilder()
-                    .ConfigureServices(services => services.AddHostedService(_ => new RecordingHostedService(Calls)))
+                    .ConfigureServices(services => services
+                        .AddSingleton<IEnvironmentReader>(new FakeEnvironment(Environment))
+                        .AddHostedService(_ => new RecordingHostedService(Calls)))
+                    .ConfigureLogging(logging => logging.AddProvider(new WarningRecorder(Warnings)))
                     .Build();
             },
             ReadSyncInfo = _ =>
@@ -107,6 +116,28 @@ public class ProcessStartupTests
             RunUi = _ => Calls.Add("ui"),
             WriteError = Errors.Add,
         };
+    }
+
+    private sealed class FakeEnvironment(Dictionary<string, string> values) : IEnvironmentReader
+    {
+        public string? Get(string name) => values.GetValueOrDefault(name);
+    }
+
+    private sealed class WarningRecorder(List<string> warnings) : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => new Recording(warnings);
+        public void Dispose() { }
+
+        private sealed class Recording(List<string> warnings) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                if (logLevel == LogLevel.Warning) warnings.Add(formatter(state, exception));
+            }
+        }
     }
 
     private sealed class RecordingHostedService(List<string> calls) : IHostedService
@@ -710,6 +741,144 @@ public class ProcessStartupTests
         var act = () => ProcessStartup.Run(StartupMode.Parse(args), args, recorder.Steps());
 
         act.Should().Throw<InvalidOperationException>().WithMessage($"*{args[0]}*");
+        recorder.Calls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ARunsSecretsFileReachesTheHostBeforeItIsBuilt()
+    {
+        var recorder = new Recorder();
+
+        Run(recorder, "run", "a loadout", "--secrets-file", "/run/secrets.env", "--", "a-game").Should().Be(0);
+
+        recorder.HostModes.Should().ContainSingle().Which.SecretsFile!.Value.GetFullPath().Should().Be("/run/secrets.env");
+        recorder.Launches.Should().ContainSingle().Which.SecretsFile!.Value.GetFullPath().Should().Be("/run/secrets.env");
+    }
+
+    [Fact]
+    public void ARunWithoutASecretsFileLeavesTheHostsSecretsFileUnset()
+    {
+        var recorder = new Recorder();
+
+        Run(recorder, Command("run"));
+
+        recorder.HostModes.Should().ContainSingle().Which.SecretsFile.Should().BeNull();
+    }
+
+    [Fact]
+    public void ASecretsFileOnARunThatPassesThroughToTheWindowIsIgnoredWithOneWarning()
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234), PassThroughExitCode = 0 };
+
+        Run(recorder, "run", "a loadout", "--secrets-file", "/run/secrets.env", "--", "a-game").Should().Be(0);
+
+        recorder.Warnings.Should().ContainSingle().Which.Should().Contain("/run/secrets.env").And.Contain("ignored").And.Contain("window");
+    }
+
+    [Fact]
+    public void APassThroughWithoutASecretsFileWarnsAboutNone()
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234), PassThroughExitCode = 0 };
+
+        Run(recorder, Command("run")).Should().Be(0);
+
+        recorder.Warnings.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("nexus-whoami")]
+    [InlineData("secrets-status")]
+    public void ACredentialVerbWithASecretsFileReachesTheHostBeforeItIsBuilt(string verb)
+    {
+        var recorder = new Recorder();
+
+        Run(recorder, verb, "--secrets-file", "/run/secrets.env").Should().Be(0);
+
+        recorder.HostModes.Should().ContainSingle().Which.SecretsFile!.Value.GetFullPath().Should().Be("/run/secrets.env");
+        recorder.Calls.Should().Contain("cli-remote");
+    }
+
+    [Theory]
+    [InlineData("nexus-whoami")]
+    [InlineData("secrets-status")]
+    public void ACredentialVerbWithASecretsFileRefusesWhenAMainIsAliveInsteadOfAnsweringFromItsStore(string verb)
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234) };
+
+        Run(recorder, verb, "--secrets-file", "/run/secrets.env").Should().Be(1);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(ProcessStartup.SecretsFileNeedsHeadlessMessage);
+        ProcessStartup.SecretsFileNeedsHeadlessMessage.Should().Be("a secrets file applies to a headless process; close the window first");
+        recorder.Calls.Should().NotContain("cli-remote").And.NotContain("kill").And.NotContain("can-connect");
+    }
+
+    [Fact]
+    public void ACredentialVerbRefusesForTheSecretsFileVariableToo()
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.HeadlessCli, 0) };
+        recorder.Environment["SILVERMM_SECRETS_FILE"] = "/run/secrets.env";
+
+        Run(recorder, "nexus-whoami").Should().Be(1);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(ProcessStartup.SecretsFileNeedsHeadlessMessage);
+        recorder.Calls.Should().NotContain("cli-remote");
+    }
+
+    [Fact]
+    public void ACredentialVerbWithNoOverrideIsForwardedToTheLiveMainAsBefore()
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234) };
+
+        Run(recorder, "secrets-status").Should().Be(0);
+
+        recorder.Errors.Should().BeEmpty();
+        recorder.Calls.Should().Contain("cli-remote");
+    }
+
+    [Fact]
+    public void AnEmptySecretsFileVariableIsNotAnOverride()
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234) };
+        recorder.Environment["SILVERMM_SECRETS_FILE"] = "";
+
+        Run(recorder, "nexus-whoami").Should().Be(0);
+
+        recorder.Calls.Should().Contain("cli-remote");
+    }
+
+    [Fact]
+    public void AnOverrideOnAnotherVerbIsForwardedAsBefore()
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234) };
+        recorder.Environment["SILVERMM_SECRETS_FILE"] = "/run/secrets.env";
+
+        Run(recorder, "loadouts", "list").Should().Be(0);
+
+        recorder.Calls.Should().Contain("cli-remote");
+    }
+
+    [Fact]
+    public void AHeadlessMainRunningTheVerbIsNotRefusedBySinceItBuiltItsStoreFromTheOption()
+    {
+        var recorder = new Recorder();
+
+        Run(recorder, "as-main", "nexus-whoami", "--secrets-file", "/run/secrets.env").Should().Be(0);
+
+        recorder.HostModes.Should().ContainSingle().Which.SecretsFile!.Value.GetFullPath().Should().Be("/run/secrets.env");
+        recorder.Calls.Should().Contain("cli-as-main");
+        recorder.Errors.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("--secrets-file")]
+    [InlineData("--secrets-file=")]
+    public void AMalformedSecretsFileOnACredentialVerbIsTurnedAwayBeforeAnyHostIsBuilt(string option)
+    {
+        var recorder = new Recorder();
+
+        Run(recorder, "nexus-whoami", option).Should().Be(1);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Contain("--secrets-file needs a value");
         recorder.Calls.Should().BeEmpty();
     }
 }

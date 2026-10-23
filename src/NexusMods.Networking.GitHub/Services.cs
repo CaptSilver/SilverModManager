@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Secrets;
 
 namespace NexusMods.Networking.GitHub;
 
@@ -14,6 +15,8 @@ public static class Services
     /// </summary>
     public static IServiceCollection AddGitHubApi(this IServiceCollection serviceCollection)
     {
-        return serviceCollection.AddSingleton<IGitHubApi, GitHubApi>();
+        return serviceCollection
+            .AddSecretKeys(GitHubSecretKeys.All)
+            .AddSingleton<IGitHubApi, GitHubApi>();
     }
 }

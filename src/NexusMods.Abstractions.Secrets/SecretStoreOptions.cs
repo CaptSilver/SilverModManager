@@ -38,4 +38,11 @@ public sealed record SecretStoreOptions
     /// Overrides the user's backend setting when set.
     /// </summary>
     public SecretBackendChoice? Backend { get; init; }
+
+    /// <summary>
+    /// Whether the start-up migration compacts the database after moving a credential out of it. The compaction is
+    /// what drops the old copy from the database files, but it takes the database's attention, so a process that
+    /// is about to hand the machine to a game turns it off.
+    /// </summary>
+    public bool CompactAfterMove { get; init; } = true;
 }

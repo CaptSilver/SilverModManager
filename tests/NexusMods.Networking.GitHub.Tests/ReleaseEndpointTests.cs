@@ -1,6 +1,7 @@
 using System.Net;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Networking.GitHub.DTOs;
 using NexusMods.Sdk.Hashes;
 using Xunit;
@@ -65,7 +66,7 @@ public class ReleaseEndpointTests
     }
     """;
 
-    private static GitHubApi CreateApi(RecordingHandler handler) => new(NullLogger<GitHubApi>.Instance, new HttpClient(handler));
+    private static GitHubApi CreateApi(RecordingHandler handler) => new(NullLogger<GitHubApi>.Instance, new HttpClient(handler), new InMemorySecretStore());
 
     [Fact]
     public async Task FetchReleaseByTagUsesTheRepositoryTagsEndpoint()

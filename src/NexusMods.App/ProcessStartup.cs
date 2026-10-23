@@ -83,6 +83,7 @@ public static class ProcessStartup
 
     public const string GuiOpenMessage = "SilverModManager is open, so it cannot launch this game from Steam. Close SilverModManager, or start the game from inside it.";
     public const string StartingMessage = "SilverModManager is starting...";
+    public const string SecretsFileNeedsHeadlessMessage = "a secrets file applies to a headless process; close the window first";
     public const string OpenedMeanwhileMessage = "SilverModManager opened while this command was starting. Run it again.";
 
     public static int Run(StartupMode startupMode, string[] args, ProcessStartupSteps steps)
@@ -103,6 +104,15 @@ public static class ProcessStartup
             }
         }
 
+        // The secret store is built from the file the command line names, so both the launch's and a credential verb's
+        // option have to be on the mode before the host exists.
+        if (launch is not null) startupMode.SecretsFile = launch.SecretsFile;
+        if (startupMode.SecretsFileError is { } secretsFileError)
+        {
+            steps.WriteError(secretsFileError);
+            return 1;
+        }
+
         using var host = steps.BuildHost(startupMode);
 
         var services = host.Services;
@@ -110,6 +120,14 @@ public static class ProcessStartup
 
         var headlessMain = startupMode.RunAsMain && !startupMode.ShowUI;
         var syncInfo = steps.ReadSyncInfo(services);
+
+        // A verb handed to a live main runs against that process's store, which never saw this file.
+        if (!startupMode.RunAsMain && startupMode.UsesOwnCredentials && syncInfo.Process is not null && HasSecretsFileOverride(startupMode, services))
+        {
+            logger.LogWarning("Not running {Verb}: {Message}", startupMode.Args[0], SecretsFileNeedsHeadlessMessage);
+            steps.WriteError(SecretsFileNeedsHeadlessMessage);
+            return 1;
+        }
 
         // A window cannot share the database with a process that holds it without a server to talk to.
         if (startupMode.RunAsMain && startupMode.ShowUI && syncInfo.Process is not null && syncInfo.Kind != MainKind.Gui)
@@ -129,7 +147,13 @@ public static class ProcessStartup
                 // The window started this game through Steam and owns the session; the wrapper only reports in.
                 try
                 {
-                    if (steps.TryPassThrough(services, launch, holder.Id).GetAwaiter().GetResult() is { } exitCode) return exitCode;
+                    if (steps.TryPassThrough(services, launch, holder.Id).GetAwaiter().GetResult() is { } exitCode)
+                    {
+                        // The launch needs no Nexus credential, and failing a Steam launch because the window is open would be worse.
+                        if (launch.SecretsFile is { } ignored)
+                            logger.LogWarning("--secrets-file {Path} is ignored: the running window owns this launch and keeps its own credentials", ignored);
+                        return exitCode;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -268,6 +292,10 @@ public static class ProcessStartup
 
         return false;
     }
+
+    private static bool HasSecretsFileOverride(StartupMode startupMode, IServiceProvider services)
+        => startupMode.SecretsFile is not null
+           || !string.IsNullOrEmpty(services.GetService<IEnvironmentReader>()?.Get(NexusMods.Secrets.Services.SecretsFileEnvironmentVariable));
 
     private static bool TryClaim(IServiceProvider services, MainKind kind, ProcessStartupSteps steps, out string refusal)
     {

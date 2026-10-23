@@ -12,6 +12,7 @@ using NexusMods.Paths;
 using NexusMods.Platform.Proton.Launch;
 using NexusMods.Sdk;
 using NexusMods.Sdk.ProxyConsole;
+using NexusMods.Secrets;
 using NexusMods.Sdk.Settings;
 using NexusMods.Secrets.Overlay;
 using NexusMods.SingleProcess;
@@ -307,5 +308,79 @@ public class HeadlessHostProfileTests
     public void FreshInstallSkipsTheDownloadInEveryProfile(string input)
     {
         SkipUpdateCheckOf(input, savedSettings: null).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("as-main", true)]
+    [InlineData("as-main-ui", true)]
+    [InlineData("run", false)]
+    public void OnlyAHeadlessRunSkipsCompactingTheDatabaseAfterAMove(string input, bool compacts)
+    {
+        using var host = BuildHost(Mode(input.Split(' ')));
+
+        host.Services.GetRequiredService<SecretStoreOptions>().CompactAfterMove.Should().Be(compacts);
+    }
+
+    [Fact]
+    public void TheSecretsFileOnTheModeReachesTheStoreOptions()
+    {
+        var path = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath("/run/secrets.env");
+        var mode = Mode("as-main", "secrets-status");
+        mode.SecretsFile = path;
+
+        using var host = BuildHost(mode);
+
+        host.Services.GetRequiredService<SecretStoreOptions>().SecretsFile.Should().Be(path);
+    }
+
+    private async Task<(int ExitCode, string Output)> RunVerb(IHost host, params string[] args)
+    {
+        var renderer = new LoggingRenderer();
+        var exitCode = await host.Services.GetRequiredService<CommandLineConfigurator>().RunAsync(args, renderer, CancellationToken.None);
+        var lines = renderer.Logs.OfType<Text>().Select(text =>
+        {
+            var line = text.Template;
+            for (var i = 0; i < text.Arguments.Length; i++) line = line.Replace($"{{{i}}}", text.Arguments[i]);
+            return line;
+        });
+        return (exitCode, string.Concat(lines));
+    }
+
+    [Fact]
+    public async Task SecretsStatusPrintsKeyNamesAndTheKeysAFilePinsButNeverAValue()
+    {
+        var scratch = Directory.CreateTempSubdirectory("secrets-status-verb-").FullName;
+        try
+        {
+            var file = Path.Combine(scratch, "secrets.env");
+            await File.WriteAllTextAsync(file, "NEXUS_API_KEY=file-value-that-must-not-print\n", TestContext.Current.CancellationToken);
+            File.SetUnixFileMode(file, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            var mode = Mode("as-main", "secrets-status", "--secrets-file", file);
+            mode.SecretsFile = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(file);
+            using var host = BuildHost(mode);
+            await host.Services.GetRequiredService<ISecretStore>().SetAsync(new SecretKey("fromsoft.ersc-password"), "stored-value-that-must-not-print", TestContext.Current.CancellationToken);
+
+            var (exitCode, output) = await RunVerb(host, "secrets-status", "--secrets-file", file);
+
+            exitCode.Should().Be(0);
+            output.Should().Contain("Backend: Memory").And.Contain("fromsoft.ersc-password");
+            output.Should().Contain($"nexus.api-key (--secrets-file {file})");
+            output.Should().NotContain("must-not-print");
+        }
+        finally
+        {
+            Directory.Delete(scratch, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task NexusWhoAmIWithNoCredentialSaysNotSignedInAndExitsOne()
+    {
+        using var host = BuildHost(Mode("as-main", "nexus-whoami"));
+
+        var (exitCode, output) = await RunVerb(host, "nexus-whoami");
+
+        exitCode.Should().Be(1);
+        output.Should().Contain("Not signed in");
     }
 }

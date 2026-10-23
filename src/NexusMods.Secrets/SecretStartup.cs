@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Secrets;
+using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Secrets.Migration;
 
 namespace NexusMods.Secrets;
 
@@ -15,7 +17,8 @@ public static class SecretStartup
     public static Task PrimeAsync(IServiceProvider services, CancellationToken cancellationToken)
         => PrimeAsync(services, cancellationToken, OverallTimeout);
 
-    internal static async Task PrimeAsync(IServiceProvider services, CancellationToken cancellationToken, TimeSpan timeout)
+    /// <param name="runInBackground">Starts the compaction off the calling thread. Tests substitute it to run the compaction by hand.</param>
+    internal static async Task PrimeAsync(IServiceProvider services, CancellationToken cancellationToken, TimeSpan timeout, Action<Action>? runInBackground = null)
     {
         var logger = services.GetService<ILoggerFactory>()?.CreateLogger(typeof(SecretStartup)) ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -30,8 +33,12 @@ public static class SecretStartup
                 logger.LogInformation("Secret store: {Backend} ({Detail}), locked {Locked}, unencrypted {Unencrypted}", status.Backend, status.Detail, status.Locked, status.Unencrypted);
             }
 
-            if (services.GetService<SecretMigrationRunner>() is { } runner)
-                await runner.RunAsync(cts.Token);
+            if (services.GetService<SecretMigrationRunner>() is { } runner
+                && await runner.RunAsync(cts.Token)
+                && services.GetService<SecretStoreOptions>() is not { CompactAfterMove: false })
+            {
+                ScheduleCompaction(services, logger, runInBackground ?? (work => Task.Run(work)));
+            }
 
             foreach (var primable in services.GetServices<ISecretPrimable>())
             {
@@ -53,5 +60,25 @@ public static class SecretStartup
         {
             logger.LogWarning(e, "Secret store start-up failed; the app starts anyway");
         }
+    }
+
+    // An excised row leaves its bytes in the database files until the next compaction. It is only tidying, so it
+    // runs once, off the start-up path, and a failure (a CLI main can close the database while it is in flight) is a log line.
+    private static void ScheduleCompaction(IServiceProvider services, ILogger logger, Action<Action> runInBackground)
+    {
+        if (services.GetService<IConnection>() is not { } connection) return;
+
+        runInBackground(() =>
+        {
+            try
+            {
+                connection.FlushAndCompact(verify: false).GetAwaiter().GetResult();
+                logger.LogInformation("Compacted the database after moving credentials out of it");
+            }
+            catch (Exception e)
+            {
+                logger.LogWarning(e, "Compacting the database after moving credentials out of it failed");
+            }
+        });
     }
 }

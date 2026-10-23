@@ -387,4 +387,44 @@ public class GameProcessTests : IDisposable
 
         (await File.ReadAllLinesAsync(File_("env"))).Should().Contain("WINEDLLOVERRIDES=dxgi=n,b;winmm=n,b");
     }
+
+    [Theory]
+    [InlineData("NEXUS_API_KEY")]
+    [InlineData("GITHUB_TOKEN")]
+    [InlineData("STEAM_USER")]
+    [InlineData("STEAM_PASS")]
+    [InlineData("SILVERMM_SECRETS_FILE")]
+    [InlineData("SILVERMM_SECRET_NEXUS_OAUTH")]
+    [InlineData("SILVERMM_SECRET_X")]
+    public void TheGameDoesNotInheritOurSecrets(string name)
+    {
+        var inherited = new Dictionary<string, string> { [name] = "hunter2", ["SteamAppId"] = "42", ["UNRELATED"] = "kept" };
+
+        var environment = GameProcess.BuildEnvironment(inherited, new GameProcessSpec(["game.exe"]));
+
+        environment.Should().NotContainKey(name);
+        environment.Should().Contain("SteamAppId", "42").And.Contain("UNRELATED", "kept");
+    }
+
+    [Fact]
+    public void ALaunchOptionThatSetsASecretVariableOnPurposeStillWins()
+    {
+        var inherited = new Dictionary<string, string> { ["NEXUS_API_KEY"] = "ours" };
+        var spec = new GameProcessSpec(["game.exe"], Environment: new Dictionary<string, string> { ["NEXUS_API_KEY"] = "theirs", ["SILVERMM_SECRET_X"] = "theirs" });
+
+        var environment = GameProcess.BuildEnvironment(inherited, spec);
+
+        environment.Should().Contain("NEXUS_API_KEY", "theirs").And.Contain("SILVERMM_SECRET_X", "theirs");
+    }
+
+    [Fact]
+    public void OnlyNamesStartingWithTheSecretPrefixAreDropped()
+    {
+        var inherited = new Dictionary<string, string> { ["SILVERMM_SECRET"] = "a", ["MY_SILVERMM_SECRET_X"] = "b", ["SILVERMM_OTHER"] = "c", ["SILVERMM_SECRET_Y"] = "d" };
+
+        var environment = GameProcess.BuildEnvironment(inherited, new GameProcessSpec(["game.exe"]));
+
+        environment.Should().NotContainKey("SILVERMM_SECRET_Y");
+        environment.Should().Contain("SILVERMM_SECRET", "a").And.Contain("MY_SILVERMM_SECRET_X", "b").And.Contain("SILVERMM_OTHER", "c");
+    }
 }

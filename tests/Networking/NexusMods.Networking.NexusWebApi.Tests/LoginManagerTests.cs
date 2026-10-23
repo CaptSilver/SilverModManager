@@ -9,6 +9,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Networking.NexusWebApi.Auth;
 using NexusMods.Secrets.Overlay;
 using NexusMods.Sdk.Jobs;
+using NexusMods.Sdk.ProxyConsole;
 using NSubstitute;
 using R3;
 
@@ -116,6 +117,76 @@ public class LoginManagerTests : IAsyncLifetime
 
         var info = await loggedIn.Task.WaitAsync(TimeSpan.FromSeconds(10));
         info.Name.Should().Be("silver");
+    }
+
+    private sealed class RecordingRenderer : IRenderer
+    {
+        public List<string> Lines { get; } = [];
+
+        public ValueTask RenderAsync(IRenderable renderable)
+        {
+            if (renderable is not Text text) return ValueTask.CompletedTask;
+
+            var line = text.Template;
+            for (var i = 0; i < text.Arguments.Length; i++) line = line.Replace($"{{{i}}}", text.Arguments[i]);
+            Lines.AddRange(line.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask ClearAsync() => ValueTask.CompletedTask;
+    }
+
+    [Fact]
+    public async Task WhoAmIWithNoCredentialSaysNotSignedInAndFails()
+    {
+        using var loginManager = CreateLoginManager();
+        var renderer = new RecordingRenderer();
+
+        var exit = await LoginVerbs.WhoAmIAsync(loginManager, _cache, renderer, CancellationToken.None);
+
+        exit.Should().Be(1);
+        renderer.Lines.Should().Equal("Not signed in");
+    }
+
+    [Fact]
+    public async Task WhoAmIVerifiesTheCredentialAndNamesTheAccountItsRoleAndWhereTheKeyCameFrom()
+    {
+        await AuthTestSupport.StoreKey(_store, "the-key");
+        using var loginManager = CreateLoginManager();
+        var renderer = new RecordingRenderer();
+
+        var exit = await LoginVerbs.WhoAmIAsync(loginManager, _cache, renderer, CancellationToken.None);
+
+        exit.Should().Be(0);
+        renderer.Lines.Should().ContainSingle().Which.Should().Be($"silver (Free) via {_cache.Source}");
+        _seenKeys.Should().Contain("the-key");
+    }
+
+    [Fact]
+    public async Task WhoAmIWithARejectedKeyIsNotSignedIn()
+    {
+        await AuthTestSupport.StoreKey(_store, "wrong-key");
+        using var loginManager = CreateLoginManager();
+        var renderer = new RecordingRenderer();
+
+        var exit = await LoginVerbs.WhoAmIAsync(loginManager, _cache, renderer, CancellationToken.None);
+
+        exit.Should().Be(1);
+        renderer.Lines.Should().HaveCount(2).And.StartWith("Not signed in");
+        renderer.Lines[1].Should().Contain("rejected").And.Contain(_cache.Source);
+    }
+
+    [Fact]
+    public async Task WhoAmIThatCannotReachNexusSaysSoInsteadOfClaimingTheUserIsSignedOut()
+    {
+        var loginManager = Substitute.For<ILoginManager>();
+        loginManager.GetUserInfoAsync(Arg.Any<CancellationToken>()).Returns<ValueTask<UserInfo?>>(_ => throw new HttpRequestException("name resolution failed"));
+        var renderer = new RecordingRenderer();
+
+        var exit = await LoginVerbs.WhoAmIAsync(loginManager, _cache, renderer, CancellationToken.None);
+
+        exit.Should().Be(1);
+        renderer.Lines.Should().ContainSingle().Which.Should().Contain("name resolution failed").And.NotContain("Not signed in");
     }
 
     [Fact]

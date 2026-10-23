@@ -179,6 +179,8 @@ public static class Services
                 Mode = profile == HostProfile.Gui ? SecretStoreMode.Interactive : SecretStoreMode.NonInteractive,
                 SecretsFile = startupMode.SecretsFile,
                 Backend = startupMode.SecretBackend,
+                // A launch hands the machine to a game right after start-up and must not spend it on tidying the database.
+                CompactAfterMove = !startupMode.IsHeadlessRun,
             })
             .AddSecretServiceBackend()
             .AddNexusWebApi(registerNxmHandler)

@@ -217,4 +217,21 @@ public class OverlaySecretStoreTests : IDisposable
         statuses.Should().ContainSingle();
         _inner.Calls.Should().Contain("Unlock");
     }
+
+    [Fact]
+    public void Overrides_name_each_pinned_key_with_where_its_value_comes_from()
+    {
+        _env.Values["NEXUS_API_KEY"] = "from-env";
+        var file = FileWith("GITHUB_TOKEN=from-file");
+
+        Create(file).Overrides().Should().Equal(
+            new SecretOverride(ApiKey, "environment variable NEXUS_API_KEY"),
+            new SecretOverride(Token, $"--secrets-file {System.IO.Path.Combine(_scratch, "secrets.env")}"));
+    }
+
+    [Fact]
+    public void Overrides_are_empty_when_nothing_pins_a_key()
+    {
+        Create().Overrides().Should().BeEmpty();
+    }
 }

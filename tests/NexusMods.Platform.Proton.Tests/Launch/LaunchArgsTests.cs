@@ -28,6 +28,7 @@ public class LaunchArgsTests
         lines.Should().Contain(line => line.StartsWith("<loadout> "));
         lines.Should().Contain(line => line.StartsWith("--game "));
         lines.Should().Contain(line => line.StartsWith("--dry-run "));
+        lines.Should().Contain(line => line.StartsWith("--secrets-file "));
         lines.Should().Contain(line => line.StartsWith("-- "));
         lines.Should().Contain(line => line.Contains("125"));
     }
@@ -134,5 +135,58 @@ public class LaunchArgsTests
         Fail("L", "--game", "1", "--game", "2", "--", "x").Should().Contain("--game");
         Fail("L", "--bogus", "--", "x").Should().Contain("--bogus");
         Fail("L", "Other", "--", "x").Should().Contain("Other");
+    }
+
+    [Theory]
+    [InlineData("L", "--secrets-file", "/tmp/secrets.env", "--")]
+    [InlineData("--secrets-file", "/tmp/secrets.env", "L", "--")]
+    [InlineData("L", "--secrets-file=/tmp/secrets.env", "--")]
+    public void ReadsTheSecretsFileBeforeOrAfterTheName(params string[] head)
+    {
+        var parsed = Parse([.. head, "game.exe"]);
+
+        parsed.SecretsFile.Should().NotBeNull();
+        parsed.SecretsFile!.Value.GetFullPath().Should().Be("/tmp/secrets.env");
+        parsed.LoadoutName.Should().Be("L");
+        parsed.Command.Should().Equal("game.exe");
+    }
+
+    [Fact]
+    public void ARelativeSecretsFileIsResolvedAgainstTheWorkingDirectory()
+    {
+        var parsed = Parse("L", "--secrets-file", "secrets.env", "--", "x");
+
+        parsed.SecretsFile!.Value.GetFullPath().Should().Be(Path.GetFullPath("secrets.env"));
+    }
+
+    [Fact]
+    public void ThereIsNoSecretsFileUnlessOneIsGiven()
+    {
+        Parse("L", "--", "x").SecretsFile.Should().BeNull();
+    }
+
+    [Fact]
+    public void SecretsFileAfterTheSeparatorBelongsToTheCommand()
+    {
+        var parsed = Parse("L", "--", "game.exe", "--secrets-file", "/tmp/x");
+
+        parsed.SecretsFile.Should().BeNull();
+        parsed.Command.Should().Equal("game.exe", "--secrets-file", "/tmp/x");
+    }
+
+    [Fact]
+    public void ReportsMalformedSecretsFileFlags()
+    {
+        Fail("L", "--secrets-file", "--", "x").Should().Contain("--secrets-file").And.Contain(LaunchArgs.Synopsis);
+        Fail("L", "--secrets-file").Should().Contain(LaunchArgs.Synopsis);
+        Fail("L", "--secrets-file=", "--", "x").Should().Contain("--secrets-file needs a value");
+        Fail("L", "--secrets-file", " ", "--", "x").Should().Contain("--secrets-file needs a value");
+        Fail("L", "--secrets-file", "/a", "--secrets-file=/b", "--", "x").Should().Contain("--secrets-file given more than once");
+    }
+
+    [Fact]
+    public void TheSynopsisNamesTheSecretsFile()
+    {
+        LaunchArgs.Synopsis.Should().Contain("[--secrets-file <path>]");
     }
 }

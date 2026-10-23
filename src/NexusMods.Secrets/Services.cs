@@ -6,7 +6,9 @@ using NexusMods.Sdk;
 using NexusMods.Sdk.Settings;
 using NexusMods.Secrets.Chain;
 using NexusMods.Secrets.File;
+using NexusMods.Secrets.Migration;
 using NexusMods.Secrets.Overlay;
+using NexusMods.Secrets.Verbs;
 
 namespace NexusMods.Secrets;
 
@@ -42,7 +44,8 @@ public static class Services
             .AddSingleton(sp => new InnerChain(BuildInner(sp, options)))
             .AddSingleton<IPersistentSecretStore>(sp => new PersistentSecretStore(sp.GetRequiredService<InnerChain>().Store))
             .AddSingleton<ISecretStore>(sp => BuildOverlay(sp, options))
-            .AddSingleton<SecretMigrationRunner>();
+            .AddSingleton<SecretMigrationRunner>()
+            .AddSecretVerbs();
     }
 
     private static ISecretStore BuildInner(IServiceProvider sp, SecretStoreOptions options)

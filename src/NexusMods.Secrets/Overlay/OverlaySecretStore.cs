@@ -5,6 +5,11 @@ using R3;
 namespace NexusMods.Secrets.Overlay;
 
 /// <summary>
+/// A key whose value an override supplies, and which override that is (e.g. <c>environment variable NEXUS_API_KEY</c>).
+/// </summary>
+public sealed record SecretOverride(SecretKey Key, string Source);
+
+/// <summary>
 /// Read-only sources consulted before the real store: the process environment (the key's own
 /// variable, then its alias) and a secrets file. A value found there is never written anywhere, and
 /// setting or deleting such a key is refused instead of changing the store behind the override.
@@ -72,6 +77,15 @@ public sealed class OverlaySecretStore : ISecretStore
         var overridden = _knownKeys.Where(key => Resolve(key).Value is not null).ToArray();
         return status with { OverriddenKeys = overridden.Length == 0 ? status.OverriddenKeys : status.OverriddenKeys.Concat(overridden).Distinct().ToArray() };
     }
+
+    /// <summary>
+    /// The known keys an override currently supplies, each with its source. Never carries a value.
+    /// </summary>
+    public IReadOnlyList<SecretOverride> Overrides()
+        => _knownKeys
+            .Select(key => Resolve(key).Source is { } source ? new SecretOverride(key, source) : null)
+            .OfType<SecretOverride>()
+            .ToArray();
 
     private SecretWriteResult? RefusalFor(SecretKey key)
     {

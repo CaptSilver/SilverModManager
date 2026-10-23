@@ -128,11 +128,21 @@ public sealed partial class GameProcess : IGameProcess
         return result;
     }
 
+    // The variables our secret store reads credentials from (the overlay's aliases and its own names). A game, and
+    // everything a game's launcher spawns, could read them and send them anywhere.
+    private static readonly string[] SecretVariables = ["NEXUS_API_KEY", "GITHUB_TOKEN", "STEAM_USER", "STEAM_PASS", "SILVERMM_SECRETS_FILE"];
+    private const string SecretVariablePrefix = "SILVERMM_SECRET_";
+
     /// <summary>
     /// The environment the child gets. When we run from an AppImage its variables point into the mounted
     /// image, which would leak into Steam, Proton and the game and break their own library lookups.
     /// <c>SteamAppId</c> and <c>SteamGameId</c> are deliberately not touched.
     /// </summary>
+    /// <remarks>
+    /// Our credential variables are removed too, so a key given to <c>run</c> through its environment does not
+    /// reach the game. They go before the spec's own environment is applied: a launch option that sets one of
+    /// them on purpose still gets it.
+    /// </remarks>
     internal static Dictionary<string, string> BuildEnvironment(IReadOnlyDictionary<string, string> inherited, GameProcessSpec spec)
     {
         var result = new Dictionary<string, string>(inherited);
@@ -149,6 +159,9 @@ public sealed partial class GameProcess : IGameProcess
             if (kept.Length == 0) result.Remove(name);
             else result[name] = string.Join(':', kept);
         }
+
+        foreach (var name in SecretVariables) result.Remove(name);
+        foreach (var name in result.Keys.Where(name => name.StartsWith(SecretVariablePrefix, StringComparison.Ordinal)).ToArray()) result.Remove(name);
 
         if (spec.Environment is not null)
         {

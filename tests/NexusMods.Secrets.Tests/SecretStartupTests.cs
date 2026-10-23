@@ -2,6 +2,9 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Secrets;
+using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Secrets.Migration;
+using NSubstitute;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using Xunit;
@@ -10,12 +13,12 @@ namespace NexusMods.Secrets.Tests;
 
 public class SecretStartupTests
 {
-    private ServiceProvider Build(Action<IServiceCollection>? configure = null)
+    private ServiceProvider Build(Action<IServiceCollection>? configure = null, bool compactAfterMove = true)
     {
         var services = new ServiceCollection()
             .AddLogging()
             .AddSingleton<IEnvironmentReader>(new FakeEnvironment())
-            .AddSecrets(new SecretStoreOptions { Mode = SecretStoreMode.NonInteractive, Backend = SecretBackendChoice.Memory });
+            .AddSecrets(new SecretStoreOptions { Mode = SecretStoreMode.NonInteractive, Backend = SecretBackendChoice.Memory, CompactAfterMove = compactAfterMove });
         configure?.Invoke(services);
         return services.BuildServiceProvider();
     }
@@ -148,6 +151,106 @@ public class SecretStartupTests
             .AddSingleton<ISecretMigrationStep>(new RecordingStep("deferred", new SecretMigrationOutcome.Deferred("locked"))));
 
         (await provider.GetRequiredService<SecretMigrationRunner>().RunAsync(CancellationToken.None)).Should().BeFalse();
+    }
+
+    private static Task Prime(ServiceProvider provider, List<Action> scheduled)
+        => SecretStartup.PrimeAsync(provider, CancellationToken.None, TimeSpan.FromSeconds(5), scheduled.Add);
+
+    [Fact]
+    public async Task A_move_schedules_one_compaction_on_a_background_thread()
+    {
+        var connection = Substitute.For<IConnection>();
+        await using var provider = Build(s => s
+            .AddSingleton(connection)
+            .AddSingleton<ISecretMigrationStep>(new RecordingStep("moved", new SecretMigrationOutcome.Moved()))
+            .AddSingleton<ISecretMigrationStep>(new RecordingStep("moved-too", new SecretMigrationOutcome.Moved())));
+        var scheduled = new List<Action>();
+
+        await Prime(provider, scheduled);
+
+        scheduled.Should().ContainSingle("however many steps moved, the database is compacted once");
+        await connection.DidNotReceiveWithAnyArgs().FlushAndCompact(default);
+        scheduled.Single()();
+        await connection.Received(1).FlushAndCompact(false);
+    }
+
+    [Fact]
+    public async Task Nothing_moved_means_no_compaction()
+    {
+        var connection = Substitute.For<IConnection>();
+        await using var provider = Build(s => s
+            .AddSingleton(connection)
+            .AddSingleton<ISecretMigrationStep>(new RecordingStep("empty"))
+            .AddSingleton<ISecretMigrationStep>(new RecordingStep("waiting", new SecretMigrationOutcome.Deferred("locked"))));
+        var scheduled = new List<Action>();
+
+        await Prime(provider, scheduled);
+
+        scheduled.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_headless_run_never_compacts_even_after_a_move()
+    {
+        var connection = Substitute.For<IConnection>();
+        await using var provider = Build(s => s
+            .AddSingleton(connection)
+            .AddSingleton<ISecretMigrationStep>(new RecordingStep("moved", new SecretMigrationOutcome.Moved())), compactAfterMove: false);
+        var scheduled = new List<Action>();
+
+        await Prime(provider, scheduled);
+
+        scheduled.Should().BeEmpty();
+        connection.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_move_without_a_connection_in_the_container_does_not_throw()
+    {
+        await using var provider = Build(s => s.AddSingleton<ISecretMigrationStep>(new RecordingStep("moved", new SecretMigrationOutcome.Moved())));
+        var scheduled = new List<Action>();
+
+        var act = () => Prime(provider, scheduled);
+
+        await act.Should().NotThrowAsync();
+        scheduled.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_compaction_that_fails_is_logged_and_not_thrown_into_the_background_thread()
+    {
+        var connection = Substitute.For<IConnection>();
+        connection.When(c => c.FlushAndCompact(Arg.Any<bool>())).Do(_ => throw new InvalidOperationException("closed"));
+        await using var provider = Build(s => s
+            .AddSingleton(connection)
+            .AddSingleton<ISecretMigrationStep>(new RecordingStep("moved", new SecretMigrationOutcome.Moved())));
+        var scheduled = new List<Action>();
+        await Prime(provider, scheduled);
+
+        var act = () => scheduled.Single()();
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public async Task The_default_scheduler_runs_the_compaction_without_the_caller_waiting_for_it()
+    {
+        var compacting = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+        var connection = Substitute.For<IConnection>();
+        connection.When(c => c.FlushAndCompact(Arg.Any<bool>())).Do(_ =>
+        {
+            compacting.SetResult();
+            release.Task.Wait(TimeSpan.FromSeconds(10));
+        });
+        await using var provider = Build(s => s
+            .AddSingleton(connection)
+            .AddSingleton<ISecretMigrationStep>(new RecordingStep("moved", new SecretMigrationOutcome.Moved())));
+
+        await SecretStartup.PrimeAsync(provider, CancellationToken.None);
+
+        await compacting.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        release.SetResult();
     }
 
     private sealed class RecordingStep(string name, SecretMigrationOutcome? outcome = null) : ISecretMigrationStep
