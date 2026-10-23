@@ -1548,6 +1548,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         var forgotten = AddDesiredStateOutsideGame(desiredState, metadata, diskState);
+        await KeepGameInstalledContentThroughReset(installation, metadata, diskState, desiredState);
+
+        // Has to run before MergeStates: whether the rendered file's bytes are in the file store is read while
+        // the tree is processed, and a node without an archive would be mapped to a delete.
+        await RenderIntrinsicFilesForReset(metadata, desiredState);
 
         // Merge the states into a tree. Passing in the current state as the current and previous state. 
         // This fakes the synchronizer into thinking that there are no changes on disk and we only want to do a

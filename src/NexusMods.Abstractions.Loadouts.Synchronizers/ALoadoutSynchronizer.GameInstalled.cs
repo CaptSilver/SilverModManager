@@ -271,6 +271,82 @@ public partial class ALoadoutSynchronizer
         return false;
     }
 
+    /// <summary>
+    /// Makes the reset leave what the game installed itself, and the game's record files, where they are. A
+    /// depot copy of a recognised file would otherwise win (the game updated it) and a record file has no
+    /// depot row at all, so both would be rewritten or deleted.
+    /// </summary>
+    private async Task KeepGameInstalledContentThroughReset(GameInstallation installation, GameInstallMetadata.ReadOnly metadata, List<PathPartPair> diskState, Dictionary<GamePath, SyncNode> desiredState)
+    {
+        var recognizer = GameInstalledContent;
+        if (recognizer is null) return;
+
+        var diskParts = new Dictionary<GamePath, SyncNodePart>();
+        foreach (var pair in diskState) diskParts[pair.Path] = pair.Part;
+
+        var recognition = await recognizer.Recognize(installation, diskParts, CancellationToken.None);
+
+        IEnumerable<GamePath> recognised;
+        if (recognition.RecordsReadable)
+        {
+            recognised = recognition.Items.SelectMany(item => item.Files);
+        }
+        else
+        {
+            // A torn record would make the reset treat every Creation as foreign, so use what the last sync
+            // already recorded.
+            Logger.LogWarning("The game's own records of installed content could not be read, keeping the content the loadout recorded");
+            recognised = GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastSynced)
+                ? GameInstalledPaths.For(metadata.Db, LoadoutId.From(lastSynced)).Keys
+                : [];
+        }
+
+        foreach (var path in recognised)
+        {
+            // Overwrite rather than add: a depot-listed file the game updated would otherwise keep the depot copy.
+            if (path.LocationId == LocationId.Game && diskParts.TryGetValue(path, out var part))
+                desiredState[path] = new SyncNode { Loadout = part, SourceItemType = LoadoutSourceItemType.Game };
+        }
+
+        // The Game location is skipped by AddDesiredStateOutsideGame and a record file is in no depot.
+        foreach (var (path, part) in diskParts)
+        {
+            if (path.LocationId != LocationId.Game) continue;
+            if (!recognizer.RecordPaths.Any(record => path == record || path.InFolder(record))) continue;
+            desiredState[path] = new SyncNode { Loadout = part, SourceItemType = LoadoutSourceItemType.Game };
+        }
+    }
+
+    /// <summary>
+    /// Lets each intrinsic file of the last synced loadout say what it should contain once the loadout is gone,
+    /// and stores those bytes so the reset can write them.
+    /// </summary>
+    private async Task RenderIntrinsicFilesForReset(GameInstallMetadata.ReadOnly metadata, Dictionary<GamePath, SyncNode> desiredState)
+    {
+        if (!GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastSyncedId)) return;
+
+        var lastSynced = Loadout.Load(metadata.Db, lastSyncedId);
+        if (!lastSynced.IsValid()) return;
+
+        foreach (var (path, file) in IntrinsicFiles(lastSynced))
+        {
+            if (file is not IIntrinsicFileWithReset withReset) continue;
+
+            var bytes = await withReset.RenderForReset(lastSynced, desiredState);
+            if (bytes is null) continue;
+
+            var hash = bytes.xxHash3();
+            var size = Size.FromLong(bytes.Length);
+            await _fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.FileName, new MemoryStream(bytes)), hash, size)]);
+
+            desiredState[path] = new SyncNode
+            {
+                Loadout = new SyncNodePart { Hash = hash, Size = size, LastModifiedTicks = 0 },
+                SourceItemType = LoadoutSourceItemType.Game,
+            };
+        }
+    }
+
     private async Task BackUpDemotedFiles(Loadout.ReadOnly loadout, CurrentGameInstalledFile[] demoted, Dictionary<GamePath, SyncNodePart> diskState)
     {
         var entries = new List<ArchivedFileEntry>();
