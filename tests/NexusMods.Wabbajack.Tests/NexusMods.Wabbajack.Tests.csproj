@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\NexusMods.Wabbajack\NexusMods.Wabbajack.csproj" />
+        <ProjectReference Include="..\..\src\NexusMods.Library\NexusMods.Library.csproj" />
+        <ProjectReference Include="..\..\src\NexusMods.Backend\NexusMods.Backend.csproj" />
+        <ProjectReference Include="..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
+        <ProjectReference Include="..\..\src\NexusMods.Games.CreationEngine\NexusMods.Games.CreationEngine.csproj" />
+        <ProjectReference Include="..\Games\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Hosting" />
+        <PackageReference Include="NexusMods.MnemonicDB" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Copied from the Wabbajack repository, see Fixtures/NOTICE -->
+        <None Include="Fixtures\MO2AndSKSETest.wabbajack" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+</Project>
