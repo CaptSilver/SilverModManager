@@ -50,3 +50,20 @@ internal sealed class FailingPatchSlowTextureTransforms : IDirectiveTransforms
     public Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
         => throw new InvalidOperationException("no archive is built here");
 }
+
+/// <summary>Builds archives the way the real transforms report a bad one: by saying an entry came back different.</summary>
+internal sealed class MismatchingArchiveTransforms : IDirectiveTransforms
+{
+    public Task Patch(Stream basis, Stream delta, Stream output, CancellationToken cancellationToken)
+        => throw new InvalidOperationException("no patch is applied here");
+
+    public Task Recompress(Stream dds, NexusMods.Wabbajack.Format.ImageState target, Stream output, CancellationToken cancellationToken)
+        => throw new InvalidOperationException("no texture is encoded here");
+
+    public async Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
+    {
+        var path = RelativePath.FromUnsanitizedInput(fileStates[0].GetProperty("Path").GetString()!);
+        await (await openInput(path)).DisposeAsync();
+        throw new ArchiveMismatchException(path.ToString(), $"'{path}' reads back from the built archive as different bytes than the file written for it");
+    }
+}

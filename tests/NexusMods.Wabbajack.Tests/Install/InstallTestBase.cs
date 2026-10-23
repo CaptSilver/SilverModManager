@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Octodiff.Core;
 using Octodiff.Diagnostics;
@@ -113,6 +114,14 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
     protected IReadOnlyList<WabbajackSkippedFile.ReadOnly> SkipsOf(WabbajackModlistLoadoutGroup.ReadOnly group)
         => WabbajackSkippedFile.FindByGroup(Connection.Db, group.Id).ToArray();
 
+    /// <summary>The bytes of the file at <paramref name="path"/> (location and path, as <see cref="TreeOf"/> spells them) in mod group <paramref name="mod"/>, read back from the file store.</summary>
+    protected async Task<byte[]> InstalledBytes(WabbajackModlistLoadoutGroup.ReadOnly group, string mod, string path)
+    {
+        var hash = TreeOf(group)[mod][path];
+        await using var stream = await FileStore.GetFileStream(hash);
+        return await ReadAll(stream);
+    }
+
     protected static async Task<byte[]> ReadAll(Stream stream)
     {
         using var buffer = new MemoryStream();
@@ -160,6 +169,21 @@ public sealed class ListBuilder
             new AggregateCopyOperationsDecorator(new BinaryDeltaWriter(delta)));
         return delta.ToArray();
     }
+
+    /// <summary>A Skyrim LE archive state, folder and file names, stored uncompressed.</summary>
+    public static JsonElement Tes5State()
+        => JsonDocument.Parse("{\"$type\":\"BSAState, Compression.BSA\",\"Magic\":\"BSA\\u0000\",\"Version\":104,\"ArchiveFlags\":3,\"FileFlags\":0}").RootElement;
+
+    public static JsonElement Tes5File(int index, string path)
+        => JsonDocument.Parse($"{{\"$type\":\"BSAFile\",\"Index\":{index},\"Path\":{JsonSerializer.Serialize(path)},\"FlipCompression\":false}}").RootElement;
+
+    /// <summary>
+    /// A Skyrim LE archive built from the files directives put under <c>TEMP_BSA_FILES/<paramref name="tempId"/></c>, with
+    /// one file state per path in <paramref name="paths"/>. The recorded hash is a placeholder: a rebuilt archive is not
+    /// checked against it.
+    /// </summary>
+    public CreateBsa Bsa(string to, string tempId, params string[] paths)
+        => new(P(to), NexusMods.Hashing.xxHash3.Hash.From(1), 1, P(tempId), Tes5State(), paths.Select((path, i) => Tes5File(i, path)).ToArray());
 
     public InlineFile Inline(string to, string text) => Inline(to, System.Text.Encoding.UTF8.GetBytes(text));
 

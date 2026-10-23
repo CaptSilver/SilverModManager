@@ -32,6 +32,7 @@ public static class Services
             .AddSingleton<ILibraryArchiveLocator, LibraryArchiveLocator>()
             .AddSingleton<ArchiveInventory>()
             .AddSingleton<IDirectiveTransforms, DirectiveTransforms>()
+            .AddSingleton<INestedArchiveOpener, BsaMemberOpener>()
             .AddSingleton<ExpectedNexusDownloads>()
             .AddSingleton<IExpectedNexusDownloads>(provider => provider.GetRequiredService<ExpectedNexusDownloads>())
             .AddSingleton<IArchiveDownloadJobs, ArchiveDownloadJobs>()

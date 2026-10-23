@@ -20,6 +20,7 @@ using NexusMods.Wabbajack.Acquire;
 using NexusMods.Wabbajack.Format;
 using NexusMods.Wabbajack.Mapping;
 using NexusMods.Wabbajack.Models;
+using BethesdaArchiveException = NexusMods.Games.Bethesda.Archives.BethesdaArchiveException;
 using PatchException = NexusMods.Wabbajack.Transforms.PatchException;
 using UnsupportedTextureFormatException = NexusMods.Wabbajack.Transforms.UnsupportedTextureFormatException;
 
@@ -689,9 +690,13 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         {
             AddSkip(tx, modlistGroup, state, placement, SkipKind.Transform, $"the texture '{placement.To}' could not be re-encoded: {unsupported.Message}", check);
         }
-        catch (TransformUnavailableException unavailable)
+        catch (BethesdaArchiveException archiveFailed)
         {
-            AddSkip(tx, modlistGroup, state, placement, SkipKind.Transform, unavailable.Message, check);
+            AddSkip(tx, modlistGroup, state, placement, SkipKind.Transform, $"the archive '{placement.To}' could not be built: {archiveFailed.Message}", check);
+        }
+        catch (ArchiveMismatchException mismatch)
+        {
+            AddSkip(tx, modlistGroup, state, placement, SkipKind.Transform, $"the archive '{placement.To}' was built wrong: {mismatch.Message}", check);
         }
         catch (MemberNotFoundException notFound)
         {

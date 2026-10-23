@@ -310,14 +310,14 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
     }
 
     [Fact]
-    public async Task ATextureAndABuiltArchiveStillLeaveTransformRows()
+    public async Task ATextureTheEncoderCannotWriteIsTheOnlySkipWhenAnArchiveIsBuiltInTheSameList()
     {
         var archive = await AddZip("a.zip", new() { ["t.dds"] = Bc1Dds(8) });
         var list = new ListBuilder();
         list.Archives.Add(archive);
         list.Directives.Add(UnwritableTexture("mods/A/t.dds", archive, "t.dds"));
         list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/one.txt", "1"));
-        list.Directives.Add(new CreateBsa(P("mods/A/pack.bsa"), Hash.From(1), 1, P("pack"), JsonDocument.Parse("{}").RootElement, []));
+        list.Directives.Add(list.Bsa("mods/A/pack.bsa", "pack", "one.txt"));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
 
@@ -326,8 +326,8 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         SkipsOf(group).Select(s => (s.To, s.Kind, s.Reason)).Should().BeEquivalentTo(
         [
             ("mods/A/t.dds", SkipKind.Transform, "the texture 'mods/A/t.dds' could not be re-encoded: Cannot re-encode a texture with format BC6H_UF16"),
-            ("mods/A/pack.bsa", SkipKind.Transform, "this build cannot build archives yet"),
         ]);
+        TreeOf(group)["A"].Should().ContainKey("Game/Data/pack.bsa");
     }
 
     [Fact]
@@ -592,15 +592,6 @@ public class InstallModlistTextureTests(ITestOutputHelper helper) : InstallTestB
         DdsHeader.Read(await InstalledBytes(group, "A", "Game/Data/one.dds")).Should().Be(new DdsHeader(16, 16, 1, Bc7: true));
         DdsHeader.Read(await InstalledBytes(group, "A", "Game/Data/two.dds")).Should().Be(new DdsHeader(8, 8, 1, Bc7: true));
     }
-
-    private async Task<byte[]> InstalledBytes(WabbajackModlistLoadoutGroup.ReadOnly group, string mod, string path)
-    {
-        var hash = TreeOf(group)[mod][path];
-        await using var stream = await ServiceProvider.GetRequiredService<IFileStore>().GetFileStream(hash);
-        using var copy = new MemoryStream();
-        await stream.CopyToAsync(copy);
-        return copy.ToArray();
-    }
 }
 
 public class InstallModlistFailingBatchTests(ITestOutputHelper helper) : InstallTestBase<InstallModlistFailingBatchTests>(helper)
@@ -645,26 +636,5 @@ internal sealed class CapturingLoggerProvider : ILoggerProvider
         {
             if (logLevel == LogLevel.Information) messages.Enqueue(formatter(state, exception));
         }
-    }
-}
-
-public class InstallModlistUnavailableBsaTests(ITestOutputHelper helper) : InstallTestBase<InstallModlistUnavailableBsaTests>(helper)
-{
-    [Fact]
-    public async Task AnArchiveThisBuildCannotMakeIsSkippedAndItsInputsAreCountedAsDropped()
-    {
-        var list = new ListBuilder();
-        list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/one.txt", "1"));
-        list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/two.txt", "2"));
-        list.Directives.Add(new CreateBsa(P("mods/A/pack.bsa"), Hash.From(1), 2, P("pack"), JsonDocument.Parse("{}").RootElement, []));
-        var loadout = await CreateLoadout();
-        var modlist = await AddModlist(list.ToList(), list.Blobs);
-
-        var (job, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
-
-        var skip = SkipsOf(group).Should().ContainSingle().Subject;
-        skip.Kind.Should().Be(SkipKind.Transform);
-        skip.Reason.Should().Be("this build cannot build archives yet");
-        job.Progress.DroppedCount.Should().Be(2);
     }
 }

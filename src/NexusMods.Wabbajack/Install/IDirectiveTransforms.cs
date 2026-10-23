@@ -17,8 +17,11 @@ public interface IDirectiveTransforms
     Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken);
 }
 
-/// <summary>Thrown by a transform this build does not have; the directive that needed it becomes a skip row.</summary>
-public sealed class TransformUnavailableException(string kind) : Exception($"this build cannot {kind} yet")
+/// <summary>
+/// Thrown when an archive that was just built does not hold the bytes its inputs were written with. The message names
+/// the entry, so the skip row for the archive says which one.
+/// </summary>
+public sealed class ArchiveMismatchException(string entry, string problem) : Exception(problem)
 {
-    public string Kind { get; } = kind;
+    public string Entry { get; } = entry;
 }
