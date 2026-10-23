@@ -21,6 +21,13 @@ public class PluginOrderValidationTests
     }
 
     [Fact]
+    public void AnEarlyLoaderMayNameAMasterThatLoadsAfterIt()
+    {
+        var entries = new[] { Esm("Early.esm", early: 0, masters: "Late.esm"), Esm("Late.esm") };
+        Validate(Names("Early.esm", "Late.esm"), entries, "Early.esm").Should().BeNull();
+    }
+
+    [Fact]
     public void OnlyMasterFilesIsValid()
     {
         var entries = new[] { Esm("Blank - Different.esm"), Esm("Blank.esm") };

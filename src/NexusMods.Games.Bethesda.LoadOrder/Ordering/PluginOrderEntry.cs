@@ -19,4 +19,7 @@ public sealed record PluginOrderEntry(
 {
     /// <summary>True for a master with the blueprint flag, the only kind the blueprint rules apply to.</summary>
     public bool IsBlueprintMaster => IsMaster && IsBlueprint;
+
+    /// <summary>True when the game loads the file ahead of any list. A blueprint master is hardcoded as an early loader in some games but never loads early.</summary>
+    public bool LoadsEarly => EarlyLoaderIndex is not null && !IsBlueprintMaster;
 }

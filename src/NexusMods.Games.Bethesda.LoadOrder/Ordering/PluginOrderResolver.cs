@@ -16,9 +16,8 @@ public static class PluginOrderResolver
     {
         var lookup = IndexEntries(entries);
 
-        // A blueprint master is hardcoded as an early loader in some games but never loads early.
         var early = entries
-            .Where(e => e.EarlyLoaderIndex is not null && !e.IsBlueprintMaster)
+            .Where(e => e.LoadsEarly)
             .OrderBy(e => e.EarlyLoaderIndex)
             .ThenBy(e => e.Name, PluginNameComparer.Instance)
             .ToList();
@@ -99,19 +98,31 @@ public static class PluginOrderResolver
     /// </summary>
     private static void HoistMasters(List<PluginOrderEntry> plugins)
     {
+        // Names resolve to the first plugin of that name, and to the first non-blueprint one for a
+        // non-blueprint dependent, so keep both lookups instead of scanning the list per master.
+        var firstAny = new Dictionary<string, int>(plugins.Count, PluginNameComparer.Instance);
+        var firstNonBlueprint = new Dictionary<string, int>(plugins.Count, PluginNameComparer.Instance);
+        for (var i = 0; i < plugins.Count; i++)
+        {
+            firstAny.TryAdd(plugins[i].Name, i);
+            if (!plugins[i].IsBlueprintMaster) firstNonBlueprint.TryAdd(plugins[i].Name, i);
+        }
+
         var moves = new SortedDictionary<int, int>();
         for (var index = 0; index < plugins.Count; index++)
         {
             var plugin = plugins[index];
             if (!plugin.IsMaster) continue;
 
+            // The game loads an early loader first whatever it needs, so nothing is moved in front of one.
+            if (plugin.LoadsEarly) continue;
+
+            // A non-blueprint master cannot be hoisted by looking at a blueprint file, so such a
+            // file is skipped when searching for the master's position.
+            var positions = plugin.IsBlueprintMaster ? firstAny : firstNonBlueprint;
             foreach (var master in plugin.Masters)
             {
-                // A non-blueprint master cannot be hoisted by looking at a blueprint file, so such a
-                // file is skipped when searching for the master's position.
-                var pos = plugins.FindIndex(p =>
-                    PluginNameComparer.Instance.Equals(p.Name, master) && (plugin.IsBlueprintMaster || !p.IsBlueprintMaster));
-                if (pos > index) moves.TryAdd(pos, index);
+                if (positions.TryGetValue(master, out var pos) && pos > index) moves.TryAdd(pos, index);
             }
         }
 

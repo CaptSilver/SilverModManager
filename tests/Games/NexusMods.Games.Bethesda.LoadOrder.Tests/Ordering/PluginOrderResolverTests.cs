@@ -107,6 +107,18 @@ public class PluginOrderResolverTests
     }
 
     [Fact]
+    public void AnEarlyLoaderStaysAheadOfAMasterItNamesThatIsNotEarly()
+    {
+        // The game loads Early.esm first no matter what, so Late.esm cannot be hoisted in front of it.
+        var entries = Indexed(
+            Esm("Early.esm", early: 0, masters: "Late.esm"),
+            Esm("Late.esm"),
+            Esp("User.esp"));
+
+        ResolveValid(entries).Should().Equal("Early.esm", "Late.esm", "User.esp");
+    }
+
+    [Fact]
     public void ABlueprintMasterNeverLoadsEarlyEvenWhenHardcoded()
     {
         var entries = new[]

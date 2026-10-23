@@ -25,7 +25,8 @@ public sealed record PluginOrderValidationError(
 
 /// <summary>
 /// The rules libloadorder enforces on a load order before it saves one, which is also what the games
-/// do with the file they are given.
+/// do with the file they are given. One rule is looser: an early loader may name a master that loads after
+/// it, where libloadorder would ask for a hoist that its own early-loader rule then rejects.
 /// </summary>
 public static class PluginOrderValidation
 {
@@ -120,7 +121,8 @@ public static class PluginOrderValidation
         for (var i = plugins.Length - 1; i >= 0; i--)
         {
             var plugin = plugins[i];
-            if (plugin.IsMaster)
+            // An early loader is placed by the game, not by its masters, so it can name one that loads after it.
+            if (plugin.IsMaster && !plugin.LoadsEarly)
             {
                 foreach (var master in plugin.Masters)
                 {

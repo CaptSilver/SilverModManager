@@ -18,6 +18,7 @@ public static class AsteriskPluginList
 
     public static IReadOnlyList<PluginListEntry> Parse(string text) =>
         PluginListText.Lines(text)
+            .Where(l => l != "*") // a bare star names no plugin
             .Select(l => l[0] == '*' ? new PluginListEntry(l[1..], true) : new PluginListEntry(l, false))
             .ToList();
 }
