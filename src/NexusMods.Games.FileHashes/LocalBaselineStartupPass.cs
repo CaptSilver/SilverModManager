@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games.FileHashes;
@@ -46,18 +47,37 @@ internal sealed class LocalBaselineStartupPass : IHostedService
     }
 
     /// <summary>
+    /// A game the registry followed to another folder leaves its baseline behind at the old one. Nothing reads
+    /// it any more, unless another install of the game is at that folder now.
+    /// </summary>
+    private async Task RemoveBaselineOfFolderLeft(GameInstallMetadata.ReadOnly metadata, GameInstallation installation, ImmutableArray<GameInstallation> installations, CancellationToken cancellationToken)
+    {
+        // The registry writes the new folder in the background, so the row can still name the old one here.
+        // Taking it from the row's path first also covers a note dismissed before this pass got to the game.
+        var folder = LocalBaselineCoordinator.GamePathOf(installation);
+        var oldPath = metadata.Path != folder ? metadata.Path : GameInstallMetadata.MovedFrom.TryGetValue(metadata, out var movedFrom) ? movedFrom : null;
+        if (oldPath is null || oldPath == folder) return;
+
+        if (installations.Any(other => other.LocatorResult.Store == metadata.Store && LocalBaselineCoordinator.GamePathOf(other) == oldPath)) return;
+
+        await _fileHashes.RemoveLocalBaseline(metadata.Store, oldPath, cancellationToken);
+    }
+
+    /// <summary>
     /// Runs the pass to the end: one installation at a time, since each build reads its whole game directory.
     /// </summary>
     internal async Task Run(CancellationToken cancellationToken)
     {
-        foreach (var installation in _gameRegistry.LocateGameInstallations())
+        var installations = _gameRegistry.LocateGameInstallations();
+        foreach (var installation in installations)
         {
             if (cancellationToken.IsCancellationRequested) return;
-            if (!_gameRegistry.TryGetMetadata(installation, out _)) continue;
+            if (!_gameRegistry.TryGetMetadata(installation, out var metadata)) continue;
 
             var path = installation.LocatorResult.Path;
             try
             {
+                await RemoveBaselineOfFolderLeft(metadata, installation, installations, cancellationToken);
                 var result = await _fileHashes.EnsureLocalBaseline(installation, cancellationToken);
                 _logger.LogInformation("Local baseline of {Game} at {Path}: {Kind}, {Rebuilt}, {NonVanilla} non-vanilla files",
                     installation.Game.DisplayName, path, result.Kind, result.Rebuilt ? "rebuilt" : "kept", result.NonVanillaCount);

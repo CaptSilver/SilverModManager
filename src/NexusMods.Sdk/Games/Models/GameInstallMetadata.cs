@@ -28,6 +28,12 @@ public partial class GameInstallMetadata : IModelDefinition
     public static readonly StringAttribute Path = new(Namespace, nameof(Path)) { IsIndexed = true };
 
     /// <summary>
+    /// The folder the game was in before the registry last found it somewhere else. Present from the move until
+    /// the user dismisses the Health Check note about it, so the note is shown once and not again.
+    /// </summary>
+    public static readonly StringAttribute MovedFrom = new(Namespace, nameof(MovedFrom)) { IsOptional = true };
+
+    /// <summary>
     /// The game's own id. Installations and the loadouts on them are found by this, not by the Nexus id:
     /// not every game has a Nexus id, and some games share one (Skyrim SE and Skyrim VR).
     /// </summary>

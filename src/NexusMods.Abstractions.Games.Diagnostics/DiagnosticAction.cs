@@ -49,6 +49,16 @@ public static class DiagnosticActions
     public static DiagnosticAction UseLoadoutFromSteam() => new(UseLoadoutFromSteamId, "Use this loadout from Steam", []);
 
     /// <summary>
+    /// Id of the action that dismisses the note about a game that changed folders.
+    /// </summary>
+    public const string DismissGameMovedId = "dismiss-game-moved";
+
+    /// <summary>
+    /// Hides the note about the game's new folder from now on.
+    /// </summary>
+    public static DiagnosticAction DismissGameMoved() => new(DismissGameMovedId, "Dismiss", []);
+
+    /// <summary>
     /// Id of the action that moves a backup folder back in place of a dangling link.
     /// </summary>
     public const string RestoreFolderFromBackupId = "restore-folder-from-backup";

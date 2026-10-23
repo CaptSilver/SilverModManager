@@ -4,6 +4,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Hashes;
+using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.Games.FileHashes.Tests;
 
@@ -161,6 +162,42 @@ public sealed class LoadoutFilesQueryTests : IDisposable
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
 
         LoadoutFiles(loadout).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["x.esm"]);
+    }
+
+    [Fact]
+    public async Task LoadoutFiles_GameMoved_ReadsTheBaselineAtTheNewPathOnceTheRowFollows()
+    {
+        await HashRows.AddSteamManifest(_central, 1001, ("x.esm", "vanilla x"), ("y.esm", "vanilla y"));
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/steam/test", LocalBaselineKind.DepotManifests,
+            [], "x.esm");
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/home/steam/test", "1001");
+
+        LoadoutFiles(loadout).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["x.esm", "y.esm"], "no baseline is at the old path");
+
+        await MoveInstall(loadout, "/mnt/steam/test");
+
+        LoadoutFiles(loadout).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["y.esm"], "the baseline at the new path found x.esm modified");
+    }
+
+    [Fact]
+    public async Task LoadoutFiles_GameMoved_ReadsASnapshotBaselineAtTheNewPath()
+    {
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/steam/test", LocalBaselineKind.Snapshot, [("a.esm", "one")]);
+        var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/home/steam/test");
+
+        LoadoutFiles(loadout).Should().BeEmpty();
+
+        await MoveInstall(loadout, "/mnt/steam/test");
+
+        LoadoutFiles(loadout).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["a.esm"]);
+    }
+
+    private async Task MoveInstall(EntityId loadout, string newPath)
+    {
+        var install = Loadout.Load(_main.Db, loadout).Installation;
+        using var tx = _main.BeginTransaction();
+        tx.Add(install.Id, GameInstallMetadata.Path, newPath);
+        await tx.Commit();
     }
 
     [Fact]

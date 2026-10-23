@@ -97,6 +97,28 @@ The files with issues:
 
     [DiagnosticTemplate]
     [UsedImplicitly]
+    internal static IDiagnosticTemplate GameMoved = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 5))
+        .WithTitle("Game moved to another folder")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("{Game} moved from {OldPath} to {NewPath}")
+        .WithDetails("""
+{Game} was in `{OldPath}` and is now in `{NewPath}`, so the loadouts on it follow the game to its new folder.
+
+Files this app deployed with hardlinks or reflinks before a move to another drive are plain copies now. They are linked again as they are next written.
+
+Dismiss this note once you have read it.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Game")
+            .AddValue<string>("OldPath")
+            .AddValue<string>("NewPath")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
     internal static IDiagnosticTemplate NonVanillaGameFiles = DiagnosticTemplateBuilder
         .Start()
         .WithId(new DiagnosticId(Source, number: 3))

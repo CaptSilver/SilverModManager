@@ -89,6 +89,13 @@ public interface IFileHashesService
     public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Deletes the local baseline of the installation at <paramref name="gamePath"/>, with the rows only it
+    /// uses. Nothing happens when there is none. For a game that moved: its baseline at the old folder is not
+    /// read by anything any more.
+    /// </summary>
+    public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Completes once a local baseline build for the installation that is already running has committed its
     /// rows, or at once when none is running. Never starts a build. A build commits all of its rows at the
     /// end, so anything that looks hashes up while one runs sees none of them and reads every file instead.

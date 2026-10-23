@@ -17,6 +17,7 @@ public static class Services
     public static IServiceCollection AddFileHashes(this IServiceCollection services)
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, NonVanillaGameFilesEmitter>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, GameMovedEmitter>());
 
         return services.AddFileHashesVerbs()
             .AddPathHashRelationModel()

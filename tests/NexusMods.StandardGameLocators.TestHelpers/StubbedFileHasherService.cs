@@ -181,6 +181,9 @@ public class StubbedFileHasherService : IFileHashesService
     /// </summary>
     public List<(GameInstallation Installation, int LoadoutCount)> BaselineRequests { get; } = [];
 
+    // EnsureLocalBaseline writes no rows here, so there is never a baseline to remove.
+    public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
     // Nothing is hashed: the stubbed state stands in for the whole vanilla file list.
     public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default)
     {

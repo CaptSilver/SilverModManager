@@ -58,6 +58,27 @@ internal sealed class LocalBaselineCoordinator : IDisposable
     }
 
     /// <summary>
+    /// Deletes the baseline at <paramref name="gamePath"/>. A build running for that path finishes first, so
+    /// its rows are not left behind.
+    /// </summary>
+    public async Task Remove(GameStore store, string gamePath, CancellationToken cancellationToken = default)
+    {
+        if (_inFlight.TryGetValue((store, gamePath), out var running))
+        {
+            try
+            {
+                await running.Value.WaitAsync(cancellationToken);
+            }
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(e, "The local baseline build at {Path} failed before its rows were removed", gamePath);
+            }
+        }
+
+        await _baseline.Remove(store, gamePath, _localStore());
+    }
+
+    /// <summary>
     /// Waits for the build of this installation that is running, if any. A build that fails leaves no rows
     /// and reports the failure to its own caller, so the waiter carries on without them.
     /// </summary>
@@ -137,7 +158,10 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         return new LocalBaselineResult(built.Kind, Rebuilt: true, build.NonVanilla.Count);
     }
 
-    private static string GamePathOf(GameInstallation installation) => installation.Locations[LocationId.Game].Path.ToString();
+    /// <summary>
+    /// The folder a baseline is keyed by, the same one the game registry stores on the installation's row.
+    /// </summary>
+    internal static string GamePathOf(GameInstallation installation) => installation.Locations[LocationId.Game].Path.ToString();
 
     private static LocalBaseline.ReadOnly? FindBaseline(IDb db, GameStore store, string gamePath)
     {

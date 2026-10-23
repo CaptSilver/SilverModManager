@@ -19,6 +19,9 @@ internal class GameRegistry : IGameRegistry
 
     private readonly Lazy<IGameLocator[]> _locators;
     private readonly Lock _lock = new();
+    private readonly Lock _moveLock = new();
+    private readonly HashSet<(EntityId Row, string Folder)> _loggedAmbiguousMoves = [];
+    private readonly Dictionary<EntityId, string> _pendingMoves = [];
 
     private Optional<ImmutableArray<GameInstallation>> _cachedInstallations = Optional<ImmutableArray<GameInstallation>>.None;
 
@@ -107,16 +110,7 @@ internal class GameRegistry : IGameRegistry
             .Where(installation => installation.Game.GameId == gameId && installation.LocatorResult.Store == metadata.Store)
             .ToArray();
 
-        switch (candidates.Length)
-        {
-            case 0:
-                return false;
-            case 1:
-                gameInstallation = candidates[0];
-                return true;
-        }
-
-        // Several installs of one game from one store: the stored folder says which one the loadout is on.
+        // The row's folder says which install a loadout is on.
         foreach (var candidate in candidates)
         {
             if (!InstallPaths.AreSameFolder(metadata.Path, InstallFolder(candidate))) continue;
@@ -124,7 +118,16 @@ internal class GameRegistry : IGameRegistry
             return true;
         }
 
-        _logger.LogWarning("Loadout `{Loadout}` is on `{Path}`, which none of the {Count} installs of {Game} from {Store} is at", loadout.Name, metadata.Path, candidates.Length, candidates[0].Game.DisplayName, metadata.Store);
+        // Otherwise the game moved: the row follows the one install that no row names.
+        foreach (var candidate in candidates)
+        {
+            if (!TryGetMetadata(candidate, out var row) || row.Id != metadata.Id) continue;
+            gameInstallation = candidate;
+            return true;
+        }
+
+        if (candidates.Length > 0)
+            _logger.LogWarning("Loadout `{Loadout}` is on `{Path}`, which none of the {Count} installs of {Game} from {Store} is at", loadout.Name, metadata.Path, candidates.Length, candidates[0].Game.DisplayName, metadata.Store);
         return false;
     }
 
@@ -138,40 +141,89 @@ internal class GameRegistry : IGameRegistry
             .Where(row => row.Store == store)
             .ToArray();
 
-        // A single row is the install even if its folder changed: Steam moves games between libraries and the
-        // loadouts on the row have to follow. It is only another install's row when that other install is
-        // located right now, at the folder the row names.
-        var ownRows = rows.Where(row => !IsClaimedByAnotherInstall(row, installation)).ToArray();
-
-        if (ownRows.Length == 1)
+        var folder = InstallFolder(installation);
+        foreach (var row in rows)
         {
-            result = ownRows[0];
-            return true;
-        }
-
-        foreach (var row in ownRows)
-        {
-            if (!InstallPaths.AreSameFolder(row.Path, InstallFolder(installation))) continue;
+            if (!InstallPaths.AreSameFolder(row.Path, folder)) continue;
             result = row;
             return true;
         }
 
+        // No row names this folder. Either the install is new, or Steam moved a game between libraries and
+        // its row still names the old folder: the loadouts on that row have to follow. That is only certain
+        // when one row has lost its install and one install has no row.
+        var peers = Peers(installation);
+        var staleRows = rows.Where(row => !peers.Any(peer => InstallPaths.AreSameFolder(row.Path, InstallFolder(peer)))).ToArray();
+        if (staleRows.Length == 0) return false;
+
+        var unclaimed = peers.Where(peer => !rows.Any(row => InstallPaths.AreSameFolder(row.Path, InstallFolder(peer)))).ToArray();
+        if (staleRows.Length == 1 && unclaimed.Length == 1)
+        {
+            result = FollowMove(staleRows[0], installation);
+            return true;
+        }
+
+        bool firstTime;
+        lock (_moveLock) firstTime = _loggedAmbiguousMoves.Add((staleRows[0].Id, folder.ToString()));
+        if (firstTime)
+            _logger.LogWarning("{Game} from {Store} at `{Folder}` could be the install of {RowCount} rows whose folders no longer exist; leaving them as they are", installation.Game.DisplayName, store, folder, staleRows.Length);
         return false;
     }
 
-    private bool IsClaimedByAnotherInstall(GameInstallMetadata.ReadOnly row, GameInstallation installation)
+    /// <summary>
+    /// The located installs of the same game and store, <paramref name="installation"/> included.
+    /// </summary>
+    private GameInstallation[] Peers(GameInstallation installation)
     {
         var store = installation.LocatorResult.Store;
-        var folder = InstallFolder(installation);
+        var peers = LocateGameInstallations()
+            .Where(other => other.Game.GameId == installation.Game.GameId && other.LocatorResult.Store == store)
+            .ToList();
+        if (!peers.Any(peer => ReferenceEquals(peer, installation) || peer.Equals(installation))) peers.Add(installation);
+        return peers.ToArray();
+    }
 
-        foreach (var other in LocateGameInstallations())
+    /// <summary>
+    /// Points the row at the folder the game is in now and keeps the old one, for the note that tells the user.
+    /// Returns the row as it is: the write is committed in the background, since callers can be observers on
+    /// the database's own thread, which a commit has to wait for. Until it lands the row still names the old
+    /// folder, and the pairing above keeps matching it to this install.
+    /// </summary>
+    private GameInstallMetadata.ReadOnly FollowMove(GameInstallMetadata.ReadOnly row, GameInstallation installation)
+    {
+        var newPath = InstallFolder(installation).ToString();
+
+        lock (_moveLock)
         {
-            if (ReferenceEquals(other, installation) || other.Equals(installation)) continue;
-            if (other.Game.GameId != installation.Game.GameId || other.LocatorResult.Store != store) continue;
-            if (InstallPaths.AreSameFolder(row.Path, InstallFolder(other)) && !InstallPaths.AreSameFolder(row.Path, folder)) return true;
-        }
+            if (_pendingMoves.TryGetValue(row.Id, out var pending) && pending == newPath) return row;
 
-        return false;
+            var current = GameInstallMetadata.Load(_connection.Db, row.Id);
+            if (current.Path == newPath) return current;
+
+            _pendingMoves[row.Id] = newPath;
+            _logger.LogInformation("{Game} moved from `{OldPath}` to `{NewPath}`", installation.Game.DisplayName, current.Path, newPath);
+            _ = Task.Run(() => CommitMove(row.Id, current.Path, newPath));
+            return current;
+        }
+    }
+
+    private async Task CommitMove(EntityId row, string oldPath, string newPath)
+    {
+        try
+        {
+            using var tx = _connection.BeginTransaction();
+            tx.Add(row, GameInstallMetadata.MovedFrom, oldPath);
+            tx.Add(row, GameInstallMetadata.Path, newPath);
+            await tx.Commit();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Could not record that the install at `{OldPath}` moved to `{NewPath}`", oldPath, newPath);
+        }
+        finally
+        {
+            lock (_moveLock) _pendingMoves.Remove(row);
+        }
     }
 
     /// <summary>

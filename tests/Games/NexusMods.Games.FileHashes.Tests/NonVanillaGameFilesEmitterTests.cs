@@ -66,6 +66,25 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     }
 
     [Fact]
+    public async Task GameMoved_ReadsTheBaselineAtTheNewPathOnceTheRowFollows()
+    {
+        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/steam/test", LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        (await Diagnose(loadout)).Should().BeEmpty("the only baseline is at the folder the game moved to");
+
+        using (var tx = _main.BeginTransaction())
+        {
+            tx.Add(loadout.Installation.Id, GameInstallMetadata.Path, "/mnt/steam/test");
+            await tx.Commit();
+        }
+        loadout = Loadout.Load(_main.Db, loadout.Id);
+
+        (await Diagnose(loadout)).Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task BaselineWithReports_YieldsOneDiagnosticListingEachPathAndReason()
     {
         var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);

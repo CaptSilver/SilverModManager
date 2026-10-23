@@ -15,6 +15,7 @@ public static class DiagnosticActionServices
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, ShowCleanupStepsActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, RestampBuildActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, InstallMe3ActionHandler>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, DismissGameMovedActionHandler>());
         return services;
     }
 }

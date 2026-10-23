@@ -68,6 +68,37 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
+    public async Task Remove_DeletesEveryRowOfTheBaselineAtThatPathAndNoOthers()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        WriteGameFile("mod.esp", "mod");
+        _source.Add(101, ("a.esm", "vanilla"));
+        await _coordinator.Ensure(Installation("101"));
+        var other = await HashRows.AddLocalBaseline(_store, GameStore.Steam, "/games/other", LocalBaselineKind.Snapshot, [("b.esm", "other")], "c.esm");
+        var gamePath = Installation("101").Locations[LocationId.Game].Path.ToString();
+
+        await _coordinator.Remove(GameStore.Steam, gamePath);
+
+        var left = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        left.Id.Should().Be(other);
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.BaselineId.Value.Should().Be(other.Value);
+        PathHashRelation.All(_store.Db).Should().ContainSingle("only the other baseline's path row is left");
+        VersionDefinition.All(_store.Db).Should().BeEmpty();
+        SteamManifest.All(_store.Db).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Remove_NothingAtThatPathOrStore_ChangesNothing()
+    {
+        var baseline = await HashRows.AddLocalBaseline(_store, GameStore.Steam, "/games/test", LocalBaselineKind.Snapshot, [("a.esm", "one")]);
+
+        await _coordinator.Remove(GameStore.Steam, "/games/elsewhere");
+        await _coordinator.Remove(GameStore.GOG, "/games/test");
+
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.Id.Should().Be(baseline);
+    }
+
+    [Fact]
     public async Task FirstCall_RecordsTheGamesOwnIdAndItsNexusId()
     {
         WriteGameFile("a.esm", "vanilla");

@@ -156,7 +156,7 @@ internal sealed class LocalVanillaBaseline
             request.GameRoot, stats.Trusted, resolved.Count, stats.Read, stats.BytesRead, stopwatch.Elapsed);
 
         using var tx = localStore.BeginTransaction();
-        RetractPrevious(tx, localStore.Db, request);
+        RetractAt(tx, localStore.Db, request.Store, request.GamePath);
         var baseline = new LocalBaseline.New(tx)
         {
             Store = request.Store,
@@ -472,13 +472,15 @@ internal sealed class LocalVanillaBaseline
     }
 
     /// <summary>
-    /// Deletes the rows of earlier builds for the same installation. The path rows are never shared
+    /// Deletes the rows of the baseline at a path. The path rows are never shared
     /// between builds, so they go with it; hash rows are content-addressed and stay.
     /// </summary>
-    private static void RetractPrevious(ITransaction tx, IDb db, BaselineRequest request)
+    private static bool RetractAt(ITransaction tx, IDb db, GameStore store, string gamePath)
     {
-        foreach (var old in LocalBaseline.FindByGamePath(db, request.GamePath).Where(b => b.Store == request.Store))
+        var any = false;
+        foreach (var old in LocalBaseline.FindByGamePath(db, gamePath).Where(b => b.Store == store))
         {
+            any = true;
             foreach (var file in NonVanillaFile.FindByBaseline(db, old.Id)) tx.Delete(file.Id, recursive: false);
             foreach (var pathId in old.FilesIds) tx.Delete(pathId, recursive: false);
 
@@ -490,5 +492,17 @@ internal sealed class LocalVanillaBaseline
 
             tx.Delete(old.Id, recursive: false);
         }
+
+        return any;
+    }
+
+    /// <summary>
+    /// Deletes the baseline at <paramref name="gamePath"/> without building another one.
+    /// </summary>
+    public async Task Remove(GameStore store, string gamePath, IConnection localStore)
+    {
+        using var tx = localStore.BeginTransaction();
+        if (!RetractAt(tx, localStore.Db, store, gamePath)) return;
+        await tx.Commit();
     }
 }
