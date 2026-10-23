@@ -159,6 +159,50 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     }
 
     [Fact]
+    public async Task FilesTheGameInstalled_AreLeftOut_ButAChangedVanillaFileStaysListed()
+    {
+        // Both are Game-typed nodes with no loadout hash, so the node alone cannot tell them apart: only the
+        // game-installed record does.
+        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("data/ccinvented.esm", NonVanillaReason.NotInManifest), ("a.esm", NonVanillaReason.HashDiffers));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+        await AddGameInstalledFile(loadout, "data/ccinvented.esm");
+        loadout = Loadout.Load(_main.Db, loadout.Id);
+        var tree = Tree(
+            ("data/ccinvented.esm", Node(LoadoutSourceItemType.Game, hasLoadoutHash: false)),
+            ("a.esm", Node(LoadoutSourceItemType.Game, hasLoadoutHash: false))
+        );
+
+        var diagnostic = (await Diagnose(loadout, tree)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.FileCount.Should().Be(1);
+        data.Files.Should().Contain("a.esm").And.NotContain("ccinvented");
+    }
+
+    private async Task AddGameInstalledFile(Loadout.ReadOnly loadout, string path)
+    {
+        using var tx = _main.BeginTransaction();
+        _ = new GameInstalledGroup.New(tx, out var groupId)
+        {
+            InstalledForId = loadout.Id,
+            LoadoutItemGroup = new LoadoutItemGroup.New(tx, groupId)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = "Installed by the game", LoadoutId = loadout.Id },
+            },
+        };
+        _ = new GameInstalledFile.New(tx, out var fileId)
+        {
+            Path = new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(path)).ToGamePathParentTuple(loadout.Id),
+            Hash = Hash.From(0xAB),
+            Size = Size.From(10),
+            LoadoutItem = new LoadoutItem.New(tx, fileId) { Name = path, LoadoutId = loadout.Id, ParentId = groupId },
+        };
+        await tx.Commit();
+    }
+
+    [Fact]
     public async Task PlainOverload_UsesNoSyncTree_AndListsEverything()
     {
         var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);

@@ -7,6 +7,7 @@ using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Games.FileHashes.Models;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk;
@@ -52,8 +53,10 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
             ? found.Id
             : default(EntityId);
 
+        var gameInstalled = GameInstalledPaths.For(loadout.Db, loadout.LoadoutId);
+
         var files = NonVanillaFile.FindByBaseline(db, baseline.Value.Id)
-            .Where(f => !IsManagedByLoadout(loadout.Db, syncTree, overridesGroup, f.Path))
+            .Where(f => !IsManagedByLoadout(loadout.Db, syncTree, overridesGroup, gameInstalled, f.Path))
             .OrderBy(f => f.Path.ToString(), StringComparer.Ordinal)
             .ToArray();
         if (files.Length == 0) yield break;
@@ -73,13 +76,17 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
     }
 
     /// <summary>
-    /// Whether the loadout deploys or intends to deploy the file, or the game handles it itself. Three kinds
+    /// Whether the loadout deploys or intends to deploy the file, or the game handles it itself. A file the game
+    /// installed itself (a Creation) is checked first: its node is Game-typed like a changed vanilla file, which
+    /// must stay listed, so only the game-installed record can tell them apart. Three kinds
     /// of node do not count: ones that only carry a disk or previous state (no loadout hash), a file the
     /// loadout merely recorded from the game's initial state, and files in the overrides group, which is where
     /// the game folder's unmanaged files are filed when the game is first managed.
     /// </summary>
-    private static bool IsManagedByLoadout(IDb loadoutDb, FrozenDictionary<GamePath, SyncNode> syncTree, EntityId overridesGroup, RelativePath path)
+    private static bool IsManagedByLoadout(IDb loadoutDb, FrozenDictionary<GamePath, SyncNode> syncTree, EntityId overridesGroup, IReadOnlyDictionary<GamePath, (Hash Hash, Size Size)> gameInstalled, RelativePath path)
     {
+        if (gameInstalled.ContainsKey(new GamePath(LocationId.Game, path))) return true;
+
         if (!syncTree.TryGetValue(new GamePath(LocationId.Game, path), out var node)) return false;
 
         return node.SourceItemType switch

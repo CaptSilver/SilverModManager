@@ -4,6 +4,8 @@ using NexusMods.Abstractions.Games.FileHashes.Models;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.HyperDuck;
+using NexusMods.HyperDuck.Adaptor.Impls.ValueAdaptor;
+using NexusMods.HyperDuck.BindingConverters;
 using NexusMods.MnemonicDB;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Storage;
@@ -47,6 +49,11 @@ internal sealed class RealQueryEngineHost : IDisposable
             .AddLoadoutItemModel()
             .AddLoadoutItemGroupModel()
             .AddLoadoutOverridesGroupModel()
+            .AddBindingConverter<LoadoutId, ulong>(l => l.Value.Value)
+            .AddBindingConverter<LocationId, ushort>(l => l.Value)
+            .AddValueAdaptor<ushort, LocationId>(LocationId.From)
+            .AddGameInstalledGroupModel()
+            .AddGameInstalledFileModel()
             .AddGameInstallMetadataModel()
             .AddFileHashesQueriesSql()
             .BuildServiceProvider();

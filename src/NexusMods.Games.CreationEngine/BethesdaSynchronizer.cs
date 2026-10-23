@@ -15,6 +15,10 @@ public class BethesdaSynchronizer(IServiceProvider provider, IBethesdaGame game)
     protected override IGamePathFilter GameSpecificPathFilter { get; } =
         GamePathFilters.Create(game.IsProtectedPath);
 
+    // The same instance the game filters its sync with, so the files the sync leaves out and the content it
+    // recognises come from one set of records.
+    protected override IGameInstalledContentRecognizer? GameInstalledContent => (game as ICreationEngineGame)?.GameInstalledContent;
+
     public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout) => game.IntrinsicFiles(loadout, provider);
 
     /// <summary>
