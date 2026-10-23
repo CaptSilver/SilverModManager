@@ -42,38 +42,52 @@ public partial class BrandingGuardTests
         RepoScanGuard.AssertMatchesAllowlist(found, Allowed, "the fork must not reuse upstream's names; use ApplicationConstants or add the line to the allowlist with a reason");
     }
 
-    // The upstream project name used as a binary or package name. A namespace, project folder,
-    // `.csproj`/`.sln` name or avares:// host is FirstPartyNamespaceGuardTests' job, so the
-    // lookahead drops anything followed by a path or identifier character and the line check
-    // drops the declarations that end right after it.
-    [GeneratedRegex(@"NexusMods\.App(?![\w./\\])")]
-    private static partial Regex UpstreamBinaryName();
+    // The upstream app's name has no business in the fork's source any more: first-party
+    // declarations carry the SilverModManager prefix (FirstPartyNamespaceGuardTests holds that
+    // line), so what is left are links to upstream and the two places that name its data
+    // folder and documentation on purpose. Issue and pull request links are provenance and stay.
+    [GeneratedRegex(@"NexusMods\.App(?!/(issues|pull|discussions)/)")]
+    private static partial Regex UpstreamAppName();
 
-    private static readonly string[] DeclarationMarkers =
-        ["namespace ", "using ", "x:Class=", "xmlns", "InternalsVisibleTo", "ProjectReference", "avares://"];
-
-    private static readonly (string File, string Line, string Reason)[] AllowedBinaryName =
+    private static readonly (string File, string Line, string Reason)[] AllowedAppName =
     [
+        ("src/SilverModManager.App/UpstreamData.cs", "return fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine(\"NexusMods.App/DataModel\");", "locates upstream's data folder on purpose, to warn about shared game folders"),
         ("README.md", "SilverModManager is a Linux-only fork of the [Nexus Mods App](https://github.com/Nexus-Mods/NexusMods.App) that downloads mods from [Nexus Mods](https://www.nexusmods.com).", "credits the project this is forked from"),
         ("CONTRIBUTING.md", "SilverModManager is a Linux-only fork of the [Nexus Mods App](https://github.com/Nexus-Mods/NexusMods.App),", "credits the project this is forked from"),
         ("src/SilverModManager.Networking.ModUpdates/PerFeedCacheUpdater.cs", "/// For full info on internals, see the NexusMods.App project documentation.", "points at upstream's documentation, which is where those internals are described"),
     ];
 
     [Fact]
-    public void Test_NoUpstreamBinaryName()
+    public void Test_NoUpstreamAppNameOutsideAllowlist()
     {
         var root = RepoScanGuard.FindRepoRoot();
         var files = RepoScanGuard.EnumerateFiles(root, "src", SourceExtensions)
             .Concat(RootFiles.Where(f => File.Exists(Path.Combine(root, f))));
-        var found = RepoScanGuard.FindLines(root, files, line =>
-            UpstreamBinaryName().IsMatch(line) && !DeclarationMarkers.Any(line.Contains));
+        var found = RepoScanGuard.FindLines(root, files, line => UpstreamAppName().IsMatch(line));
 
-        RepoScanGuard.AssertMatchesAllowlist(found, AllowedBinaryName, "the binary and package are named after the fork; use ApplicationConstants.ProductName or add the line to the allowlist with a reason");
+        RepoScanGuard.AssertMatchesAllowlist(found, AllowedAppName, "the app is named after the fork; use ApplicationConstants.ProductName or add the line to the allowlist with a reason");
+    }
+
+    [Fact]
+    public void Test_EveryAllowlistedFileExists()
+    {
+        var root = RepoScanGuard.FindRepoRoot();
+
+        var missing = Allowed.Concat(AllowedAppName)
+            .Select(entry => entry.File)
+            .Append(BrandColorsFile)
+            .Distinct()
+            .Where(file => !File.Exists(Path.Combine(root, file)))
+            .Order();
+
+        string.Join(Environment.NewLine, missing).Should().BeEmpty("an allowlist row for a file that moved or went away would silently stop guarding anything");
     }
 
     // The accent is mapped from the neutral Zinc family. The Orange primitives are still
     // defined in PrimitiveColors.axaml, so pointing the accent back at them would restore
     // upstream's orange.
+    private const string BrandColorsFile = "src/SilverModManager.Themes.NexusFluentDark/Resources/Palette/Colors/BrandColors.axaml";
+
     [GeneratedRegex("BrandPrimary.*PrimitiveOrange")]
     private static partial Regex UpstreamAccent();
 
@@ -81,8 +95,7 @@ public partial class BrandingGuardTests
     public void Test_BrandAccentIsNotUpstreamOrange()
     {
         var root = RepoScanGuard.FindRepoRoot();
-        var brandColors = "src/SilverModManager.Themes.NexusFluentDark/Resources/Palette/Colors/BrandColors.axaml";
-        var found = RepoScanGuard.FindLines(root, [brandColors], line => UpstreamAccent().IsMatch(line));
+        var found = RepoScanGuard.FindLines(root, [BrandColorsFile], line => UpstreamAccent().IsMatch(line));
 
         RepoScanGuard.AssertMatchesAllowlist(found, [], "BrandPrimary* must map to the Zinc primitives, not Orange");
     }

@@ -8,7 +8,7 @@ The diagnostic system is designed to allow the mod manager to inform the user ab
 
 It's important to understand that this Id refers to the diagnostic type, not to the individual object instance. This is not auto-generated, like a GUID, but instead hardcoded. This is similar to the [Compiler Errors](https://learn.microsoft.com/en-us/dotnet/csharp/misc/cs0027) in .NET where each error type has it's own Id, eg: `CS0027`.
 
-The [`DiagnosticId`](https://github.com/Nexus-Mods/NexusMods.App/blob/main/src/Abstractions/SilverModManager.Abstractions.Games.Diagnostics/DiagnosticId.cs) struct contains two fields:
+The [`DiagnosticId`](https://github.com/Nexus-Mods/NexusMods.App/blob/main/src/Abstractions/NexusMods.Abstractions.Games.Diagnostics/DiagnosticId.cs) struct contains two fields:
 
 - `Source`, this should be the name of the assembly that produces the diagnostic.
 - `Number`, this is a monotonic increasing number of the specific diagnostic type.

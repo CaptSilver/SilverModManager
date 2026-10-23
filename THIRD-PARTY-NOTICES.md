@@ -29,7 +29,7 @@ Licenses below are the SPDX expressions in each package's nuspec at the pinned v
 
 | Component | License |
 |---|---|
-| SilverModManager.MnemonicDB, NexusMods.Paths, NexusMods.Hashing.xxHash3 (Nexus Mods) | GPL-3.0-only |
+| NexusMods.MnemonicDB (vendored as source in `src/SilverModManager.MnemonicDB*`), NexusMods.Paths, NexusMods.Hashing.xxHash3 (Nexus Mods) | GPL-3.0-only |
 | NexusMods.Archives.Nx (Nexus Mods) | GPL-3.0 (license text ships in the package) |
 | GameFinder.* (erri120) | GPL-3.0-only |
 | Mutagen.Bethesda.* (Noggog) | GPL-3.0-only |

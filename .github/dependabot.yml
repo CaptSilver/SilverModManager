@@ -10,6 +10,7 @@ updates:
     labels:
       - "area-dependencies"
     allow:
+      # The Nexus Mods patterns below match the published NuGet packages the app consumes, not first-party projects.
       - dependency-name: "System.*"
       - dependency-name: "Microsoft.*"
       - dependency-name: "NexusMods.*"
