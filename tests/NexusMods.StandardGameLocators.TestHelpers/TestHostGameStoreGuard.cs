@@ -62,6 +62,16 @@ public static class TestHostGameStoreGuard
         outside.Should().BeEmpty("test hosts must not locate games outside the test folders");
     }
 
+    /// <summary>
+    /// Fails when the host's <see cref="IGameArtSource"/> is not the placeholder one. The app's source reads
+    /// cover art from the real Steam folder's <c>appcache/librarycache</c>.
+    /// </summary>
+    public static void AssertGameArtIsNotReadFromSteam(IServiceProvider serviceProvider)
+    {
+        serviceProvider.GetRequiredService<IGameArtSource>().Should().BeOfType<PlaceholderGameArtSource>(
+            "test hosts must not read cover art from the machine's Steam cache");
+    }
+
     private static bool IsStubbed(Type type)
         => type.FullName == UserInstallLocatorName
            || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(UniversalStubbedGameLocator<>));

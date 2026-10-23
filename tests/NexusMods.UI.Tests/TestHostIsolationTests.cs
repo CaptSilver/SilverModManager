@@ -40,6 +40,10 @@ public class TestHostIsolationTests(IServiceProvider serviceProvider)
         => TestHostGameStoreGuard.AssertInstallationsAreInTestFolders(serviceProvider);
 
     [Fact]
+    public void Test_TheTestHostDoesNotReadCoverArtFromSteam()
+        => TestHostGameStoreGuard.AssertGameArtIsNotReadFromSteam(serviceProvider);
+
+    [Fact]
     public void Test_TheAppsOwnGraphKeepsTheStoreLocatorsWithoutDuplicates()
     {
         // The test host leaves the store locators out, so this is what still checks the graph the app builds.

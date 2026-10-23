@@ -47,6 +47,7 @@ public class Startup
                 .AddSingleton<AvaloniaApp>()
                 .ReplaceDesktopNotifier()
                 .RemoveLauncherShimRefresher()
+                .ReplaceGameArtSource()
                 .RemoveRuntimeDependencyChecker()
                 .AddLogging(builder => builder.AddXunitOutput().SetMinimumLevel(LogLevel.Debug))
                 .Validate();
