@@ -172,6 +172,7 @@ internal sealed class SecretServiceStore : ISecretServiceStore, IDisposable
     public void Dispose()
     {
         _lockedSubscription?.Dispose();
+        (_connection as IDisposable)?.Dispose();
         _changed.Dispose();
         _statusChanged.Dispose();
         _stateGate.Dispose();

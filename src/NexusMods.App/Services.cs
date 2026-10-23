@@ -37,6 +37,7 @@ using NexusMods.Platform.Proton.Launch;
 using NexusMods.ProxyConsole;
 using NexusMods.Sdk.Library;
 using NexusMods.Secrets;
+using NexusMods.Secrets.SecretService;
 using NexusMods.Sdk.ProxyConsole;
 using NexusMods.Sdk.Settings;
 using NexusMods.SingleProcess;
@@ -179,6 +180,7 @@ public static class Services
                 SecretsFile = startupMode.SecretsFile,
                 Backend = startupMode.SecretBackend,
             })
+            .AddSecretServiceBackend()
             .AddNexusWebApi(registerNxmHandler)
             .AddHttpDownloader()
             // .AddAdvancedHttpDownloader()
