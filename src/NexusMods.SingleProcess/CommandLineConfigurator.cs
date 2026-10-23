@@ -18,8 +18,8 @@ namespace NexusMods.SingleProcess;
 /// </summary>
 public class CommandLineConfigurator
 {
-    private readonly RootCommand _rootCommand;
-    private readonly Type[] _injectedTypes;
+    private readonly VerbDefinition[] _verbDefinitions;
+    private readonly ModuleDefinition[] _moduleDefinitions;
     private readonly IServiceProvider _provider;
     private readonly MethodInfo _makeOptionMethod;
 
@@ -35,7 +35,11 @@ public class CommandLineConfigurator
         _provider = provider;
         _logger = provider.GetRequiredService<ILogger<CommandLineConfigurator>>();
         _makeOptionMethod = GetType().GetMethod(nameof(MakeOption), BindingFlags.Instance | BindingFlags.NonPublic)!;
-        (_rootCommand, _injectedTypes) = MakeRootCommand(verbDefinitions, moduleDefinitions);
+        _verbDefinitions = verbDefinitions.ToArray();
+        _moduleDefinitions = moduleDefinitions.ToArray();
+
+        // Fail on a bad definition at construction rather than on the first invocation.
+        MakeRootCommand(_verbDefinitions, _moduleDefinitions);
     }
 
     /// <summary>
@@ -228,12 +232,16 @@ public class CommandLineConfigurator
         if (await RunLink(args, token)) return 0;
         if (_logger.IsEnabled(LogLevel.Debug)) _logger.LogDebug("Received command `{Command}`", string.Join(" ", args));
 
-        var parser = new CommandLineBuilder(_rootCommand)
+        // The builder adds the help option to the root command it is given, so every invocation gets its own
+        // tree. Sharing one would let concurrent invocations modify it while another renders help.
+        var (rootCommand, injectedTypes) = MakeRootCommand(_verbDefinitions, _moduleDefinitions);
+
+        var parser = new CommandLineBuilder(rootCommand)
             .UseHelp()
             .UseParseErrorReporting()
             .AddMiddleware((ctx, next) =>
             {
-                foreach (var type in _injectedTypes)
+                foreach (var type in injectedTypes)
                 {
                     if (type == typeof(IRenderer))
                         ctx.BindingContext.AddService(type, _ => renderer);

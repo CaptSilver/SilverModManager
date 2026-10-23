@@ -67,4 +67,24 @@ public class RunHelpTests(IServiceProvider provider)
         exitCode.Should().Be(LaunchSession.FailureExitCode);
         string.Concat(renderer.Logs.OfType<Text>().Select(t => t.Template)).Should().Contain(LaunchArgs.Synopsis);
     }
+
+    [Fact]
+    public async Task HelpRenderedFromSeveralThreadsAtOnce_NeverThrows()
+    {
+        var configurator = provider.GetRequiredService<CommandLineConfigurator>();
+        string[][] invocations = [["--help"], ["run", "--help"], ["status", "--help"]];
+
+        var workers = Enumerable.Range(0, 8).Select(worker => Task.Run(async () =>
+        {
+            for (var i = 0; i < 40; i++)
+            {
+                var renderer = new LoggingRenderer();
+                var exitCode = await configurator.RunAsync(invocations[(worker + i) % invocations.Length], renderer, CancellationToken.None);
+                exitCode.Should().Be(0);
+                renderer.Logs.OfType<Text>().Should().NotBeEmpty();
+            }
+        }));
+
+        await Task.WhenAll(workers);
+    }
 }
