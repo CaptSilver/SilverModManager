@@ -7,6 +7,7 @@ using NexusMods.Abstractions.Library;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Sdk.Settings;
 using NexusMods.Wabbajack.Acquire;
+using NexusMods.Wabbajack.Cli;
 using NexusMods.Wabbajack.Diagnostics;
 using NexusMods.Wabbajack.Install;
 using NexusMods.Wabbajack.Library;
@@ -26,6 +27,7 @@ public static class Services
             .AddWabbajackModlistLoadoutGroupModel()
             .AddWabbajackSkippedFileModel()
             .AddWabbajackSettings()
+            .AddWabbajackVerbs()
             .AddSingleton<WabbajackPaths>()
             .AddSingleton<ILibraryArchiveLocator, LibraryArchiveLocator>()
             .AddSingleton<ArchiveInventory>()

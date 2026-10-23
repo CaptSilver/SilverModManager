@@ -19,6 +19,7 @@ using NexusMods.Sdk.Settings;
 using NexusMods.SingleProcess;
 using NexusMods.StandardGameLocators;
 using NexusMods.StandardGameLocators.TestHelpers;
+using NexusMods.Wabbajack.Cli;
 using Xunit.DependencyInjection.Logging;
 
 namespace NexusMods.CLI.Tests;
@@ -50,6 +51,7 @@ public class Startup
                 .AddFileExtractors()
                 .AddFileHashes()
                 .AddCLI()
+                .AddWabbajackVerbs()
                 .AddHttpDownloader()
                 .AddNexusWebApi()
                 .AddLoadoutAbstractions()

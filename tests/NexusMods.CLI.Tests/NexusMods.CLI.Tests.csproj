@@ -32,6 +32,8 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- The same real modlist the Wabbajack tests use, see that project's Fixtures/NOTICE -->
+        <None Include="..\NexusMods.Wabbajack.Tests\Fixtures\MO2AndSKSETest.wabbajack" Link="Resources\MO2AndSKSETest.wabbajack" CopyToOutputDirectory="PreserveNewest" />
         <None Update="Resources\**">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
