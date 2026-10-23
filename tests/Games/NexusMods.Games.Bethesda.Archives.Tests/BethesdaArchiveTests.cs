@@ -196,11 +196,10 @@ public class BethesdaArchiveTests
     }
 
     [Fact]
-    public async Task OpenShouldRefuseBa2UntilItIsSupported()
+    public async Task OpenShouldRejectABa2WithAnUnknownVersion()
     {
         var act = () => Open(Encoding.ASCII.GetBytes("BTDX").Concat(new byte[40]).ToArray());
-        (await act.Should().ThrowAsync<BethesdaArchiveException>())
-            .WithMessage("BA2 archives are not supported yet");
+        (await act.Should().ThrowAsync<BethesdaArchiveException>()).WithMessage("*version 0*");
     }
 
     [Fact]

@@ -22,8 +22,8 @@ public static class BethesdaArchive
                 return Tes3ArchiveReader.Load(new ArchiveSource(stream, ArchiveKind.Tes3));
             if (magic.AsSpan().SequenceEqual(Tes5ArchiveReader.Magic))
                 return Tes5ArchiveReader.Load(new ArchiveSource(stream, ArchiveKind.Tes5));
-            if (magic.AsSpan().SequenceEqual("BTDX"u8))
-                throw new BethesdaArchiveException("BA2 archives are not supported yet");
+            if (magic.AsSpan().SequenceEqual(Ba2ArchiveReader.Magic))
+                return Ba2ArchiveReader.Load(new ArchiveSource(stream, ArchiveKind.Ba2));
         }
         catch (EndOfStreamException e)
         {

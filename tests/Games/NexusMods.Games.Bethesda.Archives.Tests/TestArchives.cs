@@ -173,6 +173,118 @@ internal static class TestArchives
         return ms.ToArray();
     }
 
+    public record Ba2Entry(string Name, byte[] Data, bool Compressed);
+
+    /// <param name="Chunks">Each chunk's decompressed bytes and whether it is stored compressed.</param>
+    public record Ba2Texture(string Name, ushort Width, ushort Height, byte Mips, byte Format, params (byte[] Data, bool Compressed)[] Chunks);
+
+    /// <summary>
+    /// Writes a BA2 from the layout described on the UESP wiki (https://en.uesp.net/wiki/Fallout4_Mod:Archive_File_Format
+    /// for Fallout 4, with the Starfield header extension): a header, fixed size file records, the data, then a
+    /// name table of 16 bit length prefixed names. <paramref name="compression"/> 3 stores chunks as raw LZ4
+    /// blocks; version 3 is the only one that carries the field.
+    /// </summary>
+    public static byte[] Ba2General(uint version, uint compression, params Ba2Entry[] entries) =>
+        Ba2("GNRL", version, compression, entries.Select(e => (e.Name, (object)e)).ToArray());
+
+    public static byte[] Ba2Dx10(uint version, uint compression, params Ba2Texture[] textures) =>
+        Ba2("DX10", version, compression, textures.Select(t => (t.Name, (object)t)).ToArray());
+
+    private static byte[] Ba2(string type, uint version, uint compression, (string Name, object Entry)[] entries)
+    {
+        var headerLength = 24 + (version >= 2 ? 8 : 0) + (version == 3 ? 4 : 0);
+        var recordsLength = entries.Sum(e => e.Entry is Ba2Texture t ? 24 + t.Chunks.Length * 24 : 36);
+
+        // Encode every payload first so the records can carry absolute offsets.
+        var payloads = new List<byte[]>();
+        byte[] Encode(byte[] data, bool compressed)
+        {
+            if (!compressed) return data;
+            if (version == 3 && compression == 3) return Lz4Block(data);
+            return ZLib(data);
+        }
+
+        foreach (var (_, entry) in entries)
+        {
+            if (entry is Ba2Entry general) payloads.Add(Encode(general.Data, general.Compressed));
+            else foreach (var chunk in ((Ba2Texture)entry).Chunks) payloads.Add(Encode(chunk.Data, chunk.Compressed));
+        }
+
+        using var ms = new MemoryStream();
+        using var w = new BinaryWriter(ms);
+        var dataStart = (ulong)(headerLength + recordsLength);
+        var nameTableOffset = dataStart + (ulong)payloads.Sum(p => p.Length);
+
+        w.Write(Encoding.ASCII.GetBytes("BTDX"));
+        w.Write(version);
+        w.Write(Encoding.ASCII.GetBytes(type));
+        w.Write((uint)entries.Length);
+        w.Write(nameTableOffset);
+        if (version >= 2) { w.Write(1u); w.Write(2u); }
+        if (version == 3) w.Write(compression);
+
+        var offset = dataStart;
+        var payloadIndex = 0;
+        for (var i = 0; i < entries.Length; i++)
+        {
+            w.Write(0x10000000u + (uint)i); // name hash
+            w.Write(Encoding.ASCII.GetBytes(entries[i].Entry is Ba2Texture ? "dds\0" : "txt\0"));
+            w.Write(0x20000000u + (uint)i); // directory hash
+
+            if (entries[i].Entry is Ba2Entry general)
+            {
+                var payload = payloads[payloadIndex++];
+                w.Write(0x00100100u);
+                w.Write(offset);
+                w.Write(general.Compressed ? (uint)payload.Length : 0u);
+                w.Write((uint)general.Data.Length);
+                w.Write(0xBAADF00Du);
+                offset += (ulong)payload.Length;
+            }
+            else
+            {
+                var texture = (Ba2Texture)entries[i].Entry;
+                w.Write((byte)0);
+                w.Write((byte)texture.Chunks.Length);
+                w.Write((ushort)24);
+                w.Write(texture.Height);
+                w.Write(texture.Width);
+                w.Write(texture.Mips);
+                w.Write(texture.Format);
+                w.Write((byte)0); // not a cube map
+                w.Write((byte)8); // tile mode
+                for (var c = 0; c < texture.Chunks.Length; c++)
+                {
+                    var payload = payloads[payloadIndex++];
+                    w.Write(offset);
+                    w.Write(texture.Chunks[c].Compressed ? (uint)payload.Length : 0u);
+                    w.Write((uint)texture.Chunks[c].Data.Length);
+                    w.Write((ushort)c); // start mip
+                    w.Write((ushort)(c + 1)); // end mip
+                    w.Write(0xBAADF00Du);
+                    offset += (ulong)payload.Length;
+                }
+            }
+        }
+
+        foreach (var payload in payloads) w.Write(payload);
+        foreach (var (name, _) in entries)
+        {
+            var bytes = Encoding.UTF8.GetBytes(name);
+            w.Write((ushort)bytes.Length);
+            w.Write(bytes);
+        }
+
+        return ms.ToArray();
+    }
+
+    public static byte[] Lz4Block(byte[] data)
+    {
+        var target = new byte[K4os.Compression.LZ4.LZ4Codec.MaximumOutputSize(data.Length)];
+        var length = K4os.Compression.LZ4.LZ4Codec.Encode(data, target);
+        return target.AsSpan(0, length).ToArray();
+    }
+
     public static byte[] ZLib(byte[] data)
     {
         using var ms = new MemoryStream();

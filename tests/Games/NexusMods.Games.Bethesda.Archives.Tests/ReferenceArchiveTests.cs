@@ -18,7 +18,8 @@ public class ReferenceArchiveTests
         "sse.bsa",
         "sse_compressed.bsa",
         "fnv.bsa",
-        // fo4.bsa and fo4dds.bsa are BA2 containers and join once the BA2 reader lands.
+        "fo4.bsa",
+        "fo4dds.bsa",
     ];
 
     [Theory]
