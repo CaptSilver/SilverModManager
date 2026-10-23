@@ -1,12 +1,12 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.FromSoft.Cleanup;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Overlay;
-using NexusMods.Games.FromSoft.Saves;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Saves;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft;
+namespace SilverModManager.Games.FromSoft;
 
 /// <summary>
 /// A FromSoft game. Shared services decide whether an installation is theirs with

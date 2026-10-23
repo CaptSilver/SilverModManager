@@ -1,7 +1,7 @@
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Knows which game installations this process is currently running a launch for, and starts launches that

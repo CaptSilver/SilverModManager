@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Implemented by a game whose store start-up goes through a launcher program that takes arguments to skip itself.

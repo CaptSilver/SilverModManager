@@ -1,10 +1,10 @@
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.SortOrder;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.SortOrder;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.CreationEngine.Emitters;
+namespace SilverModManager.Games.CreationEngine.Emitters;
 
 /// <summary>
 /// Says that the plugin list the game had on disk was replaced by the app's, while the notice from the Apply that

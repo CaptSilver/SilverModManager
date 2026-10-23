@@ -1,5 +1,5 @@
 using Avalonia.Controls;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
 

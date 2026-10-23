@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Metadata;
 
 // Ports of the case_insensitive_regex tests in libloot's src/tests.rs that .NET's ECMAScript mode
 // agrees with. libloot runs the pattern through regress in unicode mode, which also rejects

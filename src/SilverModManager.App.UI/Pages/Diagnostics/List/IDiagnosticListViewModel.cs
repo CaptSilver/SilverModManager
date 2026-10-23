@@ -1,14 +1,14 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Ids;
-using NexusMods.App.UI.Controls.Diagnostics;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Ids;
+using SilverModManager.App.UI.Controls.Diagnostics;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Loadouts;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Diagnostics;
+namespace SilverModManager.App.UI.Pages.Diagnostics;
 
 public interface IDiagnosticListViewModel : IPageViewModelInterface
 {

@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.Internals;
-using NexusMods.MnemonicDB.Storage.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Storage.Abstractions.ElementComparers;
 
-namespace NexusMods.MnemonicDB.Abstractions.DatomComparators;
+namespace SilverModManager.MnemonicDB.Abstractions.DatomComparators;
 
 /// <summary>
 /// The VAET Comparator.

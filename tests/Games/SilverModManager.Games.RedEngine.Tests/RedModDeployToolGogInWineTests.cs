@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Backend;
-using NexusMods.Games.Generic;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Backend;
+using SilverModManager.Games.Generic;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.Games.RedEngine.Tests;
+namespace SilverModManager.Games.RedEngine.Tests;
 
 /// <summary>
 /// Only Steam has a Proton compatibility data provider, but a GOG copy living in a Wine prefix is just as

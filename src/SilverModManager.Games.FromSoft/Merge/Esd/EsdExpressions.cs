@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>A decoded condition evaluator or command argument, comparable by structure.</summary>
 public abstract record EsdExpr;

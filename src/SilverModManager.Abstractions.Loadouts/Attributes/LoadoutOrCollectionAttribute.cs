@@ -1,10 +1,10 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.Sdk.Loadouts;
 using OneOf;
 
-namespace NexusMods.Abstractions.Loadouts.Attributes;
+namespace SilverModManager.Abstractions.Loadouts.Attributes;
 
 
 /// <summary>

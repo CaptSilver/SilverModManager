@@ -3,7 +3,7 @@ using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.Preview;
+namespace SilverModManager.Games.AdvancedInstaller.UI.Preview;
 
 [ExcludeFromCodeCoverage]
 public partial class PreviewView : ReactiveUserControl<IPreviewViewModel>

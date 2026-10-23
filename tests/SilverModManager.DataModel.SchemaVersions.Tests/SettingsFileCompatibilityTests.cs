@@ -5,12 +5,12 @@ using System.Text.Json.Nodes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Backend;
+using SilverModManager.Backend;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.DataModel.SchemaVersions.Tests;
+namespace SilverModManager.DataModel.SchemaVersions.Tests;
 
 /// <summary>
 /// A settings file written by an earlier build has to be read back by this one. <c>Fixtures/Configs</c> holds

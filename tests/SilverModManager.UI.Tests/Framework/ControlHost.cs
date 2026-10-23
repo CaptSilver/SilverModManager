@@ -1,9 +1,9 @@
 ﻿using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using Avalonia.Threading;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.UI.Tests.Framework;
+namespace SilverModManager.UI.Tests.Framework;
 
 /// <summary>
 /// A container for a viewmodel and a view and the window that hosts them.

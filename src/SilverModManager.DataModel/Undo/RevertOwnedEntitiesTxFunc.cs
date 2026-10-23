@@ -1,7 +1,7 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 
-namespace NexusMods.DataModel.Undo;
+namespace SilverModManager.DataModel.Undo;
 
 /// <summary>
 /// Rewrites a set of entities to their state in <paramref name="revertDb"/>. It diffs against the basis the

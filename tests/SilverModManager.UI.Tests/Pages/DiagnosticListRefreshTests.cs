@@ -4,18 +4,18 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.App.UI.Dialog;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.App.UI.Pages.Diagnostics;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.App.UI.Pages.Diagnostics;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
 using ReactiveUI;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 public class DiagnosticListRefreshTests(IServiceProvider provider) : AUiTest(provider)
 {

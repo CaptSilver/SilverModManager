@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace NexusMods.Backend.Process;
+namespace SilverModManager.Backend.Process;
 
 /// <summary>
 /// Finds and signals the processes below a process, by the parent pids in <c>/proc</c>.

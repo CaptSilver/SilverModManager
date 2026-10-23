@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.App;
-using NexusMods.CrossPlatform;
+using SilverModManager.App;
+using SilverModManager.CrossPlatform;
 using NexusMods.Paths;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 public class LogFileSelectionTests
 {

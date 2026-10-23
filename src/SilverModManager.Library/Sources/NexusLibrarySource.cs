@@ -1,15 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Library.Lock;
-using NexusMods.Networking.NexusWebApi;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Library.Lock;
+using SilverModManager.Networking.NexusWebApi;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Library.Sources;
+namespace SilverModManager.Library.Sources;
 
 /// <summary>
 /// Nexus Mods files, fetched by file id like collection downloads do. Services are resolved when first used so a host

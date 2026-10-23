@@ -1,9 +1,9 @@
 using BenchmarkDotNet.Attributes;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Benchmarks.Interfaces;
+using SilverModManager.Benchmarks.Interfaces;
 
-namespace NexusMods.Benchmarks.Benchmarks;
+namespace SilverModManager.Benchmarks.Benchmarks;
 
 [MemoryDiagnoser]
 [BenchmarkInfo("High Performance Logging", "Compares the different methods of logging")]

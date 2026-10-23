@@ -4,19 +4,19 @@ using System.IO.Hashing;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Backend.Games;
+namespace SilverModManager.Backend.Games;
 
 internal class GameLocationsService : IGameLocationsService
 {

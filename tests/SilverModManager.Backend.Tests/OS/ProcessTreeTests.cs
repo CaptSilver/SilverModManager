@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Backend.Process;
+using SilverModManager.Backend.Process;
 
-namespace NexusMods.Backend.Tests.OS;
+namespace SilverModManager.Backend.Tests.OS;
 
 public sealed class ProcessTreeTests : IDisposable
 {

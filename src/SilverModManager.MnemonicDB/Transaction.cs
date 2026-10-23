@@ -4,16 +4,16 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.MnemonicDB.InternalTxFunctions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.MnemonicDB.InternalTxFunctions;
 
-namespace NexusMods.MnemonicDB;
+namespace SilverModManager.MnemonicDB;
 
 internal sealed class Transaction : IMainTransaction, ISubTransaction 
 {

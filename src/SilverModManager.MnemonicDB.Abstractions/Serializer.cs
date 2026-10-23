@@ -1,11 +1,11 @@
 using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.Internals;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 using Tuple3_Ref_UShort_Utf8I = (EntityId, ushort, string);
 using Tuple2_UShort_Utf8I = (ushort, string);

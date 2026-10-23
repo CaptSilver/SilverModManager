@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Networking.NexusWebApi.Errors;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Networking.NexusWebApi.Errors;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 internal partial class GraphQlClient
 {

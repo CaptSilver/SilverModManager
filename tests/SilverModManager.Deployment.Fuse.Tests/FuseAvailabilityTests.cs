@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Deployment.Fuse.Availability;
+using SilverModManager.Deployment.Fuse.Availability;
 
-namespace NexusMods.Deployment.Fuse.Tests;
+namespace SilverModManager.Deployment.Fuse.Tests;
 
 public class FuseAvailabilityTests
 {

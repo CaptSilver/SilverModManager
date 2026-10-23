@@ -1,7 +1,7 @@
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Abstractions.Loadouts;
+namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 /// One piece of content the game installed, such as a Creation or an in-game mod. Its parent is the

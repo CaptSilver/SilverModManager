@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
 
-namespace NexusMods.UI.Sdk.Icons;
+namespace SilverModManager.UI.Sdk.Icons;
 
 /// <summary>
 ///     A wrapper for <see cref="Avalonia.Controls.Image"/> designed to work with <see cref="SimpleVectorIconImage"/>.

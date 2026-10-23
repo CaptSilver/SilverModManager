@@ -1,20 +1,20 @@
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using System.Text;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FileHashes.Emitters;
+namespace SilverModManager.Games.FileHashes.Emitters;
 
 /// <summary>
 /// Reports the files in a game folder that are not the files the store installed. The list is the

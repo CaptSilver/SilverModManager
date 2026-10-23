@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
 
-namespace NexusMods.Networking.Steam;
+namespace SilverModManager.Networking.Steam;
 
 /// <summary>
 /// Locates manifests in the depotcache folders the Steam client fills.

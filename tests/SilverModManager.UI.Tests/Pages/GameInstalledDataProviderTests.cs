@@ -3,23 +3,23 @@ using DynamicData;
 using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Pages;
-using NexusMods.App.UI.Pages.LoadoutPage;
-using NexusMods.App.UI.Resources;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Pages;
+using SilverModManager.App.UI.Pages.LoadoutPage;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Dialog;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Dialog;
 using NSubstitute;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 /// <summary>
 /// My Mods lists what the game installed under one "Installed by the game" row. The group switches as a whole,
@@ -369,7 +369,7 @@ public class GameInstalledDataProviderTests(IServiceProvider provider) : AUiTest
     {
         var (loadout, group) = await LoadoutWithGroup();
         var itemId = await AddItem(loadout, group, "Anniversary Edition", "ccbgssse001-fish.esm");
-        var windows = Substitute.For<NexusMods.App.UI.Windows.IWindowManager>();
+        var windows = Substitute.For<SilverModManager.App.UI.Windows.IWindowManager>();
 
         await LoadoutViewModel.HandleUninstallItem([LoadoutItemId.From(group), LoadoutItemId.From(itemId)], windows, Connection);
         await LoadoutViewModel.HandleToggleItemEnabledState([LoadoutItemId.From(itemId)], Connection);

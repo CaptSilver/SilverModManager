@@ -1,9 +1,9 @@
 using System.Reactive;
-using NexusMods.App.UI;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 public class GuidedInstallerWindowDesignViewModel : AViewModel<IGuidedInstallerWindowViewModel>, IGuidedInstallerWindowViewModel
 {

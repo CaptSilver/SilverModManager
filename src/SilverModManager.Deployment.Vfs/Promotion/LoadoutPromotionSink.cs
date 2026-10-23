@@ -1,17 +1,17 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// Puts staged files in the file store and records them, and the names the game deleted, in the

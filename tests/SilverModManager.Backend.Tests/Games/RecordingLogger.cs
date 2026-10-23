@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.Backend.Tests.Games;
+namespace SilverModManager.Backend.Tests.Games;
 
 /// <summary>
 /// Remembers the level of every message, for tests that assert a problem was reported. A substitute

@@ -1,15 +1,15 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
 using DynamicData;
-using NexusMods.App.UI.Controls.GameWidget;
-using NexusMods.App.UI.Controls.MiniGameWidget.ComingSoon;
-using NexusMods.App.UI.Controls.MiniGameWidget.Standard;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.GameWidget;
+using SilverModManager.App.UI.Controls.MiniGameWidget.ComingSoon;
+using SilverModManager.App.UI.Controls.MiniGameWidget.Standard;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.MyGames;
+namespace SilverModManager.App.UI.Pages.MyGames;
 
 public class MyGamesDesignViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewModel
 {

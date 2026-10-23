@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Jobs.Tests;
-using NexusMods.Jobs.Tests.TestInfrastructure;
+using SilverModManager.Jobs.Tests;
+using SilverModManager.Jobs.Tests.TestInfrastructure;
 using System.Reactive.Linq;
 
-namespace NexusMods.Backend.Tests.Jobs.Unit;
+namespace SilverModManager.Backend.Tests.Jobs.Unit;
 
 public class JobProgressReportingTests : AJobsTest
 {

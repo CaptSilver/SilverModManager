@@ -1,11 +1,11 @@
 using System.Text;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Deployment.Links.Tests.Fixtures;
+namespace SilverModManager.Deployment.Links.Tests.Fixtures;
 
 /// <summary>
 /// One stubbed-game graph that applies a mod, disables it and resets the game, recording what the game and

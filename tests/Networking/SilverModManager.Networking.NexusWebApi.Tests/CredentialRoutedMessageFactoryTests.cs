@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Networking.NexusWebApi.Auth;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Networking.NexusWebApi.Auth;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 [Collection(AuthStateCollection.Name)]
 public class CredentialRoutedMessageFactoryTests : IAsyncLifetime

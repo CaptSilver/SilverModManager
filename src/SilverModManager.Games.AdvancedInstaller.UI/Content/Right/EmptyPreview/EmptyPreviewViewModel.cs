@@ -1,6 +1,6 @@
-﻿using NexusMods.UI.Sdk;
+﻿using SilverModManager.UI.Sdk;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.EmptyPreview;
+namespace SilverModManager.Games.AdvancedInstaller.UI.EmptyPreview;
 
 internal class EmptyPreviewViewModel : AViewModel<IEmptyPreviewViewModel>,
     IEmptyPreviewViewModel;

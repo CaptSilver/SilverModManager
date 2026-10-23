@@ -1,9 +1,9 @@
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// Hashes a file unless the catalog already holds a hash recorded under the file's current

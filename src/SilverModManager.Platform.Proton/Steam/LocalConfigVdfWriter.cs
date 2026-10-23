@@ -1,11 +1,11 @@
 using System.Text;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Steam;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Steam;
 using SteamKit2;
 
-namespace NexusMods.Platform.Proton.Steam;
+namespace SilverModManager.Platform.Proton.Steam;
 
 /// <summary>
 /// Puts the launcher span into an app's launch options in <c>localconfig.vdf</c>.

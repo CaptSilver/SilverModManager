@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\..\src\NexusMods.Networking.GitHub\NexusMods.Networking.GitHub.csproj" />
-    <ProjectReference Include="..\..\src\NexusMods.Sdk\NexusMods.Sdk.csproj" />
-    <ProjectReference Include="..\..\src\NexusMods.Secrets\NexusMods.Secrets.csproj" />
+    <ProjectReference Include="..\..\src\SilverModManager.Networking.GitHub\SilverModManager.Networking.GitHub.csproj" />
+    <ProjectReference Include="..\..\src\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+    <ProjectReference Include="..\..\src\SilverModManager.Secrets\SilverModManager.Secrets.csproj" />
   </ItemGroup>
 </Project>

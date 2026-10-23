@@ -8,7 +8,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.App.GarbageCollection.Tests"/>
-        <InternalsVisibleTo Include="NexusMods.App.GarbageCollection.DataModel.Tests"/>
+        <InternalsVisibleTo Include="SilverModManager.App.GarbageCollection.Tests"/>
+        <InternalsVisibleTo Include="SilverModManager.App.GarbageCollection.DataModel.Tests"/>
     </ItemGroup>
 </Project>

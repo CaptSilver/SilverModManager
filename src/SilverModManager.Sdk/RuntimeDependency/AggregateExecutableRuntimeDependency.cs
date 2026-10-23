@@ -1,6 +1,6 @@
 using DynamicData.Kernel;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// Represents a runtime dependency that aggregates multiple executable runtime dependencies,

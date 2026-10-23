@@ -1,14 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Settings;
-using NexusMods.Games.Larian.BaldursGate3.Emitters;
-using NexusMods.Games.Larian.BaldursGate3.Models;
-using NexusMods.Games.Larian.BaldursGate3.SortOrder;
-using NexusMods.Games.Larian.BaldursGate3.RunGameTools;
-using NexusMods.Games.Larian.BaldursGate3.Utils;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Games.Larian.BaldursGate3.Emitters;
+using SilverModManager.Games.Larian.BaldursGate3.Models;
+using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Games.Larian.BaldursGate3.RunGameTools;
+using SilverModManager.Games.Larian.BaldursGate3.Utils;
 
-namespace NexusMods.Games.Larian.BaldursGate3;
+namespace SilverModManager.Games.Larian.BaldursGate3;
 
 public static class Services
 {

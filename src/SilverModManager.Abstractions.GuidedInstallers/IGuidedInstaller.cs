@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Abstractions.GuidedInstallers;
+namespace SilverModManager.Abstractions.GuidedInstallers;
 
 /// <summary>
 /// Interface for a guided installer.

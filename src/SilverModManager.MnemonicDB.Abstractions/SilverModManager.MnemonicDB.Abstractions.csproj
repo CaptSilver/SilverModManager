@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <RootNamespace>NexusMods.MnemonicDB.Abstractions</RootNamespace>
+        <RootNamespace>SilverModManager.MnemonicDB.Abstractions</RootNamespace>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
@@ -18,7 +18,7 @@
         <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <PackageReference Include="TransparentValueObjects.Abstractions" />
         <PackageReference Update="JetBrains.Annotations"/>
-        <ProjectReference Include="..\..\src\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj"  OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\..\src\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj"  OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <PackageReference Include="NexusMods.HyperDuck" />
     </ItemGroup>
 

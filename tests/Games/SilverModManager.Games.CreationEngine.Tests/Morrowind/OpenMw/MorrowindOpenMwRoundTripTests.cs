@@ -1,15 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.CreationEngine.PluginLists;
-using NexusMods.Games.CreationEngine.Tests.SortOrder;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.CreationEngine.PluginLists;
+using SilverModManager.Games.CreationEngine.Tests.SortOrder;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Morrowind.OpenMw;
+namespace SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
 
 /// <summary>
 /// Applies mods with plugins to Morrowind with an existing openmw.cfg. Only the content= lines for files under

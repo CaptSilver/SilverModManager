@@ -7,13 +7,13 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Deployment.Staging.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Deployment.Staging.Tests" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Loadouts\NexusMods.Abstractions.Loadouts.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Loadouts.Synchronizers\NexusMods.Abstractions.Loadouts.Synchronizers.csproj" />
+        <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts\SilverModManager.Abstractions.Loadouts.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts.Synchronizers\SilverModManager.Abstractions.Loadouts.Synchronizers.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 /// <summary>
 /// Lets the user take game-installed files over as their own, and give them back.

@@ -6,7 +6,7 @@ using DynamicData;
 using DynamicData.Alias;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Extensions;
+namespace SilverModManager.App.UI.Extensions;
 
 public static class ReactiveExtensions
 {

@@ -1,13 +1,13 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Fallout4;
+namespace SilverModManager.Games.CreationEngine.Tests.Fallout4;
 
 public class ParsePluginTests(ITestOutputHelper helper) : AIsolatedGameTest<ParsePluginTests, CreationEngine.Fallout4.Fallout4>(helper)
 {

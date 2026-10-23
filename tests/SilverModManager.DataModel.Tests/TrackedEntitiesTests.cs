@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class TrackedEntitiesTests(ITestOutputHelper helper) : ANexusCollectionTest<TrackedEntitiesTests>(helper)
 {

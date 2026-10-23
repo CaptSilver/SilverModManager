@@ -1,10 +1,10 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI.Pages.Settings;
+namespace SilverModManager.App.UI.Pages.Settings;
 
 [JsonName("SilverModManager.App.UI.Pages.SettingsPageContext")]
 public record SettingsPageContext : IPageFactoryContext;

@@ -1,10 +1,10 @@
 using System.Text.Json;
-using NexusMods.Games.FromSoft.Saves;
+using SilverModManager.Games.FromSoft.Saves;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft.Launch;
+namespace SilverModManager.Games.FromSoft.Launch;
 
 /// <summary>
 /// What the save gate knows about one save folder whose session has not been settled: the hash of

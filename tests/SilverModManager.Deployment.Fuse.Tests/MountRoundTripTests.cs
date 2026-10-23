@@ -1,15 +1,15 @@
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Deployment.Fuse.Kernel;
-using NexusMods.Deployment.Fuse.Mount;
-using NexusMods.Deployment.Fuse.Native;
-using NexusMods.Deployment.Vfs;
+using SilverModManager.Deployment.Fuse.Kernel;
+using SilverModManager.Deployment.Fuse.Mount;
+using SilverModManager.Deployment.Fuse.Native;
+using SilverModManager.Deployment.Vfs;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Deployment.Fuse.Tests;
+namespace SilverModManager.Deployment.Fuse.Tests;
 
 /// <summary>
 /// Mounts a real <see cref="VfsTree"/> through libfuse and drives it with ordinary file calls from this

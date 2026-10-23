@@ -1,8 +1,8 @@
 ﻿using FluentAssertions;
-using NexusMods.App.UI.Overlays;
+using SilverModManager.App.UI.Overlays;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.UI.Tests.Overlays;
+namespace SilverModManager.UI.Tests.Overlays;
 
 public class OverlayViewModelTests
 {

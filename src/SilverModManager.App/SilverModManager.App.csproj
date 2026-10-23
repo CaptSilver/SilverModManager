@@ -9,46 +9,46 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Abstractions.Games.FileHashes\NexusMods.Abstractions.Games.FileHashes.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Logging\NexusMods.Abstractions.Logging.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Secrets\NexusMods.Abstractions.Secrets.csproj" />
-        <ProjectReference Include="..\NexusMods.Backend\NexusMods.Backend.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.AdvancedInstaller.UI\NexusMods.Games.AdvancedInstaller.UI.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.CreationEngine\NexusMods.Games.CreationEngine.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.FromSoft\NexusMods.Games.FromSoft.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.Unity\NexusMods.Games.Unity.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.FOMOD.UI\NexusMods.Games.FOMOD.UI.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.FOMOD\NexusMods.Games.FOMOD.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.Generic\NexusMods.Games.Generic.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.Larian\NexusMods.Games.Larian.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.MountAndBlade2Bannerlord\NexusMods.Games.MountAndBlade2Bannerlord.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.EpicGameStore\NexusMods.Networking.EpicGameStore.csproj" />
-        <ProjectReference Include="..\\NexusMods.Networking.GOG\NexusMods.Networking.GOG.csproj" />
-        <ProjectReference Include="..\\NexusMods.Networking.HttpDownloader\NexusMods.Networking.HttpDownloader.csproj" />
-        <ProjectReference Include="..\\NexusMods.Networking.NexusWebApi\NexusMods.Networking.NexusWebApi.csproj" />
-        <ProjectReference Include="..\\NexusMods.Networking.Steam\NexusMods.Networking.Steam.csproj" />
-        <ProjectReference Include="..\NexusMods.App.UI\NexusMods.App.UI.csproj" />
-        <ProjectReference Include="..\\NexusMods.Networking.Steam\NexusMods.Networking.Steam.csproj" />
-        <ProjectReference Include="..\NexusMods.App.UI\NexusMods.App.UI.csproj" />
-        <ProjectReference Include="..\NexusMods.App.Cli\NexusMods.App.Cli.csproj" />
-        <ProjectReference Include="..\NexusMods.Collections\NexusMods.Collections.csproj" />
-        <ProjectReference Include="..\NexusMods.DataModel\NexusMods.DataModel.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.FileHashes\NexusMods.Games.FileHashes.csproj" />
-        <ProjectReference Include="..\NexusMods.Library\NexusMods.Library.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.GitHub\NexusMods.Networking.GitHub.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.Thunderstore\NexusMods.Networking.Thunderstore.csproj" />
-        <ProjectReference Include="..\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
-        <ProjectReference Include="..\NexusMods.Secrets\NexusMods.Secrets.csproj" />
-        <ProjectReference Include="..\NexusMods.Secrets.SecretService\NexusMods.Secrets.SecretService.csproj" />
-        <ProjectReference Include="..\NexusMods.ProxyConsole\NexusMods.ProxyConsole.csproj" />
-        <ProjectReference Include="..\NexusMods.SingleProcess\NexusMods.SingleProcess.csproj" />
-        <ProjectReference Include="..\NexusMods.Themes.NexusFluentDark\NexusMods.Themes.NexusFluentDark.csproj" />
-        <ProjectReference Include="..\NexusMods.Wabbajack\NexusMods.Wabbajack.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Games.FileHashes\SilverModManager.Abstractions.Games.FileHashes.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Logging\SilverModManager.Abstractions.Logging.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Secrets\SilverModManager.Abstractions.Secrets.csproj" />
+        <ProjectReference Include="..\SilverModManager.Backend\SilverModManager.Backend.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.AdvancedInstaller.UI\SilverModManager.Games.AdvancedInstaller.UI.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.CreationEngine\SilverModManager.Games.CreationEngine.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.FromSoft\SilverModManager.Games.FromSoft.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.Unity\SilverModManager.Games.Unity.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.FOMOD.UI\SilverModManager.Games.FOMOD.UI.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.FOMOD\SilverModManager.Games.FOMOD.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.Generic\SilverModManager.Games.Generic.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.Larian\SilverModManager.Games.Larian.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.MountAndBlade2Bannerlord\SilverModManager.Games.MountAndBlade2Bannerlord.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.EpicGameStore\SilverModManager.Networking.EpicGameStore.csproj" />
+        <ProjectReference Include="..\\SilverModManager.Networking.GOG\SilverModManager.Networking.GOG.csproj" />
+        <ProjectReference Include="..\\SilverModManager.Networking.HttpDownloader\SilverModManager.Networking.HttpDownloader.csproj" />
+        <ProjectReference Include="..\\SilverModManager.Networking.NexusWebApi\SilverModManager.Networking.NexusWebApi.csproj" />
+        <ProjectReference Include="..\\SilverModManager.Networking.Steam\SilverModManager.Networking.Steam.csproj" />
+        <ProjectReference Include="..\SilverModManager.App.UI\SilverModManager.App.UI.csproj" />
+        <ProjectReference Include="..\\SilverModManager.Networking.Steam\SilverModManager.Networking.Steam.csproj" />
+        <ProjectReference Include="..\SilverModManager.App.UI\SilverModManager.App.UI.csproj" />
+        <ProjectReference Include="..\SilverModManager.App.Cli\SilverModManager.App.Cli.csproj" />
+        <ProjectReference Include="..\SilverModManager.Collections\SilverModManager.Collections.csproj" />
+        <ProjectReference Include="..\SilverModManager.DataModel\SilverModManager.DataModel.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.FileHashes\SilverModManager.Games.FileHashes.csproj" />
+        <ProjectReference Include="..\SilverModManager.Library\SilverModManager.Library.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.GitHub\SilverModManager.Networking.GitHub.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.Thunderstore\SilverModManager.Networking.Thunderstore.csproj" />
+        <ProjectReference Include="..\SilverModManager.Platform.Proton\SilverModManager.Platform.Proton.csproj" />
+        <ProjectReference Include="..\SilverModManager.Secrets\SilverModManager.Secrets.csproj" />
+        <ProjectReference Include="..\SilverModManager.Secrets.SecretService\SilverModManager.Secrets.SecretService.csproj" />
+        <ProjectReference Include="..\SilverModManager.ProxyConsole\SilverModManager.ProxyConsole.csproj" />
+        <ProjectReference Include="..\SilverModManager.SingleProcess\SilverModManager.SingleProcess.csproj" />
+        <ProjectReference Include="..\SilverModManager.Themes.NexusFluentDark\SilverModManager.Themes.NexusFluentDark.csproj" />
+        <ProjectReference Include="..\SilverModManager.Wabbajack\SilverModManager.Wabbajack.csproj" />
     </ItemGroup>
    
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Games.StardewValley\NexusMods.Games.StardewValley.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.RedEngine\NexusMods.Games.RedEngine.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.StardewValley\SilverModManager.Games.StardewValley.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.RedEngine\SilverModManager.Games.RedEngine.csproj" />
     </ItemGroup>
 
     <ItemGroup>

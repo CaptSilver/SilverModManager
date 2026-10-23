@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts.Deployment;
+namespace SilverModManager.Abstractions.Loadouts.Deployment;
 
 /// <summary>
 /// The backend picked for a root and why, in words fit for the doctor report.

@@ -1,8 +1,8 @@
 using System;
 using NexusMods.HyperDuck;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.MnemonicDB.BindingConverters;
+namespace SilverModManager.MnemonicDB.BindingConverters;
 
 public class ConnectionBindingConverter : IBindingConverter
 {

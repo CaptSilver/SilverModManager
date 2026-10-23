@@ -1,15 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
-using NexusMods.Games.FromSoft.Installers;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Games.FromSoft.Installers;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 public class MergePlanCacheTests(ITestOutputHelper helper) : AVanillaDumpTest<MergePlanCacheTests>(helper)
 {

@@ -1,8 +1,8 @@
 ﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:messageBox="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.Base;assembly=NexusMods.App.UI"
-        xmlns:okCancel="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.OkCancel;assembly=NexusMods.App.UI"
-        xmlns:ok="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;assembly=NexusMods.App.UI">
+        xmlns:messageBox="clr-namespace:SilverModManager.App.UI.Overlays.Generic.MessageBox.Base;assembly=SilverModManager.App.UI"
+        xmlns:okCancel="clr-namespace:SilverModManager.App.UI.Overlays.Generic.MessageBox.OkCancel;assembly=SilverModManager.App.UI"
+        xmlns:ok="clr-namespace:SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;assembly=SilverModManager.App.UI">
 
     <Design.PreviewWith>
         <Border Padding="32">

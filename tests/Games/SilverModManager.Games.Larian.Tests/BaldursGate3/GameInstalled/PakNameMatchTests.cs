@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3.GameInstalled;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3.GameInstalled;
 
 public class PakNameMatchTests
 {

@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.CreationEngine.Morrowind.OpenMw;
-using NexusMods.Games.CreationEngine.Tests.Morrowind.OpenMw;
+using SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
+using SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Morrowind;
+namespace SilverModManager.Games.CreationEngine.Tests.Morrowind;
 
 /// <summary>Where Morrowind's installers put the common archive layouts: mods go into Data Files, engine files at the game root.</summary>
 public class MorrowindInstallerRoutingTests(ITestOutputHelper helper)

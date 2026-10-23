@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.GOG.Values;
+using SilverModManager.Abstractions.GOG.Values;
 using NexusMods.Paths;
 
-namespace NexusMods.Abstractions.GOG.DTOs;
+namespace SilverModManager.Abstractions.GOG.DTOs;
 
 /// <summary>
 /// Information about a build, which is a collection of depots.

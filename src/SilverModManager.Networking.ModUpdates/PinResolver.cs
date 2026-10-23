@@ -1,4 +1,4 @@
-namespace NexusMods.Networking.ModUpdates;
+namespace SilverModManager.Networking.ModUpdates;
 
 /// <summary>
 /// A file on a Nexus mod page, as far as choosing a pin needs to know it.

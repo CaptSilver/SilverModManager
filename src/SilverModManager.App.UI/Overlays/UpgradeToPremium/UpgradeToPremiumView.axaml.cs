@@ -5,7 +5,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Overlays;
+namespace SilverModManager.App.UI.Overlays;
 
 public partial class UpgradeToPremiumView : ReactiveUserControl<IUpgradeToPremiumViewModel>
 {

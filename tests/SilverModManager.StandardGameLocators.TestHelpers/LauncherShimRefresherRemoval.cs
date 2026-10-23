@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace NexusMods.StandardGameLocators.TestHelpers;
+namespace SilverModManager.StandardGameLocators.TestHelpers;
 
 public static class LauncherShimRefresherRemoval
 {
     // Internal to Platform.Proton, so it is matched by name.
-    private const string RefresherTypeName = "NexusMods.Platform.Proton.Steam.LauncherShimRefresher";
+    private const string RefresherTypeName = "SilverModManager.Platform.Proton.Steam.LauncherShimRefresher";
 
     /// <summary>
     /// Removes the GUI graph's launcher shim refresher, which on host start would point the user's Steam launcher

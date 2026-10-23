@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Games.CreationEngine.Tests.Creations;
+namespace SilverModManager.Games.CreationEngine.Tests.Creations;
 
 /// <summary>Writes the files a Creation Engine game keeps its Creations in, into a game install under test.</summary>
 internal static class CreationsRecords

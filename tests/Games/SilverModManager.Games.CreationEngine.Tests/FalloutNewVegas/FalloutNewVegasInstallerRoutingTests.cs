@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.FalloutNewVegas;
+namespace SilverModManager.Games.CreationEngine.Tests.FalloutNewVegas;
 
 /// <summary>Where FalloutNewVegas's own installers put the common archive layouts.</summary>
 public class FalloutNewVegasInstallerRoutingTests(ITestOutputHelper helper)

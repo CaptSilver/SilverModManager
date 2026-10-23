@@ -1,7 +1,7 @@
 using System.Collections.Frozen;
 using System.Collections.Generic;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// The result of a transaction being commited to a store.

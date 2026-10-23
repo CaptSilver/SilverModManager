@@ -2,15 +2,15 @@ using System.Collections.ObjectModel;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using DynamicData;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Abstractions.GuidedInstallers.ValueObjects;
-using NexusMods.App.UI;
-using NexusMods.Games.FOMOD.UI.Resources;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Abstractions.GuidedInstallers.ValueObjects;
+using SilverModManager.App.UI;
+using SilverModManager.Games.FOMOD.UI.Resources;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 public class GuidedInstallerGroupViewModel : AViewModel<IGuidedInstallerGroupViewModel>, IGuidedInstallerGroupViewModel
 {

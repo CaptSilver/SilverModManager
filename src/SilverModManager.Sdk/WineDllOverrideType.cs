@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// DLL override types for Wine.

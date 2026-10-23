@@ -1,14 +1,14 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.DTOs;
-using NexusMods.Abstractions.NexusWebApi.DTOs.Interfaces;
-using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.DTOs;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.Interfaces;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 /// <summary>
 /// Provides an easy to use access point for the Nexus API; start your journey here.

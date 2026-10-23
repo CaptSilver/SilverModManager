@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 
-namespace NexusMods.Networking.NexusWebApi.Tests.Types;
+namespace SilverModManager.Networking.NexusWebApi.Tests.Types;
 
 // ReSharper disable once InconsistentNaming
 public class NXMModUrlTests

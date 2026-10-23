@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Networking.GOG.Migration;
-using NexusMods.Networking.GOG.Models.Legacy;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Networking.GOG.Migration;
+using SilverModManager.Networking.GOG.Models.Legacy;
 
-namespace NexusMods.Networking.GOG.Tests.Migration;
+namespace SilverModManager.Networking.GOG.Tests.Migration;
 
 /// <summary>
 /// The tests share the one in-memory database, so they run one at a time and leave it empty.

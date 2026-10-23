@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.Loot.Database;
+using SilverModManager.Games.Bethesda.Loot.Database;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Database;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Database;
 
 // Ports the parse tests in loot-condition-interpreter's lib.rs and function/parse.rs.
 public class ConditionExpressionTests

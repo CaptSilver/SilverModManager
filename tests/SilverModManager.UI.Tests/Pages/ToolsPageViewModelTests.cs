@@ -4,19 +4,19 @@ using Avalonia.Input.Platform;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI;
-using NexusMods.App.UI.Pages.Tools;
-using NexusMods.App.UI.Windows;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI;
+using SilverModManager.App.UI.Pages.Tools;
+using SilverModManager.App.UI.Windows;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 using Unit = R3.Unit;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 /// <summary>
 /// The Tools page lists the loadout's tools and runs a picked Windows program through the tool manager, so the

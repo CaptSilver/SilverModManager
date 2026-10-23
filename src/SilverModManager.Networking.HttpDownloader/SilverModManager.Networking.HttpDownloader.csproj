@@ -3,19 +3,19 @@
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Abstractions.HttpDownloads\NexusMods.Abstractions.HttpDownloads.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.HttpDownloads\SilverModManager.Abstractions.HttpDownloads.csproj" />
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Polly" />
         <PackageReference Include="ReactiveUI.Fody" />
         <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
-        <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     </ItemGroup>
     
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Networking.HttpDownloader.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Networking.HttpDownloader.Tests" />
     </ItemGroup>
 </Project>

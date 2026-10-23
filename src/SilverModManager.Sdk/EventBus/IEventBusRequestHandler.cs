@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.EventBus;
+namespace SilverModManager.Sdk.EventBus;
 
 /// <summary>
 /// Handles requests by responding with a result.

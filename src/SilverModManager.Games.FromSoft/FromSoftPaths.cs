@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft;
+namespace SilverModManager.Games.FromSoft;
 
 /// <summary>
 /// The path rules of a FromSoft game, as pure functions of its <see cref="FromSoftGameLayout"/>. Everything that needs

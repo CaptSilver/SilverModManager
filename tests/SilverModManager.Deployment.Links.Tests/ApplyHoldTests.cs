@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Deployment.Links.Tests.Fixtures;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Deployment.Links.Tests.Fixtures;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Deployment.Links.Tests;
+namespace SilverModManager.Deployment.Links.Tests;
 
 public class ApplyHoldTests(ITestOutputHelper helper)
     : LinkedGameTest<ApplyHoldTests>(helper, Placement.TempDirectory, Placement.TempDirectory, HoldObservingBackend.BackendId)

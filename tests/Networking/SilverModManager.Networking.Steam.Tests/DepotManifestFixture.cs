@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
 using SteamKit2;
 
-namespace NexusMods.Networking.Steam.Tests;
+namespace SilverModManager.Networking.Steam.Tests;
 
 /// <summary>
 /// Writes manifests in the four-section binary format Steam keeps in its depotcache folder

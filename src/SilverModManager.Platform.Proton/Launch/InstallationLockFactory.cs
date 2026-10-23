@@ -1,6 +1,6 @@
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// Puts the lock files under <c>XDG_RUNTIME_DIR</c>, which is per-user, tmpfs-backed and cleared on logout.

@@ -1,4 +1,4 @@
-namespace NexusMods.CLI.Types;
+namespace SilverModManager.CLI.Types;
 
 /// <summary>
 /// Defines a protocol handler for protocols which need passing messages to the main application.

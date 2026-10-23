@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using NSubstitute;
 
-namespace NexusMods.Abstractions.Games.Tests;
+namespace SilverModManager.Abstractions.Games.Tests;
 
 public class RunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<RunGameToolTests, StubbedGame>(helper)
 {

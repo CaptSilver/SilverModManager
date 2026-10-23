@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using TransparentValueObjects;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 
 /// <summary>

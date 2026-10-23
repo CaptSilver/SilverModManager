@@ -2,10 +2,10 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Deployment.Fuse.Native;
-using NexusMods.Deployment.Vfs;
+using SilverModManager.Deployment.Fuse.Native;
+using SilverModManager.Deployment.Vfs;
 
-namespace NexusMods.Deployment.Fuse.Kernel;
+namespace SilverModManager.Deployment.Fuse.Kernel;
 
 /// <summary>
 /// The two libfuse calls that hand a file to the kernel for passthrough, behind an interface so a test can

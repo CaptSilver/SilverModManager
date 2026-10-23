@@ -1,20 +1,20 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Library;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Library;
 
-namespace NexusMods.Wabbajack.Acquire;
+namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>
 /// Matches each archive of a modlist to the library and says what is left to do about the ones it does not hold.

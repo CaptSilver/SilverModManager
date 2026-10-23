@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>
 /// Two files could not be merged without losing content, so the merge was refused. The message gives the reason

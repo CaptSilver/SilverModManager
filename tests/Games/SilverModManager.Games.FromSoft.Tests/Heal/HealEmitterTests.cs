@@ -1,16 +1,16 @@
 using System.Collections.Frozen;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Diagnostics;
-using NexusMods.Games.FromSoft.Heal;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Games.FromSoft.Heal;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Tests.Heal;
+namespace SilverModManager.Games.FromSoft.Tests.Heal;
 
 public class HealEmitterTests(ITestOutputHelper helper) : AVanillaDumpTest<HealEmitterTests>(helper)
 {
@@ -48,7 +48,7 @@ public class HealEmitterTests(ITestOutputHelper helper) : AVanillaDumpTest<HealE
         var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Which;
 
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
-        diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.FromSoft", 13));
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 13));
         var steps = HealPlan.Plan(BeforeAPatch(), Live, Formats);
         var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.HealPlanMessageData>>().Which.MessageData;
         foreach (var step in steps) data.Steps.Should().Contain(step.Detail);
@@ -73,7 +73,7 @@ public class HealEmitterTests(ITestOutputHelper helper) : AVanillaDumpTest<HealE
         var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Which;
 
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
-        diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.FromSoft", 14));
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 14));
         var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.HealRefusedMessageData>>().Which.MessageData;
         data.Message.Should().Be(HealPlan.TamperedRefusal(Live, Formats));
         HealPlan.Plan(stamped, Live, Formats).Single().Detail.Should().Be(data.Message);

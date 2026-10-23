@@ -1,9 +1,9 @@
 using DynamicData;
-using NexusMods.Abstractions.Downloads;
-using NexusMods.App.UI.Controls;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.App.UI.Pages.Downloads;
+namespace SilverModManager.App.UI.Pages.Downloads;
 
 /// <summary>
 /// Data provider interface for downloads that transforms IDownloadsService data into CompositeItemModel collections.

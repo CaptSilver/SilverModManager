@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Secrets;
+namespace SilverModManager.Abstractions.Secrets;
 
 /// <summary>
 /// Moves one credential from where an older version kept it into the secret store.

@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI.Dialog.Enums;
+namespace SilverModManager.App.UI.Dialog.Enums;
 
 /// <summary>
 /// Specifies the type of window to be used for a message box.

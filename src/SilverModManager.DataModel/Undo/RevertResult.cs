@@ -1,6 +1,6 @@
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.DataModel.Undo;
+namespace SilverModManager.DataModel.Undo;
 
 /// <summary>
 /// What <see cref="UndoService.RevertTo"/> left behind after committing.

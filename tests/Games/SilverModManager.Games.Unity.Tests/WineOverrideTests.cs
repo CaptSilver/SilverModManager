@@ -1,22 +1,22 @@
 using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.Generic;
-using NexusMods.Games.Generic.Diagnostics;
-using NexusMods.Games.TestFramework;
-using NexusMods.Games.Unity.Tests.Fixtures;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.Generic;
+using SilverModManager.Games.Generic.Diagnostics;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.Unity.Tests.Fixtures;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using NSubstitute;
 
-namespace NexusMods.Games.Unity.Tests;
+namespace SilverModManager.Games.Unity.Tests;
 
 /// <summary>
 /// The proxy DLL's override reaches the Steam launch line and the shared Wine diagnostic through the game's

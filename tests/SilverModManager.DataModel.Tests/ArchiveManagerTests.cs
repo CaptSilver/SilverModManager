@@ -4,12 +4,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
 using Xunit;
 using Xunit.DependencyInjection;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class ArchiveManagerTests
 {

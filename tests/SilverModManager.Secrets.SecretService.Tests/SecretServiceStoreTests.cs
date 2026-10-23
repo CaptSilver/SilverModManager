@@ -1,12 +1,12 @@
 using System.Diagnostics;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk;
 using R3;
 using Xunit;
 
-namespace NexusMods.Secrets.SecretService.Tests;
+namespace SilverModManager.Secrets.SecretService.Tests;
 
 public class SecretServiceStoreTests : IDisposable
 {

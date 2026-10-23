@@ -3,20 +3,20 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Mutagen.Bethesda;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.PluginLists;
-using NexusMods.Games.TestFramework.Helpers;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.PluginLists;
+using SilverModManager.Games.TestFramework.Helpers;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Games.CreationEngine.Tests;
+namespace SilverModManager.Games.CreationEngine.Tests;
 
 /// <summary>Fallout 4 VR, Fallout 76 and Starfield: folders in the prefix, plugin list handling, and what they share with their siblings.</summary>
 public class FalloutStarfieldTests(IServiceProvider serviceProvider)

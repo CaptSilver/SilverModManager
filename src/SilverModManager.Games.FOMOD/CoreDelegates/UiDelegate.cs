@@ -1,17 +1,17 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Abstractions.GuidedInstallers.ValueObjects;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Abstractions.GuidedInstallers.ValueObjects;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Threading;
-using GroupId = NexusMods.Abstractions.GuidedInstallers.ValueObjects.GroupId;
-using Option = NexusMods.Abstractions.GuidedInstallers.Option;
-using OptionGroup = NexusMods.Abstractions.GuidedInstallers.OptionGroup;
-using OptionGroupType = NexusMods.Abstractions.GuidedInstallers.OptionGroupType;
-using OptionType = NexusMods.Abstractions.GuidedInstallers.OptionType;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Threading;
+using GroupId = SilverModManager.Abstractions.GuidedInstallers.ValueObjects.GroupId;
+using Option = SilverModManager.Abstractions.GuidedInstallers.Option;
+using OptionGroup = SilverModManager.Abstractions.GuidedInstallers.OptionGroup;
+using OptionGroupType = SilverModManager.Abstractions.GuidedInstallers.OptionGroupType;
+using OptionType = SilverModManager.Abstractions.GuidedInstallers.OptionType;
 
-namespace NexusMods.Games.FOMOD.CoreDelegates;
+namespace SilverModManager.Games.FOMOD.CoreDelegates;
 
 public sealed class UiDelegates : FomodInstaller.Interface.ui.IUIDelegates, IDisposable
 {

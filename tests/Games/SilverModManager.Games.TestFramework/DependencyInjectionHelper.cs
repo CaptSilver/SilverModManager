@@ -3,31 +3,31 @@ using FomodInstaller.Interface;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Abstractions.Serialization;
-using NexusMods.Backend;
-using NexusMods.Collections;
-using NexusMods.CrossPlatform;
-using NexusMods.DataModel;
-using NexusMods.Deployment.Staging;
-using NexusMods.FileExtractor;
-using NexusMods.Games.FileHashes;
-using NexusMods.Games.Generic;
-using NexusMods.Library;
-using NexusMods.Networking.HttpDownloader;
-using NexusMods.Networking.NexusWebApi;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Abstractions.Serialization;
+using SilverModManager.Backend;
+using SilverModManager.Collections;
+using SilverModManager.CrossPlatform;
+using SilverModManager.DataModel;
+using SilverModManager.Deployment.Staging;
+using SilverModManager.FileExtractor;
+using SilverModManager.Games.FileHashes;
+using SilverModManager.Games.Generic;
+using SilverModManager.Library;
+using SilverModManager.Networking.HttpDownloader;
+using SilverModManager.Networking.NexusWebApi;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Settings;
-using NexusMods.Secrets;
-using NexusMods.StandardGameLocators;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Secrets;
+using SilverModManager.StandardGameLocators;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit.DependencyInjection.Logging;
 
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 /// <summary>
 /// Helper functions for dealing with dependency injection.
@@ -39,12 +39,12 @@ public static class DependencyInjectionHelper
     /// Adds the following default services to the provided <see cref="IServiceCollection"/> for testing:
     /// <list type="bullet">
     ///     <item>Logging via <see cref="LoggingServiceCollectionExtensions.AddLogging(Microsoft.Extensions.DependencyInjection.IServiceCollection)"/></item>
-    ///     <item><see cref="IFileSystem"/> via <see cref="Paths.Services.AddFileSystem"/></item>
+    ///     <item><see cref="IFileSystem"/> via <see cref="NexusMods.Paths.Services.AddFileSystem"/></item>
     ///     <item><see cref="TemporaryFileManager"/> singleton</item>
     ///     <item><see cref="HttpClient"/> singleton</item>
     ///     <item>Nexus Web API via <see cref="Networking.NexusWebApi.Services.AddNexusWebApi"/></item>
-    ///     <item>All services related to the <see cref="NexusMods.DataModel"/> via <see cref="DataModel.Services.AddDataModel"/></item>
-    ///     <item>File extraction services via <see cref="NexusMods.FileExtractor.Services.AddFileExtractors"/></item>
+    ///     <item>All services related to the <see cref="SilverModManager.DataModel"/> via <see cref="DataModel.Services.AddDataModel"/></item>
+    ///     <item>File extraction services via <see cref="SilverModManager.FileExtractor.Services.AddFileExtractors"/></item>
     /// </list>
     /// </summary>
     /// <param name="serviceCollection"></param>
@@ -58,7 +58,7 @@ public static class DependencyInjectionHelper
         var baseDirectory = $"DataModel.{Guid.NewGuid()}";
         prefix = prefix == default(AbsolutePath) ? FileSystem.Shared
             .GetKnownPath(KnownPath.EntryDirectory)
-            .Combine($"NexusMods.Games.TestFramework-{Guid.NewGuid()}") : prefix;
+            .Combine($"SilverModManager.Games.TestFramework-{Guid.NewGuid()}") : prefix;
 
         // One store per test graph. A shared location would let one graph's garbage collection sweep another's
         // installation directory (the metadata ids repeat across in-memory databases). It sits beside the stubbed

@@ -1,4 +1,4 @@
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// Adds host folders to the list the Steam runtime container mounts read-write.

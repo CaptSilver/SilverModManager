@@ -1,7 +1,7 @@
-using NexusMods.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Overlay;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Doctor;
+namespace SilverModManager.Games.FromSoft.Doctor;
 
 /// <summary>How serious a check result is.</summary>
 public enum CheckLevel

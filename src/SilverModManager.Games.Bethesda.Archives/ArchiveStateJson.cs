@@ -1,7 +1,7 @@
 using System.Text.Json;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// Reads the archive and file states Wabbajack stores in a modlist's CreateBSA directive. It accepts both

@@ -1,5 +1,5 @@
 using TransparentValueObjects;
-namespace NexusMods.Abstractions.GOG.Values;
+namespace SilverModManager.Abstractions.GOG.Values;
 
 [ValueObject<ulong>]
 public  readonly partial struct ProductId : IAugmentWith<JsonAugment>

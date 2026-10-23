@@ -5,7 +5,7 @@ using Avalonia.ReactiveUI;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages;
+namespace SilverModManager.App.UI.Pages;
 
 public partial class ProtocolRegistrationTestPageView : ReactiveUserControl<IProtocolRegistrationTestPageViewModel>
 {

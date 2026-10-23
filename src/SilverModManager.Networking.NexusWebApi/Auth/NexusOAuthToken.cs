@@ -1,9 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
 
-namespace NexusMods.Networking.NexusWebApi.Auth;
+namespace SilverModManager.Networking.NexusWebApi.Auth;
 
 /// <summary>
 /// The OAuth token as it is kept in the secret store (under <see cref="NexusSecretKeys.OAuth"/>).

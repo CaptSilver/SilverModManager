@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Games;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Games.CreationEngine.Models;
+namespace SilverModManager.Games.CreationEngine.Models;
 
 /// <summary>
 /// One plugin in a <see cref="PluginSortOrder"/>.

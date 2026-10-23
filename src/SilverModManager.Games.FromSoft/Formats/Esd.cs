@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>One argument of a command call: an opaque bytecode expression.</summary>
 /// <param name="Order">Row index in the source table; null for an argument a merge created.</param>

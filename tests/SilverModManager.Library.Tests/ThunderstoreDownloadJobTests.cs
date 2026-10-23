@@ -2,21 +2,21 @@ using System.Net;
 using System.Security.Cryptography;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Backend;
-using NexusMods.Library.Tests.DownloadsService;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.Thunderstore;
-using NexusMods.Networking.Thunderstore.DTOs;
+using SilverModManager.Backend;
+using SilverModManager.Library.Tests.DownloadsService;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.Thunderstore;
+using SilverModManager.Networking.Thunderstore.DTOs;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Thunderstore;
 using System.Net.Http.Headers;
 using Xunit;
 
-namespace NexusMods.Library.Tests;
+namespace SilverModManager.Library.Tests;
 
 public partial class ThunderstoreDownloadJobTests(IServiceProvider serviceProvider, IConnection connection, TemporaryFileManager temporaryFileManager)
 {

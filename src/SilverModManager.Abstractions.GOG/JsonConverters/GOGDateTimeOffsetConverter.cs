@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace NexusMods.Abstractions.GOG.JsonConverters;
+namespace SilverModManager.Abstractions.GOG.JsonConverters;
 
 public class GOGDateTimeOffsetConverter : JsonConverter<DateTimeOffset>
 {

@@ -1,12 +1,12 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Generators.Diagnostics;
 
-namespace NexusMods.DataModel.GameInstalled;
+namespace SilverModManager.DataModel.GameInstalled;
 
 public partial class Diagnostics
 {
-    private const string Source = "NexusMods.DataModel.GameInstalled";
+    private const string Source = "SilverModManager.DataModel.GameInstalled";
 
     [DiagnosticTemplate]
     [UsedImplicitly]

@@ -1,13 +1,13 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.DataModel.Synchronizer.Tests;
+namespace SilverModManager.DataModel.Synchronizer.Tests;
 
 /// <summary>
 /// The installation overload of RunActions has no loadout, so actions that only make sense inside one are refused.

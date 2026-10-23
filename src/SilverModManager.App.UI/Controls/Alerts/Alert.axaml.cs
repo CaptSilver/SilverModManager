@@ -2,14 +2,14 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Markup.Xaml;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Interactivity;
 
-namespace NexusMods.App.UI.Controls.Alerts;
+namespace SilverModManager.App.UI.Controls.Alerts;
 
 public class Alert : ContentControl
 {

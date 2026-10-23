@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.App.UI.Controls.Trees.Common;
-using NexusMods.Sdk.Games;
+using SilverModManager.App.UI.Controls.Trees.Common;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.App.UI.Controls.Trees.Files;
+namespace SilverModManager.App.UI.Controls.Trees.Files;
 
 public class FileTreeNodeDesignViewModel : FileTreeNodeViewModel, IFileTreeNodeViewModel
 {

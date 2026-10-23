@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <XunitStartupAssembly>NexusMods.Games.CreationEngine.Tests</XunitStartupAssembly>
+        <XunitStartupAssembly>SilverModManager.Games.CreationEngine.Tests</XunitStartupAssembly>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -9,16 +9,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Content Include="..\..\..\src\NexusMods.Networking.NexusWebApi\V1Interop\games.json" Link="games.json" CopyToOutputDirectory="PreserveNewest" />
+      <Content Include="..\..\..\src\SilverModManager.Networking.NexusWebApi\V1Interop\games.json" Link="games.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\..\src\NexusMods.Games.CreationEngine\NexusMods.Games.CreationEngine.csproj" />
+      <ProjectReference Include="..\..\..\src\SilverModManager.Games.CreationEngine\SilverModManager.Games.CreationEngine.csproj" />
       <PackageReference Include="Mutagen.Bethesda.Fallout4" />
       <PackageReference Include="Mutagen.Bethesda.Skyrim" />
-      <ProjectReference Include="..\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
+      <ProjectReference Include="..\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
       <!-- Mutagen has no Starfield support, so Starfield plugins are written with the load order project's own test writer. -->
-      <Compile Include="..\NexusMods.Games.Bethesda.LoadOrder.Tests\PluginBytes.cs" Link="PluginBytes.cs" />
+      <Compile Include="..\SilverModManager.Games.Bethesda.LoadOrder.Tests\PluginBytes.cs" Link="PluginBytes.cs" />
     </ItemGroup>
 
 </Project>

@@ -1,10 +1,10 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.App.UI.Pages.Diagnostics;
+namespace SilverModManager.App.UI.Pages.Diagnostics;
 
 /// <summary>
 /// Takes the build of Elden Ring that is installed now as the one future launches are compared with, once the user

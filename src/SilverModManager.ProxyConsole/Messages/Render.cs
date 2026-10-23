@@ -1,7 +1,7 @@
 ﻿using MemoryPack;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.ProxyConsole.Messages;
+namespace SilverModManager.ProxyConsole.Messages;
 
 /// <summary>
 /// A render message

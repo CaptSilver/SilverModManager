@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace NexusMods.Platform.Proton.ToolRunner;
+namespace SilverModManager.Platform.Proton.ToolRunner;
 
 /// <summary>
 /// Rewrites host paths in a command line into the form a Windows program inside a Wine prefix understands.

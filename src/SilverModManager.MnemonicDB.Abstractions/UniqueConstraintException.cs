@@ -1,7 +1,7 @@
 using System;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// Thrown when a unique constraint on a attribute is

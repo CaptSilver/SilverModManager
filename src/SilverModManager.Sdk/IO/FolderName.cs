@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.IO;
+namespace SilverModManager.Sdk.IO;
 
 /// <summary>
 /// Checks and repairs a name that is about to become one folder below a game or mods folder, when the name comes from

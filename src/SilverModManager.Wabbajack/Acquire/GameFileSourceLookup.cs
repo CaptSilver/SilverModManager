@@ -1,15 +1,15 @@
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Wabbajack.Acquire;
+namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>
 /// Reads a file of the game for a modlist that takes it as a source. A previous Apply may have replaced the live file,

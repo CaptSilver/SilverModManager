@@ -1,12 +1,12 @@
 using System.Reflection;
 using FluentAssertions;
-using NexusMods.App.UI.Pages.About;
-using NexusMods.App.UI.Pages.Changelog;
-using NexusMods.App.UI.Resources;
-using NexusMods.Collections;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.App.UI.Pages.About;
+using SilverModManager.App.UI.Pages.Changelog;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.Collections;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 /// <summary>
 /// Manifest resource names are the assembly's root namespace plus the file path, or an explicit LogicalName

@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
 public class MockHttpMessageHandler : HttpMessageHandler

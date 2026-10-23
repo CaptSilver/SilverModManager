@@ -2,17 +2,17 @@ using System.Reactive.Linq;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Pages.FromSoftMerges;
-using NexusMods.App.UI.Windows;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Pages.FromSoftMerges;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 using ReactiveUI;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {
@@ -30,7 +30,7 @@ public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(p
     {
         var source = Substitute.For<IMergeReports>();
         var calls = 0;
-        source.ForLoadout(Arg.Any<NexusMods.Sdk.Loadouts.LoadoutId>(), Arg.Any<CancellationToken>())
+        source.ForLoadout(Arg.Any<SilverModManager.Sdk.Loadouts.LoadoutId>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult(reports[Math.Min(Interlocked.Increment(ref calls) - 1, reports.Length - 1)]));
         return source;
     }
@@ -113,7 +113,7 @@ public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(p
     public async Task AnExceptionFromTheSourceLandsInProblem()
     {
         var source = Substitute.For<IMergeReports>();
-        source.ForLoadout(Arg.Any<NexusMods.Sdk.Loadouts.LoadoutId>(), Arg.Any<CancellationToken>())
+        source.ForLoadout(Arg.Any<SilverModManager.Sdk.Loadouts.LoadoutId>(), Arg.Any<CancellationToken>())
             .Returns<Task<MergeReport>>(_ => throw new InvalidOperationException("index is broken"));
         var vm = CreateVm(source);
         Refresh(vm);
@@ -140,7 +140,7 @@ public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(p
         // The stream may refresh more than once on subscribe, so the report depends on the state, not on the call count.
         var current = Report(null, Entry("a.bin", "param-rows", ["A", "B"]));
         var source = Substitute.For<IMergeReports>();
-        source.ForLoadout(Arg.Any<NexusMods.Sdk.Loadouts.LoadoutId>(), Arg.Any<CancellationToken>()).Returns(_ => Task.FromResult(Volatile.Read(ref current)));
+        source.ForLoadout(Arg.Any<SilverModManager.Sdk.Loadouts.LoadoutId>(), Arg.Any<CancellationToken>()).Returns(_ => Task.FromResult(Volatile.Read(ref current)));
         var vm = CreateVm(source);
 
         using var _ = vm.Activator.Activate();

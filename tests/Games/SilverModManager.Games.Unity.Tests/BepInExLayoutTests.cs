@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Games.Unity.BepInEx;
+using SilverModManager.Games.Unity.BepInEx;
 using NexusMods.Paths;
 using Xunit;
 
-namespace NexusMods.Games.Unity.Tests;
+namespace SilverModManager.Games.Unity.Tests;
 
 public class BepInExLayoutTests
 {

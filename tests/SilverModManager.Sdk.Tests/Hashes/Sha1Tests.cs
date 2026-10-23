@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Sdk.Tests.Hashes;
+namespace SilverModManager.Sdk.Tests.Hashes;
 
 public class Sha1Tests : HasherTestBase<Sha1Value, Sha1Hasher, Sha1Tests>, IHasherTestData<Sha1Value>
 {

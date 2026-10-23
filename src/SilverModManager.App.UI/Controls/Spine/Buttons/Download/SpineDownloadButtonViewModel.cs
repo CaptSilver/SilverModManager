@@ -5,15 +5,15 @@ using DynamicData;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.HttpDownloads;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Jobs;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.HttpDownloads;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Controls.Spine.Buttons.Download;
+namespace SilverModManager.App.UI.Controls.Spine.Buttons.Download;
 
 [UsedImplicitly]
 public class SpineDownloadButtonViewModel : AViewModel<ISpineDownloadButtonViewModel>, ISpineDownloadButtonViewModel

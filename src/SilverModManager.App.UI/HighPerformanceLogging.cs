@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 internal static partial class HighPerformanceLogging
 {

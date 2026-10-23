@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.Hashes;
+namespace SilverModManager.Sdk.Hashes;
 
 public readonly struct MultiHasherBuilder
 {

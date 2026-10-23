@@ -1,11 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.CreationEngine;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.CreationEngine;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Wabbajack.Tests.Mapping;
+namespace SilverModManager.Wabbajack.Tests.Mapping;
 
 public class WabbajackGamesTests
 {

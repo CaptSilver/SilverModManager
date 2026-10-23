@@ -1,11 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Unity.Tests.Fixtures;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Unity.Tests.Fixtures;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.Unity.Tests;
+namespace SilverModManager.Games.Unity.Tests;
 
 public class ServicesTests(ITestOutputHelper outputHelper) : AUnityInstallerTests<ServicesTests>(outputHelper)
 {

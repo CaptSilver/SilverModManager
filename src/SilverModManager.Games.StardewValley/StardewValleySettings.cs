@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.StardewValley;
+namespace SilverModManager.Games.StardewValley;
 
 public class StardewValleySettings : ISettings
 {

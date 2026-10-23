@@ -1,7 +1,7 @@
 ﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-        xmlns:ui="clr-namespace:NexusMods.App.UI.Controls.Spine.Buttons.Download;assembly=NexusMods.App.UI">
+        xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+        xmlns:ui="clr-namespace:SilverModManager.App.UI.Controls.Spine.Buttons.Download;assembly=SilverModManager.App.UI">
 
     <!-- Preview -->
     <Design.PreviewWith>

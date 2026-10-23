@@ -2,16 +2,16 @@ using System.Diagnostics;
 using CliWrap;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 using BehaviorSubject = System.Reactive.Subjects.BehaviorSubject<bool>;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Marker interface for RunGameTool

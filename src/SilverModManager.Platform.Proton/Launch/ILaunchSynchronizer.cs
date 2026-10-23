@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.DataModel.Synchronizer;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.DataModel.Synchronizer;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// The synchronize entry a launch uses on itself. The public one refuses while a launch is running, which

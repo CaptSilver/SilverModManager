@@ -1,10 +1,10 @@
 using System.Collections.Immutable;
 using FluentAssertions;
-using NexusMods.Backend.Games;
+using SilverModManager.Backend.Games;
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Backend.Tests.Games;
+namespace SilverModManager.Backend.Tests.Games;
 
 public class SteamLibraryCacheArtSourceTests
 {

@@ -3,21 +3,21 @@ using DynamicData;
 using DynamicData.Aggregation;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.Trees.Common;
-using NexusMods.App.UI.Helpers;
-using NexusMods.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
-using NexusMods.UI.Sdk.Icons;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.Trees.Common;
+using SilverModManager.App.UI.Helpers;
+using SilverModManager.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
+using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using R3;
 using ZLinq;
-using static NexusMods.App.UI.Pages.LoadoutGroupFilesPage.PathHelpers;
+using static SilverModManager.App.UI.Pages.LoadoutGroupFilesPage.PathHelpers;
 
-namespace NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
+namespace SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
 
 /// <summary>
 /// Provides files for multiple <see cref="Abstractions.Loadouts.LoadoutItemGroup"/>(s) specified by a <see cref="ModFilesFilter"/>.

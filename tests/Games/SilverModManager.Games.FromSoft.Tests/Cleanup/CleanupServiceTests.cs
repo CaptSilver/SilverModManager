@@ -3,22 +3,22 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.Cleanup;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.Games.FromSoft.Tests.Cleanup;
+namespace SilverModManager.Games.FromSoft.Tests.Cleanup;
 
 /// <summary>
 /// The cleanup of the dirty fixture <c>Game</c> folder: a swapped launcher with its backup, a mod folder with an
@@ -298,7 +298,7 @@ public class CleanupServiceTests(ITestOutputHelper helper) : AEldenRingTest<Clea
 /// <summary>Steam has an update for the game it has not applied: the cleanup is still allowed, and says to let Steam finish.</summary>
 public class CleanupWithAPendingSteamUpdateTests(ITestOutputHelper helper) : AEldenRingTest<CleanupWithAPendingSteamUpdateTests>(helper, dirtyGameFolder: true)
 {
-    protected override NexusMods.Games.TestFramework.Helpers.SteamInstall InstallGame(NexusMods.Games.TestFramework.Helpers.SteamLibraryFixture library)
+    protected override SilverModManager.Games.TestFramework.Helpers.SteamInstall InstallGame(SilverModManager.Games.TestFramework.Helpers.SteamLibraryFixture library)
     {
         var install = base.InstallGame(library);
         var manifest = install.AppManifest.ToString();

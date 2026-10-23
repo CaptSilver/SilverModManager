@@ -20,7 +20,7 @@ present, and none is active unless the game's own rules make it so (conditions a
 and checksums cannot be met by stubs). That is the difference from what the app sees on the real
 install; compare the order of the plugins both agree on.
 
-The masterlist and prelude are the bundled ones under src/NexusMods.Games.Bethesda.Loot/Masterlists
+The masterlist and prelude are the bundled ones under src/SilverModManager.Games.Bethesda.Loot/Masterlists
 unless --masterlist or --prelude say otherwise. The sorted order is printed one name per line; an
 error is printed to stderr with exit status 1.
 """
@@ -31,7 +31,7 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-BUNDLED = os.path.join(HERE, "..", "..", "src", "NexusMods.Games.Bethesda.Loot", "Masterlists")
+BUNDLED = os.path.join(HERE, "..", "..", "src", "SilverModManager.Games.Bethesda.Loot", "Masterlists")
 
 
 def load_generator():

@@ -1,16 +1,16 @@
 using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NSubstitute;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 /// <summary>
 /// The service's lookups with a downloaded database on disk and rows in the local store: file

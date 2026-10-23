@@ -1,7 +1,7 @@
-using NexusMods.App.UI.Resources;
-using NexusMods.Collections;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.Collections;
 
-namespace NexusMods.App.UI.Pages.CollectionDownload;
+namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
 /// <summary>
 /// The text the collection page shows for a <see cref="CollectionInstallProgress.Snapshot"/>.

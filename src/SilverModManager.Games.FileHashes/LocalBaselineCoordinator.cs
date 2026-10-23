@@ -1,17 +1,17 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Steam;
-using NexusMods.Abstractions.Steam.DTOs;
-using NexusMods.Abstractions.Steam.Values;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
-using OperatingSystem = NexusMods.Abstractions.Games.FileHashes.Values.OperatingSystem;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Abstractions.Steam.DTOs;
+using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.NexusModsApi;
+using OperatingSystem = SilverModManager.Abstractions.Games.FileHashes.Values.OperatingSystem;
 
-namespace NexusMods.Games.FileHashes;
+namespace SilverModManager.Games.FileHashes;
 
 /// <summary>
 /// Decides whether an installation's <see cref="LocalBaseline"/> is current, and builds it when it isn't.

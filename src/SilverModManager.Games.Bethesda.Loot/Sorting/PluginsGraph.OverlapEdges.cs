@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Sorting;
 
 // Follows libloot's sorting/plugins.rs (add_overlap_edges).
 

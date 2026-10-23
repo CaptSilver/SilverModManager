@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 [PublicAPI]
 public static class OptionalExtensions

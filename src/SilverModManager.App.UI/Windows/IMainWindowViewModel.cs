@@ -1,7 +1,7 @@
-using NexusMods.App.UI.Overlays;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Windows;
+namespace SilverModManager.App.UI.Windows;
 
 public interface IMainWindowViewModel : IViewModelInterface, IWorkspaceWindow
 {

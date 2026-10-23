@@ -1,12 +1,12 @@
 using Humanizer;
 using Humanizer.Bytes;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Controls.Filters;
-using NexusMods.App.UI.Controls.TreeDataGrid.Filters;
+using SilverModManager.App.UI.Controls.Filters;
+using SilverModManager.App.UI.Controls.TreeDataGrid.Filters;
 using NexusMods.Paths;
 using R3;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// Component for <see cref="Size"/>.

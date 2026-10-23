@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// Builds the <see cref="StagingPromoter"/> for an installation. A promoter works on one

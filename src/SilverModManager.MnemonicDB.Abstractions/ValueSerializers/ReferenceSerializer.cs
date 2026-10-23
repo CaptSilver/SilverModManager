@@ -1,9 +1,9 @@
 using System;
 using System.Buffers;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
-namespace NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+namespace SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
 /// <summary>
 /// A value serializer for <see cref="EntityId"/>.

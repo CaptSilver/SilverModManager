@@ -4,17 +4,17 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NexusMods.Wabbajack\NexusMods.Wabbajack.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.Library\NexusMods.Library.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.Backend\NexusMods.Backend.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.Games.CreationEngine\NexusMods.Games.CreationEngine.csproj" />
-        <ProjectReference Include="..\Games\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Wabbajack\SilverModManager.Wabbajack.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Library\SilverModManager.Library.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Backend\SilverModManager.Backend.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.DataModel\SilverModManager.DataModel.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Games.CreationEngine\SilverModManager.Games.CreationEngine.csproj" />
+        <ProjectReference Include="..\Games\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Hosting" />
-        <ProjectReference Include="..\..\src\NexusMods.MnemonicDB\NexusMods.MnemonicDB.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.MnemonicDB\SilverModManager.MnemonicDB.csproj" />
     </ItemGroup>
 
     <ItemGroup>

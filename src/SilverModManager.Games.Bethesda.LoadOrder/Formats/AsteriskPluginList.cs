@@ -1,5 +1,5 @@
 // Follows libloadorder src/load_order/asterisk_based.rs.
-namespace NexusMods.Games.Bethesda.LoadOrder.Formats;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Formats;
 
 /// <summary>
 /// The Plugins.txt of Skyrim SE, Fallout 4 and later: <c>*Name.esp</c> is active, a bare name is inactive,

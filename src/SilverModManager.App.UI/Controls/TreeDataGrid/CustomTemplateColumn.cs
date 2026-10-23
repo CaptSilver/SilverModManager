@@ -2,7 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Templates;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 public class CustomTemplateColumn<TModel> : TemplateColumn<TModel>
     where TModel : class

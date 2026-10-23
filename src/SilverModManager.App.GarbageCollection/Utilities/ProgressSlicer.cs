@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-namespace NexusMods.App.GarbageCollection.Utilities;
+namespace SilverModManager.App.GarbageCollection.Utilities;
 
 /// <summary>
 ///     A class that splits up the reporting of progress into multiple "slices"; such that

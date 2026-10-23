@@ -1,10 +1,10 @@
 ﻿using System.Reactive;
 
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.SelectLocation;
+namespace SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 
 /// <summary>
 /// Represents a known location where files are likely to be installed to.

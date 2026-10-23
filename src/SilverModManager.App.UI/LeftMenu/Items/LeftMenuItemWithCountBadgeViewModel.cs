@@ -1,10 +1,10 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.WorkspaceSystem;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public class LeftMenuItemWithCountBadgeViewModel : LeftMenuItemViewModel
 {

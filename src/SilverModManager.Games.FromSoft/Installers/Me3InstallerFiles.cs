@@ -1,17 +1,17 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.Me3;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Me3;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Paths.Trees.Traits;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Installers;
+namespace SilverModManager.Games.FromSoft.Installers;
 
 /// <summary>What the installers share: reading an archive's files and turning one into a loadout file in the mods folder.</summary>
 internal static class Me3InstallerFiles

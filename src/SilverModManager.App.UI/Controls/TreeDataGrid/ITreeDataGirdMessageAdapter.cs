@@ -1,6 +1,6 @@
 using R3;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 public interface ITreeDataGirdMessageAdapter<TMessage>
     where TMessage : notnull

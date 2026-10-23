@@ -1,10 +1,10 @@
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
-using NexusMods.Abstractions.NexusWebApi.DTOs.Interfaces;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.Interfaces;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
-namespace NexusMods.Abstractions.NexusWebApi.DTOs;
+namespace SilverModManager.Abstractions.NexusWebApi.DTOs;
 
 public class User
 {

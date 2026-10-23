@@ -7,7 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [PseudoClasses(":one-tab", ":selected", ":alone")]
 public partial class PanelView : ReactiveUserControl<IPanelViewModel>

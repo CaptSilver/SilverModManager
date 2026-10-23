@@ -1,17 +1,17 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Library;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Library;
 
-namespace NexusMods.Wabbajack.Tests.Acquire;
+namespace SilverModManager.Wabbajack.Tests.Acquire;
 
 public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<ArchiveAcquirerTests>(helper)
 {
@@ -207,7 +207,7 @@ public class ArchiveAcquirerTests(ITestOutputHelper helper) : AcquireTestBase<Ar
             new FakeMappingCache(),
             Connection,
             FileStore,
-            ServiceProvider.GetRequiredService<NexusMods.Abstractions.Games.FileHashes.IFileHashesService>());
+            ServiceProvider.GetRequiredService<SilverModManager.Abstractions.Games.FileHashes.IFileHashesService>());
         var loadout = await CreateLoadout();
         var list = ListWith(states.Select((s, i) => Entry(s, Hash.From((ulong)(i + 1) * 0x1111), 10, $"{i}.7z")).ToArray());
         var plan = await inventory.Build(list, Connection.Db, loadout);

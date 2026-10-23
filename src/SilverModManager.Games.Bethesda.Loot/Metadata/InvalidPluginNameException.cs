@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata;
 
 /// <summary>
 /// Thrown when a regex plugin name does not compile.

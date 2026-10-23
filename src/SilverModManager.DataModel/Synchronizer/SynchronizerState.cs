@@ -1,10 +1,10 @@
 using System.Reactive.Disposables;
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Loadouts.Ids;
+using SilverModManager.Abstractions.Loadouts.Ids;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.DataModel.Synchronizer;
+namespace SilverModManager.DataModel.Synchronizer;
 
 public class SynchronizerState : ReactiveObject
 {

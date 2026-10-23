@@ -1,11 +1,11 @@
 ﻿using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Resources;
-using NexusMods.Sdk;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.Sdk;
 using ReactiveUI;
 using R3;
 
-namespace NexusMods.App.UI.Overlays.Updater;
+namespace SilverModManager.App.UI.Overlays.Updater;
 
 public partial class UpdaterView : ReactiveUserControl<IUpdaterViewModel>
 {

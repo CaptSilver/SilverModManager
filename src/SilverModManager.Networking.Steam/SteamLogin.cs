@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Steam;
-using NexusMods.Networking.Steam.DTOs;
-using NexusMods.Networking.Steam.Exceptions;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Networking.Steam.DTOs;
+using SilverModManager.Networking.Steam.Exceptions;
 
-namespace NexusMods.Networking.Steam;
+namespace SilverModManager.Networking.Steam;
 
 /// <summary>
 /// An account name and the refresh token that proves it.

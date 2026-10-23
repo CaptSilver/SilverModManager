@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.LoadOrder.Ordering;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Ordering;
 
 /// <summary>
 /// Plugins that each need another of the group to load first. Valid plugins cannot do this, so the

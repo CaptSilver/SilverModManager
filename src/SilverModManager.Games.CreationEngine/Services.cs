@@ -1,16 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Games.CreationEngine.Loot;
-using NexusMods.Games.CreationEngine.Models;
-using NexusMods.Games.CreationEngine.SortOrder;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.CreationEngine.Loot;
+using SilverModManager.Games.CreationEngine.Models;
+using SilverModManager.Games.CreationEngine.SortOrder;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.CreationEngine;
+namespace SilverModManager.Games.CreationEngine;
 
 public static class Services
 {

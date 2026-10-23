@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 public record GameInstallation(GameLocatorResult LocatorResult, GameLocations Locations)
 {

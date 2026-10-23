@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using OneOf;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 /// <summary>
 /// Behavior for adding a new panel.

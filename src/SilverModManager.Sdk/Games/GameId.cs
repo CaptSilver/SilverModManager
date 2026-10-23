@@ -1,11 +1,11 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.Sdk.Hashes;
 using TransparentValueObjects;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// Represents a globally unique identifier for a game type.

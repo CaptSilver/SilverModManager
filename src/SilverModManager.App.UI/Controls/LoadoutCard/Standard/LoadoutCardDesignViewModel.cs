@@ -4,12 +4,12 @@ using System.Reactive.Linq;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using NexusMods.App.UI.Controls.LoadoutBadge;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.LoadoutBadge;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Controls.LoadoutCard;
+namespace SilverModManager.App.UI.Controls.LoadoutCard;
 
 public class LoadoutCardDesignViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutCardViewModel
 {
@@ -31,7 +31,7 @@ public class LoadoutCardDesignViewModel : AViewModel<ILoadoutCardViewModel>, ILo
     
     public ILoadoutBadgeViewModel LoadoutBadgeViewModel { get; } = new LoadoutBadgeDesignViewModel();
     public string LoadoutName { get; } = "Loadout B";
-    public IImage LoadoutImage { get; } = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://NexusMods.App.UI/Assets/DesignTime/thumbnail.webp")), (int) ImageSizes.GameThumbnail.Width);
+    public IImage LoadoutImage { get; } = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/thumbnail.webp")), (int) ImageSizes.GameThumbnail.Width);
 
     public bool IsLoadoutApplied { get; } = false;
     public string HumanizedLoadoutLastApplyTime { get; } = "Last applied 2 months ago";

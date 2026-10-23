@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Cli;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Games.FromSoft.Cleanup;
+namespace SilverModManager.Games.FromSoft.Cleanup;
 
 /// <summary>
 /// A game's cleanup verb: shows what is in the game folder and the steps that would restore it, and with

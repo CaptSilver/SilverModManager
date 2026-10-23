@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Deployment.Staging;
+namespace SilverModManager.Deployment.Staging;
 
 public static class Services
 {

@@ -1,7 +1,7 @@
 ﻿using NexusMods.Paths;
 #pragma warning disable CS1591 // missing XML documentation
 // ReSharper disable All
-namespace NexusMods.Abstractions.FileExtractor {
+namespace SilverModManager.Abstractions.FileExtractor {
 
     public enum FileType
     {            /// <summary>

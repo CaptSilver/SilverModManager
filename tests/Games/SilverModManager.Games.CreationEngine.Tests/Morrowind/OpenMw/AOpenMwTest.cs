@@ -1,15 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.LoadOrder.Tests;
-using NexusMods.Games.CreationEngine.Morrowind.OpenMw;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder.Tests;
+using SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Morrowind.OpenMw;
+namespace SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
 
 /// <summary>
 /// Morrowind over a stubbed Steam install with two OpenMW config roots in temp folders, so nothing reaches the

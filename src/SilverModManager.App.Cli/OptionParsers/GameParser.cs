@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.CLI.OptionParsers;
+namespace SilverModManager.CLI.OptionParsers;
 
 /// <summary>
 /// Parses a string into an <see cref="IGame"/>

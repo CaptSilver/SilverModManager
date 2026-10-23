@@ -4,10 +4,10 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Backend.Tests;
+namespace SilverModManager.Backend.Tests;
 
 public class JsonStorageBackendLoggingTests
 {

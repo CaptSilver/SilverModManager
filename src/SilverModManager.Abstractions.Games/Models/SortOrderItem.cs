@@ -1,11 +1,11 @@
 using System.Reactive.Joins;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Represents an item that is sorted in a Load Order

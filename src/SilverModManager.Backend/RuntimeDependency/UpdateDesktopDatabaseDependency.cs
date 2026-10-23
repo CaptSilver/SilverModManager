@@ -1,8 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using CliWrap;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Backend.RuntimeDependency;
+namespace SilverModManager.Backend.RuntimeDependency;
 
 internal class UpdateDesktopDatabaseDependency : ExecutableRuntimeDependency
 {

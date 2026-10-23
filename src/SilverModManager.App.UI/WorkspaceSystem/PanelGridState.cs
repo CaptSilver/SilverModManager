@@ -1,6 +1,6 @@
 using Avalonia;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public record struct PanelGridState(PanelId Id, Rect Rect)
 {

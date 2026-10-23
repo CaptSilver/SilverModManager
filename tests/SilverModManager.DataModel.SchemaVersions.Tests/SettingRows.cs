@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Backend;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Backend;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.DataModel.SchemaVersions.Tests;
+namespace SilverModManager.DataModel.SchemaVersions.Tests;
 
 internal static class SettingRows
 {

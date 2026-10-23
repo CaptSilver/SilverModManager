@@ -4,14 +4,14 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactive="http://reactiveui.net"
-    xmlns:workspace="clr-namespace:NexusMods.App.UI.WorkspaceSystem"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-    xmlns:navigation="clr-namespace:NexusMods.App.UI.Controls.Navigation"
-    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-    xmlns:alerts="clr-namespace:NexusMods.App.UI.Controls.Alerts"
+    xmlns:workspace="clr-namespace:SilverModManager.App.UI.WorkspaceSystem"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+    xmlns:navigation="clr-namespace:SilverModManager.App.UI.Controls.Navigation"
+    xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:alerts="clr-namespace:SilverModManager.App.UI.Controls.Alerts"
     mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="500"
-    x:Class="NexusMods.App.UI.WorkspaceSystem.NewTabPageView">
+    x:Class="SilverModManager.App.UI.WorkspaceSystem.NewTabPageView">
 
     <ScrollViewer>
         <StackPanel Margin="24" Orientation="Vertical" Spacing="24">

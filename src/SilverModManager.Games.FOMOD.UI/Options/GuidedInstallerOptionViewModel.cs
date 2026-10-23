@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.App.UI;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.App.UI;
+using SilverModManager.UI.Sdk;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 public class GuidedInstallerOptionViewModel : AViewModel<IGuidedInstallerOptionViewModel>, IGuidedInstallerOptionViewModel
 {

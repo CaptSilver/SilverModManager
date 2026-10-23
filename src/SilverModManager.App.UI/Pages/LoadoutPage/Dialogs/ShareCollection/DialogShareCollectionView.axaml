@@ -4,10 +4,10 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-                                xmlns:shareCollection="clr-namespace:NexusMods.App.UI.Pages.LoadoutPage.Dialogs.ShareCollection"
+                                xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+                                xmlns:shareCollection="clr-namespace:SilverModManager.App.UI.Pages.LoadoutPage.Dialogs.ShareCollection"
                                 mc:Ignorable="d" d:DesignWidth="400"
-                                x:Class="NexusMods.App.UI.Pages.LoadoutPage.Dialogs.ShareCollection.DialogShareCollectionView">
+                                x:Class="SilverModManager.App.UI.Pages.LoadoutPage.Dialogs.ShareCollection.DialogShareCollectionView">
 
     <reactiveUi:ReactiveUserControl.Styles>
 

@@ -2,22 +2,22 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Settings;
-using NexusMods.App.UI.Controls.Diagnostics;
-using NexusMods.Platform.Proton.Support;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.App.UI.Controls.Diagnostics;
+using SilverModManager.Platform.Proton.Support;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using Reloaded.Memory.Extensions;
 using ObservableExtensions = R3.ObservableExtensions;
 
-namespace NexusMods.App.UI.Pages.Diagnostics;
+namespace SilverModManager.App.UI.Pages.Diagnostics;
 
 [UsedImplicitly]
 internal class DiagnosticListViewModel : APageViewModel<IDiagnosticListViewModel>, IDiagnosticListViewModel

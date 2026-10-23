@@ -1,20 +1,20 @@
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Sdk.Resources;
-using NexusMods.Games.StardewValley.Models;
-using NexusMods.Games.StardewValley.WebAPI;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Sdk.Resources;
+using SilverModManager.Games.StardewValley.Models;
+using SilverModManager.Games.StardewValley.WebAPI;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 using StardewModdingAPI.Toolkit;
 using SMAPIManifest = StardewModdingAPI.Toolkit.Serialization.Models.Manifest;
 
-namespace NexusMods.Games.StardewValley.Emitters;
+namespace SilverModManager.Games.StardewValley.Emitters;
 
 [UsedImplicitly]
 public class VersionDiagnosticEmitter : ILoadoutDiagnosticEmitter

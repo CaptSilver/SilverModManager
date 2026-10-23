@@ -1,17 +1,17 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.TestFramework;
-using NexusMods.Networking.Thunderstore;
-using NexusMods.Networking.Thunderstore.Tests.Fixtures;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Thunderstore;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Networking.Thunderstore;
+using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Thunderstore;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 /// <summary>
 /// What <c>thunderstore install</c> asks the source for, observed through a source that records the request and

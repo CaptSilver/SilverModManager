@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Abstractions.Diagnostics.Values;
+namespace SilverModManager.Abstractions.Diagnostics.Values;
 
 /// <summary>
 /// Represents a named link.

@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata;
 
 /// <summary>
 /// Thrown when message text and its substitutions do not line up.

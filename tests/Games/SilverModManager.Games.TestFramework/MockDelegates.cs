@@ -1,7 +1,7 @@
 using FomodInstaller.Interface;
 using FomodInstaller.Interface.ui;
 
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 public class MockDelegates : ICoreDelegates
 {

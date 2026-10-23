@@ -1,9 +1,9 @@
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.Wabbajack.Tests;
+namespace SilverModManager.Wabbajack.Tests;
 
 public class WriteOrderTests
 {

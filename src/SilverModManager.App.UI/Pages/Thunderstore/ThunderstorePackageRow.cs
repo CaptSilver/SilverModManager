@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.App.UI.Pages.Thunderstore;
+namespace SilverModManager.App.UI.Pages.Thunderstore;
 
 /// <summary>
 /// One package of the community catalog as the page lists it. <see cref="Latest"/> is what Install adds; it is null

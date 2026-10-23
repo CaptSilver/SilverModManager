@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace NexusMods.MnemonicDB.Abstractions.Models;
+namespace SilverModManager.MnemonicDB.Abstractions.Models;
 
 /// <summary>
 /// Denotes that this model includes the attributes of another model

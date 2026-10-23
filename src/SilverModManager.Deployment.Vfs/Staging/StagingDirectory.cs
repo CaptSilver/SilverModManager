@@ -1,8 +1,8 @@
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NexusMods.Paths;
 using System.Globalization;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// Where one installation's mounted folder keeps what the game changed. Files sit at their

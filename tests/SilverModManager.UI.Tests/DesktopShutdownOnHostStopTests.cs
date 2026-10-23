@@ -3,10 +3,10 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.App;
+using SilverModManager.App;
 using NSubstitute;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class DesktopShutdownOnHostStopTests
 {

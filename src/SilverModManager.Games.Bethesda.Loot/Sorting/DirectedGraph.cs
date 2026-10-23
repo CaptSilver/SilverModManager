@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Sorting;
 
 /// <summary>An edge as seen from the graph: its endpoints and weight.</summary>
 public readonly record struct GraphEdge<TEdge>(int Source, int Target, TEdge Weight);

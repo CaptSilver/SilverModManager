@@ -1,9 +1,9 @@
 ﻿using System.Reactive;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.Games.AdvancedInstaller.UI;
+namespace SilverModManager.Games.AdvancedInstaller.UI;
 
 internal class FooterViewModel : AViewModel<IFooterViewModel>, IFooterViewModel
 {

@@ -2,10 +2,10 @@ using System;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.DatomComparators;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.DatomComparators;
 
-namespace NexusMods.MnemonicDB.Storage.RocksDbBackend;
+namespace SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 
 /// <summary>
 /// This is a lot of boilerplate, but it allows us to serve up raw function pointers to RocksDB instead of managed delegates.

@@ -1,10 +1,10 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Library;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.App.UI.Pages.Wabbajack;
+namespace SilverModManager.App.UI.Pages.Wabbajack;
 
 [JsonName("SilverModManager.App.UI.Pages.Wabbajack.WabbajackModlistPageContext")]
 public record WabbajackModlistPageContext(LibraryFileId LibraryFileId) : IPageFactoryContext;

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NexusMods.Games.FOMOD;
+namespace SilverModManager.Games.FOMOD;
 
 public class FomodOption
 {

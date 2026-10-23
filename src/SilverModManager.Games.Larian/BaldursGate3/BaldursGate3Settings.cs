@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.Larian.BaldursGate3;
+namespace SilverModManager.Games.Larian.BaldursGate3;
 
 public class BaldursGate3Settings : ISettings
 {

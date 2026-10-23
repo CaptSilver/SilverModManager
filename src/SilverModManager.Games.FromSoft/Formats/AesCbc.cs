@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>
 /// AES without padding, the way FromSoft uses it. The caller owns padding: a regulation appends its own block, and

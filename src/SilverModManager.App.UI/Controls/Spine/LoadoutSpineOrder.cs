@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.App.UI.Controls.Spine;
+namespace SilverModManager.App.UI.Controls.Spine;
 
 internal static class LoadoutSpineOrder
 {

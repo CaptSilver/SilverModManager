@@ -1,7 +1,7 @@
 using System;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
-namespace NexusMods.MnemonicDB.Abstractions.Models;
+namespace SilverModManager.MnemonicDB.Abstractions.Models;
 
 /// <summary>
 /// An interface for referring to things that have an id and an index segment

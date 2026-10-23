@@ -1,17 +1,17 @@
 ﻿using FomodInstaller.Interface;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Backend;
-using NexusMods.Games.RedEngine;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Backend;
+using SilverModManager.Games.RedEngine;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit.DependencyInjection.Logging;
 
-namespace NexusMods.Games.FOMOD.Tests;
+namespace SilverModManager.Games.FOMOD.Tests;
 
 public class Startup
 {

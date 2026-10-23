@@ -1,12 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.Abstractions.Serialization.ExpressionGenerator;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.Abstractions.Serialization.ExpressionGenerator;
 
 #pragma warning disable CS1591
 
-namespace NexusMods.Abstractions.Serialization.Json;
+namespace SilverModManager.Abstractions.Serialization.Json;
 
 public class AbstractClassConverterFactory<T> : JsonConverterFactory
 {

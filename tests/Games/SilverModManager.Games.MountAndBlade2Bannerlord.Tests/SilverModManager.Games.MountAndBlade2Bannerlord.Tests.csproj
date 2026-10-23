@@ -1,11 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <XunitStartupAssembly>NexusMods.Games.MountAndBlade2Bannerlord.Tests</XunitStartupAssembly>
+        <XunitStartupAssembly>SilverModManager.Games.MountAndBlade2Bannerlord.Tests</XunitStartupAssembly>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\src\NexusMods.Games.MountAndBlade2Bannerlord\NexusMods.Games.MountAndBlade2Bannerlord.csproj" />
-        <ProjectReference Include="..\..\NexusMods.StandardGameLocators.TestHelpers\NexusMods.StandardGameLocators.TestHelpers.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
+        <ProjectReference Include="..\..\..\src\SilverModManager.Games.MountAndBlade2Bannerlord\SilverModManager.Games.MountAndBlade2Bannerlord.csproj" />
+        <ProjectReference Include="..\..\SilverModManager.StandardGameLocators.TestHelpers\SilverModManager.StandardGameLocators.TestHelpers.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
     </ItemGroup>
 </Project>

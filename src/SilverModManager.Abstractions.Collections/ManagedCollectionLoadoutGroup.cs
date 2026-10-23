@@ -1,12 +1,12 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary.Attributes;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary.Attributes;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Abstractions.Collections;
+namespace SilverModManager.Abstractions.Collections;
 
 /// <summary>
 /// Represents an uploaded collection managed by the app.

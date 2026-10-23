@@ -1,4 +1,4 @@
--- namespace: NexusMods.Games.FileHashes
+-- namespace: SilverModManager.Games.FileHashes
 CREATE SCHEMA IF NOT EXISTS file_hashes;
 
 -- ENUM of all the store names

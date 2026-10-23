@@ -4,15 +4,15 @@ using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.DataModel.Synchronizer.Tests;
+namespace SilverModManager.DataModel.Synchronizer.Tests;
 
 public class GeneralLoadoutManagementTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTest<GeneralLoadoutManagementTests>(helper)
 {

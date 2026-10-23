@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 using R3;
 
-namespace NexusMods.Abstractions.NexusWebApi;
+namespace SilverModManager.Abstractions.NexusWebApi;
 
 /// <summary>
 /// Gives you information tied to the current user's login status.

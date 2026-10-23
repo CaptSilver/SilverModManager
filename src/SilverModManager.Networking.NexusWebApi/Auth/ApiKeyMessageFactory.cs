@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.DTOs;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.DTOs;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.Secrets;
 
-namespace NexusMods.Networking.NexusWebApi.Auth;
+namespace SilverModManager.Networking.NexusWebApi.Auth;
 
 /// <summary>
 /// Injects Nexus API keys into HTTP messages.

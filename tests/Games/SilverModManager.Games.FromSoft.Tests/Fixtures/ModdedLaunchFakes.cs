@@ -1,16 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.Overlay;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Overlay;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 /// <summary>
 /// The made-up bwrap, sandbox probe, user ids, game process and installation lock a launch session runs around, for

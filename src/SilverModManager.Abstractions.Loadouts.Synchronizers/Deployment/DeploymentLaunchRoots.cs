@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 
 /// <summary>
 /// The host folders a process started for a game must be able to see so that what the recorded plan deployed

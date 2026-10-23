@@ -2,17 +2,17 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Media;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Resources;
-using NexusMods.Collections;
-using NexusMods.UI.Sdk.Icons;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.Collections;
+using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.MnemonicDB.Abstractions;
 using R3;
 using ReactiveUI;
 using Humanizer;
 using ReactiveCommand = R3.ReactiveCommand;
 
-namespace NexusMods.App.UI.Pages.CollectionDownload;
+namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
 public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDownloadViewModel>
 {

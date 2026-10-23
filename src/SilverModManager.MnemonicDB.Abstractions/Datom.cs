@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.MnemonicDB.Abstractions.DatomIterators;
+namespace SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 
 /// <summary>
 /// Represents a raw (unparsed) datom from an index. Most of the time this datom is only valid for the

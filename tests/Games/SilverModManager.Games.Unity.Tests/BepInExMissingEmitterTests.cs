@@ -1,14 +1,14 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Games.TestFramework;
-using NexusMods.Games.Unity.BepInEx;
-using NexusMods.Games.Unity.Tests.Fixtures;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.Unity.BepInEx;
+using SilverModManager.Games.Unity.Tests.Fixtures;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.Unity.Tests;
+namespace SilverModManager.Games.Unity.Tests;
 
 /// <summary>The shared checks; each real game runs them with its own loader package.</summary>
 public abstract class ABepInExMissingEmitterTests<TTest, TGame>(ITestOutputHelper outputHelper, string expectedPackage)
@@ -38,7 +38,7 @@ public abstract class ABepInExMissingEmitterTests<TTest, TGame>(ITestOutputHelpe
 
         var diagnostic = await GetSingleDiagnostic(loadout);
 
-        diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.Unity", number: 1));
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.Unity", number: 1));
         var details = diagnostic.FormatDetails(ServiceProvider.GetRequiredService<IDiagnosticWriter>());
         details.Should().Contain($"`{expectedPackage}`");
         details.Should().Contain("Thunderstore");

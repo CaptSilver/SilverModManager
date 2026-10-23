@@ -1,7 +1,7 @@
 using Avalonia.Platform.Storage;
-using NexusMods.UI.Sdk.Settings;
+using SilverModManager.UI.Sdk.Settings;
 
-namespace NexusMods.App.UI.Controls.Settings.SettingEntries.PathsList;
+namespace SilverModManager.App.UI.Controls.Settings.SettingEntries.PathsList;
 
 public interface ISettingPathsViewModel : IInteractionControl
 {

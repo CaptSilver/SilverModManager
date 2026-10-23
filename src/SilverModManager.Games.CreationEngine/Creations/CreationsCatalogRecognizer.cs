@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Creations;
+namespace SilverModManager.Games.CreationEngine.Creations;
 
 /// <summary>
 /// Finds the Creations a Creation Engine game installed itself, from the game's own records: the content

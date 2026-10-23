@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace NexusMods.MnemonicDB.Abstractions.TxFunctions;
+namespace SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 
 /// <summary>
 /// A function that can be applied to a transaction, that takes a single argument.

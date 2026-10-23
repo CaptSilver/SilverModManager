@@ -1,5 +1,5 @@
 // Follows libloadorder src/load_order/textfile_based.rs (the load order file).
-namespace NexusMods.Games.Bethesda.LoadOrder.Formats;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Formats;
 
 /// <summary>
 /// The loadorder.txt of the older textfile games: every plugin, active or not, one name per line in load order.

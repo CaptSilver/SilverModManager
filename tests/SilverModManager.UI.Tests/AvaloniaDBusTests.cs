@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Reflection;
 using FluentAssertions;
-using NexusMods.App.UI.Helpers;
+using SilverModManager.App.UI.Helpers;
 using Tmds.DBus.Protocol;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 /// <summary>
 /// Avalonia opens one process-wide D-Bus connection and subscribes to it from the UI thread, so

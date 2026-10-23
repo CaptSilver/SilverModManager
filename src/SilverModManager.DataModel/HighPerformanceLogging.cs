@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 
-namespace NexusMods.DataModel;
+namespace SilverModManager.DataModel;
 
 internal static partial class HighPerformanceLogging
 {

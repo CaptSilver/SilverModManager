@@ -1,6 +1,6 @@
 using Avalonia.Threading;
 
-namespace NexusMods.UI.Sdk;
+namespace SilverModManager.UI.Sdk;
 
 public static class DispatcherHelper
 {

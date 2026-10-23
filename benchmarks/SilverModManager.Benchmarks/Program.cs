@@ -6,8 +6,8 @@ using System.Reflection;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
-using NexusMods.Benchmarks;
-using NexusMods.Benchmarks.Interfaces;
+using SilverModManager.Benchmarks;
+using SilverModManager.Benchmarks.Interfaces;
 
 var benchmarks = Assembly.GetExecutingAssembly()
     .GetTypes()
@@ -15,7 +15,7 @@ var benchmarks = Assembly.GetExecutingAssembly()
     .Select(x => new SelectableBenchmark(x))
     .ToArray();
 
-Console.WriteLine("Note: Benchmarks can be ran directly by passing arguments in CLI, e.g. NexusMods.Benchmarks.dll 0 1\n");
+Console.WriteLine("Note: Benchmarks can be ran directly by passing arguments in CLI, e.g. SilverModManager.Benchmarks.dll 0 1\n");
 if (args.Length > 0)
 {
     foreach (var arg in args)

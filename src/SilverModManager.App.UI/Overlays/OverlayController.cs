@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using Avalonia.Threading;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Overlays;
+namespace SilverModManager.App.UI.Overlays;
 
 /// <inheritdoc />
 public class OverlayController : ReactiveObject, IOverlayController

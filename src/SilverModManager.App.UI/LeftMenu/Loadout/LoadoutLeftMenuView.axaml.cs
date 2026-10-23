@@ -2,11 +2,11 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Resources;
-using NexusMods.Collections;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.Collections;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.LeftMenu.Loadout;
+namespace SilverModManager.App.UI.LeftMenu.Loadout;
 
 [UsedImplicitly]
 public partial class LoadoutLeftMenuView : ReactiveUserControl<ILoadoutLeftMenuViewModel>

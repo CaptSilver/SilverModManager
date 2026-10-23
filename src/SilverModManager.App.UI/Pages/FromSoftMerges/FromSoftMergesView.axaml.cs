@@ -1,11 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Merge;
 using ReactiveUI;
 using R3;
 
-namespace NexusMods.App.UI.Pages.FromSoftMerges;
+namespace SilverModManager.App.UI.Pages.FromSoftMerges;
 
 [UsedImplicitly]
 public partial class FromSoftMergesView : ReactiveUserControl<IFromSoftMergesViewModel>

@@ -1,6 +1,6 @@
 using TransparentValueObjects;
 
-namespace NexusMods.Abstractions.NexusWebApi.Types;
+namespace SilverModManager.Abstractions.NexusWebApi.Types;
 
 /// <summary>
 /// Unique identifier for a given site user.

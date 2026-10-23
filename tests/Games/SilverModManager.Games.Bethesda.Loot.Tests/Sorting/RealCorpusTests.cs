@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
-using NexusMods.Games.Bethesda.Loot.Sorting;
-using NexusMods.Games.Bethesda.Loot.Tests.Corpus;
+using SilverModManager.Games.Bethesda.Loot.Sorting;
+using SilverModManager.Games.Bethesda.Loot.Tests.Corpus;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Sorting;
 
 // Sorts load orders taken from real installs and compares with what libloot answered for the same
 // header-only stubs. The cases are written by tools/loot-oracle/generate_real.py and hold plugin names,

@@ -6,20 +6,20 @@ using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.Pages.TextEdit;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Pages.TextEdit;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.Sdk.Games;
 using ObservableCollections;
 using R3;
 using ReactiveUI;
@@ -27,7 +27,7 @@ using ReactiveUI.Fody.Helpers;
 using CompositeDisposable = System.Reactive.Disposables.CompositeDisposable;
 using SerialDisposable = System.Reactive.Disposables.SerialDisposable;
 
-namespace NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
+namespace SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
 
 [UsedImplicitly]
 public class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFilesViewModel>, ILoadoutGroupFilesViewModel

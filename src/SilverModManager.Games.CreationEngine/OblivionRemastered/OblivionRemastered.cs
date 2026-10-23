@@ -1,16 +1,16 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Games.CreationEngine.Installers;
-using NexusMods.Games.CreationEngine.PluginLists;
-using NexusMods.Games.FOMOD;
-using NexusMods.Games.Unreal;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.CreationEngine.Installers;
+using SilverModManager.Games.CreationEngine.PluginLists;
+using SilverModManager.Games.FOMOD;
+using SilverModManager.Games.Unreal;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.OblivionRemastered;
+namespace SilverModManager.Games.CreationEngine.OblivionRemastered;
 
 /// <summary>
 /// The Unreal Engine 5 remake of Oblivion. It still loads Bethesda plugins, from a Data folder buried in the

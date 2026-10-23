@@ -1,14 +1,14 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Games.CreationEngine.Emitters;
-using NexusMods.Games.CreationEngine.Tests.Morrowind.OpenMw;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Games.CreationEngine.Emitters;
+using SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.CreationEngine.Tests;
+namespace SilverModManager.Games.CreationEngine.Tests;
 
 /// <summary>Early-loading plugins and the sTestFile warning on Fallout 4, with fixture files in a throwaway prefix.</summary>
 public class Fallout4EarlyLoadingTests(ITestOutputHelper helper)

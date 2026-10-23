@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Backend.OS;
+using SilverModManager.Backend.OS;
 
-namespace NexusMods.CrossPlatform.Tests;
+namespace SilverModManager.CrossPlatform.Tests;
 
 using Xunit;
 
@@ -77,7 +77,7 @@ public class LauncherDesktopEntryTests : IDisposable
     [Fact]
     public void OurOwnDesktopFileIsNeverChosen()
     {
-        var own = $"{NexusMods.Sdk.ApplicationConstants.ApplicationId}.desktop";
+        var own = $"{SilverModManager.Sdk.ApplicationConstants.ApplicationId}.desktop";
         Find(AppImage, "nxm", (own, Entry($"{AppImage} %u"))).Should().BeNull();
     }
 

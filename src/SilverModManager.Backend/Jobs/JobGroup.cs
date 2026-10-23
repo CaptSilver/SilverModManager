@@ -1,8 +1,8 @@
 using System.Collections;
 using System.Collections.Concurrent;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Backend.Jobs;
+namespace SilverModManager.Backend.Jobs;
 
 public class JobGroup : IJobGroup
 {

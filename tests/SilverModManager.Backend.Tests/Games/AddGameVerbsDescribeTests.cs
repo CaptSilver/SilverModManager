@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Backend.Games.UserGames;
+using SilverModManager.Backend.Games.UserGames;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Backend.Tests.Games;
+namespace SilverModManager.Backend.Tests.Games;
 
 /// <summary>
 /// The add-game lines no shipped pair of games reaches through the CLI: no two of them launch one executable with

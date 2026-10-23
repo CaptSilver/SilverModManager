@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.CreationEngine.Tests.Creations;
+namespace SilverModManager.Games.CreationEngine.Tests.Creations;
 
 /// <summary>Reads back what a sync made of a game's Creations.</summary>
 internal static class CreationsLoadout

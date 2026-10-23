@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI.Controls.Navigation;
+namespace SilverModManager.App.UI.Controls.Navigation;
 
 /// <summary>
 /// Represents the different styling options for context menu items.

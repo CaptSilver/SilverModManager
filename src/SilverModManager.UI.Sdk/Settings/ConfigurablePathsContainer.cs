@@ -1,7 +1,7 @@
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.UI.Sdk.Settings;
+namespace SilverModManager.UI.Sdk.Settings;
 
 public class ConfigurablePathsContainer : APropertyValueContainer<ConfigurablePath[], ConfigurablePathsContainerOption>
 {

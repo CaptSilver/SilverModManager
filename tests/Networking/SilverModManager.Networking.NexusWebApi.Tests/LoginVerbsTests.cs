@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Networking.NexusWebApi.Auth;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.Secrets.Overlay;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Networking.NexusWebApi.Auth;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Secrets.Overlay;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 public class LoginVerbsTests : IDisposable
 {
@@ -99,6 +99,6 @@ public class LoginVerbsTests : IDisposable
     {
         // The key must never travel on the command line, so there is no option to carry it.
         var verb = typeof(LoginVerbs).GetMethod("SetApiKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
-        verb.GetParameters().SelectMany(p => p.GetCustomAttributes(false)).OfType<NexusMods.Sdk.ProxyConsole.OptionAttribute>().Should().BeEmpty();
+        verb.GetParameters().SelectMany(p => p.GetCustomAttributes(false)).OfType<SilverModManager.Sdk.ProxyConsole.OptionAttribute>().Should().BeEmpty();
     }
 }

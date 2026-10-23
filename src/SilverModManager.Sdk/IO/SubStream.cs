@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.IO;
+namespace SilverModManager.Sdk.IO;
 
 /// <summary>
 /// Sub-stream on existing stream.

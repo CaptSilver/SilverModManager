@@ -1,13 +1,13 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Heal;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Heal;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Sdk.Games;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>The content hashes of regulations the app can vouch for as the game's own, as the library knows files.</summary>
 public interface IVouchedRegulations

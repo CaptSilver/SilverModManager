@@ -1,14 +1,14 @@
 using System.Text.Json;
 using FluentAssertions;
-using NexusMods.Games.Bethesda.Archives;
+using SilverModManager.Games.Bethesda.Archives;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Install;
-using NexusMods.Wabbajack.Transforms;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Install;
+using SilverModManager.Wabbajack.Transforms;
 
-namespace NexusMods.Wabbajack.Tests.Install;
+namespace SilverModManager.Wabbajack.Tests.Install;
 
 public class DirectiveTransformsTests : IDisposable
 {

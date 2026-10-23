@@ -1,10 +1,10 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Wabbajack.Models;
+namespace SilverModManager.Wabbajack.Models;
 
 /// <summary>
 /// A library file that is a Wabbajack modlist (a <c>.wabbajack</c> file). The fields are read from the list when it

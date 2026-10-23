@@ -1,10 +1,10 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Games.Larian.BaldursGate3.SortOrder;
+namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
 
 /// <summary>
 /// A pak the loadout offers to the game. <see cref="IsEnabled"/> is the owning mod's state, or the state of the

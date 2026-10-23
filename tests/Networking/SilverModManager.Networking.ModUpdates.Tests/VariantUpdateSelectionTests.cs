@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Networking.ModUpdates.Tests.Helpers;
-using NexusMods.Networking.NexusWebApi;
+using SilverModManager.Networking.ModUpdates.Tests.Helpers;
+using SilverModManager.Networking.NexusWebApi;
 
-namespace NexusMods.Networking.ModUpdates.Tests;
+namespace SilverModManager.Networking.ModUpdates.Tests;
 
 /// <summary>
 /// The update check on a page whose files are parallel variants of one mod.

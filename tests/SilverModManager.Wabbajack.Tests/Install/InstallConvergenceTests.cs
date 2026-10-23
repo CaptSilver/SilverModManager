@@ -1,16 +1,16 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Install;
-using NexusMods.Wabbajack.Models;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Install;
+using SilverModManager.Wabbajack.Models;
 
-namespace NexusMods.Wabbajack.Tests.Install;
+namespace SilverModManager.Wabbajack.Tests.Install;
 
 /// <summary>Installing a list again, after the list changed, leaves the loadout matching the new list.</summary>
 public class InstallConvergenceTests(ITestOutputHelper helper) : InstallTestBase<InstallConvergenceTests>(helper)

@@ -1,5 +1,5 @@
 // Ported from libloadorder src/load_order/timestamp_based.rs (padded_unique_timestamps).
-namespace NexusMods.Games.Bethesda.LoadOrder.Ordering;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Ordering;
 
 /// <summary>
 /// Picks the modification times a timestamp-ordered game reads its load order from. The plugins'

@@ -1,4 +1,4 @@
-namespace NexusMods.Networking.EpicGameStore;
+namespace SilverModManager.Networking.EpicGameStore;
 
 public class Verbs
 {

@@ -1,7 +1,7 @@
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 /// <summary>
 /// An intrinsic file that can say what it should contain when the game is reset to its original state.

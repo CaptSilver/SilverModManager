@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Archives;
+using SilverModManager.Games.Bethesda.Archives;
 using NexusMods.Paths;
 
-namespace NexusMods.Wabbajack.Acquire;
+namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>
 /// Reads one member out of a Bethesda archive (<c>.bsa</c> or <c>.ba2</c>) for a list path that goes through it: the

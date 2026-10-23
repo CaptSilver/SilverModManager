@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Loot.Sorting;
-using static NexusMods.Games.Bethesda.Loot.Tests.Sorting.SortingFixture;
+using SilverModManager.Games.Bethesda.Loot.Sorting;
+using static SilverModManager.Games.Bethesda.Loot.Tests.Sorting.SortingFixture;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Sorting;
 
 // Ports the add_tie_break_edges tests in libloot's sorting/plugins.rs, plus tests of the path search
 // the tie-break edges are placed by.

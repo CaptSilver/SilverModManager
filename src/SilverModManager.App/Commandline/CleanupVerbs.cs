@@ -1,19 +1,19 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.FileExtractor;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Exceptions;
-using NexusMods.Sdk.Settings;
-using NexusMods.CrossPlatform;
-using NexusMods.DataModel;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.FileExtractor;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.CrossPlatform;
+using SilverModManager.DataModel;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileExtractor;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.FileExtractor;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.App.Commandline;
+namespace SilverModManager.App.Commandline;
 
 /// <summary>
 ///     These verbs are used in cleaning up unneeded data related to the application.

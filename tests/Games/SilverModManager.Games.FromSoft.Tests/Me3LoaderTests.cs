@@ -1,14 +1,14 @@
 using DynamicData.Kernel;
 using FluentAssertions;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class Me3LoaderTests(ITestOutputHelper helper) : AEldenRingTest<Me3LoaderTests>(helper)
 {

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace NexusMods.DataModel.JsonConverters;
+namespace SilverModManager.DataModel.JsonConverters;
 
 /// <inheritdoc />
 public class DateTimeConverter : JsonConverter<DateTime>

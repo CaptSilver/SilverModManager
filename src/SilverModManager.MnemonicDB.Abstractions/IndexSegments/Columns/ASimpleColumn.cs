@@ -1,8 +1,8 @@
 using System;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments.Columns;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments.Columns;
 
 public abstract class ASimpleColumn<T> : IColumn
     where T : unmanaged

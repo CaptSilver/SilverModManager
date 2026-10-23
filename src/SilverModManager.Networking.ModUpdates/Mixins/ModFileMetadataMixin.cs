@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Networking.ModUpdates.Traits;
-namespace NexusMods.Networking.ModUpdates.Mixins;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Networking.ModUpdates.Traits;
+namespace SilverModManager.Networking.ModUpdates.Mixins;
 
 /// <summary>
 /// A mixin for mod file metadata that allows you to integrate mod file results

@@ -1,7 +1,7 @@
 using Mutagen.Bethesda;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Tests.RoundTrip;
+namespace SilverModManager.Games.CreationEngine.Tests.RoundTrip;
 
 public class Fallout4RoundTripTests(ITestOutputHelper helper)
     : ACreationEngineRoundTripTest<Fallout4RoundTripTests, CreationEngine.Fallout4.Fallout4>(helper)

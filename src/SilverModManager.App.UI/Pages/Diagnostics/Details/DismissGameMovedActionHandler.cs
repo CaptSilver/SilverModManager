@@ -1,11 +1,11 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.App.UI.Pages.Diagnostics;
+namespace SilverModManager.App.UI.Pages.Diagnostics;
 
 /// <summary>
 /// Hides the note about a game that moved folders. The note is shown while the installation records where it

@@ -4,9 +4,9 @@ using Avalonia.Controls.Metadata;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Styling;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// A (Nexus Mods) Standard Button control.

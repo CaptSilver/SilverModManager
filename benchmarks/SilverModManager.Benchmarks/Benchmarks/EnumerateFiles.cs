@@ -1,8 +1,8 @@
 using BenchmarkDotNet.Attributes;
-using NexusMods.Benchmarks.Interfaces;
+using SilverModManager.Benchmarks.Interfaces;
 using NexusMods.Paths;
 
-namespace NexusMods.Benchmarks.Benchmarks;
+namespace SilverModManager.Benchmarks.Benchmarks;
 
 [MemoryDiagnoser]
 [BenchmarkInfo("File Enumeration", "Tests the performance of fetching all files from a directory.")]

@@ -1,15 +1,15 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using R3;
 using Xunit;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.DataModel.Synchronizer.Tests;
+namespace SilverModManager.DataModel.Synchronizer.Tests;
 
 public class ApplyProgressTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTest<ApplyProgressTests>(helper)
 {
@@ -114,7 +114,7 @@ public class ApplyProgressTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
     [Fact]
     public void APhaseRunAgainForAnotherRoot_ReportsFromItsOwnStart()
     {
-        var job = new SynchronizeLoadoutJob(NexusMods.Sdk.Loadouts.LoadoutId.From(1UL));
+        var job = new SynchronizeLoadoutJob(SilverModManager.Sdk.Loadouts.LoadoutId.From(1UL));
         job.ReportProgress(SyncPhases.Deploying, 3, 3);
         job.ReportProgress(SyncPhases.Deploying, 0, 5);
 

@@ -7,7 +7,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.Abstractions.NexusWebApi\NexusMods.Abstractions.NexusWebApi.csproj" />
-      <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.NexusWebApi\SilverModManager.Abstractions.NexusWebApi.csproj" />
+      <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
     </ItemGroup>
 </Project>

@@ -2,11 +2,11 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.ReactiveUI;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Diagnostics;
+namespace SilverModManager.App.UI.Controls.Diagnostics;
 
 public partial class DiagnosticEntryView : ReactiveUserControl<IDiagnosticEntryViewModel>
 {

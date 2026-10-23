@@ -1,5 +1,5 @@
 // Follows the merged-patch branch of Wabbajack.Installer/StandardInstaller.cs.
-namespace NexusMods.Wabbajack.Transforms;
+namespace SilverModManager.Wabbajack.Transforms;
 
 /// <summary>
 /// Builds a zEdit merged patch: the sources' bytes laid end to end are the basis of an Octodiff delta.

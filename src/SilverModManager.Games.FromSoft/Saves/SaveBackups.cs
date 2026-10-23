@@ -1,11 +1,11 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Games.FromSoft.Launch;
+using SilverModManager.Games.FromSoft.Launch;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.FromSoft.Saves;
+namespace SilverModManager.Games.FromSoft.Saves;
 
 /// <summary>Where a copy of a save sits under the saves folder.</summary>
 public enum SaveBackupLocation

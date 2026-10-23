@@ -1,10 +1,10 @@
 using R3;
 using FluentAssertions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Secrets.Chain;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Secrets.Chain;
 using Xunit;
 
-namespace NexusMods.Secrets.Tests.Chain;
+namespace SilverModManager.Secrets.Tests.Chain;
 
 public class FallbackSecretStoreTests
 {

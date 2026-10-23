@@ -1,8 +1,8 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.Games.Bethesda.LoadOrder.Formats;
+using SilverModManager.Games.Bethesda.LoadOrder.Formats;
 
-namespace NexusMods.Games.Bethesda.LoadOrder.Tests.Formats;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Tests.Formats;
 
 public class PluginListEncodingTests
 {

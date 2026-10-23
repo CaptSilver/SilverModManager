@@ -1,6 +1,6 @@
 using YamlDotNet.RepresentationModel;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Yaml;
 
 internal static class TestYaml
 {

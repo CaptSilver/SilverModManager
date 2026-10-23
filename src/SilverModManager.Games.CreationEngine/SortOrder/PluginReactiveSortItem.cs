@@ -1,10 +1,10 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.CreationEngine.SortOrder;
+namespace SilverModManager.Games.CreationEngine.SortOrder;
 
 /// <summary>
 /// One plugin on the Load Order page.

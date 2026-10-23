@@ -1,6 +1,6 @@
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.ModUpdates;
+namespace SilverModManager.Networking.ModUpdates;
 
 /// <summary>
 /// Represents an individual item from a 'mod feed'; with the 'mod feed' being

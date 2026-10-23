@@ -1,9 +1,9 @@
 using System;
 using DynamicData;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 
-namespace NexusMods.MnemonicDB.EventTypes;
+namespace SilverModManager.MnemonicDB.EventTypes;
 
 public interface IObserveDatomsEvent : IEvent
 {

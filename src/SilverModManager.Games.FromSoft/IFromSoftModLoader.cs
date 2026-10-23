@@ -1,14 +1,14 @@
 using System.Collections.Immutable;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FromSoft.Doctor;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FromSoft.Doctor;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft;
+namespace SilverModManager.Games.FromSoft;
 
 /// <summary>
 /// What loads mods into a FromSoft game. A game owns one, and the services the games share ask it instead of assuming

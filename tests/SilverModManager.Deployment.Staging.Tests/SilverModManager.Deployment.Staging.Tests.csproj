@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <XunitStartupAssembly>NexusMods.Deployment.Staging.Tests</XunitStartupAssembly>
+    <XunitStartupAssembly>SilverModManager.Deployment.Staging.Tests</XunitStartupAssembly>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,8 +9,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\NexusMods.Deployment.Staging\NexusMods.Deployment.Staging.csproj" />
-    <ProjectReference Include="..\..\src\NexusMods.Backend\NexusMods.Backend.csproj" />
+    <ProjectReference Include="..\..\src\SilverModManager.Deployment.Staging\SilverModManager.Deployment.Staging.csproj" />
+    <ProjectReference Include="..\..\src\SilverModManager.Backend\SilverModManager.Backend.csproj" />
   </ItemGroup>
 
 </Project>

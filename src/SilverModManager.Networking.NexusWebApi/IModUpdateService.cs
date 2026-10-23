@@ -1,8 +1,8 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Networking.ModUpdates;
-using NexusMods.Networking.ModUpdates.Mixins;
-namespace NexusMods.Networking.NexusWebApi;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Networking.ModUpdates;
+using SilverModManager.Networking.ModUpdates.Mixins;
+namespace SilverModManager.Networking.NexusWebApi;
 
 /// <summary>
 ///     Provides services related to updating of mods.

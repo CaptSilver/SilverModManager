@@ -1,6 +1,6 @@
-using NexusMods.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Build;
 
-namespace NexusMods.Games.FromSoft.Tests.Build;
+namespace SilverModManager.Games.FromSoft.Tests.Build;
 
 /// <summary>
 /// A complete <see cref="BuildIdentity"/> for tests that need an identity to hand around. Only the fields a test cares

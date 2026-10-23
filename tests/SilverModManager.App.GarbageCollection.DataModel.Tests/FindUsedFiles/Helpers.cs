@@ -1,9 +1,9 @@
-using NexusMods.App.GarbageCollection.Nx;
+using SilverModManager.App.GarbageCollection.Nx;
 using NexusMods.Archives.Nx.Headers;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.Paths.Extensions.Nx.FileProviders;
-namespace NexusMods.App.GarbageCollection.DataModel.Tests.FindUsedFiles;
+namespace SilverModManager.App.GarbageCollection.DataModel.Tests.FindUsedFiles;
 
 internal static class Helpers
 {

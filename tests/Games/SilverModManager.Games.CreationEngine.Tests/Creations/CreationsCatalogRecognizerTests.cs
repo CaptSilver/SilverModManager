@@ -1,14 +1,14 @@
 using System.Collections.Immutable;
 using System.Text;
 using FluentAssertions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.CreationEngine.Creations;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.CreationEngine.Creations;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Tests.Creations;
+namespace SilverModManager.Games.CreationEngine.Tests.Creations;
 
 public class CreationsCatalogRecognizerTests : IDisposable
 {

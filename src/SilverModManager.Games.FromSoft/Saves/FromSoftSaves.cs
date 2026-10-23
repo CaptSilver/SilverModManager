@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Games.FromSoft.Launch;
+using SilverModManager.Games.FromSoft.Launch;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.FromSoft.Saves;
+namespace SilverModManager.Games.FromSoft.Saves;
 
 /// <param name="Folder">The save folder of one Steam account.</param>
 /// <param name="SteamId">The folder's name, the account's Steam id.</param>

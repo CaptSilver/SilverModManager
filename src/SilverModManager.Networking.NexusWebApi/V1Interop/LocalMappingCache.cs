@@ -2,11 +2,11 @@ using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi.V1Interop;
+namespace SilverModManager.Networking.NexusWebApi.V1Interop;
 
 internal class LocalMappingCache : IGameDomainToGameIdMappingCache
 {

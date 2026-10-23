@@ -1,6 +1,6 @@
 using R3;
 
-namespace NexusMods.App.UI.Overlays;
+namespace SilverModManager.App.UI.Overlays;
 
 public interface IWelcomeOverlayViewModel : IOverlayViewModel
 {

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.Backend;
+namespace SilverModManager.Backend;
 
 internal static partial class Logging
 {

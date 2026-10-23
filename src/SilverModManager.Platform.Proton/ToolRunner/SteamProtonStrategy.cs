@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.ToolRunner;
+namespace SilverModManager.Platform.Proton.ToolRunner;
 
 /// <summary>
 /// Runs a program through the <c>proton</c> script of the build Steam uses for the game, with the

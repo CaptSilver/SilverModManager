@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.NexusWebApi.DTOs.Interfaces;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.Interfaces;
 
-namespace NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
+namespace SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
 
 /// <summary>
 /// Data returned by the OAuth userinfo endpoint.

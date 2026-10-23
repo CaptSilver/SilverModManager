@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reactive.Linq;
 
-namespace NexusMods.MnemonicDB.Abstractions.Models;
+namespace SilverModManager.MnemonicDB.Abstractions.Models;
 
 /// <summary>
 /// Base interface for all read-only models

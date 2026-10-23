@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// Finds the Wine prefix a located game runs in.

@@ -14,8 +14,8 @@ helping you make things like new 'Windows' and 'Controls' easier.
 
 - Clone the repository (optionally make a fork first)
 - Ensure submodules have been cloned as well, you may use `git submodule update --init --recursive` to do so
-- Build and run the `NexusMods.App` project from your IDE to start the app, or use
-  `dotnet run --project src/NexusMods.App/NexusMods.App.csproj `
+- Build and run the `SilverModManager.App` project from your IDE to start the app, or use
+  `dotnet run --project src/SilverModManager.App/SilverModManager.App.csproj `
 
 ### Writing code
 
@@ -31,15 +31,15 @@ testing purposes may not be playable. You can still use the app to test the UI a
 but some features may not work as expected. To add a supported game manually:
 
 1. Have a directory ready and copy its path for the game you want to add to store its mods.
-2. After building the project, go to your terminal and change the directory to the `src/NexusMods.App/bin/Debug/net10.0` folder.
+2. After building the project, go to your terminal and change the directory to the `src/SilverModManager.App/bin/Debug/net10.0` folder.
 3. Enter the following CLI command and replace the arguments: 
    ```bash
-   NexusMods.App as-main add-game -g "Game Name" -v [Version] -p "Path"
+   SilverModManager.App as-main add-game -g "Game Name" -v [Version] -p "Path"
    ```
 4. Save the `EntityID` provided and run the app to check if the game is listed in the "My Games" section.
 5. Later on, you can remove the game by running the following CLI command:
    ```bash
-   NexusMods.App as-main remove-game -g "Game Name" -id "EntityID"
+   SilverModManager.App as-main remove-game -g "Game Name" -id "EntityID"
    ```
 
 ### Testing with Nexus API Integration
@@ -63,13 +63,13 @@ All test projects run on [Microsoft.Testing.Platform](https://learn.microsoft.co
 ```bash
 scripts/test.sh                                      # offline suite, whole solution
 scripts/test.sh --no-build                           # skip the build step
-dotnet test --project tests/NexusMods.CLI.Tests      # one project
+dotnet test --project tests/SilverModManager.CLI.Tests      # one project
 ```
 
 `scripts/test.sh` excludes tests carrying the `RequiresNetworking`, `RequiresApiKey` and `FlakeyTest` traits. The filters are passed as the `-p:XunitArgs=...` MSBuild property, which `tests/Directory.Build.props` maps onto `TestingPlatformCommandLineArguments`. To run only the networking tests:
 
 ```bash
-dotnet test --solution NexusMods.App.sln --ignore-exit-code 8 -p:XunitArgs="--filter-trait RequiresNetworking=True"
+dotnet test --solution SilverModManager.App.sln --ignore-exit-code 8 -p:XunitArgs="--filter-trait RequiresNetworking=True"
 ```
 
 Exit code 8 means "zero tests ran", which is expected for helper projects and for projects whose tests are all filtered out.
@@ -82,10 +82,10 @@ Translations are currently handled via the IDE. See [this issue](https://github.
 
 Packaging for the fork is described in [`CONTRIBUTING.md`](../../CONTRIBUTING.md); `scripts/dev-package.sh`
 builds an AppImage with [PupNet](https://github.com/kuiperzone/PupNet-Deploy) from
-[`app.pupnet.conf`](../../src/NexusMods.App/app.pupnet.conf).
+[`app.pupnet.conf`](../../src/SilverModManager.App/app.pupnet.conf).
 
 The app id is `io.github.CaptSilver.SilverModManager`. The desktop entry, AppStream metadata and
-icon live next to the project in `src/NexusMods.App`:
+icon live next to the project in `src/SilverModManager.App`:
 
 - `io.github.CaptSilver.SilverModManager.desktop`: replace `${INSTALL_EXEC}` with the absolute
   path of the binary when you build a package. If `INSTALLATION_METHOD_PACKAGE_MANAGER` is not

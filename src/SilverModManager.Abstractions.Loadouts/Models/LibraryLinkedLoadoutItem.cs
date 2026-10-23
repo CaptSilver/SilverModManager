@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Library;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Abstractions.Loadouts;
+namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 /// Represents a loadout item group that is linked to a library item.

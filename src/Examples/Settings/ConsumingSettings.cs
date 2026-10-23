@@ -1,4 +1,4 @@
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 using R3;
 
 // ReSharper disable All

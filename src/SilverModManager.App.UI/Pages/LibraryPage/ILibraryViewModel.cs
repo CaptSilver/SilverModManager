@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
 using Avalonia.Platform.Storage;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Pages.LibraryPage.Collections;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Pages.LibraryPage.Collections;
+using SilverModManager.App.UI.WorkspaceSystem;
 using R3;
 
-namespace NexusMods.App.UI.Pages.LibraryPage;
+namespace SilverModManager.App.UI.Pages.LibraryPage;
 
 public record InstallationTarget(CollectionGroupId Id, string Name);
 

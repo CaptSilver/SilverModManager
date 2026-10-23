@@ -1,7 +1,7 @@
 using System.Globalization;
 using Avalonia.Data.Converters;
 
-namespace NexusMods.App.UI.Converters;
+namespace SilverModManager.App.UI.Converters;
 
 public class IsNotNullConverter : IValueConverter
 {

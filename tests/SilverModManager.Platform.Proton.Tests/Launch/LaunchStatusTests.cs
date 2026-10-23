@@ -1,9 +1,9 @@
 using System.Text.Json;
 using FluentAssertions;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Verbs;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Verbs;
 
-namespace NexusMods.Platform.Proton.Tests.Launch;
+namespace SilverModManager.Platform.Proton.Tests.Launch;
 
 public class LaunchStatusTests : IDisposable
 {

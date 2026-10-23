@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Abstractions.Diagnostics.References;
+namespace SilverModManager.Abstractions.Diagnostics.References;
 
 /// <summary>
 /// A reference to a <see cref="Mod"/>.

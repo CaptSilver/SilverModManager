@@ -4,23 +4,23 @@ using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.Loot;
-using NexusMods.Games.CreationEngine.Models;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.Loot;
+using SilverModManager.Games.CreationEngine.Models;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Sdk.Settings;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using OneOf;
-using LoadoutSortOrder = NexusMods.Abstractions.Loadouts.SortOrder;
+using LoadoutSortOrder = SilverModManager.Abstractions.Loadouts.SortOrder;
 
-namespace NexusMods.Games.CreationEngine.SortOrder;
+namespace SilverModManager.Games.CreationEngine.SortOrder;
 
 /// <summary>
 /// The plugin load order of a Creation Engine game, one instance per game. Follows the shape of the Cyberpunk

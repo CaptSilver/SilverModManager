@@ -4,15 +4,15 @@ using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Humanizer.Bytes;
-using NexusMods.Abstractions.Loadouts.Files.Diff;
-using NexusMods.App.UI.Controls.Trees.Common;
-using NexusMods.App.UI.Resources;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Loadouts.Files.Diff;
+using SilverModManager.App.UI.Controls.Trees.Common;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Controls.Trees.Files;
+namespace SilverModManager.App.UI.Controls.Trees.Files;
 
 [DebuggerDisplay("Key = {Key.ToString()}, ParentKey = {ParentKey.ToString()}")]
 public class FileTreeNodeViewModel : AViewModel<IFileTreeNodeViewModel>, IFileTreeNodeViewModel

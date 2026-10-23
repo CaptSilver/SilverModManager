@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.RedEngine.Cyberpunk2077;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077;
 
 public class Cyberpunk2077Settings : ISettings
 {

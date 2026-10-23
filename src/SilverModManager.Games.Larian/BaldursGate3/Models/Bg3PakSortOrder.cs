@@ -1,14 +1,14 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Games.Larian.BaldursGate3.Models;
+namespace SilverModManager.Games.Larian.BaldursGate3.Models;
 
 /// <summary>
 /// The pak load order of a Baldur's Gate 3 loadout.
 /// </summary>
 [PublicAPI]
-[Include<NexusMods.Abstractions.Loadouts.SortOrder>]
+[Include<SilverModManager.Abstractions.Loadouts.SortOrder>]
 public partial class Bg3PakSortOrder : IModelDefinition
 {
     private const string Namespace = "SilverModManager.Games.BaldursGate3.Bg3PakSortOrder";

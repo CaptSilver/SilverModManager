@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 using RocksDbSharp;
 
-namespace NexusMods.MnemonicDB.Storage.RocksDbBackend;
+namespace SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 
 internal sealed class Snapshot : ADatomsIndex<RocksDbIteratorWrapper>, IRefDatomEnumeratorFactory<RocksDbIteratorWrapper>, ISnapshot
 {

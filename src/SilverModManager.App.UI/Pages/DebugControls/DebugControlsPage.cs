@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Pages.DebugControls;
+namespace SilverModManager.App.UI.Pages.DebugControls;
 
 [JsonName("DebugControlsPageContext")]
 public record DebugControlsPageContext : IPageFactoryContext;

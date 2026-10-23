@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Games;
+using SilverModManager.Abstractions.Games;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// A <see cref="LaunchSession"/> as <see cref="IGameLaunch"/> sees it. Unlike a <c>run</c> process, which holds

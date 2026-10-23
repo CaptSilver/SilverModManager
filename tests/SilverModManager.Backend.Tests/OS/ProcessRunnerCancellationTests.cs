@@ -4,13 +4,13 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Backend.Process;
+using SilverModManager.Backend.Process;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.Backend.Tests.OS;
+namespace SilverModManager.Backend.Tests.OS;
 
 /// <summary>
 /// These run real child processes (<c>sh</c>, <c>sleep</c>, <c>cat</c>): the point is what the runner leaves

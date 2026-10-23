@@ -1,5 +1,5 @@
 using NexusMods.Hashing.xxHash3;
-namespace NexusMods.App.GarbageCollection.Errors;
+namespace SilverModManager.App.GarbageCollection.Errors;
 
 /// <summary>
 ///     This exception is thrown when the ref count of a file not known by

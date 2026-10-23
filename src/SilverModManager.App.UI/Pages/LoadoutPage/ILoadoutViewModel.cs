@@ -1,11 +1,11 @@
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.Pages.Sorting;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Pages.Sorting;
+using SilverModManager.App.UI.WorkspaceSystem;
 using R3;
 
-namespace NexusMods.App.UI.Pages.LoadoutPage;
+namespace SilverModManager.App.UI.Pages.LoadoutPage;
 
 public interface ILoadoutViewModel : IPageViewModelInterface
 {

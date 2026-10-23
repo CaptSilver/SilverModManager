@@ -3,14 +3,14 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Internals;
-using NexusMods.MnemonicDB.Storage.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Storage.Abstractions;
 using NexusMods.Paths;
 using RocksDbSharp;
-using IWriteBatch = NexusMods.MnemonicDB.Storage.Abstractions.IWriteBatch;
+using IWriteBatch = SilverModManager.MnemonicDB.Storage.Abstractions.IWriteBatch;
 
-namespace NexusMods.MnemonicDB.Storage.RocksDbBackend;
+namespace SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 
 /// <summary>
 /// Backend for the RocksDB storage engine.

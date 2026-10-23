@@ -1,9 +1,9 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 using TransparentValueObjects;
 
-namespace NexusMods.Sdk.NexusModsApi;
+namespace SilverModManager.Sdk.NexusModsApi;
 
 /// <summary>
 /// Identifier for a game on Nexus Mods.

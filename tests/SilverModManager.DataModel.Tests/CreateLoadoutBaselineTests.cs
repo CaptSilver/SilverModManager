@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Games.TestFramework;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class CreateLoadoutBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTest<CreateLoadoutBaselineTests>(helper)
 {

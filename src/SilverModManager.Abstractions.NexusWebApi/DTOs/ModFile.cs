@@ -1,13 +1,13 @@
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
-using NexusMods.Abstractions.NexusWebApi.DTOs.Interfaces;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.Interfaces;
+using SilverModManager.Sdk.NexusModsApi;
 
 // 👇 Suppress uninitialised variables. Currently Nexus has mostly read-only API and we expect server to return the data.
 #pragma warning disable CS8618
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
-namespace NexusMods.Abstractions.NexusWebApi.DTOs;
+namespace SilverModManager.Abstractions.NexusWebApi.DTOs;
 
 /// <summary>
 /// Abstracts away an individual downloadable file available on a mod page.

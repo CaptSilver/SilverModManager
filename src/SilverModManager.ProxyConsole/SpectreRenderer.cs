@@ -1,14 +1,14 @@
 ﻿using System.Diagnostics;
 using System.Threading.Channels;
-using NexusMods.ProxyConsole.Messages;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.ProxyConsole.Messages;
+using SilverModManager.Sdk.ProxyConsole;
 using Spectre.Console;
 using SpectreRender = Spectre.Console.Rendering;
 using SpectreText = Spectre.Console.Text;
 using SpectreTable = Spectre.Console.Table;
 using SpectreTableColumn = Spectre.Console.TableColumn;
 
-namespace NexusMods.ProxyConsole;
+namespace SilverModManager.ProxyConsole;
 
 /// <summary>
 /// An adapter for rendering <see cref="IRenderable"/>s to the console using Spectre.Console.
@@ -39,7 +39,7 @@ public class SpectreRenderer : IRenderer
     {
         switch (renderable)
         {
-            case NexusMods.Sdk.ProxyConsole.Text text:
+            case SilverModManager.Sdk.ProxyConsole.Text text:
                 if (text.Arguments.Length == 0)
                 {
                     return new SpectreText(text.Template);
@@ -48,14 +48,14 @@ public class SpectreRenderer : IRenderer
                 {
                     return new SpectreText(string.Format(text.Template, text.Arguments));
                 }
-            case NexusMods.Sdk.ProxyConsole.Table table:
+            case SilverModManager.Sdk.ProxyConsole.Table table:
                 return await ToSpectreAsync(table);
             default:
                 throw new NotImplementedException();
         }
     }
 
-    private async ValueTask<SpectreRender.IRenderable> ToSpectreAsync(NexusMods.Sdk.ProxyConsole.Table table)
+    private async ValueTask<SpectreRender.IRenderable> ToSpectreAsync(SilverModManager.Sdk.ProxyConsole.Table table)
     {
         var t = new SpectreTable();
         foreach (var column in table.Columns)

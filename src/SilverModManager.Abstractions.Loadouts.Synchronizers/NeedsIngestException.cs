@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 /// <summary>
 /// Thrown when there are changes in the game folder that need to be ingested before a loadout can be applied

@@ -2,7 +2,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace NexusMods.Networking.Thunderstore.Tests.Fixtures;
+namespace SilverModManager.Networking.Thunderstore.Tests.Fixtures;
 
 internal static class Gzip
 {

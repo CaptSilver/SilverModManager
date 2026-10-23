@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.CreationEngine.Abstractions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.CreationEngine.SortOrder;
+namespace SilverModManager.Games.CreationEngine.SortOrder;
 
 /// <summary>
 /// Plugin headers by content hash and extension. A header only changes when the bytes do, so each is parsed once and

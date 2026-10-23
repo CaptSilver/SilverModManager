@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.GOG.JsonConverters;
-using NexusMods.Abstractions.GOG.Values;
+using SilverModManager.Abstractions.GOG.JsonConverters;
+using SilverModManager.Abstractions.GOG.Values;
 
-namespace NexusMods.Abstractions.GOG.DTOs;
+namespace SilverModManager.Abstractions.GOG.DTOs;
 
 /// <summary>
 /// Information about a build, which is a collection of files and the chunks that make up those files. This may sound confusing, but the idea

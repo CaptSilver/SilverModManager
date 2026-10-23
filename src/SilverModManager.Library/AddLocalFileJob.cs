@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library.Jobs;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Library.Jobs;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Library;
+namespace SilverModManager.Library;
 
 internal class AddLocalFileJob : IJobDefinitionWithStart<AddLocalFileJob, LocalFile.ReadOnly>, IAddLocalFile
 { 

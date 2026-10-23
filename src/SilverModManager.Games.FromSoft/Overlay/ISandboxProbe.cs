@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Overlay;
+namespace SilverModManager.Games.FromSoft.Overlay;
 
 /// <summary>Asks whether bwrap can make a user namespace on this machine.</summary>
 public interface ISandboxProbe

@@ -8,28 +8,28 @@ using DynamicData;
 using DynamicData.Binding;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.App.UI.Dialog;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.App.UI.Pages.LoadoutPage;
-using NexusMods.App.UI.Windows;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.App.UI.Pages.LoadoutPage;
+using SilverModManager.App.UI.Windows;
 using NexusMods.HyperDuck;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using Humanizer;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Resources;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Resources;
+using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Sorting;
+namespace SilverModManager.App.UI.Pages.Sorting;
 
 public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFileConflictsViewModel
 {

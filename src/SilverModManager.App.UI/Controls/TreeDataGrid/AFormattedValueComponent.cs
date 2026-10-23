@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// Component for a single value and it's formatted string representation.

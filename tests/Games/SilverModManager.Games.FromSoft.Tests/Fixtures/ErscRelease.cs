@@ -2,7 +2,7 @@ using System.IO.Compression;
 using System.Text;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 /// <summary>
 /// The shape of a Seamless Co-op release archive. The installer and the profile both name its members by path, so

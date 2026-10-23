@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Hashes;
+namespace SilverModManager.Sdk.Hashes;
 
 [PublicAPI]
 public static class MinimalHash

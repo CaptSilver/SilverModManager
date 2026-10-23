@@ -1,11 +1,11 @@
 using FluentAssertions;
 using Mutagen.Bethesda;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Games.CreationEngine.Tests.SortOrder;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Games.CreationEngine.Tests.SortOrder;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.RoundTrip;
+namespace SilverModManager.Games.CreationEngine.Tests.RoundTrip;
 
 public class FalloutNewVegasRoundTripTests(ITestOutputHelper helper)
     : ATimestampRoundTripTest<FalloutNewVegasRoundTripTests, CreationEngine.FalloutNewVegas.FalloutNewVegas>(helper)

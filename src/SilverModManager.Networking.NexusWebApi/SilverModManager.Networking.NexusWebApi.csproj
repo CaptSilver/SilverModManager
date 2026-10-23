@@ -9,18 +9,18 @@
     </ItemGroup>
     
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Networking.NexusWebApi.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Networking.NexusWebApi.Tests" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Abstractions.Cli\NexusMods.Abstractions.Cli.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Collections\NexusMods.Abstractions.Collections.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.NexusModsLibrary\NexusMods.Abstractions.NexusModsLibrary.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.NexusWebApi\NexusMods.Abstractions.NexusWebApi.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Secrets\NexusMods.Abstractions.Secrets.csproj" />
-        <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-        <ProjectReference Include="..\NexusMods.Networking.HttpDownloader\NexusMods.Networking.HttpDownloader.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.ModUpdates\NexusMods.Networking.ModUpdates.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Cli\SilverModManager.Abstractions.Cli.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Collections\SilverModManager.Abstractions.Collections.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.NexusModsLibrary\SilverModManager.Abstractions.NexusModsLibrary.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.NexusWebApi\SilverModManager.Abstractions.NexusWebApi.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Secrets\SilverModManager.Abstractions.Secrets.csproj" />
+        <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\SilverModManager.Networking.HttpDownloader\SilverModManager.Networking.HttpDownloader.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.ModUpdates\SilverModManager.Networking.ModUpdates.csproj" />
     </ItemGroup>
 
     <!-- games.json is vendored (only id and domain_name). Refresh it with scripts/update-games-json.sh;

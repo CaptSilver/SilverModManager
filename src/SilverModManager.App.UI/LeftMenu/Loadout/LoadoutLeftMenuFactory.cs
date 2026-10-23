@@ -1,6 +1,6 @@
-﻿using NexusMods.App.UI.WorkspaceSystem;
+﻿using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI.LeftMenu.Loadout;
+namespace SilverModManager.App.UI.LeftMenu.Loadout;
 
 public class LoadoutLeftMenuFactory(IServiceProvider serviceProvider) : ILeftMenuFactory<LoadoutContext>
 {

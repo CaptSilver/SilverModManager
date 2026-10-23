@@ -1,11 +1,11 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Saves;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Saves;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Games.FromSoft.Tests.Saves;
+namespace SilverModManager.Games.FromSoft.Tests.Saves;
 
 public class SaveQuarantineTests : IDisposable
 {

@@ -4,11 +4,11 @@ using CliWrap;
 using LinuxDesktopUtils.XDGDesktopPortal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Backend.RuntimeDependency;
+using SilverModManager.Backend.RuntimeDependency;
 using NexusMods.Paths;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Backend.OS;
+namespace SilverModManager.Backend.OS;
 
 internal partial class LinuxInterop : IOSInterop
 {

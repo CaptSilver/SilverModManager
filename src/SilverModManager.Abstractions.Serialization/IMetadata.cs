@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Abstractions.Serialization;
+namespace SilverModManager.Abstractions.Serialization;
 
 /// <summary>
 /// Interface for metadata.

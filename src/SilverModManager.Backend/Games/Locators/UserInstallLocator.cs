@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Backend.Games.Locators;
+namespace SilverModManager.Backend.Games.Locators;
 
 /// <summary>
 /// Turns the installs the user recorded into game installations. Store clients never report these, so the

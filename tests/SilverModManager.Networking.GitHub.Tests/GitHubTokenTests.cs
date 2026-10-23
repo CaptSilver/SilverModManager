@@ -3,12 +3,12 @@ using System.Net.Http.Headers;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk;
-using NexusMods.Secrets;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk;
+using SilverModManager.Secrets;
 using Xunit;
 
-namespace NexusMods.Networking.GitHub.Tests;
+namespace SilverModManager.Networking.GitHub.Tests;
 
 public class GitHubTokenTests
 {

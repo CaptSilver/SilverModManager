@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
-using NexusMods.DataModel.JsonConverters;
+using SilverModManager.DataModel.JsonConverters;
 using TransparentValueObjects;
 
-namespace NexusMods.DataModel;
+namespace SilverModManager.DataModel;
 
 /// <summary>
 /// Represents a unique identifier for a mod group.

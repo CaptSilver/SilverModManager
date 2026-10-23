@@ -1,7 +1,7 @@
-using NexusMods.Sdk.ProxyConsole;
-using Table = NexusMods.Sdk.ProxyConsole.Table;
+using SilverModManager.Sdk.ProxyConsole;
+using Table = SilverModManager.Sdk.ProxyConsole.Table;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 // ReSharper disable once ClassNeverInstantiated.Global
 public class LoggingRenderer : IRenderer

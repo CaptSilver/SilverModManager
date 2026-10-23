@@ -2,7 +2,7 @@ using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Trees;
+namespace SilverModManager.App.UI.Controls.Trees;
 
 public partial class FileTreeView : ReactiveUserControl<IFileTreeViewModel>
 {

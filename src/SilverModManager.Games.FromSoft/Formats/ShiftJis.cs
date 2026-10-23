@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>
 /// The Shift_JIS decoder older FromSoft formats store names in. .NET only ships it as a code page provider, so the

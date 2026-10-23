@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 using R3;
 
-namespace NexusMods.Secrets.Chain;
+namespace SilverModManager.Secrets.Chain;
 
 /// <summary>
 /// The store chain under the overlay, handed to code that must write through an environment override.

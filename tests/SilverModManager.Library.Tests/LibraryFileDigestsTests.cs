@@ -2,17 +2,17 @@ using System.Security.Cryptography;
 using FluentAssertions;
 using Xunit;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Backend;
-using NexusMods.Library.Tests.DownloadsService;
+using SilverModManager.Backend;
+using SilverModManager.Library.Tests.DownloadsService;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Threading;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Threading;
 
-namespace NexusMods.Library.Tests;
+namespace SilverModManager.Library.Tests;
 
 public class LibraryFileDigestsTests(IConnection connection, IServiceProvider serviceProvider, TemporaryFileManager temporaryFileManager)
 {

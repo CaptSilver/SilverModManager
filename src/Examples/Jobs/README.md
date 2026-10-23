@@ -1,6 +1,6 @@
 # Jobs Examples
 
-This folder contains examples demonstrating how to use the NexusMods.App Jobs
+This folder contains examples demonstrating how to use the SilverModManager.App Jobs
 system for background task management with progress tracking, cancellation
 support, and error handling.
 
@@ -15,7 +15,7 @@ you want to handle the execution logic in the same method where you call
 The job definition serves as context/data, while the actual work is done in the
 lambda callback right where you need it.
 
-See [**SimpleJobDefinitionExample.cs**](../../../tests/NexusMods.Jobs.Tests/Examples/SimpleJobDefinitionExample.cs).
+See [**SimpleJobDefinitionExample.cs**](../../../tests/SilverModManager.Jobs.Tests/Examples/SimpleJobDefinitionExample.cs).
 
 ### Self-Executing Job
 
@@ -25,7 +25,7 @@ forget.
 The fields you store in the job definition are effectively method parameters
 passed in to run the job.
 
-See [**SelfExecutingJobExample.cs**](../../../tests/NexusMods.Jobs.Tests/Examples/SelfExecutingJobExample.cs).
+See [**SelfExecutingJobExample.cs**](../../../tests/SilverModManager.Jobs.Tests/Examples/SelfExecutingJobExample.cs).
 
 ## Best Practices
 
@@ -47,16 +47,16 @@ natural breakpoints.
 UI dialogs) that can cancel. Propagate external `OperationCanceledException`
 through `context.CancelAndThrow()`.
 
-See [**CancellationExample.cs**](../../../tests/NexusMods.Jobs.Tests/Examples/BestPractices/CancellationExample.cs) and
-[**InteractiveCancellationExample.cs**](../../../tests/NexusMods.Jobs.Tests/Examples/BestPractices/InteractiveCancellationExample.cs).
+See [**CancellationExample.cs**](../../../tests/SilverModManager.Jobs.Tests/Examples/BestPractices/CancellationExample.cs) and
+[**InteractiveCancellationExample.cs**](../../../tests/SilverModManager.Jobs.Tests/Examples/BestPractices/InteractiveCancellationExample.cs).
 
 ### Progress Reporting
 
 Use percentage for determinate progress when total work is known. For
 indeterminate progress, use `Size.One` as maximum to avoid division by zero.
 
-See [**DeterminateProgressExample.cs**](../../../tests/NexusMods.Jobs.Tests/Examples/BestPractices/DeterminateProgressExample.cs)
-and [**IndeterminateProgressExample.cs**](../../../tests/NexusMods.Jobs.Tests/Examples/BestPractices/IndeterminateProgressExample.cs).
+See [**DeterminateProgressExample.cs**](../../../tests/SilverModManager.Jobs.Tests/Examples/BestPractices/DeterminateProgressExample.cs)
+and [**IndeterminateProgressExample.cs**](../../../tests/SilverModManager.Jobs.Tests/Examples/BestPractices/IndeterminateProgressExample.cs).
 
 ### Pausing and Resuming Jobs
 
@@ -67,7 +67,7 @@ Jobs must call `context.YieldAsync()` to respect pause requests.
 When resumed, jobs restart from their entry point.
 Therefore, to properly support resuming, you must persist some state inside a class field.
 
-See [**PauseResumeExample.cs**](../../../tests/NexusMods.Jobs.Tests/Examples/BestPractices/PauseResumeExample.cs).
+See [**PauseResumeExample.cs**](../../../tests/SilverModManager.Jobs.Tests/Examples/BestPractices/PauseResumeExample.cs).
 
 ### Job State Management
 
@@ -108,7 +108,7 @@ var downloadState = job.GetJobStateData<IHttpDownloadState>();
 
 Usually, the read-only interface is a subset of the full internal state; which is sometimes also used across suspend/resume cycles.
 
-See [**JobStateManagementExample.cs**](../../../tests/NexusMods.Jobs.Tests/Examples/BestPractices/JobStateManagementExample.cs).
+See [**JobStateManagementExample.cs**](../../../tests/SilverModManager.Jobs.Tests/Examples/BestPractices/JobStateManagementExample.cs).
 
 ### Factory Methods
 
@@ -119,7 +119,7 @@ starting logic as one.
 Factory methods encapsulate dependency injection and job configuration,
 creating reusable job creation patterns.
 
-See [**FactoryMethodExample.cs**](../../../tests/NexusMods.Jobs.Tests/Examples/BestPractices/FactoryMethodExample.cs).
+See [**FactoryMethodExample.cs**](../../../tests/SilverModManager.Jobs.Tests/Examples/BestPractices/FactoryMethodExample.cs).
 
 ## General Guidelines
 

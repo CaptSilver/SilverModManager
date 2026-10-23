@@ -1,11 +1,11 @@
 using FluentAssertions;
-using NexusMods.App.UI.LeftMenu.Loadout;
-using NexusMods.App.UI.Pages.Thunderstore;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.App.UI.LeftMenu.Loadout;
+using SilverModManager.App.UI.Pages.Thunderstore;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 public class ThunderstoreLeftMenuItemTests(IServiceProvider provider)
 {

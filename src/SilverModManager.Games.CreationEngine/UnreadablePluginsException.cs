@@ -1,4 +1,4 @@
-namespace NexusMods.Games.CreationEngine;
+namespace SilverModManager.Games.CreationEngine;
 
 /// <summary>
 /// Thrown when Plugins.txt cannot be written because some plugins' headers could not be read. A plugin left

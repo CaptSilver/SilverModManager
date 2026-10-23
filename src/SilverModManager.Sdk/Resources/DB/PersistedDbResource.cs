@@ -1,10 +1,10 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.MnemonicAttributes;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.MnemonicAttributes;
 
-namespace NexusMods.Sdk.Resources;
+namespace SilverModManager.Sdk.Resources;
 
 /// <summary>
 /// Represents a resource persisted in the database.

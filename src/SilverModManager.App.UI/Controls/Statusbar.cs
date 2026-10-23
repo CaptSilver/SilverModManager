@@ -4,9 +4,9 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.LogicalTree;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 public class Statusbar : ItemsControl
 {

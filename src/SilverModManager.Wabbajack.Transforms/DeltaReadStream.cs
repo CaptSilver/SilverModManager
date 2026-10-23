@@ -1,4 +1,4 @@
-namespace NexusMods.Wabbajack.Transforms;
+namespace SilverModManager.Wabbajack.Transforms;
 
 /// <summary>
 /// Read-only view of a delta that fails loudly where Octodiff would not. Its data-command loop

@@ -1,11 +1,11 @@
 using System.Globalization;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Formats;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft.Heal;
+namespace SilverModManager.Games.FromSoft.Heal;
 
 /// <summary>
 /// The vanilla regulations kept under the data root, one per build, as <c>regulation-&lt;version&gt;.bin</c>. A kept

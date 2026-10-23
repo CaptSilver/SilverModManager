@@ -1,4 +1,4 @@
-namespace NexusMods.Networking.ModUpdates.Traits;
+namespace SilverModManager.Networking.ModUpdates.Traits;
 
 /// <summary>
 /// Specifies the minimum required interface to represent a mod file within a mod page.

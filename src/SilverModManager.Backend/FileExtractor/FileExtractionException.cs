@@ -1,4 +1,4 @@
-namespace NexusMods.Backend.FileExtractor;
+namespace SilverModManager.Backend.FileExtractor;
 
 /// <inheritdoc />
 public class FileExtractionException : Exception

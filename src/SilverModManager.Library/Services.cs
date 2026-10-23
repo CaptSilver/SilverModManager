@@ -1,11 +1,11 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Downloads;
-using NexusMods.Abstractions.Library;
-using NexusMods.Library.Lock;
-using NexusMods.Library.Verbs;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Library.Lock;
+using SilverModManager.Library.Verbs;
 
-namespace NexusMods.Library;
+namespace SilverModManager.Library;
 
 /// <summary>
 /// Extension methods.

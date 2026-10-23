@@ -1,8 +1,8 @@
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Heal;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Heal;
 
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>
 /// The checks that surround folding the mods' regulations onto the installed game's. They apply only when the mods

@@ -1,9 +1,9 @@
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Resources;
+using SilverModManager.App.UI.Resources;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Overlays.Login;
+namespace SilverModManager.App.UI.Overlays.Login;
 
 public partial class ApiKeyLoginOverlayView : ReactiveUserControl<IApiKeyLoginOverlayViewModel>
 {

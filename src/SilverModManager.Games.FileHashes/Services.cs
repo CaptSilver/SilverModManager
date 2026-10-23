@@ -1,13 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Games.FileHashes.Emitters;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Games.FileHashes.Emitters;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.FileHashes;
+namespace SilverModManager.Games.FileHashes;
 
 public static class Services
 {

@@ -1,7 +1,7 @@
 using FomodInstaller.Interface;
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.Games.FOMOD.CoreDelegates;
+namespace SilverModManager.Games.FOMOD.CoreDelegates;
 
 // TODO: This entire class needs to be implemented properly.
 // Vortex: https://github.com/Nexus-Mods/Vortex/blob/b80d5b6d1b53e0dc6e0199c5371394261f8040b9/src/extensions/installer_fomod/delegates/Context.ts

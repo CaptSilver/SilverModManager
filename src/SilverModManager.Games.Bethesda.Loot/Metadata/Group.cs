@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata;
 
 /// <summary>
 /// A group that plugin metadata can belong to. Follows libloot's metadata/group.rs.

@@ -1,8 +1,8 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.Games.CreationEngine.Creations;
+using SilverModManager.Games.CreationEngine.Creations;
 
-namespace NexusMods.Games.CreationEngine.Tests.Creations;
+namespace SilverModManager.Games.CreationEngine.Tests.Creations;
 
 public class CreationsManifestReaderTests
 {

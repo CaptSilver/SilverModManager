@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.StardewValley.Emitters;
-using NexusMods.Games.TestFramework;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Games.StardewValley.Emitters;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using StardewModdingAPI.Toolkit;
 using Xunit;
 
-namespace NexusMods.Games.StardewValley.Tests;
+namespace SilverModManager.Games.StardewValley.Tests;
 
 public class SMAPIGameVersionDiagnosticEmitterTests : ALoadoutDiagnosticEmitterTest<SMAPIGameVersionDiagnosticEmitterTests, StardewValley, SMAPIGameVersionDiagnosticEmitter>
 {

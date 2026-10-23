@@ -1,14 +1,14 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.Generic.Installers;
-using NexusMods.Games.Larian.BaldursGate3;
-using NexusMods.Games.Larian.BaldursGate3.Installers;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Games.Generic.Installers;
+using SilverModManager.Games.Larian.BaldursGate3;
+using SilverModManager.Games.Larian.BaldursGate3.Installers;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3;
 
 public class BG3InstallerTests(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<BG3InstallerTests, Larian.BaldursGate3.BaldursGate3>(outputHelper)
 {
@@ -63,7 +63,7 @@ public class BG3InstallerTests(ITestOutputHelper outputHelper) : ALibraryArchive
 
 
     private static SettingsTask VerifyChildren(
-        IEnumerable<(RelativePath FromPath, Hashing.xxHash3.Hash Hash, Sdk.Games.GamePath GamePath)> childrenFilesAndHashes,
+        IEnumerable<(RelativePath FromPath, NexusMods.Hashing.xxHash3.Hash Hash, Sdk.Games.GamePath GamePath)> childrenFilesAndHashes,
         string[] archivePaths,
         [CallerFilePath] string sourceFile = "")
     {

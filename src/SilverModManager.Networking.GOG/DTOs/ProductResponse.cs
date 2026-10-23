@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 // ReSharper disable UnusedType.Global
 // ReSharper disable NotAccessedPositionalProperty.Global
 
-namespace NexusMods.Networking.GOG.DTOs;
+namespace SilverModManager.Networking.GOG.DTOs;
 
 public record ContentSystemCompatibility(
     [property: JsonPropertyName("windows")] bool Windows,

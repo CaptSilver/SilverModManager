@@ -4,7 +4,7 @@ using JetBrains.Annotations;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Hashes;
+namespace SilverModManager.Sdk.Hashes;
 
 [PublicAPI]
 public static class MultiHasher

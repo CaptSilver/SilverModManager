@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <PackageReference Include="NexusMods.Paths.TestingHelpers"/>
-    <ProjectReference Include="..\..\..\src\NexusMods.MnemonicDB\NexusMods.MnemonicDB.csproj" />
+    <ProjectReference Include="..\..\..\src\SilverModManager.MnemonicDB\SilverModManager.MnemonicDB.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\NexusMods.Networking.Thunderstore\NexusMods.Networking.Thunderstore.csproj" />
-    <ProjectReference Include="..\..\..\src\NexusMods.Sdk\NexusMods.Sdk.csproj" />
-    <ProjectReference Include="..\..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
-    <ProjectReference Include="..\..\..\src\NexusMods.Backend\NexusMods.Backend.csproj" />
+    <ProjectReference Include="..\..\..\src\SilverModManager.Networking.Thunderstore\SilverModManager.Networking.Thunderstore.csproj" />
+    <ProjectReference Include="..\..\..\src\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+    <ProjectReference Include="..\..\..\src\SilverModManager.DataModel\SilverModManager.DataModel.csproj" />
+    <ProjectReference Include="..\..\..\src\SilverModManager.Backend\SilverModManager.Backend.csproj" />
   </ItemGroup>
 </Project>

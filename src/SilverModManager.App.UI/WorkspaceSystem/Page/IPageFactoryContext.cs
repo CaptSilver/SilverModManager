@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 /// <summary>
 /// Interface for contexts used by the <see cref="IPageFactory"/>.

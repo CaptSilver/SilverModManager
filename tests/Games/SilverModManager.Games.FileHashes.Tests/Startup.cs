@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 [UsedImplicitly]
 public class Startup

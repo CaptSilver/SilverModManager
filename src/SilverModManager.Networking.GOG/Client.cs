@@ -8,21 +8,21 @@ using System.Threading.Channels;
 using Jitbit.Utils;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.GOG;
-using NexusMods.Abstractions.GOG.DTOs;
-using NexusMods.Abstractions.GOG.Values;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Networking.GOG.DTOs;
-using NexusMods.Networking.GOG.Exceptions;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.GOG;
+using SilverModManager.Abstractions.GOG.DTOs;
+using SilverModManager.Abstractions.GOG.Values;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Networking.GOG.DTOs;
+using SilverModManager.Networking.GOG.Exceptions;
+using SilverModManager.Abstractions.Secrets;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.IO;
 using Polly;
 using Polly.Retry;
 
-namespace NexusMods.Networking.GOG;
+namespace SilverModManager.Networking.GOG;
 
 internal class Client : IClient
 {

@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Cleanup;
+namespace SilverModManager.Games.FromSoft.Cleanup;
 
 /// <summary>What an entry in the game folder is. A link is listed as itself and never followed.</summary>
 public enum InventoryKind

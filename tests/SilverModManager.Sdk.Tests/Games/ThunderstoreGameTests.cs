@@ -2,11 +2,11 @@ using System.Collections.Immutable;
 using DynamicData.Kernel;
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Sdk.Tests.Games;
+namespace SilverModManager.Sdk.Tests.Games;
 
 public class ThunderstoreGameTests
 {

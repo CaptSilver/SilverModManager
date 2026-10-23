@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.CollectionMenuItem;
+namespace SilverModManager.App.UI.Controls.CollectionMenuItem;
 
 public partial class CollectionMenuItem : ReactiveUserControl<ICollectionMenuItemViewModel>
 {

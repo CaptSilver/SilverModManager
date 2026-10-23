@@ -2,18 +2,18 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Sdk.Settings;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Cli;
-using NexusMods.Wabbajack.Diagnostics;
-using NexusMods.Wabbajack.Install;
-using NexusMods.Wabbajack.Library;
-using NexusMods.Wabbajack.Models;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Cli;
+using SilverModManager.Wabbajack.Diagnostics;
+using SilverModManager.Wabbajack.Install;
+using SilverModManager.Wabbajack.Library;
+using SilverModManager.Wabbajack.Models;
 
-namespace NexusMods.Wabbajack;
+namespace SilverModManager.Wabbajack;
 
 [PublicAPI]
 public static class Services

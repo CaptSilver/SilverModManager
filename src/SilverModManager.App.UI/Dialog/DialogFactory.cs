@@ -1,8 +1,8 @@
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Dialog;
 
-namespace NexusMods.App.UI.Dialog;
+namespace SilverModManager.App.UI.Dialog;
 
 /// <summary>
 /// A factory class for creating various types of dialogs.

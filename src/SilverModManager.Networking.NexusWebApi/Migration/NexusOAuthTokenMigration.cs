@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.NexusWebApi.Auth;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.NexusWebApi.Auth;
 
-namespace NexusMods.Networking.NexusWebApi.Migration;
+namespace SilverModManager.Networking.NexusWebApi.Migration;
 
 /// <summary>
 /// Moves the OAuth token an older version kept in the database into the secret store, then excises the row.

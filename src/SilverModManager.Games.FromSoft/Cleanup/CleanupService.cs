@@ -1,24 +1,24 @@
 using System.Collections.Immutable;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Settings;
-using NexusMods.Sdk.Steam;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Sdk.Steam;
 
-namespace NexusMods.Games.FromSoft.Cleanup;
+namespace SilverModManager.Games.FromSoft.Cleanup;
 
 /// <param name="Done">The steps that ran, in order.</param>
 /// <param name="Failure">Why the cleanup stopped, or null when every step ran.</param>

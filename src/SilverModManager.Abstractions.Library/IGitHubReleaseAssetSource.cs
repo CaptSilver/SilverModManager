@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Abstractions.Library;
+namespace SilverModManager.Abstractions.Library;
 
 /// <summary>
 /// Adds an asset of a GitHub release to the library, verified. It exists so a game project can ask for a release

@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.Jobs;
+namespace SilverModManager.Sdk.Jobs;
 
 /// <summary>
 /// Marker interface for public job state data containers

@@ -4,11 +4,11 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactiveUi="http://reactiveui.net"
-    xmlns:ui="clr-namespace:NexusMods.Games.FOMOD.UI"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-    xmlns:resources="clr-namespace:NexusMods.Games.FOMOD.UI.Resources"
+    xmlns:ui="clr-namespace:SilverModManager.Games.FOMOD.UI"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+    xmlns:resources="clr-namespace:SilverModManager.Games.FOMOD.UI.Resources"
     mc:Ignorable="d" d:DesignWidth="1232" d:DesignHeight="672"
-    x:Class="NexusMods.Games.FOMOD.UI.GuidedInstallerStepView">
+    x:Class="SilverModManager.Games.FOMOD.UI.GuidedInstallerStepView">
 
     <Design.DataContext>
         <ui:GuidedInstallerStepDesignViewModel />

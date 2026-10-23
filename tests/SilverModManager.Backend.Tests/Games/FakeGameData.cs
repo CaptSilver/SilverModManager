@@ -1,11 +1,11 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Backend.Tests.Games;
+namespace SilverModManager.Backend.Tests.Games;
 
 /// <summary>
 /// A game that is only an id. A substitute can't carry a <see cref="GameId"/>: it builds the default

@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace NexusMods.App.UI.Controls.CollectionMenuItem;
+namespace SilverModManager.App.UI.Controls.CollectionMenuItem;
 
 public partial class CollectionMenuItemDesignPreview : UserControl
 {

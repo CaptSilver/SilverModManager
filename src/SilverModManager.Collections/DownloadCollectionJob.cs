@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Collections;
+namespace SilverModManager.Collections;
 
 public class DownloadCollectionJob : IJobDefinitionWithStart<DownloadCollectionJob, R3.Unit>
 {

@@ -1,8 +1,8 @@
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.Wabbajack.Acquire;
+namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>Where an archive of a modlist stands against the library and the game folder.</summary>
 public enum ArchiveState

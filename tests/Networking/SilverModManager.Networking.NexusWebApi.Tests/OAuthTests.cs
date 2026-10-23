@@ -2,15 +2,15 @@ using System.Net;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Networking.NexusWebApi.Auth;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Networking.NexusWebApi.Auth;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 public class OAuthTests
 {

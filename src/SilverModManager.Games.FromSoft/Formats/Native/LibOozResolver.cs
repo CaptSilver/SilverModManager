@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-namespace NexusMods.Games.FromSoft.Formats.Native;
+namespace SilverModManager.Games.FromSoft.Formats.Native;
 
 /// <summary>
 /// Finds the bundled libooz.so for <see cref="LibOoz"/>. The runtime's default probing does not look in
@@ -13,7 +13,7 @@ internal static class LibOozResolver
 
     internal const string NotFoundMessage =
         "libooz.so was not found next to the FromSoft assembly (runtimes/linux-x64/native) or on the library path. " +
-        "It is built from extern/ooz by scripts/build-ooz.sh and committed under src/NexusMods.Games.FromSoft/runtimes/linux-x64/native.";
+        "It is built from extern/ooz by scripts/build-ooz.sh and committed under src/SilverModManager.Games.FromSoft/runtimes/linux-x64/native.";
 
     private static readonly Lazy<bool> Installed = new(() =>
     {

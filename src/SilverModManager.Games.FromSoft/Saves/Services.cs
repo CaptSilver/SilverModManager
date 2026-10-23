@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace NexusMods.Games.FromSoft.Saves;
+namespace SilverModManager.Games.FromSoft.Saves;
 
 public static class Services
 {

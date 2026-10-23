@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Ids;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Ids;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [JsonName("SilverModManager.App.UI.WorkspaceSystem.LoadoutContext")]
 public record LoadoutContext : IWorkspaceContext

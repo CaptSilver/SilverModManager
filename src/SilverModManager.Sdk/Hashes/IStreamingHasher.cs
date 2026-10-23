@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Hashes;
+namespace SilverModManager.Sdk.Hashes;
 
 /// <summary>
 /// Represents a streaming hash algorithm.

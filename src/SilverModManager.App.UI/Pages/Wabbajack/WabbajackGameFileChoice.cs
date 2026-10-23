@@ -2,7 +2,7 @@ using NexusMods.Paths;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Pages.Wabbajack;
+namespace SilverModManager.App.UI.Pages.Wabbajack;
 
 /// <summary>A file of the game folder the list would replace, and whether the user wants to keep their own copy.</summary>
 public class WabbajackGameFileChoice(RelativePath path) : ReactiveObject

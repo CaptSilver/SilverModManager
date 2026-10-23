@@ -5,12 +5,12 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactive="http://reactiveui.net"
-    xmlns:local="clr-namespace:NexusMods.App.UI.Controls.MarkdownRenderer"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Controls.MarkdownRenderer"
     xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
     xmlns:ctxt="clr-namespace:ColorTextBlock.Avalonia;assembly=ColorTextBlock.Avalonia"
     xmlns:controls="clr-namespace:Markdown.Avalonia.Controls;assembly=Markdown.Avalonia"
     mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
-    x:Class="NexusMods.App.UI.Controls.MarkdownRenderer.MarkdownRendererView">
+    x:Class="SilverModManager.App.UI.Controls.MarkdownRenderer.MarkdownRendererView">
 
     <Design.DataContext>
         <local:MarkdownRendererViewModel Contents="{x:Static local:MarkdownRendererViewModel.DebugText}"/>

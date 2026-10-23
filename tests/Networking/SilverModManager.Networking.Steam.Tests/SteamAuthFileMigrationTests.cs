@@ -1,14 +1,14 @@
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Networking.Steam.DTOs;
-using NexusMods.Networking.Steam.Migration;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Networking.Steam.DTOs;
+using SilverModManager.Networking.Steam.Migration;
 using NexusMods.Paths;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 using Xunit;
 
-namespace NexusMods.Networking.Steam.Tests;
+namespace SilverModManager.Networking.Steam.Tests;
 
 public class SteamAuthFileMigrationTests
 {

@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Networking.NexusWebApi.Auth;
+using SilverModManager.Networking.NexusWebApi.Auth;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 public class NexusAuthSettingsTests
 {

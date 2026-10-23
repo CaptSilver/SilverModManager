@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Overlay;
+namespace SilverModManager.Games.FromSoft.Overlay;
 
 /// <summary>What a modded session may leave in the overlay's upper folder without the audit flagging it.</summary>
 /// <param name="Folders">Folders, with a trailing slash, whose whole content is expected. They belong to a game and its mods, so the default has none.</param>

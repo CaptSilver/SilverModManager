@@ -1,13 +1,13 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Collections;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Collections;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Collections;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class CollectionTests(ITestOutputHelper helper) : ANexusCollectionTest<CollectionTests>(helper)
 {

@@ -1,22 +1,22 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Installers;
-using NexusMods.Games.FromSoft.Overlay;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Installers;
+using SilverModManager.Games.FromSoft.Overlay;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Settings;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using NSubstitute;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 /// <summary>
 /// Elden Ring with a real launch session around fakes: bwrap, the sandbox probe, the user ids and the game process

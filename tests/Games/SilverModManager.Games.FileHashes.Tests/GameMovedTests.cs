@@ -1,17 +1,17 @@
 using System.Collections.Immutable;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Games.FileHashes.Emitters;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Games.FileHashes.Emitters;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 /// <summary>
 /// What happens to the file hash data and the Health Check when a game's install folder changed.

@@ -1,12 +1,12 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Abstractions.Games;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Platform.Proton.Doctor;
+namespace SilverModManager.Platform.Proton.Doctor;
 
 /// <summary>
 /// The game installations that have a visible loadout.

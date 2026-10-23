@@ -1,9 +1,9 @@
 using System.Reactive;
 using Avalonia.Media;
-using NexusMods.App.UI.Controls.LoadoutBadge;
+using SilverModManager.App.UI.Controls.LoadoutBadge;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Spine.Buttons.Image;
+namespace SilverModManager.App.UI.Controls.Spine.Buttons.Image;
 
 public interface IImageButtonViewModel : ISpineItemViewModel
 {

@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Games.RedEngine.Cyberpunk2077.Models;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077.Models;
 
 /// <summary>
 /// Represents the RedMod load order

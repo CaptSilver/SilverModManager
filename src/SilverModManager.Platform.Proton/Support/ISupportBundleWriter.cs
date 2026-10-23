@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Platform.Proton.Support;
+namespace SilverModManager.Platform.Proton.Support;
 
 /// <summary>
 /// Collects what is needed to diagnose a problem report into one file the user can attach.

@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using Avalonia;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 internal static class MathUtils
 {

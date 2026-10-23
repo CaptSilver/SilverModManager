@@ -1,9 +1,9 @@
 using System.Collections.ObjectModel;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.UI.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Pages.Sorting;
+namespace SilverModManager.App.UI.Pages.Sorting;
 
 public interface ISortingSelectionViewModel : IViewModelInterface
 {

@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 
-namespace NexusMods.Networking.GitHub.DTOs;
+namespace SilverModManager.Networking.GitHub.DTOs;
 
 /// <summary>
 /// Release.

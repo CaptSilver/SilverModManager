@@ -1,4 +1,4 @@
-@namespace NexusMods.MnemonicDB.SourceGenerator
+@namespace SilverModManager.MnemonicDB.SourceGenerator
 @classname AmbientSqlTemplate
 @methodname RenderSqlFragment
 @model AmbientSqlModel

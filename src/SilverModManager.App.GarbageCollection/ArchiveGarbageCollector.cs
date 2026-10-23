@@ -1,13 +1,13 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using NexusMods.App.GarbageCollection.Errors;
-using NexusMods.App.GarbageCollection.Interfaces;
-using NexusMods.App.GarbageCollection.Structs;
-using NexusMods.App.GarbageCollection.Utilities;
+using SilverModManager.App.GarbageCollection.Errors;
+using SilverModManager.App.GarbageCollection.Interfaces;
+using SilverModManager.App.GarbageCollection.Structs;
+using SilverModManager.App.GarbageCollection.Utilities;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-namespace NexusMods.App.GarbageCollection;
+namespace SilverModManager.App.GarbageCollection;
 
 /// <summary>
 ///     This is the main entry point into the Garbage Collection mechanism.

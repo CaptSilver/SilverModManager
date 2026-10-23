@@ -1,11 +1,11 @@
 ﻿using System;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.DatomComparators;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Storage.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.DatomComparators;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Storage.Abstractions.ElementComparers;
 using NexusMods.Paths;
 
-namespace NexusMods.MnemonicDB.Storage.Abstractions;
+namespace SilverModManager.MnemonicDB.Storage.Abstractions;
 
 /// <summary>
 /// A store backend is the backing KV store of a datoms store. It is responsible for

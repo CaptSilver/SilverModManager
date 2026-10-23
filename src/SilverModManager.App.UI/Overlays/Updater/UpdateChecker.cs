@@ -1,14 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.App.UI.Settings;
-using NexusMods.Networking.GitHub;
-using NexusMods.Networking.GitHub.DTOs;
+using SilverModManager.App.UI.Settings;
+using SilverModManager.Networking.GitHub;
+using SilverModManager.Networking.GitHub.DTOs;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.App.UI.Overlays.Updater;
+namespace SilverModManager.App.UI.Overlays.Updater;
 
 public class UpdateChecker
 {

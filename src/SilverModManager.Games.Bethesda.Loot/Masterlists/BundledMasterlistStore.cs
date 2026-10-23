@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 
-namespace NexusMods.Games.Bethesda.Loot.Masterlists;
+namespace SilverModManager.Games.Bethesda.Loot.Masterlists;
 
 /// <summary>
 /// Serves the masterlists embedded in this assembly, which tools/loot-masterlists/update.sh

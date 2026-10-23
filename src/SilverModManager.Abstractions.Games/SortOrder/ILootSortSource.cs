@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// A sort order variety that can be re-ordered by LOOT's masterlist rules on request.

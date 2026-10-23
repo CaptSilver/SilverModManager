@@ -1,9 +1,9 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Backend.Games.Locators;
+namespace SilverModManager.Backend.Games.Locators;
 
 /// <summary>
 /// The games a locator can match, by the id their store knows them under. Two games that claim one id (a user

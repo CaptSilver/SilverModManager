@@ -1,15 +1,15 @@
 using System.Collections.Immutable;
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.Larian.BaldursGate3;
-using NexusMods.Games.Larian.BaldursGate3.GameInstalled;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Larian.BaldursGate3;
+using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3.GameInstalled;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3.GameInstalled;
 
 public sealed class Bg3InGameModRecognizerTests : IDisposable
 {

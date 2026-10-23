@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using StrawberryShake;
 
-namespace NexusMods.Networking.NexusWebApi.Errors;
+namespace SilverModManager.Networking.NexusWebApi.Errors;
 
 /// <summary>
 /// Error returned when the queried collection revision was discarded.

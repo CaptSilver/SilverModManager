@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Games.CreationEngine.SortOrder;
+using SilverModManager.Games.CreationEngine.SortOrder;
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.Games.CreationEngine.Tests.SortOrder;
+namespace SilverModManager.Games.CreationEngine.Tests.SortOrder;
 
 /// <summary>
 /// How the plugin variety merges the stored order with what the loadout offers, without a database.

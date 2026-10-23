@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Networking.NexusWebApi.Errors;
+namespace SilverModManager.Networking.NexusWebApi.Errors;
 
 /// <summary>
 /// Catch-all type for all unknown not explicitly typed errors.

@@ -5,16 +5,16 @@ using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Downloads;
+using SilverModManager.Abstractions.Downloads;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.Wabbajack.Acquire;
+namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>
 /// Downloads a file from the Wabbajack CDN: a gzipped definition names the file's parts, each part is fetched and

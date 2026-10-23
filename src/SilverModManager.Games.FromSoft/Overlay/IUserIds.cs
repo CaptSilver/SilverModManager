@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace NexusMods.Games.FromSoft.Overlay;
+namespace SilverModManager.Games.FromSoft.Overlay;
 
 /// <summary>The user and group the sandbox presents, so a test does not depend on who runs it.</summary>
 public interface IUserIds

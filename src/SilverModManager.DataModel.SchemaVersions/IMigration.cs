@@ -1,6 +1,6 @@
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.DataModel.SchemaVersions;
+namespace SilverModManager.DataModel.SchemaVersions;
 
 /// <summary>
 /// A definition of a single data migration

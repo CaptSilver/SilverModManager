@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Wabbajack;
+namespace SilverModManager.Wabbajack;
 
 /// <summary>
 /// The games a modlist can be built for, by the name Wabbajack's <c>Game</c> enum gives them (the modlist's

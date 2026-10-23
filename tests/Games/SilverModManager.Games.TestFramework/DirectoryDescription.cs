@@ -1,9 +1,9 @@
 using System.Text;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 /// <summary>
 /// Renders a directory tree as text so a test can pin exactly what is on disk.

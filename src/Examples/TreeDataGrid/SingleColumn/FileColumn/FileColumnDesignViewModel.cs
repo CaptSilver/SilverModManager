@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using JetBrains.Annotations;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 
 namespace Examples.TreeDataGrid.SingleColumn.FileColumn;
 

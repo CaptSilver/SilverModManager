@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Abstractions.Diagnostics.References;
+namespace SilverModManager.Abstractions.Diagnostics.References;
 
 /// <summary>
 /// Extension methods for creating <see cref="IDataReference"/> implementation instances.

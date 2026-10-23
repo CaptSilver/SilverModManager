@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>
 /// Reads single files out of a game's packed archives. Read-only: nothing is written into the game folder, and the

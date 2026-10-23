@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.LoadOrder.Tests;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.PluginLists;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder.Tests;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.PluginLists;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Tests;
+namespace SilverModManager.Games.CreationEngine.Tests;
 
 /// <summary>The per-title facts the load order rules read: header layout, list mechanism, hardcoded plugins and flag rules.</summary>
 public class PluginRulesTests(IServiceProvider serviceProvider)

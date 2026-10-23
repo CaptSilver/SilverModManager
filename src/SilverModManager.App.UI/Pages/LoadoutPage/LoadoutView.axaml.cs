@@ -5,17 +5,17 @@ using DynamicData.Binding;
 using Humanizer;
 using Humanizer.Localisation;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Resources;
-using NexusMods.Collections;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.Collections;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.LoadoutPage;
+namespace SilverModManager.App.UI.Pages.LoadoutPage;
 
 [UsedImplicitly]
 public partial class LoadoutView : R3UserControl<ILoadoutViewModel>

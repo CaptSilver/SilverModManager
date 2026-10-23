@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.CreationEngine.Tests.Fallout4VR;
+namespace SilverModManager.Games.CreationEngine.Tests.Fallout4VR;
 
 /// <summary>Fallout 4 and Fallout 4 VR are two games on one Nexus id: each install keeps its own game id and folder.</summary>
 public class Fallout4SharedNexusIdTests(ITestOutputHelper helper)

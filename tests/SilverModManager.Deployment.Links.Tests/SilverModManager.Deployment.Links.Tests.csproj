@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <XunitStartupAssembly>NexusMods.Deployment.Links.Tests</XunitStartupAssembly>
+    <XunitStartupAssembly>SilverModManager.Deployment.Links.Tests</XunitStartupAssembly>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,8 +9,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\NexusMods.Deployment.Links\NexusMods.Deployment.Links.csproj" />
-    <ProjectReference Include="..\Games\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
+    <ProjectReference Include="..\..\src\SilverModManager.Deployment.Links\SilverModManager.Deployment.Links.csproj" />
+    <ProjectReference Include="..\Games\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
   </ItemGroup>
 
 </Project>

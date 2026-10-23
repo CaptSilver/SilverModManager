@@ -2,16 +2,16 @@
     d:DesignHeight="150"
     d:DesignWidth="150"
     mc:Ignorable="d"
-    x:Class="NexusMods.App.UI.Controls.Spine.Buttons.Image.ImageButton"
+    x:Class="SilverModManager.App.UI.Controls.Spine.Buttons.Image.ImageButton"
     x:TypeArguments="buttons:IImageButtonViewModel"
     xmlns="https://github.com/avaloniaui"
-    xmlns:buttons="clr-namespace:NexusMods.App.UI.Controls.Spine.Buttons.Image"
+    xmlns:buttons="clr-namespace:SilverModManager.App.UI.Controls.Spine.Buttons.Image"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactiveUi="http://reactiveui.net"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-    xmlns:loadoutBadge="clr-namespace:NexusMods.App.UI.Controls.LoadoutBadge">
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+    xmlns:loadoutBadge="clr-namespace:SilverModManager.App.UI.Controls.LoadoutBadge">
     <Design.DataContext>
         <buttons:ImageButtonDesignViewModel />
     </Design.DataContext>

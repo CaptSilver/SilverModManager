@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using NexusMods.Paths;
 
-namespace NexusMods.MnemonicDB.Caching;
+namespace SilverModManager.MnemonicDB.Caching;
 
 /// <summary>
 /// A cache strategy for a cache of index segments, defines the max size of the cache and how to get the bytes for a key.

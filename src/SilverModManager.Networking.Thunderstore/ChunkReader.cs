@@ -1,9 +1,9 @@
 using System.IO.Compression;
 using System.Text.Json;
-using NexusMods.Networking.Thunderstore.DTOs;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Networking.Thunderstore.DTOs;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Networking.Thunderstore;
+namespace SilverModManager.Networking.Thunderstore;
 
 /// <summary>
 /// Reads Thunderstore's content-addressed listing blobs. Their body is gzip without a

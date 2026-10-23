@@ -3,7 +3,7 @@
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.MnemonicDB.Abstractions\NexusMods.MnemonicDB.Abstractions.csproj" />
+      <ProjectReference Include="..\SilverModManager.MnemonicDB.Abstractions\SilverModManager.MnemonicDB.Abstractions.csproj" />
     </ItemGroup>
     
 </Project>

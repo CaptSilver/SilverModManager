@@ -1,17 +1,17 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.CreationEngine.Emitters;
-using NexusMods.Games.CreationEngine.Installers;
-using NexusMods.Games.FOMOD;
-using NexusMods.Games.Generic.Diagnostics;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.CreationEngine.Emitters;
+using SilverModManager.Games.CreationEngine.Installers;
+using SilverModManager.Games.FOMOD;
+using SilverModManager.Games.Generic.Diagnostics;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests;
+namespace SilverModManager.Games.CreationEngine.Tests;
 
 /// <summary>
 /// What Skyrim SE and Fallout 4 are made of: the order of their emitters and installers, what their

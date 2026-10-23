@@ -2,9 +2,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:collectionMenuItem="clr-namespace:NexusMods.App.UI.Controls.CollectionMenuItem"
+             xmlns:collectionMenuItem="clr-namespace:SilverModManager.App.UI.Controls.CollectionMenuItem"
              mc:Ignorable="d" d:DesignWidth="250" d:DesignHeight="200"
-             x:Class="NexusMods.App.UI.Controls.CollectionMenuItem.CollectionMenuItemDesignPreview">
+             x:Class="SilverModManager.App.UI.Controls.CollectionMenuItem.CollectionMenuItemDesignPreview">
     
     <StackPanel Spacing="2" Margin="8">
         <TextBlock Text="CollectionMenuItem Design Preview" FontWeight="Bold" Margin="0,0,0,8" />

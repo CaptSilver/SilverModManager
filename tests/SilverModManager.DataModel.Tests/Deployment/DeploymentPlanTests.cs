@@ -1,10 +1,10 @@
 using FluentAssertions;
 using System.Collections.Immutable;
-using NexusMods.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Deployment;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.DataModel.Tests.Deployment;
+namespace SilverModManager.DataModel.Tests.Deployment;
 
 public class DeploymentPlanTests
 {

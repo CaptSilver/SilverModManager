@@ -2,9 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 /// <summary>
 /// A tool runner that records what it was asked to run instead of starting a program, so no test spawns

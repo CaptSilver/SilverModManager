@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.HyperDuck.Adaptor.Impls.ValueAdaptor;
 using NexusMods.HyperDuck.BindingConverters;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Abstractions.Loadouts;
+namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 ///     Adds games related serialization services.

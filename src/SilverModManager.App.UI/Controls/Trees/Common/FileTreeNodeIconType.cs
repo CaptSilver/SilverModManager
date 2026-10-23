@@ -1,11 +1,11 @@
 using System.Runtime.CompilerServices;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Icons;
 using NexusMods.Paths;
 using NexusMods.Paths.Extensions;
 using NexusMods.Paths.Utilities;
 using NexusMods.Paths.Utilities.Enums;
 
-namespace NexusMods.App.UI.Controls.Trees.Common;
+namespace SilverModManager.App.UI.Controls.Trees.Common;
 
 public enum FileTreeNodeIconType
 {

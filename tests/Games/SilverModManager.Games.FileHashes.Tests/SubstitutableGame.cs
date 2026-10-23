@@ -1,15 +1,15 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 /// <summary>
 /// A game to substitute with NSubstitute. <see cref="GameId"/> cannot be configured on a substitute of

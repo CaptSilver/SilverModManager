@@ -1,14 +1,14 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Deployment.Vfs.Tests;
+namespace SilverModManager.Deployment.Vfs.Tests;
 
 /// <summary>
 /// The fingerprint-to-hash cache over the real in-memory database: a hit needs every field of the

@@ -1,17 +1,17 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Bethesda.Loot.Database;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Games.Bethesda.Loot.Sorting;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.SortOrder;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Bethesda.Loot.Database;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.Bethesda.Loot.Sorting;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.SortOrder;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
-using LoadoutSortOrder = NexusMods.Abstractions.Loadouts.SortOrder;
+using SilverModManager.Sdk.Loadouts;
+using LoadoutSortOrder = SilverModManager.Abstractions.Loadouts.SortOrder;
 
-namespace NexusMods.Games.CreationEngine.Loot;
+namespace SilverModManager.Games.CreationEngine.Loot;
 
 /// <summary>
 /// Sorts a loadout's plugin order with the LOOT port and stores the result. The masterlist is the store's current

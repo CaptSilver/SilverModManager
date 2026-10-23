@@ -1,13 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.GOG;
-using NexusMods.Abstractions.GOG.Values;
-using NexusMods.Networking.GOG.CLI;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Networking.GOG.Migration;
-using NexusMods.Networking.GOG.Models.Legacy;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.GOG;
+using SilverModManager.Abstractions.GOG.Values;
+using SilverModManager.Networking.GOG.CLI;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Networking.GOG.Migration;
+using SilverModManager.Networking.GOG.Models.Legacy;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Networking.GOG;
+namespace SilverModManager.Networking.GOG;
 
 public static class Services
 {

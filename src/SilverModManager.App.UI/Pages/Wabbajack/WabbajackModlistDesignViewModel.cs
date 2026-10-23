@@ -1,11 +1,11 @@
 using System.Reactive;
 using Avalonia.Media.Imaging;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Library;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Library;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Wabbajack;
+namespace SilverModManager.App.UI.Pages.Wabbajack;
 
 public class WabbajackModlistDesignViewModel : APageViewModel<IWabbajackModlistViewModel>, IWabbajackModlistViewModel
 {

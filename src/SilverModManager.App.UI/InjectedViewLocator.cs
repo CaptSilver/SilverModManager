@@ -2,10 +2,10 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 public class InjectedViewLocator : IViewLocator
 {

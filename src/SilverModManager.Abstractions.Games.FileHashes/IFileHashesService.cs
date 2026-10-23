@@ -1,13 +1,13 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Abstractions.Games.FileHashes;
+namespace SilverModManager.Abstractions.Games.FileHashes;
 
 /// <summary>
 /// Interface for the file hashes service, which provides a way to download and update the file hashes database

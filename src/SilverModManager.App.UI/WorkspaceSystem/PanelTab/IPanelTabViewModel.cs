@@ -1,8 +1,8 @@
 using System.Reactive;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public interface IPanelTabViewModel : IViewModelInterface
 {

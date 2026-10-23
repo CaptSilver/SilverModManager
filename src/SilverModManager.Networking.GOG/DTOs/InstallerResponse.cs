@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NexusMods.Networking.GOG.DTOs;
+namespace SilverModManager.Networking.GOG.DTOs;
 
 public record InstallerResponse(
     [property: JsonPropertyName("downlink")] string DownloadLink,

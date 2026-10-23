@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <XunitStartupAssembly>NexusMods.Games.Bethesda.LoadOrder.Tests</XunitStartupAssembly>
+        <XunitStartupAssembly>SilverModManager.Games.Bethesda.LoadOrder.Tests</XunitStartupAssembly>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -13,6 +13,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\src\NexusMods.Games.Bethesda.LoadOrder\NexusMods.Games.Bethesda.LoadOrder.csproj" />
+        <ProjectReference Include="..\..\..\src\SilverModManager.Games.Bethesda.LoadOrder\SilverModManager.Games.Bethesda.LoadOrder.csproj" />
     </ItemGroup>
 </Project>

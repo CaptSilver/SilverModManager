@@ -1,6 +1,6 @@
-using NexusMods.Games.FromSoft.Formats.Native;
+using SilverModManager.Games.FromSoft.Formats.Native;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>The Kraken decoder refused a stream, or produced something other than the size it was asked for.</summary>
 public class KrakenException(string message) : Exception(message);

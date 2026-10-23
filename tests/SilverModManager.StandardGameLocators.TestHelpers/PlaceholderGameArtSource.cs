@@ -1,10 +1,10 @@
 using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
-namespace NexusMods.StandardGameLocators.TestHelpers;
+namespace SilverModManager.StandardGameLocators.TestHelpers;
 
 /// <summary>
 /// Cover art for a test host: the same picture for every game, from the test helpers' own resources. The
@@ -14,7 +14,7 @@ namespace NexusMods.StandardGameLocators.TestHelpers;
 public sealed class PlaceholderGameArtSource : IGameArtSource
 {
     private static readonly EmbeddedResourceStreamFactory<StubbedGame> Picture =
-        new("NexusMods.StandardGameLocators.TestHelpers.Resources.question_mark_game.png");
+        new("SilverModManager.StandardGameLocators.TestHelpers.Resources.question_mark_game.png");
 
     public IStreamFactory Tile(ImmutableArray<uint> steamAppIds) => Picture;
 

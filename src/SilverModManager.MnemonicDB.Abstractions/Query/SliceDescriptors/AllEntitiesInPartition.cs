@@ -1,10 +1,10 @@
 using System;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 
-namespace NexusMods.MnemonicDB.Abstractions.Query.SliceDescriptors;
+namespace SilverModManager.MnemonicDB.Abstractions.Query.SliceDescriptors;
 
 /// <summary>
 /// A slice descriptor for all the entities in a partition via the EAVT Index.

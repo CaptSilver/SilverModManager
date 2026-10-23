@@ -2,7 +2,7 @@ using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Diff.ApplyDiff;
+namespace SilverModManager.App.UI.Pages.Diff.ApplyDiff;
 
 public partial class ApplyDiffView : ReactiveUserControl<IApplyDiffViewModel>
 {

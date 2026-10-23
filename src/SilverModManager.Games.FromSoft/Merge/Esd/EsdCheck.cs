@@ -1,7 +1,7 @@
-using NexusMods.Games.FromSoft.Formats;
-using EsdFormat = NexusMods.Games.FromSoft.Formats.Esd;
+using SilverModManager.Games.FromSoft.Formats;
+using EsdFormat = SilverModManager.Games.FromSoft.Formats.Esd;
 
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>
 /// Structural invariants for a merged state-machine graph: the ESD analogue of checking that every authored byte

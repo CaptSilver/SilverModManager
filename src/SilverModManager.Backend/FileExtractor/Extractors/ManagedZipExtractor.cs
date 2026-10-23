@@ -4,12 +4,12 @@ using System.Runtime.InteropServices;
 using System.Text;
 using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.FileExtractor;
-using NexusMods.FileExtractor;
+using SilverModManager.Abstractions.FileExtractor;
+using SilverModManager.FileExtractor;
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Backend.FileExtractor.Extractors;
+namespace SilverModManager.Backend.FileExtractor.Extractors;
 
 internal class ManagedZipExtractor : IExtractor
 {

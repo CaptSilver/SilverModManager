@@ -1,4 +1,4 @@
-namespace NexusMods.Networking.Thunderstore.Tests.Fixtures;
+namespace SilverModManager.Networking.Thunderstore.Tests.Fixtures;
 
 /// <summary>
 /// Synthetic Thunderstore payloads shaped like the live API: the v1 list and the chunks carry

@@ -2,14 +2,14 @@ using System.Text.Json;
 using DynamicData.Kernel;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Settings;
 using R3;
 
-namespace NexusMods.Networking.NexusWebApi.Auth;
+namespace SilverModManager.Networking.NexusWebApi.Auth;
 
 /// <summary>
 /// helper class to deal with OAuth2 authentication messages

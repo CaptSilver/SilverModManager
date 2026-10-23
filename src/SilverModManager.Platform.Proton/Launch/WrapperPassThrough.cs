@@ -1,11 +1,11 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
+using SilverModManager.Abstractions.Games;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// Recognises a Steam launch option that fires while the window is already playing the same game. Steam

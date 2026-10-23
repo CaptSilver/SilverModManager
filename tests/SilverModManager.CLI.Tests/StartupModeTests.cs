@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.App;
+using SilverModManager.App;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 public class StartupModeTests
 {

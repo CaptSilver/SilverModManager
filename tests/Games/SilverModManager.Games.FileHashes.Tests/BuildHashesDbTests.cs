@@ -1,15 +1,15 @@
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Games.FileHashes.VerbImpls;
+using SilverModManager.Games.FileHashes.VerbImpls;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.ProxyConsole;
 using NSubstitute;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 public sealed class BuildHashesDbTests : IAsyncLifetime
 {

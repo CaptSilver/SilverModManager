@@ -1,12 +1,12 @@
-using NexusMods.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 /// <summary>
 /// <c>file_hashes.loadout_files</c> as the synchronizer calls it, with only the main store's handle,

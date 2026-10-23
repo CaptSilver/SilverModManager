@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.Unreal;
+namespace SilverModManager.Games.Unreal;
 
 /// <summary>
 /// Where the mods of an Unreal Engine 4/5 game go. A game composes one with its own project folder and asks

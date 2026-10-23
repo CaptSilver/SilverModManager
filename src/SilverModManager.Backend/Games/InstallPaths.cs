@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Backend.Games;
+namespace SilverModManager.Backend.Games;
 
 /// <summary>
 /// Compares install folders as folders rather than as strings.

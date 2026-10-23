@@ -1,22 +1,22 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Backend;
-using NexusMods.CrossPlatform;
-using NexusMods.DataModel.GameInstalled;
-using NexusMods.Games.Generic;
-using NexusMods.Games.RedEngine;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Backend;
+using SilverModManager.CrossPlatform;
+using SilverModManager.DataModel.GameInstalled;
+using SilverModManager.Games.Generic;
+using SilverModManager.Games.RedEngine;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.DataModel.Tests.GameInstalled;
+namespace SilverModManager.DataModel.Tests.GameInstalled;
 
 public class GameInstalledGroupDisabledEmitterTests(ITestOutputHelper helper)
     : ALoadoutDiagnosticEmitterTest<GameInstalledGroupDisabledEmitterTests, Cyberpunk2077Game, GameInstalledGroupDisabledEmitter>(helper)

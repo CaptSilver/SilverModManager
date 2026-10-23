@@ -1,7 +1,7 @@
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Abstractions.Games.FileHashes.Models;
+namespace SilverModManager.Abstractions.Games.FileHashes.Models;
 
 /// <summary>
 /// A file in the game directory that a <see cref="LocalBaseline"/> found not to be vanilla.

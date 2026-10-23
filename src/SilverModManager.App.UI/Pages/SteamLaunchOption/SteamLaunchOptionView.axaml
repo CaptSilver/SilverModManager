@@ -5,11 +5,11 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactive="http://reactiveui.net"
-    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.SteamLaunchOption"
-    xmlns:base="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.Base"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.SteamLaunchOption"
+    xmlns:base="clr-namespace:SilverModManager.App.UI.Overlays.Generic.MessageBox.Base"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
     mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="400"
-    x:Class="NexusMods.App.UI.Pages.SteamLaunchOption.SteamLaunchOptionView">
+    x:Class="SilverModManager.App.UI.Pages.SteamLaunchOption.SteamLaunchOptionView">
 
     <Design.DataContext>
         <local:SteamLaunchOptionDesignViewModel />

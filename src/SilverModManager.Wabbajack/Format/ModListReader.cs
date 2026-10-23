@@ -1,7 +1,7 @@
 using System.Text.Json;
 using NexusMods.Paths;
 
-namespace NexusMods.Wabbajack.Format;
+namespace SilverModManager.Wabbajack.Format;
 
 /// <summary>
 /// Reads the <c>modlist</c> JSON of a <c>.wabbajack</c> file. The <c>$type</c> switches are written by hand because

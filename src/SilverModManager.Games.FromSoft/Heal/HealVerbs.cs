@@ -1,12 +1,12 @@
-using NexusMods.Abstractions.Cli;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Merge;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Merge;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Games.FromSoft.Heal;
+namespace SilverModManager.Games.FromSoft.Heal;
 
 /// <summary>
 /// The command line side of a game update. It is the one verb of the merge work that writes, and what it writes is the

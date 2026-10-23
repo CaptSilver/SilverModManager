@@ -1,9 +1,9 @@
 using System.Reactive;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Loadouts;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Thunderstore;
+namespace SilverModManager.App.UI.Pages.Thunderstore;
 
 /// <summary>
 /// Browses the Thunderstore community of the loadout's game: the cached package catalog, refreshed when it is

@@ -4,7 +4,7 @@ using System.Text;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
-namespace NexusMods.MnemonicDB.Abstractions.ElementComparers;
+namespace SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
 public static unsafe class Utf8Comparer
 {

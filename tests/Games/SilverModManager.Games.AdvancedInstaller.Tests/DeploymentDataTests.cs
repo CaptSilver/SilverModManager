@@ -1,10 +1,10 @@
 using FluentAssertions;
 
-using NexusMods.Games.AdvancedInstaller.Exceptions;
+using SilverModManager.Games.AdvancedInstaller.Exceptions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.AdvancedInstaller.Tests;
+namespace SilverModManager.Games.AdvancedInstaller.Tests;
 
 public class DeploymentDataTests
 {

@@ -1,1 +1,1 @@
-﻿namespace NexusMods.MnemonicDB.Storage.Abstractions;
+﻿namespace SilverModManager.MnemonicDB.Storage.Abstractions;

@@ -1,6 +1,6 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:extensions="clr-namespace:NexusMods.Themes.NexusFluentDark.Extensions">
+                    xmlns:extensions="clr-namespace:SilverModManager.Themes.NexusFluentDark.Extensions">
     <!-- Figma: https://www.figma.com/design/8pjtQeNggvVi7RWoLNGV80/%F0%9F%A7%B0-Nexus-Mods-Design-System?node-id=5364-21422&m=dev -->
 
     <!-- Drop Shadow XS -->

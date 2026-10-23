@@ -7,13 +7,13 @@ using Avalonia.Threading;
 using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.App.UI.Dialog;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Windows;
+namespace SilverModManager.App.UI.Windows;
 
 internal sealed class WindowManager : ReactiveObject, IWindowManager
 {

@@ -1,6 +1,6 @@
 using FluentAssertions;
 
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 /// <summary>
 /// Shared plumbing for tests that scan the source tree for lines that must not exist unless
@@ -19,9 +19,9 @@ internal static class RepoScanGuard
     /// </summary>
     private static readonly string[] VendoredFolders =
     [
-        "src/NexusMods.MnemonicDB/",
-        "src/NexusMods.MnemonicDB.Abstractions/",
-        "src/NexusMods.MnemonicDB.SourceGenerator/",
+        "src/SilverModManager.MnemonicDB/",
+        "src/SilverModManager.MnemonicDB.Abstractions/",
+        "src/SilverModManager.MnemonicDB.SourceGenerator/",
     ];
 
     public static string FindRepoRoot()

@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.SingleProcess;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.SingleProcess;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 public class RunHelpTests(IServiceProvider provider)
 {

@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Masterlists;
+namespace SilverModManager.Games.Bethesda.Loot.Masterlists;
 
 /// <summary>
 /// The text of a masterlist and of the shared prelude it is loaded with.

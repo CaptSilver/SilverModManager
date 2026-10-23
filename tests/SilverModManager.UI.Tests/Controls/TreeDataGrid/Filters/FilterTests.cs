@@ -1,16 +1,16 @@
 using FluentAssertions;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.Filters;
-using NexusMods.App.UI.Controls.TreeDataGrid.Filters;
-using NexusMods.App.UI.Pages.LibraryPage;
-using NexusMods.App.UI.Resources;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.NexusWebApi;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.Filters;
+using SilverModManager.App.UI.Controls.TreeDataGrid.Filters;
+using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.NexusWebApi;
 using NexusMods.Paths;
-using static NexusMods.App.UI.Controls.Filters.Filter;
+using static SilverModManager.App.UI.Controls.Filters.Filter;
 
-namespace NexusMods.UI.Tests.Controls.TreeDataGrid.Filters;
+namespace SilverModManager.UI.Tests.Controls.TreeDataGrid.Filters;
 
 public class FilterTests
 {

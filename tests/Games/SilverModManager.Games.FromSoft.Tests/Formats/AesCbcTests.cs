@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats;
+namespace SilverModManager.Games.FromSoft.Tests.Formats;
 
 public class AesCbcTests
 {

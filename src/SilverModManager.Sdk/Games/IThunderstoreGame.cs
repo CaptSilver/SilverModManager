@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// A game whose mods are published on Thunderstore. It lives in Sdk beside <see cref="IGameData"/> because

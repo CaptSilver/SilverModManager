@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Saves;
+namespace SilverModManager.Games.FromSoft.Saves;
 
 /// <summary>
 /// A save operation was refused before it changed anything. The message is written for the person using the page.

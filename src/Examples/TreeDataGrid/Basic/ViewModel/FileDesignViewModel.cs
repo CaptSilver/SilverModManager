@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 using ReactiveUI.Fody.Helpers;
 
 namespace Examples.TreeDataGrid.Basic.ViewModel;

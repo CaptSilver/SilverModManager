@@ -2,7 +2,7 @@ using FluentAssertions;
 using NexusMods.Paths;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Morrowind.OpenMw;
+namespace SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
 
 /// <summary>
 /// With OpenMW, <c>builtin.omwscripts</c> loads before anything the app orders. A config the user's openmw.cfg

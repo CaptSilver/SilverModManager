@@ -1,8 +1,8 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
 
-namespace NexusMods.Games.Larian.BaldursGate3.SortOrder;
+namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
 
 /// <summary>
 /// One pak on the Load Order page.

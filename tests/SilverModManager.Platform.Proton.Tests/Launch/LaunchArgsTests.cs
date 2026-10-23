@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Launch;
 
-namespace NexusMods.Platform.Proton.Tests.Launch;
+namespace SilverModManager.Platform.Proton.Tests.Launch;
 
 public class LaunchArgsTests
 {

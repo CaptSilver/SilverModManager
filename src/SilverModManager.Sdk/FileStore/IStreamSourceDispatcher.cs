@@ -1,6 +1,6 @@
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.Sdk.FileStore;
+namespace SilverModManager.Sdk.FileStore;
 
 public interface IStreamSourceDispatcher
 {

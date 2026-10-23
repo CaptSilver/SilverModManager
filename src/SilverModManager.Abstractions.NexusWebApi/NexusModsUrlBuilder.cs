@@ -1,9 +1,9 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Abstractions.NexusWebApi;
+namespace SilverModManager.Abstractions.NexusWebApi;
 
 /// Builds the URLs that point at Nexus Mods. Anything that exposes a Nexus Mods
 /// URL to the user should go through this class so the URL layout lives in one place.

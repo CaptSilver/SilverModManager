@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.App;
+using SilverModManager.App;
 using NexusMods.Paths;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 public class UpstreamDataTests
 {

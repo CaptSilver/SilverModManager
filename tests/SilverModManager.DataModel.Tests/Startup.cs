@@ -1,19 +1,19 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
-using NexusMods.Backend;
-using NexusMods.Games.RedEngine;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Backend;
+using SilverModManager.Games.RedEngine;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit.DependencyInjection.Logging;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public static class Startup
 {
@@ -31,7 +31,7 @@ public static class Startup
     public static IServiceCollection AddServices(IServiceCollection container)
     {
         const KnownPath baseKnownPath = KnownPath.EntryDirectory;
-        var baseDirectory = $"NexusMods.DataModel.Tests-{Guid.NewGuid()}";
+        var baseDirectory = $"SilverModManager.DataModel.Tests-{Guid.NewGuid()}";
 
         var prefix = FileSystem.Shared
             .GetKnownPath(baseKnownPath)

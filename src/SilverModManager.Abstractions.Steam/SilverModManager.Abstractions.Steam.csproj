@@ -7,6 +7,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+      <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
     </ItemGroup>
 </Project>

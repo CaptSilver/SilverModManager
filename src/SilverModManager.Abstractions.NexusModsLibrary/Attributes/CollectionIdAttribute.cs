@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
-namespace NexusMods.Abstractions.NexusModsLibrary.Attributes;
+namespace SilverModManager.Abstractions.NexusModsLibrary.Attributes;
 
 /// <summary>
 /// An attribute that holds a <see cref="CollectionId"/> value.

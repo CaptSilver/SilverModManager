@@ -1,7 +1,7 @@
 using NexusMods.Paths;
 using R3;
 
-namespace NexusMods.App.UI.Overlays;
+namespace SilverModManager.App.UI.Overlays;
 
 public class RemoveGameOverlayDesignViewModel : AOverlayViewModel<IRemoveGameOverlayViewModel, RemoveGameOverlayResult>, IRemoveGameOverlayViewModel
 {

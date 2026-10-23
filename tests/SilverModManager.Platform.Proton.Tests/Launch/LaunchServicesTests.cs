@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests.Launch;
+namespace SilverModManager.Platform.Proton.Tests.Launch;
 
 public class LaunchServicesTests
 {

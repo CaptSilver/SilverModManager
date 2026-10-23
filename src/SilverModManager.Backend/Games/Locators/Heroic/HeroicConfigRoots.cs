@@ -3,7 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 
-namespace NexusMods.Backend.Games.Locators;
+namespace SilverModManager.Backend.Games.Locators;
 
 /// <summary>
 /// One Heroic configuration folder: the native install's <c>$XDG_CONFIG_HOME/heroic</c> or the Flatpak's.

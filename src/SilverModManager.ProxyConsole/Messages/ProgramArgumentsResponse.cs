@@ -1,6 +1,6 @@
 ﻿using MemoryPack;
 
-namespace NexusMods.ProxyConsole.Messages;
+namespace SilverModManager.ProxyConsole.Messages;
 
 [MemoryPackable]
 public partial class ProgramArgumentsResponse : IMessage

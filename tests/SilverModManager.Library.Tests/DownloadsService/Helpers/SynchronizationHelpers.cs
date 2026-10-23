@@ -1,4 +1,4 @@
-namespace NexusMods.Library.Tests.DownloadsService.Helpers;
+namespace SilverModManager.Library.Tests.DownloadsService.Helpers;
 
 public static class SynchronizationHelpers
 {

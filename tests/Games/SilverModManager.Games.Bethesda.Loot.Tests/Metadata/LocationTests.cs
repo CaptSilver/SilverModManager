@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Metadata;
 
 // libloot's metadata/location.rs tests all go through YAML; these cover the model behaviour they rely on.
 public class LocationTests

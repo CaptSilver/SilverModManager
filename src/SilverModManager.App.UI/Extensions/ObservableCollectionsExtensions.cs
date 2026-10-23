@@ -3,7 +3,7 @@ using DynamicData.Kernel;
 using ObservableCollections;
 using R3;
 
-namespace NexusMods.App.UI.Extensions;
+namespace SilverModManager.App.UI.Extensions;
 
 public static class ObservableCollectionsExtensions
 {

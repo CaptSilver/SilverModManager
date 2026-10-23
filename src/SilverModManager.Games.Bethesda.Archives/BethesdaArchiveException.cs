@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// An archive is malformed, truncated, or of a kind this library does not read.

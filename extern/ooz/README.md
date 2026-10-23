@@ -44,7 +44,7 @@ If you are debugging a decode that dies after 262144 bytes, this is why.
 ## Build
 
 `scripts/build-ooz.sh` compiles `kraken_lib.cpp`, `bitknit.cpp` and `lzna.cpp` in a pinned
-container image and writes `src/NexusMods.Games.FromSoft/runtimes/linux-x64/native/libooz.so`.
+container image and writes `src/SilverModManager.Games.FromSoft/runtimes/linux-x64/native/libooz.so`.
 `libooz.so` is committed; rebuild it only when these sources change. The script's two checks
 (highest glibc symbol version, no libstdc++ dependency) must pass before the result is committed.
 

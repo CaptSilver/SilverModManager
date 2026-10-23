@@ -2,13 +2,13 @@ using System.Reactive.Linq;
 using DynamicData;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Me3;
+namespace SilverModManager.Games.FromSoft.Me3;
 
 /// <summary>
 /// Installs me3 into a loadout of a game that loads mods with me3, once an install leaves it with mods and without

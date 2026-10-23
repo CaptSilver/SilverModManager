@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Backend.FileExtractor;
+using SilverModManager.Backend.FileExtractor;
 
-namespace NexusMods.Backend.Tests.FileExtractor;
+namespace SilverModManager.Backend.Tests.FileExtractor;
 
 public class ArchiveEntryPlanTests
 {

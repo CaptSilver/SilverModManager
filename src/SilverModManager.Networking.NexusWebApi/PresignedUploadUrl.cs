@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 /// <summary>
 /// Presigned upload url.

@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
 using Avalonia.Media;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Sdk.Jobs;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 public interface IGuidedInstallerStepViewModel : IViewModelInterface
 {

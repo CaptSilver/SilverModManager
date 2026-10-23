@@ -1,11 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Steam;
-using NexusMods.Networking.Steam.DTOs;
-using NexusMods.Networking.Steam.Exceptions;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Networking.Steam.DTOs;
+using SilverModManager.Networking.Steam.Exceptions;
 using Xunit;
 
-namespace NexusMods.Networking.Steam.Tests;
+namespace SilverModManager.Networking.Steam.Tests;
 
 public class SteamLoginTests
 {

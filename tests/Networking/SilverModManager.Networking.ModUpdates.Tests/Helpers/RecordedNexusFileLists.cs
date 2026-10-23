@@ -1,6 +1,6 @@
-using NexusMods.Networking.ModUpdates;
+using SilverModManager.Networking.ModUpdates;
 
-namespace NexusMods.Networking.ModUpdates.Tests.Helpers;
+namespace SilverModManager.Networking.ModUpdates.Tests.Helpers;
 
 /// <summary>
 /// A file as listed on a Nexus mod page, with its page category.

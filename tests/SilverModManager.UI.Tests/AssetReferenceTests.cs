@@ -1,9 +1,9 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using FluentAssertions;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 /// <summary>
 /// Avalonia resolves <c>avares://</c> URIs when a control is first shown, not at build time, so a

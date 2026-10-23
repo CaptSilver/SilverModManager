@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.MnemonicDB.EventTypes;
+namespace SilverModManager.MnemonicDB.EventTypes;
 
 /// <summary>
 /// A new DB revision event

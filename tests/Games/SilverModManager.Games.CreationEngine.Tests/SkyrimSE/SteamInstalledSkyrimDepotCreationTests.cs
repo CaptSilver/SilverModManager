@@ -1,17 +1,17 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
-using NexusMods.Games.CreationEngine.Tests.Creations;
-using NexusMods.Games.TestFramework;
-using NexusMods.Games.TestFramework.Helpers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.Games.CreationEngine.Tests.Creations;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.TestFramework.Helpers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.SkyrimSE;
+namespace SilverModManager.Games.CreationEngine.Tests.SkyrimSE;
 
 /// <summary>
 /// A Creation whose plugin the store's depot also lists: the game rewrites it when it updates the Creation, so

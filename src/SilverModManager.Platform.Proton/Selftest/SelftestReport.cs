@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace NexusMods.Platform.Proton.Selftest;
+namespace SilverModManager.Platform.Proton.Selftest;
 
 /// <summary>How one selftest check ended.</summary>
 public enum SelftestStatus

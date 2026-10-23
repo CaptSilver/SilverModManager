@@ -1,7 +1,7 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 
-namespace NexusMods.MnemonicDB.Storage.RocksDbBackend
+namespace SilverModManager.MnemonicDB.Storage.RocksDbBackend
 {
     /// <summary>
     /// An enumerator that returns all datoms whose timestamp is less than or equal to a given transaction id.

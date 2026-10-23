@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.App.UI.Resources;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.App.UI.Resources;
 
-namespace NexusMods.App.UI.Pages.Sorting;
+namespace SilverModManager.App.UI.Pages.Sorting;
 
 /// <summary>
 /// Words the result of a LOOT sort for the panel under the Load Order page's toolbar.

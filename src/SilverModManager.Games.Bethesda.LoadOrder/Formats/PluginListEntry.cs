@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.LoadOrder.Formats;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Formats;
 
 /// <summary>
 /// One plugin in a plugin list file.

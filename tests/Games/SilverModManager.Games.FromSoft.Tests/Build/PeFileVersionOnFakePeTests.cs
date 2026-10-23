@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Sdk.Native;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Games.FromSoft.Tests.Build;
+namespace SilverModManager.Games.FromSoft.Tests.Build;
 
 public class PeFileVersionOnFakePeTests
 {

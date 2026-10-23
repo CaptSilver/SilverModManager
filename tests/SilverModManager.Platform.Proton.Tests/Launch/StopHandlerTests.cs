@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using FluentAssertions;
 
-namespace NexusMods.Platform.Proton.Tests.Launch;
+namespace SilverModManager.Platform.Proton.Tests.Launch;
 
 /// <summary>
 /// Signals only ever go to the silvermod-testhost helper, never to the xunit process.

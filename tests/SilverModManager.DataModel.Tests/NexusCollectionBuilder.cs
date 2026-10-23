@@ -1,22 +1,22 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Collections;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 /// <summary>
 /// Cyberpunk-backed test base that can add offline stand-ins for installed Nexus Mods

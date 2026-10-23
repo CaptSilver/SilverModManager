@@ -1,7 +1,7 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts.Deployment;
+namespace SilverModManager.Abstractions.Loadouts.Deployment;
 
 /// <summary>
 /// Reads and records which backend deploys each root of a game installation.

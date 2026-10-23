@@ -1,10 +1,10 @@
 using System.Collections.Immutable;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FileHashes;
+namespace SilverModManager.Games.FileHashes;
 
 /// <summary>
 /// Brings the local baseline of every managed game up to date after the app starts, because Steam

@@ -1,17 +1,17 @@
 using System.Collections.ObjectModel;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.LeftMenu.Items;
-using NexusMods.App.UI.Pages.MyGames;
-using NexusMods.App.UI.Pages.MyLoadouts;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.LeftMenu.Items;
+using SilverModManager.App.UI.Pages.MyGames;
+using SilverModManager.App.UI.Pages.MyLoadouts;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.LeftMenu.Home;
+namespace SilverModManager.App.UI.LeftMenu.Home;
 
 [UsedImplicitly]
 public class HomeLeftMenuViewModel : AViewModel<IHomeLeftMenuViewModel>, IHomeLeftMenuViewModel

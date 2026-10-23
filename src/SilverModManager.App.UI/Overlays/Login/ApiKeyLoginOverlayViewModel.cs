@@ -1,6 +1,6 @@
 using R3;
 
-namespace NexusMods.App.UI.Overlays.Login;
+namespace SilverModManager.App.UI.Overlays.Login;
 
 public class ApiKeyLoginOverlayViewModel : AOverlayViewModel<IApiKeyLoginOverlayViewModel, string>, IApiKeyLoginOverlayViewModel
 {

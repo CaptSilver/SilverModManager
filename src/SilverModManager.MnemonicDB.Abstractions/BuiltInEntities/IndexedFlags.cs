@@ -1,6 +1,6 @@
 using System;
 
-namespace NexusMods.MnemonicDB.Abstractions.BuiltInEntities;
+namespace SilverModManager.MnemonicDB.Abstractions.BuiltInEntities;
 
 /// <summary>
 /// The indexed flags for an attribute

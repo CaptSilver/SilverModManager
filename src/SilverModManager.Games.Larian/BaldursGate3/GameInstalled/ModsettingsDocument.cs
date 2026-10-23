@@ -1,8 +1,8 @@
 using System.Text;
 using System.Xml;
-using NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
+using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
 
-namespace NexusMods.Games.Larian.BaldursGate3.GameInstalled;
+namespace SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
 
 /// <summary>
 /// Everything `modsettings.lsx` says, in file order. <see cref="ModsettingsFileFormat"/> only keeps what the

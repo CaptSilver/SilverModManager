@@ -3,21 +3,21 @@ using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.DTOs;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.HttpDownloader;
-using NexusMods.Networking.NexusWebApi.Extensions;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.DTOs;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.HttpDownloader;
+using SilverModManager.Networking.NexusWebApi.Extensions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 /// <summary>
 /// Methods for connecting the Nexus Mods API with the Library.

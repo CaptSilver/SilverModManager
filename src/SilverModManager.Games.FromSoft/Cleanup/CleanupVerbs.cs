@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Platform.Proton.Doctor;
+using SilverModManager.Platform.Proton.Doctor;
 
-namespace NexusMods.Games.FromSoft.Cleanup;
+namespace SilverModManager.Games.FromSoft.Cleanup;
 
 internal static class CleanupVerbs
 {

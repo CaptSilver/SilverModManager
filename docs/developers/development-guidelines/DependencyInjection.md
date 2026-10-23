@@ -176,4 +176,4 @@ For example, to get all registered implementations of `IGame` (all games):
 var games = services.GetRequiredService<IEnumerable<IGame>>();
 ```
 
-[add-app]: https://github.com/Nexus-Mods/NexusMods.App/blob/71ed7f186c6a5fe0dd0e45e2cf24c7a624c1bed4/src/NexusMods.App/Services.cs#L51
+[add-app]: https://github.com/Nexus-Mods/NexusMods.App/blob/71ed7f186c6a5fe0dd0e45e2cf24c7a624c1bed4/src/SilverModManager.App/Services.cs#L51

@@ -2,12 +2,12 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.Labs.Panels;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Dialog.Enums;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Dialog.Enums;
 using ReactiveUI;
 using Avalonia.ReactiveUI;
 
-namespace NexusMods.App.UI.Dialog;
+namespace SilverModManager.App.UI.Dialog;
 
 public partial class DialogStandardContentView : ReactiveUserControl<IDialogStandardContentViewModel>
 {

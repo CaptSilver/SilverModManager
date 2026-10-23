@@ -1,6 +1,6 @@
-using NexusMods.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
 
-namespace NexusMods.Games.Larian.BaldursGate3.ModList;
+namespace SilverModManager.Games.Larian.BaldursGate3.ModList;
 
 /// <summary>
 /// A pak of the loadout and what the game's mod list would say about it.

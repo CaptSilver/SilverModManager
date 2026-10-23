@@ -1,4 +1,4 @@
-﻿namespace NexusMods.MnemonicDB.Abstractions;
+﻿namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// Represents an entity identifier, this is normally a TransparentValueObject

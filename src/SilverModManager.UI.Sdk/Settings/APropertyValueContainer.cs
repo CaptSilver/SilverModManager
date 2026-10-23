@@ -1,8 +1,8 @@
 using DynamicData.Binding;
 using JetBrains.Annotations;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.UI.Sdk.Settings;
+namespace SilverModManager.UI.Sdk.Settings;
 
 /// <summary>
 /// Base implementation of <see cref="IPropertyValueContainer"/>.

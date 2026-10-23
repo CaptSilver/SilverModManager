@@ -3,19 +3,19 @@ using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using FluentAssertions;
-using NexusMods.Abstractions.Games;
-using NexusMods.CrossPlatform;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.CrossPlatform;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Platform.Proton.Support;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Platform.Proton.Support;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests.Support;
+namespace SilverModManager.Platform.Proton.Tests.Support;
 
 public class SupportBundleWriterTests : IDisposable
 {

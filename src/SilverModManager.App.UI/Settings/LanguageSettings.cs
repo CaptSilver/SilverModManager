@@ -2,9 +2,9 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humanizer;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.App.UI.Settings;
+namespace SilverModManager.App.UI.Settings;
 
 public record LanguageSettings : ISettings
 {

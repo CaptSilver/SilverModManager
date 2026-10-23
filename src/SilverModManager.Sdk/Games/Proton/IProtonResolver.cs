@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// Finds installed Proton builds and picks the one Steam would use for a game.

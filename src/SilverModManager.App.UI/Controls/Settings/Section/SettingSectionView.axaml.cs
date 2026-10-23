@@ -3,7 +3,7 @@ using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Settings.Section;
+namespace SilverModManager.App.UI.Controls.Settings.Section;
 
 [UsedImplicitly]
 public partial class SettingSectionView : ReactiveUserControl<ISettingSectionViewModel>

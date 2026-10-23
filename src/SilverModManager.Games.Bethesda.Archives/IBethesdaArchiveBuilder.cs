@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// Writes an archive of the kind its <see cref="ArchiveState"/> describes, from the recorded state of each

@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using NexusMods.Abstractions.Serialization.Json;
+using SilverModManager.Abstractions.Serialization.Json;
 
-namespace NexusMods.Abstractions.Serialization.Attributes;
+namespace SilverModManager.Abstractions.Serialization.Attributes;
 
 /// <summary>
 /// Marks a class for <see cref="JsonConverter{T}"/> generation by <see cref="AExpressionConverterGenerator{T}"/> (and friends).

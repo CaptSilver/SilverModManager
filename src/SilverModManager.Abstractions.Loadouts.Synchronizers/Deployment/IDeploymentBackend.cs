@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 
 /// <summary>
 /// Whether a backend accepts a root, and why.

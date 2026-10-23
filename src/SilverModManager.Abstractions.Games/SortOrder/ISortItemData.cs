@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Represents an entry in a stored sort order.

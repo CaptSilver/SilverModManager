@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Games.FromSoft.Diagnostics;
-using NexusMods.Platform.Proton.Launch;
+using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Platform.Proton.Launch;
 
-namespace NexusMods.Games.FromSoft.Build;
+namespace SilverModManager.Games.FromSoft.Build;
 
 public static class Services
 {

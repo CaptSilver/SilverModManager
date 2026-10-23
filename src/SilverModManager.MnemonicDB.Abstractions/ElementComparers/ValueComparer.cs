@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.MnemonicDB.Abstractions.ElementComparers;
+namespace SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
 /// <summary>
 ///     Compares values and assumes that some previous comparator will guarantee that the values are of the same attribute.

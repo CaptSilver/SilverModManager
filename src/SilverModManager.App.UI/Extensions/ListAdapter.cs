@@ -1,6 +1,6 @@
 using DynamicData;
 
-namespace NexusMods.App.UI.Extensions;
+namespace SilverModManager.App.UI.Extensions;
 
 public class ListAdapter<T> : IChangeSetAdaptor<T> where T : notnull
 {

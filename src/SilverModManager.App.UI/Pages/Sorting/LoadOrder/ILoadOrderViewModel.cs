@@ -1,12 +1,12 @@
 using System.ComponentModel;
 using System.Reactive;
-using NexusMods.Abstractions.Games;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.Alerts;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.Alerts;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Sorting;
+namespace SilverModManager.App.UI.Pages.Sorting;
 
 public interface ILoadOrderViewModel : IViewModelInterface
 {

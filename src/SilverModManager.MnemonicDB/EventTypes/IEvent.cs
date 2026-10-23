@@ -1,4 +1,4 @@
-namespace NexusMods.MnemonicDB.EventTypes;
+namespace SilverModManager.MnemonicDB.EventTypes;
 
 /// <summary>
 /// A marker interface for connection events

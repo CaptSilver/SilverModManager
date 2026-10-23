@@ -1,13 +1,13 @@
 using System.ComponentModel;
 using Avalonia.Controls;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Extensions;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Sorting;
+namespace SilverModManager.App.UI.Pages.Sorting;
 
 public partial class FileConflictsView : R3UserControl<IFileConflictsViewModel>
 {

@@ -1,6 +1,6 @@
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Games.CreationEngine;
+namespace SilverModManager.Games.CreationEngine;
 
 /// <summary>
 /// The plugin list files of one game that share a single replaced-edits notice (plugins.txt and loadorder.txt).

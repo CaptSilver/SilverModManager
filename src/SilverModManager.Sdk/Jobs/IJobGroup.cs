@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.Jobs;
+namespace SilverModManager.Sdk.Jobs;
 
 /// <summary>
 /// A group of jobs

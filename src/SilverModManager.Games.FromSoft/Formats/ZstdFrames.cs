@@ -1,7 +1,7 @@
 using ZstdSharp;
 using ZstdSharp.Unsafe;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>Zstandard frames written the way the game's own files are.</summary>
 internal static class ZstdFrames

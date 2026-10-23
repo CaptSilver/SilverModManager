@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Metadata;
 
 // Test names follow libloot's metadata/plugin_cleaning_data.rs; its YAML and emitter tests are not ported here.
 public class PluginCleaningDataTests

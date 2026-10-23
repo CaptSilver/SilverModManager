@@ -1,8 +1,8 @@
 using Bannerlord.LauncherManager;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.Utils;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.Utils;
 
 public static class GamePathProvier
 {

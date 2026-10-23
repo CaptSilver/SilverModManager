@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.DataModel.JsonConverters;
+namespace SilverModManager.DataModel.JsonConverters;
 
 /// <inheritdoc />
 public class GamePathConverter : JsonConverter<GamePath>

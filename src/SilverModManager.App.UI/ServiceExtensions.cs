@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 public static class ServiceExtensions
 {

@@ -2,19 +2,19 @@ using System.Collections.Frozen;
 using System.Reflection;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Diagnostics;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Tests.Build;
+namespace SilverModManager.Games.FromSoft.Tests.Build;
 
 public class BuildStampTests(ITestOutputHelper helper) : AModdedEldenRingTest<BuildStampTests>(helper)
 {

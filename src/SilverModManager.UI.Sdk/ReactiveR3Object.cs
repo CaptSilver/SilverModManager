@@ -4,7 +4,7 @@ using JetBrains.Annotations;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.UI.Sdk;
+namespace SilverModManager.UI.Sdk;
 
 /// <summary>
 /// Base class using R3 with support for activation/deactivation,

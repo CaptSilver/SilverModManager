@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Loadouts.Files.Diff;
+namespace SilverModManager.Abstractions.Loadouts.Files.Diff;
 
 /// <summary>
 /// The type of change of a file at a specific path

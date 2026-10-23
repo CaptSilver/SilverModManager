@@ -1,15 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Sdk.Settings;
-using NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.Emitters;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 
-namespace NexusMods.Games.RedEngine.Cyberpunk2077;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077;
 
 public class Cyberpunk2077Synchronizer : ALoadoutSynchronizer
 {

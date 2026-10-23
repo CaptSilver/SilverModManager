@@ -1,12 +1,12 @@
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests;
+namespace SilverModManager.Platform.Proton.Tests;
 
 public class PrefixResolverTests
 {

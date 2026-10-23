@@ -1,12 +1,12 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Settings;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Settings;
+using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 public static class TreeDataGridViewHelper
 {

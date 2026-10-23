@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Settings;
+namespace SilverModManager.Sdk.Settings;
 
 [PublicAPI]
 public class PropertyOptions

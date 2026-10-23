@@ -1,12 +1,12 @@
 using System.Reactive;
 using Avalonia.Media;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.TopBar;
+namespace SilverModManager.App.UI.Controls.TopBar;
 
 public interface ITopBarViewModel : IViewModelInterface
 {

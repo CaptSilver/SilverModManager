@@ -2,22 +2,22 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Octodiff.Core;
 using Octodiff.Diagnostics;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Install;
-using NexusMods.Wabbajack.Models;
-using NexusMods.Wabbajack.Tests.Acquire;
-using NexusMods.Wabbajack.Tests.Fixtures;
-using TestTextures = NexusMods.Wabbajack.Transforms.TestTextures;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Install;
+using SilverModManager.Wabbajack.Models;
+using SilverModManager.Wabbajack.Tests.Acquire;
+using SilverModManager.Wabbajack.Tests.Fixtures;
+using TestTextures = SilverModManager.Wabbajack.Transforms.TestTextures;
 
-namespace NexusMods.Wabbajack.Tests.Install;
+namespace SilverModManager.Wabbajack.Tests.Install;
 
 /// <summary>
 /// A stubbed Skyrim SE install with a game executable, no Wine prefix for it, and helpers that put archives and
@@ -208,5 +208,5 @@ public sealed class ListBuilder
         Directives = Directives.ToArray(),
     };
 
-    private static NexusMods.Hashing.xxHash3.Hash Xx(byte[] bytes) => NexusMods.Sdk.Hashes.Xx64Hasher.Hash(bytes);
+    private static NexusMods.Hashing.xxHash3.Hash Xx(byte[] bytes) => SilverModManager.Sdk.Hashes.Xx64Hasher.Hash(bytes);
 }

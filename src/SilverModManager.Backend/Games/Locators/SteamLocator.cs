@@ -5,11 +5,11 @@ using GameFinder.StoreHandlers.Steam.Models;
 using GameFinder.StoreHandlers.Steam.Services;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Steam;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Steam;
 
-namespace NexusMods.Backend.Games.Locators;
+namespace SilverModManager.Backend.Games.Locators;
 
 internal class SteamLocator : IGameLocator
 {

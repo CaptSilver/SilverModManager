@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Steam;
+namespace SilverModManager.Abstractions.Steam;
 
 /// <summary>
 /// Interface for abstracting away the storage of Steam authentication data.

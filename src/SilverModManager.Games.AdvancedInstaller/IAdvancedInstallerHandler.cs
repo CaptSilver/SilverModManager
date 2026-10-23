@@ -1,6 +1,6 @@
-﻿using NexusMods.Abstractions.Library.Installers;
+﻿using SilverModManager.Abstractions.Library.Installers;
 
-namespace NexusMods.Games.AdvancedInstaller;
+namespace SilverModManager.Games.AdvancedInstaller;
 
 /// <summary>
 /// Handles the implementation of the <see cref="AdvancedManualInstaller"/> functionality.

@@ -2,21 +2,21 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using DynamicData;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Exceptions;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.Overlays;
-using NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
-using NexusMods.App.UI.Pages.Diff.ApplyDiff;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
+using SilverModManager.App.UI.Pages.Diff.ApplyDiff;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -24,7 +24,7 @@ using Observable = System.Reactive.Linq.Observable;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
 using Unit = System.Reactive.Unit;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyControlViewModel
 {

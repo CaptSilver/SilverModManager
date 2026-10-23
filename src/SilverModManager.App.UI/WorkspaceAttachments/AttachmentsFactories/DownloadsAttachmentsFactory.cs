@@ -1,7 +1,7 @@
-﻿using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.WorkspaceSystem;
+﻿using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI.WorkspaceAttachments;
+namespace SilverModManager.App.UI.WorkspaceAttachments;
 
 public class DownloadsAttachmentsFactory : IWorkspaceAttachmentsFactory<DownloadsContext>
 {

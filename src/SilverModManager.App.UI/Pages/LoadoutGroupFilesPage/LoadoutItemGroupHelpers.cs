@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
+namespace SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
 
 /// <summary>
 /// Helper utility methods/services around mod files.

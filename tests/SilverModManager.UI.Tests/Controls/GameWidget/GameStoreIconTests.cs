@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.App.UI.Controls.GameWidget;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls.GameWidget;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.UI.Tests.Controls.GameWidget;
+namespace SilverModManager.UI.Tests.Controls.GameWidget;
 
 public class GameStoreIconTests(IServiceProvider provider) : AUiTest(provider)
 {

@@ -2,7 +2,7 @@ using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.LoadoutCard;
+namespace SilverModManager.App.UI.Controls.LoadoutCard;
 
 public partial class CreateNewLoadoutCardView : ReactiveUserControl<ICreateNewLoadoutCardViewModel>
 {

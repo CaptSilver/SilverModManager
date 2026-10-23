@@ -1,18 +1,18 @@
 using System.Reactive.Linq;
 using DynamicData;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Downloads;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Jobs;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.UI.Sdk.Icons;
 using ObservableCollections;
 using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Pages.Downloads;
+namespace SilverModManager.App.UI.Pages.Downloads;
 
 public class DownloadsPageViewModel : APageViewModel<IDownloadsPageViewModel>, IDownloadsPageViewModel
 {

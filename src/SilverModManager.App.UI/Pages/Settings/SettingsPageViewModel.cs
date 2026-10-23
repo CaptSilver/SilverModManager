@@ -4,20 +4,20 @@ using System.Diagnostics;
 using System.Reflection;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.App.UI.Controls.Settings.Section;
-using NexusMods.App.UI.Controls.Settings.SettingEntries;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Settings;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
-using NexusMods.UI.Sdk.Settings;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Controls.Settings.Section;
+using SilverModManager.App.UI.Controls.Settings.SettingEntries;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Settings;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Settings;
+namespace SilverModManager.App.UI.Pages.Settings;
 
 [UsedImplicitly]
 public class SettingsPageViewModel : APageViewModel<ISettingsPageViewModel>, ISettingsPageViewModel

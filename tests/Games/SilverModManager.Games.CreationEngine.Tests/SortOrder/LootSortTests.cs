@@ -1,26 +1,26 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Games.CreationEngine.Loot;
-using NexusMods.Games.CreationEngine.SortOrder;
-using NexusMods.Games.TestFramework;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.CreationEngine.Loot;
+using SilverModManager.Games.CreationEngine.SortOrder;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.Games.CreationEngine.Tests.SkyrimSE;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.Games.CreationEngine.Tests.SkyrimSE;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 
-namespace NexusMods.Games.CreationEngine.Tests.SortOrder;
+namespace SilverModManager.Games.CreationEngine.Tests.SortOrder;
 
 /// <summary>
 /// Sorting a Skyrim SE loadout's plugins with the LOOT port: what the masterlist, the userlist and a refresh do to

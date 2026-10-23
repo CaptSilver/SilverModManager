@@ -2,11 +2,11 @@ using System.Collections.ObjectModel;
 using System.Reactive.Disposables;
 using DynamicData;
 using DynamicData.Kernel;
-using NexusMods.App.UI.Helpers.TreeDataGrid;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Helpers.TreeDataGrid;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 /// <summary>
 /// View compatible wrapper for the DynamicData <see cref="Node{TItem,TKey}"/> class.

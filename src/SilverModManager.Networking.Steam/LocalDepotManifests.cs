@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Steam;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
 
-namespace NexusMods.Networking.Steam;
+namespace SilverModManager.Networking.Steam;
 
 /// <summary>
 /// Reads the manifests the Steam client has already saved to disk.

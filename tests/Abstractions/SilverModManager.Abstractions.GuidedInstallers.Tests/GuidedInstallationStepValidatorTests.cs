@@ -1,7 +1,7 @@
 ﻿using FluentAssertions;
-using NexusMods.Abstractions.GuidedInstallers.ValueObjects;
+using SilverModManager.Abstractions.GuidedInstallers.ValueObjects;
 
-namespace NexusMods.Abstractions.GuidedInstallers.Tests;
+namespace SilverModManager.Abstractions.GuidedInstallers.Tests;
 
 public class GuidedInstallationStepValidatorTests
 {

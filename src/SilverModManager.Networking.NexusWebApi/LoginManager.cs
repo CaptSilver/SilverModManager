@@ -2,18 +2,18 @@ using System.Diagnostics;
 using System.Net;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.NexusWebApi.Auth;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Threading;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.NexusWebApi.Auth;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Threading;
 using R3;
 
-namespace NexusMods.Networking.NexusWebApi;
-using UserInDb = NexusMods.Abstractions.NexusModsLibrary.Models.User;
+namespace SilverModManager.Networking.NexusWebApi;
+using UserInDb = SilverModManager.Abstractions.NexusModsLibrary.Models.User;
 
 /// <summary>
 /// Component for handling login and logout from the Nexus Mods

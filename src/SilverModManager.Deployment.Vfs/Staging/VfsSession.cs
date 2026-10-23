@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// One mounted run of the tree: the tree itself, where it stages the game's writes, and what to do

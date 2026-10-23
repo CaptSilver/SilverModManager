@@ -1,6 +1,6 @@
-using NexusMods.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
 
-namespace NexusMods.Games.FOMOD;
+namespace SilverModManager.Games.FOMOD;
 
 public static class EmptyDirectory
 {

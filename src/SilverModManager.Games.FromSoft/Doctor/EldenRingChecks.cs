@@ -1,9 +1,9 @@
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Overlay;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Doctor;
+namespace SilverModManager.Games.FromSoft.Doctor;
 
 /// <summary>
 /// <see cref="FromSoftChecks"/> with Elden Ring's rules filled in, for code that only ever deals with Elden Ring.

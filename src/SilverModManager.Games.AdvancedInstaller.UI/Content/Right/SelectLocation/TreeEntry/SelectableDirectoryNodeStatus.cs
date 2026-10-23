@@ -1,4 +1,4 @@
-﻿namespace NexusMods.Games.AdvancedInstaller.UI.SelectLocation;
+﻿namespace SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 
 /// <summary>
 /// Represents the current status of the <see cref="SelectableTreeEntryViewModel" />.

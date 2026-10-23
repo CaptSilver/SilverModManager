@@ -1,13 +1,13 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class LoadoutNameUniquenessTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTest<LoadoutNameUniquenessTests>(helper)
 {

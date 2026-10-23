@@ -1,20 +1,20 @@
 using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.Generic.Diagnostics;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.Generic.Diagnostics;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using NSubstitute;
 using Xunit;
 
-namespace NexusMods.Games.Generic.Tests;
+namespace SilverModManager.Games.Generic.Tests;
 
 /// <summary>
 /// The shared Wine DLL override diagnostic for games that declare their overrides. The prefix is a
@@ -23,7 +23,7 @@ namespace NexusMods.Games.Generic.Tests;
 public class WineDllOverrideEmitterTests(ITestOutputHelper helper)
     : ALoadoutDiagnosticEmitterTest<WineDllOverrideEmitterTests, OverrideRequiringGame, WineDllOverrideEmitter>(helper)
 {
-    private static readonly DiagnosticId RequiredOverridesId = new("NexusMods.Games.Generic", number: 6);
+    private static readonly DiagnosticId RequiredOverridesId = new("SilverModManager.Games.Generic", number: 6);
 
     private static readonly WineDllOverride Winhttp = new("winhttp", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]);
 

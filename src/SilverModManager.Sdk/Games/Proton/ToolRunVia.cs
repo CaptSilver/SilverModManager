@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// How a tool is run. <see cref="Auto"/> lets <see cref="IToolRunner"/> pick from the game's prefix; any other

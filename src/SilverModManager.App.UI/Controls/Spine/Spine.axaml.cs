@@ -7,7 +7,7 @@ using Avalonia.ReactiveUI;
 using Avalonia.VisualTree;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Spine;
+namespace SilverModManager.App.UI.Controls.Spine;
 
 public partial class Spine : ReactiveUserControl<ISpineViewModel>
 {

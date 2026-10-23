@@ -5,13 +5,13 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactive="http://reactiveui.net"
-    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.TextEdit"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.TextEdit"
     xmlns:avaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
     xmlns:grammars="clr-namespace:TextMateSharp.Grammars;assembly=TextMateSharp.Grammars"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-    x:Class="NexusMods.App.UI.Pages.TextEdit.TextEditorPageView">
+    x:Class="SilverModManager.App.UI.Pages.TextEdit.TextEditorPageView">
 
     <Grid RowDefinitions="Auto, *">
         <Border Grid.Row="0" Classes="Toolbar">

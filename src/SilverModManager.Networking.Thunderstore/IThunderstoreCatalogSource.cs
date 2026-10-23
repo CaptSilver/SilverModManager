@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Networking.Thunderstore;
+namespace SilverModManager.Networking.Thunderstore;
 
 /// <summary>
 /// Where a page gets a community's catalog from: the on-disk index cache, refreshed on demand.

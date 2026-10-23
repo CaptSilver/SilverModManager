@@ -3,10 +3,10 @@ using System.Runtime.InteropServices;
 using System.Text;
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests.Processes;
+namespace SilverModManager.Platform.Proton.Tests.Processes;
 
 public class ProcProcessTrackerTests : IDisposable
 {

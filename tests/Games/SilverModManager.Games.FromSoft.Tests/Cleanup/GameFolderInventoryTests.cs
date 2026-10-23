@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.Cleanup;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Tests.Cleanup;
+namespace SilverModManager.Games.FromSoft.Tests.Cleanup;
 
 public class GameFolderInventoryTests : IDisposable
 {

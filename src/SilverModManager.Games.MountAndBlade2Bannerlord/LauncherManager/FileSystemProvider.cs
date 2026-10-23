@@ -2,7 +2,7 @@ using Bannerlord.LauncherManager.External;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.LauncherManager;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.LauncherManager;
 
 internal sealed class FileSystemProvider : IFileSystemProvider
 {

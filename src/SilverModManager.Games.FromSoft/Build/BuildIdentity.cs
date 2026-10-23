@@ -1,9 +1,9 @@
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Games.FromSoft.Build;
+namespace SilverModManager.Games.FromSoft.Build;
 
 /// <summary>What a change to the installed build amounts to.</summary>
 public enum BuildChangeKind

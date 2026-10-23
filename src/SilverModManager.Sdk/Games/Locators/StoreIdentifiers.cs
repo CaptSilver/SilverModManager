@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// Record containing all store identifiers for a game.

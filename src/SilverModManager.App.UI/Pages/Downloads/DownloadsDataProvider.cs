@@ -3,18 +3,18 @@ using Avalonia.Media.Imaging;
 using DynamicData;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Downloads;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Resources;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk.Resources;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Resources;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Downloads;
+namespace SilverModManager.App.UI.Pages.Downloads;
 
 /// <summary>
 /// Data provider that transforms IDownloadsService data into CompositeItemModel collections for TreeDataGrid.

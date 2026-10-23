@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 ///     Represents a transaction, which is a set of proposed changes to the datom store

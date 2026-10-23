@@ -1,4 +1,4 @@
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// Resolves slash-separated paths against inode-based operations the way a kernel does: one

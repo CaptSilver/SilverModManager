@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Games.CreationEngine.Morrowind.OpenMw;
+using SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
 using NexusMods.Paths;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Morrowind.OpenMw;
+namespace SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
 
 public class OpenMwConfigLocationTests
 {

@@ -1,13 +1,13 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Pages.Thunderstore;
+namespace SilverModManager.App.UI.Pages.Thunderstore;
 
 [JsonName("SilverModManager.App.UI.Pages.Thunderstore.ThunderstorePageContext")]
 public record ThunderstorePageContext : IPageFactoryContext

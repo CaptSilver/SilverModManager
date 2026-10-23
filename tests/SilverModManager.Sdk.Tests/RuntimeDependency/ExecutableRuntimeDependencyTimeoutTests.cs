@@ -1,8 +1,8 @@
 using CliWrap;
 using FluentAssertions;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Sdk.Tests.RuntimeDependency;
+namespace SilverModManager.Sdk.Tests.RuntimeDependency;
 
 /// <summary>
 /// A query command that never exits must not hang the dependency check: Flatpak and its host shims can stall

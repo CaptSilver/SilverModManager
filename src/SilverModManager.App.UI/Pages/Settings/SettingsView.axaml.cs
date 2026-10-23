@@ -1,10 +1,10 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Settings;
+namespace SilverModManager.App.UI.Pages.Settings;
 
 public partial class SettingsView : ReactiveUserControl<ISettingsPageViewModel>
 {

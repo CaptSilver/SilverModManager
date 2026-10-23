@@ -1,10 +1,10 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Networking.NexusWebApi.Auth;
+namespace SilverModManager.Networking.NexusWebApi.Auth;
 
 /// <summary>
 /// The row an older version kept the OAuth token in. The token lives in the secret store now; this model

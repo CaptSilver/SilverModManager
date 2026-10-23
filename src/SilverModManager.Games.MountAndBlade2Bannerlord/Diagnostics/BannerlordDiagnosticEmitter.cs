@@ -2,19 +2,19 @@ using Bannerlord.ModuleManager;
 using Bannerlord.ModuleManager.Models.Issues;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Diagnostics.Values;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Games.MountAndBlade2Bannerlord.Models;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk.Resources;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.Values;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Games.MountAndBlade2Bannerlord.Models;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Resources;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.Diagnostics;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.Diagnostics;
 
 /// <summary>
 /// This is a diagnostic emitter powered by the <see cref="LauncherManager"/> framework.

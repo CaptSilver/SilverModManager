@@ -1,13 +1,13 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Heal;
-using NexusMods.Games.FromSoft.Tests.Build;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Heal;
+using SilverModManager.Games.FromSoft.Tests.Build;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Tests.Heal;
+namespace SilverModManager.Games.FromSoft.Tests.Heal;
 
 public sealed class RegulationBaselinesTests : IDisposable
 {

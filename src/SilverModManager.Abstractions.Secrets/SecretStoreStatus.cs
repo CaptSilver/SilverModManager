@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Secrets;
+namespace SilverModManager.Abstractions.Secrets;
 
 /// <summary>
 /// A snapshot of a store's health, for settings UI, diagnostics and the dry-run report.

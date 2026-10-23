@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Saves;
+namespace SilverModManager.Games.FromSoft.Saves;
 
 /// <summary>The save files of a game, by file name inside the account's save folder.</summary>
 /// <param name="Vanilla">The save file the game writes.</param>

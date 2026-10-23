@@ -1,9 +1,9 @@
 using System;
-using NexusMods.MnemonicDB.Abstractions.BuiltInEntities;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions.BuiltInEntities;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
-namespace NexusMods.MnemonicDB.Abstractions.Attributes;
+namespace SilverModManager.MnemonicDB.Abstractions.Attributes;
 
 /// <summary>
 /// An attribute that defines the indexing status of an attribute, this is stored as a custom attribute type because

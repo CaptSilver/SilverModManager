@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.Networking.Thunderstore.DTOs;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Networking.Thunderstore.DTOs;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.Networking.Thunderstore;
+namespace SilverModManager.Networking.Thunderstore;
 
 /// <summary>
 /// <see cref="IPackageLookup"/> backed by the Thunderstore web API.

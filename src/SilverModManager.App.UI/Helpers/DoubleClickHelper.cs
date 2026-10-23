@@ -6,7 +6,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using JetBrains.Annotations;
 
-namespace NexusMods.App.UI.Helpers;
+namespace SilverModManager.App.UI.Helpers;
 
 [PublicAPI]
 public static class DoubleClickHelper

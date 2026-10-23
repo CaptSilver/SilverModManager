@@ -1,11 +1,11 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Me3;
+namespace SilverModManager.Games.FromSoft.Me3;
 
 /// <summary>Reads the loadout priority of each package folder in the mods location.</summary>
 public static class Me3PackagePriorities

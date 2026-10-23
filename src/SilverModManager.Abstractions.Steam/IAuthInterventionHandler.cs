@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Steam;
+namespace SilverModManager.Abstractions.Steam;
 
 /// <summary>
 /// A user intervention handler that can be used to request authorization information from the user.

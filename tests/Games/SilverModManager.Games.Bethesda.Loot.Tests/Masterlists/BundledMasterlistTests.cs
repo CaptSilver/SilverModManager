@@ -1,12 +1,12 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using NexusMods.Games.Bethesda.Loot.Database;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Games.Bethesda.Loot.Metadata;
-using NexusMods.Games.Bethesda.Loot.Sorting;
+using SilverModManager.Games.Bethesda.Loot.Database;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Sorting;
 using YamlDotNet.RepresentationModel;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Masterlists;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Masterlists;
 
 /// <summary>
 /// Runs every bundled masterlist through the parts of the port that read metadata, so an upstream

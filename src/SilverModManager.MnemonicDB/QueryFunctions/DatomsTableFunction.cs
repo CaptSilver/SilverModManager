@@ -5,13 +5,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Subjects;
 using NexusMods.HyperDuck;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.MnemonicDB.QueryFunctions;
+namespace SilverModManager.MnemonicDB.QueryFunctions;
 
 public class DatomsTableFunction : ATableFunction, IRevisableFromAttributes
 {

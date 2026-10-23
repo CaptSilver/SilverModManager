@@ -1,6 +1,6 @@
-using NexusMods.UI.Sdk.Settings;
+using SilverModManager.UI.Sdk.Settings;
 
-namespace NexusMods.App.UI.Controls.Settings.SettingEntries;
+namespace SilverModManager.App.UI.Controls.Settings.SettingEntries;
 
 public interface ISettingToggleViewModel : IInteractionControl
 {

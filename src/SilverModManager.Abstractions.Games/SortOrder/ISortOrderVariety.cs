@@ -2,12 +2,12 @@ using System.ComponentModel;
 using System.Diagnostics.Contracts;
 using DynamicData;
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 using OneOf;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Represents a specific variety of sort order for a specific game.

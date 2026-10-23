@@ -3,7 +3,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 ///     Extension methods for adding attributes and other types to the service collection.

@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Generators.Diagnostics;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Generators.Diagnostics;
+using SilverModManager.Sdk.Loadouts;
 
 namespace Examples.Diagnostics;
 

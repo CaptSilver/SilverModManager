@@ -1,11 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI.Settings;
-using NexusMods.Backend;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Settings;
+using SilverModManager.App.UI.Settings;
+using SilverModManager.Backend;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.DataModel.SchemaVersions.Tests;
+namespace SilverModManager.DataModel.SchemaVersions.Tests;
 
 /// <summary>
 /// What the first start of the app writes into an empty data folder.

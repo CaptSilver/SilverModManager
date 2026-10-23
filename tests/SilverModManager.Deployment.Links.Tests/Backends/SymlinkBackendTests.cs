@@ -1,15 +1,15 @@
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Deployment.Links.Backends;
-using NexusMods.Deployment.Links.Native;
-using NexusMods.Deployment.Links.Tests.Fixtures;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Deployment.Links.Backends;
+using SilverModManager.Deployment.Links.Native;
+using SilverModManager.Deployment.Links.Tests.Fixtures;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Deployment.Links.Tests.Backends;
+namespace SilverModManager.Deployment.Links.Tests.Backends;
 
 /// <summary>
 /// Shared by the same-device and cross-device runs: a symlink works either way, and the repair must too.

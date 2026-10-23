@@ -3,12 +3,12 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-                                xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-                                xmlns:sorting="clr-namespace:NexusMods.App.UI.Pages.Sorting"
-                                xmlns:alerts="clr-namespace:NexusMods.App.UI.Controls.Alerts"
+                                xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+                                xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+                                xmlns:sorting="clr-namespace:SilverModManager.App.UI.Pages.Sorting"
+                                xmlns:alerts="clr-namespace:SilverModManager.App.UI.Controls.Alerts"
                                 mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
-                                x:Class="NexusMods.App.UI.Pages.Sorting.LoadOrderView"
+                                x:Class="SilverModManager.App.UI.Pages.Sorting.LoadOrderView"
                                 x:DataType="sorting:ILoadOrderViewModel">
 
     <controls:EmptyState x:Name="EmptyState">
@@ -114,7 +114,7 @@
                         <ResourceDictionary>
                             <ResourceDictionary.MergedDictionaries>
                                 <ResourceInclude
-                                    Source="avares://NexusMods.App.UI/Pages/Sorting/LoadOrder/TreeDataGridLoadOrderResources.axaml" />
+                                    Source="avares://SilverModManager.App.UI/Pages/Sorting/LoadOrder/TreeDataGridLoadOrderResources.axaml" />
                             </ResourceDictionary.MergedDictionaries>
                         </ResourceDictionary>
                     </TreeDataGrid.Resources>

@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 internal static class NexusApiVerbs
 {

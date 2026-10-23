@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI.Pages.Diagnostics;
+namespace SilverModManager.App.UI.Pages.Diagnostics;
 
 public interface IDiagnosticDetailsViewModel : IPageViewModelInterface
 {

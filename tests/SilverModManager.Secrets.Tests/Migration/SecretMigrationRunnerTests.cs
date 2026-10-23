@@ -1,11 +1,11 @@
 using Xunit;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Secrets.Chain;
-using NexusMods.Secrets.Migration;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Secrets.Chain;
+using SilverModManager.Secrets.Migration;
 
-namespace NexusMods.Secrets.Tests.Migration;
+namespace SilverModManager.Secrets.Tests.Migration;
 
 public class SecretMigrationRunnerTests
 {

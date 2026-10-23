@@ -4,12 +4,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Navigation;
+namespace SilverModManager.App.UI.Controls.Navigation;
 
 [PublicAPI]
 public class NavigationControl : StandardButton

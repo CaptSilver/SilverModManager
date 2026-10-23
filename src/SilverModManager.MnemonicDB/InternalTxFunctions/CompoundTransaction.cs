@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.MnemonicDB.Caching;
-using NexusMods.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.MnemonicDB.Caching;
+using SilverModManager.MnemonicDB.Storage;
 
-namespace NexusMods.MnemonicDB.InternalTxFunctions;
+namespace SilverModManager.MnemonicDB.InternalTxFunctions;
 
 /// <summary>
 /// A transaction that contains one or more user defined functions as well as an index segment

@@ -1,15 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Games.TestFramework;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.DataModel.Tests.Deployment;
+namespace SilverModManager.DataModel.Tests.Deployment;
 
 public class ChainTests(ITestOutputHelper helper) : AStubbedGameIsolatedTest<ChainTests>(helper)
 {

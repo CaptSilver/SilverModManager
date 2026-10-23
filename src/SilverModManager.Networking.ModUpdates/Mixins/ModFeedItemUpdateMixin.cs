@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.NexusWebApi.DTOs;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusWebApi.DTOs;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.ModUpdates.Mixins;
+namespace SilverModManager.Networking.ModUpdates.Mixins;
 
 /// <summary>
 /// Implements the (V1) mod update API mixin.

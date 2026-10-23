@@ -1,7 +1,7 @@
 using Avalonia.Controls.Notifications;
-using NexusMods.UI.Sdk.Dialog;
+using SilverModManager.UI.Sdk.Dialog;
 
-namespace NexusMods.UI.Sdk;
+namespace SilverModManager.UI.Sdk;
 
 /// <summary>
 /// Service for issuing UI toast-like notifications

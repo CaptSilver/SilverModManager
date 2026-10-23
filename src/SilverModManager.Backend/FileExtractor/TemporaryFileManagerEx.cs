@@ -1,9 +1,9 @@
-﻿using NexusMods.Abstractions.FileExtractor;
-using NexusMods.Sdk.Settings;
+﻿using SilverModManager.Abstractions.FileExtractor;
+using SilverModManager.Sdk.Settings;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileExtractor;
+using SilverModManager.Sdk.FileExtractor;
 
-namespace NexusMods.FileExtractor;
+namespace SilverModManager.FileExtractor;
 
 /// <summary>
 /// Variation of <see cref="TemporaryFileManager"/> with support for injecting settings via DI.

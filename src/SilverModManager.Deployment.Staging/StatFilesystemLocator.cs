@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Staging;
+namespace SilverModManager.Deployment.Staging;
 
 /// <summary>
 /// Compares <c>st_dev</c> along the path instead of reading the mount table. Not <c>statfs</c>'s <c>f_fsid</c>:

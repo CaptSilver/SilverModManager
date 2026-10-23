@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
 
-namespace NexusMods.MnemonicDB.Abstractions.Attributes;
+namespace SilverModManager.MnemonicDB.Abstractions.Attributes;
 
 /// <summary>
 /// An attribute that holds an <see cref="RelativePath"/>.

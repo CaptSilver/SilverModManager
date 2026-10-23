@@ -1,7 +1,7 @@
 using CliWrap;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// Process abstraction.

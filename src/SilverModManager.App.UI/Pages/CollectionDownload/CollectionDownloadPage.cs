@@ -1,13 +1,13 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.App.UI.Pages.CollectionDownload;
+namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
 [JsonName(nameof(CollectionDownloadPageContext))]
 public record CollectionDownloadPageContext : IPageFactoryContext

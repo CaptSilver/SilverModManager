@@ -1,17 +1,17 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Settings;
-using NexusMods.Games.StardewValley.Models;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Games.StardewValley.Models;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.Paths.Extensions;
-using NexusMods.Games.TestFramework.FluentAssertionExtensions;
-using NexusMods.Sdk.Games;
+using SilverModManager.Games.TestFramework.FluentAssertionExtensions;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.StardewValley.Tests;
+namespace SilverModManager.Games.StardewValley.Tests;
 
 public class StardewValleySynchronizerTests(IServiceProvider serviceProvider) : AGameTest<StardewValley>(serviceProvider)
 {

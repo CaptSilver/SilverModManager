@@ -1,6 +1,6 @@
 ﻿using TransparentValueObjects;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 ///     A typed identifier for a transaction id, internally this is a ulong.

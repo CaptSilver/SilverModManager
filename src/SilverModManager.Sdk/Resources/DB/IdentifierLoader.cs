@@ -1,8 +1,8 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Sdk.Resources;
+namespace SilverModManager.Sdk.Resources;
 
 /// <summary>
 /// Represents a loader that transforms an <see cref="EntityId"/> into a resource identifier

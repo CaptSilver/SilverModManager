@@ -1,9 +1,9 @@
-using NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+using SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 using NexusMods.Paths;
 using YamlDotNet.RepresentationModel;
-using static NexusMods.Games.Bethesda.Loot.Metadata.Yaml.YamlGetters;
+using static SilverModManager.Games.Bethesda.Loot.Metadata.Yaml.YamlGetters;
 
-namespace NexusMods.Games.Bethesda.Loot.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata;
 
 /// <summary>
 /// The contents of a masterlist or userlist: plugin metadata, global messages, known Bash Tags and

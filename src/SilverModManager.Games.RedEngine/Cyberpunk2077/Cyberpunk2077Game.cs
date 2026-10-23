@@ -2,23 +2,23 @@ using System.Collections.Immutable;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FileHashes.Emitters;
-using NexusMods.Games.FOMOD;
-using NexusMods.Games.Generic.Diagnostics;
-using NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
-using NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder;
-using NexusMods.Games.RedEngine.ModInstallers;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FileHashes.Emitters;
+using SilverModManager.Games.FOMOD;
+using SilverModManager.Games.Generic.Diagnostics;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.Emitters;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
+using SilverModManager.Games.RedEngine.ModInstallers;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.RedEngine.Cyberpunk2077;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077;
 
 [UsedImplicitly]
 public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements, IGameLauncherSkip, IGameUserDataFolders

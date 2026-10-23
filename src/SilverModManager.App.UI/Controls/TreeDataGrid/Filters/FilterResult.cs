@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI.Controls.TreeDataGrid.Filters;
+namespace SilverModManager.App.UI.Controls.TreeDataGrid.Filters;
 
 /// <summary>
 /// Represents the result of applying a filter to a component.

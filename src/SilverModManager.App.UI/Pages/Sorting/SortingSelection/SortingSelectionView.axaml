@@ -4,13 +4,13 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:sorting="clr-namespace:NexusMods.App.UI.Pages.Sorting"
-                                xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-                                xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-                                xmlns:navigation="clr-namespace:NexusMods.App.UI.Controls.Navigation"
-                                xmlns:sdk="clr-namespace:NexusMods.UI.Sdk;assembly=NexusMods.UI.Sdk"
+                                xmlns:sorting="clr-namespace:SilverModManager.App.UI.Pages.Sorting"
+                                xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+                                xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+                                xmlns:navigation="clr-namespace:SilverModManager.App.UI.Controls.Navigation"
+                                xmlns:sdk="clr-namespace:SilverModManager.UI.Sdk;assembly=SilverModManager.UI.Sdk"
                                 mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
-                                x:Class="NexusMods.App.UI.Pages.Sorting.SortingSelectionView">
+                                x:Class="SilverModManager.App.UI.Pages.Sorting.SortingSelectionView">
 
     <TabControl x:Name="SortOrdersTabControl" Classes="Subtabs">
         <TabControl.ItemTemplate>

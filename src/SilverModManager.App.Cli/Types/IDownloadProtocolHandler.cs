@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.CLI.Types;
+namespace SilverModManager.CLI.Types;
 
 /// <summary>
 /// Defines a protocol handler used for downloading items.

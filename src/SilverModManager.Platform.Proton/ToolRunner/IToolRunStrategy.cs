@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.ToolRunner;
+namespace SilverModManager.Platform.Proton.ToolRunner;
 
 /// <summary>
 /// Knows how to run a Windows program for prefixes of one <see cref="CompatibilityLayerKind"/>.

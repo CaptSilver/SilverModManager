@@ -6,7 +6,7 @@ using BCnEncoder.Shared.ImageFiles;
 using System.Runtime.InteropServices;
 using SkiaSharp;
 
-namespace NexusMods.Wabbajack.Transforms;
+namespace SilverModManager.Wabbajack.Transforms;
 
 /// <summary>
 /// Re-encodes a DDS texture to the size, mip count and format a modlist recorded for it.

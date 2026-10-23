@@ -3,13 +3,13 @@ using System.Net;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Library;
+using SilverModManager.Abstractions.Library;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Acquire;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Acquire;
 
-namespace NexusMods.Wabbajack.Tests.Acquire;
+namespace SilverModManager.Wabbajack.Tests.Acquire;
 
 public class WabbajackCdnDownloadJobTests(IServiceProvider provider, TemporaryFileManager temporaryFileManager)
 {

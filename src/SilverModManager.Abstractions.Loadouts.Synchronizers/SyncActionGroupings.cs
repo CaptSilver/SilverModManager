@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 /// <summary>
 /// A grouping of actions that can be performed on a file. The SyncTree has a `Actions`

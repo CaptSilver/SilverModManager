@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NexusMods.Backend;
-using NexusMods.Backend.Jobs;
+using SilverModManager.Backend;
+using SilverModManager.Backend.Jobs;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Jobs.Tests;
+namespace SilverModManager.Jobs.Tests;
 
 public class AJobsTest : IAsyncLifetime
 {
@@ -17,7 +17,7 @@ public class AJobsTest : IAsyncLifetime
             .ConfigureServices(services =>
                 {
                     const KnownPath baseKnownPath = KnownPath.EntryDirectory;
-                    var baseDirectory = $"NexusMods.Examples.Tests-{Guid.NewGuid()}";
+                    var baseDirectory = $"SilverModManager.Examples.Tests-{Guid.NewGuid()}";
                     var prefix = FileSystem.Shared.GetKnownPath(baseKnownPath).Combine(baseDirectory);
 
                     services

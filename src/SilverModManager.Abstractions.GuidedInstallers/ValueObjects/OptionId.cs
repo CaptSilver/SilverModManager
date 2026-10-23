@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using TransparentValueObjects;
 
-namespace NexusMods.Abstractions.GuidedInstallers.ValueObjects;
+namespace SilverModManager.Abstractions.GuidedInstallers.ValueObjects;
 
 /// <summary>
 /// Represents a unique identifier of an <see cref="Option"/>.

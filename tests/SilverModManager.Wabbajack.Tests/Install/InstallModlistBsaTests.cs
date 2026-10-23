@@ -1,15 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.Bethesda.Archives;
+using SilverModManager.Games.Bethesda.Archives;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Install;
-using NexusMods.Wabbajack.Models;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Install;
+using SilverModManager.Wabbajack.Models;
 
-namespace NexusMods.Wabbajack.Tests.Install;
+namespace SilverModManager.Wabbajack.Tests.Install;
 
 public class InstallModlistBsaTests(ITestOutputHelper helper) : InstallTestBase<InstallModlistBsaTests>(helper)
 {

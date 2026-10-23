@@ -1,9 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.StandardGameLocators.TestHelpers;
+namespace SilverModManager.StandardGameLocators.TestHelpers;
 
 /// <summary>
 /// Checks that a test host cannot see the developer's real game stores. The app's store locators read
@@ -12,7 +12,7 @@ namespace NexusMods.StandardGameLocators.TestHelpers;
 /// </summary>
 public static class TestHostGameStoreGuard
 {
-    private const string UserInstallLocatorName = "NexusMods.Backend.Games.Locators.UserInstallLocator";
+    private const string UserInstallLocatorName = "SilverModManager.Backend.Games.Locators.UserInstallLocator";
 
     /// <summary>
     /// Fails when the host registers a locator other than the stubbed ones, or when a located

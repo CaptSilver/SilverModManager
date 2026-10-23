@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Networking.NexusWebApi.V1Interop;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Networking.NexusWebApi.V1Interop;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 [Trait("RequiresNetworking", "True")]
 public class GameDomainToGameIdMappingCacheTests(GameDomainToGameIdMappingCache cache)

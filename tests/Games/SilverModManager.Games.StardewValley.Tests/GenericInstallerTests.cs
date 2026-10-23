@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.StardewValley.Installers;
-using NexusMods.Games.StardewValley.Models;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.StardewValley.Installers;
+using SilverModManager.Games.StardewValley.Models;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.Games.StardewValley.Tests;
+namespace SilverModManager.Games.StardewValley.Tests;
 
 [Trait("RequiresNetworking", "True")]
 public class GenericInstallerTests : ALibraryArchiveInstallerTests<GenericInstallerTests, StardewValley>

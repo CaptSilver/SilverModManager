@@ -1,39 +1,39 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <XunitStartupAssembly>NexusMods.CLI.Tests</XunitStartupAssembly>
+        <XunitStartupAssembly>SilverModManager.CLI.Tests</XunitStartupAssembly>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NexusMods.Abstractions.Games\NexusMods.Abstractions.Games.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.Networking.HttpDownloader\NexusMods.Networking.HttpDownloader.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.App.Cli\NexusMods.App.Cli.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.App\NexusMods.App.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.Games.CreationEngine\NexusMods.Games.CreationEngine.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.SingleProcess\NexusMods.SingleProcess.csproj" />
-        <ProjectReference Include="..\Games\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
-        <ProjectReference Include="..\Networking\NexusMods.Networking.HttpDownloader.Tests\NexusMods.Networking.HttpDownloader.Tests.csproj" />
-        <ProjectReference Include="..\NexusMods.StandardGameLocators.TestHelpers\NexusMods.StandardGameLocators.TestHelpers.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Networking.HttpDownloader\SilverModManager.Networking.HttpDownloader.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.App.Cli\SilverModManager.App.Cli.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.App\SilverModManager.App.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.DataModel\SilverModManager.DataModel.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Games.CreationEngine\SilverModManager.Games.CreationEngine.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.SingleProcess\SilverModManager.SingleProcess.csproj" />
+        <ProjectReference Include="..\Games\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
+        <ProjectReference Include="..\Networking\SilverModManager.Networking.HttpDownloader.Tests\SilverModManager.Networking.HttpDownloader.Tests.csproj" />
+        <ProjectReference Include="..\SilverModManager.StandardGameLocators.TestHelpers\SilverModManager.StandardGameLocators.TestHelpers.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\RoutingHandler.cs" Link="Fixtures\RoutingHandler.cs" />
-        <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\Gzip.cs" Link="Fixtures\Gzip.cs" />
-        <Compile Include="..\Networking\NexusMods.Networking.Thunderstore.Tests\Fixtures\ThunderstoreJson.cs" Link="Fixtures\ThunderstoreJson.cs" />
-        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Formats\Fixtures\MsgbndFixture.cs" Link="Fixtures\FromSoft\MsgbndFixture.cs" />
-        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Formats\Fixtures\Bnd3Fixture.cs" Link="Fixtures\FromSoft\Bnd3Fixture.cs" />
-        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Formats\Fixtures\Bnd4Fixture.cs" Link="Fixtures\FromSoft\Bnd4Fixture.cs" />
-        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Formats\Fixtures\RegulationFixture.cs" Link="Fixtures\FromSoft\RegulationFixture.cs" />
-        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Formats\Fixtures\ParamFixture.cs" Link="Fixtures\FromSoft\ParamFixture.cs" />
-        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Fixtures\TestArchives.cs" Link="Fixtures\FromSoft\TestArchives.cs" />
-        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Fixtures\EldenRingInstall.cs" Link="Fixtures\FromSoft\EldenRingInstall.cs" />
-        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Fixtures\FakePe.cs" Link="Fixtures\FromSoft\FakePe.cs" />
-        <Compile Include="..\Games\NexusMods.Games.FromSoft.Tests\Fixtures\TreeSnapshot.cs" Link="Fixtures\FromSoft\TreeSnapshot.cs" />
+        <Compile Include="..\Networking\SilverModManager.Networking.Thunderstore.Tests\Fixtures\RoutingHandler.cs" Link="Fixtures\RoutingHandler.cs" />
+        <Compile Include="..\Networking\SilverModManager.Networking.Thunderstore.Tests\Fixtures\Gzip.cs" Link="Fixtures\Gzip.cs" />
+        <Compile Include="..\Networking\SilverModManager.Networking.Thunderstore.Tests\Fixtures\ThunderstoreJson.cs" Link="Fixtures\ThunderstoreJson.cs" />
+        <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Formats\Fixtures\MsgbndFixture.cs" Link="Fixtures\FromSoft\MsgbndFixture.cs" />
+        <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Formats\Fixtures\Bnd3Fixture.cs" Link="Fixtures\FromSoft\Bnd3Fixture.cs" />
+        <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Formats\Fixtures\Bnd4Fixture.cs" Link="Fixtures\FromSoft\Bnd4Fixture.cs" />
+        <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Formats\Fixtures\RegulationFixture.cs" Link="Fixtures\FromSoft\RegulationFixture.cs" />
+        <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Formats\Fixtures\ParamFixture.cs" Link="Fixtures\FromSoft\ParamFixture.cs" />
+        <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Fixtures\TestArchives.cs" Link="Fixtures\FromSoft\TestArchives.cs" />
+        <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Fixtures\EldenRingInstall.cs" Link="Fixtures\FromSoft\EldenRingInstall.cs" />
+        <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Fixtures\FakePe.cs" Link="Fixtures\FromSoft\FakePe.cs" />
+        <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Fixtures\TreeSnapshot.cs" Link="Fixtures\FromSoft\TreeSnapshot.cs" />
     </ItemGroup>
 
     <ItemGroup>
         <!-- The same real modlist the Wabbajack tests use, see that project's Fixtures/NOTICE -->
-        <None Include="..\NexusMods.Wabbajack.Tests\Fixtures\MO2AndSKSETest.wabbajack" Link="Resources\MO2AndSKSETest.wabbajack" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\SilverModManager.Wabbajack.Tests\Fixtures\MO2AndSKSETest.wabbajack" Link="Resources\MO2AndSKSETest.wabbajack" CopyToOutputDirectory="PreserveNewest" />
         <None Update="Resources\**">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>

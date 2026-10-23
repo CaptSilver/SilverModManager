@@ -1,5 +1,5 @@
 using FluentAssertions;
-namespace NexusMods.Networking.ModUpdates.Tests;
+namespace SilverModManager.Networking.ModUpdates.Tests;
 
 /// <summary>
 /// Tests based around fuzzy searching of updates for files based on filenames.

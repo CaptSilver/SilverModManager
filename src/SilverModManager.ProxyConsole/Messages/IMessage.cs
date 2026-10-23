@@ -1,6 +1,6 @@
 ﻿using MemoryPack;
 
-namespace NexusMods.ProxyConsole.Messages;
+namespace SilverModManager.ProxyConsole.Messages;
 
 /// <summary>
 /// A message that can be sent between the client and the server.

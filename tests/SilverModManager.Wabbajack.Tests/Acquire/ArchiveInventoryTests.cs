@@ -1,23 +1,23 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Library;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Library;
 
-namespace NexusMods.Wabbajack.Tests.Acquire;
+namespace SilverModManager.Wabbajack.Tests.Acquire;
 
 public class ArchiveInventoryTests(ITestOutputHelper helper) : AcquireTestBase<ArchiveInventoryTests>(helper)
 {

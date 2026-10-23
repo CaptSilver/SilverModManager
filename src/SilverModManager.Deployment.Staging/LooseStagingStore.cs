@@ -1,17 +1,17 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Native;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
-using NexusMods.Sdk.Threading;
+using SilverModManager.Sdk.Native;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Sdk.Threading;
 
-namespace NexusMods.Deployment.Staging;
+namespace SilverModManager.Deployment.Staging;
 
 /// <summary>
 /// Stages files from <see cref="IFileStore"/> as plain files under the configured location, and under a folder

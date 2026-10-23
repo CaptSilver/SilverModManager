@@ -1,8 +1,8 @@
-﻿using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.NexusModsApi;
+﻿using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Abstractions.NexusWebApi;
+namespace SilverModManager.Abstractions.NexusWebApi;
 
 /// <summary>
 /// Archive metadata for a download that was installed from a NexusMods mod.

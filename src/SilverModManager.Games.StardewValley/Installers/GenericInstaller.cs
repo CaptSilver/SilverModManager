@@ -3,18 +3,18 @@ using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.StardewValley.Models;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.StardewValley.Models;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using SMAPIManifest = StardewModdingAPI.Toolkit.Serialization.Models.Manifest;
 
-namespace NexusMods.Games.StardewValley.Installers;
+namespace SilverModManager.Games.StardewValley.Installers;
 
 /// <summary>
 /// Generic installer for Stardew Valley that installs files into the "Mods" directory.

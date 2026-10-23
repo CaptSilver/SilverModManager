@@ -4,10 +4,10 @@ using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.App.UI.Extensions;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public partial class PanelResizerView : ReactiveUserControl<IPanelResizerViewModel>
 {

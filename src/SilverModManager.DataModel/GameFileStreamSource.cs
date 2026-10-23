@@ -1,14 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.DataModel;
+namespace SilverModManager.DataModel;
 
 /// <summary>
 /// A readonly stream source that reads files from game files on-disk. This is useful for when

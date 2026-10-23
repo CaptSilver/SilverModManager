@@ -1,8 +1,8 @@
 using System;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 using Reloaded.Memory.Pointers;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// Represents a slice descriptor.

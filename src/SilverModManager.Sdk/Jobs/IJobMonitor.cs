@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using DynamicData;
 
-namespace NexusMods.Sdk.Jobs;
+namespace SilverModManager.Sdk.Jobs;
 
 /// <summary>
 /// A monitor for jobs

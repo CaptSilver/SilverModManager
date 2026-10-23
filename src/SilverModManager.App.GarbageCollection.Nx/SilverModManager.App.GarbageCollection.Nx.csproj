@@ -6,6 +6,6 @@
         <PackageReference Include="NexusMods.Paths.Extensions.Nx" />
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.App.GarbageCollection\NexusMods.App.GarbageCollection.csproj"/>
+        <ProjectReference Include="..\SilverModManager.App.GarbageCollection\SilverModManager.App.GarbageCollection.csproj"/>
     </ItemGroup>
 </Project>

@@ -1,9 +1,9 @@
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Resources;
+using SilverModManager.App.UI.Resources;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.CollectionDownload;
+namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
 public partial class ManualDownloadRequiredOverlayView : ReactiveUserControl<IManualDownloadRequiredOverlayViewModel>
 {

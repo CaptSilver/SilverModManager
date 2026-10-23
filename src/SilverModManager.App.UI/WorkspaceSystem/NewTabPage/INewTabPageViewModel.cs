@@ -1,8 +1,8 @@
 using System.Collections.ObjectModel;
-using NexusMods.App.UI.Controls.Alerts;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls.Alerts;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public interface INewTabPageViewModel : IPageViewModelInterface
 {

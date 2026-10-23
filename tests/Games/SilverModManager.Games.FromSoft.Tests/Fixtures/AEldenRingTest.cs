@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.TestFramework;
-using NexusMods.Games.TestFramework.Helpers;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.TestFramework.Helpers;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 /// <summary>Elden Ring installed from a Steam library, found by the real Steam locator.</summary>
 public abstract class AEldenRingTest<TTest>(ITestOutputHelper helper, bool dirtyGameFolder = false)

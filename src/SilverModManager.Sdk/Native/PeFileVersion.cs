@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 
-namespace NexusMods.Sdk.Native;
+namespace SilverModManager.Sdk.Native;
 
 /// <summary>
 /// Reads the numeric file version (<c>FILEVERSION</c>) from a PE file's <c>VS_FIXEDFILEINFO</c>. A scan for the

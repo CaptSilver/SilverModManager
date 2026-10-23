@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FileHashes.DTOs;
+namespace SilverModManager.Games.FileHashes.DTOs;
 
 /// <summary>
 /// A contributed definition for a version

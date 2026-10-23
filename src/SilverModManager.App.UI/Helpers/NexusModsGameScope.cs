@@ -1,12 +1,12 @@
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Collections;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Collections;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.App.UI.Helpers;
+namespace SilverModManager.App.UI.Helpers;
 
 /// <summary>
 /// What the UI does with a game's Nexus id, for games that may not have one. A game without a Nexus id has no

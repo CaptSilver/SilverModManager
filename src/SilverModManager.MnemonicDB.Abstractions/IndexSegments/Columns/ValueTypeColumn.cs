@@ -1,7 +1,7 @@
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments.Columns;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments.Columns;
 
 public class ValueTypeColumn : ASimpleColumn<ValueTag>
 {

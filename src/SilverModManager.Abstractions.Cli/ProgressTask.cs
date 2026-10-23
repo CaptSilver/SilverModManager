@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Abstractions.Cli;
+namespace SilverModManager.Abstractions.Cli;
 
 /// <summary>
 /// A wrapper for progress task communication

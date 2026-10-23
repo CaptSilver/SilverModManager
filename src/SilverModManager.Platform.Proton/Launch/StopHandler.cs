@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// Catches SIGTERM, SIGINT and SIGHUP for the lifetime of a launch. The first signal is recorded with the

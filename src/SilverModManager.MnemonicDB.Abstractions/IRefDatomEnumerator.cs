@@ -1,7 +1,7 @@
 using System;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// A high-performance enumerator for ref datoms, the values are returned as spans, and so these iterators

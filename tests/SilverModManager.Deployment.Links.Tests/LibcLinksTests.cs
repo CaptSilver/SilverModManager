@@ -1,8 +1,8 @@
-using NexusMods.Deployment.Links.Native;
-using NexusMods.Deployment.Links.Tests.Fixtures;
-using NexusMods.Sdk.Native;
+using SilverModManager.Deployment.Links.Native;
+using SilverModManager.Deployment.Links.Tests.Fixtures;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Links.Tests;
+namespace SilverModManager.Deployment.Links.Tests;
 
 public sealed class LibcLinksTests : IDisposable
 {

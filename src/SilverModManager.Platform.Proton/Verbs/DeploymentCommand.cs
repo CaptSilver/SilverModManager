@@ -1,17 +1,17 @@
 using System.Text.Json;
-using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Exceptions;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Platform.Proton.Verbs;
+namespace SilverModManager.Platform.Proton.Verbs;
 
 /// <summary>
 /// What happened to one root.

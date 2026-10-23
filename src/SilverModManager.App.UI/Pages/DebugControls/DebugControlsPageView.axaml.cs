@@ -2,17 +2,17 @@ using System.Reactive.Disposables;
 using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.App.UI.Dialog;
-using NexusMods.App.UI.Dialog.Standard;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.Sdk;
-using NexusMods.UI.Sdk.Dialog;
-using NexusMods.UI.Sdk.Dialog.Enums;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Dialog.Standard;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.Sdk;
+using SilverModManager.UI.Sdk.Dialog;
+using SilverModManager.UI.Sdk.Dialog.Enums;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.DebugControls;
+namespace SilverModManager.App.UI.Pages.DebugControls;
 
 public partial class DebugControlsPageView : ReactiveUserControl<IDebugControlsPageViewModel>
 {

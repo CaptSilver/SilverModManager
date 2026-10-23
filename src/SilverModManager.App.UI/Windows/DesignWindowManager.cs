@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
-using NexusMods.App.UI.Dialog;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.App.UI.WorkspaceSystem;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Windows;
+namespace SilverModManager.App.UI.Windows;
 
 public class DesignWindowManager : IWindowManager
 {

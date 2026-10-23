@@ -1,13 +1,13 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
-using NexusMods.App.UI.Controls.GameWidget;
-using NexusMods.App.UI.Controls.MiniGameWidget;
-using NexusMods.App.UI.Controls.MiniGameWidget.Standard;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.GameWidget;
+using SilverModManager.App.UI.Controls.MiniGameWidget;
+using SilverModManager.App.UI.Controls.MiniGameWidget.Standard;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.MyGames;
+namespace SilverModManager.App.UI.Pages.MyGames;
 
 public interface IMyGamesViewModel : IPageViewModelInterface
 {

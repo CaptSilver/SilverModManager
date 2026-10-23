@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.MnemonicDB;
+namespace SilverModManager.MnemonicDB;
 
 /// <inheritdoc />
 public class CommitResult(IDb db, IDictionary<EntityId, EntityId> remaps) : ICommitResult

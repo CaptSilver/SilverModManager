@@ -3,11 +3,11 @@ using System.Diagnostics;
 using CliWrap;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Platform.Proton;
-using NexusMods.Sdk;
+using SilverModManager.Platform.Proton;
+using SilverModManager.Sdk;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests;
+namespace SilverModManager.Platform.Proton.Tests;
 
 public class DesktopNotifierTests
 {

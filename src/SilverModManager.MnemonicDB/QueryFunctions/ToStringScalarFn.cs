@@ -1,10 +1,10 @@
 using NexusMods.HyperDuck;
 using NexusMods.HyperDuck.Adaptor.Impls;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
-namespace NexusMods.MnemonicDB.QueryFunctions;
+namespace SilverModManager.MnemonicDB.QueryFunctions;
 
 public class ToStringScalarFn : AScalarFunction
 {

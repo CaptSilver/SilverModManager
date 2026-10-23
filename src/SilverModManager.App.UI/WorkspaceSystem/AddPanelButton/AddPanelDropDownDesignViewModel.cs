@@ -1,6 +1,6 @@
-﻿using NexusMods.UI.Sdk;
+﻿using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public class AddPanelDropDownDesignViewModel : AViewModel<IAddPanelDropDownViewModel>, IAddPanelDropDownViewModel
 {

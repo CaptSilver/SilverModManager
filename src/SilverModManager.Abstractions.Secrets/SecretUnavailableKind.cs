@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Secrets;
+namespace SilverModManager.Abstractions.Secrets;
 
 /// <summary>
 /// Why a store could not answer. Callers pick wording and recovery from this, not from the reason text.

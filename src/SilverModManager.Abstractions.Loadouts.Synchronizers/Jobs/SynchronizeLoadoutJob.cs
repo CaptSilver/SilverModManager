@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 /// <summary>
 /// Synchronize the loadout with the game folder,

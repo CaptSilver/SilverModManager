@@ -2,22 +2,22 @@ using System.Collections.Concurrent;
 using System.Xml;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Larian.BaldursGate3.GameInstalled;
-using NexusMods.Games.Larian.BaldursGate3.Models;
-using NexusMods.Games.Larian.BaldursGate3.SortOrder;
-using NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
-using NexusMods.Games.Larian.BaldursGate3.Utils.PakParsing;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.BaldursGate3.Models;
+using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
+using SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
 using NexusMods.Hashing.xxHash3;
 using DynamicData.Kernel;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Resources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Resources;
 using Polly;
 
-namespace NexusMods.Games.Larian.BaldursGate3.ModList;
+namespace SilverModManager.Games.Larian.BaldursGate3.ModList;
 
 /// <summary>
 /// Finds out which module each pak of the loadout is. A pak the app holds is read from the file store through

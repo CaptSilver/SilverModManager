@@ -1,15 +1,15 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
-using NexusMods.MnemonicDB.Abstractions.Internals;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Wabbajack.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Wabbajack.Models;
 
-namespace NexusMods.Wabbajack.Diagnostics;
+namespace SilverModManager.Wabbajack.Diagnostics;
 
 /// <summary>
 /// Cleans up after a modlist group once it is removed. Removing a collection deletes the group's entity and its mods,

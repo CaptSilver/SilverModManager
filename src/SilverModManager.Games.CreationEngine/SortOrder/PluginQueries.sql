@@ -1,4 +1,4 @@
--- namespace: NexusMods.Games.CreationEngine.SortOrder
+-- namespace: SilverModManager.Games.CreationEngine.SortOrder
 -- Hash stores and loadout tables are read with the macros of the data model project.
 
 CREATE SCHEMA IF NOT EXISTS plugins;

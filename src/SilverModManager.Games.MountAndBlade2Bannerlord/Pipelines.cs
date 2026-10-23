@@ -2,13 +2,13 @@ using System.Reactive;
 using System.Xml;
 using Bannerlord.ModuleManager;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk.Resources;
-using NexusMods.Games.MountAndBlade2Bannerlord.Models;
+using SilverModManager.Sdk.Resources;
+using SilverModManager.Games.MountAndBlade2Bannerlord.Models;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.FileStore;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.FileStore;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord;
 
 internal static class Pipelines
 {

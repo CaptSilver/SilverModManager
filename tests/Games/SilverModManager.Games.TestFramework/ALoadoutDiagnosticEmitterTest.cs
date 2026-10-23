@@ -2,14 +2,14 @@ using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.App.UI.DiagnosticSystem;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Sdk.Loadouts;
 using Xunit;
 
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 public class ALoadoutDiagnosticEmitterTest<TTest, TGame, TEmitter> : AIsolatedGameTest<TTest, TGame>
     where TGame : IGame

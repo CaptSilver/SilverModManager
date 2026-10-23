@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Merge;
-using static NexusMods.Games.FromSoft.Merge.EsdAlignment;
-using static NexusMods.Games.FromSoft.Tests.Merge.EsdMergeFixture;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Merge;
+using static SilverModManager.Games.FromSoft.Merge.EsdAlignment;
+using static SilverModManager.Games.FromSoft.Tests.Merge.EsdMergeFixture;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 public class EsdAlignmentTests
 {

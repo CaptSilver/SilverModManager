@@ -1,8 +1,8 @@
 using System.Buffers.Binary;
 using System.Text;
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
 /// <summary>
 /// Assembles a TPF by hand, not through <see cref="Tpf.Write"/>, so the reader is tested against bytes laid out here:

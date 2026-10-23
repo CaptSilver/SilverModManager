@@ -4,12 +4,12 @@ using System.Reactive.Linq;
 using System.Text.RegularExpressions;
 
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.SelectLocation;
+namespace SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 
 public class SelectableTreeEntryViewModel : AViewModel<ISelectableTreeEntryViewModel>,
     ISelectableTreeEntryViewModel

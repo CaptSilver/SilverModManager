@@ -1,6 +1,6 @@
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.Sdk.FileStore;
+namespace SilverModManager.Sdk.FileStore;
 
 /// <summary>
 /// Provides a read-only stream source. Streams can be opened by hash.

@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Wabbajack.Mapping;
+namespace SilverModManager.Wabbajack.Mapping;
 
 /// <summary>What the nine placeholders a modlist leaves in MO2's files stand for.</summary>
 public readonly record struct PathMarkerValues(string GamePath, string Mo2Path, string DownloadsPath);

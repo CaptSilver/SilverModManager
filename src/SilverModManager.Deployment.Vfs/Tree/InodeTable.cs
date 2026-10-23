@@ -1,4 +1,4 @@
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// Hands out inode numbers: the root is 1, everything else counts up from 2. A (parent, name)

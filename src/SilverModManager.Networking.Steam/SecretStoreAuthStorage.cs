@@ -1,9 +1,9 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Abstractions.Steam;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Abstractions.Steam;
 
-namespace NexusMods.Networking.Steam;
+namespace SilverModManager.Networking.Steam;
 
 internal sealed class SecretStoreAuthStorage(ISecretStore store, ILogger<SecretStoreAuthStorage> logger) : IAuthStorage
 {

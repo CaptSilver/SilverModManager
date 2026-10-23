@@ -266,7 +266,7 @@ The above example defines a ControlTheme for a Button, which is based on the def
 
 ### Styling the App
 
-!!! info "In the App, all the Styles are defined in a dedicated Theme project `NexusMods.Themes.NexusFluentDark`."
+!!! info "In the App, all the Styles are defined in a dedicated Theme project `SilverModManager.Themes.NexusFluentDark`."
 
 This is so that all the styles can be easily found and modified in one place.
 

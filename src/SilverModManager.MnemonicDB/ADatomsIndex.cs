@@ -2,11 +2,11 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Query;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 
-namespace NexusMods.MnemonicDB;
+namespace SilverModManager.MnemonicDB;
 
 public abstract class ADatomsIndex<TRefEnumerator> : IDatomsIndex, IRefDatomEnumeratorFactory<TRefEnumerator>
     where TRefEnumerator : IRefDatomEnumerator

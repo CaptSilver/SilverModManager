@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 /// <summary>
 /// A node in the synchronization tree.

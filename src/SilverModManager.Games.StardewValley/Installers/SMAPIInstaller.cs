@@ -2,21 +2,21 @@ using System.Diagnostics;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
 
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.StardewValley.Models;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.StardewValley.Models;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.StardewValley.Installers;
+namespace SilverModManager.Games.StardewValley.Installers;
 
 public class SMAPIInstaller : ALibraryArchiveInstaller
 {

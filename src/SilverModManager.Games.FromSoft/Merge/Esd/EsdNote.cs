@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>Why one thing in a merge of state machines could not be carried over as it stood.</summary>
 public enum EsdNoteReason

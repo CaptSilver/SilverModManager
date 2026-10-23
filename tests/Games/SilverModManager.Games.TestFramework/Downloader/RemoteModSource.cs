@@ -1,4 +1,4 @@
-﻿namespace NexusMods.Games.TestFramework.Downloader;
+﻿namespace SilverModManager.Games.TestFramework.Downloader;
 
 /// <summary>
 /// Defines the source this test mod is from.

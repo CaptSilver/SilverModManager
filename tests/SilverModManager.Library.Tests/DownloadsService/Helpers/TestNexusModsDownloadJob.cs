@@ -1,12 +1,12 @@
 using System.Reactive.Subjects;
-using NexusMods.Abstractions.HttpDownloads;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.HttpDownloads;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Library.Tests.DownloadsService.Helpers;
+namespace SilverModManager.Library.Tests.DownloadsService.Helpers;
 
 /// <summary>
 /// Test implementation that implements <see cref="IJobDefinitionWithStart{TJobDefinition,TResult}"/>

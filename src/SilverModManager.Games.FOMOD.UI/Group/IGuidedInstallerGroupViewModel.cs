@@ -1,8 +1,8 @@
 using System.Collections.ObjectModel;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 public interface IGuidedInstallerGroupViewModel : IViewModelInterface
 {

@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.App;
+namespace SilverModManager.App;
 
 /// <summary>
 /// Detects data left by the upstream Nexus Mods App, which this fork can run next to. The fork

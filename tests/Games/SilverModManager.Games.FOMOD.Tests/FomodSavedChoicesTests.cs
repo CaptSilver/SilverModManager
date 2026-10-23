@@ -1,20 +1,20 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FOMOD.CoreDelegates;
-using NexusMods.Games.RedEngine;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FOMOD.CoreDelegates;
+using SilverModManager.Games.RedEngine;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Library;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Library;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 using FomodInterface = FomodInstaller.Interface;
 
-namespace NexusMods.Games.FOMOD.Tests;
+namespace SilverModManager.Games.FOMOD.Tests;
 
 /// <summary>
 /// Installs FOMODs with saved choices through the real <see cref="InstallerDelegates"/>, the way a

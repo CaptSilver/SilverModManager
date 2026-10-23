@@ -7,7 +7,7 @@ Run with the interpreter that has the `loot` module in its site-packages, in iso
 
 Each case writes synthetic plugins (headers only) into a temp Data directory, loads the case's
 masterlist, userlist and prelude, sorts, and stores the expected order or the error. The JSON goes
-under tests/Games/NexusMods.Games.Bethesda.Loot.Tests/Corpus/{tier1,tier2,tier3}/. Only the standard
+under tests/Games/SilverModManager.Games.Bethesda.Loot.Tests/Corpus/{tier1,tier2,tier3}/. Only the standard
 library and `loot` are used, because that interpreter has nothing else.
 
 Tier 3 sorts synthetic plugins named after the entries of the real, condition-stripped LOOT
@@ -637,7 +637,7 @@ def real_masterlist_case(repo, seed, stripped_dir, hashes, master_chance):
 
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
-    default_out = os.path.join(here, "..", "..", "tests", "Games", "NexusMods.Games.Bethesda.Loot.Tests", "Corpus")
+    default_out = os.path.join(here, "..", "..", "tests", "Games", "SilverModManager.Games.Bethesda.Loot.Tests", "Corpus")
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--out", default=default_out, help="corpus directory")
     parser.add_argument("--tier", choices=["1", "2", "3"], action="append",

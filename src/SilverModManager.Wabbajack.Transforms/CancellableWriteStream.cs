@@ -1,4 +1,4 @@
-namespace NexusMods.Wabbajack.Transforms;
+namespace SilverModManager.Wabbajack.Transforms;
 
 /// <summary>
 /// Forwards writes to <paramref name="inner"/> and throws <see cref="OperationCanceledException"/>

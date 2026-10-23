@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Several extensions for game related classes

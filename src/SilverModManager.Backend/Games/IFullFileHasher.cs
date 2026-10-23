@@ -2,7 +2,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
 
-namespace NexusMods.Backend.Games;
+namespace SilverModManager.Backend.Games;
 
 /// <summary>
 /// Reads a whole file to hash it. <see cref="GameLocationsService"/> only gets here for a file that no stored

@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Collections;
+namespace SilverModManager.Sdk.Collections;
 
 /// <summary>
 /// Read-only dictionary for a single value.

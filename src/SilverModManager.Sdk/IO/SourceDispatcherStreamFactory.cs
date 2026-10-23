@@ -1,8 +1,8 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
+using SilverModManager.Sdk.FileStore;
 
-namespace NexusMods.Sdk.IO;
+namespace SilverModManager.Sdk.IO;
 
 public class SourceDispatcherStreamFactory : IStreamFactory
 {

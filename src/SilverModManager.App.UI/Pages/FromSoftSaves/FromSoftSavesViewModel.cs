@@ -4,21 +4,21 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Games.FromSoft;
-using NexusMods.Games.FromSoft.Saves;
-using FromSoftSavesService = NexusMods.Games.FromSoft.Saves.FromSoftSaves;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Games.FromSoft;
+using SilverModManager.Games.FromSoft.Saves;
+using FromSoftSavesService = SilverModManager.Games.FromSoft.Saves.FromSoftSaves;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Pages.FromSoftSaves;
+namespace SilverModManager.App.UI.Pages.FromSoftSaves;
 
 [UsedImplicitly]
 public class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewModel>, IFromSoftSavesViewModel

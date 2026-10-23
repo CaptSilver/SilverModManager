@@ -1,5 +1,5 @@
 // Follows GetBSAHash and GetFolderBSAHash in Wabbajack.Compression.BSA/BinaryHelperExtensions.cs (GPL-3.0).
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// The 64 bit name hashes TES5 archives sort their folders and files by (and the games search them by).

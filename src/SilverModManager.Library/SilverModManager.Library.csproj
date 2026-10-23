@@ -1,20 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Abstractions.Games\NexusMods.Abstractions.Games.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.HttpDownloads\NexusMods.Abstractions.HttpDownloads.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Library\NexusMods.Abstractions.Library.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Loadouts.Synchronizers\NexusMods.Abstractions.Loadouts.Synchronizers.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.NexusWebApi\NexusMods.Abstractions.NexusWebApi.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.AdvancedInstaller\NexusMods.Games.AdvancedInstaller.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.GitHub\NexusMods.Networking.GitHub.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.HttpDownloader\NexusMods.Networking.HttpDownloader.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.NexusWebApi\NexusMods.Networking.NexusWebApi.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.Thunderstore\NexusMods.Networking.Thunderstore.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.HttpDownloads\SilverModManager.Abstractions.HttpDownloads.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Library\SilverModManager.Abstractions.Library.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts.Synchronizers\SilverModManager.Abstractions.Loadouts.Synchronizers.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.NexusWebApi\SilverModManager.Abstractions.NexusWebApi.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.AdvancedInstaller\SilverModManager.Games.AdvancedInstaller.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.GitHub\SilverModManager.Networking.GitHub.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.HttpDownloader\SilverModManager.Networking.HttpDownloader.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.NexusWebApi\SilverModManager.Networking.NexusWebApi.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.Thunderstore\SilverModManager.Networking.Thunderstore.csproj" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Tomlyn" />
     </ItemGroup>
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Library.Tests"/>
+        <InternalsVisibleTo Include="SilverModManager.Library.Tests"/>
     </ItemGroup>
 </Project>

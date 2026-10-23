@@ -3,13 +3,13 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using NexusMods.MnemonicDB.Storage.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.MnemonicDB.Storage.Abstractions;
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.MnemonicDB.Storage;
+namespace SilverModManager.MnemonicDB.Storage;
 
 public partial class DatomStore
 {

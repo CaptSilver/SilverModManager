@@ -3,13 +3,13 @@
                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                   xmlns:sdk="clr-namespace:NexusMods.UI.Sdk;assembly=NexusMods.UI.Sdk"
-                   xmlns:local="clr-namespace:NexusMods.App.UI.Pages.Sorting"
-                   xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-                   xmlns:abstractions="clr-namespace:NexusMods.MnemonicDB.Abstractions;assembly=NexusMods.MnemonicDB.Abstractions"
-                   xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+                   xmlns:sdk="clr-namespace:SilverModManager.UI.Sdk;assembly=SilverModManager.UI.Sdk"
+                   xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.Sorting"
+                   xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+                   xmlns:abstractions="clr-namespace:SilverModManager.MnemonicDB.Abstractions;assembly=SilverModManager.MnemonicDB.Abstractions"
+                   xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
                    mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-                   x:Class="NexusMods.App.UI.Pages.Sorting.FileConflictsView">
+                   x:Class="SilverModManager.App.UI.Pages.Sorting.FileConflictsView">
 
     <controls:EmptyState x:Name="EmptyState"
                          Header="No file conflicts detected">

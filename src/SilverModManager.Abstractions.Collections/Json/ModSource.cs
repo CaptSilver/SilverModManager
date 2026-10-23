@@ -1,10 +1,10 @@
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Abstractions.Collections.Json;
+namespace SilverModManager.Abstractions.Collections.Json;
 
 /// <summary>
 /// Polymorphic source

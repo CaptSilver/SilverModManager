@@ -1,7 +1,7 @@
 using DynamicData.Kernel;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI.Controls.Navigation;
+namespace SilverModManager.App.UI.Controls.Navigation;
 
 public record NavigationInformation(
     NavigationInput Input,

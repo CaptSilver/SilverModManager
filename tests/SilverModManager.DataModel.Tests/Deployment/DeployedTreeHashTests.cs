@@ -1,12 +1,12 @@
 using System.Text;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.DataModel.Tests.Deployment;
+namespace SilverModManager.DataModel.Tests.Deployment;
 
 /// <summary>
 /// Pins the bytes and executable bits that land in the game and preferences folders through

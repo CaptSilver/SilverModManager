@@ -1,10 +1,10 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
+namespace SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
 
 [JsonName("SilverModManager.App.UI.Pages.ViewLoadoutGroupFilesPageContext")]
 public record LoadoutGroupFilesPageContext : IPageFactoryContext

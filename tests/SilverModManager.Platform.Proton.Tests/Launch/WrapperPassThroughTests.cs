@@ -2,11 +2,11 @@ using System.ComponentModel;
 using System.Diagnostics;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 using NSubstitute;
-using NexusMods.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Launch;
 
-namespace NexusMods.Platform.Proton.Tests.Launch;
+namespace SilverModManager.Platform.Proton.Tests.Launch;
 
 public class WrapperPassThroughTests : IDisposable
 {

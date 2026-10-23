@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using FluentAssertions;
 
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 public class WineParserMergeTests
 {

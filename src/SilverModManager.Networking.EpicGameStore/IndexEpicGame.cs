@@ -2,16 +2,16 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.Games;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.Games;
 using NexusMods.Paths;
 using NexusMods.Paths.Extensions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Networking.EpicGameStore;
+namespace SilverModManager.Networking.EpicGameStore;
 
 public static class IndexEpicGame
 {

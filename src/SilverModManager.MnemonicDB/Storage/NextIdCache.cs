@@ -1,10 +1,10 @@
 ﻿using System.Linq;
 using System.Runtime.CompilerServices;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Internals;
-using NexusMods.MnemonicDB.Abstractions.Query;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 
-namespace NexusMods.MnemonicDB.Storage;
+namespace SilverModManager.MnemonicDB.Storage;
 
 /// <summary>
 /// Next ID cache

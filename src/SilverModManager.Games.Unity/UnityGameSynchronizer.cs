@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.Unity;
+namespace SilverModManager.Games.Unity;
 
 /// <summary>
 /// The default synchronizer, less the files BepInEx writes while the game runs. Without the filter every session

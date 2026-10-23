@@ -1,9 +1,9 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Build;
+namespace SilverModManager.Games.FromSoft.Build;
 
 /// <summary>Reads and writes the <see cref="FromSoftBuildStamp"/> of an installation.</summary>
 public sealed class BuildStampStore(IConnection connection, TimeProvider time)

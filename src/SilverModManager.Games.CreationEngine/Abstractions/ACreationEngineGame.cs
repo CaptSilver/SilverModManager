@@ -1,27 +1,27 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.Modlists;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Sorting;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.CreationEngine.Emitters;
-using NexusMods.Games.CreationEngine.Modlists;
-using NexusMods.Games.CreationEngine.PluginLists;
-using NexusMods.Games.CreationEngine.SortOrder;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.LoadOrder.Ordering;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Modlists;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Sorting;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.CreationEngine.Emitters;
+using SilverModManager.Games.CreationEngine.Modlists;
+using SilverModManager.Games.CreationEngine.PluginLists;
+using SilverModManager.Games.CreationEngine.SortOrder;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder.Ordering;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.CreationEngine.Abstractions;
+namespace SilverModManager.Games.CreationEngine.Abstractions;
 
 /// <summary>
 /// A Bethesda title whose plugin headers the load order reader can parse: adds the Plugins.txt intrinsic file and the

@@ -1,29 +1,29 @@
-using NexusMods.App.UI.Helpers;
+using SilverModManager.App.UI.Helpers;
 using System.Reactive.Linq;
 using Avalonia.Media.Imaging;
 using DynamicData;
 using DynamicData.Aggregation;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Sdk.Resources;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Pages.LibraryPage;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using NexusMods.Networking.NexusWebApi;
-using NexusMods.Networking.NexusWebApi.UpdateFilters;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Sdk.Resources;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using NuGet.Versioning;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
 using R3;
 
-namespace NexusMods.App.UI.Pages;
+namespace SilverModManager.App.UI.Pages;
 
 public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
 {
@@ -315,7 +315,7 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
             .ObserveDatoms(CollectionDownloadNexusMods.FileMetadataId, libraryItem.FileMetadataId)
             .AsEntityIds()
             .Distinct()
-            .Transform(datom => NexusMods.Abstractions.NexusModsLibrary.Models.CollectionDownload.Load(_connection.Db, datom.E).CollectionRevision.Collection)
+            .Transform(datom => SilverModManager.Abstractions.NexusModsLibrary.Models.CollectionDownload.Load(_connection.Db, datom.E).CollectionRevision.Collection)
             .ChangeKey(collection => collection.Id);
 
         LibraryDataProviderHelper.AddRelatedCollectionsComponent(itemModel, linkedLoadoutItemsObservable, relatedDownloadedCollectionsObservable);
@@ -331,7 +331,7 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
                 _connection.ObserveDatoms(CollectionDownloadNexusMods.FileMetadataId, libraryItem.FileMetadataId)
                     .AsEntityIds()
                     .Distinct()
-                    .Transform(datom => NexusMods.Abstractions.NexusModsLibrary.Models.CollectionDownload
+                    .Transform(datom => SilverModManager.Abstractions.NexusModsLibrary.Models.CollectionDownload
                         .Load(_connection.Db, datom.E)
                         .CollectionRevision.Collection
                     )

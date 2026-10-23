@@ -1,15 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Games.Larian.BaldursGate3.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Larian.BaldursGate3;
-using NexusMods.Games.Larian.BaldursGate3.Models;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Games.Larian.BaldursGate3.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Larian.BaldursGate3;
+using SilverModManager.Games.Larian.BaldursGate3.Models;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3.Modsettings;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3.Modsettings;
 
 /// <summary>
 /// What an Apply writes to <c>modsettings.lsx</c>: the game's own modules and version kept as they were, then one
@@ -96,7 +96,7 @@ public class ModsettingsFileWriteTests(ITestOutputHelper helper) : ModsettingsFi
         var row = Variety.StoredOrder(Refresh(loadout)).Single(r => r.Name == GameModPak).StoredRowId;
         using (var tx = Connection.BeginTransaction())
         {
-            tx.Add(row, NexusMods.Games.Larian.BaldursGate3.Models.Bg3PakSortOrderItem.IsEnabled, false);
+            tx.Add(row, SilverModManager.Games.Larian.BaldursGate3.Models.Bg3PakSortOrderItem.IsEnabled, false);
             await tx.Commit();
         }
         await Apply(loadout);
@@ -157,7 +157,7 @@ public class ModsettingsFileWriteTests(ITestOutputHelper helper) : ModsettingsFi
         var emitter = Game.DiagnosticEmitters.OfType<DuplicateModuleEmitter>().Single();
         var diagnostic = (await emitter.Diagnose(Refresh(loadout), CancellationToken.None).ToListAsync()).Should().ContainSingle().Subject;
 
-        diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.Larian.BaldursGate3", number: 11));
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.Larian.BaldursGate3", number: 11));
         diagnostic.FormatSummary(ServiceProvider.GetRequiredService<IDiagnosticWriter>())
             .Should().Be("The module Alpha is installed twice, as alpha.pak and as alpha-ab12.pak.");
     }

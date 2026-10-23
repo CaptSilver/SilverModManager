@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Pages;
+namespace SilverModManager.App.UI.Pages;
 
 [JsonName(nameof(ProtocolRegistrationTestPageContext))]
 public record ProtocolRegistrationTestPageContext : IPageFactoryContext;

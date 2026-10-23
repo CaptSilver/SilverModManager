@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts.Exceptions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.DataModel.Synchronizer;
+namespace SilverModManager.DataModel.Synchronizer;
 
 /// <summary>
 /// Refuses the three writers (apply, delete a loadout, unmanage a game) while a launch from this app is running.

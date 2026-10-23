@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Games;
+using SilverModManager.Abstractions.Games;
 using NexusMods.Paths;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// Rewrites the command Steam hands to <c>silvermod run -- %command%</c> so it starts the exe the loadout's

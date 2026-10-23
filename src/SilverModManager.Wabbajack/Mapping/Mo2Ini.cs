@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Wabbajack.Mapping;
+namespace SilverModManager.Wabbajack.Mapping;
 
 /// <summary>A tool MO2 lists in its toolbar. Its working directory is not kept: the app launches tools from their own folder.</summary>
 public readonly record struct Mo2Executable(string Title, string Binary, string Arguments);

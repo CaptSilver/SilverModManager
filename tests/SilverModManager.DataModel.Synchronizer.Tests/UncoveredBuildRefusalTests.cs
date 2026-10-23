@@ -1,17 +1,17 @@
-using NexusMods.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
-using NexusMods.Abstractions.Games;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Abstractions.Games;
 using Xunit;
 
-namespace NexusMods.DataModel.Synchronizer.Tests;
+namespace SilverModManager.DataModel.Synchronizer.Tests;
 
 /// <summary>
 /// Anything that deletes the game's own files works from the vanilla file list, so it must refuse when that list

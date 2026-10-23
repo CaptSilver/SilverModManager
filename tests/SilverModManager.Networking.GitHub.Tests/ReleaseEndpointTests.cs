@@ -1,12 +1,12 @@
 using System.Net;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Networking.GitHub.DTOs;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Networking.GitHub.DTOs;
+using SilverModManager.Sdk.Hashes;
 using Xunit;
 
-namespace NexusMods.Networking.GitHub.Tests;
+namespace SilverModManager.Networking.GitHub.Tests;
 
 public class ReleaseEndpointTests
 {

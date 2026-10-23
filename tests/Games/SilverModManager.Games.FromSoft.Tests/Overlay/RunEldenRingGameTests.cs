@@ -1,21 +1,21 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Overlay;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.Games.FromSoft.Tests.Overlay;
+namespace SilverModManager.Games.FromSoft.Tests.Overlay;
 
 public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingTest<RunEldenRingGameTests>(helper)
 {
@@ -95,7 +95,7 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
         await TestArchives.Write(path, "parts/wp_a.dcx");
         var archive = await RegisterLocalArchive(path);
         await LoadoutManager.InstallItem(archive.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId,
-            installer: Game.LibraryItemInstallers.OfType<NexusMods.Games.FromSoft.Installers.Me3PackageInstaller>().Single());
+            installer: Game.LibraryItemInstallers.OfType<SilverModManager.Games.FromSoft.Installers.Me3PackageInstaller>().Single());
 
         var act = async () => await Tool.GetLaunchSpec(Refresh(loadout), CancellationToken.None);
 
@@ -110,7 +110,7 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
         await TestArchives.Write(path, "parts/wp_a.dcx");
         var archive = await RegisterLocalArchive(path);
         await LoadoutManager.InstallItem(archive.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId,
-            installer: Game.LibraryItemInstallers.OfType<NexusMods.Games.FromSoft.Installers.Me3PackageInstaller>().Single());
+            installer: Game.LibraryItemInstallers.OfType<SilverModManager.Games.FromSoft.Installers.Me3PackageInstaller>().Single());
 
         var act = async () => await Tool.GetLaunchSpec(Refresh(loadout), CancellationToken.None);
 

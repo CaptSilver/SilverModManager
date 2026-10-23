@@ -1,7 +1,7 @@
 using NexusMods.Paths.Trees;
 using NexusMods.Paths.Trees.Traits;
 
-namespace NexusMods.Games.Generic.Extensions;
+namespace SilverModManager.Games.Generic.Extensions;
 
 public static class LibraryArchiveTreeExtensions
 {

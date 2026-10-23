@@ -1,13 +1,13 @@
 ﻿using System.Collections.ObjectModel;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.LeftMenu.Items;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.LeftMenu.Items;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 using R3;
 
-namespace NexusMods.App.UI.LeftMenu.Loadout;
+namespace SilverModManager.App.UI.LeftMenu.Loadout;
 
 public class LoadoutLeftMenuDesignViewModel : AViewModel<ILoadoutLeftMenuViewModel>, ILoadoutLeftMenuViewModel
 {

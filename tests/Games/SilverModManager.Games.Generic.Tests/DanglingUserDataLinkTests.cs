@@ -1,17 +1,17 @@
 using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.App.UI.DiagnosticSystem;
-using NexusMods.Games.Generic.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Games.Generic.Diagnostics;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 using Xunit;
 
-namespace NexusMods.Games.Generic.Tests;
+namespace SilverModManager.Games.Generic.Tests;
 
 /// <summary>
 /// The save and settings folders a game keeps outside its install folder can be turned into links by other
@@ -50,7 +50,7 @@ public class DanglingUserDataLinkTests : IDisposable
     private static string Details(Diagnostic diagnostic, IServiceProvider provider)
         => diagnostic.FormatDetails(provider.GetRequiredService<IDiagnosticWriter>());
 
-    private IServiceProvider Provider { get; } = new ServiceCollection().AddLogging().AddSingleton(Substitute.For<NexusMods.MnemonicDB.Abstractions.IConnection>()).AddDiagnosticWriter().BuildServiceProvider();
+    private IServiceProvider Provider { get; } = new ServiceCollection().AddLogging().AddSingleton(Substitute.For<SilverModManager.MnemonicDB.Abstractions.IConnection>()).AddDiagnosticWriter().BuildServiceProvider();
 
     private IEnumerable<Diagnostic> Diagnose(params string[] folders)
         => UserDataLinkEmitter.DiagnoseFolders("Test Game", folders);
@@ -64,7 +64,7 @@ public class DanglingUserDataLinkTests : IDisposable
 
         var diagnostic = Diagnose(link).Should().ContainSingle().Which;
 
-        diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.Generic", DanglingLinkId));
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.Generic", DanglingLinkId));
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
         var details = Details(diagnostic, Provider);
         details.Should().Contain(link);

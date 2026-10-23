@@ -1,15 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Games.TestFramework;
-using NexusMods.Games.TestFramework.Helpers;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.TestFramework.Helpers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.SkyrimSE;
+namespace SilverModManager.Games.CreationEngine.Tests.SkyrimSE;
 
 /// <summary>
 /// Skyrim Special Edition installed from a Steam library on a symlinked mount, with real plugin headers in its
@@ -23,8 +23,8 @@ public class SteamInstalledSkyrimTests(ITestOutputHelper helper) : ASteamInstall
     private const ulong GameManifestId = 5000000000000000001;
     private const ulong ContentManifestId = 5000000000000000002;
 
-    private static readonly DiagnosticId MissingMasterId = new("NexusMods.Games.CreationEngine", number: 1);
-    private static readonly DiagnosticId UnreadablePluginsId = new("NexusMods.Games.CreationEngine", number: 3);
+    private static readonly DiagnosticId MissingMasterId = new("SilverModManager.Games.CreationEngine", number: 1);
+    private static readonly DiagnosticId UnreadablePluginsId = new("SilverModManager.Games.CreationEngine", number: 3);
 
     private static readonly string[] Archives =
     [
@@ -88,8 +88,8 @@ public class SteamInstalledSkyrimTests(ITestOutputHelper helper) : ASteamInstall
 
         // Only the file checks are the point; the bare prefix has nothing else to say about this game.
         diagnostics.Select(d => d.Id.ToString()).Should().Equal(
-            "NexusMods.Games.CreationEngine: 1",
-            "NexusMods.Games.FileHashes: 3");
+            "SilverModManager.Games.CreationEngine: 1",
+            "SilverModManager.Games.FileHashes: 3");
         var missing = diagnostics.Where(d => d.Id == MissingMasterId).ToArray();
         var description = Describe(missing.Should().ContainSingle().Subject);
         description.Should().Contain("Orphan.esp").And.Contain("Absent.esm");
@@ -112,7 +112,7 @@ public class SteamInstalledSkyrimTests(ITestOutputHelper helper) : ASteamInstall
 
         // The plugins the sync adopted reach the stored order from a background reconcile that starts when the
         // sync commits, so what is stored depends on how far it got. Wait for it to finish before reading.
-        var variety = Game.SortOrderManager.GetSortOrderVarieties().OfType<NexusMods.Games.CreationEngine.SortOrder.IPluginSortOrderVariety>().Single();
+        var variety = Game.SortOrderManager.GetSortOrderVarieties().OfType<SilverModManager.Games.CreationEngine.SortOrder.IPluginSortOrderVariety>().Single();
         string[] stored = [];
         await WaitUntil(() => (stored = variety.StoredOrder(Refresh(loadout)).Select(row => row.Name).ToArray()).Length >= 6);
         stored.Should().Equal("Skyrim.esm", "Update.esm", "Dawnguard.esm", "ccBGSSSE001-Fish.esm", "Orphan.esp", "Present.esp");

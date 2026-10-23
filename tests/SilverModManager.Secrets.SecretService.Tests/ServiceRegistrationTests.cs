@@ -1,11 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk;
 using Xunit;
 
-namespace NexusMods.Secrets.SecretService.Tests;
+namespace SilverModManager.Secrets.SecretService.Tests;
 
 public class ServiceRegistrationTests
 {

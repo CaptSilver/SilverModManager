@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using ImageMagick;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public static class ModuleInitializer
 {

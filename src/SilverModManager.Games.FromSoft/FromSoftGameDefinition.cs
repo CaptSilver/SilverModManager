@@ -1,10 +1,10 @@
-using NexusMods.Games.FromSoft.Cleanup;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Overlay;
-using NexusMods.Games.FromSoft.Saves;
+using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Saves;
 
-namespace NexusMods.Games.FromSoft;
+namespace SilverModManager.Games.FromSoft;
 
 /// <summary>
 /// What differs between FromSoft games, as plain values. A game class holds one in a static field and hands it to the

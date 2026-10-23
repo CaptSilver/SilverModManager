@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.IO;
+namespace SilverModManager.Sdk.IO;
 
 /// <summary>
 /// Represents a Stream Factory backed by a native path on the FileSystem.

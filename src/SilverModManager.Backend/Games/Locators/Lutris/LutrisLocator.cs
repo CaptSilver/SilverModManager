@@ -3,9 +3,9 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Backend.Games.Locators;
+namespace SilverModManager.Backend.Games.Locators;
 
 /// <summary>
 /// Finds games Lutris manages, from its <c>pga.db</c> and each game's YAML under both the native and the

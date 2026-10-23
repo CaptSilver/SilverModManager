@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 
-namespace NexusMods.Networking.GOG;
+namespace SilverModManager.Networking.GOG;
 
 /// <summary>
 /// The secret store keys the GOG login lives under.

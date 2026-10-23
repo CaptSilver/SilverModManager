@@ -1,4 +1,4 @@
-namespace NexusMods.Wabbajack.Mapping;
+namespace SilverModManager.Wabbajack.Mapping;
 
 /// <summary>One line of a profile's modlist.txt.</summary>
 /// <param name="Name">The mod folder name, or the separator's name including its <c>_separator</c> suffix.</param>

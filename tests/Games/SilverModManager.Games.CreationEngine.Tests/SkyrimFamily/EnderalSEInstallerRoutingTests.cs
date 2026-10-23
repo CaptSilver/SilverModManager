@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.SkyrimFamily;
+namespace SilverModManager.Games.CreationEngine.Tests.SkyrimFamily;
 
 /// <summary>Where EnderalSE's own installers put the common archive layouts.</summary>
 public class EnderalSEInstallerRoutingTests(ITestOutputHelper helper)

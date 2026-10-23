@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using FluentAssertions;
 
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 /// <summary>
 /// Strings that end up in the database, in settings file names or in the environment carry the
@@ -15,15 +15,14 @@ public partial class PersistedIdentifierGuardTests
 
     private static readonly (string File, string Line, string Reason)[] AllowedNamespaces =
     [
-        ("src/NexusMods.Abstractions.Games.FileHashes/Models/VersionDefinition.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.VersionDefinition\";", HashesContract),
-        ("src/NexusMods.Abstractions.Games.FileHashes/Models/EpicGameStoreBuild.cs", "private const string Namespace = \"NexusMods.Stores.EpicGameStore.EpicGameStoreBuild\";", HashesContract),
-        ("src/NexusMods.Abstractions.Games.FileHashes/Models/GogBuild.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.GogBuild\";", HashesContract),
-        ("src/NexusMods.Abstractions.Games.FileHashes/Models/SteamManifest.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.SteamManifest\";", HashesContract),
-        ("src/NexusMods.Abstractions.Games.FileHashes/Models/GogDepot.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.GogDepot\";", HashesContract),
-        ("src/NexusMods.Abstractions.Games.FileHashes/Models/HashRelation.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.HashRelation\";", HashesContract),
-        ("src/NexusMods.Abstractions.Games.FileHashes/Models/GogManifest.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.GogManifest\";", HashesContract),
-        ("src/NexusMods.Abstractions.Games.FileHashes/Models/PathHashRelation.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.PathHashRelation\";", HashesContract),
-        ("src/NexusMods.App.Generators.Diagnostics/Constants.cs", "public const string Namespace = \"NexusMods.Generators.Diagnostics\";", "names the code generator's C# namespace, not a database id"),
+        ("src/SilverModManager.Abstractions.Games.FileHashes/Models/VersionDefinition.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.VersionDefinition\";", HashesContract),
+        ("src/SilverModManager.Abstractions.Games.FileHashes/Models/EpicGameStoreBuild.cs", "private const string Namespace = \"NexusMods.Stores.EpicGameStore.EpicGameStoreBuild\";", HashesContract),
+        ("src/SilverModManager.Abstractions.Games.FileHashes/Models/GogBuild.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.GogBuild\";", HashesContract),
+        ("src/SilverModManager.Abstractions.Games.FileHashes/Models/SteamManifest.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.SteamManifest\";", HashesContract),
+        ("src/SilverModManager.Abstractions.Games.FileHashes/Models/GogDepot.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.GogDepot\";", HashesContract),
+        ("src/SilverModManager.Abstractions.Games.FileHashes/Models/HashRelation.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.HashRelation\";", HashesContract),
+        ("src/SilverModManager.Abstractions.Games.FileHashes/Models/GogManifest.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.GogManifest\";", HashesContract),
+        ("src/SilverModManager.Abstractions.Games.FileHashes/Models/PathHashRelation.cs", "private const string Namespace = \"NexusMods.Abstractions.Games.FileHashes.PathHashRelation\";", HashesContract),
     ];
 
     [GeneratedRegex("""\bNamespace *(=>|=) *"NexusMods\.|\[JsonName\("NexusMods\.""")]

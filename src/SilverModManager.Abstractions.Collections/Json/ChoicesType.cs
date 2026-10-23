@@ -1,5 +1,5 @@
 // ReSharper disable InconsistentNaming
-namespace NexusMods.Abstractions.Collections.Json;
+namespace SilverModManager.Abstractions.Collections.Json;
 
 /// <summary>
 /// The types of choices on a mod

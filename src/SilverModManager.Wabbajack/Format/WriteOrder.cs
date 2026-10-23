@@ -1,4 +1,4 @@
-namespace NexusMods.Wabbajack.Format;
+namespace SilverModManager.Wabbajack.Format;
 
 /// <summary>
 /// The order directives are written in, whatever order the file lists them: built archives need the loose files

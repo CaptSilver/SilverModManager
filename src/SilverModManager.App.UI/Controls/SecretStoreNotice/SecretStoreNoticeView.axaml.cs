@@ -3,7 +3,7 @@ using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.SecretStoreNotice;
+namespace SilverModManager.App.UI.Controls.SecretStoreNotice;
 
 [UsedImplicitly]
 public partial class SecretStoreNoticeView : ReactiveUserControl<ISecretStoreNoticeViewModel>

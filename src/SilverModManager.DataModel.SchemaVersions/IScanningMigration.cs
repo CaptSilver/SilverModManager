@@ -1,8 +1,8 @@
 using System.Buffers;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 
-namespace NexusMods.DataModel.SchemaVersions;
+namespace SilverModManager.DataModel.SchemaVersions;
 
 /// <summary>
 /// A fairly simple but computationally expensive migration. It scans the entire database and updates the data

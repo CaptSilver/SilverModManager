@@ -1,10 +1,10 @@
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
-using NexusMods.Abstractions.NexusWebApi.DTOs.Interfaces;
-using CDNName = NexusMods.Abstractions.NexusWebApi.Types.CDNName;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.Interfaces;
+using CDNName = SilverModManager.Abstractions.NexusWebApi.Types.CDNName;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
-namespace NexusMods.Abstractions.NexusWebApi.DTOs;
+namespace SilverModManager.Abstractions.NexusWebApi.DTOs;
 
 /// <summary>
 /// Represents an individual download link returned from the API.

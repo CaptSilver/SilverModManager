@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Archives;
+using SilverModManager.Games.Bethesda.Archives;
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.Wabbajack.Install;
+namespace SilverModManager.Wabbajack.Install;
 
 /// <summary>
 /// Reads a freshly built archive back and compares what it holds with what was put in. A list's recorded hash for an

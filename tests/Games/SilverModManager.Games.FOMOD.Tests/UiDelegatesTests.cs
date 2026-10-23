@@ -1,14 +1,14 @@
 using System.Collections.Concurrent;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Games.FOMOD.CoreDelegates;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Games.FOMOD.CoreDelegates;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk.Jobs;
 using Xunit;
 using FomodUi = FomodInstaller.Interface.ui;
 
-namespace NexusMods.Games.FOMOD.Tests;
+namespace SilverModManager.Games.FOMOD.Tests;
 
 /// <summary>
 /// The FOMOD library applies a selection on a task of its own and confirms it by calling

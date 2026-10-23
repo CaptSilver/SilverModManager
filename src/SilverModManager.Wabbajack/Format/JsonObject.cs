@@ -2,7 +2,7 @@ using System.Text.Json;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
-namespace NexusMods.Wabbajack.Format;
+namespace SilverModManager.Wabbajack.Format;
 
 /// <summary>
 /// Reads fields of a JSON object the way Wabbajack's serializer does: names in any case, nulls as absent, and an

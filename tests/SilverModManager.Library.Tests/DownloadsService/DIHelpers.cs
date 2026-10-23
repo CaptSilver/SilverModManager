@@ -1,13 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Sdk.Settings;
-using NexusMods.Backend;
-using NexusMods.DataModel;
-using NexusMods.Networking.HttpDownloader;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Backend;
+using SilverModManager.DataModel;
+using SilverModManager.Networking.HttpDownloader;
 using NexusMods.Paths;
 
-namespace NexusMods.Library.Tests.DownloadsService;
+namespace SilverModManager.Library.Tests.DownloadsService;
 
 public static class DIHelpers
 {
@@ -15,7 +15,7 @@ public static class DIHelpers
     {
         // Setup base path for test files
         const KnownPath baseKnownPath = KnownPath.EntryDirectory;
-        var baseDirectory = $"NexusMods.Library.Tests-{Guid.NewGuid()}";
+        var baseDirectory = $"SilverModManager.Library.Tests-{Guid.NewGuid()}";
         var prefix = FileSystem.Shared.GetKnownPath(baseKnownPath).Combine(baseDirectory);
         
         services

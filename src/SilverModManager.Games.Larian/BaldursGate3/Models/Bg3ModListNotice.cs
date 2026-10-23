@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Games.Larian.BaldursGate3.Models;
+namespace SilverModManager.Games.Larian.BaldursGate3.Models;
 
 /// <summary>
 /// A note that the app replaced the mod list the game had in <c>modsettings.lsx</c>, kept so the Load Order page
@@ -16,7 +16,7 @@ public partial class Bg3ModListNotice : IModelDefinition
     /// <summary>
     /// The pak sort order whose list replaced the game's.
     /// </summary>
-    public static readonly ReferenceAttribute<NexusMods.Abstractions.Loadouts.SortOrder> SortOrder = new(Namespace, nameof(SortOrder))
+    public static readonly ReferenceAttribute<SilverModManager.Abstractions.Loadouts.SortOrder> SortOrder = new(Namespace, nameof(SortOrder))
     {
         IsIndexed = true,
     };

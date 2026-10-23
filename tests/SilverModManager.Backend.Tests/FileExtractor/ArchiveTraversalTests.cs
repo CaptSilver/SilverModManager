@@ -6,13 +6,13 @@ using FluentAssertions;
 using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Backend.FileExtractor;
-using NexusMods.Backend.FileExtractor.Extractors;
+using SilverModManager.Backend.FileExtractor;
+using SilverModManager.Backend.FileExtractor.Extractors;
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Backend.Tests.FileExtractor;
+namespace SilverModManager.Backend.Tests.FileExtractor;
 
 /// <summary>
 /// An archive is never refused over an entry path: names are resolved against the archive root, so a

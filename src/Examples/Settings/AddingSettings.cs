@@ -1,4 +1,4 @@
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 // ReSharper disable All
 
 namespace Examples.Settings;

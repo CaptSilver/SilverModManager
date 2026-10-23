@@ -1,8 +1,8 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls;assembly=NexusMods.App.UI"
-                    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources;assembly=NexusMods.App.UI"
-                    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk">
+                    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls;assembly=SilverModManager.App.UI"
+                    xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources;assembly=SilverModManager.App.UI"
+                    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk">
 
     <Design.PreviewWith>
         <Border Width="1000">
@@ -207,6 +207,6 @@
         </Setter>
     </ControlTheme>
 
-    <!-- Styles for expected child controls are in src/Themes/NexusMods.Themes.NexusFluentDark/Styles/UserControls/Toolbar/ToolbarStyles.axaml -->
+    <!-- Styles for expected child controls are in src/Themes/SilverModManager.Themes.NexusFluentDark/Styles/UserControls/Toolbar/ToolbarStyles.axaml -->
 
 </ResourceDictionary>

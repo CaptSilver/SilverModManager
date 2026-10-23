@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Bethesda.Archives.Tests;
+namespace SilverModManager.Games.Bethesda.Archives.Tests;
 
 /// <summary>
 /// Opens Wabbajack's own sample archives (Wabbajack.Compression.BSA.Test/TestFiles), extracts every entry and

@@ -1,9 +1,9 @@
 using System;
 using System.Buffers;
 using System.Text;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
-namespace NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+namespace SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
 /// <summary>
 /// A value serializer for a utf8 string

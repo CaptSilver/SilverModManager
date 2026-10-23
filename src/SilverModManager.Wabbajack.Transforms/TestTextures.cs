@@ -3,7 +3,7 @@ using BCnEncoder.Encoder;
 using BCnEncoder.Shared;
 using BCnEncoder.Shared.ImageFiles;
 
-namespace NexusMods.Wabbajack.Transforms;
+namespace SilverModManager.Wabbajack.Transforms;
 
 /// <summary>
 /// Builds small DDS files for tests, so fixtures need no binary assets.

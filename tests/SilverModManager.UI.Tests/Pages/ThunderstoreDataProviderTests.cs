@@ -5,25 +5,25 @@ using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Pages;
-using NexusMods.App.UI.Pages.LibraryPage;
-using NexusMods.App.UI.Pages.LoadoutPage;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Networking.Thunderstore;
-using NexusMods.Networking.Thunderstore.DTOs;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Pages;
+using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.App.UI.Pages.LoadoutPage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Networking.Thunderstore;
+using SilverModManager.Networking.Thunderstore.DTOs;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 /// <summary>
 /// The library page lists Thunderstore packages once per package, with the downloaded versions underneath.

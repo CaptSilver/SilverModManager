@@ -3,15 +3,15 @@ using System.Security.Cryptography;
 using FluentAssertions;
 using Xunit;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Backend;
-using NexusMods.Library.Tests.DownloadsService;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Backend;
+using SilverModManager.Library.Tests.DownloadsService;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Library.Tests;
+namespace SilverModManager.Library.Tests;
 
 public class AddLibraryFileJobTests(IServiceProvider serviceProvider, IConnection connection, TemporaryFileManager temporaryFileManager)
 {

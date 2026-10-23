@@ -1,13 +1,13 @@
 using System.Security.Cryptography;
 using FluentAssertions;
-using NexusMods.Abstractions.Steam;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.Hashes;
 using SteamKit2;
 using Xunit;
 
-namespace NexusMods.Networking.Steam.Tests;
+namespace SilverModManager.Networking.Steam.Tests;
 
 public sealed class LocalManifestReaderTests : IDisposable
 {

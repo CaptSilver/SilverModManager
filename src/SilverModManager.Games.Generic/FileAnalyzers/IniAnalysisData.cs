@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Generic.FileAnalyzers;
+namespace SilverModManager.Games.Generic.FileAnalyzers;
 
 public class IniAnalysisData
 {

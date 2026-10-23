@@ -45,7 +45,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.UI.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.UI.Tests" />
     </ItemGroup>
 
     <ItemGroup>
@@ -82,24 +82,24 @@
         <PackageReference Include="System.Reactive" />
         <PackageReference Include="TextMateSharp.Grammars" />
         <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-        <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <PackageReference Include="ZLinq" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Abstractions.Logging\NexusMods.Abstractions.Logging.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.NexusModsLibrary\NexusMods.Abstractions.NexusModsLibrary.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Games.Diagnostics\NexusMods.Abstractions.Games.Diagnostics.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.GuidedInstallers\NexusMods.Abstractions.GuidedInstallers.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.NexusWebApi\NexusMods.Networking.NexusWebApi.csproj" />
-        <ProjectReference Include="..\NexusMods.App.Cli\NexusMods.App.Cli.csproj" />
-        <ProjectReference Include="..\NexusMods.Collections\NexusMods.Collections.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.GitHub\NexusMods.Networking.GitHub.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.Thunderstore\NexusMods.Networking.Thunderstore.csproj" />
-        <ProjectReference Include="..\NexusMods.Wabbajack\NexusMods.Wabbajack.csproj" />
-        <ProjectReference Include="..\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.FromSoft\NexusMods.Games.FromSoft.csproj" />
-        <ProjectReference Include="..\NexusMods.UI.Sdk\NexusMods.UI.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Logging\SilverModManager.Abstractions.Logging.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.NexusModsLibrary\SilverModManager.Abstractions.NexusModsLibrary.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.GuidedInstallers\SilverModManager.Abstractions.GuidedInstallers.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.NexusWebApi\SilverModManager.Networking.NexusWebApi.csproj" />
+        <ProjectReference Include="..\SilverModManager.App.Cli\SilverModManager.App.Cli.csproj" />
+        <ProjectReference Include="..\SilverModManager.Collections\SilverModManager.Collections.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.GitHub\SilverModManager.Networking.GitHub.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.Thunderstore\SilverModManager.Networking.Thunderstore.csproj" />
+        <ProjectReference Include="..\SilverModManager.Wabbajack\SilverModManager.Wabbajack.csproj" />
+        <ProjectReference Include="..\SilverModManager.Platform.Proton\SilverModManager.Platform.Proton.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.FromSoft\SilverModManager.Games.FromSoft.csproj" />
+        <ProjectReference Include="..\SilverModManager.UI.Sdk\SilverModManager.UI.Sdk.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -820,9 +820,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <EmbeddedResource Include="../../CHANGELOG.md" LogicalName="NexusMods.App.UI.CHANGELOG.md" />
-        <EmbeddedResource Include="../../NOTICE" LogicalName="NexusMods.App.UI.NOTICE" />
-        <EmbeddedResource Include="Pages/About/About.md" LogicalName="NexusMods.App.UI.About.md" />
+        <EmbeddedResource Include="../../CHANGELOG.md" LogicalName="SilverModManager.App.UI.CHANGELOG.md" />
+        <EmbeddedResource Include="../../NOTICE" LogicalName="SilverModManager.App.UI.NOTICE" />
+        <EmbeddedResource Include="Pages/About/About.md" LogicalName="SilverModManager.App.UI.About.md" />
     </ItemGroup>
 
     <ItemGroup>

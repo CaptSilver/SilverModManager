@@ -1,8 +1,8 @@
 ﻿using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.MnemonicDB.Abstractions.Attributes;
+namespace SilverModManager.MnemonicDB.Abstractions.Attributes;
 
 /// <summary>
 /// An attribute that represents a collection of values

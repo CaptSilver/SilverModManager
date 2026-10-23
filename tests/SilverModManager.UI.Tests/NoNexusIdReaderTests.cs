@@ -2,13 +2,13 @@ using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.App.UI.Helpers;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.App.UI.Helpers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 /// <summary>
 /// Places in the UI that read a game's Nexus id have to cope with a game that has none: it offers no Nexus

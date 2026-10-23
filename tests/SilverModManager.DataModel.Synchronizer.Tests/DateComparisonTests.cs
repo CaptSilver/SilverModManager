@@ -1,12 +1,12 @@
 using FluentAssertions;
 using FluentAssertions.Common;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.DataModel.Synchronizer.Tests;
+namespace SilverModManager.DataModel.Synchronizer.Tests;
 
 public class DateComparisonTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTest<GeneralModManagementTests>(helper)
 {

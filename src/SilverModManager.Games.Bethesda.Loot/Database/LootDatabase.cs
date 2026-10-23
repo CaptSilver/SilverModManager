@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Loot.Metadata;
-using NexusMods.Games.Bethesda.Loot.Sorting;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Sorting;
 
-namespace NexusMods.Games.Bethesda.Loot.Database;
+namespace SilverModManager.Games.Bethesda.Loot.Database;
 
 // Follows libloot's database/mod.rs (Database) and database/conditions.rs.
 

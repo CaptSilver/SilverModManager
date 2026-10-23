@@ -3,23 +3,23 @@ using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.App.UI.DiagnosticSystem;
-using NexusMods.Games.Generic.Diagnostics;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Games.Generic.Diagnostics;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using NSubstitute;
 using Xunit;
 
-namespace NexusMods.DataModel.Synchronizer.Tests;
+namespace SilverModManager.DataModel.Synchronizer.Tests;
 
 /// <summary>
 /// The diagnostics that explain a Proton game's prefix problems and the loadout items the synchronizer
@@ -27,7 +27,7 @@ namespace NexusMods.DataModel.Synchronizer.Tests;
 /// </summary>
 public class ProtonPrefixEmitterTests(ITestOutputHelper helper) : AStubbedGameTest<ProtonPrefixEmitterTests>(helper)
 {
-    private const string DiagnosticSource = "NexusMods.Games.Generic";
+    private const string DiagnosticSource = "SilverModManager.Games.Generic";
     private const ushort MissingProtonPrefixId = 1;
     private const ushort ProtonPrefixNotLoadedId = 2;
     private const ushort HostCopyOfGameFolderId = 3;

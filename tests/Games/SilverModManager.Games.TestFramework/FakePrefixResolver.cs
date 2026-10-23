@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 /// <summary>
 /// A prefix resolver that hands out a prefix in a temporary folder, or whatever the test configures, so no

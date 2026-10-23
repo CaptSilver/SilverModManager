@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Avalonia.Threading;
 using JetBrains.Annotations;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 [PublicAPI]
 public static class DesignerUtils

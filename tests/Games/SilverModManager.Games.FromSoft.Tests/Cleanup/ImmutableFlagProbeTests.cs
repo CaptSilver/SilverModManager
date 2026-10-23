@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.Cleanup;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Tests.Cleanup;
+namespace SilverModManager.Games.FromSoft.Tests.Cleanup;
 
 /// <summary>
 /// The flag itself cannot be set without root, so these only check that the ioctl import answers for ordinary and

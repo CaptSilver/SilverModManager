@@ -1,9 +1,9 @@
 using System.Runtime.InteropServices;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton;
+namespace SilverModManager.Platform.Proton;
 
 /// <summary>
 /// Picks the prefix from what the locator recorded. Steam's own prefix is taken from the installation

@@ -1,21 +1,21 @@
 using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.Dialog;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.App.UI.Pages.LoadoutPage;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Collections;
-using NexusMods.UI.Sdk.Icons;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk.Dialog;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.App.UI.Pages.LoadoutPage;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Collections;
+using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk.Dialog;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public class NewCollectionViewModel : LeftMenuItemViewModel
 {

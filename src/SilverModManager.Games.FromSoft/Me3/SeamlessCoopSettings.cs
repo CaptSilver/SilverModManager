@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace NexusMods.Games.FromSoft.Me3;
+namespace SilverModManager.Games.FromSoft.Me3;
 
 /// <summary>
 /// Writes the co-op password into a copy of Seamless Co-op's settings file. The loadout holds the template as

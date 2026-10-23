@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Collections;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.DataModel.Undo;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.DataModel.Undo;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.DataModel.Tests.Undo;
+namespace SilverModManager.DataModel.Tests.Undo;
 
 public class RestorePointTests(ITestOutputHelper helper) : ANexusCollectionTest<RestorePointTests>(helper)
 {

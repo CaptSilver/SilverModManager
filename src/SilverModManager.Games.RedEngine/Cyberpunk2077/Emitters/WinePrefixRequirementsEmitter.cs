@@ -1,14 +1,14 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
 
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Generic;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Generic;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077.Emitters;
 
 public class WinePrefixRequirementsEmitter(IWineDllOverrideRequirements game, IGameLauncherSkip launcher) : ILoadoutDiagnosticEmitter
 {

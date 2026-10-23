@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Database;
+namespace SilverModManager.Games.Bethesda.Loot.Database;
 
 /// <summary>
 /// Thrown when a condition string is not a valid LOOT condition, including when a regex in it is

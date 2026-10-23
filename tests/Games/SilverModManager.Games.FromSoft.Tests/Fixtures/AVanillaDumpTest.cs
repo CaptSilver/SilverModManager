@@ -1,15 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.Installers;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Installers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 /// <summary>Elden Ring with helpers to put archives into the library and baselines under the data root.</summary>
 public abstract class AVanillaDumpTest<TTest>(ITestOutputHelper helper) : AModdedEldenRingTest<TTest>(helper)

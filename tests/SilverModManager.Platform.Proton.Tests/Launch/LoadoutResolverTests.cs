@@ -1,18 +1,18 @@
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using FluentAssertions;
-using NexusMods.Abstractions.Games;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
 using NSubstitute;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.Platform.Proton.Tests.Launch;
+namespace SilverModManager.Platform.Proton.Tests.Launch;
 
 public class LoadoutResolverTests(IConnection connection)
 {

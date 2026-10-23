@@ -1,8 +1,8 @@
 using System.Reactive;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.SecretStoreNotice;
+namespace SilverModManager.App.UI.Controls.SecretStoreNotice;
 
 public class SecretStoreNoticeDesignViewModel : AViewModel<ISecretStoreNoticeViewModel>, ISecretStoreNoticeViewModel
 {

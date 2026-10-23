@@ -1,12 +1,12 @@
 using System.Diagnostics;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Networking.NexusWebApi.Errors;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Networking.NexusWebApi.Errors;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 internal partial class GraphQlClient : IGraphQlClient
 {

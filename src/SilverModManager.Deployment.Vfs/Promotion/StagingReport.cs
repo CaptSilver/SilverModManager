@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// What is staged and how big it is, from file lengths alone: nothing is read or hashed, so a

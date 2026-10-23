@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -11,7 +11,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Games.Bethesda.Archives.Tests" />
-        <InternalsVisibleTo Include="NexusMods.Wabbajack.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Games.Bethesda.Archives.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Wabbajack.Tests" />
     </ItemGroup>
 </Project>

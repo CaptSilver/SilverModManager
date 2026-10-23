@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// What <c>stat</c> says about a file, used to decide whether a remembered hash still describes it.

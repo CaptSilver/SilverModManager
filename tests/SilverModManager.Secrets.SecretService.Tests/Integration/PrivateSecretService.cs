@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Tmds.DBus.Protocol;
 using Xunit;
 
-namespace NexusMods.Secrets.SecretService.Tests.Integration;
+namespace SilverModManager.Secrets.SecretService.Tests.Integration;
 
 /// <summary>
 /// A gnome-keyring-daemon on a session bus of its own, with a throwaway HOME and runtime dir, so the tests

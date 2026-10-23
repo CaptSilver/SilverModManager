@@ -2,22 +2,22 @@ using System.Collections.Immutable;
 using System.Text;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Steam;
-using NexusMods.Abstractions.Steam.DTOs;
-using NexusMods.Abstractions.Steam.Values;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Abstractions.Steam.DTOs;
+using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.NexusModsApi;
 using NSubstitute;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 /// <summary>
 /// The decisions about when a local baseline is built, kept and rebuilt. Games, Steam roots and manifest

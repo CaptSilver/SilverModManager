@@ -1,21 +1,21 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
 
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.StardewValley.Emitters;
-using NexusMods.Games.TestFramework;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.StardewValley.Emitters;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.Games.StardewValley.Tests;
+namespace SilverModManager.Games.StardewValley.Tests;
 
 [Trait("RequiresNetworking", "True")]
 public class ModOverwritesGameFilesEmitterTests : ALoadoutDiagnosticEmitterTest<ModOverwritesGameFilesEmitterTests, StardewValley, ModOverwritesGameFilesEmitter>

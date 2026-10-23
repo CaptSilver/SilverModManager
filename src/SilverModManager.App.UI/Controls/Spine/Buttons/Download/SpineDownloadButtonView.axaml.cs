@@ -1,11 +1,11 @@
 ﻿using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.App.UI.Extensions;
 using ReactiveUI;
-using static NexusMods.App.UI.Helpers.StyleConstants.SpineDownloadButton;
+using static SilverModManager.App.UI.Helpers.StyleConstants.SpineDownloadButton;
 
-namespace NexusMods.App.UI.Controls.Spine.Buttons.Download;
+namespace SilverModManager.App.UI.Controls.Spine.Buttons.Download;
 
 public partial class SpineDownloadButtonView : ReactiveUserControl<ISpineDownloadButtonViewModel>
 {

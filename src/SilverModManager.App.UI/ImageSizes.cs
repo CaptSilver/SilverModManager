@@ -3,7 +3,7 @@
 
 using Avalonia;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 /// <summary>
 /// Represents the sizes of images used in the application.

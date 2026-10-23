@@ -1,7 +1,7 @@
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
+namespace SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
 
 public interface ILoadoutGroupFilesViewModel : IPageViewModelInterface
 {

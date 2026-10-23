@@ -1,6 +1,6 @@
 using Avalonia.Controls.Models.TreeDataGrid;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 public interface ICustomCell : ICell
 {

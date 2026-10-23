@@ -7,13 +7,13 @@ using Markdown.Avalonia.Plugins;
 using Markdown.Avalonia.Utils;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Sdk.Resources;
-using NexusMods.Sdk;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Resources;
+using SilverModManager.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Controls.MarkdownRenderer;
+namespace SilverModManager.App.UI.Controls.MarkdownRenderer;
 
 [UsedImplicitly]
 public class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>, IMarkdownRendererViewModel

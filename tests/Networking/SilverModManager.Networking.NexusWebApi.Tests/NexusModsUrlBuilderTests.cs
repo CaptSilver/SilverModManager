@@ -1,12 +1,12 @@
 using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.AspNetCore.WebUtilities;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Sdk.NexusModsApi;
 using Xunit;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 public class NexusModsUrlBuilderTests
 {

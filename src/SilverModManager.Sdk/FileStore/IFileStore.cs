@@ -1,8 +1,8 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Threading;
+using SilverModManager.Sdk.Threading;
 
-namespace NexusMods.Sdk.FileStore;
+namespace SilverModManager.Sdk.FileStore;
 
 /// <summary>
 /// Takes hashes and files and stores them in a way that can be retrieved later on. Essentially this is a

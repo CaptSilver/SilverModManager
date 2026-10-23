@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.App.UI.Helpers;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.App.UI.Helpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class ThunderstoreStubbedGameTests(IServiceProvider provider)
 {

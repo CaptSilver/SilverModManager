@@ -5,7 +5,7 @@ using Avalonia.Media;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.MiniGameWidget.Standard;
+namespace SilverModManager.App.UI.Controls.MiniGameWidget.Standard;
 
 public partial class MiniGameWidget : ReactiveUserControl<IMiniGameWidgetViewModel>
 {

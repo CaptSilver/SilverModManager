@@ -3,7 +3,7 @@ using System.IO.Compression;
 using System.Text;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 internal static class TestArchives
 {

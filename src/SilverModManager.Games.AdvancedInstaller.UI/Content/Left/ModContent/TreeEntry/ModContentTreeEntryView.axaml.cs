@@ -2,11 +2,11 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Controls.Trees.Common;
-using NexusMods.Games.AdvancedInstaller.UI.Resources;
+using SilverModManager.App.UI.Controls.Trees.Common;
+using SilverModManager.Games.AdvancedInstaller.UI.Resources;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.ModContent;
+namespace SilverModManager.Games.AdvancedInstaller.UI.ModContent;
 
 [ExcludeFromCodeCoverage]
 public partial class

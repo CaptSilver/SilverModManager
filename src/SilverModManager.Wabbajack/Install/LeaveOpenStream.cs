@@ -1,4 +1,4 @@
-namespace NexusMods.Wabbajack.Install;
+namespace SilverModManager.Wabbajack.Install;
 
 /// <summary>
 /// Lends a stream to something that disposes what it is given (an archive reader), so the owner can keep using it

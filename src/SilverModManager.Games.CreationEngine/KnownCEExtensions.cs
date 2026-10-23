@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Games.CreationEngine;
+namespace SilverModManager.Games.CreationEngine;
 
 public static class KnownCEExtensions
 {

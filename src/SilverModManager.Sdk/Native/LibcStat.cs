@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace NexusMods.Sdk.Native;
+namespace SilverModManager.Sdk.Native;
 
 /// <summary>
 /// One <c>stat(2)</c> call and the struct it fills, so every consumer reads dev, inode, ctime and the

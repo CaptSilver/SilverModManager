@@ -1,6 +1,6 @@
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 
-namespace NexusMods.Games.FromSoft.Heal;
+namespace SilverModManager.Games.FromSoft.Heal;
 
 /// <summary>
 /// Decides which mod tables cannot be byte-transplanted onto a baseline. A param merge moves whole rows between files,

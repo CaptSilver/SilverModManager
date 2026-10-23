@@ -1,10 +1,10 @@
 using System;
 using System.Linq;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.BuiltInEntities;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.BuiltInEntities;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// Extension methods for entities.

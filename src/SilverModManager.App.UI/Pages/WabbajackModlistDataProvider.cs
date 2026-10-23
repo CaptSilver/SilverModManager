@@ -2,16 +2,16 @@ using System.Reactive.Linq;
 using DynamicData;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Pages.LibraryPage;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack;
-using NexusMods.Wabbajack.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack;
+using SilverModManager.Wabbajack.Models;
 
-namespace NexusMods.App.UI.Pages;
+namespace SilverModManager.App.UI.Pages;
 
 /// <summary>
 /// Lists the Wabbajack modlists in the library, one row each, named after the list. A modlist is also a local file

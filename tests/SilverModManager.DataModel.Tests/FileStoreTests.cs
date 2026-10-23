@@ -2,18 +2,18 @@ using System.Text;
 using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.GC;
-using NexusMods.Abstractions.Library;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.GC;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Library;
 using Xunit;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class FileStoreTests : ACyberpunkIsolatedGameTest<FileStoreTests>
 {

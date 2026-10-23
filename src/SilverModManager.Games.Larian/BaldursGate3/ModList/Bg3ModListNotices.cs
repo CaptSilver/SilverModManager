@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Larian.BaldursGate3.Models;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Larian.BaldursGate3.Models;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Games.Larian.BaldursGate3.ModList;
+namespace SilverModManager.Games.Larian.BaldursGate3.ModList;
 
 /// <summary>
 /// The one <see cref="Bg3ModListNotice"/> of a pak sort order. It holds the note that the game's mod list was

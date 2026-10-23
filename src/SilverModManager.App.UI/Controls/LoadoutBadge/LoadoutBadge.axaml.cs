@@ -4,7 +4,7 @@ using Avalonia.Controls.Metadata;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.LoadoutBadge;
+namespace SilverModManager.App.UI.Controls.LoadoutBadge;
 
 [PseudoClasses(":selected", ":in-progress", ":applied")]
 public partial class LoadoutBadge : ReactiveUserControl<ILoadoutBadgeViewModel>

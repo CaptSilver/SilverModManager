@@ -43,4 +43,4 @@ cd "$root"
 git submodule update --init --recursive
 
 export_dotnet_env
-dotnet restore NexusMods.App.sln
+dotnet restore SilverModManager.App.sln

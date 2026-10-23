@@ -1,8 +1,8 @@
 using System.IO.Compression;
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.Wabbajack.Tests.Fixtures;
+namespace SilverModManager.Wabbajack.Tests.Fixtures;
 
 /// <summary>
 /// Builds a <c>.wabbajack</c> file (a zip holding a <c>modlist</c> entry and GUID-named blobs) in a test folder.

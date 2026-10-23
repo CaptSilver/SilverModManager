@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata;
 
 /// <summary>
 /// Thrown when several message contents are given and none of them is in the default language.

@@ -1,7 +1,7 @@
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public class LeftMenuItemWithRightIconViewModel : LeftMenuItemViewModel
 {

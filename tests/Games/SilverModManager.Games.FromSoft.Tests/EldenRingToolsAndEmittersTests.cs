@@ -2,25 +2,25 @@ using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FileHashes.Emitters;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Diagnostics;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.Heal;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Installers;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Games.Generic.Diagnostics;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FileHashes.Emitters;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.Heal;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Installers;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.Generic.Diagnostics;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class EldenRingToolsAndEmittersTests(ITestOutputHelper helper) : AEldenRingTest<EldenRingToolsAndEmittersTests>(helper)
 {

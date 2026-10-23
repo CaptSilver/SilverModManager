@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// A game whose executable is shared with another game, and so needs more than that file to be recognised in a

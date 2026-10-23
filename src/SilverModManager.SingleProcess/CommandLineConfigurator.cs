@@ -6,10 +6,10 @@ using System.CommandLine.Parsing;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.CLI.Types;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.CLI.Types;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.SingleProcess;
+namespace SilverModManager.SingleProcess;
 
 /// <summary>
 /// A configurator for the commandline parser. It looks for all verb definitions (created by AddVerb)

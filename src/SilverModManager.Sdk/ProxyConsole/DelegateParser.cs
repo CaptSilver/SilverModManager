@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.ProxyConsole;
+namespace SilverModManager.Sdk.ProxyConsole;
 
 /// <summary>
 /// Delegate based parser for options.

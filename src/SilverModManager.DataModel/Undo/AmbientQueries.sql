@@ -1,4 +1,4 @@
--- namespace: NexusMods.DataModel.Undo
+-- namespace: SilverModManager.DataModel.Undo
 
 CREATE SCHEMA IF NOT EXISTS undo;
 

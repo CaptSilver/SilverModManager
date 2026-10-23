@@ -2,7 +2,7 @@ using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using YamlDotNet.RepresentationModel;
 
-namespace NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 
 /// <summary>
 /// Loads YAML text into a node tree, reporting failures as <see cref="MetadataParseException"/>

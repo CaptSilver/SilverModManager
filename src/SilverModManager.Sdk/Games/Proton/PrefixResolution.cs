@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// The Wine prefix a game runs in.

@@ -1,10 +1,10 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments.Columns;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments.Columns;
 
 public class OffsetColumn : IColumn
 {

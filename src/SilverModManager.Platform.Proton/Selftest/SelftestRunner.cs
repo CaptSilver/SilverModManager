@@ -1,11 +1,11 @@
 using System.ComponentModel;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Platform.Proton.ToolRunner.Dependencies;
-using NexusMods.Sdk;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Platform.Proton.ToolRunner.Dependencies;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Platform.Proton.Selftest;
+namespace SilverModManager.Platform.Proton.Selftest;
 
 /// <summary>
 /// Checks the shipped binary and the machine it runs on, without touching a game, a launcher or any real

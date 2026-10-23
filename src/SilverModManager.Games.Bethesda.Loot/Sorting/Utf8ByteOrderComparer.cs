@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Games.Bethesda.Loot.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Sorting;
 
 /// <summary>
 /// Orders strings by Unicode code point, which matches Rust's byte-wise comparison of UTF-8 strings.

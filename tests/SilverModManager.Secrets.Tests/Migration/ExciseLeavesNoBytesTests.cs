@@ -2,18 +2,18 @@ using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.MnemonicDB;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Storage.Abstractions;
-using NexusMods.MnemonicDB.Storage.RocksDbBackend;
-using NexusMods.Networking.NexusWebApi.Auth;
-using NexusMods.Networking.NexusWebApi.Migration;
-using NexusMods.Secrets.Chain;
-using NexusMods.Secrets.Migration;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.MnemonicDB;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Storage.Abstractions;
+using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
+using SilverModManager.Networking.NexusWebApi.Auth;
+using SilverModManager.Networking.NexusWebApi.Migration;
+using SilverModManager.Secrets.Chain;
+using SilverModManager.Secrets.Migration;
 using Xunit;
 
-namespace NexusMods.Secrets.Tests.Migration;
+namespace SilverModManager.Secrets.Tests.Migration;
 
 /// <summary>
 /// Moving a credential out of the database has to leave none of its bytes behind in the files RocksDB wrote.

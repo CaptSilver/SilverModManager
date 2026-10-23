@@ -6,7 +6,7 @@ copyright line or license text shipped with the binary are reproduced here.
 
 ## Bundled fonts
 
-Files in `src/NexusMods.Themes.NexusFluentDark/Assets/Fonts`.
+Files in `src/SilverModManager.Themes.NexusFluentDark/Assets/Fonts`.
 
 | Font | Copyright | License |
 |---|---|---|
@@ -29,7 +29,7 @@ Licenses below are the SPDX expressions in each package's nuspec at the pinned v
 
 | Component | License |
 |---|---|
-| NexusMods.MnemonicDB, NexusMods.Paths, NexusMods.Hashing.xxHash3 (Nexus Mods) | GPL-3.0-only |
+| SilverModManager.MnemonicDB, NexusMods.Paths, NexusMods.Hashing.xxHash3 (Nexus Mods) | GPL-3.0-only |
 | NexusMods.Archives.Nx (Nexus Mods) | GPL-3.0 (license text ships in the package) |
 | GameFinder.* (erri120) | GPL-3.0-only |
 | Mutagen.Bethesda.* (Noggog) | GPL-3.0-only |
@@ -40,7 +40,7 @@ Licenses below are the SPDX expressions in each package's nuspec at the pinned v
 | SoulsFormats (JKAnderson, https://github.com/JKAnderson/SoulsFormats) | GPL-3.0; used as the description of the BND3 layout, no code taken |
 | SMAPI (Pathoschild, `extern/SMAPI`) | LGPL-3.0, see `extern/SMAPI/LICENSE.txt` |
 
-`src/NexusMods.Sdk/FileExtractor/Definitions/magic_sigs.txt` is derived from Gary Kessler's
+`src/SilverModManager.Sdk/FileExtractor/Definitions/magic_sigs.txt` is derived from Gary Kessler's
 file signatures table, used under the terms in `GKA_software_license.pdf` next to it.
 
 ## License texts

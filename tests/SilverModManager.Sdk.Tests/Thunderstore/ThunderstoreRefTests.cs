@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.Sdk.Tests.Thunderstore;
+namespace SilverModManager.Sdk.Tests.Thunderstore;
 
 public class ThunderstoreRefTests
 {

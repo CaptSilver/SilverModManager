@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 using TransparentValueObjects;
 
-namespace NexusMods.Abstractions.Downloads;
+namespace SilverModManager.Abstractions.Downloads;
 
 /// <summary>
 /// Unique identifier for a download that abstracts over <see cref="JobId"/>.

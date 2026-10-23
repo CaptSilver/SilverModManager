@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using StrawberryShake;
 
-namespace NexusMods.Networking.NexusWebApi.Errors;
+namespace SilverModManager.Networking.NexusWebApi.Errors;
 
 /// <summary>
 /// Error returned when an entity was queried that doesn't exist. <see cref="Message"/> contains details about what entity wasn't found.

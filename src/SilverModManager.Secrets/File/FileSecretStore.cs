@@ -1,11 +1,11 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 using NexusMods.Paths;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 using R3;
 
-namespace NexusMods.Secrets.File;
+namespace SilverModManager.Secrets.File;
 
 /// <summary>
 /// Keeps secrets in <c>secrets.json</c> next to the app's other data: a flat JSON object of key to value.

@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Deployment.Fuse.Kernel;
-using NexusMods.Deployment.Fuse.Native;
-using NexusMods.Deployment.Vfs;
+using SilverModManager.Deployment.Fuse.Kernel;
+using SilverModManager.Deployment.Fuse.Native;
+using SilverModManager.Deployment.Vfs;
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Fuse.Tests;
+namespace SilverModManager.Deployment.Fuse.Tests;
 
 /// <summary>
 /// The decision to hand a read-only open to the kernel's passthrough, against a registrar that answers as

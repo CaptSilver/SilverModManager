@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 /// <summary>
 /// A game's required Wine DLL overrides are declared once, on the game, and turned into a
@@ -11,8 +11,8 @@ public class WineDllOverrideGuardTests
     private const string NativeOverride = "WineDllOverrideType.Native";
     private const string RequirementsInterface = "IWineDllOverrideRequirements";
 
-    private const string WineParserFile = "src/NexusMods.Sdk/WineParser.cs";
-    private const string WineDllOverrideFile = "src/NexusMods.Sdk/WineDllOverride.cs";
+    private const string WineParserFile = "src/SilverModManager.Sdk/WineParser.cs";
+    private const string WineDllOverrideFile = "src/SilverModManager.Sdk/WineDllOverride.cs";
 
     private static readonly (string File, string Line, string Reason)[] AllowedVariableNames = [];
 

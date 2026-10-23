@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+using SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Yaml;
 
 // libloot's metadata_document.rs replace_prelude tests.
 public class PreludeTests

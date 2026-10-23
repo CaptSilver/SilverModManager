@@ -1,15 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Sdk.Settings;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Settings;
-using NexusMods.Sdk;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
 using ReactiveCommand = R3.ReactiveCommand;
 
-namespace NexusMods.App.UI.Overlays;
+namespace SilverModManager.App.UI.Overlays;
 
 public class WelcomeOverlayViewModel : AOverlayViewModel<IWelcomeOverlayViewModel>, IWelcomeOverlayViewModel
 {

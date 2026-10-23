@@ -1,7 +1,7 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// Represents ways of interacting with a runtime dependency.

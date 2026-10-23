@@ -1,13 +1,13 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Games.FromSoft;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Games.FromSoft;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Pages.FromSoftSaves;
+namespace SilverModManager.App.UI.Pages.FromSoftSaves;
 
 [JsonName("SilverModManager.App.UI.Pages.FromSoftSaves.FromSoftSavesPageContext")]
 public record FromSoftSavesPageContext : IPageFactoryContext

@@ -1,14 +1,14 @@
 using System.Runtime.CompilerServices;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FileHashes.Emitters;
+namespace SilverModManager.Games.FileHashes.Emitters;
 
 public class NoWayToSourceFilesOnDisk : ILoadoutDiagnosticEmitter
 {

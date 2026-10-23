@@ -1,14 +1,14 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Library;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Library;
 
-namespace NexusMods.Wabbajack.Acquire;
+namespace SilverModManager.Wabbajack.Acquire;
 
 public sealed class ArchiveAcquirer(
     ILibraryService library,

@@ -2,10 +2,10 @@
 using System.Diagnostics.CodeAnalysis;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.MnemonicDB.Abstractions.Attributes;
+namespace SilverModManager.MnemonicDB.Abstractions.Attributes;
 
 /// <summary>
 /// An attribute that represents a scalar value, where there is a 1:1 ratio between the attribute and the value.

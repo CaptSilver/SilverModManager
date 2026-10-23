@@ -1,6 +1,6 @@
 ﻿using NexusMods.Paths;
 
-namespace NexusMods.Sdk.IO;
+namespace SilverModManager.Sdk.IO;
 
 /// <summary>
 /// A source of data for a <see cref="ChunkedStream{T}"/>. Sizes of chunks should be no larger

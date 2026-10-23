@@ -1,18 +1,18 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI;
-using NexusMods.App.UI.Overlays;
-using NexusMods.App.UI.Pages.SteamLaunchOption;
-using NexusMods.Abstractions.Games;
+using SilverModManager.App.UI;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Pages.SteamLaunchOption;
+using SilverModManager.Abstractions.Games;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class SteamLaunchOptionViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {

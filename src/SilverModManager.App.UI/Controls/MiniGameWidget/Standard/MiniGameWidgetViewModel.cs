@@ -2,16 +2,16 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Media.Imaging;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.App.UI.Helpers;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.App.UI.Helpers;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using R3;
 
-namespace NexusMods.App.UI.Controls.MiniGameWidget.Standard;
+namespace SilverModManager.App.UI.Controls.MiniGameWidget.Standard;
 
 public class MiniGameWidgetViewModel : AViewModel<IMiniGameWidgetViewModel>, IMiniGameWidgetViewModel
 {

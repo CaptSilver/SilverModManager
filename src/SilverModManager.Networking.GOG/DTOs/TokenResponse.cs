@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NexusMods.Networking.GOG.DTOs;
+namespace SilverModManager.Networking.GOG.DTOs;
 
 /// <summary>
 /// An Authentication Token response from the GOG API.

@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// Ends whatever the process tracker still attributes to a game installation: Wine servers, Steam's reaper or the

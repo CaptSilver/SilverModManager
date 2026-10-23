@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
 
-namespace NexusMods.Games.CreationEngine.Tests.Morrowind.OpenMw;
+namespace SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
 
 internal sealed class PlainDiagnosticWriter : IDiagnosticWriter
 {

@@ -1,7 +1,7 @@
 using DynamicData.Kernel;
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 
 [Flags]
 public enum Signature : ushort

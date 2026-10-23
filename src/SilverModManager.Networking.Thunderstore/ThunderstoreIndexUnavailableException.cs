@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Networking.Thunderstore;
+namespace SilverModManager.Networking.Thunderstore;
 
 /// <summary>
 /// A community's package index has never been downloaded, or what is on disk cannot be read. Refresh it first.

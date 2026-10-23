@@ -1,9 +1,9 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:myLoadouts="clr-namespace:NexusMods.App.UI.Pages.MyLoadouts;assembly=NexusMods.App.UI"
+        xmlns:myLoadouts="clr-namespace:SilverModManager.App.UI.Pages.MyLoadouts;assembly=SilverModManager.App.UI"
         xmlns:panels="clr-namespace:Avalonia.Labs.Panels;assembly=Avalonia.Labs.Panels"
-        xmlns:controls="clr-namespace:NexusMods.App.UI.Controls;assembly=NexusMods.App.UI"
-        xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+        xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls;assembly=SilverModManager.App.UI"
+        xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
         >
     <Design.PreviewWith>
         <Border Padding="16" Classes="Low" Width="800" Height="600">

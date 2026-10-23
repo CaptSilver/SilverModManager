@@ -1,6 +1,6 @@
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.Sdk.FileStore;
+namespace SilverModManager.Sdk.FileStore;
 
 /// <summary>
 /// Hashes the garbage collector must keep although no database row references them yet. A job that backs bytes up

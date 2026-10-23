@@ -1,8 +1,8 @@
 ﻿using DynamicData;
 using NexusMods.Paths;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.ModContent;
+namespace SilverModManager.Games.AdvancedInstaller.UI.ModContent;
 
 public interface IModContentViewModel : IViewModelInterface
 {

@@ -1,23 +1,23 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.GarbageCollection.Nx;
-using NexusMods.Backend;
-using NexusMods.CrossPlatform;
-using NexusMods.Games.Generic;
-using NexusMods.Games.RedEngine;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.GarbageCollection.Nx;
+using SilverModManager.Backend;
+using SilverModManager.CrossPlatform;
+using SilverModManager.Games.Generic;
+using SilverModManager.Games.RedEngine;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using Xunit;
 
-namespace NexusMods.App.GarbageCollection.DataModel.Tests.FindUsedFiles;
+namespace SilverModManager.App.GarbageCollection.DataModel.Tests.FindUsedFiles;
 
 /// <summary>
 /// This ensures that 'game files' are marked as roots when performing the GC action.

@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.App;
-using NexusMods.App.UI.Settings;
-using NexusMods.App.UI.Windows;
-using NexusMods.Backend;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.App;
+using SilverModManager.App.UI.Settings;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.Backend;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.DataModel.SchemaVersions.Tests;
+namespace SilverModManager.DataModel.SchemaVersions.Tests;
 
 /// <summary>
 /// The headless and GUI service graphs open the same data folder, so whatever one writes the

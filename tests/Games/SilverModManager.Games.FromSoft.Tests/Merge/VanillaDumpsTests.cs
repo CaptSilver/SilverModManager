@@ -1,19 +1,19 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Heal;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Heal;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.NexusModsApi;
 using NexusMods.Paths;
 using NSubstitute;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 public class VanillaDumpsTests(ITestOutputHelper helper) : AVanillaDumpTest<VanillaDumpsTests>(helper)
 {
@@ -22,7 +22,7 @@ public class VanillaDumpsTests(ITestOutputHelper helper) : AVanillaDumpTest<Vani
     private static readonly byte[] Msg = "msg"u8.ToArray();
     private static readonly byte[] Talk = "talk"u8.ToArray();
 
-    private Task<NexusMods.Sdk.Library.LibraryArchive.ReadOnly> AddDump(string name, byte[] regulation)
+    private Task<SilverModManager.Sdk.Library.LibraryArchive.ReadOnly> AddDump(string name, byte[] regulation)
         => AddArchive(name,
             ("Vanilla/regulation.bin", regulation),
             ("Vanilla/msg/x.msgbnd.dcx", Msg),
@@ -114,7 +114,7 @@ public class VanillaDumpsTests(ITestOutputHelper helper) : AVanillaDumpTest<Vani
     private (VouchedRegulations Vouched, IFileHashesService Service) Vouching(Action<IFileHashesService> arrange)
     {
         var service = Substitute.For<IFileHashesService>();
-        service.Databases.Returns(Array.Empty<NexusMods.MnemonicDB.Abstractions.IDb>());
+        service.Databases.Returns(Array.Empty<SilverModManager.MnemonicDB.Abstractions.IDb>());
         arrange(service);
         var baselines = ServiceProvider.GetRequiredService<RegulationBaselines>();
         return (new VouchedRegulations(service, baselines, new InstalledBuilds(), NullLogger<VouchedRegulations>.Instance), service);

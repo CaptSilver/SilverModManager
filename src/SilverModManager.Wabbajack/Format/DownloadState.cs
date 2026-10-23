@@ -1,7 +1,7 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
-namespace NexusMods.Wabbajack.Format;
+namespace SilverModManager.Wabbajack.Format;
 
 /// <summary>Where an archive comes from, as the list records it.</summary>
 public abstract record DownloadState;

@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.DataModel.Undo;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.DataModel.Undo;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.DataModel.Tests.Undo;
+namespace SilverModManager.DataModel.Tests.Undo;
 
 public class RevisionSelectionTests
 {

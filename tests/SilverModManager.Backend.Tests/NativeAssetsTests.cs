@@ -1,6 +1,6 @@
 using FluentAssertions;
 
-namespace NexusMods.Backend.Tests;
+namespace SilverModManager.Backend.Tests;
 
 /// <summary>
 /// NuGet packages carry native libraries for every platform. Only Linux is a supported host,

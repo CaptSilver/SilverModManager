@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Resources;
+namespace SilverModManager.Sdk.Resources;
 
 /// <summary>
 /// Changes the identifier.

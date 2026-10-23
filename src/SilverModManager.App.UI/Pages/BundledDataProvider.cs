@@ -3,16 +3,16 @@ using DynamicData;
 using DynamicData.Aggregation;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Collections;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Pages.LoadoutPage;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using UIObservableExtensions = NexusMods.App.UI.Extensions.ObservableExtensions;
+using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Pages.LoadoutPage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.Query;
+using UIObservableExtensions = SilverModManager.App.UI.Extensions.ObservableExtensions;
 
-namespace NexusMods.App.UI.Pages;
+namespace SilverModManager.App.UI.Pages;
 
 [UsedImplicitly]
 public class BundledDataProvider : ILoadoutDataProvider

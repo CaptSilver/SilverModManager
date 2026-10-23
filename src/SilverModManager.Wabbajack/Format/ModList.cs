@@ -1,6 +1,6 @@
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.Wabbajack.Format;
+namespace SilverModManager.Wabbajack.Format;
 
 /// <summary>A parsed <c>modlist</c> file. <paramref name="GameType"/> is Wabbajack's game enum name.</summary>
 public sealed record ModList(

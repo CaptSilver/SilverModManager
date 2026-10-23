@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.Jobs;
+namespace SilverModManager.Sdk.Jobs;
 
 /// <summary>
 /// A cancellation token that supports both cancellation and pause/resume

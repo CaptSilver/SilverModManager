@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Games;
+using SilverModManager.Abstractions.Games;
 
-namespace NexusMods.Games.CreationEngine.SortOrder;
+namespace SilverModManager.Games.CreationEngine.SortOrder;
 
 /// <summary>
 /// Combines a plugin list from outside (the game's own file, a modlist's profile) with the rows a loadout has, into

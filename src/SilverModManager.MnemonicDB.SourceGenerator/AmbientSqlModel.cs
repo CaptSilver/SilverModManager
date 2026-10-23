@@ -1,4 +1,4 @@
-namespace NexusMods.MnemonicDB.SourceGenerator;
+namespace SilverModManager.MnemonicDB.SourceGenerator;
 
 public record AmbientSqlModel
 {

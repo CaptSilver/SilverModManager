@@ -1,8 +1,8 @@
-using NexusMods.App.UI.Controls.Filters;
-using NexusMods.App.UI.Controls.TreeDataGrid.Filters;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.Filters;
+using SilverModManager.App.UI.Controls.TreeDataGrid.Filters;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 public class FileEntryComponent : ReactiveR3Object, IItemModelComponent<FileEntryComponent>, IComparable<FileEntryComponent>, IComparable
 {

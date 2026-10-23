@@ -1,8 +1,8 @@
 using CliWrap;
 using NexusMods.Paths;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Platform.Proton.Protontricks;
+namespace SilverModManager.Platform.Proton.Protontricks;
 
 /// <summary>
 ///     Protontricks is a tool that helps manage Proton games and their dependencies.

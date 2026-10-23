@@ -4,7 +4,7 @@ using System.IO.MemoryMappedFiles;
 using System.Threading;
 using NexusMods.Paths;
 
-namespace NexusMods.SingleProcess;
+namespace SilverModManager.SingleProcess;
 
 /// <summary>
 /// A shared array of 64-bit unsigned integers, supports atomic operations via

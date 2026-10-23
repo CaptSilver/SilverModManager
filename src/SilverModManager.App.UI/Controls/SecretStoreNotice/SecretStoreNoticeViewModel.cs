@@ -1,17 +1,17 @@
 using System.Reactive.Disposables;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.App.UI.Controls.Alerts;
-using NexusMods.Sdk.Settings;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.App.UI.Controls.Alerts;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
 using Unit = System.Reactive.Unit;
 
-namespace NexusMods.App.UI.Controls.SecretStoreNotice;
+namespace SilverModManager.App.UI.Controls.SecretStoreNotice;
 
 /// <summary>
 /// Tells the user when sign-in tokens sit in a plain file or the keyring is locked, and offers to unlock it.

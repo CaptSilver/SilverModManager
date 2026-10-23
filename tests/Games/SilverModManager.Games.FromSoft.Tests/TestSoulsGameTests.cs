@@ -1,18 +1,18 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Cleanup;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Sdk.Games;
 using DynamicData.Kernel;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 /// <summary>
 /// Test Souls shares no value with Elden Ring and the base is registered without Elden Ring, so each test here fails

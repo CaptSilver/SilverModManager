@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
-using NexusMods.App.UI.Controls.LoadoutCard;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.LoadoutCard;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.MyLoadouts.GameLoadoutsSectionEntry;
+namespace SilverModManager.App.UI.Pages.MyLoadouts.GameLoadoutsSectionEntry;
 
 public class GameLoadoutsSectionEntryDesignViewModel : AViewModel<IGameLoadoutsSectionEntryViewModel>, IGameLoadoutsSectionEntryViewModel
 {

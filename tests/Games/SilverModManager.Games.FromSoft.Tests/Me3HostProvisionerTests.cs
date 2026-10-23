@@ -2,25 +2,25 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Installers;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Installers;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class Me3HostProvisionerTests(ITestOutputHelper helper) : Me3ProvisioningTest<Me3HostProvisionerTests>(helper)
 {

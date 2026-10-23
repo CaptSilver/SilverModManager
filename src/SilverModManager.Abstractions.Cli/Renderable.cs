@@ -1,6 +1,6 @@
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Abstractions.Cli;
+namespace SilverModManager.Abstractions.Cli;
 
 /// <summary>
 ///     Used for creating items which can be rendered to CLI.

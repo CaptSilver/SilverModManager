@@ -1,13 +1,13 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.CreationEngine.Tests.Starfield;
+namespace SilverModManager.Games.CreationEngine.Tests.Starfield;
 
 public class StarfieldToolTests(ITestOutputHelper helper) : AIsolatedGameTest<StarfieldToolTests, CreationEngine.Starfield.Starfield>(helper)
 {

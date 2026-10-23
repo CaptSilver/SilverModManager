@@ -1,7 +1,7 @@
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Abstractions.Collections;
+namespace SilverModManager.Abstractions.Collections;
 
 /// <summary>
 /// Represents a collection mod that was installed using the "replicated"-method. Instead of using an installer,

@@ -3,7 +3,7 @@
 # RequiresProton, RequiresSecretService and FlakeyTest) through Microsoft.Testing.Platform, inside the
 # distrobox named by SILVER_BOX (default fedora) unless already in a container.
 # Extra arguments go to `dotnet test`, e.g.
-#   scripts/test.sh --project tests/NexusMods.CLI.Tests
+#   scripts/test.sh --project tests/SilverModManager.CLI.Tests
 #
 # The filters travel as the XunitArgs MSBuild property, which tests/Directory.Build.props
 # maps onto TestingPlatformCommandLineArguments.
@@ -37,7 +37,7 @@ export DBUS_SESSION_BUS_ADDRESS="unix:path=$xdg_root/no-bus"
 #
 # dotnet test refuses more than one target, so the solution is only the default
 # when the caller didn't name a project, directory or test modules.
-target=(--solution NexusMods.App.sln)
+target=(--solution SilverModManager.App.sln)
 for arg in "$@"; do
     case "$arg" in
         --project|--project=*|--solution|--solution=*|--directory|--directory=*|--test-modules|--test-modules=*) target=() ;;

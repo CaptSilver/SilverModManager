@@ -1,10 +1,10 @@
 using System.Text.Json;
 using FluentAssertions;
-using NexusMods.DataModel.JsonConverters;
+using SilverModManager.DataModel.JsonConverters;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class PathJsonConverterTests
 {

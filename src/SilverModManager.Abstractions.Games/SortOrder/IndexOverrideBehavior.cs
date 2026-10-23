@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Defines whether smaller or greater index numbers win in case of conflicts between items in sorting order

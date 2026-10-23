@@ -1,10 +1,10 @@
 using System.Collections.Frozen;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Abstractions.Diagnostics.Emitters;
+namespace SilverModManager.Abstractions.Diagnostics.Emitters;
 
 /// <summary>
 /// Interface for diagnostic emitters that run on the entire <see cref="Loadout"/>.

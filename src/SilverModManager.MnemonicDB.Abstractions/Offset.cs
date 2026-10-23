@@ -1,10 +1,10 @@
 using System;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using Reloaded.Memory.Extensions;
 using TransparentValueObjects;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// An offset in an index segment to the start of the value data. This may also include an inline size value,

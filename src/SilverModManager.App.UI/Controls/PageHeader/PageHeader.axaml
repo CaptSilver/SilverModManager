@@ -1,6 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:pageHeader="using:NexusMods.App.UI.Controls.PageHeader"
+        xmlns:pageHeader="using:SilverModManager.App.UI.Controls.PageHeader"
 >
     
     <Design.PreviewWith>
@@ -9,7 +9,7 @@
         </Border>
     </Design.PreviewWith>
     
-    <!-- Control theme is located at src/Themes/NexusMods.Themes.NexusFluentDark/Resources/ControlThemes/PageHeaderControlTheme.axaml
+    <!-- Control theme is located at src/Themes/SilverModManager.Themes.NexusFluentDark/Resources/ControlThemes/PageHeaderControlTheme.axaml
     Default style is found here as well as the default template -->
     
 </Styles>

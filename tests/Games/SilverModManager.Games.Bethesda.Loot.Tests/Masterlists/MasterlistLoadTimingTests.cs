@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Masterlists;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Masterlists;
 
 /// <summary>
 /// Times parsing the largest bundled masterlist. If the median passes ~400 ms, parsing once per

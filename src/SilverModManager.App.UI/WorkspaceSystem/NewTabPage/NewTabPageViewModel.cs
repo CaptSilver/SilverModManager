@@ -5,15 +5,15 @@ using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Binding;
 using JetBrains.Annotations;
-using NexusMods.Sdk.Settings;
-using NexusMods.App.UI.Controls.Alerts;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.App.UI.Controls.Alerts;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public class NewTabPageViewModel : APageViewModel<INewTabPageViewModel>, INewTabPageViewModel
 {

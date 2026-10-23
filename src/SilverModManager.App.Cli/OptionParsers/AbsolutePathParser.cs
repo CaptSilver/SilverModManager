@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.CLI.OptionParsers;
+namespace SilverModManager.CLI.OptionParsers;
 
 /// <summary>
 /// Parses a string into an absolute path

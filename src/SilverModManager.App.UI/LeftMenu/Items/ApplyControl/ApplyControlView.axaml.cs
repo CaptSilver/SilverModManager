@@ -2,7 +2,7 @@
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public partial class ApplyControlView : ReactiveUserControl<IApplyControlViewModel>
 {

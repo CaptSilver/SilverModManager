@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using NexusMods.Paths;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// The arguments of <c>silvermod run &lt;loadout&gt; [--game &lt;appid|name&gt;] [--secrets-file &lt;path&gt;] [--dry-run] -- &lt;command&gt;</c>.

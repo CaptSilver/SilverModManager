@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>
 /// Reads the null-terminated UTF-16LE strings that binder member names, FMG entries and TPF texture names share,

@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.GuidedInstallers;
+namespace SilverModManager.Abstractions.GuidedInstallers;
 
 /// <summary>
 /// Describes the type of an option.

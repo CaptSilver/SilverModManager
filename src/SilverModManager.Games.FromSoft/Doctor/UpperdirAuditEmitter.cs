@@ -1,16 +1,16 @@
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FromSoft.Diagnostics;
-using NexusMods.Games.FromSoft.Overlay;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Games.FromSoft.Overlay;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.FromSoft.Doctor;
+namespace SilverModManager.Games.FromSoft.Doctor;
 
 /// <summary>
 /// Reports what the last modded session of the loadout left unresolved: files in its overlay that are not runtime

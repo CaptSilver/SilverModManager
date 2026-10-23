@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Fuse.Native;
+namespace SilverModManager.Deployment.Fuse.Native;
 
 /// <summary>
 /// The libfuse3 low-level API, bound to the symbols the library actually exports. The C headers hide several

@@ -1,6 +1,6 @@
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>
 /// One fold step of a merge. A nullable <see cref="ReadOnlySpan{T}"/> does not compile, so a strategy with no vanilla

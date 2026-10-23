@@ -4,7 +4,7 @@ using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Changelog;
+namespace SilverModManager.App.UI.Pages.Changelog;
 
 [UsedImplicitly]
 public partial class ChangelogPageView : ReactiveUserControl<IChangelogPageViewModel>

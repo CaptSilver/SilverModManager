@@ -1,6 +1,6 @@
-using NexusMods.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Me3;
 
-namespace NexusMods.Games.FromSoft.EldenRing;
+namespace SilverModManager.Games.FromSoft.EldenRing;
 
 /// <summary>Seamless Co-op, the multiplayer mod Elden Ring has and the other FromSoft games do not.</summary>
 public static class SeamlessCoop

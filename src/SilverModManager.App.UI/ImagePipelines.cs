@@ -2,17 +2,17 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Sdk.Resources;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Sdk.Resources;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.UI.Sdk.Resources;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.FileStore;
+using SilverModManager.UI.Sdk.Resources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.FileStore;
 using R3;
 using SkiaSharp;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 public static class ImagePipelines
 {
@@ -25,11 +25,11 @@ public static class ImagePipelines
     private const string GuidedInstallerFileImagePipelineKey = nameof(GuidedInstallerFileImagePipelineKey);
     private const string MarkdownRendererRemoteImagePipelineKey = nameof(MarkdownRendererRemoteImagePipelineKey);
 
-    private static readonly Bitmap CollectionTileFallback = new(AssetLoader.Open(new Uri("avares://NexusMods.App.UI/Assets/collection-tile-fallback.png")));
-    private static readonly Bitmap CollectionBackgroundFallback = new(AssetLoader.Open(new Uri("avares://NexusMods.App.UI/Assets/collection-background-fallback.png")));
-    private static readonly Bitmap UserAvatarFallback = new(AssetLoader.Open(new Uri("avares://NexusMods.App.UI/Assets/DesignTime/avatar.webp")));
-    internal static readonly Bitmap ModPageThumbnailFallback = new(AssetLoader.Open(new Uri("avares://NexusMods.App.UI/Assets/mod-thumbnail-fallback.png")));
-    internal static readonly Bitmap MarkdownFallback = new(AssetLoader.Open(new Uri("avares://NexusMods.App.UI/Assets/transparent.png")));
+    private static readonly Bitmap CollectionTileFallback = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/collection-tile-fallback.png")));
+    private static readonly Bitmap CollectionBackgroundFallback = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/collection-background-fallback.png")));
+    private static readonly Bitmap UserAvatarFallback = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/avatar.webp")));
+    internal static readonly Bitmap ModPageThumbnailFallback = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/mod-thumbnail-fallback.png")));
+    internal static readonly Bitmap MarkdownFallback = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/transparent.png")));
 
     public static Observable<Bitmap> CreateObservable(EntityId input, IResourceLoader<EntityId, Bitmap> pipeline)
     {

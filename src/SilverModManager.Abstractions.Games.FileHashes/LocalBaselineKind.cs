@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Games.FileHashes;
+namespace SilverModManager.Abstractions.Games.FileHashes;
 
 /// <summary>
 /// Where the vanilla file list of a <see cref="Models.LocalBaseline"/> came from.

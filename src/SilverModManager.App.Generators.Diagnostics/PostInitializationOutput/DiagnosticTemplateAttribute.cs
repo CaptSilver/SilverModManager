@@ -1,4 +1,4 @@
-namespace NexusMods.App.Generators.Diagnostics.PostInitializationOutput;
+namespace SilverModManager.App.Generators.Diagnostics.PostInitializationOutput;
 
 public class DiagnosticTemplateAttribute
 {

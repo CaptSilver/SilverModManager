@@ -1,13 +1,13 @@
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.LeftMenu.Items;
-using NexusMods.App.UI.Pages.Thunderstore;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.LeftMenu.Items;
+using SilverModManager.App.UI.Pages.Thunderstore;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.LeftMenu.Loadout;
+namespace SilverModManager.App.UI.LeftMenu.Loadout;
 
 internal static class ThunderstoreLeftMenuItem
 {

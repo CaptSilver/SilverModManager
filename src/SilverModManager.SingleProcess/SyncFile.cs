@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.SingleProcess;
+namespace SilverModManager.SingleProcess;
 
 /// <summary>
 /// A shared file that is used to synchronize the main process and client processes.

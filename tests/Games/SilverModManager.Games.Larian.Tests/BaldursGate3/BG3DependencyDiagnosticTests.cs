@@ -1,25 +1,25 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.DiagnosticSystem;
-using NexusMods.Games.Larian.BaldursGate3;
-using NexusMods.Games.Larian.BaldursGate3.Emitters;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Games.Larian.BaldursGate3;
+using SilverModManager.Games.Larian.BaldursGate3.Emitters;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3;
 
 /// <summary>
 /// Dependency warnings for paks, with one module shipped by the game's own Data folder.
@@ -148,9 +148,9 @@ public abstract class ADependencyDiagnosticTests(ITestOutputHelper outputHelper)
     protected const string MissingUuid = "33333333-3333-4333-8333-333333333333";
     protected const string GustavXUuid = "cb555efe-2d9e-131f-8195-a89329d218ea";
 
-    protected static readonly DiagnosticId MissingDependencyId = new("NexusMods.Games.Larian.BaldursGate3", number: 1);
-    protected static readonly DiagnosticId OutdatedDependencyId = new("NexusMods.Games.Larian.BaldursGate3", number: 2);
-    protected static readonly DiagnosticId OutdatedGameModuleId = new("NexusMods.Games.Larian.BaldursGate3", number: 6);
+    protected static readonly DiagnosticId MissingDependencyId = new("SilverModManager.Games.Larian.BaldursGate3", number: 1);
+    protected static readonly DiagnosticId OutdatedDependencyId = new("SilverModManager.Games.Larian.BaldursGate3", number: 2);
+    protected static readonly DiagnosticId OutdatedGameModuleId = new("SilverModManager.Games.Larian.BaldursGate3", number: 6);
 
     protected abstract Dictionary<RelativePath, byte[]>? GameFiles { get; }
 

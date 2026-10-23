@@ -1,15 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 /// <summary>Runs one of Elden Ring's installers on a test archive and reports where its files would land.</summary>
 public abstract class AEldenRingInstallerTests<TTest>(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<TTest, EldenRingGame>(outputHelper)

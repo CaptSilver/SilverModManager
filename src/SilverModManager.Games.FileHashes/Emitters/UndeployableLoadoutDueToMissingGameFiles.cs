@@ -2,16 +2,16 @@ using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FileHashes.Emitters;
+namespace SilverModManager.Games.FileHashes.Emitters;
 
 public class UndeployableLoadoutDueToMissingGameFiles : ILoadoutDiagnosticEmitter
 {

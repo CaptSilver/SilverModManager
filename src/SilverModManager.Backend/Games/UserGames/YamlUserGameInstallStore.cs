@@ -1,11 +1,11 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 using YamlDotNet.RepresentationModel;
 
-namespace NexusMods.Backend.Games.UserGames;
+namespace SilverModManager.Backend.Games.UserGames;
 
 /// <summary>
 /// Keeps the user's game installs in <c>XDG_CONFIG_HOME/SilverModManager/installs.yaml</c>, a list of

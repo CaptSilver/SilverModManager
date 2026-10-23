@@ -1,10 +1,10 @@
 using System.Collections.Immutable;
 using GameFinder.StoreHandlers.Steam;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Games.TestFramework.Helpers;
+namespace SilverModManager.Games.TestFramework.Helpers;
 
 /// <summary>
 /// A Proton prefix under a fake Steam library, for tests that check where a game's known

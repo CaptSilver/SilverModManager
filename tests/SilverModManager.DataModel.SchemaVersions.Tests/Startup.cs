@@ -1,14 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.App;
-using NexusMods.Backend;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.App;
+using SilverModManager.Backend;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.Games.FileHashes;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.Games.FileHashes;
 
-namespace NexusMods.DataModel.SchemaVersions.Tests;
+namespace SilverModManager.DataModel.SchemaVersions.Tests;
 
 public class Startup
 {
@@ -22,7 +22,7 @@ public class Startup
         var mode = new StartupMode { RunAsMain = true, ShowUI = true, SecretBackend = SecretBackendChoice.Memory };
         
         const KnownPath baseKnownPath = KnownPath.EntryDirectory;
-        var baseDirectory = $"NexusMods.UI.Tests.Tests-{Guid.NewGuid()}";
+        var baseDirectory = $"SilverModManager.UI.Tests.Tests-{Guid.NewGuid()}";
         
         var path = FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine("temp").Combine(Guid.NewGuid().ToString());
         path.CreateDirectory();

@@ -1,12 +1,12 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.CreationEngine.Tests.SortOrder;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.CreationEngine.Tests.SortOrder;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.RoundTrip;
+namespace SilverModManager.Games.CreationEngine.Tests.RoundTrip;
 
 /// <summary>
 /// The titles whose load order is the modification time of the plugin files: the plugins file lists the active

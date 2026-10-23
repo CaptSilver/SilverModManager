@@ -1,6 +1,6 @@
 using System.Xml;
 
-namespace NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
+namespace SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
 
 /// <summary>
 /// Class containing definitions for the Larian Xml (LSX) format.
@@ -174,7 +174,7 @@ public static class LsxXmlFormat
 
     /// <summary>
     /// Modules the game ships, which no mod in the loadout provides. Only a fallback for when the game's own
-    /// paks cannot be read: the installed game is the source of truth (<see cref="NexusMods.Games.Larian.BaldursGate3.Utils.GameModuleCatalog"/>),
+    /// paks cannot be read: the installed game is the source of truth (<see cref="SilverModManager.Games.Larian.BaldursGate3.Utils.GameModuleCatalog"/>),
     /// and this list goes stale with every patch.
     /// </summary>
     public static readonly ModuleShortDesc[] DependencyModulesToIgnore = 

@@ -3,19 +3,19 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Mutagen.Bethesda;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.PluginLists;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.PluginLists;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Games.CreationEngine.Tests.SkyrimFamily;
+namespace SilverModManager.Games.CreationEngine.Tests.SkyrimFamily;
 
 /// <summary>
 /// Each title writes its plugin list at its own path, with or without the active marker, and reads

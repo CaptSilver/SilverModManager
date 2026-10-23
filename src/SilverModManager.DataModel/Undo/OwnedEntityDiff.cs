@@ -1,8 +1,8 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
-namespace NexusMods.DataModel.Undo;
+namespace SilverModManager.DataModel.Undo;
 
 /// <summary>
 /// The datoms that turn one entity's state into another's. Only the attribute and value are compared,

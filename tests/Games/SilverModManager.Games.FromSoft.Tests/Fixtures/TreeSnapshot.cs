@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 /// <summary>
 /// Everything observable about a folder: every entry's path, a symlink's target, a file's content hash and every

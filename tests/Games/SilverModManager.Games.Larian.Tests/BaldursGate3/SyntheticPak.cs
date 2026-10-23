@@ -1,7 +1,7 @@
 using System.Text;
 using K4os.Compression.LZ4;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3;
 
 /// <summary>
 /// Builds small version 18 Larian packages in memory: stored (uncompressed) entries and an LZ4 file table,

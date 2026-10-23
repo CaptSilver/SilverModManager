@@ -4,10 +4,10 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:resources="clr-namespace:NexusMods.Games.AdvancedInstaller.UI.Resources"
-                                xmlns:selectLocation="clr-namespace:NexusMods.Games.AdvancedInstaller.UI.SelectLocation"
+                                xmlns:resources="clr-namespace:SilverModManager.Games.AdvancedInstaller.UI.Resources"
+                                xmlns:selectLocation="clr-namespace:SilverModManager.Games.AdvancedInstaller.UI.SelectLocation"
                                 mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="650"
-                                x:Class="NexusMods.Games.AdvancedInstaller.UI.SelectLocation.SelectLocationView">
+                                x:Class="SilverModManager.Games.AdvancedInstaller.UI.SelectLocation.SelectLocationView">
 
     <Border Classes="Rounded-lg Mid OutlineModerate" Padding="16" BorderThickness="2">
         <Border.Styles>

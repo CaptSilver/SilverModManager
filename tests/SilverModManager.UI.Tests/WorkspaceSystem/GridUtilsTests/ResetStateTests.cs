@@ -1,8 +1,8 @@
 using Avalonia;
 using FluentAssertions;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.UI.Tests.WorkspaceSystem;
+namespace SilverModManager.UI.Tests.WorkspaceSystem;
 
 public partial class GridUtilsTests
 {

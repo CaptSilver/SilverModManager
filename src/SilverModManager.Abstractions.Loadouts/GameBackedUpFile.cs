@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Abstractions.Loadouts;
+namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 /// This is a GC root that prevents garbage collection of a file.

@@ -1,13 +1,13 @@
 using System.Reactive.Disposables;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Paths;
 using NexusMods.Paths.Trees;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI;
+namespace SilverModManager.Games.AdvancedInstaller.UI;
 
 public class AdvancedInstallerPageViewModel : AViewModel<IAdvancedInstallerPageViewModel>,
     IAdvancedInstallerPageViewModel

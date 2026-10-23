@@ -3,7 +3,7 @@ using Avalonia.Threading;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.App;
+namespace SilverModManager.App;
 
 /// <summary>
 /// Turns a stop of the generic host (SIGTERM, SIGINT and SIGQUIT arrive there through its console lifetime)

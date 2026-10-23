@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.StandardGameLocators.TestHelpers;
+namespace SilverModManager.StandardGameLocators.TestHelpers;
 
 /// <summary>
 /// Holds user installs for one test host. Test hosts never use the YAML store: it writes a file under the

@@ -1,11 +1,11 @@
 using System.Buffers;
-using NexusMods.Abstractions.Steam.DTOs;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam.DTOs;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 using SteamKit2;
 
-namespace NexusMods.Networking.Steam;
+namespace SilverModManager.Networking.Steam;
 
 public class DepotChunkProvider : IChunkedStreamSource
 {

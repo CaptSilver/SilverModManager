@@ -1,7 +1,7 @@
 ﻿
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.SelectLocation;
+namespace SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 
 public class SelectableTreeEntryDesignViewModel() : SelectableTreeEntryViewModel(
     new GamePath(LocationId.Game, ""),

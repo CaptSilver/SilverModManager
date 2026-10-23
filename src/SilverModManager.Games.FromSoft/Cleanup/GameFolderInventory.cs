@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Cleanup;
+namespace SilverModManager.Games.FromSoft.Cleanup;
 
 /// <summary>Lists the game folder before and after a cleanup and says what differs.</summary>
 public static class GameFolderInventory

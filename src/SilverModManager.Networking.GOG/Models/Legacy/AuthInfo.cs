@@ -1,7 +1,7 @@
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Networking.GOG.Models.Legacy;
+namespace SilverModManager.Networking.GOG.Models.Legacy;
 
 /// <remarks>
 /// The row an older version kept the GOG login in. The login lives in the secret store now; this model stays

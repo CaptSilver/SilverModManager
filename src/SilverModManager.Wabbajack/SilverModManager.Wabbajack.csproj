@@ -1,27 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
-        <ProjectReference Include="..\NexusMods.Wabbajack.Transforms\NexusMods.Wabbajack.Transforms.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.Bethesda.Archives\NexusMods.Games.Bethesda.Archives.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Cli\NexusMods.Abstractions.Cli.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Library\NexusMods.Abstractions.Library.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Games\NexusMods.Abstractions.Games.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Games.FileHashes\NexusMods.Abstractions.Games.FileHashes.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Loadouts\NexusMods.Abstractions.Loadouts.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Loadouts.Synchronizers\NexusMods.Abstractions.Loadouts.Synchronizers.csproj" />
-        <ProjectReference Include="..\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.NexusModsLibrary\NexusMods.Abstractions.NexusModsLibrary.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.NexusWebApi\NexusMods.Abstractions.NexusWebApi.csproj" />
-        <ProjectReference Include="..\NexusMods.Library\NexusMods.Library.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.HttpDownloader\NexusMods.Networking.HttpDownloader.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.NexusWebApi\NexusMods.Networking.NexusWebApi.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Games.Diagnostics\NexusMods.Abstractions.Games.Diagnostics.csproj" />
-        <ProjectReference Include="..\NexusMods.App.Generators.Diagnostics\NexusMods.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-        <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.Wabbajack.Transforms\SilverModManager.Wabbajack.Transforms.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.Bethesda.Archives\SilverModManager.Games.Bethesda.Archives.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Cli\SilverModManager.Abstractions.Cli.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Library\SilverModManager.Abstractions.Library.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Games.FileHashes\SilverModManager.Abstractions.Games.FileHashes.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts\SilverModManager.Abstractions.Loadouts.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts.Synchronizers\SilverModManager.Abstractions.Loadouts.Synchronizers.csproj" />
+        <ProjectReference Include="..\SilverModManager.Platform.Proton\SilverModManager.Platform.Proton.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.NexusModsLibrary\SilverModManager.Abstractions.NexusModsLibrary.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.NexusWebApi\SilverModManager.Abstractions.NexusWebApi.csproj" />
+        <ProjectReference Include="..\SilverModManager.Library\SilverModManager.Library.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.HttpDownloader\SilverModManager.Networking.HttpDownloader.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.NexusWebApi\SilverModManager.Networking.NexusWebApi.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />
+        <ProjectReference Include="..\SilverModManager.App.Generators.Diagnostics\SilverModManager.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <PackageReference Include="NexusMods.Paths" />
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Wabbajack.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Wabbajack.Tests" />
     </ItemGroup>
 </Project>

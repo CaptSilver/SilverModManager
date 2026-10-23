@@ -14,5 +14,5 @@ public class Program
     /// </summary>
     // ReSharper disable once UnusedMember.Local
     // ReSharper disable once UnusedMember.Global
-    public static AppBuilder BuildAvaloniaApp() => NexusMods.App.Program.BuildAvaloniaApp();
+    public static AppBuilder BuildAvaloniaApp() => SilverModManager.App.Program.BuildAvaloniaApp();
 }

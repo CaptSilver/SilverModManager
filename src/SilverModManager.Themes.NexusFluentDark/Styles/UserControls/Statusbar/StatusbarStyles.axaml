@@ -1,10 +1,10 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:controls="clr-namespace:NexusMods.App.UI.Controls;assembly=NexusMods.App.UI"
-        xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk">
+        xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls;assembly=SilverModManager.App.UI"
+        xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk">
 
     <!-- This file is used for expected child controls such as Buttons, Seperators etc.
-    The ControlTheme in src/NexusMods.Themes.NexusFluentDark/Resources/ControlThemes/StatusbarControlTheme.axaml
+    The ControlTheme in src/SilverModManager.Themes.NexusFluentDark/Resources/ControlThemes/StatusbarControlTheme.axaml
     is used for the actual parent control template and styles.
      -->
 

@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.Models;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.Models;
 
 [Include<LoadoutItemGroup>]
 public partial class BannerlordModuleLoadoutItem : IModelDefinition

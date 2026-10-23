@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Backend.RuntimeDependency;
+namespace SilverModManager.Backend.RuntimeDependency;
 
 internal class RuntimeDependencyChecker : BackgroundService
 {

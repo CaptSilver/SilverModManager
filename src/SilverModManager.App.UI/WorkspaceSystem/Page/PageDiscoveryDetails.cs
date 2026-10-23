@@ -1,6 +1,6 @@
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public record PageDiscoveryDetails
 {

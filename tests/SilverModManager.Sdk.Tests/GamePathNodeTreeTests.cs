@@ -1,9 +1,9 @@
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Trees;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Trees;
 
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 public class GamePathNodeTreeTests
 {

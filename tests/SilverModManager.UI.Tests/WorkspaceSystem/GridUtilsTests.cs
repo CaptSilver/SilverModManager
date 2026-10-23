@@ -1,8 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.UI.Tests.WorkspaceSystem;
+namespace SilverModManager.UI.Tests.WorkspaceSystem;
 
 [UsedImplicitly]
 [SuppressMessage("ReSharper", "HeapView.BoxingAllocation")]

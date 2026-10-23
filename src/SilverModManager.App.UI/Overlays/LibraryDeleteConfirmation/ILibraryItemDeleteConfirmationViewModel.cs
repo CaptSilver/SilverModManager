@@ -1,5 +1,5 @@
-using NexusMods.App.UI.Pages.Library;
-namespace NexusMods.App.UI.Overlays.LibraryDeleteConfirmation;
+using SilverModManager.App.UI.Pages.Library;
+namespace SilverModManager.App.UI.Overlays.LibraryDeleteConfirmation;
 
 /// <summary>
 ///     Interface for a view model for the confirmation dialog displayed

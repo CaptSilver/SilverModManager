@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// An opened archive. Disposing it disposes the stream it was opened over.

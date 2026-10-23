@@ -1,6 +1,6 @@
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.App.GarbageCollection.Interfaces;
+namespace SilverModManager.App.GarbageCollection.Interfaces;
 
 /// <summary>
 ///     This is a marker interface for types that have a file hash.

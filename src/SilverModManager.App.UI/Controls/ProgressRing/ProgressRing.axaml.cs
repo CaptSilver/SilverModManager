@@ -1,7 +1,7 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace NexusMods.App.UI.Controls.ProgressRing;
+namespace SilverModManager.App.UI.Controls.ProgressRing;
 
 public partial class ProgressRing : UserControl
 {

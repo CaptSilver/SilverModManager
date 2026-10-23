@@ -3,17 +3,17 @@ using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 using CompositeDisposable = R3.CompositeDisposable;
-using GameInstallMetadata = NexusMods.Sdk.Games.GameInstallMetadata;
+using GameInstallMetadata = SilverModManager.Sdk.Games.GameInstallMetadata;
 
-namespace NexusMods.DataModel.Diagnostics;
+namespace SilverModManager.DataModel.Diagnostics;
 
 /// <inheritdoc/>
 [UsedImplicitly]

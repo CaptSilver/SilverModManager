@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Wabbajack.Models;
+namespace SilverModManager.Wabbajack.Models;
 
 /// <summary>
 /// The group a modlist's mods are installed under. It includes <see cref="CollectionGroup"/> because the synchronizer

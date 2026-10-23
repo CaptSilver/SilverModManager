@@ -1,16 +1,16 @@
 using System.Collections.Frozen;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.References;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.CreationEngine.Emitters;
+namespace SilverModManager.Games.CreationEngine.Emitters;
 
 public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
 {

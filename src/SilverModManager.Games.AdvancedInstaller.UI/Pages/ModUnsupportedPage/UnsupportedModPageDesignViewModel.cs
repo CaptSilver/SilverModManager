@@ -1,4 +1,4 @@
-﻿namespace NexusMods.Games.AdvancedInstaller.UI;
+﻿namespace SilverModManager.Games.AdvancedInstaller.UI;
 
 public class UnsupportedModPageDesignViewModel : UnsupportedModPageViewModel
 {

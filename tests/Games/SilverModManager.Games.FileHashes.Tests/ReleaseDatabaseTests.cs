@@ -4,17 +4,17 @@ using System.Text.Json.Serialization;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Games.FileHashes.DTOs;
+using SilverModManager.Games.FileHashes.DTOs;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 public sealed class ReleaseDatabaseTests : IDisposable
 {

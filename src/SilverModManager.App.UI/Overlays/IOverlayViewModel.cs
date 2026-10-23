@@ -1,6 +1,6 @@
-﻿using NexusMods.UI.Sdk;
+﻿using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Overlays;
+namespace SilverModManager.App.UI.Overlays;
 
 /// <summary>
 /// The status of the overlay.

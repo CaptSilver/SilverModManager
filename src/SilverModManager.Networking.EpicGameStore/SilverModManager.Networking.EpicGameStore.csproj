@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Abstractions.Cli\NexusMods.Abstractions.Cli.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Games\NexusMods.Abstractions.Games.csproj" />
-        <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Cli\SilverModManager.Abstractions.Cli.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
     
         <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-        <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 </Project>

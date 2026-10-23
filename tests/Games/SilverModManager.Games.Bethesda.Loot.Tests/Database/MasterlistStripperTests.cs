@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Loot.Database;
-using NexusMods.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Database;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Database;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Database;
 
 public class MasterlistStripperTests
 {

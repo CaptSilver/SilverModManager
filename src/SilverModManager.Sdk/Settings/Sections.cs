@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Settings;
+namespace SilverModManager.Sdk.Settings;
 
 /// <summary>
 /// A collection of sections to use.

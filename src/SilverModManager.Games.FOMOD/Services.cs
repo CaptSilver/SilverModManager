@@ -1,9 +1,9 @@
 ﻿using FomodInstaller.Interface;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.FOMOD.CoreDelegates;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Games.FOMOD.CoreDelegates;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Games.FOMOD;
+namespace SilverModManager.Games.FOMOD;
 
 public static class Services
 {

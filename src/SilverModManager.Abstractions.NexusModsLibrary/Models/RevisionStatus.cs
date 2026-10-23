@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Abstractions.NexusModsLibrary.Models;
+namespace SilverModManager.Abstractions.NexusModsLibrary.Models;
 
 /// <summary>
 /// Status of a revision.

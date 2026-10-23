@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace NexusMods.Networking.ModUpdates;
+namespace SilverModManager.Networking.ModUpdates;
 
 /// <summary>
 /// Tells which variant of a mod a Nexus file is, independent of its version, so that a mod page with

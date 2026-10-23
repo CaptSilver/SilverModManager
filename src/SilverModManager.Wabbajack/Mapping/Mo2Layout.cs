@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Wabbajack.Mapping;
+namespace SilverModManager.Wabbajack.Mapping;
 
 /// <summary>What the classifier needs to know about the game and the instance a modlist was built for.</summary>
 /// <param name="SelectedProfile">The profile named in ModOrganizer.ini; every other profile's files are dropped.</param>

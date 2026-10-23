@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats;
+namespace SilverModManager.Games.FromSoft.Tests.Formats;
 
 /// <summary>
 /// Reads and rewrites the t000001000 state machine out of two real mods' talk binders. Never part of the default run:

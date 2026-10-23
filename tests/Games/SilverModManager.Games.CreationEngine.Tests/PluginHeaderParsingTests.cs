@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Mutagen.Bethesda;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.CreationEngine.Abstractions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
 using NSubstitute;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests;
+namespace SilverModManager.Games.CreationEngine.Tests;
 
 /// <summary>
 /// The plugin header reader reads what Mutagen wrote for every release a title in this project targets.

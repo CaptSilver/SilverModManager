@@ -1,6 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:alert="using:NexusMods.App.UI.Controls.Alerts"
+        xmlns:alert="using:SilverModManager.App.UI.Controls.Alerts"
 >
     
     <Design.PreviewWith>
@@ -11,7 +11,7 @@
         </Border>
     </Design.PreviewWith>
     
-    <!-- Control theme is located at src/Themes/NexusMods.Themes.NexusFluentDark/Resources/ControlThemes/Alert.axaml
+    <!-- Control theme is located at src/Themes/SilverModManager.Themes.NexusFluentDark/Resources/ControlThemes/Alert.axaml
     Default style is found here as well as the default template -->
     
 </Styles>

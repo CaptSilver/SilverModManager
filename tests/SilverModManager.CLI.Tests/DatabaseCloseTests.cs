@@ -1,14 +1,14 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App;
-using NexusMods.MnemonicDB;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Storage;
-using NexusMods.MnemonicDB.Storage.Abstractions;
-using RocksDbBackend = NexusMods.MnemonicDB.Storage.RocksDbBackend.Backend;
+using SilverModManager.App;
+using SilverModManager.MnemonicDB;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Storage.Abstractions;
+using RocksDbBackend = SilverModManager.MnemonicDB.Storage.RocksDbBackend.Backend;
 using NexusMods.Paths;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 /// <summary>
 /// Opens real RocksDB stores in a temp directory, because the lock file is what the next process trips over.

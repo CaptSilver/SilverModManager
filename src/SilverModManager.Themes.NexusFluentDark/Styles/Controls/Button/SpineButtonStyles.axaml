@@ -1,8 +1,8 @@
 ﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-        xmlns:icon="clr-namespace:NexusMods.App.UI.Controls.Spine.Buttons.Icon;assembly=NexusMods.App.UI"
-        xmlns:image="clr-namespace:NexusMods.App.UI.Controls.Spine.Buttons.Image;assembly=NexusMods.App.UI">
+        xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+        xmlns:icon="clr-namespace:SilverModManager.App.UI.Controls.Spine.Buttons.Icon;assembly=SilverModManager.App.UI"
+        xmlns:image="clr-namespace:SilverModManager.App.UI.Controls.Spine.Buttons.Image;assembly=SilverModManager.App.UI">
     <Design.PreviewWith>
         
         <StackPanel Orientation="Horizontal" Spacing="10" Margin="10">
@@ -196,7 +196,7 @@
                             <icons:UnifiedIcon x:Name="Image">
                                 <icons:UnifiedIcon.Value>
                                     <icons:IconValue
-                                        ImageSetter="avares://NexusMods.Themes.NexusFluentDark/Assets/DesignTime/cyberpunk_game.png" />
+                                        ImageSetter="avares://SilverModManager.Themes.NexusFluentDark/Assets/DesignTime/cyberpunk_game.png" />
                                 </icons:UnifiedIcon.Value>
                             </icons:UnifiedIcon>
                             <Rectangle x:Name="Mask" />

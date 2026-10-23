@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
 /// <summary>
 /// Builds archive-shaped BND4 files: 0x24-byte entry headers, then the names, a hash table and 0x10-aligned data.

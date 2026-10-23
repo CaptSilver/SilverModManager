@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
 using ReactiveUI.Fody.Helpers;
 // ReSharper disable All
 

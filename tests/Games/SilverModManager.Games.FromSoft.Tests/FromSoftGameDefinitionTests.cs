@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Saves;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Saves;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class FromSoftGameDefinitionTests
 {

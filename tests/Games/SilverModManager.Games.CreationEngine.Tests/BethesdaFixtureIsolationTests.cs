@@ -1,9 +1,9 @@
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests;
+namespace SilverModManager.Games.CreationEngine.Tests;
 
 /// <summary>
 /// Bethesda fixtures that sync a loadout must not point the game's Documents and AppData locations at the

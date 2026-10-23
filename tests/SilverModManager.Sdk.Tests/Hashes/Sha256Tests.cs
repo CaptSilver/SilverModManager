@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using FluentAssertions;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Sdk.Tests.Hashes;
+namespace SilverModManager.Sdk.Tests.Hashes;
 
 public class Sha256Tests
 {

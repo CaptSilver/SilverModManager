@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 
-namespace NexusMods.Abstractions.Collections.Json;
+namespace SilverModManager.Abstractions.Collections.Json;
 
 [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
 public class CollectionInfo

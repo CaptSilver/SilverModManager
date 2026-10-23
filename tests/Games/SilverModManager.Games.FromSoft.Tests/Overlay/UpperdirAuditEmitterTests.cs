@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.Overlay;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Tests.Overlay;
+namespace SilverModManager.Games.FromSoft.Tests.Overlay;
 
 public class UpperdirAuditEmitterTests(ITestOutputHelper helper) : AModdedEldenRingTest<UpperdirAuditEmitterTests>(helper)
 {
@@ -15,7 +15,7 @@ public class UpperdirAuditEmitterTests(ITestOutputHelper helper) : AModdedEldenR
     private async Task<Diagnostic[]> Diagnose(Loadout.ReadOnly loadout)
     {
         var found = new List<Diagnostic>();
-        await foreach (var diagnostic in Emitter.Diagnose(loadout, System.Collections.Frozen.FrozenDictionary<NexusMods.Sdk.Games.GamePath, NexusMods.Abstractions.Loadouts.Synchronizers.SyncNode>.Empty, CancellationToken.None))
+        await foreach (var diagnostic in Emitter.Diagnose(loadout, System.Collections.Frozen.FrozenDictionary<SilverModManager.Sdk.Games.GamePath, SilverModManager.Abstractions.Loadouts.Synchronizers.SyncNode>.Empty, CancellationToken.None))
             found.Add(diagnostic);
         return found.ToArray();
     }

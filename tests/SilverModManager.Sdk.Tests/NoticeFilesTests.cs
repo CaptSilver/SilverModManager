@@ -1,6 +1,6 @@
 using FluentAssertions;
 
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 /// <summary>
 /// The GPL asks a modified version to say so prominently, and the fork has no per-file headers
@@ -30,14 +30,33 @@ public class NoticeFilesTests
     }
 
     [Fact]
+    public void Test_NoticeKeepsTheUpstreamAttributionVerbatim()
+    {
+        var notice = ReadRootFile("NOTICE").ReplaceLineEndings("\n");
+
+        notice.Should().Contain("SilverModManager is a modified version of the Nexus Mods App\n(https://github.com/Nexus-Mods/NexusMods.App), Copyright (C) Nexus Mods,\n");
+    }
+
+    [Fact]
+    public void Test_NoticeSaysWhichNexusModsNamespacesRemain()
+    {
+        var notice = ReadRootFile("NOTICE");
+
+        notice.Should().NotContain("NexusMods.* project and namespace names", "first-party names carry the fork's name now");
+        foreach (var package in new[] { "NexusMods.Paths", "NexusMods.Hashing", "NexusMods.Archives", "NexusMods.HyperDuck" })
+            notice.Should().Contain(package, "the notice names the third-party namespaces that keep upstream's prefix");
+        notice.Should().NotContain("MkDocsMaterial", "the docs theme submodule is gone");
+    }
+
+    [Fact]
     public void Test_NoticeNamesTheVendoredMnemonicDb()
     {
         var notice = ReadRootFile("NOTICE");
 
-        notice.Should().Contain("NexusMods.MnemonicDB");
+        notice.Should().Contain("SilverModManager.MnemonicDB");
         notice.Should().Contain("https://github.com/Nexus-Mods/NexusMods.MnemonicDB");
         notice.Should().Contain("v0.28.2");
-        File.Exists(Path.Combine(Root, "src", "NexusMods.MnemonicDB", "LICENSE")).Should().BeTrue("the vendored source carries its upstream license");
+        File.Exists(Path.Combine(Root, "src", "SilverModManager.MnemonicDB", "LICENSE")).Should().BeTrue("the vendored source carries its upstream license");
     }
 
     [Fact]
@@ -58,7 +77,7 @@ public class NoticeFilesTests
     [InlineData("docs/Nexus", "upstream's docs theme submodule")]
     [InlineData("docs/users", "upstream's user guides and screenshots")]
     [InlineData("docs/images/nexus-logo-white.svg", "the Nexus logo")]
-    [InlineData("tests/NexusMods.Backend.Tests/EventTrackerTests.Test_PrepareRequest.verified.txt", "snapshot of a test that no longer exists")]
+    [InlineData("tests/SilverModManager.Backend.Tests/EventTrackerTests.Test_PrepareRequest.verified.txt", "snapshot of a test that no longer exists")]
     public void Test_RemovedPathsStayRemoved(string relativePath, string reason)
     {
         var path = Path.Combine(Root, relativePath);

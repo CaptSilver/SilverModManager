@@ -1,8 +1,8 @@
-using NexusMods.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Me3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft.EldenRing;
+namespace SilverModManager.Games.FromSoft.EldenRing;
 
 /// <summary>
 /// Elden Ring's path constants, and its <see cref="FromSoftPaths"/> rules with its layout filled in. The rules

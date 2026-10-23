@@ -1,11 +1,11 @@
 using System.Reactive;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public interface ILaunchButtonViewModel : IViewModelInterface
 {

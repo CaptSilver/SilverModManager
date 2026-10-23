@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 using static Bannerlord.LauncherManager.Constants;
-namespace NexusMods.Games.MountAndBlade2Bannerlord;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord;
 
 /// <summary>
 /// Bannerlord specific extensions for loadouts.

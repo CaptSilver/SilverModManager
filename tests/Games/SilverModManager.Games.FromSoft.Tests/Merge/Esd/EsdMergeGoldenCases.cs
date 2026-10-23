@@ -1,7 +1,7 @@
-using NexusMods.Games.FromSoft.Formats;
-using static NexusMods.Games.FromSoft.Tests.Merge.EsdMergeFixture;
+using SilverModManager.Games.FromSoft.Formats;
+using static SilverModManager.Games.FromSoft.Tests.Merge.EsdMergeFixture;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 /// <summary>
 /// The triples whose merge erm writes as golden bytes, each built the way the erm script that produced the golden

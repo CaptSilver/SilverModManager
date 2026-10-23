@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace NexusMods.Deployment.Fuse.Native;
+namespace SilverModManager.Deployment.Fuse.Native;
 
 /// <summary>The few libc calls the mount needs that .NET does not expose.</summary>
 internal static unsafe partial class LibcProcess

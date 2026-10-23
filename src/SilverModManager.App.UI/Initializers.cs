@@ -5,13 +5,13 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 using ReactiveUI;
 
 // ReSharper disable InconsistentNaming
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 public static class Initializers
 {

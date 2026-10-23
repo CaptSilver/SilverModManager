@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace NexusMods.Games.Larian.BaldursGate3.GameInstalled;
+namespace SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
 
 /// <summary>
 /// The naming the game gives a pak it downloads from mod.io: the module folder (cut short when it is long),

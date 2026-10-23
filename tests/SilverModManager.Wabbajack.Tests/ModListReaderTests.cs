@@ -2,10 +2,10 @@ using System.Text;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Tests.Fixtures;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Tests.Fixtures;
 
-namespace NexusMods.Wabbajack.Tests;
+namespace SilverModManager.Wabbajack.Tests;
 
 public class ModListReaderTests
 {

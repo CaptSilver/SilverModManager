@@ -5,11 +5,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\src\NexusMods.Games.AdvancedInstaller.UI\NexusMods.Games.AdvancedInstaller.UI.csproj"/>
-        <ProjectReference Include="..\..\..\src\NexusMods.Games.AdvancedInstaller\NexusMods.Games.AdvancedInstaller.csproj"/>
-        <ProjectReference Include="..\..\..\src\NexusMods.Games.Generic\NexusMods.Games.Generic.csproj"/>
-        <ProjectReference Include="..\NexusMods.Games.AdvancedInstaller.Tests\NexusMods.Games.AdvancedInstaller.Tests.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj"/>
+        <ProjectReference Include="..\..\..\src\SilverModManager.Games.AdvancedInstaller.UI\SilverModManager.Games.AdvancedInstaller.UI.csproj"/>
+        <ProjectReference Include="..\..\..\src\SilverModManager.Games.AdvancedInstaller\SilverModManager.Games.AdvancedInstaller.csproj"/>
+        <ProjectReference Include="..\..\..\src\SilverModManager.Games.Generic\SilverModManager.Games.Generic.csproj"/>
+        <ProjectReference Include="..\SilverModManager.Games.AdvancedInstaller.Tests\SilverModManager.Games.AdvancedInstaller.Tests.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

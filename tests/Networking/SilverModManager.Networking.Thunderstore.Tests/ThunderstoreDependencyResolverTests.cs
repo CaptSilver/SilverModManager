@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Networking.Thunderstore.DTOs;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Networking.Thunderstore.DTOs;
+using SilverModManager.Sdk.Thunderstore;
 using Xunit;
 
-namespace NexusMods.Networking.Thunderstore.Tests;
+namespace SilverModManager.Networking.Thunderstore.Tests;
 
 public class ThunderstoreDependencyResolverTests
 {

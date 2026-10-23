@@ -4,12 +4,12 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Deployment.Links.Backends;
-using NexusMods.Sdk.Native;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Deployment.Links.Backends;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.DataModel.Tests.Deployment;
+namespace SilverModManager.DataModel.Tests.Deployment;
 
 /// <summary>
 /// A build that does not know the link backends, opened on an install whose rows and files a build that did

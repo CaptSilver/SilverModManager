@@ -1,8 +1,8 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-        xmlns:controls="clr-namespace:NexusMods.App.UI.Controls;assembly=NexusMods.App.UI"
-        xmlns:navigation="clr-namespace:NexusMods.App.UI.Controls.Navigation;assembly=NexusMods.App.UI">
+        xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+        xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls;assembly=SilverModManager.App.UI"
+        xmlns:navigation="clr-namespace:SilverModManager.App.UI.Controls.Navigation;assembly=SilverModManager.App.UI">
 
     <Style Selector="TreeDataGridTemplateCell">
         <!-- <Setter Property="Background" Value="Blue" /> -->

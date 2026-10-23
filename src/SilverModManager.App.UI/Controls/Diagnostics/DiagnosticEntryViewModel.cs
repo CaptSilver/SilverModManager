@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Diagnostics;
+namespace SilverModManager.App.UI.Controls.Diagnostics;
 
 public class DiagnosticEntryViewModel : AViewModel<IDiagnosticEntryViewModel>, IDiagnosticEntryViewModel
 {

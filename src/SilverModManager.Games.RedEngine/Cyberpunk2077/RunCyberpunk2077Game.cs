@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.RedEngine.Cyberpunk2077;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077;
 
 public class RunCyberpunk2077Game(IServiceProvider provider, Cyberpunk2077Game game) : RunGameTool<Cyberpunk2077Game>(provider, game)
 {

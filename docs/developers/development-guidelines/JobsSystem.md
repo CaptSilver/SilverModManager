@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Jobs system in NexusMods.App is how long-running background tasks are spawned.
+The Jobs system in SilverModManager.App is how long-running background tasks are spawned.
 
 These feature progress tracking, cancellation support, and error handling.
 

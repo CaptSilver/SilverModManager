@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using NexusMods.Paths;
 using NexusMods.Paths.Extensions;
 
-namespace NexusMods.DataModel.JsonConverters;
+namespace SilverModManager.DataModel.JsonConverters;
 
 /// <inheritdoc />
 public class RelativePathConverter : JsonConverter<RelativePath>

@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// A sort order variety that notices when something outside the app rewrote the game's own order file and the

@@ -2,22 +2,22 @@ using System.Net;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.DTOs;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.CLI;
-using NexusMods.CLI.Types.IpcHandlers;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.NexusWebApi;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.DTOs;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.CLI;
+using SilverModManager.CLI.Types.IpcHandlers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.NexusWebApi;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.EventBus;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.EventBus;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.NexusModsApi;
 using NSubstitute;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 /// <summary>
 /// The nxm handler with fakes for the Nexus Mods API and the HTTP client, so no test reaches the network. The

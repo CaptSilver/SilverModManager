@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.IO;
+namespace SilverModManager.Sdk.IO;
 
 /// <summary>
 ///     A way of creating a stream from another object. Could be an entry in an archive, lazy extracted, could be a

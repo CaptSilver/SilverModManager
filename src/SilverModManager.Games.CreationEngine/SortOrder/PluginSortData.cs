@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Games.CreationEngine.SortOrder;
+namespace SilverModManager.Games.CreationEngine.SortOrder;
 
 /// <summary>
 /// A stored plugin row: its place in the order and its on/off switch, plus the on-disk spelling of the name the

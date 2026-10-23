@@ -1,7 +1,7 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// An abstraction for loadout-specific data of an item that is part of a sort order.

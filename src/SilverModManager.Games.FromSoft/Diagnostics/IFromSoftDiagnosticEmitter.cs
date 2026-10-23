@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
 
-namespace NexusMods.Games.FromSoft.Diagnostics;
+namespace SilverModManager.Games.FromSoft.Diagnostics;
 
 /// <summary>
 /// Marks a diagnostic emitter as one of the FromSoft games'. Emitters registered in DI under this interface are

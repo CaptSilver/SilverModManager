@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi.Tests.Types.V2;
+namespace SilverModManager.Networking.NexusWebApi.Tests.Types.V2;
 
 public class FileUidTests
 {

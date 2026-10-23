@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Fuse.Native;
+namespace SilverModManager.Deployment.Fuse.Native;
 
 // Transcribed by hand from the libfuse 3.18 headers (fuse_common.h, fuse_lowlevel.h, fuse_opt.h) for
 // x86_64 glibc, the combination FuseAbi.VerifiedVersion names. Every size and the offsets that matter are

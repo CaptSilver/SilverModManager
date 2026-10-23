@@ -3,15 +3,15 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.ReactiveUI;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Paths.Trees;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.AdvancedInstaller.UI;
+namespace SilverModManager.Games.AdvancedInstaller.UI;
 
 /// <summary>
 /// Provides the UI for the Advanced Manual Installer.

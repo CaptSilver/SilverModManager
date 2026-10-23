@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using static NexusMods.Games.RedEngine.Constants;
-namespace NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using static SilverModManager.Games.RedEngine.Constants;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077.Emitters;
 
 /// <summary>
 /// Warns when the REDmod DLC is installed but nothing on this machine can run its Windows executable.

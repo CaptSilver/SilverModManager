@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Abstractions.NexusWebApi.Types;
+namespace SilverModManager.Abstractions.NexusWebApi.Types;
 
 /// <summary>
 /// Information about a logged-in user

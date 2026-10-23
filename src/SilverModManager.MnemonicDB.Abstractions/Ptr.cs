@@ -1,6 +1,6 @@
 using System;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 public readonly unsafe struct Ptr
 {

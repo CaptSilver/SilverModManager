@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.TestFramework.Helpers;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.TestFramework.Helpers;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Tests;
+namespace SilverModManager.Games.CreationEngine.Tests;
 
 /// <summary>
 /// Under Proton the known folders have to land in the prefix's Windows home, since the
@@ -16,7 +16,7 @@ public class ProtonLocationTests(IServiceProvider serviceProvider)
     public void SkyrimSE_ResolvesIntoThePrefix()
     {
         var prefix = ProtonTestPrefix.Create();
-        var game = serviceProvider.GetServices<IGame>().OfType<global::NexusMods.Games.CreationEngine.SkyrimSE.SkyrimSE>().Single();
+        var game = serviceProvider.GetServices<IGame>().OfType<global::SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE>().Single();
 
         var locations = game.GetLocations(prefix.GameFileSystem, prefix.LocatorResult());
 
@@ -28,7 +28,7 @@ public class ProtonLocationTests(IServiceProvider serviceProvider)
     public void SkyrimSE_FromGOG_UsesTheGogAppDataAndPreferencesFolders()
     {
         var prefix = ProtonTestPrefix.Create();
-        var game = serviceProvider.GetServices<IGame>().OfType<global::NexusMods.Games.CreationEngine.SkyrimSE.SkyrimSE>().Single();
+        var game = serviceProvider.GetServices<IGame>().OfType<global::SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE>().Single();
 
         var locations = game.GetLocations(prefix.GameFileSystem, prefix.LocatorResult(GameStore.GOG));
 
@@ -40,7 +40,7 @@ public class ProtonLocationTests(IServiceProvider serviceProvider)
     public void Fallout4_ResolvesIntoThePrefix()
     {
         var prefix = ProtonTestPrefix.Create();
-        var game = serviceProvider.GetServices<IGame>().OfType<global::NexusMods.Games.CreationEngine.Fallout4.Fallout4>().Single();
+        var game = serviceProvider.GetServices<IGame>().OfType<global::SilverModManager.Games.CreationEngine.Fallout4.Fallout4>().Single();
 
         var locations = game.GetLocations(prefix.GameFileSystem, prefix.LocatorResult());
 

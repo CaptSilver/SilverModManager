@@ -1,10 +1,10 @@
 using System.Numerics;
 using FluentAssertions;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class FromSoftFormatTraitsTests
 {

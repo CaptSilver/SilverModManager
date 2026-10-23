@@ -1,6 +1,6 @@
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
 /// <summary>
 /// Builds message archives (.msgbnd.dcx): a binder whose members are FMG tables, wrapped the way the game writes

@@ -1,13 +1,13 @@
 using CliWrap;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 
-namespace NexusMods.Platform.Proton.UserTools;
+namespace SilverModManager.Platform.Proton.UserTools;
 
 /// <summary>
 /// A program the user added, as a tool, so <see cref="IToolManager.RunTool"/> synchronizes the loadout before

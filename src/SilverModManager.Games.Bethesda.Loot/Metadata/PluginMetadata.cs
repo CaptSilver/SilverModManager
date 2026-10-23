@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata;
 
 /// <summary>
 /// Everything LOOT knows about one plugin, or about every plugin matching a regex name. Follows

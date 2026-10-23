@@ -1,17 +1,17 @@
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Platform.Proton.Tests.Doctor;
+namespace SilverModManager.Platform.Proton.Tests.Doctor;
 
 /// <summary>
 /// The temp directory is tmpfs on the dev box, where hard links work and FICLONE does not, so the chain's pick

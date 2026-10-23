@@ -1,14 +1,14 @@
 ﻿using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public class LaunchButtonDesignViewModel : AViewModel<ILaunchButtonViewModel>, ILaunchButtonViewModel
 {

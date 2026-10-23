@@ -1,6 +1,6 @@
 using System.Collections.Specialized;
 
-namespace NexusMods.Abstractions.NexusWebApi.Types;
+namespace SilverModManager.Abstractions.NexusWebApi.Types;
 
 /// <summary>
 /// parsed url of nxm:// protocol, used in multiple ways for the site communicating with clients

@@ -3,15 +3,15 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Binding;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public class LeftMenuItemViewModel : AViewModel<ILeftMenuItemViewModel>, ILeftMenuItemViewModel
 {

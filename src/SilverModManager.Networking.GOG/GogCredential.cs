@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
-namespace NexusMods.Networking.GOG;
+namespace SilverModManager.Networking.GOG;
 
 /// <summary>
 /// The GOG login as it is kept in the secret store (under <see cref="GogSecretKeys.OAuth"/>).

@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// The position items should be moved to, relative to the target item in ascending index order.

@@ -1,7 +1,7 @@
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 using CliWrap;
 
-namespace NexusMods.Platform.Proton.ToolRunner.Dependencies;
+namespace SilverModManager.Platform.Proton.ToolRunner.Dependencies;
 
 /// <summary>
 /// Flatpak itself, whatever is installed through it.

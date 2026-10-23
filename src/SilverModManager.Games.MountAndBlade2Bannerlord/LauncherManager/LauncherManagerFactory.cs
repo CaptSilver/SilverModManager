@@ -1,11 +1,11 @@
 using System.Collections.Concurrent;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.MountAndBlade2Bannerlord.Utils;
-using NexusMods.Sdk.Games;
-using GameInstallMetadata = NexusMods.Sdk.Games.GameInstallMetadata;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.MountAndBlade2Bannerlord.Utils;
+using SilverModManager.Sdk.Games;
+using GameInstallMetadata = SilverModManager.Sdk.Games.GameInstallMetadata;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.LauncherManager;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.LauncherManager;
 
 /// <summary>
 /// The LauncherManager holds a state per game instance.

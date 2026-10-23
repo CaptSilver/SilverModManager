@@ -1,9 +1,9 @@
 using System.Runtime.CompilerServices;
-using NexusMods.App.GarbageCollection.Interfaces;
+using SilverModManager.App.GarbageCollection.Interfaces;
 using NexusMods.Archives.Nx.Headers.Managed;
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.App.GarbageCollection.Nx;
+namespace SilverModManager.App.GarbageCollection.Nx;
 
 /// <summary>
 ///     The parsed header state for the Nx Archive.

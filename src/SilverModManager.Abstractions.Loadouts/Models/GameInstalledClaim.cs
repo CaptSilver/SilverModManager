@@ -1,10 +1,10 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Abstractions.Loadouts;
+namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 /// The user said a game-installed file is theirs. The claim keeps the recognizer from adopting the path

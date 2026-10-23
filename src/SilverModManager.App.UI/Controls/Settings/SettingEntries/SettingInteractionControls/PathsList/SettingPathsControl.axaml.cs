@@ -3,7 +3,7 @@ using Avalonia.ReactiveUI;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Settings.SettingEntries.PathsList;
+namespace SilverModManager.App.UI.Controls.Settings.SettingEntries.PathsList;
 
 public partial class SettingPathsControl : ReactiveUserControl<ISettingPathsViewModel>
 {

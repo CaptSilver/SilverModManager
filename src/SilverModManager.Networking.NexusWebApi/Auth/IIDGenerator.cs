@@ -1,4 +1,4 @@
-namespace NexusMods.Networking.NexusWebApi.Auth;
+namespace SilverModManager.Networking.NexusWebApi.Auth;
 
 /// <summary>
 /// abstraction for functions generating unique ids

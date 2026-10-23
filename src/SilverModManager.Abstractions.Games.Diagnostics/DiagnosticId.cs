@@ -1,7 +1,7 @@
 using System.Globalization;
 using JetBrains.Annotations;
 
-namespace NexusMods.Abstractions.Diagnostics;
+namespace SilverModManager.Abstractions.Diagnostics;
 
 /// <summary>
 /// Unique identifier of the diagnostic.
@@ -15,7 +15,7 @@ public readonly struct DiagnosticId : IEquatable<DiagnosticId>, IComparable<Diag
     /// <remarks>
     /// This should be the name of the assembly that produces the diagnostic.
     /// </remarks>
-    /// <example><c>NexusMods.Games.StardewValley</c></example>
+    /// <example><c>SilverModManager.Games.StardewValley</c></example>
     public readonly string Source;
 
     /// <summary>

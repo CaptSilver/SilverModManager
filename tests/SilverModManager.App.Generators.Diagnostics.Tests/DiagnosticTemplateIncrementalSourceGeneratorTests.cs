@@ -1,17 +1,17 @@
 using JetBrains.Annotations;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using NexusMods.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
 
-namespace NexusMods.App.Generators.Diagnostics.Tests;
+namespace SilverModManager.App.Generators.Diagnostics.Tests;
 
 public class DiagnosticTemplateIncrementalSourceGeneratorTests
 {
     [LanguageInjection("csharp")]
     private const string SourceText = """"
-using NexusMods.Generators.Diagnostics;
-using NexusMods.Abstractions.Diagnostic;
-using NexusMods.Abstractions.Diagnostics.References;
+using SilverModManager.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostic;
+using SilverModManager.Abstractions.Diagnostics.References;
 
 namespace TestNamespace;
 

@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using StrawberryShake;
 
-namespace NexusMods.Networking.NexusWebApi.Errors;
+namespace SilverModManager.Networking.NexusWebApi.Errors;
 
 /// <summary>
 /// Represents a typed GraphQl error.

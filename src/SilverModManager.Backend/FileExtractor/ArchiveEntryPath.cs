@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.Backend.FileExtractor;
+namespace SilverModManager.Backend.FileExtractor;
 
 /// <summary>
 /// Maps the raw name of an archive entry to the path it gets inside the extraction folder. Archives in the

@@ -1,10 +1,10 @@
 using System.Diagnostics;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.Resources;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.UI.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// Collection of shared IItemModelComponents that can be used in TreeDataGrid.

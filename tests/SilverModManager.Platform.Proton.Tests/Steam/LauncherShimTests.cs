@@ -2,11 +2,11 @@ using System.Diagnostics;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests.Steam;
+namespace SilverModManager.Platform.Proton.Tests.Steam;
 
 public class LauncherShimTests : IDisposable
 {
@@ -29,9 +29,9 @@ public class LauncherShimTests : IDisposable
     public void Test_WriteCreatesTwoLineScriptExecutingTarget()
     {
         var shim = Shim;
-        shim.Write(Path("apps/NexusMods.App")).Should().BeTrue();
+        shim.Write(Path("apps/SilverModManager.App")).Should().BeTrue();
 
-        File.ReadAllText(shim.ShimPath.ToString()).Should().Be($"#!/bin/sh\nexec '{Path("apps/NexusMods.App")}' \"$@\"\n");
+        File.ReadAllText(shim.ShimPath.ToString()).Should().Be($"#!/bin/sh\nexec '{Path("apps/SilverModManager.App")}' \"$@\"\n");
         File.GetUnixFileMode(shim.ShimPath.ToString()).Should().Be((UnixFileMode)0b111_101_101);
     }
 

@@ -1,10 +1,10 @@
 ﻿using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
-using NexusMods.Games.AdvancedInstaller.UI.Resources;
+using SilverModManager.Games.AdvancedInstaller.UI.Resources;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI;
+namespace SilverModManager.Games.AdvancedInstaller.UI;
 
 public partial class AdvancedInstallerWindowView : ReactiveWindow<IAdvancedInstallerWindowViewModel>
 {

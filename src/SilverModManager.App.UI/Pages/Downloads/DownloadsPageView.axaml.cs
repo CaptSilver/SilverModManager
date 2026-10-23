@@ -1,13 +1,13 @@
 using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Downloads;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.Search;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.Search;
+using SilverModManager.MnemonicDB.Abstractions;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Downloads;
+namespace SilverModManager.App.UI.Pages.Downloads;
 
 [UsedImplicitly]
 public partial class DownloadsPageView : ReactiveUserControl<IDownloadsPageViewModel>

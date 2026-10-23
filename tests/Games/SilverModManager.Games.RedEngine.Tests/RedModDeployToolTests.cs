@@ -3,19 +3,19 @@ using System.Text;
 using DynamicData;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder;
-using NexusMods.Games.TestFramework;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 using OneOf;
 using R3;
 using Xunit;
 
-namespace NexusMods.Games.RedEngine.Tests;
+namespace SilverModManager.Games.RedEngine.Tests;
 
 public class RedModDeployToolTests : ACyberpunkIsolatedGameTest<Cyberpunk2077Game>
 {

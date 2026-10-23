@@ -1,12 +1,12 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Pages.Tools;
+namespace SilverModManager.App.UI.Pages.Tools;
 
 [JsonName("SilverModManager.App.UI.Pages.Tools.ToolsPageContext")]
 public record ToolsPageContext : IPageFactoryContext

@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 /// <summary>
 /// Whether the vanilla file list covers an installed build: every locator id has to resolve, because an id

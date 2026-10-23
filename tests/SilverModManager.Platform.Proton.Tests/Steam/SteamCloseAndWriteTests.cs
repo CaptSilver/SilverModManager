@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Platform.Proton.Steam;
+using SilverModManager.Platform.Proton.Steam;
 
-namespace NexusMods.Platform.Proton.Tests.Steam;
+namespace SilverModManager.Platform.Proton.Tests.Steam;
 
 public class SteamCloseAndWriteTests
 {

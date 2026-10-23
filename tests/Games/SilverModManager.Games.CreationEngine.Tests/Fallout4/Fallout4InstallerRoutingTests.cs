@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Fallout4;
+namespace SilverModManager.Games.CreationEngine.Tests.Fallout4;
 
 /// <summary>Where Fallout 4's own installers put the common archive layouts.</summary>
 public class Fallout4InstallerRoutingTests(ITestOutputHelper helper)

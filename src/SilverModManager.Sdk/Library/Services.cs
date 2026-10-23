@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace NexusMods.Sdk.Library;
+namespace SilverModManager.Sdk.Library;
 
 /// <summary>
 /// Extension methods.

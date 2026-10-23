@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library;
-using NexusMods.Networking.GitHub;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Networking.GitHub;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Library;
+namespace SilverModManager.Library;
 
 /// <summary>
 /// <see cref="IGitHubReleaseAssetSource"/> over <see cref="AddGitHubReleaseAssetJob"/>, with the digest GitHub

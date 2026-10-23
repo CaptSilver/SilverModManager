@@ -1,8 +1,8 @@
 using System.IO.Hashing;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Wabbajack.Install;
+namespace SilverModManager.Wabbajack.Install;
 
 /// <summary>
 /// Computes the xxHash64 of the bytes that pass through it, as the list records them. Reading from <c>inner</c> hashes

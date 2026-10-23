@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.ProxyConsole.Messages;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.ProxyConsole.Messages;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.ProxyConsole;
+namespace SilverModManager.ProxyConsole;
 
 /// <summary>
 /// A renderer that proxies render commands to a remote renderer.

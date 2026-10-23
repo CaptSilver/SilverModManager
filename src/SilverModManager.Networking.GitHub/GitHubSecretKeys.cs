@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 
-namespace NexusMods.Networking.GitHub;
+namespace SilverModManager.Networking.GitHub;
 
 /// <summary>
 /// The secret store keys the GitHub client reads.

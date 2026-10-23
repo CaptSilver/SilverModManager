@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Sdk.Library;
+namespace SilverModManager.Sdk.Library;
 
 /// <summary>
 /// Represents a local file in the library.

@@ -3,11 +3,11 @@
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Games.AdvancedInstaller.Tests"/>
-        <InternalsVisibleTo Include="NexusMods.Games.AdvancedInstaller.UI.Tests"/>
+        <InternalsVisibleTo Include="SilverModManager.Games.AdvancedInstaller.Tests"/>
+        <InternalsVisibleTo Include="SilverModManager.Games.AdvancedInstaller.UI.Tests"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.Abstractions.Library.Installers\NexusMods.Abstractions.Library.Installers.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Library.Installers\SilverModManager.Abstractions.Library.Installers.csproj" />
     </ItemGroup>
 </Project>

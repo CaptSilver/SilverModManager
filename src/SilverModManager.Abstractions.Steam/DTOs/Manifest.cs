@@ -1,8 +1,8 @@
-using NexusMods.Sdk.Hashes;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
 
-namespace NexusMods.Abstractions.Steam.DTOs;
+namespace SilverModManager.Abstractions.Steam.DTOs;
 
 /// <summary>
 /// A full, detailed manifest for a specific manifest id

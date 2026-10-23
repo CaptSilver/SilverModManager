@@ -1,10 +1,10 @@
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Library;
+namespace SilverModManager.Library;
 
 /// <summary>
 /// Supplies the SHA-256 and xxHash64 of library files. Files added before the digest was recorded get it on first need

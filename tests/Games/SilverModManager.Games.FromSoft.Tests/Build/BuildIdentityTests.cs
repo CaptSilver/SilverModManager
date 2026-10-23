@@ -1,12 +1,12 @@
 using System.Collections.Immutable;
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Games.FromSoft.Tests.Build;
+namespace SilverModManager.Games.FromSoft.Tests.Build;
 
 public class BuildIdentityClassificationTests
 {

@@ -1,15 +1,15 @@
 using FluentAssertions;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Loadouts;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Loadouts;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class LoadoutObservableTests(IServiceProvider provider) : AGameTest<Cyberpunk2077Game>(provider)
 {

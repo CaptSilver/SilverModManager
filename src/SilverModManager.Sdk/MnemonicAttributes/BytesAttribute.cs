@@ -1,8 +1,8 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
-namespace NexusMods.Sdk.MnemonicAttributes;
+namespace SilverModManager.Sdk.MnemonicAttributes;
 
 /// <summary>
 /// Bytes.

@@ -4,7 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using NexusMods.Paths;
 
-namespace NexusMods.MnemonicDB.Caching;
+namespace SilverModManager.MnemonicDB.Caching;
 
 /// <summary>
 /// A root node for a cache, containing the size of the cache and the cache itself. Immutable as this data gets shared

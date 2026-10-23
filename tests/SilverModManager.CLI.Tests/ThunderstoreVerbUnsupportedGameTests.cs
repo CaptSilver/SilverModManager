@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.TestFramework;
-using NexusMods.Networking.Thunderstore.Tests.Fixtures;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 /// <summary>
 /// The <c>thunderstore</c> verbs against a loadout whose game takes its mods from somewhere else.

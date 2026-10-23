@@ -7,7 +7,7 @@ BRANCH="v0.29"
 REPOS=(morrowind oblivion oblivion-remastered skyrim skyrimse fallout3 falloutnv fallout4 starfield enderal)
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-out="$root/src/NexusMods.Games.Bethesda.Loot/Masterlists"
+out="$root/src/SilverModManager.Games.Bethesda.Loot/Masterlists"
 mkdir -p "$out"
 
 date_utc="$(date -u +%Y-%m-%d)"

@@ -2,7 +2,7 @@ using System.IO.Hashing;
 using System.Text;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// The hashes a BA2 entry records: the CRC32 of the lower-cased directory path and of the lower-cased file

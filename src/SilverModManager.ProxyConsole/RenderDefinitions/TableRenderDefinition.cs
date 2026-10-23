@@ -1,9 +1,9 @@
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.ProxyConsole;
 using Rendering = Spectre.Console.Rendering;
 using Console = Spectre.Console;
-using Table = NexusMods.Sdk.ProxyConsole.Table;
+using Table = SilverModManager.Sdk.ProxyConsole.Table;
 
-namespace NexusMods.ProxyConsole.RenderDefinitions;
+namespace SilverModManager.ProxyConsole.RenderDefinitions;
 
 /// <summary>
 /// A definition for rendering <see cref="Abstractions.Implementations.Table"/>s to the console using Spectre.Console.

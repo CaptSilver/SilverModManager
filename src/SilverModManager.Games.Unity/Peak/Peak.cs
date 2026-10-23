@@ -1,8 +1,8 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.Unity.Peak;
+namespace SilverModManager.Games.Unity.Peak;
 
 [UsedImplicitly]
 public class Peak(IServiceProvider provider) : AUnityGame<Peak>(provider, Definition), IGameData<Peak>

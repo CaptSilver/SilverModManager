@@ -1,14 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.HttpDownloads;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.HttpDownloader;
+using SilverModManager.Abstractions.HttpDownloads;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.HttpDownloader;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 public class NexusModsDownloadJob : INexusModsDownloadJob, IJobDefinitionWithStart<NexusModsDownloadJob, AbsolutePath>
 {

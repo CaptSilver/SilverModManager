@@ -2,27 +2,27 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NexusMods.Backend.FileExtractor;
-using NexusMods.Backend.FileExtractor.Extractors;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Backend.Games;
-using NexusMods.Backend.Games.Locators;
-using NexusMods.Backend.Games.UserGames;
-using NexusMods.Backend.Jobs;
-using NexusMods.Backend.OS;
-using NexusMods.Backend.Process;
-using NexusMods.Backend.RuntimeDependency;
-using NexusMods.FileExtractor;
+using SilverModManager.Backend.FileExtractor;
+using SilverModManager.Backend.FileExtractor.Extractors;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Backend.Games;
+using SilverModManager.Backend.Games.Locators;
+using SilverModManager.Backend.Games.UserGames;
+using SilverModManager.Backend.Jobs;
+using SilverModManager.Backend.OS;
+using SilverModManager.Backend.Process;
+using SilverModManager.Backend.RuntimeDependency;
+using SilverModManager.FileExtractor;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.FileExtractor;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Settings;
-using NexusMods.UI.Sdk.Icons;
-using NexusMods.UI.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileExtractor;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Settings;
 
-namespace NexusMods.Backend;
+namespace SilverModManager.Backend;
 
 public static class ServiceExtensions
 {

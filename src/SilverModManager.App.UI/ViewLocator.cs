@@ -1,8 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 public class ViewLocator : IDataTemplate
 {

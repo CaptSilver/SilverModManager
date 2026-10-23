@@ -1,6 +1,6 @@
 using TransparentValueObjects;
 
-namespace NexusMods.Abstractions.GOG.Values;
+namespace SilverModManager.Abstractions.GOG.Values;
 
 /// <summary>
 /// A GOG build ID.

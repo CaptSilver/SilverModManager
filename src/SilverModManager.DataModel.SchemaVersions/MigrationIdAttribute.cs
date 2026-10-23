@@ -1,8 +1,8 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
-namespace NexusMods.DataModel.SchemaVersions;
+namespace SilverModManager.DataModel.SchemaVersions;
 
 /// <summary>
 /// An attribute for storing the migration id of a schema version.

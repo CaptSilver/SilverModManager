@@ -2,9 +2,9 @@ using System.Collections.Frozen;
 using JetBrains.Annotations;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 [PublicAPI]
 public record struct IndexFileResult(

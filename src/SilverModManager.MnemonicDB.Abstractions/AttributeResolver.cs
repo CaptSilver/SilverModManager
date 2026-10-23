@@ -3,9 +3,9 @@ using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// Occasionally we need to turn the raw datoms from the database into a IReadDatom, this class

@@ -1,7 +1,7 @@
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Controls.CollectionMenuItem;
+namespace SilverModManager.App.UI.Controls.CollectionMenuItem;
 
 public class CollectionMenuItemDesignViewModel : AViewModel<ICollectionMenuItemViewModel>, ICollectionMenuItemViewModel
 {

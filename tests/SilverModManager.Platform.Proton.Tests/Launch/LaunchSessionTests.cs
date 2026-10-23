@@ -2,16 +2,16 @@ using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
+using SilverModManager.Abstractions.Games;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests.Launch;
+namespace SilverModManager.Platform.Proton.Tests.Launch;
 
 public class LaunchSessionTests : IDisposable
 {

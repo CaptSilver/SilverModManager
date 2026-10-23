@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.App.UI.Pages.Wabbajack;
+namespace SilverModManager.App.UI.Pages.Wabbajack;
 
 /// <summary>An entry of the target loadout picker. A null <paramref name="Id"/> is the "Create new loadout" entry.</summary>
 public sealed record WabbajackLoadoutChoice(LoadoutId? Id, string Name)

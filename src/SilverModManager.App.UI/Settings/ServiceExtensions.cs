@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.App.UI.Settings;
+namespace SilverModManager.App.UI.Settings;
 
 public static class ServiceExtensions
 {

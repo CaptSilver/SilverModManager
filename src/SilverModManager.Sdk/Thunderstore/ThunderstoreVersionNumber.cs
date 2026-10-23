@@ -1,7 +1,7 @@
 using System.Globalization;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Thunderstore;
+namespace SilverModManager.Sdk.Thunderstore;
 
 /// <summary>
 /// A Thunderstore package version: <c>Major.Minor.Patch</c>, each part a whole number. Compared numerically per

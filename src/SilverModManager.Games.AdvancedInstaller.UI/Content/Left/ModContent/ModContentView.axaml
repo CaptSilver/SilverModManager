@@ -4,10 +4,10 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:resources="clr-namespace:NexusMods.Games.AdvancedInstaller.UI.Resources"
-                                xmlns:modContent="clr-namespace:NexusMods.Games.AdvancedInstaller.UI.ModContent"
+                                xmlns:resources="clr-namespace:SilverModManager.Games.AdvancedInstaller.UI.Resources"
+                                xmlns:modContent="clr-namespace:SilverModManager.Games.AdvancedInstaller.UI.ModContent"
                                 mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-                                x:Class="NexusMods.Games.AdvancedInstaller.UI.ModContent.ModContentView">
+                                x:Class="SilverModManager.Games.AdvancedInstaller.UI.ModContent.ModContentView">
     
     <UserControl.Styles>
         <Style Selector="Border.HeaderAreaBorder">

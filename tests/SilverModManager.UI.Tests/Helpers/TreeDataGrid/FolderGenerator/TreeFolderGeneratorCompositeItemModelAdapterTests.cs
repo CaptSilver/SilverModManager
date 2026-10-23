@@ -1,12 +1,12 @@
 using DynamicData;
 using FluentAssertions;
-using NexusMods.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
-using NexusMods.App.UI.Controls;
+using SilverModManager.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
+using SilverModManager.App.UI.Controls;
 using NexusMods.Paths;
 
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.UI.Tests.Helpers.TreeDataGrid.FolderGenerator;
+namespace SilverModManager.UI.Tests.Helpers.TreeDataGrid.FolderGenerator;
 
 /// <summary>
 /// Tests for TreeFolderGeneratorCompositeItemModelAdapter: verifies handling of Add, Remove, Update, and Refresh change reasons

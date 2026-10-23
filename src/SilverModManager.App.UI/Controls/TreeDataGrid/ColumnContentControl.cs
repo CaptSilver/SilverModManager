@@ -7,11 +7,11 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml.Templates;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.App.UI.Extensions;
 using ObservableCollections;
 using R3;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 public interface IComponentTemplate
 {

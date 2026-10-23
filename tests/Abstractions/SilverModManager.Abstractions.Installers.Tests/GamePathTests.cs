@@ -3,9 +3,9 @@ using FluentAssertions;
 using NexusMods.Paths;
 using NexusMods.Paths.Extensions;
 using NexusMods.Paths.Utilities;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Installers.Tests;
+namespace SilverModManager.Abstractions.Installers.Tests;
 
 public class GamePathTests
 {

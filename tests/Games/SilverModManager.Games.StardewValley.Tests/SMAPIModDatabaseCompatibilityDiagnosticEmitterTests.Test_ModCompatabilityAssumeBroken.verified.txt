@@ -1,4 +1,4 @@
-﻿[Id] NexusMods.Games.StardewValley: 7
+﻿[Id] SilverModManager.Games.StardewValley: 7
 [Title] Broken Mod
 [Summary] 'PersistentMines 1.0.1.zip' is reported as broken by SMAPI
 [Details]

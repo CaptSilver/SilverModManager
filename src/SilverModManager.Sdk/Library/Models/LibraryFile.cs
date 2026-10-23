@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Sdk.Library;
+namespace SilverModManager.Sdk.Library;
 
 /// <summary>
 /// Represents a <see cref="LibraryItem"/> that is a file in the library.

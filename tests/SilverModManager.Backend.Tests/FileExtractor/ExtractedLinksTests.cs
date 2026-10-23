@@ -1,8 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Backend.FileExtractor.Extractors;
+using SilverModManager.Backend.FileExtractor.Extractors;
 
-namespace NexusMods.Backend.Tests.FileExtractor;
+namespace SilverModManager.Backend.Tests.FileExtractor;
 
 public class ExtractedLinksTests : IDisposable
 {

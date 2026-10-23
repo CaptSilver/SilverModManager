@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Tests.RoundTrip;
+namespace SilverModManager.Games.CreationEngine.Tests.RoundTrip;
 
 public class Fallout4VRRoundTripTests(ITestOutputHelper helper)
     : ABethesdaRoundTripTest<Fallout4VRRoundTripTests, CreationEngine.Fallout4VR.Fallout4VR>(helper)

@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>
 /// Something a merge did that the user should hear about: a choice between two edits, or content taken whole. Notes are

@@ -2,7 +2,7 @@ using GameFinder.Wine;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 /// <summary>
 /// A file system whose Documents and AppData folders live in a throwaway prefix of the calling fixture. Passed as

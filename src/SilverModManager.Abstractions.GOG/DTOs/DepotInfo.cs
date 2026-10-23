@@ -1,11 +1,11 @@
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.GOG.Values;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Abstractions.GOG.Values;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
-namespace NexusMods.Abstractions.GOG.DTOs;
+namespace SilverModManager.Abstractions.GOG.DTOs;
 
 /// <summary>
 /// Information about a depot, which is a collection of files and the chunks that make up those files.

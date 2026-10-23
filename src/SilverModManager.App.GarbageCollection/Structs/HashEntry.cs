@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.App.GarbageCollection.Structs;
+namespace SilverModManager.App.GarbageCollection.Structs;
 
 /// <summary>
 ///     This is a tuple which stores the hash of a file and its reference count

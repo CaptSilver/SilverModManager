@@ -1,4 +1,4 @@
-﻿namespace NexusMods.MnemonicDB.Abstractions.IndexSegments;
+﻿namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
 /// <summary>
 /// An index segment that reutrns values of a specific type

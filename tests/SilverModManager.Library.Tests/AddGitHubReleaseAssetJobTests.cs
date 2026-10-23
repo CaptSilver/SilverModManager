@@ -2,19 +2,19 @@ using System.Net;
 using System.Security.Cryptography;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Backend;
-using NexusMods.Library.Tests.DownloadsService;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.GitHub;
-using NexusMods.Networking.GitHub.DTOs;
+using SilverModManager.Backend;
+using SilverModManager.Library.Tests.DownloadsService;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.GitHub;
+using SilverModManager.Networking.GitHub.DTOs;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 using System.Net.Http.Headers;
 using Xunit;
 
-namespace NexusMods.Library.Tests;
+namespace SilverModManager.Library.Tests;
 
 public partial class AddGitHubReleaseAssetJobTests(IServiceProvider serviceProvider, IConnection connection, TemporaryFileManager temporaryFileManager)
 {

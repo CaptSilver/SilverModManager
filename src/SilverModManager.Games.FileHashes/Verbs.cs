@@ -1,14 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
+using SilverModManager.Abstractions.Cli;
 
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Games.FileHashes.VerbImpls;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Games.FileHashes.VerbImpls;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Games.FileHashes;
+namespace SilverModManager.Games.FileHashes;
 
 public static class Verbs
 {

@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Steam;
+namespace SilverModManager.Sdk.Steam;
 
 /// <summary>
 /// Reads an app's launch options out of <c>localconfig.vdf</c> without touching the file.

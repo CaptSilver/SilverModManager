@@ -5,7 +5,7 @@ using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Thunderstore;
+namespace SilverModManager.App.UI.Pages.Thunderstore;
 
 [UsedImplicitly]
 public partial class ThunderstoreView : ReactiveUserControl<IThunderstoreViewModel>

@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using R3;
 
-namespace NexusMods.Abstractions.Secrets;
+namespace SilverModManager.Abstractions.Secrets;
 
 /// <summary>
 /// A store that lives in the process. It is the fake for tests and the backend behind

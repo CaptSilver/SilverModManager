@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Backend.Tests.Games;
+namespace SilverModManager.Backend.Tests.Games;
 
 internal sealed class CollectingProblemSink : IGameLocatorProblemSink
 {

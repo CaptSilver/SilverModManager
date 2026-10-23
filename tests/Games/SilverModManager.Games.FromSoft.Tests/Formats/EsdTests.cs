@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats;
+namespace SilverModManager.Games.FromSoft.Tests.Formats;
 
 public class EsdTests
 {

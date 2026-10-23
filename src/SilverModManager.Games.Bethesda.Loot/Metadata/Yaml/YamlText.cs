@@ -1,6 +1,6 @@
 using YamlDotNet.RepresentationModel;
 
-namespace NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 
 internal static class YamlText
 {

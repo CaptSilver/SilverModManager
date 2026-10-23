@@ -1,7 +1,7 @@
-using GameStore = NexusMods.Sdk.Games.GameStore;
+using GameStore = SilverModManager.Sdk.Games.GameStore;
 using GameStoreTW = Bannerlord.LauncherManager.Models.GameStore;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.Utils;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.Utils;
 
 public static class Converter
 {

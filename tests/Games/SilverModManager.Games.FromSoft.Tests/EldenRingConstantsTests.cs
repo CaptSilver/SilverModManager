@@ -1,14 +1,14 @@
 using System.Collections.Immutable;
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Cleanup;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Overlay;
-using NexusMods.Games.FromSoft.Saves;
+using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Saves;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 /// <summary>Elden Ring's definition, spelled out as literals so that moving a value out of the game class fails a test.</summary>
 public class EldenRingConstantsTests

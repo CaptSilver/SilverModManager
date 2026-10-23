@@ -1,4 +1,4 @@
-namespace NexusMods.MnemonicDB.Abstractions.Models;
+namespace SilverModManager.MnemonicDB.Abstractions.Models;
 
 /// <summary>
 /// Represents something that has an entity id and a reference to a database.

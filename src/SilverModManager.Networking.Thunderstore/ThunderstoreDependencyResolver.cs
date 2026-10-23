@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.Networking.Thunderstore.DTOs;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Networking.Thunderstore.DTOs;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.Networking.Thunderstore;
+namespace SilverModManager.Networking.Thunderstore;
 
 /// <summary>
 /// Works out which package versions have to be fetched to install one package. All knowledge of the packages

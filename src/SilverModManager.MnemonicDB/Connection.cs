@@ -13,17 +13,17 @@ using Jamarino.IntervalTree;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.HyperDuck;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.EventTypes;
-using NexusMods.MnemonicDB.InternalTxFunctions;
-using NexusMods.MnemonicDB.QueryFunctions;
-using NexusMods.MnemonicDB.Storage;
-using NexusMods.MnemonicDB.Storage.RocksDbBackend;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.EventTypes;
+using SilverModManager.MnemonicDB.InternalTxFunctions;
+using SilverModManager.MnemonicDB.QueryFunctions;
+using SilverModManager.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 using R3;
 using Observable = System.Reactive.Linq.Observable;
 
-namespace NexusMods.MnemonicDB;
+namespace SilverModManager.MnemonicDB;
 
 using DatomChangeSet = ChangeSet<Datom, DatomKey, IDb>;
 
@@ -601,5 +601,5 @@ public sealed class Connection : IConnection
         _isDisposed = true;
     }
 
-    public HyperDuck.DuckDB DuckDBQueryEngine => _queryEngine!.DuckDb;
+    public NexusMods.HyperDuck.DuckDB DuckDBQueryEngine => _queryEngine!.DuckDb;
 }

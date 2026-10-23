@@ -1,4 +1,4 @@
-namespace NexusMods.Wabbajack.Acquire;
+namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>How far a run has got: archives finished out of the archives it set out to download.</summary>
 public sealed record AcquireProgress(int Finished, int Total);

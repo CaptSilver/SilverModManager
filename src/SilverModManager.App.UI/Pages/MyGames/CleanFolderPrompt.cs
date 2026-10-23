@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI.Pages.MyGames;
+namespace SilverModManager.App.UI.Pages.MyGames;
 
 /// <summary>
 /// What to tell the player when a game that was just added has files in its folder that are not part of the

@@ -1,11 +1,11 @@
 using System.Reactive;
 using Avalonia.Media.Imaging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.MiniGameWidget.Standard;
+namespace SilverModManager.App.UI.Controls.MiniGameWidget.Standard;
 
 public interface IMiniGameWidgetViewModel : IViewModelInterface
 {

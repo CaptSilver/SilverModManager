@@ -1,17 +1,17 @@
 <reactiveUi:ReactiveUserControl
     mc:Ignorable="d"
-    x:Class="NexusMods.App.UI.Overlays.Generic.MessageBox.OkCancel.MessageBoxOkCancelView"
+    x:Class="SilverModManager.App.UI.Overlays.Generic.MessageBox.OkCancel.MessageBoxOkCancelView"
     x:TypeArguments="okCancel:IMessageBoxOkCancelViewModel"
     xmlns="https://github.com/avaloniaui"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactiveUi="http://reactiveui.net"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:okCancel="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.OkCancel"
-    xmlns:base="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.Base"
-    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk">
+    xmlns:okCancel="clr-namespace:SilverModManager.App.UI.Overlays.Generic.MessageBox.OkCancel"
+    xmlns:base="clr-namespace:SilverModManager.App.UI.Overlays.Generic.MessageBox.Base"
+    xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk">
 
     <base:MessageBoxBackground>
         

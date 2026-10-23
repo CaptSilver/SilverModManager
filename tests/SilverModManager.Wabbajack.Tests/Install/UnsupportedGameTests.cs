@@ -1,19 +1,19 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.Games.CreationEngine;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Models;
-using NexusMods.Wabbajack.Install;
-using NexusMods.Wabbajack.Tests.Acquire;
-using NexusMods.Wabbajack.Tests.Fixtures;
-using OblivionRemastered = NexusMods.Games.CreationEngine.OblivionRemastered.OblivionRemastered;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.Games.CreationEngine;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Models;
+using SilverModManager.Wabbajack.Install;
+using SilverModManager.Wabbajack.Tests.Acquire;
+using SilverModManager.Wabbajack.Tests.Fixtures;
+using OblivionRemastered = SilverModManager.Games.CreationEngine.OblivionRemastered.OblivionRemastered;
 
-namespace NexusMods.Wabbajack.Tests.Install;
+namespace SilverModManager.Wabbajack.Tests.Install;
 
 public class UnsupportedGameTests(ITestOutputHelper helper) : AIsolatedGameTest<UnsupportedGameTests, OblivionRemastered>(helper)
 {

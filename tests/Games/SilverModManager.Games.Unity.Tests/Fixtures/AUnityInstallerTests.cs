@@ -1,17 +1,17 @@
 using System.IO.Compression;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
-using NexusMods.Games.Unity.BepInEx;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.Unity.BepInEx;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.Unity.Tests.Fixtures;
+namespace SilverModManager.Games.Unity.Tests.Fixtures;
 
 /// <summary>Runs the loader pack installer on a test archive and reports where its files would land.</summary>
 public abstract class AUnityInstallerTests<TTest>(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<TTest, TestUnityGame>(outputHelper)

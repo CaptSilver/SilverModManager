@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.DataModel;
+namespace SilverModManager.DataModel;
 
 /// <summary>
 /// Default implementation of <see cref="IToolManager"/>.

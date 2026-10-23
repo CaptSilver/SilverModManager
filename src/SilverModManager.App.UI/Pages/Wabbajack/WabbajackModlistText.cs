@@ -1,11 +1,11 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Install;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Install;
 
-namespace NexusMods.App.UI.Pages.Wabbajack;
+namespace SilverModManager.App.UI.Pages.Wabbajack;
 
 /// <summary>A line of text for the page and whether it should be shown as a warning.</summary>
 public readonly record struct WabbajackNote(string Text, bool IsWarning);

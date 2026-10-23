@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 /// <summary>
 /// A minimal but well-formed 64-bit PE file whose only section is a version resource. The fixed file info carries

@@ -2,7 +2,7 @@ using DynamicData.Kernel;
 using JetBrains.Annotations;
 using R3;
 
-namespace NexusMods.Sdk.EventBus;
+namespace SilverModManager.Sdk.EventBus;
 
 /// <summary>
 /// Represents an event bus for sending messages and requests.

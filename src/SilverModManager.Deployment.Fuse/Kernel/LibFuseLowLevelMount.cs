@@ -3,13 +3,13 @@ using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
-using NexusMods.Deployment.Fuse.Mount;
-using NexusMods.Deployment.Fuse.Native;
-using NexusMods.Deployment.Vfs;
+using SilverModManager.Deployment.Fuse.Mount;
+using SilverModManager.Deployment.Fuse.Native;
+using SilverModManager.Deployment.Vfs;
 using NexusMods.Paths;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Fuse.Kernel;
+namespace SilverModManager.Deployment.Fuse.Kernel;
 
 /// <summary>What the library and the kernel agreed on during <c>init</c>, for diagnostics.</summary>
 internal sealed record FuseSessionInfo(string Soname, int FuseVersion, uint ProtoMajor, uint ProtoMinor, uint MaxWrite, bool PassthroughCapable, bool PassthroughRequested);

@@ -1,9 +1,9 @@
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Steam;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Steam;
 
-namespace NexusMods.Platform.Proton.Doctor;
+namespace SilverModManager.Platform.Proton.Doctor;
 
 /// <summary>
 /// An installation with a loadout, and the names of the loadouts.

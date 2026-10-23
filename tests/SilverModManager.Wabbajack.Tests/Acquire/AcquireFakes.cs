@@ -1,16 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Downloads;
+using SilverModManager.Abstractions.Downloads;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
 using NSubstitute;
 
-namespace NexusMods.Wabbajack.Tests.Acquire;
+namespace SilverModManager.Wabbajack.Tests.Acquire;
 
 /// <summary>An <see cref="IOSInterop"/> that records the addresses it is asked to open instead of opening them.</summary>
 internal sealed class OpenedUris

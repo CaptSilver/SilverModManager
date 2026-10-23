@@ -1,13 +1,13 @@
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.Larian.BaldursGate3.Utils;
-using NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
-using NexusMods.Games.Larian.BaldursGate3.Utils.PakParsing;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Larian.BaldursGate3.Utils;
+using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
+using SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using System.Collections.Concurrent;
 using System.Xml;
 
-namespace NexusMods.Games.Larian.BaldursGate3.GameInstalled;
+namespace SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
 
 /// <summary>
 /// Finds the paks the game downloaded from mod.io itself. A pak is the game's when a `modsettings.lsx` entry

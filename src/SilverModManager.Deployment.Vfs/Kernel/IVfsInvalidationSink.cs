@@ -1,4 +1,4 @@
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// Where <see cref="VfsTree"/> reports that something the kernel may have cached is stale. The tree

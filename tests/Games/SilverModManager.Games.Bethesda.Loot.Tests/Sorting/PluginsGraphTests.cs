@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Loot.Sorting;
-using static NexusMods.Games.Bethesda.Loot.Tests.Sorting.SortingFixture;
+using SilverModManager.Games.Bethesda.Loot.Sorting;
+using static SilverModManager.Games.Bethesda.Loot.Tests.Sorting.SortingFixture;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Sorting;
 
 // Ports the plugins_graph tests in libloot's sorting/plugins.rs that concern specific edges,
 // early loaders and cycles, plus coverage for the graph helpers around them.

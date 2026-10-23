@@ -1,6 +1,6 @@
-using NexusMods.Games.TestFramework.Helpers;
+using SilverModManager.Games.TestFramework.Helpers;
 
-namespace NexusMods.DataModel.Synchronizer.Tests;
+namespace SilverModManager.DataModel.Synchronizer.Tests;
 
 /// <summary>
 /// Cyberpunk 2077 as Steam installs it: the game's own depot and the Phantom Liberty depot, with an older

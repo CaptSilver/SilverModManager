@@ -2,20 +2,20 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Steam.DTOs;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Steam.DTOs;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.NexusModsApi;
-using OperatingSystem = NexusMods.Abstractions.Games.FileHashes.Values.OperatingSystem;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.NexusModsApi;
+using OperatingSystem = SilverModManager.Abstractions.Games.FileHashes.Values.OperatingSystem;
 
-namespace NexusMods.Games.FileHashes;
+namespace SilverModManager.Games.FileHashes;
 
 /// <summary>
 /// What <see cref="LocalVanillaBaseline"/> builds a baseline from.

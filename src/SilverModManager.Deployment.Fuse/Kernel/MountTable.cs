@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Deployment.Fuse.Kernel;
+namespace SilverModManager.Deployment.Fuse.Kernel;
 
 /// <summary>Reads <c>/proc/self/mountinfo</c> to see whether the kernel lists a mount.</summary>
 internal static class MountTable

@@ -2,14 +2,14 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk;
 using Xunit;
 using Xunit;
 using Xunit.DependencyInjection;
 using Xunit.DependencyInjection.Logging;
 
-namespace NexusMods.Networking.GitHub.Tests;
+namespace SilverModManager.Networking.GitHub.Tests;
 
 file class TestOutputHelperAccessor : ITestOutputHelperAccessor
 {

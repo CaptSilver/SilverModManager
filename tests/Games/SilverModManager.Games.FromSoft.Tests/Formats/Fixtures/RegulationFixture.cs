@@ -1,6 +1,6 @@
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
 /// <summary>Builds regulation-shaped files: a BND4 of raw member bodies under the game's ZSTD wrapper and AES layer.</summary>
 public static class RegulationFixture

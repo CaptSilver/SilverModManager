@@ -1,8 +1,8 @@
 using CliWrap;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Platform.Proton;
+namespace SilverModManager.Platform.Proton;
 
 /// <summary>
 /// Shows notifications through <c>notify-send</c>. A headless launch has no window, so this

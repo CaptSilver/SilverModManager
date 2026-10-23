@@ -1,10 +1,10 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using DynamicData.Kernel;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts.Deployment;
+namespace SilverModManager.Abstractions.Loadouts.Deployment;
 
 public sealed class DeploymentPlanStore : IDeploymentPlanStore
 {

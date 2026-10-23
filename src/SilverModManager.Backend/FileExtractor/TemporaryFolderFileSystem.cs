@@ -1,7 +1,7 @@
 using System.IO.MemoryMappedFiles;
 using NexusMods.Paths;
 
-namespace NexusMods.FileExtractor;
+namespace SilverModManager.FileExtractor;
 
 /// <summary>
 /// File system view that recreates missing parent directories of a root folder before a

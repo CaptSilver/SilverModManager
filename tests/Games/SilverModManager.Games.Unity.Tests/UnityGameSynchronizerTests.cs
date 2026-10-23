@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.Unity.Tests;
+namespace SilverModManager.Games.Unity.Tests;
 
 public class UnityGameSynchronizerTests
 {

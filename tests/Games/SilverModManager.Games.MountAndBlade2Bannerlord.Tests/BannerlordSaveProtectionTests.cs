@@ -1,15 +1,15 @@
 using FluentAssertions;
 using GameFinder.Wine;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.Tests;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.Tests;
 
 /// <summary>
 /// A Bannerlord install that resolves its Documents folder inside a Wine prefix (GOG or Epic under

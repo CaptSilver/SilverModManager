@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
-using NexusMods.Abstractions.NexusWebApi.DTOs.Interfaces;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.Interfaces;
 
-namespace NexusMods.Abstractions.NexusWebApi.DTOs;
+namespace SilverModManager.Abstractions.NexusWebApi.DTOs;
 
 /// <summary>
 /// Download links for a collection.

@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.FileStore;
+namespace SilverModManager.Sdk.FileStore;
 
 /// <summary>
 /// Defines a relative priority for a stream source. Lower values are higher priority.

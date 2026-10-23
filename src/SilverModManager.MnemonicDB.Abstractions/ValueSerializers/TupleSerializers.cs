@@ -2,11 +2,11 @@ using System;
 using System.Buffers;
 using System.Runtime.InteropServices;
 using System.Text;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using Reloaded.Memory.Extensions;
 // ReSharper disable InconsistentNaming
 
-namespace NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+namespace SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
 /// <summary>
 /// A value serializer for a tuple of <see cref="ushort"/> and case-insensitive <see cref="string"/>.

@@ -1,4 +1,4 @@
-namespace NexusMods.DataModel.SchemaVersions;
+namespace SilverModManager.DataModel.SchemaVersions;
 
 /// <summary>
 /// A definition for a schema migration

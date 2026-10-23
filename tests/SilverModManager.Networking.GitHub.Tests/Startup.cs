@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace NexusMods.Networking.GitHub.Tests;
+namespace SilverModManager.Networking.GitHub.Tests;
 
 [UsedImplicitly]
 public class Startup

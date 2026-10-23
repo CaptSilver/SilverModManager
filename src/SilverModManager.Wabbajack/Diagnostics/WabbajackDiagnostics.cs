@@ -1,13 +1,13 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Generators.Diagnostics;
 
-namespace NexusMods.Wabbajack.Diagnostics;
+namespace SilverModManager.Wabbajack.Diagnostics;
 
 internal static partial class WabbajackDiagnostics
 {
-    private const string Source = "NexusMods.Wabbajack";
+    private const string Source = "SilverModManager.Wabbajack";
 
     [DiagnosticTemplate]
     [UsedImplicitly]

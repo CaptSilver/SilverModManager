@@ -1,4 +1,4 @@
-namespace NexusMods.Wabbajack.Transforms;
+namespace SilverModManager.Wabbajack.Transforms;
 
 /// <summary>
 /// A DDS texture uses a format or layout the re-encoder cannot read or write.

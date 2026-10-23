@@ -2,13 +2,13 @@ using Xunit;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 using NexusMods.Paths;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 using R3;
-using NexusMods.Secrets.File;
+using SilverModManager.Secrets.File;
 
-namespace NexusMods.Secrets.Tests.File;
+namespace SilverModManager.Secrets.Tests.File;
 
 // Real filesystem on purpose: the file modes are what these tests are about.
 public class FileSecretStoreTests : IDisposable

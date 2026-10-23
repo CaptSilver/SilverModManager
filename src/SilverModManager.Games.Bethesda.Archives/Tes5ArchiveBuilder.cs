@@ -4,7 +4,7 @@ using System.Text;
 using ICSharpCode.SharpZipLib.Zip.Compression;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 internal sealed class Tes5ArchiveBuilder : IBethesdaArchiveBuilder
 {

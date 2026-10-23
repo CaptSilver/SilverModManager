@@ -1,7 +1,7 @@
 using Avalonia.Controls;
-using NexusMods.App.UI.Dialog.Enums;
+using SilverModManager.App.UI.Dialog.Enums;
 
-namespace NexusMods.App.UI.Dialog;
+namespace SilverModManager.App.UI.Dialog;
 
 public interface IDialog
 {

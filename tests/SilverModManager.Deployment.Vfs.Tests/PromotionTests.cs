@@ -1,14 +1,14 @@
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 using System.Text;
 using System.Text.Json.Nodes;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Deployment.Vfs.Tests;
+namespace SilverModManager.Deployment.Vfs.Tests;
 
 /// <summary>
 /// Promotion and recovery against a sink that records and can fail, so every crash point of the

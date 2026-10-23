@@ -8,9 +8,9 @@ using Avalonia.Media;
 using Markdown.Avalonia;
 using Markdown.Avalonia.Parsers;
 using Markdown.Avalonia.Plugins;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Controls.MarkdownRenderer;
+namespace SilverModManager.App.UI.Controls.MarkdownRenderer;
 
 /// <summary>
 /// Replaces the library's fenced code block with one that has a copy button beside the code.

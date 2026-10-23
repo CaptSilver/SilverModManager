@@ -4,7 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using JetBrains.Annotations;
 
-namespace NexusMods.UI.Sdk.Icons;
+namespace SilverModManager.UI.Sdk.Icons;
 
 /// <summary>
 /// Unified icon class that supports <see cref="Projektanker.Icons.Avalonia.Icon"/>,

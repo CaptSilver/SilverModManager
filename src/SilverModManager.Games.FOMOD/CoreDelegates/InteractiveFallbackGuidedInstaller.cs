@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Games.FOMOD.CoreDelegates;
+namespace SilverModManager.Games.FOMOD.CoreDelegates;
 
 /// <summary>
 /// Wraps an interactive <see cref="IGuidedInstaller"/> for a FOMOD whose saved choices didn't apply: the

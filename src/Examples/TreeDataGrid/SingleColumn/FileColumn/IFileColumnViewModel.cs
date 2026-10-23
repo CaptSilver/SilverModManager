@@ -1,6 +1,6 @@
-using NexusMods.App.UI.Helpers.TreeDataGrid;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Helpers.TreeDataGrid;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 
 namespace Examples.TreeDataGrid.SingleColumn.FileColumn;
 

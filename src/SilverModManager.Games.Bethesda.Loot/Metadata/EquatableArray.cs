@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 
-namespace NexusMods.Games.Bethesda.Loot.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata;
 
 /// <summary>
 /// An immutable list with sequence equality, so records holding one compare by content the way

@@ -1,10 +1,10 @@
 using System.Reactive;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Games.FromSoft.Saves;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Games.FromSoft.Saves;
+using SilverModManager.Sdk.Loadouts;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.FromSoftSaves;
+namespace SilverModManager.App.UI.Pages.FromSoftSaves;
 
 /// <summary>
 /// The saves page of an Elden Ring loadout: the game's save folder as it is on disk, with backup, restore and

@@ -2,21 +2,21 @@ using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Text;
 using FluentAssertions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using Xunit;
-using PathTuple = (NexusMods.MnemonicDB.Abstractions.EntityId, NexusMods.Sdk.Games.LocationId, NexusMods.Paths.RelativePath);
+using PathTuple = (SilverModManager.MnemonicDB.Abstractions.EntityId, SilverModManager.Sdk.Games.LocationId, NexusMods.Paths.RelativePath);
 
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 public abstract class ALibraryArchiveInstallerTests<TTest, TGame>(ITestOutputHelper outputHelper) : AIsolatedGameTest<TTest, TGame>(outputHelper)
     where TGame : IGame

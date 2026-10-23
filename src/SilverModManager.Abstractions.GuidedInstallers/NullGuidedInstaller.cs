@@ -1,7 +1,7 @@
 
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Abstractions.GuidedInstallers;
+namespace SilverModManager.Abstractions.GuidedInstallers;
 
 /// <summary>
 /// A empty implementation of <see cref="IGuidedInstaller"/>. All it does is throw an error if the RequestUserChoice method is called.

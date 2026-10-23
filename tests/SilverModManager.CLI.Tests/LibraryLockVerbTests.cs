@@ -3,21 +3,21 @@ using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Library.Lock;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Library.Lock;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.SingleProcess;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.SingleProcess;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 /// <summary>
 /// <c>silvermod library verify</c>, <c>export-lock</c> and <c>import-lock</c> against library rows seeded in the

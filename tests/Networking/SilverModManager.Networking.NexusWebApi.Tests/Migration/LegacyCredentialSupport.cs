@@ -1,8 +1,8 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Networking.NexusWebApi.Auth;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Networking.NexusWebApi.Auth;
 
-namespace NexusMods.Networking.NexusWebApi.Tests.Migration;
+namespace SilverModManager.Networking.NexusWebApi.Tests.Migration;
 
 /// <summary>
 /// The credential rows older versions kept in the database. Both migration tests work on the one shared

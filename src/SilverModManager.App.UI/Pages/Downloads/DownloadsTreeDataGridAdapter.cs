@@ -1,13 +1,13 @@
 using Avalonia.Controls.Models.TreeDataGrid;
 using DynamicData;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Downloads;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.TreeDataGrid;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.TreeDataGrid;
 using OneOf;
 using R3;
 
-namespace NexusMods.App.UI.Pages.Downloads;
+namespace SilverModManager.App.UI.Pages.Downloads;
 
 public readonly record struct PauseMessage(DownloadInfo[] Downloads);
 public readonly record struct ResumeMessage(DownloadInfo[] Downloads);

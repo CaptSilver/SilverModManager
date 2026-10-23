@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.Deployment.Fuse.Mount;
-using NexusMods.Deployment.Vfs;
+using SilverModManager.Deployment.Fuse.Mount;
+using SilverModManager.Deployment.Vfs;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Launch;
 
-namespace NexusMods.Deployment.Fuse.Tests;
+namespace SilverModManager.Deployment.Fuse.Tests;
 
 public class FuseMountArgumentsTests
 {

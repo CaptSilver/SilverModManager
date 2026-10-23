@@ -1,10 +1,10 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.RedEngine.Cyberpunk2077.Models;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077.Models;
 
 [Obsolete("RedMod mod groups should no longer be marked explicitly, they should be identified by the presence of `{Game}/mods/<redModName>/info.json` child file.")]
 [Include<LoadoutItemGroup>]

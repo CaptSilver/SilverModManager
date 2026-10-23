@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Games.CreationEngine.Models;
+namespace SilverModManager.Games.CreationEngine.Models;
 
 /// <summary>
 /// A note that the app replaced the plugin list the game had on disk, kept so the Load Order page can say so.
@@ -15,7 +15,7 @@ public partial class PluginListNotice : IModelDefinition
     /// <summary>
     /// The plugin sort order whose list replaced the game's.
     /// </summary>
-    public static readonly ReferenceAttribute<NexusMods.Abstractions.Loadouts.SortOrder> SortOrder = new(Namespace, nameof(SortOrder))
+    public static readonly ReferenceAttribute<SilverModManager.Abstractions.Loadouts.SortOrder> SortOrder = new(Namespace, nameof(SortOrder))
     {
         IsIndexed = true,
     };

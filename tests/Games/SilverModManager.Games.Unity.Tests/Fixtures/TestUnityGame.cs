@@ -1,16 +1,16 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.Unity.BepInEx;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Unity.BepInEx;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
-namespace NexusMods.Games.Unity.Tests.Fixtures;
+namespace SilverModManager.Games.Unity.Tests.Fixtures;
 
 /// <summary>
 /// A Unity game with only the game location, a loader pack called Test-LoaderPack and one alias for it. Its names
@@ -32,7 +32,7 @@ public class TestUnityGame : IGame, IGameData<TestUnityGame>
 
     public StoreIdentifiers StoreIdentifiers { get; } = new(GameId) { SteamAppIds = [Definition.SteamAppId] };
 
-    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<StubbedGame>("NexusMods.StandardGameLocators.TestHelpers.Resources.question_mark_game.png");
+    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<StubbedGame>("SilverModManager.StandardGameLocators.TestHelpers.Resources.question_mark_game.png");
     public IStreamFactory TileImage => throw new NotImplementedException("No game image for the test game.");
 
     private readonly IServiceProvider _provider;

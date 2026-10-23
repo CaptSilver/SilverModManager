@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Platform.Proton.ToolRunner;
+using SilverModManager.Platform.Proton.ToolRunner;
 
-namespace NexusMods.Platform.Proton.Tests;
+namespace SilverModManager.Platform.Proton.Tests;
 
 public class WindowsPathTranslatorTests
 {

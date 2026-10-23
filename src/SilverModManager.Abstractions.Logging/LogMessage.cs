@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Logging;
+namespace SilverModManager.Abstractions.Logging;
 
 /// <summary>
 /// A generic log message. Exists as a record to de-couple exceptions and log messages

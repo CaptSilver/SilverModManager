@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// A live mount returned by <see cref="IFuseKernel.Mount"/>. Disposing unmounts.

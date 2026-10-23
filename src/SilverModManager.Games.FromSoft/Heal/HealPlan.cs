@@ -1,7 +1,7 @@
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Formats;
 
-namespace NexusMods.Games.FromSoft.Heal;
+namespace SilverModManager.Games.FromSoft.Heal;
 
 /// <summary>What one step of a heal does.</summary>
 public enum HealStepKind

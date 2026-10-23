@@ -5,10 +5,10 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactive="http://reactiveui.net"
-    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.FromSoftSaves"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.FromSoftSaves"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
     mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
-    x:Class="NexusMods.App.UI.Pages.FromSoftSaves.FromSoftSavesView">
+    x:Class="SilverModManager.App.UI.Pages.FromSoftSaves.FromSoftSavesView">
 
     <ScrollViewer>
         <StackPanel Margin="24" Spacing="{StaticResource Spacing-4}" MaxWidth="900" HorizontalAlignment="Left">

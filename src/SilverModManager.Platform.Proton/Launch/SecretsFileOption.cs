@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using NexusMods.Paths;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// The <c>--secrets-file</c> option, shared by <c>run</c> and the verbs that reach Nexus on their own.

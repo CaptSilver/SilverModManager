@@ -1,14 +1,14 @@
 using System.Reactive;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk.Resources;
-using NexusMods.Games.StardewValley.Models;
+using SilverModManager.Sdk.Resources;
+using SilverModManager.Games.StardewValley.Models;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.FileStore;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.FileStore;
 using SMAPIManifest = StardewModdingAPI.Toolkit.Serialization.Models.Manifest;
 
-namespace NexusMods.Games.StardewValley;
+namespace SilverModManager.Games.StardewValley;
 
 internal static class Pipelines
 {

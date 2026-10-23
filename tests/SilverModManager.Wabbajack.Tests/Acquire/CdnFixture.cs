@@ -3,10 +3,10 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.Wabbajack.Tests.Acquire;
+namespace SilverModManager.Wabbajack.Tests.Acquire;
 
 /// <summary>A file split into parts the way the Wabbajack CDN serves it, and a handler that serves it.</summary>
 internal sealed class CdnFixture

@@ -2,18 +2,18 @@ using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.PluginLists;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.PluginLists;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests;
+namespace SilverModManager.Games.CreationEngine.Tests;
 
 /// <summary>PluginsFile takes its data folder and its marker from the game it is built for.</summary>
 public class PluginsFileFormatTests(IServiceProvider serviceProvider)
@@ -135,7 +135,7 @@ public class PluginsFileFormatTests(IServiceProvider serviceProvider)
     [Fact]
     public void SkyrimSE_UsesStarMarkersAndTheDataFolder()
     {
-        var skyrim = serviceProvider.GetServices<NexusMods.Abstractions.Games.IGame>().OfType<CreationEngine.SkyrimSE.SkyrimSE>().Single();
+        var skyrim = serviceProvider.GetServices<SilverModManager.Abstractions.Games.IGame>().OfType<CreationEngine.SkyrimSE.SkyrimSE>().Single();
 
         skyrim.PluginList(null!).Should().BeOfType<AsteriskMechanism>();
         skyrim.DataPath.Should().Be(new GamePath(LocationId.Game, "Data"));

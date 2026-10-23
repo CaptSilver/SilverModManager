@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// What to run: the program with its arguments, where, and on top of which environment.

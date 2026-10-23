@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NexusMods.Backend\NexusMods.Backend.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Backend\SilverModManager.Backend.csproj" />
     </ItemGroup>
 </Project>

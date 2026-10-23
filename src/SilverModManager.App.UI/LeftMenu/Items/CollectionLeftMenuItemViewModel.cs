@@ -2,23 +2,23 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.Abstractions.Collections;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.Helpers;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Helpers;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, ILeftMenuItemWithToggleViewModel
 {

@@ -1,16 +1,16 @@
 using Avalonia.Media.Imaging;
 using DynamicData.Kernel;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Collections;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Collections;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 using R3;
 
-namespace NexusMods.App.UI.Pages.CollectionDownload;
+namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
 public interface ICollectionDownloadViewModel : IPageViewModelInterface
 {

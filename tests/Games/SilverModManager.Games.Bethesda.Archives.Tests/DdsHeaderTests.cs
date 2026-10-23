@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace NexusMods.Games.Bethesda.Archives.Tests;
+namespace SilverModManager.Games.Bethesda.Archives.Tests;
 
 // An extracted texture is hashed against what a modlist recorded, so these pin every header byte rather
 // than reading back a few fields.

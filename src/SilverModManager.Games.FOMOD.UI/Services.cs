@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.App.UI;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.App.UI;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 public static class Services
 {

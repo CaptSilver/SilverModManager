@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
-using NexusMods.Abstractions.GOG.DTOs;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Abstractions.GOG.DTOs;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 using SmartFormat;
 
-namespace NexusMods.Networking.GOG;
+namespace SilverModManager.Networking.GOG;
 
 /// <summary>
 /// Chunked stream loader for GOG data

@@ -1,6 +1,6 @@
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.DataModel.SchemaVersions;
+namespace SilverModManager.DataModel.SchemaVersions;
 
 public partial class SchemaVersion : IModelDefinition
 {

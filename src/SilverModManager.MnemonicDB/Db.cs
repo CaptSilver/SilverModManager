@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.MnemonicDB.Abstractions.Query;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 
-namespace NexusMods.MnemonicDB;
+namespace SilverModManager.MnemonicDB;
 
 internal class Db<TSnapshot, TLowLevelIterator> : ACachingDatomsIndex<TLowLevelIterator>, IDb 
     where TSnapshot : IRefDatomEnumeratorFactory<TLowLevelIterator>, IDatomsIndex, ISnapshot

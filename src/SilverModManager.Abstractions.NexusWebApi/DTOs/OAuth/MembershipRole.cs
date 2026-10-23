@@ -1,7 +1,7 @@
 using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
-namespace NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
+namespace SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
 
 /// <summary>
 /// Describes the role the user has on the site.

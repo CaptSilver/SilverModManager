@@ -1,9 +1,9 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI.Windows;
+using SilverModManager.App.UI.Windows;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 /// <summary>
 /// Represents a factory for creating pages.

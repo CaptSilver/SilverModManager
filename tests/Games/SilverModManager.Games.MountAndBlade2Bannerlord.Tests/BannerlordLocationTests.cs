@@ -2,13 +2,13 @@ using System.Collections.Immutable;
 using FluentAssertions;
 using GameFinder.Wine;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.TestFramework.Helpers;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.TestFramework.Helpers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.Tests;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.Tests;
 
 public class BannerlordLocationTests(IServiceProvider serviceProvider)
 {

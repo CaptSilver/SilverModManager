@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Merge;
-using static NexusMods.Games.FromSoft.Tests.Merge.EsdMergeFixture;
-using EsdFormat = NexusMods.Games.FromSoft.Formats.Esd;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Merge;
+using static SilverModManager.Games.FromSoft.Tests.Merge.EsdMergeFixture;
+using EsdFormat = SilverModManager.Games.FromSoft.Formats.Esd;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 public class EsdMergeTests
 {

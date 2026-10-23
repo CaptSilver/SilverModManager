@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Avalonia;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public readonly partial struct WorkspaceGridState :
     IImmutableSet<PanelGridState>,

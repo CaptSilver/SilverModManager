@@ -1,14 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
 using NexusMods.HyperDuck;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Fallout4;
+namespace SilverModManager.Games.CreationEngine.Tests.Fallout4;
 
 public class LibraryArchiveInstallerTests(ITestOutputHelper outputHelper) : AIsolatedGameTest<LibraryArchiveInstallerTests, CreationEngine.Fallout4.Fallout4>(outputHelper)
 {

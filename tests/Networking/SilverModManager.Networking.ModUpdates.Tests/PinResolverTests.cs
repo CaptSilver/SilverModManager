@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Networking.ModUpdates.Tests.Helpers;
-using static NexusMods.Networking.ModUpdates.Tests.Helpers.RecordedNexusFileLists;
+using SilverModManager.Networking.ModUpdates.Tests.Helpers;
+using static SilverModManager.Networking.ModUpdates.Tests.Helpers.RecordedNexusFileLists;
 
-namespace NexusMods.Networking.ModUpdates.Tests;
+namespace SilverModManager.Networking.ModUpdates.Tests;
 
 public class PinResolverTests
 {

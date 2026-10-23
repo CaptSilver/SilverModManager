@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 internal static class ArchiveCopy
 {

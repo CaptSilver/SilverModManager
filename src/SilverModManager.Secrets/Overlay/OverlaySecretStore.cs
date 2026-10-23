@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk;
 using R3;
 
-namespace NexusMods.Secrets.Overlay;
+namespace SilverModManager.Secrets.Overlay;
 
 /// <summary>
 /// A key whose value an override supplies, and which override that is (e.g. <c>environment variable NEXUS_API_KEY</c>).

@@ -1,12 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk.EventBus;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.CLI;
-using NexusMods.Sdk;
+using SilverModManager.Sdk.EventBus;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.CLI;
+using SilverModManager.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Pages;
+namespace SilverModManager.App.UI.Pages;
 
 public sealed class ProtocolRegistrationTestPageViewModel : APageViewModel<IProtocolRegistrationTestPageViewModel>, IProtocolRegistrationTestPageViewModel, IDisposable
 {

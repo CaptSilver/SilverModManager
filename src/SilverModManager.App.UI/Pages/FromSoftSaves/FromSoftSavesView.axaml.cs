@@ -1,11 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.Games.FromSoft.Saves;
+using SilverModManager.Games.FromSoft.Saves;
 using ReactiveUI;
 using R3;
 
-namespace NexusMods.App.UI.Pages.FromSoftSaves;
+namespace SilverModManager.App.UI.Pages.FromSoftSaves;
 
 [UsedImplicitly]
 public partial class FromSoftSavesView : ReactiveUserControl<IFromSoftSavesViewModel>

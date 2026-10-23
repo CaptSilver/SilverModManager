@@ -1,6 +1,6 @@
 using FluentAssertions;
 
-namespace NexusMods.Games.Bethesda.LoadOrder.Tests;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Tests;
 
 public class PluginFlagsTests
 {

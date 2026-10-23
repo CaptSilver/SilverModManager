@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
-namespace NexusMods.MnemonicDB;
+namespace SilverModManager.MnemonicDB;
 
 /// <summary>
 /// A comparer that compares only the Attribute and Value of a Datom used for unique constraints.

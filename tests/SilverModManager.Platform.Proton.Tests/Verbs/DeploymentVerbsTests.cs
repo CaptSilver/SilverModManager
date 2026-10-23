@@ -2,22 +2,22 @@ using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Verbs;
-using NexusMods.Sdk;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Native;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Verbs;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Native;
+using SilverModManager.Sdk.ProxyConsole;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests.Verbs;
+namespace SilverModManager.Platform.Proton.Tests.Verbs;
 
 /// <summary>
 /// The temp directory is tmpfs on the dev box, where hard links work and FICLONE does not. The selection chain is

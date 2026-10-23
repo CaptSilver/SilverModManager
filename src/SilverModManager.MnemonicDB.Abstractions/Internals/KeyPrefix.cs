@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
-namespace NexusMods.MnemonicDB.Abstractions.Internals;
+namespace SilverModManager.MnemonicDB.Abstractions.Internals;
 
 /// <summary>
 /// Represents a key prefix used in the MnemonicDB system.

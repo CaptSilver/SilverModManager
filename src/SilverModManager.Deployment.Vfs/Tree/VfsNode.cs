@@ -1,4 +1,4 @@
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 internal sealed class VfsNode
 {

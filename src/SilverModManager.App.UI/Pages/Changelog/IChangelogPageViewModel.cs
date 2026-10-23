@@ -1,7 +1,7 @@
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI.Pages.Changelog;
+namespace SilverModManager.App.UI.Pages.Changelog;
 
 public interface IChangelogPageViewModel : IPageViewModelInterface
 {

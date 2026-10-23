@@ -1,5 +1,5 @@
-using NexusMods.App.UI.Pages.Library;
-namespace NexusMods.App.UI.Overlays.LibraryDeleteConfirmation;
+using SilverModManager.App.UI.Pages.Library;
+namespace SilverModManager.App.UI.Overlays.LibraryDeleteConfirmation;
 
 public static class LibraryItemDeleteConfirmationDesignViewModels
 {

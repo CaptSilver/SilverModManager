@@ -1,7 +1,7 @@
 using BenchmarkDotNet.Attributes;
-using NexusMods.Benchmarks.Interfaces;
+using SilverModManager.Benchmarks.Interfaces;
 
-namespace NexusMods.Benchmarks.Benchmarks;
+namespace SilverModManager.Benchmarks.Benchmarks;
 
 [MemoryDiagnoser]
 [BenchmarkInfo("Delegate Allocation Cost", "Compares the cost of delegates using various methods")]

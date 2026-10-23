@@ -1,12 +1,12 @@
 using System.Buffers.Binary;
 using System.Text;
 using FluentAssertions;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats;
+namespace SilverModManager.Games.FromSoft.Tests.Formats;
 
 // BND3 serves games that arrive later; every game supported today uses BND4, and erm has no BND3 reader. There is
 // no golden file to match, so the proof is a synthetic builder (Bnd3Fixture) plus round-trips through the reader.

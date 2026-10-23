@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// OS-specific functionality.

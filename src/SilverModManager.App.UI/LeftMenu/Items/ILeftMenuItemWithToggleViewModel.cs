@@ -1,7 +1,7 @@
 using System.Reactive;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public interface ILeftMenuItemWithToggleViewModel : ILeftMenuItemViewModel
 {

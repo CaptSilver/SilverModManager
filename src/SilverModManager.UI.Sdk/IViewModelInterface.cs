@@ -2,7 +2,7 @@ using System.ComponentModel;
 using JetBrains.Annotations;
 using ReactiveUI;
 
-namespace NexusMods.UI.Sdk;
+namespace SilverModManager.UI.Sdk;
 
 /// <summary>
 /// Marker interface for view model interfaces.

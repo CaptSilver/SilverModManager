@@ -1,8 +1,8 @@
-using NexusMods.Games.Bethesda.Loot.Database;
-using NexusMods.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Database;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
 using YamlDotNet.RepresentationModel;
 
-namespace NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 
 /// <summary>
 /// Typed access to YAML mappings, with libloot's error wording. Follows libloot's metadata/yaml/parse.rs.

@@ -1,12 +1,12 @@
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.NexusWebApi.Auth;
-using NexusMods.Networking.NexusWebApi.Migration;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.NexusWebApi.Auth;
+using SilverModManager.Networking.NexusWebApi.Migration;
 
-namespace NexusMods.Networking.NexusWebApi.Tests.Migration;
+namespace SilverModManager.Networking.NexusWebApi.Tests.Migration;
 
 [Collection(LegacyCredentialCollection.Name)]
 public class NexusOAuthTokenMigrationTests : IAsyncLifetime

@@ -5,7 +5,7 @@ using ObservableCollections;
 using R3;
 using CompositeDisposable = R3.CompositeDisposable;
 
-namespace NexusMods.UI.Sdk;
+namespace SilverModManager.UI.Sdk;
 
 /// <summary>
 /// Extension methods for <see cref="R3"/>.

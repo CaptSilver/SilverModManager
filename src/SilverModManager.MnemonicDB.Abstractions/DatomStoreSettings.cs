@@ -1,6 +1,6 @@
 ﻿using NexusMods.Paths;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 ///     Settings for the datom store

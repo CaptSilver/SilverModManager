@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Sorting;
 
 /// <summary>
 /// Places where this port knowingly does less than libloot, so a caller can tell the user that

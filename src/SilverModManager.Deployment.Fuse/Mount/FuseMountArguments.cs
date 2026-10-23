@@ -1,6 +1,6 @@
-using NexusMods.Deployment.Vfs;
+using SilverModManager.Deployment.Vfs;
 
-namespace NexusMods.Deployment.Fuse.Mount;
+namespace SilverModManager.Deployment.Fuse.Mount;
 
 public static class FuseMountArguments
 {

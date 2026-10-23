@@ -1,9 +1,9 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Library.Lock;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Library.Lock;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Library.Sources;
+namespace SilverModManager.Library.Sources;
 
 /// <summary>
 /// GitHub release assets, fetched through <see cref="AddGitHubReleaseAssetJob"/>. Services are resolved when first

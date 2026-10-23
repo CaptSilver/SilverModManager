@@ -3,12 +3,12 @@
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Deployment.Fuse.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Deployment.Fuse.Tests" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
-        <ProjectReference Include="..\NexusMods.Deployment.Vfs\NexusMods.Deployment.Vfs.csproj" />
+        <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.Deployment.Vfs\SilverModManager.Deployment.Vfs.csproj" />
     </ItemGroup>
 
 </Project>

@@ -3,22 +3,22 @@ using DynamicData;
 using DynamicData.Aggregation;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Pages.LibraryPage;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using NexusMods.Networking.NexusWebApi;
-using NexusMods.Networking.NexusWebApi.UpdateFilters;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Networking.NexusWebApi.UpdateFilters;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 using Observable = R3.Observable;
 
-namespace NexusMods.App.UI.Pages;
+namespace SilverModManager.App.UI.Pages;
 
 public interface ILibraryDataProvider
 {

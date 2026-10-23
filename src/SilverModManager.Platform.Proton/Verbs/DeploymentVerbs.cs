@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Abstractions.Cli;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Platform.Proton.Verbs;
+namespace SilverModManager.Platform.Proton.Verbs;
 
 internal static class DeploymentVerbs
 {

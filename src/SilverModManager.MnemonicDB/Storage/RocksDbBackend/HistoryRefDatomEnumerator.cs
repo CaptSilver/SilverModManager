@@ -1,8 +1,8 @@
 using System;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 
-namespace NexusMods.MnemonicDB.Storage.RocksDbBackend;
+namespace SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 
 public struct HistoryRefDatomEnumerator<THistory, TCurrent> : IRefDatomEnumerator 
     where THistory : IRefDatomEnumerator 

@@ -2,10 +2,10 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 using StrawberryShake;
 
-namespace NexusMods.Networking.NexusWebApi.Errors;
+namespace SilverModManager.Networking.NexusWebApi.Errors;
 
 file static class Helper
 {

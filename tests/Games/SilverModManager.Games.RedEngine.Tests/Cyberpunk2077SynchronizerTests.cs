@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 
-using NexusMods.Sdk.Settings;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.RedEngine.Tests;
+namespace SilverModManager.Games.RedEngine.Tests;
 
 public class Cyberpunk2077SynchronizerTests(IServiceProvider serviceProvider) : AGameTest<Cyberpunk2077.Cyberpunk2077Game>(serviceProvider)
 {

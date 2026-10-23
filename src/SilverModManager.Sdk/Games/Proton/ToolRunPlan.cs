@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// The command line that would run a Windows program for a game, or the reason there is none.

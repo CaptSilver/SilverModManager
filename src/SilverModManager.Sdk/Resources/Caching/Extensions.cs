@@ -1,7 +1,7 @@
 using BitFaster.Caching;
 using BitFaster.Caching.Lru;
 
-namespace NexusMods.Sdk.Resources;
+namespace SilverModManager.Sdk.Resources;
 
 public static partial class Extensions
 {

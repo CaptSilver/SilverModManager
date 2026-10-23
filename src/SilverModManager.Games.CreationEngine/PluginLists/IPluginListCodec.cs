@@ -1,7 +1,7 @@
 using System.Text;
-using NexusMods.Games.Bethesda.LoadOrder.Formats;
+using SilverModManager.Games.Bethesda.LoadOrder.Formats;
 
-namespace NexusMods.Games.CreationEngine.PluginLists;
+namespace SilverModManager.Games.CreationEngine.PluginLists;
 
 /// <summary>What a codec may need to know about the file it is replacing.</summary>
 /// <param name="Existing">The text the file has on disk now, empty when there is none. Only filled for a codec that <see cref="IPluginListCodec.RewritesExisting"/>.</param>

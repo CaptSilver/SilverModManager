@@ -1,8 +1,8 @@
 using System.Text;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.DataModel.SchemaVersions;
+namespace SilverModManager.DataModel.SchemaVersions;
 
 /// <summary>
 /// Tools for generating a hash of all the attributes of a schema so that we can detect changes.

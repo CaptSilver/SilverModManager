@@ -1,13 +1,13 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Games.FromSoft.Diagnostics;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class EldenRingCheckEmittersTests(ITestOutputHelper helper) : AModdedEldenRingTest<EldenRingCheckEmittersTests>(helper)
 {
@@ -44,7 +44,7 @@ public class EldenRingCheckEmittersTests(ITestOutputHelper helper) : AModdedElde
         var diagnostic = (await Diagnose<GameFolderArtifactsEmitter>(loadout)).Should().ContainSingle().Subject;
 
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
-        diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.FromSoft", 6));
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 6));
         diagnostic.FormatDetails(ServiceProvider.GetRequiredService<IDiagnosticWriter>()).Should().Contain("dinput8.dll");
         diagnostic.Actions.Should().Equal(GameCleanupActions.ShowSteps());
     }
@@ -80,7 +80,7 @@ public class EldenRingCheckEmittersTests(ITestOutputHelper helper) : AModdedElde
         var diagnostic = (await Diagnose<SpawnerEmitter>(loadout)).Should().ContainSingle().Subject;
 
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
-        diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.FromSoft", 7));
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 7));
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public class EldenRingCheckEmittersTests(ITestOutputHelper helper) : AModdedElde
         var diagnostic = (await Diagnose<OverlaySupportEmitter>(loadout)).Should().ContainSingle().Subject;
 
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
-        diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.FromSoft", 8));
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 8));
         diagnostic.FormatDetails(ServiceProvider.GetRequiredService<IDiagnosticWriter>()).Should().Contain("Operation not permitted");
     }
 

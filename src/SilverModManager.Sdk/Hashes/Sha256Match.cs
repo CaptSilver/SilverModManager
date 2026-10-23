@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.Hashes;
+namespace SilverModManager.Sdk.Hashes;
 
 /// <summary>
 /// Digest comparison that fails closed: a digest that is missing, empty or malformed never matches.

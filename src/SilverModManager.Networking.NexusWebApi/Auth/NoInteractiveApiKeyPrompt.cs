@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi;
 
-namespace NexusMods.Networking.NexusWebApi.Auth;
+namespace SilverModManager.Networking.NexusWebApi.Auth;
 
 /// <summary>
 /// The prompt for hosts without a UI. It throws, because returning null would look like the

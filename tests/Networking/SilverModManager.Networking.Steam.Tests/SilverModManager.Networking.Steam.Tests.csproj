@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <XunitStartupAssembly>NexusMods.Networking.Steam.Tests</XunitStartupAssembly>
+        <XunitStartupAssembly>SilverModManager.Networking.Steam.Tests</XunitStartupAssembly>
     </PropertyGroup>
     
     <PropertyGroup>
@@ -9,9 +9,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\..\src\NexusMods.Abstractions.Steam\NexusMods.Abstractions.Steam.csproj" />
-      <ProjectReference Include="..\..\..\src\NexusMods.Networking.HttpDownloader\NexusMods.Networking.HttpDownloader.csproj" />
-      <ProjectReference Include="..\..\..\src\NexusMods.Networking.Steam\NexusMods.Networking.Steam.csproj" />
+      <ProjectReference Include="..\..\..\src\SilverModManager.Abstractions.Steam\SilverModManager.Abstractions.Steam.csproj" />
+      <ProjectReference Include="..\..\..\src\SilverModManager.Networking.HttpDownloader\SilverModManager.Networking.HttpDownloader.csproj" />
+      <ProjectReference Include="..\..\..\src\SilverModManager.Networking.Steam\SilverModManager.Networking.Steam.csproj" />
     </ItemGroup>
 
 </Project>

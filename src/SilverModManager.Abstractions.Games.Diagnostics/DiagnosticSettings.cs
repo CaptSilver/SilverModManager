@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Abstractions.Diagnostics;
+namespace SilverModManager.Abstractions.Diagnostics;
 
 /// <summary>
 /// Settings to configure the <see cref="IDiagnosticManager"/>.

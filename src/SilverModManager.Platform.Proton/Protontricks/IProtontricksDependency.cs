@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Platform.Proton.Protontricks;
+namespace SilverModManager.Platform.Proton.Protontricks;
 
 /// <summary>
 /// Common interface for invoking Protontricks across the <see cref="ProtontricksFlatpakDependency"/> and <see cref="ProtontricksNativeDependency"/>.

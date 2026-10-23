@@ -1,15 +1,15 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Installers;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Installers;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 /// <summary>The same apply-and-merge path on a BND3 game with no regulation, so nothing Elden Ring is assumed.</summary>
 public class MergedFileTestSoulsTests(ITestOutputHelper helper) : AModdedTestSoulsTest<MergedFileTestSoulsTests>(helper)

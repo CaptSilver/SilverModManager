@@ -1,11 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Backend.Games.Locators;
+using SilverModManager.Backend.Games.Locators;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Backend.Tests.Games;
+namespace SilverModManager.Backend.Tests.Games;
 
 /// <summary>
 /// Runs the Steam locator over the machine's real Steam library. Excluded from the default run

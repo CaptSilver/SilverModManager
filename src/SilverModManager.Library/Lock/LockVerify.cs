@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Library.Lock;
+namespace SilverModManager.Library.Lock;
 
 /// <summary>
 /// Checks that the library holds every file a lock names, byte for byte.

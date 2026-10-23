@@ -1,9 +1,9 @@
 using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Resources;
+using SilverModManager.App.UI.Resources;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.LoadoutPage.Dialogs.ShareCollection;
+namespace SilverModManager.App.UI.Pages.LoadoutPage.Dialogs.ShareCollection;
 
 public partial class DialogShareCollectionView : ReactiveUserControl<IDialogShareCollectionViewModel>
 {

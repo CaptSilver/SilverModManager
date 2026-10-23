@@ -2,10 +2,10 @@ using System.Reactive.Linq;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -13,7 +13,7 @@ using Observable = R3.Observable;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
 using Unit = System.Reactive.Unit;
 
-namespace NexusMods.App.UI.Controls.TopBar;
+namespace SilverModManager.App.UI.Controls.TopBar;
 
 public class TopBarDesignViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
 {
@@ -21,7 +21,7 @@ public class TopBarDesignViewModel : AViewModel<ITopBarViewModel>, ITopBarViewMo
     [Reactive] public UserRole UserRole { get; set; } = UserRole.Free;
     [Reactive] public string? Username { get; set; } = "insomnious";
     [Reactive] public string AccountTooltip { get; set; } = "Logged in to Nexus Mods as insomnious";
-    [Reactive] public IImage Avatar { get; set; } = new Bitmap(AssetLoader.Open(new Uri("avares://NexusMods.App.UI/Assets/DesignTime/cyberpunk_game.png")));
+    [Reactive] public IImage Avatar { get; set; } = new Bitmap(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/cyberpunk_game.png")));
     [Reactive] public string ActiveWorkspaceTitle { get; set; } = "Home";
     [Reactive] public string ActiveWorkspaceSubtitle { get; set; } = "Loadout A";
     [Reactive] public IAddPanelDropDownViewModel AddPanelDropDownViewModel { get; set; } = new AddPanelDropDownDesignViewModel();

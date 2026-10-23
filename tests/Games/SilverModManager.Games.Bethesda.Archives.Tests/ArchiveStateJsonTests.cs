@@ -1,7 +1,7 @@
 using System.Text.Json;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Bethesda.Archives.Tests;
+namespace SilverModManager.Games.Bethesda.Archives.Tests;
 
 // The literals follow the shape Wabbajack writes into a modlist's CreateBSA directive.
 public class ArchiveStateJsonTests

@@ -1,6 +1,6 @@
-﻿using NexusMods.Abstractions.GuidedInstallers.ValueObjects;
+﻿using SilverModManager.Abstractions.GuidedInstallers.ValueObjects;
 
-namespace NexusMods.Abstractions.GuidedInstallers;
+namespace SilverModManager.Abstractions.GuidedInstallers;
 
 /// <summary>
 /// Validation utilities for <see cref="GuidedInstallationStep"/>.

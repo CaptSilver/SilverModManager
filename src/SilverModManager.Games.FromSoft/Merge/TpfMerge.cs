@@ -1,6 +1,6 @@
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>
 /// Merges two menu texture archives (.tpf.dcx) that both claim the same file. Two mods that both ship one are usually

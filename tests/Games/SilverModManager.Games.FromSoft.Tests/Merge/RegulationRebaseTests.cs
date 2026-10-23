@@ -1,24 +1,24 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Diagnostics;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
-using NexusMods.Games.FromSoft.Heal;
-using NexusMods.Games.FromSoft.Installers;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Games.FromSoft.Heal;
+using SilverModManager.Games.FromSoft.Installers;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Loadouts;
-using FormatRegulation = NexusMods.Games.FromSoft.Formats.Regulation;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Loadouts;
+using FormatRegulation = SilverModManager.Games.FromSoft.Formats.Regulation;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 /// <summary>
 /// The checks around folding mod regulations onto the installed game's: the layout gate before the fold, the rebase
@@ -255,7 +255,7 @@ public class RegulationRebaseLoadoutTests(ITestOutputHelper helper) : AVanillaDu
     {
         var loadout = await TwoRegulations(GameVersion);
         await StampAsTampered(loadout);
-        var mods = GameInstallation.Locations[NexusMods.Sdk.Games.LocationId.Me3Mods].Path;
+        var mods = GameInstallation.Locations[SilverModManager.Sdk.Games.LocationId.Me3Mods].Path;
         var disk = mods.DirectoryExists() ? TreeSnapshot.Take(mods) : [];
 
         var act = async () => await Synchronizer.Synchronize(Refresh(loadout));

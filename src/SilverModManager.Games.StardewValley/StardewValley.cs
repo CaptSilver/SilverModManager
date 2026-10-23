@@ -2,19 +2,19 @@ using System.Collections.Immutable;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FileHashes.Emitters;
-using NexusMods.Games.FOMOD;
-using NexusMods.Games.StardewValley.Emitters;
-using NexusMods.Games.StardewValley.Installers;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FileHashes.Emitters;
+using SilverModManager.Games.FOMOD;
+using SilverModManager.Games.StardewValley.Emitters;
+using SilverModManager.Games.StardewValley.Installers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Games.StardewValley;
+namespace SilverModManager.Games.StardewValley;
 
 [UsedImplicitly]
 public class StardewValley : IGame, IGameData<StardewValley>

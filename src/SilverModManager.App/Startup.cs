@@ -4,17 +4,17 @@ using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.App.UI;
-using NexusMods.App.UI.Converters;
-using NexusMods.App.UI.Windows;
-using NexusMods.Sdk;
+using SilverModManager.App.UI;
+using SilverModManager.App.UI.Converters;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.Sdk;
 using Projektanker.Icons.Avalonia;
 using Projektanker.Icons.Avalonia.MaterialDesign;
 using R3;
 using ReactiveUI;
 using Splat;
 
-namespace NexusMods.App;
+namespace SilverModManager.App;
 
 
 

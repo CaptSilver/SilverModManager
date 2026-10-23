@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Cleanup;
+namespace SilverModManager.Games.FromSoft.Cleanup;
 
 /// <summary>
 /// What the game-folder cleanup recognises as left behind by another mod manager. The mod loader names are FromSoft-wide

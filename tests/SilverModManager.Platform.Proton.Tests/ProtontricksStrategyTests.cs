@@ -4,13 +4,13 @@ using System.Runtime.InteropServices;
 using CliWrap;
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Protontricks;
-using NexusMods.Platform.Proton.ToolRunner;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Platform.Proton.Protontricks;
+using SilverModManager.Platform.Proton.ToolRunner;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests;
+namespace SilverModManager.Platform.Proton.Tests;
 
 /// <summary>
 /// Protontricks is the way to run a program for a Steam game only when no Proton build resolves. The process

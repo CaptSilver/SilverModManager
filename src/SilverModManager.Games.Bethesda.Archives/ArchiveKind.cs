@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// The container family of an archive, decided by its magic bytes.

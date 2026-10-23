@@ -1,19 +1,19 @@
 using System.Security.Cryptography;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Library.Tests.Lock;
+namespace SilverModManager.Library.Tests.Lock;
 
 /// <summary>
 /// Builds loadouts and library rows for the lock tests, with the digests chosen by the test.

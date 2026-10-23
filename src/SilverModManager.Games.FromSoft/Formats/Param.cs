@@ -2,7 +2,7 @@ using System.Buffers.Binary;
 using System.Collections.Immutable;
 using System.Text;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <param name="NameOffset">Absolute offset into the source file's strings block; 0 means the row has no name.</param>
 public sealed record ParamRow(int Id, byte[] Data, long NameOffset);

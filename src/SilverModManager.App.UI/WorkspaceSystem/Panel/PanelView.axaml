@@ -4,12 +4,12 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactive="http://reactiveui.net"
-    xmlns:workspace="clr-namespace:NexusMods.App.UI.WorkspaceSystem"
-    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+    xmlns:workspace="clr-namespace:SilverModManager.App.UI.WorkspaceSystem"
+    xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
     mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="200"
-    x:Class="NexusMods.App.UI.WorkspaceSystem.PanelView">
+    x:Class="SilverModManager.App.UI.WorkspaceSystem.PanelView">
 
     <!-- NOTE (insomnious): We have an ongoing Avalonia issue in how Backgrounds/CornerRadius/BorderBrush work together. It's not a bug
     but more just needing to know what happens and the best way to work with it so it feels right.

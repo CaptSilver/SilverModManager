@@ -1,17 +1,17 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Overlay;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class TestSoulsLaunchTests(ITestOutputHelper helper) : AModdedTestSoulsTest<TestSoulsLaunchTests>(helper)
 {

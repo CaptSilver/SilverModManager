@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 /// <summary>
 /// How a recognizer knows a piece of content belongs to the game.

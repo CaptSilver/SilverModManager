@@ -1,11 +1,11 @@
 using System.Text.Json.Serialization;
-using NexusMods.Abstractions.Collections.Types;
+using SilverModManager.Abstractions.Collections.Types;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.Hashes;
 
 // ReSharper disable InconsistentNaming
 
-namespace NexusMods.Abstractions.Collections.Json;
+namespace SilverModManager.Abstractions.Collections.Json;
 
 /// <summary>
 /// Path and MD5 hash value as a pair.

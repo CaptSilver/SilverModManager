@@ -4,19 +4,19 @@ using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Tests.Framework;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Tests.Framework;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class AUiTest
 {

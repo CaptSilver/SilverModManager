@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using NexusMods.Paths;
 
-namespace NexusMods.DataModel.JsonConverters;
+namespace SilverModManager.DataModel.JsonConverters;
 
 /// <inheritdoc />
 public class SizeConverter : JsonConverter<Size>

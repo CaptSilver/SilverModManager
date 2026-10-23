@@ -1,14 +1,14 @@
 using System.Runtime.CompilerServices;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Diagnostics.Values;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.Values;
 
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using static NexusMods.Games.RedEngine.Constants;
-namespace NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using static SilverModManager.Games.RedEngine.Constants;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077.Emitters;
 
 public class MissingRedModEmitter : ILoadoutDiagnosticEmitter
 {

@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Backend.RuntimeDependency;
+using SilverModManager.Backend.RuntimeDependency;
 
-namespace NexusMods.CrossPlatform.Tests;
+namespace SilverModManager.CrossPlatform.Tests;
 
 public class UpdateDesktopDatabaseDependencyTests
 {

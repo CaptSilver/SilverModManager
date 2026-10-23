@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Loadouts;
+namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 /// Interface used for items which provide an entity ID.

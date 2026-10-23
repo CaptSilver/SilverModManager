@@ -4,11 +4,11 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-                                xmlns:resources="clr-namespace:NexusMods.Games.AdvancedInstaller.UI.Resources"
-                                xmlns:selectLocation="clr-namespace:NexusMods.Games.AdvancedInstaller.UI.SelectLocation"
+                                xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+                                xmlns:resources="clr-namespace:SilverModManager.Games.AdvancedInstaller.UI.Resources"
+                                xmlns:selectLocation="clr-namespace:SilverModManager.Games.AdvancedInstaller.UI.SelectLocation"
                                 mc:Ignorable="d" d:DesignWidth="710" d:DesignHeight="44"
-                                x:Class="NexusMods.Games.AdvancedInstaller.UI.SelectLocation.SelectableTreeEntryView">
+                                x:Class="SilverModManager.Games.AdvancedInstaller.UI.SelectLocation.SelectableTreeEntryView">
 
     <Design.DataContext>
         <selectLocation:SelectableTreeEntryDesignViewModel />

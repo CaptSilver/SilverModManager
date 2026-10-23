@@ -1,30 +1,30 @@
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.Modlists;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Modlists;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.ToolRunner;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Mapping;
-using NexusMods.Wabbajack.Models;
-using BethesdaArchiveException = NexusMods.Games.Bethesda.Archives.BethesdaArchiveException;
-using PatchException = NexusMods.Wabbajack.Transforms.PatchException;
-using UnsupportedTextureFormatException = NexusMods.Wabbajack.Transforms.UnsupportedTextureFormatException;
+using SilverModManager.Platform.Proton.ToolRunner;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Mapping;
+using SilverModManager.Wabbajack.Models;
+using BethesdaArchiveException = SilverModManager.Games.Bethesda.Archives.BethesdaArchiveException;
+using PatchException = SilverModManager.Wabbajack.Transforms.PatchException;
+using UnsupportedTextureFormatException = SilverModManager.Wabbajack.Transforms.UnsupportedTextureFormatException;
 
-namespace NexusMods.Wabbajack.Install;
+namespace SilverModManager.Wabbajack.Install;
 
 /// <summary>
 /// Installs a modlist's archive members and inline files into a loadout as mod groups under a

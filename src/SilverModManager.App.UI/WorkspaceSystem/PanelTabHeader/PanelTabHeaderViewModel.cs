@@ -1,11 +1,11 @@
 using System.Reactive;
-using NexusMods.UI.Sdk.Icons;
-using NexusMods.App.UI.Resources;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public class PanelTabHeaderViewModel : AViewModel<IPanelTabHeaderViewModel>, IPanelTabHeaderViewModel
 {

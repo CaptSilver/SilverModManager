@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.LoadOrder.Ordering;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Ordering;
 
 /// <summary>
 /// One plugin as the resolver sees it.

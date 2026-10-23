@@ -2,7 +2,7 @@
 
 using System.Text.Json.Serialization;
 
-namespace NexusMods.Abstractions.Collections.Json;
+namespace SilverModManager.Abstractions.Collections.Json;
 
 /// <summary>
 /// The possible sources of a mod

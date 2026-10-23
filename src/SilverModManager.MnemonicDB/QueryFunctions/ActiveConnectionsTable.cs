@@ -1,9 +1,9 @@
 using System.Linq;
 using NexusMods.HyperDuck;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Storage;
 
-namespace NexusMods.MnemonicDB.QueryFunctions;
+namespace SilverModManager.MnemonicDB.QueryFunctions;
 
 public class ActiveConnectionsTable : ATableFunction
 {

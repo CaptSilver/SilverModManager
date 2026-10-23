@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi;
 
-namespace NexusMods.Networking.NexusWebApi.Auth;
+namespace SilverModManager.Networking.NexusWebApi.Auth;
 
 /// <summary>
 /// Adds the current credential to every request made through the GraphQL <see cref="HttpClient"/>.

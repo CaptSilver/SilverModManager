@@ -1,7 +1,7 @@
-using NexusMods.Sdk.NexusModsApi;
-using GameDomain = NexusMods.Abstractions.NexusWebApi.Types.GameDomain;
+using SilverModManager.Sdk.NexusModsApi;
+using GameDomain = SilverModManager.Abstractions.NexusWebApi.Types.GameDomain;
 
-namespace NexusMods.Abstractions.NexusWebApi;
+namespace SilverModManager.Abstractions.NexusWebApi;
 
 /// <summary>
 /// Caches the mapping between <see cref="GameDomain"/> and <see cref="NexusModsGameId"/> values for fast lookup.

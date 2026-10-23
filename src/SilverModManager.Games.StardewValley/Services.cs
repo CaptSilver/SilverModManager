@@ -1,14 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.StardewValley.Emitters;
-using NexusMods.Games.StardewValley.Installers;
-using NexusMods.Games.StardewValley.Models;
-using NexusMods.Games.StardewValley.RunGameTools;
-using NexusMods.Games.StardewValley.WebAPI;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.StardewValley.Emitters;
+using SilverModManager.Games.StardewValley.Installers;
+using SilverModManager.Games.StardewValley.Models;
+using SilverModManager.Games.StardewValley.RunGameTools;
+using SilverModManager.Games.StardewValley.WebAPI;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.StardewValley;
+namespace SilverModManager.Games.StardewValley;
 
 public static class Services
 {

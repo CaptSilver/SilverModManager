@@ -1,4 +1,4 @@
-﻿namespace NexusMods.Games.TestFramework;
+﻿namespace SilverModManager.Games.TestFramework;
 
 public record ModInstallerExampleFile
 {

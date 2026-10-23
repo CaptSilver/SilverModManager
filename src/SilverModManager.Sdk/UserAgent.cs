@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// Represents a user agent.

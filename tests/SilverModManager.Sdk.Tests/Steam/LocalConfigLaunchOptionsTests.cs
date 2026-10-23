@@ -1,8 +1,8 @@
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Steam;
+using SilverModManager.Sdk.Steam;
 
-namespace NexusMods.Sdk.Tests.Steam;
+namespace SilverModManager.Sdk.Tests.Steam;
 
 public class LocalConfigLaunchOptionsTests
 {

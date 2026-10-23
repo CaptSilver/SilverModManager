@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.Larian.BaldursGate3;
-using NexusMods.Games.TestFramework.Helpers;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.Larian.BaldursGate3;
+using SilverModManager.Games.TestFramework.Helpers;
 
-namespace NexusMods.Games.Larian.Tests;
+namespace SilverModManager.Games.Larian.Tests;
 
 public class ProtonLocationTests(IServiceProvider serviceProvider)
 {
@@ -12,7 +12,7 @@ public class ProtonLocationTests(IServiceProvider serviceProvider)
     public void BaldursGate3_ResolvesIntoThePrefix()
     {
         var prefix = ProtonTestPrefix.Create();
-        var game = serviceProvider.GetServices<IGame>().OfType<global::NexusMods.Games.Larian.BaldursGate3.BaldursGate3>().Single();
+        var game = serviceProvider.GetServices<IGame>().OfType<global::SilverModManager.Games.Larian.BaldursGate3.BaldursGate3>().Single();
         var larian = prefix.Home.Combine("AppData/Local/Larian Studios/Baldur's Gate 3");
 
         var locations = game.GetLocations(prefix.GameFileSystem, prefix.LocatorResult());

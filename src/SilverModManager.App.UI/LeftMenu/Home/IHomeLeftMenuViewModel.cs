@@ -1,6 +1,6 @@
-using NexusMods.App.UI.LeftMenu.Items;
+using SilverModManager.App.UI.LeftMenu.Items;
 
-namespace NexusMods.App.UI.LeftMenu.Home;
+namespace SilverModManager.App.UI.LeftMenu.Home;
 
 public interface IHomeLeftMenuViewModel : ILeftMenuViewModel
 {

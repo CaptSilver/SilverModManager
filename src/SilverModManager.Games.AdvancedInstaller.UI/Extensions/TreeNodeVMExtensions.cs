@@ -1,13 +1,13 @@
 ﻿using System.Collections.ObjectModel;
 using DynamicData.Kernel;
 
-using NexusMods.Games.AdvancedInstaller.UI.ModContent;
-using NexusMods.Games.AdvancedInstaller.UI.Preview;
-using NexusMods.Games.AdvancedInstaller.UI.SelectLocation;
+using SilverModManager.Games.AdvancedInstaller.UI.ModContent;
+using SilverModManager.Games.AdvancedInstaller.UI.Preview;
+using SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.AdvancedInstaller.UI;
+namespace SilverModManager.Games.AdvancedInstaller.UI;
 
 using ModContentNode = TreeNodeVM<IModContentTreeEntryViewModel, RelativePath>;
 using PreviewNode = TreeNodeVM<IPreviewTreeEntryViewModel, GamePath>;

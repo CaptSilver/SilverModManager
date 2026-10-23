@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Games.FromSoft.Overlay;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Games.FromSoft.Overlay;
 
-namespace NexusMods.Games.FromSoft.Doctor;
+namespace SilverModManager.Games.FromSoft.Doctor;
 
 /// <summary>
 /// Reports a loadout with mods on a machine where the overlay cannot be made. A loadout without mods starts through

@@ -1,17 +1,17 @@
 using System.Reflection;
 using FluentAssertions;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.DataModel.SchemaVersions.Tests;
+namespace SilverModManager.DataModel.SchemaVersions.Tests;
 
 public class PersistedNameGuards
 {
     /// <summary>
     /// Fewest first-party assemblies the scan may find before it is considered to be looking in the wrong
     /// place. Set at about half of what the output directory holds; count them with
-    /// <c>ls tests/NexusMods.DataModel.SchemaVersions.Tests/bin/Debug/net*/NexusMods.*.dll | wc -l</c> (the
+    /// <c>ls tests/SilverModManager.DataModel.SchemaVersions.Tests/bin/Debug/net*/SilverModManager.*.dll | wc -l</c> (the
     /// test run also writes the real count to <c>first-party-assemblies.txt</c> in that directory).
     /// </summary>
     internal const int MinimumFirstPartyAssemblies = 40;

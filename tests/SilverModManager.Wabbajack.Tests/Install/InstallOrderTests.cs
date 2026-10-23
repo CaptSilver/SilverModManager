@@ -1,23 +1,23 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Games.CreationEngine.Models;
-using NexusMods.Games.CreationEngine.SortOrder;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Games.CreationEngine.Models;
+using SilverModManager.Games.CreationEngine.SortOrder;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Install;
-using NexusMods.Wabbajack.Models;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Install;
+using SilverModManager.Wabbajack.Models;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Wabbajack.Tests.Install;
+namespace SilverModManager.Wabbajack.Tests.Install;
 
 /// <summary>What the install does after the files are written: the order of the mod groups, the plugin list, and enabling the list.</summary>
 public class InstallOrderTests(ITestOutputHelper helper) : InstallTestBase<InstallOrderTests>(helper)

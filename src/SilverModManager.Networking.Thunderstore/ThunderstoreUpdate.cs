@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.Networking.Thunderstore;
+namespace SilverModManager.Networking.Thunderstore;
 
 /// <summary>
 /// A newer version of a package that is in the library.

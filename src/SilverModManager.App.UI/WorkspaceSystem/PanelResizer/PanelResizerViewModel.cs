@@ -1,11 +1,11 @@
 using System.Reactive;
 using System.Reactive.Disposables;
 using Avalonia;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public class PanelResizerViewModel : AViewModel<IPanelResizerViewModel>, IPanelResizerViewModel
 {

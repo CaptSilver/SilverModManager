@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 using DynamicData.Kernel;
 
-namespace NexusMods.App.UI.Extensions;
+namespace SilverModManager.App.UI.Extensions;
 
 public static class EnumerableExtensions
 {

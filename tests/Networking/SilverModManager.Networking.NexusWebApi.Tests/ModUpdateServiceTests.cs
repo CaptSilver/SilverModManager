@@ -2,18 +2,18 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.ModUpdates;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.ModUpdates;
 using NexusMods.Paths;
-using NexusMods.Abstractions.GC;
-using NexusMods.Games.TestFramework;
-using NexusMods.Networking.NexusWebApi.UpdateFilters;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.GC;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Networking.NexusWebApi.UpdateFilters;
+using SilverModManager.Sdk.NexusModsApi;
 using Xunit;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 /// <summary>
 ///     Tests centered around the <see cref="ModUpdateService" />.
@@ -610,7 +610,7 @@ internal static class StaticTestData
         public uint GameId { get; init; }
 
         /// <summary>
-        /// 32-bit ID of mod on NexusMods.com
+        /// 32-bit ID of mod on SilverModManager.com
         /// </summary>
         public uint ModId { get; init; }
 

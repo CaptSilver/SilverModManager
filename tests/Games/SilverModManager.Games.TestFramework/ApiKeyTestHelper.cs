@@ -1,7 +1,7 @@
-using NexusMods.Networking.NexusWebApi.Auth;
+using SilverModManager.Networking.NexusWebApi.Auth;
 using Xunit;
 
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 /// <summary>
 /// Helper methods for API key-dependent tests.

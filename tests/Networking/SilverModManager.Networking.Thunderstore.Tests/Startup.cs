@@ -1,13 +1,13 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Backend;
-using NexusMods.DataModel;
+using SilverModManager.Backend;
+using SilverModManager.DataModel;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Networking.Thunderstore.Tests;
+namespace SilverModManager.Networking.Thunderstore.Tests;
 
 [UsedImplicitly]
 public class Startup

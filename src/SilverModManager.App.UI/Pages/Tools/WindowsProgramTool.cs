@@ -1,11 +1,11 @@
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 
-namespace NexusMods.App.UI.Pages.Tools;
+namespace SilverModManager.App.UI.Pages.Tools;
 
 /// <summary>
 /// A program the user picked, wrapped as a tool so <see cref="IToolManager.RunTool"/> synchronizes the

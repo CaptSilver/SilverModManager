@@ -1,8 +1,8 @@
 using ReactiveUI;
 using System.Reactive;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Controls.MiniGameWidget.ComingSoon;
+namespace SilverModManager.App.UI.Controls.MiniGameWidget.ComingSoon;
 
 public interface IComingSoonMiniGameWidgetViewModel : IViewModelInterface
 {

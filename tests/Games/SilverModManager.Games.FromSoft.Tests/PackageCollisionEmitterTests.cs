@@ -1,21 +1,21 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.Diagnostics;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Installers;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Installers;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class PackageCollisionEmitterTests(ITestOutputHelper helper)
     : ALoadoutDiagnosticEmitterTest<PackageCollisionEmitterTests, EldenRingGame, PackageCollisionEmitter>(helper)
@@ -61,7 +61,7 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
         var diagnostic = await GetSingleDiagnostic(loadout);
 
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
-        diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.FromSoft", 1));
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 1));
         var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageCollisionMessageData>>().Which.MessageData;
         data.Packages.Should().Be("Armor, Weapons");
         data.Path.Should().Be("parts/wp_a.dcx");
@@ -77,7 +77,7 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
 
         var diagnostic = await GetSingleDiagnostic(loadout);
 
-        diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.FromSoft", 1));
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 1));
         var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageCollisionMessageData>>().Which.MessageData;
         data.CaseNote.Should().Contain("differ only in case");
         data.Path.Should().Contain("msg/engus/Item.msgbnd.dcx").And.Contain("msg/engus/item.msgbnd.dcx");
@@ -214,7 +214,7 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
         var diagnostics = await GetAllDiagnostics(loadout);
 
         diagnostics.Should().HaveCount(2, "one per overlay path both archives provide");
-        diagnostics.Should().OnlyContain(d => d.Severity == DiagnosticSeverity.Critical && d.Id == new DiagnosticId("NexusMods.Games.FromSoft", 2));
+        diagnostics.Should().OnlyContain(d => d.Severity == DiagnosticSeverity.Critical && d.Id == new DiagnosticId("SilverModManager.Games.FromSoft", 2));
         var paths = diagnostics.Select(d => ((Diagnostic<FromSoftDiagnostics.OverlayCollisionMessageData>)d).MessageData.Path).ToArray();
         paths.Should().BeEquivalentTo("SeamlessCoop/ersc.dll", "SeamlessCoop/ersc_settings.ini");
     }

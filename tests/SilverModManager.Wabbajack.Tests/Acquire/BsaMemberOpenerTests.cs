@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Games.Bethesda.Archives;
+using SilverModManager.Games.Bethesda.Archives;
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Acquire;
 
-namespace NexusMods.Wabbajack.Tests.Acquire;
+namespace SilverModManager.Wabbajack.Tests.Acquire;
 
 public class BsaMemberOpenerTests : IDisposable
 {

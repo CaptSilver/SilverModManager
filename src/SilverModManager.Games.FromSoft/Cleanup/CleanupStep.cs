@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace NexusMods.Games.FromSoft.Cleanup;
+namespace SilverModManager.Games.FromSoft.Cleanup;
 
 /// <summary>What a cleanup step asks for.</summary>
 public enum CleanupStepKind

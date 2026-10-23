@@ -1,22 +1,22 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Backend;
-using NexusMods.CrossPlatform;
-using NexusMods.Games.Generic;
-using NexusMods.Games.RedEngine;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
-using NexusMods.Games.TestFramework.Helpers;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Backend;
+using SilverModManager.CrossPlatform;
+using SilverModManager.Games.Generic;
+using SilverModManager.Games.RedEngine;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.TestFramework.Helpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.DataModel.Synchronizer.Tests;
+namespace SilverModManager.DataModel.Synchronizer.Tests;
 
 /// <summary>
 /// Cyberpunk 2077 with the Phantom Liberty depot installed but its manifest missing from every depotcache, and
@@ -109,7 +109,7 @@ public class SteamInstalledWithoutAManifestTests(ITestOutputHelper helper) : ASt
 
         var diagnostics = await RunEveryEmitter(loadout);
 
-        diagnostics.Select(d => d.Id.ToString()).Should().NotContain(["NexusMods.Games.FileHashes: 2", "NexusMods.Games.FileHashes: 4"]);
+        diagnostics.Select(d => d.Id.ToString()).Should().NotContain(["SilverModManager.Games.FileHashes: 2", "SilverModManager.Games.FileHashes: 4"]);
     }
 
     [Fact]

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
 
-namespace NexusMods.App.UI.DiagnosticSystem;
+namespace SilverModManager.App.UI.DiagnosticSystem;
 
 public static class Services
 {

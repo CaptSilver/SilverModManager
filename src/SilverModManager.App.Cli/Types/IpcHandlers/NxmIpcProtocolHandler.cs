@@ -1,23 +1,23 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk.EventBus;
-using NexusMods.Abstractions.GOG;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.Networking.NexusWebApi;
-using NexusMods.Networking.NexusWebApi.Auth;
+using SilverModManager.Sdk.EventBus;
+using SilverModManager.Abstractions.GOG;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Networking.NexusWebApi.Auth;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.CLI.Types.IpcHandlers;
+namespace SilverModManager.CLI.Types.IpcHandlers;
 
 /// <summary>
 /// a handler for nxm:// urls

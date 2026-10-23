@@ -1,7 +1,7 @@
-using NexusMods.App.UI.Controls;
-using NexusMods.Sdk.Games;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
+namespace SilverModManager.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
 
 /// <summary>
 /// Interface for initializing folder models that require additional columns which aggregate information from its children.

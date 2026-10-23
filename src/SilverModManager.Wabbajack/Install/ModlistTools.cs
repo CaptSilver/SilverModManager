@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Mapping;
+using SilverModManager.Wabbajack.Mapping;
 
-namespace NexusMods.Wabbajack.Install;
+namespace SilverModManager.Wabbajack.Install;
 
 /// <summary>A program from a list's ModOrganizer.ini, ready to be stored as a <c>UserTool</c>: host paths only.</summary>
 public sealed record ModlistTool(string Name, string Exe, string Arguments);

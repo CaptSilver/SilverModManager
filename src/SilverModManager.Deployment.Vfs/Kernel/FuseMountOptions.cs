@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// Options for <see cref="IFuseKernel.Mount"/>. The mountinfo type is <c>fuse.&lt;Subtype&gt;</c>,

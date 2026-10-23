@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// Helper methods for interacting with environment variables.

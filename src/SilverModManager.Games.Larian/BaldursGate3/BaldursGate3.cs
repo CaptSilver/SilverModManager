@@ -1,24 +1,24 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.Generic.Diagnostics;
-using NexusMods.Games.Generic.Installers;
-using NexusMods.Games.Larian.BaldursGate3.Emitters;
-using NexusMods.Games.Larian.BaldursGate3.Installers;
-using NexusMods.Games.Larian.BaldursGate3.ModList;
-using NexusMods.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Generic.Diagnostics;
+using SilverModManager.Games.Generic.Installers;
+using SilverModManager.Games.Larian.BaldursGate3.Emitters;
+using SilverModManager.Games.Larian.BaldursGate3.Installers;
+using SilverModManager.Games.Larian.BaldursGate3.ModList;
+using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.Larian.BaldursGate3;
+namespace SilverModManager.Games.Larian.BaldursGate3;
 
 public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequirements
 {

@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Steam.DTOs;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam.DTOs;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
 
-namespace NexusMods.Abstractions.Steam;
+namespace SilverModManager.Abstractions.Steam;
 
 /// <summary>
 /// An abstraction for a Steam session.

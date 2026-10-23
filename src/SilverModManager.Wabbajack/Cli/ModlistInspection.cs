@@ -1,6 +1,6 @@
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.Wabbajack.Cli;
+namespace SilverModManager.Wabbajack.Cli;
 
 /// <summary>What <c>wabbajack inspect</c> prints about a list, kept apart from the verb so it can be tested without a renderer.</summary>
 internal static class ModlistInspection

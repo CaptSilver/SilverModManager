@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.Backend.FileExtractor.Extractors;
+namespace SilverModManager.Backend.FileExtractor.Extractors;
 
 /// <summary>
 /// Removes the symbolic links an archive can leave in an extraction folder. A link that resolves outside

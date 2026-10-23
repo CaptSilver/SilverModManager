@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))"/>
     <PropertyGroup>
-        <RootNamespace>NexusMods.MnemonicDB</RootNamespace>
+        <RootNamespace>SilverModManager.MnemonicDB</RootNamespace>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
     <ItemGroup>
@@ -24,7 +24,7 @@
         <PackageReference Include="NexusMods.Paths"/>
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.MnemonicDB.Abstractions\NexusMods.MnemonicDB.Abstractions.csproj"/>
+        <ProjectReference Include="..\SilverModManager.MnemonicDB.Abstractions\SilverModManager.MnemonicDB.Abstractions.csproj"/>
     </ItemGroup>
     <ItemGroup>
         <Compile Remove="SourceGenerationContext.cs"/>

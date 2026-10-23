@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 
-namespace NexusMods.Abstractions.NexusWebApi;
+namespace SilverModManager.Abstractions.NexusWebApi;
 
 /// <summary>
 /// A message factory with the express purpose of applying authentication information

@@ -8,7 +8,7 @@ using NexusMods.Paths.Extensions.Nx.Extensions;
 using NexusMods.Paths.Extensions.Nx.FileProviders;
 using NexusMods.Paths.TestingHelpers;
 using Xunit;
-namespace NexusMods.App.GarbageCollection.Nx.Tests;
+namespace SilverModManager.App.GarbageCollection.Nx.Tests;
 
 public class NxRepackerTests
 {

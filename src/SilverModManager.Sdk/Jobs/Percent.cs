@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Numerics;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Jobs;
+namespace SilverModManager.Sdk.Jobs;
 
 /// <summary>
 /// Represents a percentage value in the range [0.0, 1.0].

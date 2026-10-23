@@ -1,12 +1,12 @@
 using System.Reactive.Disposables;
 using JetBrains.Annotations;
-using NexusMods.Sdk.Settings;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Settings;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Controls.Settings.SettingEntries;
+namespace SilverModManager.App.UI.Controls.Settings.SettingEntries;
 
 public class SettingToggleViewModel : AViewModel<ISettingToggleViewModel>, ISettingToggleViewModel
 {

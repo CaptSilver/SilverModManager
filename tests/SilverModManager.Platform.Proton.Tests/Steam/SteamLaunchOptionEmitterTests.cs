@@ -1,16 +1,16 @@
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using FluentAssertions;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Deployment;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests.Steam;
+namespace SilverModManager.Platform.Proton.Tests.Steam;
 
 /// <summary>
 /// The classification reads a localconfig.vdf built in an in-memory file system; nothing here touches a real

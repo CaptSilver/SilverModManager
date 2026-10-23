@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.DataModel;
+using SilverModManager.DataModel;
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Models;
+using SilverModManager.Wabbajack.Models;
 
-namespace NexusMods.Wabbajack.Tests;
+namespace SilverModManager.Wabbajack.Tests;
 
 public class WabbajackPathsTests(WabbajackPaths paths, IFileSystem fileSystem)
 {

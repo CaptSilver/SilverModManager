@@ -1,12 +1,12 @@
 using System.Reactive;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Diff.ApplyDiff;
+namespace SilverModManager.App.UI.Pages.Diff.ApplyDiff;
 
 public class ApplyDiffDesignViewModel : APageViewModel<IApplyDiffViewModel>, IApplyDiffViewModel
 {

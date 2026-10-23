@@ -1,6 +1,6 @@
 // Follows libloadorder src/load_order/mutable.rs (hoist_masters, move_elements, early-loader handling)
 // and libloot src/sorting/plugins.rs (the master / non-master / blueprint partitions).
-namespace NexusMods.Games.Bethesda.LoadOrder.Ordering;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Ordering;
 
 /// <summary>
 /// Turns the user's arrangement into a load order the game accepts: early loaders first, then masters,

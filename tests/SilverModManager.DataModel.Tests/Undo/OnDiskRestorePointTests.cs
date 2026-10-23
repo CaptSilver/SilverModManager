@@ -1,13 +1,13 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.DataModel.Undo;
-using NexusMods.MnemonicDB;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.DataModel.Undo;
+using SilverModManager.MnemonicDB;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.DataModel.Tests.Undo;
+namespace SilverModManager.DataModel.Tests.Undo;
 
 /// <summary>
 /// Reverts a loadout through a history that was written to, flushed and compacted on a RocksDB store.
@@ -63,7 +63,7 @@ public class OnDiskRestorePointTests(ITestOutputHelper helper) : ANexusCollectio
         await LoadoutManager.RemoveItems([plain1]);
         await StampRevision(loadoutId);
 
-        var collectionB = NexusMods.Abstractions.Collections.NexusCollectionLoadoutGroup.All(Connection.Db)
+        var collectionB = SilverModManager.Abstractions.Collections.NexusCollectionLoadoutGroup.All(Connection.Db)
             .Single(c => c.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().Name == "Collection B");
         await LoadoutManager.RemoveCollection(collectionB.AsCollectionGroup());
         await StampRevision(loadoutId);

@@ -1,13 +1,13 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.App.UI.Pages.SteamLaunchOption;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.App.UI.Pages.SteamLaunchOption;
+using SilverModManager.Sdk.Loadouts;
 using Microsoft.Extensions.DependencyInjection;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.App.UI.Pages.Diagnostics;
+namespace SilverModManager.App.UI.Pages.Diagnostics;
 
 /// <summary>
 /// Opens "Use this loadout from Steam" for the diagnostic's loadout.

@@ -1,15 +1,15 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Abstractions.Diagnostics.Values;
-using NexusMods.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Diagnostics.Values;
+using SilverModManager.Generators.Diagnostics;
 
 
-namespace NexusMods.Games.Larian.BaldursGate3;
+namespace SilverModManager.Games.Larian.BaldursGate3;
 
 internal static partial class Diagnostics
 {
-    private const string Source = "NexusMods.Games.Larian.BaldursGate3";
+    private const string Source = "SilverModManager.Games.Larian.BaldursGate3";
 
     [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate MissingDependencyTemplate = DiagnosticTemplateBuilder
         .Start()

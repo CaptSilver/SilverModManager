@@ -2,10 +2,10 @@ using System;
 using System.Buffers;
 using System.IO.Hashing;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+namespace SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
 /// <summary>
 /// A serializer for blobs, which are chunks of memory

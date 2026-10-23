@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.ToolRunner;
+namespace SilverModManager.Platform.Proton.ToolRunner;
 
 /// <summary>
 /// The parts of building a run that every non-Steam strategy shares.

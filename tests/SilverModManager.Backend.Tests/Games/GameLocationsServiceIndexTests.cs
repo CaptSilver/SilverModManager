@@ -4,24 +4,24 @@ using System.Collections.Concurrent;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Backend.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Backend.Games;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
-using NexusMods.MnemonicDB;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Storage;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using NSubstitute;
-using Connection = NexusMods.MnemonicDB.Connection;
+using Connection = SilverModManager.MnemonicDB.Connection;
 
-namespace NexusMods.Backend.Tests.Games;
+namespace SilverModManager.Backend.Tests.Games;
 
 public sealed class GameLocationsServiceIndexTests : IDisposable
 {

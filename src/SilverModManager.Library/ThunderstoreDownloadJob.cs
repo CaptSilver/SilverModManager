@@ -1,16 +1,16 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.HttpDownloader;
-using NexusMods.Networking.Thunderstore;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.HttpDownloader;
+using SilverModManager.Networking.Thunderstore;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.Library;
+namespace SilverModManager.Library;
 
 /// <summary>
 /// Downloads the zip of one Thunderstore package version, checks it against a SHA-256 when one is known and adds

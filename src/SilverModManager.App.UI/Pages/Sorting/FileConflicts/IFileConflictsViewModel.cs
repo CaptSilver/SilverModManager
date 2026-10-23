@@ -1,8 +1,8 @@
 using System.ComponentModel;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Pages.Sorting;
+namespace SilverModManager.App.UI.Pages.Sorting;
 
 public interface IFileConflictsViewModel : IViewModelInterface
 {

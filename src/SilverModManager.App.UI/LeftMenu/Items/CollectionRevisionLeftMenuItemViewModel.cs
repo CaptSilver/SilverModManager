@@ -2,20 +2,20 @@ using System.Reactive;
 using System.Reactive.Linq;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.Helpers;
-using NexusMods.App.UI.Pages.CollectionDownload;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Collections;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Helpers;
+using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Collections;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public class CollectionRevisionLeftMenuItemViewModel : LeftMenuItemWithRightIconViewModel
 {

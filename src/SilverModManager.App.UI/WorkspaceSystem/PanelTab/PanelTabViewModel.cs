@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using System.Reactive;
 using DynamicData.Kernel;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public class PanelTabViewModel : AViewModel<IPanelTabViewModel>, IPanelTabViewModel
 {

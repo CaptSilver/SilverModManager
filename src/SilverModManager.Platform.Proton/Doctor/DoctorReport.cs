@@ -1,10 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using NexusMods.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Deployment;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.Doctor;
+namespace SilverModManager.Platform.Proton.Doctor;
 
 /// <summary>
 /// Everything needed to diagnose a launch problem for the managed games, in one place.

@@ -1,9 +1,9 @@
-﻿using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Sdk.Jobs;
+﻿using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Sdk.Jobs;
 using R3;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Overlays.Login;
+namespace SilverModManager.App.UI.Overlays.Login;
 
 public class NexusLoginOverlayViewModel : AOverlayViewModel<INexusLoginOverlayViewModel>, INexusLoginOverlayViewModel
 {

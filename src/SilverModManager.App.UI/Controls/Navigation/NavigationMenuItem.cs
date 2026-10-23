@@ -3,11 +3,11 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using DynamicData.Kernel;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.WorkspaceSystem;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Navigation;
+namespace SilverModManager.App.UI.Controls.Navigation;
 
 public class NavigationMenuItem : MenuItem
 {

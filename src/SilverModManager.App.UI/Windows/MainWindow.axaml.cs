@@ -5,10 +5,10 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.App.UI.Extensions;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Windows;
+namespace SilverModManager.App.UI.Windows;
 
 public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
 {

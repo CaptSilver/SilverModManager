@@ -2,7 +2,7 @@ using FluentAssertions;
 using Tmds.DBus.Protocol;
 using Xunit;
 
-namespace NexusMods.Secrets.SecretService.Tests;
+namespace SilverModManager.Secrets.SecretService.Tests;
 
 public class TmdsSecretServiceConnectionTests
 {

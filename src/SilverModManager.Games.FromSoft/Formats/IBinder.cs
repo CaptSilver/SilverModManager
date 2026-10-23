@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>One member of a binder archive.</summary>
 /// <param name="Id">The numeric id the game looks the member up by; it is what a rebuild is keyed on.</param>

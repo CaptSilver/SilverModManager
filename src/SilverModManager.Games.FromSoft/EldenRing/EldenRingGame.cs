@@ -1,20 +1,20 @@
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FromSoft.Cleanup;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Installers;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Overlay;
-using NexusMods.Games.FromSoft.Saves;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Installers;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Saves;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.FromSoft.EldenRing;
+namespace SilverModManager.Games.FromSoft.EldenRing;
 
 [UsedImplicitly]
 public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGame>

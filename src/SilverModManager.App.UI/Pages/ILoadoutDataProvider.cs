@@ -2,22 +2,22 @@ using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Collections;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Pages.LoadoutPage;
-using NexusMods.App.UI.Resources;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Pages.LoadoutPage;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 
-namespace NexusMods.App.UI.Pages;
+namespace SilverModManager.App.UI.Pages;
 
 public interface ILoadoutDataProvider
 {

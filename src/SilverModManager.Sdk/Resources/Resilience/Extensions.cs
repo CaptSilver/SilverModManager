@@ -2,7 +2,7 @@ using JetBrains.Annotations;
 using Polly;
 using Polly.Fallback;
 
-namespace NexusMods.Sdk.Resources;
+namespace SilverModManager.Sdk.Resources;
 
 /// <summary>
 /// Extension methods.

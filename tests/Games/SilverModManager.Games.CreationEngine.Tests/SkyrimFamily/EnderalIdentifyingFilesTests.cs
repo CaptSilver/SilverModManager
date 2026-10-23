@@ -1,9 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Tests.SkyrimFamily;
+namespace SilverModManager.Games.CreationEngine.Tests.SkyrimFamily;
 
 /// <summary>
 /// Enderal launches TESV.exe or SkyrimSE.exe like Skyrim does and ships Skyrim.esm too, so only its own launcher

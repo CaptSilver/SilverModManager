@@ -3,19 +3,19 @@ using System.Runtime.InteropServices;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileExtractor;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.FileExtractor;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 
 // ReSharper disable InconsistentNaming
 
-namespace NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+namespace SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
 public class StubbedGame : IGame, IGameData<StubbedGame>
 {
@@ -32,7 +32,7 @@ public class StubbedGame : IGame, IGameData<StubbedGame>
         EGSCatalogItemId = ["epic-game-id"],
     };
 
-    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<StubbedGame>("NexusMods.StandardGameLocators.TestHelpers.Resources.question_mark_game.png");
+    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<StubbedGame>("SilverModManager.StandardGameLocators.TestHelpers.Resources.question_mark_game.png");
     public IStreamFactory TileImage => throw new NotImplementedException("No game image for stubbed game.");
 
     private readonly IServiceProvider _serviceProvider;

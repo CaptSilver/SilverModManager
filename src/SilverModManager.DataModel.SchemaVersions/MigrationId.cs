@@ -1,6 +1,6 @@
 using TransparentValueObjects;
 
-namespace NexusMods.DataModel.SchemaVersions;
+namespace SilverModManager.DataModel.SchemaVersions;
 
 /// <summary>
 /// A sortable migration id

@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// The archive-level values a rebuilt archive has to repeat to be accepted by the game.

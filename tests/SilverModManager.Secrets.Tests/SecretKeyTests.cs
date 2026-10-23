@@ -1,8 +1,8 @@
 using FluentAssertions;
 using Xunit;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 
-namespace NexusMods.Secrets.Tests;
+namespace SilverModManager.Secrets.Tests;
 
 public class SecretKeyTests
 {

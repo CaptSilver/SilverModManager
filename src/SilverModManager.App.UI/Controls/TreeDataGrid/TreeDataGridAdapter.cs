@@ -2,7 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Selection;
 using DynamicData;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.App.UI.Extensions;
 using ObservableCollections;
 using R3;
 using System.Reactive.Linq;
@@ -10,13 +10,13 @@ using Avalonia.Input;
 using System.Diagnostics;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI.Controls.Filters;
-using NexusMods.App.UI.Settings;
-using NexusMods.Sdk.Settings;
-using NexusMods.UI.Sdk;
-using static NexusMods.App.UI.Controls.Filters.Filter;
+using SilverModManager.App.UI.Controls.Filters;
+using SilverModManager.App.UI.Settings;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.UI.Sdk;
+using static SilverModManager.App.UI.Controls.Filters.Filter;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// Adapter class for working with <see cref="TreeDataGrid"/>.

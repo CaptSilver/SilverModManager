@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 using NexusMods.Archives.Nx.FileProviders;
 using NexusMods.Archives.Nx.Headers;
 using NexusMods.Archives.Nx.Headers.Managed;
@@ -13,15 +13,15 @@ using NexusMods.Archives.Nx.Packing.Unpack;
 using NexusMods.Archives.Nx.Structs;
 using NexusMods.Archives.Nx.Utilities;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
-using NexusMods.Sdk.Threading;
+using SilverModManager.Sdk.Threading;
 using System.Diagnostics;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.DataModel;
+namespace SilverModManager.DataModel;
 
 /// <summary>
 /// A IFileStore implementation that uses the Nx format for storage.

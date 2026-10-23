@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using OneOf;
 
-namespace NexusMods.Abstractions.Library.Installers;
+namespace SilverModManager.Abstractions.Library.Installers;
 
 /// <summary>
 /// Represents the result for an installer.

@@ -1,10 +1,10 @@
 using System.Xml;
 using Microsoft.Extensions.Logging;
-using NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
-using NexusMods.Games.Larian.BaldursGate3.Utils.PakParsing;
+using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
+using SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Larian.BaldursGate3.Utils;
+namespace SilverModManager.Games.Larian.BaldursGate3.Utils;
 
 /// <summary>
 /// The modules the installed game ships (Gustav, GustavX, PhotoMode, ...), read from the

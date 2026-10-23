@@ -1,14 +1,14 @@
 using System.Collections.Concurrent;
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.DataModel.Synchronizer.Tests;
+namespace SilverModManager.DataModel.Synchronizer.Tests;
 
 /// <summary>
 /// A loadout whose game this build does not know must report a status without taking down the status stream.

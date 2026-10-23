@@ -1,22 +1,22 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.CreationEngine.Models;
-using NexusMods.Games.CreationEngine.SortOrder;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.CreationEngine.Models;
+using SilverModManager.Games.CreationEngine.SortOrder;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
-using LoadoutSortOrder = NexusMods.Abstractions.Loadouts.SortOrder;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using LoadoutSortOrder = SilverModManager.Abstractions.Loadouts.SortOrder;
 
-namespace NexusMods.Games.CreationEngine.Tests.SortOrder;
+namespace SilverModManager.Games.CreationEngine.Tests.SortOrder;
 
 /// <summary>
 /// The <c>plugins</c> query macros over a Skyrim SE loadout. Vanilla plugins are not loadout items, they only

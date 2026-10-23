@@ -2,16 +2,16 @@
     d:DesignHeight="335"
     d:DesignWidth="600"
     mc:Ignorable="d"
-    x:Class="NexusMods.App.UI.Overlays.Login.ApiKeyLoginOverlayView"
+    x:Class="SilverModManager.App.UI.Overlays.Login.ApiKeyLoginOverlayView"
     x:TypeArguments="login:IApiKeyLoginOverlayViewModel"
     xmlns="https://github.com/avaloniaui"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactiveUi="http://reactiveui.net"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:login="clr-namespace:NexusMods.App.UI.Overlays.Login"
-    xmlns:base="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.Base"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls">
+    xmlns:login="clr-namespace:SilverModManager.App.UI.Overlays.Login"
+    xmlns:base="clr-namespace:SilverModManager.App.UI.Overlays.Generic.MessageBox.Base"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls">
 
     <Design.DataContext>
         <login:ApiKeyLoginOverlayDesignerViewModel />

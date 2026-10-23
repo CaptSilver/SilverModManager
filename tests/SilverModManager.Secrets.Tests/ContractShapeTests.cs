@@ -1,9 +1,9 @@
 using FluentAssertions;
 using System.Diagnostics;
 using Xunit;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 
-namespace NexusMods.Secrets.Tests;
+namespace SilverModManager.Secrets.Tests;
 
 // Each switch lists every case and throws on anything else, so a case added to one of these types
 // fails here until the tests (and the consumers they stand for) are updated.

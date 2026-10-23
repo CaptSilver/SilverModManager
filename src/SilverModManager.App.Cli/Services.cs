@@ -1,16 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileSystemGlobbing;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.CLI.OptionParsers;
-using NexusMods.CLI.Types;
-using NexusMods.CLI.Types.IpcHandlers;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.CLI.OptionParsers;
+using SilverModManager.CLI.Types;
+using SilverModManager.CLI.Types.IpcHandlers;
 using NexusMods.Paths;
-using NexusMods.Sdk.EventBus;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.EventBus;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.CLI;
+namespace SilverModManager.CLI;
 
 /// <summary>
 /// Extension class for <see cref="IServiceCollection"/>

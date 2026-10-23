@@ -1,6 +1,6 @@
-using NexusMods.Games.TestFramework.Helpers;
+using SilverModManager.Games.TestFramework.Helpers;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 /// <summary>Test Souls as Steam installs it: a <c>Bin</c> folder with the executable and archives, and no anti-cheat launcher.</summary>
 internal static class TestSoulsInstall

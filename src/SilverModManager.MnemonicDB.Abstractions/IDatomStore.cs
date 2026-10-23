@@ -1,9 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 ///     Represents the low-level storage for datoms.

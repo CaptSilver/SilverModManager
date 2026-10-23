@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata;
 
 /// <summary>
 /// Whether a Bash Tag suggestion adds or removes the tag. Follows libloot's metadata/tag.rs.

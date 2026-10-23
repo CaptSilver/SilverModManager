@@ -4,11 +4,11 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:leftMenu="clr-namespace:NexusMods.App.UI.LeftMenu.Loadout"
-                                xmlns:items="clr-namespace:NexusMods.App.UI.LeftMenu.Items"
-                                xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
+                                xmlns:leftMenu="clr-namespace:SilverModManager.App.UI.LeftMenu.Loadout"
+                                xmlns:items="clr-namespace:SilverModManager.App.UI.LeftMenu.Items"
+                                xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
                                 mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="550"
-                                x:Class="NexusMods.App.UI.LeftMenu.Loadout.LoadoutLeftMenuView">
+                                x:Class="SilverModManager.App.UI.LeftMenu.Loadout.LoadoutLeftMenuView">
     <Design.DataContext>
         <leftMenu:LoadoutLeftMenuDesignViewModel />
     </Design.DataContext>

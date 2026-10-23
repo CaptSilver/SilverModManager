@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace NexusMods.Abstractions.Secrets;
+namespace SilverModManager.Abstractions.Secrets;
 
 /// <summary>
 /// Names one stored secret, e.g. <c>nexus.api-key</c>. The name doubles as the Secret Service item

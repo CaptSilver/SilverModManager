@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Deployment.Fuse.Mount;
+using SilverModManager.Deployment.Fuse.Mount;
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Fuse.Tests;
+namespace SilverModManager.Deployment.Fuse.Tests;
 
 public class FusermountUnmounterTests
 {

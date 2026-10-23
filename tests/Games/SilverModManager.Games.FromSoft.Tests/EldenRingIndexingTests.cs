@@ -1,13 +1,13 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class EldenRingIndexingTests(ITestOutputHelper helper) : AEldenRingTest<EldenRingIndexingTests>(helper)
 {

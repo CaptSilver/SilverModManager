@@ -1,10 +1,10 @@
 using System.Collections.Immutable;
 using System.Text;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.Generic;
+namespace SilverModManager.Games.Generic;
 
 public static class WineDiagnosticHelper
 {

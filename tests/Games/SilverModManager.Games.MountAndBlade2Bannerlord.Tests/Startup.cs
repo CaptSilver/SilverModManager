@@ -1,13 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Backend;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Backend;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.Tests;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.Tests;
 
 public class Startup
 {

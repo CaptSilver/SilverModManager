@@ -1,11 +1,11 @@
 using System.Text.Json;
 using JetBrains.Annotations;
-using NexusMods.Networking.Thunderstore.DTOs;
+using SilverModManager.Networking.Thunderstore.DTOs;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Networking.Thunderstore;
+namespace SilverModManager.Networking.Thunderstore;
 
 /// <summary>
 /// Keeps each community's package-listing index on disk: <c>&lt;CacheRoot&gt;/&lt;community&gt;/index.json</c> and the

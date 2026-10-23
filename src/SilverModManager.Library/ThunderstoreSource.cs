@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Library;
+namespace SilverModManager.Library;
 
 /// <summary>
 /// <see cref="IThunderstoreSource"/> over <see cref="AddThunderstorePackageJob"/>.

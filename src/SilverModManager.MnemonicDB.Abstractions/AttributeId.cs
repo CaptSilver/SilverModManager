@@ -1,6 +1,6 @@
 ﻿using TransparentValueObjects;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 ///     A unique identifier for an attribute, also an EntityId.

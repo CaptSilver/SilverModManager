@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Merge;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 public class BinderEntrySetsTests
 {

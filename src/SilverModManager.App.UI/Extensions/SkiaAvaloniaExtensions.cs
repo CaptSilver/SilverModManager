@@ -4,7 +4,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Skia;
 using SkiaSharp;
 
-namespace NexusMods.App.UI.Extensions;
+namespace SilverModManager.App.UI.Extensions;
 
 /// <summary>
 /// Extension methods for converting between Avalonia and Skia formats.

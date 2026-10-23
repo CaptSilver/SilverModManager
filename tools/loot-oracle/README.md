@@ -1,8 +1,8 @@
 # LOOT oracle
 
-The sort in `src/NexusMods.Games.Bethesda.Loot` is a port of libloot, and the port is checked
+The sort in `src/SilverModManager.Games.Bethesda.Loot` is a port of libloot, and the port is checked
 against libloot itself. `generate.py` runs libloot's Python binding over synthetic plugins and
-metadata and writes the answers to `tests/Games/NexusMods.Games.Bethesda.Loot.Tests/Corpus/`.
+metadata and writes the answers to `tests/Games/SilverModManager.Games.Bethesda.Loot.Tests/Corpus/`.
 `CorpusTests` reads those JSON files and needs no Python. Only regenerating the corpus does.
 
 ## The interpreter
@@ -27,7 +27,7 @@ Tier 3 needs the stripped masterlists, which only the C# side can produce (this 
 YAML library). Write them, then point the generator at them:
 
     export LOOT_ORACLE_STRIP_DIR=$(mktemp -d)
-    scripts/test.sh --project tests/Games/NexusMods.Games.Bethesda.Loot.Tests    # writes the files; the export test is skipped without the variable
+    scripts/test.sh --project tests/Games/SilverModManager.Games.Bethesda.Loot.Tests    # writes the files; the export test is skipped without the variable
     "$LOOT_ORACLE_PYTHON" -I tools/loot-oracle/generate.py --tier 3 --stripped-dir "$LOOT_ORACLE_STRIP_DIR"
 
 The stripped YAML stays in that directory and is never committed. Regenerate tier 3 after refreshing
@@ -91,7 +91,7 @@ was generated, and on a mismatch names the first index that differs and the edge
   masters, then the generator sorts them with the bundled `oblivion-remastered` masterlist:
 
       LOOT_ORACLE_OBLIVION_INSTANCE=<instance dir> LOOT_ORACLE_OBLIVION_GAME_DATA=<game's Data dir> \
-      LOOT_ORACLE_HEADERS_OUT=<scratch>/headers.json scripts/test.sh --project tests/Games/NexusMods.Games.Bethesda.Loot.Tests
+      LOOT_ORACLE_HEADERS_OUT=<scratch>/headers.json scripts/test.sh --project tests/Games/SilverModManager.Games.Bethesda.Loot.Tests
       "$LOOT_ORACLE_PYTHON" -I tools/loot-oracle/generate_real.py headers --headers <scratch>/headers.json \
           --repository oblivion-remastered --stripped-dir "$LOOT_ORACLE_STRIP_DIR" --name oblivion_remastered_instance
 

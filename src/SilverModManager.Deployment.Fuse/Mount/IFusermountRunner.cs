@@ -1,7 +1,7 @@
 using CliWrap;
 using CliWrap.Buffered;
 
-namespace NexusMods.Deployment.Fuse.Mount;
+namespace SilverModManager.Deployment.Fuse.Mount;
 
 /// <summary>
 /// Runs <c>fusermount3</c> from PATH. Not <c>IToolRunner</c>: that one plans Windows tools through Proton for a

@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Abstractions.Diagnostics;
+namespace SilverModManager.Abstractions.Diagnostics;
 
 /// <summary>
 /// Represents message data of a <see cref="Diagnostic{TMessageData}"/>.

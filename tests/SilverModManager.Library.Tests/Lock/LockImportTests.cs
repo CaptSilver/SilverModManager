@@ -1,18 +1,18 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Backend;
-using NexusMods.Library.Tests.DownloadsService;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Library.Lock;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Backend;
+using SilverModManager.Library.Tests.DownloadsService;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Library.Lock;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using Xunit;
 
-namespace NexusMods.Library.Tests.Lock;
+namespace SilverModManager.Library.Tests.Lock;
 
 public class LockImportTests(IConnection connection)
 {

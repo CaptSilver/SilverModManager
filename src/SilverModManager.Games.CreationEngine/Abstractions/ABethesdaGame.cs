@@ -1,21 +1,21 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.CreationEngine.Installers;
-using NexusMods.Games.FOMOD;
-using NexusMods.Games.Generic.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.CreationEngine.Installers;
+using SilverModManager.Games.FOMOD;
+using SilverModManager.Games.Generic.Diagnostics;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Games.CreationEngine.Abstractions;
+namespace SilverModManager.Games.CreationEngine.Abstractions;
 
 /// <summary>
 /// Shared shape of a Bethesda title: a data folder, a FOMOD and stop-pattern installer, the usual

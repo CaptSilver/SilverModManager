@@ -1,4 +1,4 @@
-namespace NexusMods.Networking.ModUpdates.Private;
+namespace SilverModManager.Networking.ModUpdates.Private;
 
 /// <summary>
 /// Defines the actions that need to be taken on all elements submitted to the <see cref="PerFeedCacheUpdater{TUpdateableItem}"/>.

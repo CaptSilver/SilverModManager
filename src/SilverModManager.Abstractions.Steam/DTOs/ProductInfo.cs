@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam.Values;
 
-namespace NexusMods.Abstractions.Steam.DTOs;
+namespace SilverModManager.Abstractions.Steam.DTOs;
 
 /// <summary>
 /// Information about a product (a game) on Steam.

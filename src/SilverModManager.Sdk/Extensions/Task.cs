@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 [PublicAPI]
 public static class TaskExtensions

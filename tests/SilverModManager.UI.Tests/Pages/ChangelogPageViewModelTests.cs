@@ -1,12 +1,12 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.App.UI.Pages.Changelog;
+using SilverModManager.App.UI.Pages.Changelog;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 public class ChangelogPageViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private const string ResourceName = "NexusMods.App.UI.CHANGELOG.md";
+    private const string ResourceName = "SilverModManager.App.UI.CHANGELOG.md";
 
     [Fact]
     public async Task Test_ActivatingShowsTheBundledChangelog()

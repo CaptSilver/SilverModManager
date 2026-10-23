@@ -1,10 +1,10 @@
 using System.Reactive;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Sdk.Loadouts;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.FromSoftMerges;
+namespace SilverModManager.App.UI.Pages.FromSoftMerges;
 
 /// <summary>
 /// The merges page of a FromSoft loadout: every file more than one enabled mod provides, which mods feed it, and

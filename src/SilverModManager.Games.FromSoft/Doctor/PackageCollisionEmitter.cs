@@ -1,16 +1,16 @@
 using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FromSoft.Diagnostics;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Doctor;
+namespace SilverModManager.Games.FromSoft.Doctor;
 
 /// <summary>
 /// Reports mods that provide the same file and the app will not merge. Which paths those are is the merge index's

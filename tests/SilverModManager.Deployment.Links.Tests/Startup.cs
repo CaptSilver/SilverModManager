@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Links.Tests;
+namespace SilverModManager.Deployment.Links.Tests;
 
 public class Startup
 {

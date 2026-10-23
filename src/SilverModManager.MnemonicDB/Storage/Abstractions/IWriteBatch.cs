@@ -1,8 +1,8 @@
 ﻿using System;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 
-namespace NexusMods.MnemonicDB.Storage.Abstractions;
+namespace SilverModManager.MnemonicDB.Storage.Abstractions;
 
 /// <summary>
 /// A write batch for writing multiple operations to the storage

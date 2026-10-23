@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.ModContent;
+namespace SilverModManager.Games.AdvancedInstaller.UI.ModContent;
 
 /// <summary>
 ///     Design ViewModel for root node.

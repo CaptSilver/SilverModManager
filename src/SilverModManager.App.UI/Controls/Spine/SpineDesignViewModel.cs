@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
-using NexusMods.App.UI.Controls.Spine.Buttons.Download;
-using NexusMods.App.UI.Controls.Spine.Buttons.Icon;
-using NexusMods.App.UI.Controls.Spine.Buttons.Image;
-using NexusMods.App.UI.LeftMenu;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.Spine.Buttons.Download;
+using SilverModManager.App.UI.Controls.Spine.Buttons.Icon;
+using SilverModManager.App.UI.Controls.Spine.Buttons.Image;
+using SilverModManager.App.UI.LeftMenu;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Controls.Spine;
+namespace SilverModManager.App.UI.Controls.Spine;
 
 public class SpineDesignViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
 {

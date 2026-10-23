@@ -1,16 +1,16 @@
 using Humanizer;
 using Humanizer.Bytes;
-using NexusMods.Abstractions.Downloads;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.Filters;
-using NexusMods.App.UI.Controls.TreeDataGrid.Filters;
-using NexusMods.App.UI.Resources;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.Filters;
+using SilverModManager.App.UI.Controls.TreeDataGrid.Filters;
+using SilverModManager.App.UI.Resources;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.UI.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Pages.Downloads;
+namespace SilverModManager.App.UI.Pages.Downloads;
 
 /// <summary>
 /// DownloadRef: Reference holder for DownloadInfo objects

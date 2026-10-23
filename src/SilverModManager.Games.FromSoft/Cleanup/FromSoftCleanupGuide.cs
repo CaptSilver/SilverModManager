@@ -1,9 +1,9 @@
-using NexusMods.Sdk.Games;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Cleanup;
+namespace SilverModManager.Games.FromSoft.Cleanup;
 
 /// <summary>What Health Check shows for "Show cleanup steps": the plan, and the command that runs it.</summary>
 public sealed class FromSoftCleanupGuide(CleanupService service) : IGameCleanupGuide

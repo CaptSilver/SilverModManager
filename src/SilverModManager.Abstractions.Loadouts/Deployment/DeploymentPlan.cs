@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts.Deployment;
+namespace SilverModManager.Abstractions.Loadouts.Deployment;
 
 /// <summary>
 /// Sends everything under <paramref name="Root"/> to <paramref name="Backend"/>.

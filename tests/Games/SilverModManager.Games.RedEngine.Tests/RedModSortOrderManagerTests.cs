@@ -1,17 +1,17 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using OneOf;
 
-namespace NexusMods.Games.RedEngine.Tests;
+namespace SilverModManager.Games.RedEngine.Tests;
 
 public class RedModSortOrderManagerTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTest<Cyberpunk2077Game>(helper)
 {

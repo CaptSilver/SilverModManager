@@ -1,15 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
-using NexusMods.Networking.ModUpdates.Tests.Helpers;
-using NexusMods.Networking.NexusWebApi;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Networking.ModUpdates.Tests.Helpers;
+using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Sdk.NexusModsApi;
 using Xunit;
 
-namespace NexusMods.Networking.ModUpdates.Tests;
+namespace SilverModManager.Networking.ModUpdates.Tests;
 
 public class RunUpdateCheckTests : ACyberpunkIsolatedGameTest<RunUpdateCheckTests>
 {

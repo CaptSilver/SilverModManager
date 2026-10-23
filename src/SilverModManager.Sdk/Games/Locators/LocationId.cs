@@ -1,7 +1,7 @@
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.Hashes;
 using TransparentValueObjects;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// The base folder for the GamePath.

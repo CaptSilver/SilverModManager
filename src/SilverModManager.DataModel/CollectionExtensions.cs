@@ -1,4 +1,4 @@
-namespace NexusMods.DataModel;
+namespace SilverModManager.DataModel;
 
 /// <summary>
 /// Extension methods tied to collections.

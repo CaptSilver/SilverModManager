@@ -2,19 +2,19 @@ using System.Collections.Immutable;
 using System.Text;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Steam.Values;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.Steam;
-using NexusMods.Networking.Steam.Tests;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.Steam;
+using SilverModManager.Networking.Steam.Tests;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 /// <summary>
 /// Baselines built from manifest files written the way the Steam client writes them, found by the real depotcache

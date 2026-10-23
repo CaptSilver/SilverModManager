@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 public static class ConstantLinks
 {

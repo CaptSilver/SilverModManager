@@ -1,7 +1,7 @@
 // Follows Wabbajack.Compression.BSA/BA2Archive/DX10Entry.cs (GPL-3.0).
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// A texture. The archive stores only the mip data, so reading it yields a DDS file: a header built from

@@ -1,26 +1,26 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
-using NexusMods.App.UI.DiagnosticSystem;
-using NexusMods.Games.Larian.BaldursGate3;
-using NexusMods.Games.Larian.BaldursGate3.Emitters;
-using NexusMods.Games.Larian.BaldursGate3.GameInstalled;
-using NexusMods.Games.Larian.BaldursGate3.ModList;
-using NexusMods.Games.Larian.BaldursGate3.Models;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Games.Larian.BaldursGate3;
+using SilverModManager.Games.Larian.BaldursGate3.Emitters;
+using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.BaldursGate3.ModList;
+using SilverModManager.Games.Larian.BaldursGate3.Models;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3.GameInstalled;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3.GameInstalled;
 
 /// <summary>
 /// Paks the game downloaded from mod.io, sitting in the Mods folder of an isolated prefix, go through a real
@@ -304,7 +304,7 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
 
         var warning = (await Dependencies(loadout)).Should().ContainSingle().Subject;
 
-        warning.Id.Should().Be(new DiagnosticId("NexusMods.Games.Larian.BaldursGate3", number: 9));
+        warning.Id.Should().Be(new DiagnosticId("SilverModManager.Games.Larian.BaldursGate3", number: 9));
         Summary(warning).Should().Be("The mod Other Mod (installed by the game) is missing the required dependency 'Nowhere' v1.0.0+.");
     }
 
@@ -320,7 +320,7 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
 
         var warning = (await Dependencies(loadout)).Should().ContainSingle().Subject;
 
-        warning.Id.Should().Be(new DiagnosticId("NexusMods.Games.Larian.BaldursGate3", number: 10));
+        warning.Id.Should().Be(new DiagnosticId("SilverModManager.Games.Larian.BaldursGate3", number: 10));
         Summary(warning).Should().Be("The mod Other Mod (installed by the game) requires at least version 2.0.0+ of 'Library' but only v1.0.0 is installed.");
     }
 
@@ -334,7 +334,7 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
 
         var warning = (await Dependencies(loadout)).Should().ContainSingle().Subject;
 
-        warning.Id.Should().Be(new DiagnosticId("NexusMods.Games.Larian.BaldursGate3", number: 7));
+        warning.Id.Should().Be(new DiagnosticId("SilverModManager.Games.Larian.BaldursGate3", number: 7));
         Summary(warning).Should().Contain("(in Overrides)");
     }
 

@@ -1,18 +1,18 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.SortOrder;
-using NexusMods.Games.CreationEngine.Tests.SkyrimSE;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.SortOrder;
+using SilverModManager.Games.CreationEngine.Tests.SkyrimSE;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.IO;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.CreationEngine.Tests.SortOrder;
+namespace SilverModManager.Games.CreationEngine.Tests.SortOrder;
 
 public class PluginHeaderCacheTests(ITestOutputHelper helper)
     : AIsolatedGameTest<PluginHeaderCacheTests, CreationEngine.SkyrimSE.SkyrimSE>(helper)

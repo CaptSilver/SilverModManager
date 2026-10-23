@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 ///     The result of a transaction commit, contains metadata useful for looking up the results of the transaction

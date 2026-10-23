@@ -1,9 +1,9 @@
 using System.Reactive;
-using NexusMods.Sdk.Jobs;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 public interface IFooterStepperViewModel : IViewModelInterface
 {

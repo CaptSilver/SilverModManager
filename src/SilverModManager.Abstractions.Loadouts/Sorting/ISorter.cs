@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Loadouts.Sorting;
+namespace SilverModManager.Abstractions.Loadouts.Sorting;
 
 /// <summary>
 ///     Provides sorting capabilities for mods.

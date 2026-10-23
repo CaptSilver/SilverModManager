@@ -6,29 +6,29 @@ using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk.Settings;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.Overlays;
-using NexusMods.App.UI.Pages.About;
-using NexusMods.App.UI.Pages.Changelog;
-using NexusMods.App.UI.Pages.Settings;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.CrossPlatform;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Pages.About;
+using SilverModManager.App.UI.Pages.Changelog;
+using SilverModManager.App.UI.Pages.Settings;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.CrossPlatform;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk;
+using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
 using Unit = System.Reactive.Unit;
 
-namespace NexusMods.App.UI.Controls.TopBar;
+namespace SilverModManager.App.UI.Controls.TopBar;
 
 [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
 public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel

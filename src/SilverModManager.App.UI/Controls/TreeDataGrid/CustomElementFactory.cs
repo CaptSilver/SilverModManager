@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Primitives;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// Custom element factory to set classes on created elements, so

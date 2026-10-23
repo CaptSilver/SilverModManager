@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi.UpdateFilters;
+namespace SilverModManager.Networking.NexusWebApi.UpdateFilters;
 
 /// <summary>
 /// A class whose purpose is to hide updates for <see cref="ModUpdateService"/>.

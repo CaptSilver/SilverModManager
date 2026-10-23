@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using NexusMods.Abstractions.Loadouts.Sorting;
+using SilverModManager.Abstractions.Loadouts.Sorting;
 
-namespace NexusMods.DataModel.Sorting;
+namespace SilverModManager.DataModel.Sorting;
 
 /// <summary>
 /// Utility class for sorting mods according to a set of defined rules.

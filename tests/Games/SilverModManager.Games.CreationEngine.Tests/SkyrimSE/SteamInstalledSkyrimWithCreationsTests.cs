@@ -1,20 +1,20 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.CreationEngine.Tests.Creations;
-using NexusMods.Games.CreationEngine.Models;
-using NexusMods.Games.CreationEngine.SortOrder;
-using NexusMods.Games.TestFramework;
-using NexusMods.Games.TestFramework.Helpers;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.CreationEngine.Tests.Creations;
+using SilverModManager.Games.CreationEngine.Models;
+using SilverModManager.Games.CreationEngine.SortOrder;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.TestFramework.Helpers;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.SkyrimSE;
+namespace SilverModManager.Games.CreationEngine.Tests.SkyrimSE;
 
 /// <summary>
 /// Skyrim Special Edition with Creation Club content the game downloaded itself: a catalog in AppData, manifests
@@ -27,7 +27,7 @@ public class SteamInstalledSkyrimWithCreationsTests(ITestOutputHelper helper)
     private const uint GameDepotId = 489831;
     private const ulong GameManifestId = 5000000000000000001;
 
-    private static readonly DiagnosticId NonVanillaId = new("NexusMods.Games.FileHashes", number: 3);
+    private static readonly DiagnosticId NonVanillaId = new("SilverModManager.Games.FileHashes", number: 3);
 
     private static readonly string[] GardenFiles = ["Data/ccinvented001-garden.esm", "Data/ccinvented001-garden.bsa"];
     private static readonly string[] ShedFiles = ["Data/ccinvented002-shed.esm", "Data/ccinvented002-shed.bsa"];

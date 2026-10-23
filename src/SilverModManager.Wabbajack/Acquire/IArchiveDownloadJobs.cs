@@ -1,15 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Downloads;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Networking.HttpDownloader;
-using NexusMods.Networking.NexusWebApi;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Networking.HttpDownloader;
+using SilverModManager.Networking.NexusWebApi;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.Wabbajack.Acquire;
+namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>Starts the download job that fetches one archive of a plan.</summary>
 public interface IArchiveDownloadJobs

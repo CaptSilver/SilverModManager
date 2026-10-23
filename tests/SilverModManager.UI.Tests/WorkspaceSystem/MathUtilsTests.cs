@@ -1,9 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using Avalonia;
 using FluentAssertions;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.UI.Tests.WorkspaceSystem;
+namespace SilverModManager.UI.Tests.WorkspaceSystem;
 
 [SuppressMessage("ReSharper", "HeapView.ObjectAllocation.Evident")]
 [SuppressMessage("ReSharper", "HeapView.BoxingAllocation")]

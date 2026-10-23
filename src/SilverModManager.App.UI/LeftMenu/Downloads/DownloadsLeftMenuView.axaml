@@ -4,10 +4,10 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:downloads="clr-namespace:NexusMods.App.UI.LeftMenu.Downloads"
-                                xmlns:items="clr-namespace:NexusMods.App.UI.LeftMenu.Items"
+                                xmlns:downloads="clr-namespace:SilverModManager.App.UI.LeftMenu.Downloads"
+                                xmlns:items="clr-namespace:SilverModManager.App.UI.LeftMenu.Items"
                                 mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="550"
-                                x:Class="NexusMods.App.UI.LeftMenu.Downloads.DownloadsLeftMenuView">
+                                x:Class="SilverModManager.App.UI.LeftMenu.Downloads.DownloadsLeftMenuView">
     <Design.DataContext>
         <downloads:DownloadsLeftMenuDesignViewModel />
     </Design.DataContext>

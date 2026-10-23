@@ -1,13 +1,13 @@
 using System.Runtime.ExceptionServices;
 using System.Text;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Heal;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Heal;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>
 /// Keeps the last merge plan of each loadout, so the preflight, the file writers and the reports ask once and get the

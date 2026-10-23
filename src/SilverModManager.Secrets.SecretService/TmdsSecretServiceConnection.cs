@@ -2,7 +2,7 @@ using System.Text;
 using R3;
 using Tmds.DBus.Protocol;
 
-namespace NexusMods.Secrets.SecretService;
+namespace SilverModManager.Secrets.SecretService;
 
 /// <summary>
 /// <see cref="ISecretServiceConnection"/> over Tmds.DBus.Protocol, one method call per message.

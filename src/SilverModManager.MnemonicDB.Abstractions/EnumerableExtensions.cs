@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// Extensions for IEnumerable

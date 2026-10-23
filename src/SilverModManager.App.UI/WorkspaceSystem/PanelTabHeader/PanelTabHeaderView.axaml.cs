@@ -5,10 +5,10 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.App.UI.Extensions;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [UsedImplicitly]
 public partial class PanelTabHeaderView : ReactiveUserControl<IPanelTabHeaderViewModel>

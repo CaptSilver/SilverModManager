@@ -1,6 +1,6 @@
 using System;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
 /// <summary>
 /// A column definition

@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Games;
+using SilverModManager.Abstractions.Games;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Platform.Proton.Tests.Launch;
+namespace SilverModManager.Platform.Proton.Tests.Launch;
 
 public class LaunchPlannerTests
 {

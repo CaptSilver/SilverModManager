@@ -8,13 +8,13 @@ using DynamicData.Aggregation;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Windows;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public class WorkspaceViewModel : AViewModel<IWorkspaceViewModel>, IWorkspaceViewModel
 {

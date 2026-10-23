@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.ProxyConsole;
+namespace SilverModManager.Sdk.ProxyConsole;
 
 /// <summary>
 /// Marks a Parameter as a CLI option.

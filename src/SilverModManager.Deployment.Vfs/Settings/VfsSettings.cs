@@ -1,10 +1,10 @@
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 [PublicAPI]
 public record VfsSettings : ISettings

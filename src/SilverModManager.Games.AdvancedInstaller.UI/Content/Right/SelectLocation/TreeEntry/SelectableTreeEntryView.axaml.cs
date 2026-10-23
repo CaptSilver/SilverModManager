@@ -4,7 +4,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.SelectLocation;
+namespace SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 
 [ExcludeFromCodeCoverage]
 public partial class SelectableTreeEntryView : ReactiveUserControl<ISelectableTreeEntryViewModel>

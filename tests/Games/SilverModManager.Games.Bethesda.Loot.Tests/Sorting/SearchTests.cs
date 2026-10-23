@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.Loot.Sorting;
+using SilverModManager.Games.Bethesda.Loot.Sorting;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Sorting;
 
 // Follows the helpers in libloot's sorting/search.rs. Edge order matters in each: petgraph hands
 // out the most recently added edge first, and libloot reverses that for its depth-first search.

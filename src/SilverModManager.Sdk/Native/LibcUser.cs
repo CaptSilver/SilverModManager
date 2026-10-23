@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace NexusMods.Sdk.Native;
+namespace SilverModManager.Sdk.Native;
 
 /// <summary>Who this process runs as, which .NET does not expose.</summary>
 public static partial class LibcUser

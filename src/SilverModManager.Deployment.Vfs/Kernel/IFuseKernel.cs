@@ -1,4 +1,4 @@
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// Mounts an <see cref="IVfsOperations"/> as a kernel filesystem. The real implementation binds

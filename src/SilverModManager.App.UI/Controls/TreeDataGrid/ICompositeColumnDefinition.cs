@@ -3,9 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.App.UI.Extensions;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 [PublicAPI]
 public interface ICompositeColumnDefinition<TSelf>

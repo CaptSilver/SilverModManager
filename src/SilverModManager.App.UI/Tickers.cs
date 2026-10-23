@@ -1,6 +1,6 @@
 using R3;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 public static class Tickers
 {

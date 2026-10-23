@@ -1,9 +1,9 @@
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.ToolRunner;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Platform.Proton.ToolRunner;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.Protontricks;
+namespace SilverModManager.Platform.Proton.Protontricks;
 
 /// <summary>
 /// Runs a program for a Steam game through <c>protontricks-launch</c>, which finds the game's Proton build

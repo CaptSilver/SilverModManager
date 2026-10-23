@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.App.UI.Pages.MyGames;
+using SilverModManager.App.UI.Pages.MyGames;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class CleanFolderPromptTests
 {

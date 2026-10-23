@@ -1,7 +1,7 @@
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Sdk.FileStore;
+using SilverModManager.Sdk.FileStore;
 
-namespace NexusMods.DataModel;
+namespace SilverModManager.DataModel;
 
 public class StreamSourceDispatcher : IStreamSourceDispatcher
 {

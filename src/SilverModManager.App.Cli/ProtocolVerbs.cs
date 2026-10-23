@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.CLI.Types;
-using NexusMods.Sdk;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.CLI.Types;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.CLI;
+namespace SilverModManager.CLI;
 
 /// <summary>
 /// CLI verbs for the protocols

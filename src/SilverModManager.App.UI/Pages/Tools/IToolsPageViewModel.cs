@@ -1,10 +1,10 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Games;
 using R3;
 
-namespace NexusMods.App.UI.Pages.Tools;
+namespace SilverModManager.App.UI.Pages.Tools;
 
 public interface IToolsPageViewModel : IPageViewModelInterface
 {

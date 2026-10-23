@@ -7,7 +7,7 @@ using R3;
 using ReactiveUI;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
 
-namespace NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
+namespace SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 
 public partial class MessageBoxOkView : ReactiveUserControl<IMessageBoxOkViewModel>
 {

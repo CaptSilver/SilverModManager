@@ -1,6 +1,6 @@
-using NexusMods.Deployment.Fuse.Native;
+using SilverModManager.Deployment.Fuse.Native;
 
-namespace NexusMods.Deployment.Fuse.Availability;
+namespace SilverModManager.Deployment.Fuse.Availability;
 
 /// <summary>Reads the real machine.</summary>
 public sealed class FuseEnvironmentProbe : IFuseEnvironmentProbe

@@ -1,6 +1,6 @@
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.SingleProcess;
+namespace SilverModManager.SingleProcess;
 
 /// <summary>
 /// A console that exists on the client side of the proxy, calls to .Console will be rendered on the client,

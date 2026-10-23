@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [PublicAPI]
 public sealed record WorkspaceData

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.App;
+namespace SilverModManager.App;
 
 internal static partial class LogMessages
 {

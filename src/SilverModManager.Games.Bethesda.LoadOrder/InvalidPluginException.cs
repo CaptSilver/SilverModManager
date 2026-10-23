@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.LoadOrder;
+namespace SilverModManager.Games.Bethesda.LoadOrder;
 
 /// <summary>Thrown when a stream is not a readable plugin of the requested format.</summary>
 public class InvalidPluginException : Exception

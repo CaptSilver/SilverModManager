@@ -3,7 +3,7 @@ using System.IO.Compression;
 using System.Text;
 using ZstdSharp;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>
 /// The DCX container: the compression wrapper around packed game archives. Reading takes Kraken, zlib and

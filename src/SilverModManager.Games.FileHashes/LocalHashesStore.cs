@@ -1,12 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.MnemonicDB;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Storage;
-using NexusMods.MnemonicDB.Storage.RocksDbBackend;
+using SilverModManager.MnemonicDB;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FileHashes;
+namespace SilverModManager.Games.FileHashes;
 
 /// <summary>
 /// A writable MnemonicDB store registered with the query engine under a name. Its main use is the

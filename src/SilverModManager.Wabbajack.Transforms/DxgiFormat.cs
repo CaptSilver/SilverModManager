@@ -1,5 +1,5 @@
 // Names and values follow Wabbajack.DTOs/Texture/DXGI_FORMAT.cs; modlists record the format by name.
-namespace NexusMods.Wabbajack.Transforms;
+namespace SilverModManager.Wabbajack.Transforms;
 
 /// <summary>
 /// The DXGI texture formats a modlist can name as a re-encode target, plus the ones the decoder

@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.Wabbajack.Tests;
+namespace SilverModManager.Wabbajack.Tests;
 
 public class WabbajackHashTests
 {

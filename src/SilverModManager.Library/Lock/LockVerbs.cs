@@ -1,17 +1,17 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Library.Sources;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Library.Sources;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Library.Lock;
+namespace SilverModManager.Library.Lock;
 
 internal static class LockVerbs
 {

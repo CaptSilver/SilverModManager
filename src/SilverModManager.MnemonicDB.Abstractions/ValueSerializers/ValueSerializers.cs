@@ -3,9 +3,9 @@ using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-namespace NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+namespace SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
 
 /// <summary>

@@ -1,6 +1,6 @@
-using NexusMods.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Launch;
 
-namespace NexusMods.App;
+namespace SilverModManager.App;
 
 /// <summary>
 /// Holds the launch session of a headless <c>run</c> process, so that <see cref="ProcessStartup"/> can end

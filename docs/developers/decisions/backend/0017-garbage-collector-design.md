@@ -146,7 +146,7 @@ To put it in simple terms, we create a new archive, with some files from the
 original archive excluded.
 
 Efficient support for doing this has been added into the Nx library, and is available as part of 
-[NexusMods.Archive.Nx 0.5.0 (Release Notes)](https://github.com/Nexus-Mods/NexusMods.Archives.Nx/releases/tag/0.5.0). Most of the time spent repacking is a straight
+[SilverModManager.Archive.Nx 0.5.0 (Release Notes)](https://github.com/Nexus-Mods/NexusMods.Archives.Nx/releases/tag/0.5.0). Most of the time spent repacking is a straight
 byte for byte copy of the compressed Nx blocks; aside from the rare occasions where
 some files need to be dropped from small (Max `1MB` with current settings) SOLID blocks.
 
@@ -338,8 +338,8 @@ No planned work for this yet; just a far future concern needing addressing.
 
 - [https://github.com/Nexus-Mods/NexusMods.App/issues/1186#issuecomment-2244744526](https://github.com/Nexus-Mods/NexusMods.App/issues/1186#issuecomment-2244744526)
 
-[archive-locations]: https://github.com/Nexus-Mods/NexusMods.App/blob/6a9cee951ad68e17bf24e4e64aa8906f5a63a590/src/NexusMods.DataModel/DataModelSettings.cs#L27
+[archive-locations]: https://github.com/Nexus-Mods/NexusMods.App/blob/6a9cee951ad68e17bf24e4e64aa8906f5a63a590/src/SilverModManager.DataModel/DataModelSettings.cs#L27
 [header-parser]: https://nexus-mods.github.io/NexusMods.Archives.Nx/Library/Headers/HeaderParser/
 [202x-architecture]: https://www.nexusmods.com/Core/Libs/Common/Widgets/DownloadPopUp?id=480708&nmm=1&game_id=1704
-[nx-file-store]: https://github.com/Nexus-Mods/NexusMods.App/blob/93c9c5e124e53ac1ceb1dbcc978b8a8f6de59914/src/NexusMods.DataModel/NxFileStore.cs#L31
+[nx-file-store]: https://github.com/Nexus-Mods/NexusMods.App/blob/93c9c5e124e53ac1ceb1dbcc978b8a8f6de59914/src/SilverModManager.DataModel/NxFileStore.cs#L31
 [nx-toc]: https://nexus-mods.github.io/NexusMods.Archives.Nx/Specification/Table-Of-Contents/

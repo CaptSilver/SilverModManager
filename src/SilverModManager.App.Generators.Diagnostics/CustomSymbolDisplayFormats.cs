@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace NexusMods.App.Generators.Diagnostics;
+namespace SilverModManager.App.Generators.Diagnostics;
 
 public class CustomSymbolDisplayFormats
 {

@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Cli;
-using NexusMods.Games.FromSoft.Cleanup;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Games.FromSoft.EldenRing;
+namespace SilverModManager.Games.FromSoft.EldenRing;
 
 internal static class EldenRingCleanupVerb
 {

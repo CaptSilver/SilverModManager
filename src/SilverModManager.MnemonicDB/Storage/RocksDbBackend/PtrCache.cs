@@ -1,8 +1,8 @@
 using System;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.MnemonicDB.Storage.RocksDbBackend;
+namespace SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 
 /// <summary>
 /// A small chunk of off-heap memory used to defensively copy the value of a pointer

@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.App.UI;
-using NexusMods.App.UI.LeftMenu.Items;
-using NexusMods.App.UI.Overlays;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.App.UI;
+using SilverModManager.App.UI.LeftMenu.Items;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
 using NSubstitute;
 using R3;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class ApplyControlProgressTests(IServiceProvider provider) : AUiTest(provider)
 {

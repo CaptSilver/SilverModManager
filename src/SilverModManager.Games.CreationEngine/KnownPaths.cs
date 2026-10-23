@@ -1,7 +1,7 @@
 
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine;
+namespace SilverModManager.Games.CreationEngine;
 
 public static class KnownPaths
 {

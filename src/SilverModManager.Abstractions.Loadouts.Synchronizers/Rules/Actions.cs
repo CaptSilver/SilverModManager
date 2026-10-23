@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 
 /// <summary>
 /// Actions that the synchronizer can perform on the file. The order of these actions

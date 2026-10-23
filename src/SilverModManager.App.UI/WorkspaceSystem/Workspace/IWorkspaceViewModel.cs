@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
 using Avalonia;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Windows;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [PublicAPI]
 public interface IWorkspaceViewModel : IViewModelInterface

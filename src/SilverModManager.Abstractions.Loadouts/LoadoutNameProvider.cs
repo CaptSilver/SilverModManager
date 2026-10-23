@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Loadouts;
+namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 /// Static class for providing new Loadout names.

@@ -1,12 +1,12 @@
 using DynamicData.Kernel;
 using FluentAssertions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.Generic.Diagnostics;
-using NexusMods.Games.Unity.BepInEx;
-using NexusMods.Games.Unity.Tests.Fixtures;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.Generic.Diagnostics;
+using SilverModManager.Games.Unity.BepInEx;
+using SilverModManager.Games.Unity.Tests.Fixtures;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.Unity.Tests;
+namespace SilverModManager.Games.Unity.Tests;
 
 public class PeakTests(ITestOutputHelper outputHelper) : AUnityGameTests<PeakTests, Unity.Peak.Peak>(outputHelper)
 {

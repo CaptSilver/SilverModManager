@@ -1,10 +1,10 @@
 using System.Text.RegularExpressions;
 
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077.Emitters;
 
 public static partial class PatternDefinitions
 {

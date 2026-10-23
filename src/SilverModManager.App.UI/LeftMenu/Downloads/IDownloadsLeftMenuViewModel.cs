@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
-using NexusMods.App.UI.LeftMenu.Items;
+using SilverModManager.App.UI.LeftMenu.Items;
 
-namespace NexusMods.App.UI.LeftMenu.Downloads;
+namespace SilverModManager.App.UI.LeftMenu.Downloads;
 
 public interface IDownloadsLeftMenuViewModel : ILeftMenuViewModel
 {

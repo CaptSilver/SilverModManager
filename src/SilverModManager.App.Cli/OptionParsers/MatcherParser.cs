@@ -1,7 +1,7 @@
 using Microsoft.Extensions.FileSystemGlobbing;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.CLI.OptionParsers;
+namespace SilverModManager.CLI.OptionParsers;
 
 internal class MatcherParser : IOptionParser<Matcher>
 {

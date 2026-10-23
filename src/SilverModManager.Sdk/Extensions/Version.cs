@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// Extension methods for <see cref="Version"/>.

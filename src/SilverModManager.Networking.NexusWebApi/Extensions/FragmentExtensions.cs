@@ -1,12 +1,12 @@
 using System.Diagnostics;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi.Extensions;
+namespace SilverModManager.Networking.NexusWebApi.Extensions;
 
 /// <summary>
 /// Extensions to GraphQL fragments.

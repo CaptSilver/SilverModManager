@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Serialization.ExpressionGenerator;
+namespace SilverModManager.Abstractions.Serialization.ExpressionGenerator;
 
 /// <summary>
 /// This type finder is necessary for serialization/deserialization of items

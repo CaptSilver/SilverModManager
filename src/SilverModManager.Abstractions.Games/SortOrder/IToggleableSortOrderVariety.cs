@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// A sort order variety whose items can be switched on and off from the Load Order page, as plugins can.

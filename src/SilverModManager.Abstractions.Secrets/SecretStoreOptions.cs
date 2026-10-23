@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Abstractions.Secrets;
+namespace SilverModManager.Abstractions.Secrets;
 
 /// <summary>
 /// Whether a store may show UI (an unlock prompt) while it works.

@@ -1,16 +1,16 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI.Dialog;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.App.UI.Windows;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk.Dialog;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk.Dialog;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.App.UI.Pages.Diagnostics;
+namespace SilverModManager.App.UI.Pages.Diagnostics;
 
 /// <summary>
 /// Shows the steps of a game's guided cleanup as a list. It runs nothing: the steps change the game folder, so they

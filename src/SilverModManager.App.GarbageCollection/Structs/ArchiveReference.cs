@@ -1,6 +1,6 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-namespace NexusMods.App.GarbageCollection.Structs;
+namespace SilverModManager.App.GarbageCollection.Structs;
 
 /// <summary>
 ///     Stores a reference to a single archive.

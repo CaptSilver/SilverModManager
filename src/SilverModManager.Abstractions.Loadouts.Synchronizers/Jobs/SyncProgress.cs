@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 /// <summary>
 /// How far a phase of an apply has got. A total of <c>null</c> means the phase cannot say yet, and shows as indeterminate.

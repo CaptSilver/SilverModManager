@@ -3,13 +3,13 @@ using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.GOG.Values;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.GOG.Values;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk;
 using NSubstitute;
 
-namespace NexusMods.Networking.GOG.Tests;
+namespace SilverModManager.Networking.GOG.Tests;
 
 public class ClientTests : IDisposable
 {

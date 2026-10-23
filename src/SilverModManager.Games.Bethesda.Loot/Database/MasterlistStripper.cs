@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+using SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 using YamlDotNet.RepresentationModel;
 
-namespace NexusMods.Games.Bethesda.Loot.Database;
+namespace SilverModManager.Games.Bethesda.Loot.Database;
 
 /// <summary>
 /// Removes every condition and constraint from a masterlist, so a sort can be compared with
@@ -20,7 +20,7 @@ public static class MasterlistStripper
     /// Merge keys are left alone, so the loader still resolves them. Aliases share their anchored
     /// node, so a condition removed from one is gone from all its uses.
     /// </remarks>
-    /// <exception cref="NexusMods.Games.Bethesda.Loot.Metadata.MetadataParseException">The text is not valid YAML.</exception>
+    /// <exception cref="SilverModManager.Games.Bethesda.Loot.Metadata.MetadataParseException">The text is not valid YAML.</exception>
     public static string Strip(string yaml)
     {
         var stream = YamlLoader.Load(yaml);

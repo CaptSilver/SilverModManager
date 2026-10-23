@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI.Settings;
-using NexusMods.Sdk.Settings;
-using NexusMods.Networking.GitHub;
-using NexusMods.Sdk;
+using SilverModManager.App.UI.Settings;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Networking.GitHub;
+using SilverModManager.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Overlays.Updater;
+namespace SilverModManager.App.UI.Overlays.Updater;
 
 [UsedImplicitly]
 public class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IUpdaterViewModel

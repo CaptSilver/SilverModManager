@@ -1,17 +1,17 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 
-using NexusMods.Abstractions.GC;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.GC;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk.Games;
 using Xunit;
 using Xunit;
 
-namespace NexusMods.Collections.Tests;
+namespace SilverModManager.Collections.Tests;
 
 [Trait("RequiresNetworking", "True")]
 public class CollectionInstallTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameTest<CollectionInstallTests>(helper)

@@ -7,7 +7,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace NexusMods.App.UI.Resources {
+namespace SilverModManager.App.UI.Resources {
     using System;
     
     
@@ -38,7 +38,7 @@ namespace NexusMods.App.UI.Resources {
         public static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("NexusMods.App.UI.Resources.Language", typeof(Language).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("SilverModManager.App.UI.Resources.Language", typeof(Language).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;

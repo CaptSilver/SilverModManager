@@ -1,9 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.Sdk.Threading;
+using SilverModManager.Sdk.Threading;
 
-namespace NexusMods.Sdk.Resources;
+namespace SilverModManager.Sdk.Resources;
 
 /// <summary>
 /// In-memory store for pipeline results with optional period cleanup tasks.

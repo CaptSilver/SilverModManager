@@ -1,7 +1,7 @@
 using DynamicData.Kernel;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.App.UI.Pages.Downloads;
+namespace SilverModManager.App.UI.Pages.Downloads;
 
 /// <summary>
 /// Filter for downloads based on scope and optional game ID.

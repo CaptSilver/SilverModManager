@@ -1,11 +1,11 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Resources;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Spine.Buttons.Image;
+namespace SilverModManager.App.UI.Controls.Spine.Buttons.Image;
 
 public partial class ImageButton : ReactiveUserControl<IImageButtonViewModel>
 {

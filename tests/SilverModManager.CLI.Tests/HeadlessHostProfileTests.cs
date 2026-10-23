@@ -1,24 +1,24 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Games.AdvancedInstaller;
-using NexusMods.DataModel;
-using NexusMods.App;
-using NexusMods.Games.FileHashes;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Games.AdvancedInstaller;
+using SilverModManager.DataModel;
+using SilverModManager.App;
+using SilverModManager.Games.FileHashes;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.Secrets;
-using NexusMods.Sdk.Settings;
-using NexusMods.Secrets.Overlay;
-using NexusMods.SingleProcess;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Secrets;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Secrets.Overlay;
+using SilverModManager.SingleProcess;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 public class HeadlessHostProfileTests
 {
@@ -68,14 +68,14 @@ public class HeadlessHostProfileTests
     public void ProfileFollowsStartupMode(string input, HostProfile expected)
     {
         var args = input.Length == 0 ? [] : input.Split(' ');
-        NexusMods.App.Services.ProfileOf(Mode(args)).Should().Be(expected);
+        SilverModManager.App.Services.ProfileOf(Mode(args)).Should().Be(expected);
     }
 
     [Fact]
     public void DesignerModeWinsOverTheOtherFlags()
     {
         var mode = new StartupMode { RunAsMain = true, ShowUI = false, IsAvaloniaDesigner = true };
-        NexusMods.App.Services.ProfileOf(mode).Should().Be(HostProfile.Designer);
+        SilverModManager.App.Services.ProfileOf(mode).Should().Be(HostProfile.Designer);
     }
 
     [Fact]
@@ -153,7 +153,7 @@ public class HeadlessHostProfileTests
     public void IsUiType_RecognisesAKnownUiType()
     {
         // Guards the predicate itself: GuiGraphStillHasUiTypes only proves it matched something.
-        IsUiType(typeof(NexusMods.App.UI.Windows.MainWindowViewModel)).Should().BeTrue();
+        IsUiType(typeof(SilverModManager.App.UI.Windows.MainWindowViewModel)).Should().BeTrue();
         IsUiType(typeof(StartupMode)).Should().BeFalse();
     }
 

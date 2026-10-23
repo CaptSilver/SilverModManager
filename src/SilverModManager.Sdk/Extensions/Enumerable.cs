@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// Extension methods for <see cref="IEnumerable{T}"/>.

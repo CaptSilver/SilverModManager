@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.StardewValley;
+namespace SilverModManager.Games.StardewValley;
 
 public class StardewValleyLoadoutSynchronizer : ALoadoutSynchronizer
 {

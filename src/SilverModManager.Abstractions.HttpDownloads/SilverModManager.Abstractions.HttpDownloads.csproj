@@ -3,6 +3,6 @@
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
     
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Abstractions.Downloads\NexusMods.Abstractions.Downloads.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Downloads\SilverModManager.Abstractions.Downloads.csproj" />
     </ItemGroup>
 </Project>

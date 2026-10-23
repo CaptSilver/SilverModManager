@@ -1,7 +1,7 @@
 
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Abstractions.NexusWebApi;
+namespace SilverModManager.Abstractions.NexusWebApi;
 
 /// <summary>
 /// Represents a job for logging in using OAuth.

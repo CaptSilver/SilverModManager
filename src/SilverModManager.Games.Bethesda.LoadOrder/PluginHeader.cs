@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.LoadOrder;
+namespace SilverModManager.Games.Bethesda.LoadOrder;
 
 /// <summary>
 /// What the load order logic needs from a plugin's header record. For Tes3 plugins

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Reactive.Linq;
 using DynamicData;
-using NexusMods.MnemonicDB.Abstractions.Query;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 
-namespace NexusMods.MnemonicDB.Abstractions.Models;
+namespace SilverModManager.MnemonicDB.Abstractions.Models;
 
 /// <summary>
 /// Extensions for models

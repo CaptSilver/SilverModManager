@@ -1,11 +1,11 @@
 using NexusMods.Paths;
-using NexusMods.Abstractions.Games;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <inheritdoc />
 public sealed class SteamLaunchOptionWriter(LocalConfigVdfWriter writer, IEnvironmentReader environment, IFileSystem fileSystem, IGameRegistry registry) : ISteamLaunchOptionWriter

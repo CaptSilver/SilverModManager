@@ -1,17 +1,17 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Collections;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk.Icons;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.App.UI.Pages.LoadoutPage;
+namespace SilverModManager.App.UI.Pages.LoadoutPage;
 
 [JsonName("SilverModManager.App.UI.Pages.Library.CollectionLoadoutPageContext")]
 public record CollectionLoadoutPageContext : IPageFactoryContext

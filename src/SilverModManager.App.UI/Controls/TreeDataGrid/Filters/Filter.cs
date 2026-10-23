@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
-using NexusMods.App.UI.Controls.TreeDataGrid.Filters;
+using SilverModManager.App.UI.Controls.TreeDataGrid.Filters;
 using NexusMods.Paths;
-namespace NexusMods.App.UI.Controls.Filters;
+namespace SilverModManager.App.UI.Controls.Filters;
 
 /// <summary>
 /// Base filter type using discriminated union pattern for TreeDataGrid filtering.

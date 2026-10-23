@@ -2,14 +2,14 @@ using System.Security.Cryptography;
 using System.Text;
 using DynamicData.Kernel;
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Hashing.xxHash3;
 using Xunit.DependencyInjection;
-using static NexusMods.Abstractions.Loadouts.Synchronizers.Rules.Actions;
-using static NexusMods.Abstractions.Loadouts.Synchronizers.Rules.Signature;
+using static SilverModManager.Abstractions.Loadouts.Synchronizers.Rules.Actions;
+using static SilverModManager.Abstractions.Loadouts.Synchronizers.Rules.Signature;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class SynchronizerRuleTests
 {

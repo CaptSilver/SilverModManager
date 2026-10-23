@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI.Helpers;
+namespace SilverModManager.App.UI.Helpers;
 
 /// <summary>
 /// A wrapper that ties the lifetime of an external object with an <see cref="IObservable{T}"/>.

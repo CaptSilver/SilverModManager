@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>
 /// BND4, the archive container behind a game's message, behaviour and param binders.

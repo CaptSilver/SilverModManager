@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using OneOf;
 
-namespace NexusMods.Abstractions.GuidedInstallers;
+namespace SilverModManager.Abstractions.GuidedInstallers;
 
 /// <summary>
 /// Represents the user's choice in a guided installer.

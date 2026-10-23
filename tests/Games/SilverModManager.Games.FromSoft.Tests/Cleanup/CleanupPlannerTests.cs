@@ -1,10 +1,10 @@
 using System.Collections.Immutable;
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Cleanup;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 
-namespace NexusMods.Games.FromSoft.Tests.Cleanup;
+namespace SilverModManager.Games.FromSoft.Tests.Cleanup;
 
 public class CleanupPlannerTests
 {

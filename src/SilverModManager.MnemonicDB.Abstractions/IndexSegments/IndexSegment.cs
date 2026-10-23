@@ -7,13 +7,13 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.Internals;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 using NexusMods.Paths;
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
 /// <summary>
 ///  A segment of an index, used most often as a cache. For example when an entity is read from the database,

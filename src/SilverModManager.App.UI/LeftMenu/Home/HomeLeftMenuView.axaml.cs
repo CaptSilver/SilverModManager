@@ -3,7 +3,7 @@ using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.LeftMenu.Home;
+namespace SilverModManager.App.UI.LeftMenu.Home;
 
 [UsedImplicitly]
 public partial class HomeLeftMenuView : ReactiveUserControl<IHomeLeftMenuViewModel>

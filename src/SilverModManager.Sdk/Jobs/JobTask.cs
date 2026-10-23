@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace NexusMods.Sdk.Jobs;
+namespace SilverModManager.Sdk.Jobs;
 
 /// <summary>
 /// A non-generic base interface for job tasks.

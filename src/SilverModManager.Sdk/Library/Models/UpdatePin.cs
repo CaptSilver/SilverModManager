@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Sdk.Library;
+namespace SilverModManager.Sdk.Library;
 
 /// <summary>
 /// Added to a library item to hold it on the file it is: the update check reports nothing newer for a

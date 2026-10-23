@@ -6,10 +6,10 @@ using Avalonia.ReactiveUI;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.App.UI.Windows;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.UI.Tests.Framework;
+namespace SilverModManager.UI.Tests.Framework;
 
 /// <summary>
 /// Takes care of lifecycle of the Avalonia app in a test state

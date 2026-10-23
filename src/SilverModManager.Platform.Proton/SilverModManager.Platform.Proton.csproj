@@ -9,17 +9,17 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Platform.Proton.Tests" />
-        <InternalsVisibleTo Include="NexusMods.Games.FromSoft.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Platform.Proton.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Games.FromSoft.Tests" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Games\NexusMods.Abstractions.Games.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Games.Diagnostics\NexusMods.Abstractions.Games.Diagnostics.csproj" />
-        <ProjectReference Include="..\NexusMods.App.Generators.Diagnostics\NexusMods.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Loadouts.Synchronizers\NexusMods.Abstractions.Loadouts.Synchronizers.csproj" />
-        <ProjectReference Include="..\NexusMods.DataModel\NexusMods.DataModel.csproj" />
+        <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />
+        <ProjectReference Include="..\SilverModManager.App.Generators.Diagnostics\SilverModManager.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts.Synchronizers\SilverModManager.Abstractions.Loadouts.Synchronizers.csproj" />
+        <ProjectReference Include="..\SilverModManager.DataModel\SilverModManager.DataModel.csproj" />
     </ItemGroup>
 
 </Project>

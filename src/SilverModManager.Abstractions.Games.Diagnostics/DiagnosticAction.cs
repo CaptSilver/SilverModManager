@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
 
-namespace NexusMods.Abstractions.Diagnostics;
+namespace SilverModManager.Abstractions.Diagnostics;
 
 /// <summary>
 /// A fix a diagnostic offers. The emitter only names it; the UI maps <see cref="Id"/> to the code that

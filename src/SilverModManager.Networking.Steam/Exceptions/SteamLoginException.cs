@@ -1,4 +1,4 @@
-namespace NexusMods.Networking.Steam.Exceptions;
+namespace SilverModManager.Networking.Steam.Exceptions;
 
 /// <summary>
 /// The Steam login could not be started or was rejected.

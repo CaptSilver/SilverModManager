@@ -1,8 +1,8 @@
 using System.Text.Json;
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Install;
+using SilverModManager.Wabbajack.Install;
 
-namespace NexusMods.Wabbajack.Tests.Install;
+namespace SilverModManager.Wabbajack.Tests.Install;
 
 /// <summary>
 /// Transforms that need no codec: a patch is the basis followed by the delta, and an archive is its inputs end to end
@@ -18,7 +18,7 @@ internal sealed class ConcatenatingTransforms : IDirectiveTransforms
         await delta.CopyToAsync(output, cancellationToken);
     }
 
-    public async Task Recompress(Stream dds, NexusMods.Wabbajack.Format.ImageState target, Stream output, CancellationToken cancellationToken)
+    public async Task Recompress(Stream dds, SilverModManager.Wabbajack.Format.ImageState target, Stream output, CancellationToken cancellationToken)
     {
         await dds.CopyToAsync(output, cancellationToken);
         output.WriteByte(0xFF);
@@ -44,7 +44,7 @@ internal sealed class FailingPatchSlowTextureTransforms : IDirectiveTransforms
     public Task Patch(Stream basis, Stream delta, Stream output, CancellationToken cancellationToken)
         => throw new InvalidOperationException("the patch tool crashed");
 
-    public async Task Recompress(Stream dds, NexusMods.Wabbajack.Format.ImageState target, Stream output, CancellationToken cancellationToken)
+    public async Task Recompress(Stream dds, SilverModManager.Wabbajack.Format.ImageState target, Stream output, CancellationToken cancellationToken)
         => await Task.Delay(Timeout.Infinite, cancellationToken);
 
     public Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
@@ -57,7 +57,7 @@ internal sealed class MismatchingArchiveTransforms : IDirectiveTransforms
     public Task Patch(Stream basis, Stream delta, Stream output, CancellationToken cancellationToken)
         => throw new InvalidOperationException("no patch is applied here");
 
-    public Task Recompress(Stream dds, NexusMods.Wabbajack.Format.ImageState target, Stream output, CancellationToken cancellationToken)
+    public Task Recompress(Stream dds, SilverModManager.Wabbajack.Format.ImageState target, Stream output, CancellationToken cancellationToken)
         => throw new InvalidOperationException("no texture is encoded here");
 
     public async Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)

@@ -2,7 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 
-namespace NexusMods.Backend.Games.Locators;
+namespace SilverModManager.Backend.Games.Locators;
 
 /// <summary>
 /// The Wine settings Heroic keeps for one game in <c>GamesConfig/&lt;appName&gt;.json</c>. Heroic writes the

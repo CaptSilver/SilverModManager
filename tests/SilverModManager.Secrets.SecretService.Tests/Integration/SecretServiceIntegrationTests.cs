@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 using Xunit;
 
-namespace NexusMods.Secrets.SecretService.Tests.Integration;
+namespace SilverModManager.Secrets.SecretService.Tests.Integration;
 
 /// <summary>
 /// The store against a real gnome-keyring on a private bus. Excluded from the default run because it needs

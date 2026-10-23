@@ -1,9 +1,9 @@
 using System.Buffers.Binary;
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats;
+namespace SilverModManager.Games.FromSoft.Tests.Formats;
 
 public class FmgTests
 {
@@ -242,7 +242,7 @@ public class MsgbndFixtureTests
         [2] = new Dictionary<int, string?> { [20] = "x", [21] = "y" },
     };
 
-    private static FromSoftFormatTraits Traits => NexusMods.Games.FromSoft.EldenRing.EldenRingGame.Definition.Formats;
+    private static FromSoftFormatTraits Traits => SilverModManager.Games.FromSoft.EldenRing.EldenRingGame.Definition.Formats;
 
     [Fact]
     public void TheUncompressedBinderMatchesTheOneErmBuilds()

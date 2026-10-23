@@ -1,11 +1,11 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Backend;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Backend;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Games.Generic.Tests;
+namespace SilverModManager.Games.Generic.Tests;
 
 public class Startup
 {

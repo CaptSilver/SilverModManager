@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.Sdk.Settings;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.UI.Sdk.Settings;
+namespace SilverModManager.UI.Sdk.Settings;
 
 [PublicAPI]
 public record SectionDescriptor(

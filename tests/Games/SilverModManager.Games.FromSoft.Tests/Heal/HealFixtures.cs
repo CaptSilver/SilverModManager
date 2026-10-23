@@ -1,13 +1,13 @@
 using System.Collections.Immutable;
 using System.Security.Cryptography;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Tests.Build;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Tests.Build;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Games.FromSoft.Tests.Heal;
+namespace SilverModManager.Games.FromSoft.Tests.Heal;
 
 public static class HealFixtures
 {

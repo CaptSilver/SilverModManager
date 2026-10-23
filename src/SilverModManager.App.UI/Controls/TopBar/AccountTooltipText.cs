@@ -1,6 +1,6 @@
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.App.UI.Controls.TopBar;
+namespace SilverModManager.App.UI.Controls.TopBar;
 
 internal static class AccountTooltipText
 {

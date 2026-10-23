@@ -4,17 +4,17 @@ using System.Text;
 using DynamicData;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.IO;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.IO;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.App.UI.Pages.Changelog;
+namespace SilverModManager.App.UI.Pages.Changelog;
 
 [UsedImplicitly]
 public class ChangelogPageViewModel : APageViewModel<IChangelogPageViewModel>, IChangelogPageViewModel
@@ -22,7 +22,7 @@ public class ChangelogPageViewModel : APageViewModel<IChangelogPageViewModel>, I
     /// <summary>
     /// The changelog ships inside the app so the page works offline and never reads from upstream's repository.
     /// </summary>
-    private const string ChangelogResourceName = "NexusMods.App.UI.CHANGELOG.md";
+    private const string ChangelogResourceName = "SilverModManager.App.UI.CHANGELOG.md";
 
     public IMarkdownRendererViewModel MarkdownRendererViewModel { get; }
 

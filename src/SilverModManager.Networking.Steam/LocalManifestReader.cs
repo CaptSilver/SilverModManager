@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Steam;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
 using SteamKit2;
 
-namespace NexusMods.Networking.Steam;
+namespace SilverModManager.Networking.Steam;
 
 /// <summary>
 /// Reads the manifest files the Steam client keeps in its depotcache folder.

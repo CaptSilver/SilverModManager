@@ -6,7 +6,7 @@ using System.Linq;
 using NexusMods.HyperDuck;
 // ReSharper disable NotDisposedResource
 
-namespace NexusMods.MnemonicDB.Abstractions.ElementComparers;
+namespace SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
 /// <summary>
 /// Value tags are used to determine the type of values. Most of the values
@@ -110,7 +110,7 @@ public static class ValueTagsExtensions
 
     static ValueTagsExtensions()
     {
-        _dateTimeOffsetType = LogicalType.Create(HyperDuck.DuckDbType.TimestampNs);
+        _dateTimeOffsetType = LogicalType.Create(NexusMods.HyperDuck.DuckDbType.TimestampNs);
 
         _duckDbTypes = new LogicalType[(int)(ValueTag.Tuple2_UShort_Utf8I + 1)];
         _duckDbTypes[(int)ValueTag.Null] = LogicalType.From<bool>();
@@ -153,7 +153,7 @@ public static class ValueTagsExtensions
         if (valueType == typeof(bool) && tag == ValueTag.UInt8)
         {
             var type = _duckDbTypes[(int)ValueTag.Null];
-            Debug.Assert(type.TypeId == HyperDuck.DuckDbType.Boolean);
+            Debug.Assert(type.TypeId == NexusMods.HyperDuck.DuckDbType.Boolean);
             return type;
         }
 

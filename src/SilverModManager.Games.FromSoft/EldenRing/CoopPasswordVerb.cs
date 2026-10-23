@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Games.FromSoft.EldenRing;
+namespace SilverModManager.Games.FromSoft.EldenRing;
 
 /// <summary>
 /// Sets or clears the Seamless Co-op password in the secret store. The password comes from stdin, never from an

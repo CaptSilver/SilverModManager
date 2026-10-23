@@ -9,16 +9,16 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.DataModel.Tests" />
-        <InternalsVisibleTo Include="NexusMods.Abstractions.Games.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.DataModel.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Abstractions.Games.Tests" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Abstractions.Library.Installers\NexusMods.Abstractions.Library.Installers.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Loadouts.Synchronizers\NexusMods.Abstractions.Loadouts.Synchronizers.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Loadouts\NexusMods.Abstractions.Loadouts.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.NexusWebApi\NexusMods.Abstractions.NexusWebApi.csproj" />
-        <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Library.Installers\SilverModManager.Abstractions.Library.Installers.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts.Synchronizers\SilverModManager.Abstractions.Loadouts.Synchronizers.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts\SilverModManager.Abstractions.Loadouts.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.NexusWebApi\SilverModManager.Abstractions.NexusWebApi.csproj" />
+        <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 
     <ItemGroup>

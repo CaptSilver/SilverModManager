@@ -1,10 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Abstractions.Serialization.Json;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Abstractions.Serialization.Json;
 
-namespace NexusMods.Abstractions.Serialization;
+namespace SilverModManager.Abstractions.Serialization;
 
 /// <summary>
 ///     Adds games related serialization services.

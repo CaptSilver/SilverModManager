@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Abstractions.Library;
+namespace SilverModManager.Abstractions.Library;
 
 /// <summary>
 /// Adds a Thunderstore package to the library, with the packages it depends on. It exists so the UI and the

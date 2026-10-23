@@ -1,6 +1,6 @@
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.ModUpdates.Tests.Helpers;
+namespace SilverModManager.Networking.ModUpdates.Tests.Helpers;
 
 // Helper class to simulate updateable items
 public class TestModFeedItem : IModFeedItem

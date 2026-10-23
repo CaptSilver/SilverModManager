@@ -1,6 +1,6 @@
 ﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:ui="clr-namespace:NexusMods.App.UI.Overlays.Login;assembly=NexusMods.App.UI">
+        xmlns:ui="clr-namespace:SilverModManager.App.UI.Overlays.Login;assembly=SilverModManager.App.UI">
     <Design.PreviewWith>
         <Border Padding="20">
             <ui:NexusLoginOverlayView />

@@ -1,7 +1,7 @@
 using NexusMods.Hashing.xxHash3;
 using OneOf;
 
-namespace NexusMods.Abstractions.GuidedInstallers;
+namespace SilverModManager.Abstractions.GuidedInstallers;
 
 /// <summary>
 /// An image.

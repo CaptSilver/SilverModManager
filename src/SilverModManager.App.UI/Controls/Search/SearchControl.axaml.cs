@@ -8,11 +8,11 @@ using AvaloniaEdit.Search;
 using JetBrains.Annotations;
 using R3;
 using ReactiveUI;
-using static NexusMods.App.UI.Controls.Filters.Filter;
+using static SilverModManager.App.UI.Controls.Filters.Filter;
 using CompositeDisposable = System.Reactive.Disposables.CompositeDisposable;
 using Disposable = System.Reactive.Disposables.Disposable;
 
-namespace NexusMods.App.UI.Controls.Search;
+namespace SilverModManager.App.UI.Controls.Search;
 
 /// <remarks>
 /// Note(sewer):

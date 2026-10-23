@@ -2,11 +2,11 @@ using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Templates;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using Splat;
 
-namespace NexusMods.App.UI.Helpers.TreeDataGrid;
+namespace SilverModManager.App.UI.Helpers.TreeDataGrid;
 
 /// <summary>
 /// Helper functions for constructing <see cref="TreeDataGrid"/>(s)

@@ -1,4 +1,4 @@
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 /// <summary>
 /// A documentation attribute to link to a Github issue to a test method.

@@ -2,9 +2,9 @@ using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Backend.Games.Locators;
+namespace SilverModManager.Backend.Games.Locators;
 
 /// <summary>
 /// Asks a game which file it launches without an install to ask about.

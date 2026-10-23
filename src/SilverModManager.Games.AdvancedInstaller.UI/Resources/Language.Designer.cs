@@ -7,7 +7,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace NexusMods.Games.AdvancedInstaller.UI.Resources {
+namespace SilverModManager.Games.AdvancedInstaller.UI.Resources {
     using System;
     
     
@@ -38,7 +38,7 @@ namespace NexusMods.Games.AdvancedInstaller.UI.Resources {
         public static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("NexusMods.Games.AdvancedInstaller.UI.Resources.Language", typeof(Language).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("SilverModManager.Games.AdvancedInstaller.UI.Resources.Language", typeof(Language).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;

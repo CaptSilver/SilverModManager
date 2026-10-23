@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 
-namespace NexusMods.Networking.NexusWebApi.Errors;
+namespace SilverModManager.Networking.NexusWebApi.Errors;
 
 /// <summary>
 /// Represents a GraphQl result.

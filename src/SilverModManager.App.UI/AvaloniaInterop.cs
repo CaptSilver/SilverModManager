@@ -1,10 +1,10 @@
 using Avalonia.Input.Platform;
 using Avalonia.Platform.Storage;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.App.UI.Extensions;
 using NexusMods.Paths;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 [PublicAPI]
 public interface IAvaloniaInterop

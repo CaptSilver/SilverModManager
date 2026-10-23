@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Steam;
+using SilverModManager.Abstractions.Steam;
 using QRCoder;
 
-namespace NexusMods.Networking.Steam;
+namespace SilverModManager.Networking.Steam;
 
 public class LoggingAuthInterventionHandler(ILogger<LoggingAuthInterventionHandler> logger) : IAuthInterventionHandler
 {

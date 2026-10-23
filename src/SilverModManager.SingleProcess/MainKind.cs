@@ -1,4 +1,4 @@
-namespace NexusMods.SingleProcess;
+namespace SilverModManager.SingleProcess;
 
 /// <summary>
 /// What the main process is doing. Stored in the sync file next to its pid and port so

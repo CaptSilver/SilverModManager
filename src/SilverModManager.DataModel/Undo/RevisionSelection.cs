@@ -1,4 +1,4 @@
-namespace NexusMods.DataModel.Undo;
+namespace SilverModManager.DataModel.Undo;
 
 /// <summary>
 /// Picks a revision by the number the <c>loadout revisions</c> verb prints: the position in the list

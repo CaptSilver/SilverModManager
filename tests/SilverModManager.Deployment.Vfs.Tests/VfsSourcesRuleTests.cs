@@ -1,11 +1,11 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Deployment.Vfs.Tests;
+namespace SilverModManager.Deployment.Vfs.Tests;
 
 public class VfsSourcesRuleTests
 {

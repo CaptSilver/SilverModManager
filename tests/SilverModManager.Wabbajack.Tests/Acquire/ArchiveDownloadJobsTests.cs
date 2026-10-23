@@ -1,14 +1,14 @@
 using System.Net;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library;
-using NexusMods.Networking.HttpDownloader;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Networking.HttpDownloader;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.Wabbajack.Tests.Acquire;
+namespace SilverModManager.Wabbajack.Tests.Acquire;
 
 /// <summary>The real job factory, with an HTTP client that serves a plain file host and the Wabbajack CDN.</summary>
 public class ArchiveDownloadJobsTests(ITestOutputHelper helper) : AcquireTestBase<ArchiveDownloadJobsTests>(helper)

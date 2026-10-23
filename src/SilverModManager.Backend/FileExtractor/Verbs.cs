@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileExtractor;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.FileExtractor;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Backend.FileExtractor;
+namespace SilverModManager.Backend.FileExtractor;
 
 /// <summary>
 /// Extracts files from an archive.

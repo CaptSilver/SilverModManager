@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
+namespace SilverModManager.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
 
 /// <summary>
 /// Adapter for <see cref="LoadoutItem.ReadOnly"/> for <see cref="ITreeItemWithPath"/>.

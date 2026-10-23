@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Backend.OS;
+using SilverModManager.Backend.OS;
 using NexusMods.Paths;
 
-namespace NexusMods.Backend.Tests.OS;
+namespace SilverModManager.Backend.Tests.OS;
 
 public class FileSystemMountTests
 {

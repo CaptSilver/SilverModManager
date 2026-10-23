@@ -1,11 +1,11 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
-using EsdFormat = NexusMods.Games.FromSoft.Formats.Esd;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
+using EsdFormat = SilverModManager.Games.FromSoft.Formats.Esd;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 /// <summary>
 /// Canonical form and alignment over the t000001000 state machine as three real files spell it: the game's own,

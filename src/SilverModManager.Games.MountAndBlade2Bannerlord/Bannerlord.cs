@@ -1,20 +1,20 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.Generic.Diagnostics;
-using NexusMods.Games.MountAndBlade2Bannerlord.Diagnostics;
-using NexusMods.Games.MountAndBlade2Bannerlord.Installers;
-using NexusMods.Games.MountAndBlade2Bannerlord.Utils;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Generic.Diagnostics;
+using SilverModManager.Games.MountAndBlade2Bannerlord.Diagnostics;
+using SilverModManager.Games.MountAndBlade2Bannerlord.Installers;
+using SilverModManager.Games.MountAndBlade2Bannerlord.Utils;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using static NexusMods.Games.MountAndBlade2Bannerlord.BannerlordConstants;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using static SilverModManager.Games.MountAndBlade2Bannerlord.BannerlordConstants;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord;
 
 /// <summary>
 /// Maintained by the BUTR Team

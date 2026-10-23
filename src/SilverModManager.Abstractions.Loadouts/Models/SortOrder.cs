@@ -1,12 +1,12 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Loadouts.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.MnemonicAttributes;
+using SilverModManager.Abstractions.Loadouts.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.MnemonicAttributes;
 
-namespace NexusMods.Abstractions.Loadouts;
+namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 /// Represents a sorting of some sortable items in this Loadout.

@@ -1,9 +1,9 @@
-﻿using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+﻿using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.App.UI.WorkspaceAttachments;
+namespace SilverModManager.App.UI.WorkspaceAttachments;
 
 public class LoadoutAttachmentsFactory(IConnection conn) : IWorkspaceAttachmentsFactory<LoadoutContext>
 {

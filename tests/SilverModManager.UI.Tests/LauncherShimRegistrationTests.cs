@@ -1,14 +1,14 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App;
+using SilverModManager.App;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class LauncherShimRegistrationTests
 {
     // Internal to Platform.Proton; looked up by name so the app's registration can be checked from here.
-    private static readonly Type Refresher = typeof(NexusMods.Platform.Proton.Services).Assembly
-        .GetType("NexusMods.Platform.Proton.Steam.LauncherShimRefresher", throwOnError: true)!;
+    private static readonly Type Refresher = typeof(SilverModManager.Platform.Proton.Services).Assembly
+        .GetType("SilverModManager.Platform.Proton.Steam.LauncherShimRefresher", throwOnError: true)!;
 
     private static IServiceCollection AppServices(bool showUi, bool designer = false)
         => new ServiceCollection().AddLogging().AddApp(startupMode: new StartupMode

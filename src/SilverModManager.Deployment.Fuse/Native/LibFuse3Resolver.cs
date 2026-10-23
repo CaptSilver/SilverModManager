@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-namespace NexusMods.Deployment.Fuse.Native;
+namespace SilverModManager.Deployment.Fuse.Native;
 
 /// <summary>
 /// Finds libfuse3 for <see cref="LibFuse3"/>. Fedora's fuse3-libs ships only the versioned library and the

@@ -1,10 +1,10 @@
 using DynamicData;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Abstractions.Downloads;
+namespace SilverModManager.Abstractions.Downloads;
 
 /// <summary>
 /// Service for managing and monitoring downloads through the job system.

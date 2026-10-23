@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Secrets.Overlay;
+using SilverModManager.Secrets.Overlay;
 using Xunit;
 
-namespace NexusMods.Secrets.Tests.Overlay;
+namespace SilverModManager.Secrets.Tests.Overlay;
 
 public class SecretsFileReaderTests : IDisposable
 {

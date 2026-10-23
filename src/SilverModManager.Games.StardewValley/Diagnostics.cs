@@ -1,14 +1,14 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Abstractions.Diagnostics.Values;
-using NexusMods.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Diagnostics.Values;
+using SilverModManager.Generators.Diagnostics;
 
-namespace NexusMods.Games.StardewValley;
+namespace SilverModManager.Games.StardewValley;
 
 internal static partial class Diagnostics
 {
-    private const string Source = "NexusMods.Games.StardewValley";
+    private const string Source = "SilverModManager.Games.StardewValley";
 
     [DiagnosticTemplate]
     [UsedImplicitly]

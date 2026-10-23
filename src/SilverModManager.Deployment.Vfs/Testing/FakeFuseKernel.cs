@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Vfs.Testing;
+namespace SilverModManager.Deployment.Vfs.Testing;
 
 /// <summary>
 /// An <see cref="IFuseKernel"/> with no kernel: it keeps the operations it is given and offers a

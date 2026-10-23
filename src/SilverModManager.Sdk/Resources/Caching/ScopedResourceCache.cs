@@ -2,7 +2,7 @@ using BitFaster.Caching;
 using BitFaster.Caching.Lru;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Resources;
+namespace SilverModManager.Sdk.Resources;
 
 /// <summary>
 /// Cache for scoped pipeline results.

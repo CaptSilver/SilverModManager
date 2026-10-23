@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
 using Avalonia;
-using NexusMods.App.UI.Windows;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public interface IPanelViewModel : IViewModelInterface
 {

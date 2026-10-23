@@ -1,7 +1,7 @@
 using Bannerlord.ModuleManager;
 using FetchBannerlordVersion;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.LauncherManager;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.LauncherManager;
 
 partial class LauncherManagerSilverModManager
 {

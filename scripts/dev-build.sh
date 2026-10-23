@@ -9,4 +9,4 @@ box_reexec "${BASH_SOURCE[0]}" "$@"
 
 cd "$root"
 export_dotnet_env
-dotnet build NexusMods.App.sln "$@"
+dotnet build SilverModManager.App.sln "$@"

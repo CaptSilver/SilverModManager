@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 using TextMateSharp.Grammars;
 
-namespace NexusMods.App.UI.Settings;
+namespace SilverModManager.App.UI.Settings;
 
 public record TextEditorSettings : ISettings
 {

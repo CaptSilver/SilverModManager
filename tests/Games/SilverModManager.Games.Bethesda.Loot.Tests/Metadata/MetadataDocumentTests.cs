@@ -1,8 +1,8 @@
-using NexusMods.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
 using NexusMods.Paths;
-using static NexusMods.Games.Bethesda.Loot.Tests.Metadata.TestNames;
+using static SilverModManager.Games.Bethesda.Loot.Tests.Metadata.TestNames;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Metadata;
 
 // libloot's metadata_document.rs load and find_plugin tests. The write and emit tests are not ported.
 public class MetadataDocumentTests

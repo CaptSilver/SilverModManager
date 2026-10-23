@@ -1,14 +1,14 @@
 #pragma warning disable CS0618 // Type or member is obsolete. Uses internal APIs for testing only.
 using FluentAssertions;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
 
 using NexusMods.Paths;
 using System.Collections.ObjectModel;
 using DynamicData;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.UI.Tests.Helpers.TreeDataGrid.FolderGenerator;
+namespace SilverModManager.UI.Tests.Helpers.TreeDataGrid.FolderGenerator;
 
 public class TreeFolderGeneratorForLocationIdTests
 {

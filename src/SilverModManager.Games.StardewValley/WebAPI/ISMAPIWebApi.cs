@@ -1,10 +1,10 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics.Values;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using NexusMods.Paths;
 using StardewModdingAPI;
 
-namespace NexusMods.Games.StardewValley.WebAPI;
+namespace SilverModManager.Games.StardewValley.WebAPI;
 
 /// <summary>
 /// Interface for working with the SMAPI Web API.

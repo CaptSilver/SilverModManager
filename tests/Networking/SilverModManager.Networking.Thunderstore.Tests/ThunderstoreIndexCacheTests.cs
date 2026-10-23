@@ -1,11 +1,11 @@
 using FluentAssertions;
-using NexusMods.Networking.Thunderstore.Tests.Fixtures;
+using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Thunderstore;
 using Xunit;
 
-namespace NexusMods.Networking.Thunderstore.Tests;
+namespace SilverModManager.Networking.Thunderstore.Tests;
 
 public class ThunderstoreIndexCacheTests
 {

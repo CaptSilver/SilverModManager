@@ -1,15 +1,15 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.GC;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Sdk.Settings;
-using NexusMods.App.GarbageCollection.DataModel;
-using NexusMods.CrossPlatform;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.GC;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.App.GarbageCollection.DataModel;
+using SilverModManager.CrossPlatform;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.DataModel;
+namespace SilverModManager.DataModel;
 
 /// <inheritdoc />
 public class GarbageCollectorRunner(ISettingsManager settings, NxFileStore store, IConnection connection, ILooseStagingStore stagingStore, IDeploymentPlanStore plans, IEnumerable<IDeploymentBackend> backends, IGameRegistry gameRegistry, ILogger<GarbageCollectorRunner> logger) : IGarbageCollectorRunner

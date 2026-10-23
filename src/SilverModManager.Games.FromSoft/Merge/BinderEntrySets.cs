@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>The check every three-way merge over binders makes before it looks at a single member.</summary>
 public static class BinderEntrySets

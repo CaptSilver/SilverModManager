@@ -1,11 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using NexusMods.Abstractions.Cli;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.ProxyConsole;
-using Table = NexusMods.Sdk.ProxyConsole.Table;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.ProxyConsole;
+using Table = SilverModManager.Sdk.ProxyConsole.Table;
 
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>The command line's view of <see cref="IMergeReports"/>. It only reads: the apply does the merging.</summary>
 internal static class MergeVerbs

@@ -1,6 +1,6 @@
 using FluentAssertions;
 
-namespace NexusMods.SingleProcess.Tests;
+namespace SilverModManager.SingleProcess.Tests;
 
 public class CommandLineRedactionTests
 {

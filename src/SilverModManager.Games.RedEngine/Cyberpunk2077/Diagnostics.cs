@@ -1,19 +1,19 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Abstractions.Diagnostics.Values;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Diagnostics.Values;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
-using NexusMods.Generators.Diagnostics;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.Emitters;
+using SilverModManager.Generators.Diagnostics;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.RedEngine.Cyberpunk2077;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077;
 
 public static partial class Diagnostics
 {
-    public const string Source = "NexusMods.Games.RedEngine.Cyberpunk2077";
+    public const string Source = "SilverModManager.Games.RedEngine.Cyberpunk2077";
 
     [DiagnosticTemplate] 
     [UsedImplicitly] 

@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Games.Bethesda.LoadOrder.Ordering;
-using static NexusMods.Games.Bethesda.LoadOrder.Tests.Ordering.OrderBuilder;
+using SilverModManager.Games.Bethesda.LoadOrder.Ordering;
+using static SilverModManager.Games.Bethesda.LoadOrder.Tests.Ordering.OrderBuilder;
 
-namespace NexusMods.Games.Bethesda.LoadOrder.Tests.Ordering;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Tests.Ordering;
 
 public class PluginOrderResolverTests
 {

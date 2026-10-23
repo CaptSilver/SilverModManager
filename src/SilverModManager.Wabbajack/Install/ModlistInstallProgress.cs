@@ -1,7 +1,7 @@
 using System.Reactive.Subjects;
 using NexusMods.Paths;
 
-namespace NexusMods.Wabbajack.Install;
+namespace SilverModManager.Wabbajack.Install;
 
 public enum InstallPhase { Check, Resolve, Write, Order }
 

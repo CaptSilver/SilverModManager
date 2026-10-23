@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam.Values;
 
-namespace NexusMods.Networking.Steam.Exceptions;
+namespace SilverModManager.Networking.Steam.Exceptions;
 
 public class FailedToGetRequestCode : Exception
 {

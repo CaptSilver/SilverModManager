@@ -1,17 +1,17 @@
 using System.IO.Compression;
 using FluentAssertions;
-using NexusMods.Abstractions.Library;
+using SilverModManager.Abstractions.Library;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Library;
-using NexusMods.Wabbajack.Models;
-using NexusMods.Wabbajack.Tests.Fixtures;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Library;
+using SilverModManager.Wabbajack.Models;
+using SilverModManager.Wabbajack.Tests.Fixtures;
 
-namespace NexusMods.Wabbajack.Tests;
+namespace SilverModManager.Wabbajack.Tests;
 
 public class ModlistLibraryFileTests(ILibraryService libraryService, IConnection connection, TemporaryFileManager temporaryFileManager)
 {

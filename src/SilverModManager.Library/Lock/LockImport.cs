@@ -1,13 +1,13 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Library;
-using NexusMods.Library.Sources;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Library.Sources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Library.Lock;
+namespace SilverModManager.Library.Lock;
 
 [PublicAPI]
 public enum LockAction

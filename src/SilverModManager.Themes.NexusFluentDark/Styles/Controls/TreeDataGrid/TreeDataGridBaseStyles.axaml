@@ -1,13 +1,13 @@
 ﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:converters1="clr-namespace:NexusMods.Themes.NexusFluentDark.Converters"
-        xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-        xmlns:files="clr-namespace:NexusMods.App.UI.Controls.Trees.Files;assembly=NexusMods.App.UI"
-        xmlns:converters="clr-namespace:NexusMods.App.UI.Converters;assembly=NexusMods.App.UI"
-        xmlns:controls="clr-namespace:NexusMods.App.UI.Controls;assembly=NexusMods.App.UI"
-        xmlns:games="clr-namespace:NexusMods.Abstractions.Games;assembly=NexusMods.Abstractions.Games"
-        xmlns:abstractions="clr-namespace:NexusMods.MnemonicDB.Abstractions;assembly=NexusMods.MnemonicDB.Abstractions">
-    <!-- NOTE(Al12rs): Keep: `xmlns:games="clr-namespace:NexusMods.Abstractions.Games;assembly=NexusMods.Abstractions.Games"` even if marked as unused -->
+        xmlns:converters1="clr-namespace:SilverModManager.Themes.NexusFluentDark.Converters"
+        xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+        xmlns:files="clr-namespace:SilverModManager.App.UI.Controls.Trees.Files;assembly=SilverModManager.App.UI"
+        xmlns:converters="clr-namespace:SilverModManager.App.UI.Converters;assembly=SilverModManager.App.UI"
+        xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls;assembly=SilverModManager.App.UI"
+        xmlns:games="clr-namespace:SilverModManager.Abstractions.Games;assembly=SilverModManager.Abstractions.Games"
+        xmlns:abstractions="clr-namespace:SilverModManager.MnemonicDB.Abstractions;assembly=SilverModManager.MnemonicDB.Abstractions">
+    <!-- NOTE(Al12rs): Keep: `xmlns:games="clr-namespace:SilverModManager.Abstractions.Games;assembly=SilverModManager.Abstractions.Games"` even if marked as unused -->
     <!-- See the false positive error and note for CompositeItemModel later down the file -->
 
     <Design.PreviewWith>
@@ -323,7 +323,7 @@
         <!-- Root rows styling -->
 
         <!-- "RootRow" is a class that was manually added to the TreeDataGridRow that have indent level 0. -->
-        <!-- See `NexusMods.App.UI.Controls.CustomElementFactory.cs` for more information. -->
+        <!-- See `SilverModManager.App.UI.Controls.CustomElementFactory.cs` for more information. -->
         <Style Selector="^.RootRow">
             <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
         </Style>

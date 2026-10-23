@@ -2,7 +2,7 @@ using System.IO.Compression;
 using System.Text;
 using NexusMods.Paths;
 
-namespace NexusMods.Benchmarks;
+namespace SilverModManager.Benchmarks;
 
 public class Assets
 {

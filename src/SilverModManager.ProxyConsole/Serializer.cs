@@ -3,11 +3,11 @@ using System.Text;
 using JetBrains.Annotations;
 using MemoryPack;
 using MemoryPack.Formatters;
-using NexusMods.ProxyConsole.Exceptions;
-using NexusMods.ProxyConsole.Messages;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.ProxyConsole.Exceptions;
+using SilverModManager.ProxyConsole.Messages;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.ProxyConsole;
+namespace SilverModManager.ProxyConsole;
 
 
 /// <summary>

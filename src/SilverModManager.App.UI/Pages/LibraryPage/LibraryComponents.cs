@@ -4,22 +4,22 @@ using DynamicData;
 using DynamicData.Aggregation;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.Filters;
-using NexusMods.App.UI.Controls.TreeDataGrid.Filters;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Resources;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.NexusWebApi;
-using NexusMods.Sdk.Library;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.Filters;
+using SilverModManager.App.UI.Controls.TreeDataGrid.Filters;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Sdk.Library;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 using ObservableCollections;
 using OneOf;
 using R3;
 using Disposable = R3.Disposable;
 
-namespace NexusMods.App.UI.Pages.LibraryPage;
+namespace SilverModManager.App.UI.Pages.LibraryPage;
 
 public static class LibraryColumns
 {

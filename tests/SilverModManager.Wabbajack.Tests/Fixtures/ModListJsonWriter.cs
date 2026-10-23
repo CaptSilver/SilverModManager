@@ -1,7 +1,7 @@
 using System.Text.Json;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.Wabbajack.Tests.Fixtures;
+namespace SilverModManager.Wabbajack.Tests.Fixtures;
 
 /// <summary>
 /// Writes a <see cref="ModList"/> as the JSON Wabbajack itself produces (long type names), so the

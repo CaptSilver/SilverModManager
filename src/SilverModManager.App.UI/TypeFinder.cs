@@ -1,28 +1,28 @@
-using NexusMods.Abstractions.Serialization.ExpressionGenerator;
-using NexusMods.App.UI.Pages;
-using NexusMods.App.UI.Pages.About;
-using NexusMods.App.UI.Pages.Changelog;
-using NexusMods.App.UI.Pages.CollectionDownload;
-using NexusMods.App.UI.Pages.DebugControls;
-using NexusMods.App.UI.Pages.Diagnostics;
-using NexusMods.App.UI.Pages.Diff.ApplyDiff;
-using NexusMods.App.UI.Pages.Downloads;
-using NexusMods.App.UI.Pages.FromSoftMerges;
-using NexusMods.App.UI.Pages.FromSoftSaves;
-using NexusMods.App.UI.Pages.Thunderstore;
-using NexusMods.App.UI.Pages.Wabbajack;
-using NexusMods.App.UI.Pages.LibraryPage;
-using NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
-using NexusMods.App.UI.Pages.LoadoutPage;
-using NexusMods.App.UI.Pages.MyGames;
-using NexusMods.App.UI.Pages.MyLoadouts;
-using NexusMods.App.UI.Pages.ObservableInfo;
-using NexusMods.App.UI.Pages.Settings;
-using NexusMods.App.UI.Pages.TextEdit;
-using NexusMods.App.UI.Pages.Tools;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.Abstractions.Serialization.ExpressionGenerator;
+using SilverModManager.App.UI.Pages;
+using SilverModManager.App.UI.Pages.About;
+using SilverModManager.App.UI.Pages.Changelog;
+using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Pages.DebugControls;
+using SilverModManager.App.UI.Pages.Diagnostics;
+using SilverModManager.App.UI.Pages.Diff.ApplyDiff;
+using SilverModManager.App.UI.Pages.Downloads;
+using SilverModManager.App.UI.Pages.FromSoftMerges;
+using SilverModManager.App.UI.Pages.FromSoftSaves;
+using SilverModManager.App.UI.Pages.Thunderstore;
+using SilverModManager.App.UI.Pages.Wabbajack;
+using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
+using SilverModManager.App.UI.Pages.LoadoutPage;
+using SilverModManager.App.UI.Pages.MyGames;
+using SilverModManager.App.UI.Pages.MyLoadouts;
+using SilverModManager.App.UI.Pages.ObservableInfo;
+using SilverModManager.App.UI.Pages.Settings;
+using SilverModManager.App.UI.Pages.TextEdit;
+using SilverModManager.App.UI.Pages.Tools;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 internal class TypeFinder : ITypeFinder
 {

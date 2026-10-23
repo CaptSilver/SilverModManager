@@ -4,19 +4,19 @@ using System.Reactive.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI;
-using NexusMods.App.UI.LeftMenu.Items;
-using NexusMods.App.UI.Resources;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI;
+using SilverModManager.App.UI.LeftMenu.Items;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
 using ReactiveUI;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {

@@ -1,7 +1,7 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
-namespace NexusMods.Abstractions.Collections.Types;
+namespace SilverModManager.Abstractions.Collections.Types;
 
 /// <summary>
 /// Metadata about a mapping from a MD5 hash to a xxHash64 hash and the size of the file.

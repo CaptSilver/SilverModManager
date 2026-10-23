@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft;
+namespace SilverModManager.Games.FromSoft;
 
 /// <summary>Where a game keeps its saves on the Proton prefix's drive.</summary>
 public enum SaveRootKind

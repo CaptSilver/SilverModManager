@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
 
-namespace NexusMods.App.UI.DiagnosticSystem;
+namespace SilverModManager.App.UI.DiagnosticSystem;
 
 /// <summary>
 /// Marker interface for value formatters. This should never be implemented

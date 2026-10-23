@@ -1,8 +1,8 @@
 using System.Runtime.InteropServices;
 using FluentAssertions;
-using NexusMods.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Launch;
 
-namespace NexusMods.Platform.Proton.Tests.Launch;
+namespace SilverModManager.Platform.Proton.Tests.Launch;
 
 /// <summary>
 /// The helper logic runs in silvermod-testhost: it flocks and handles signals, neither of which may happen in the xunit process.

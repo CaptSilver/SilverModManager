@@ -1,9 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 using Xunit;
 
-namespace NexusMods.Secrets.Tests.Chain;
+namespace SilverModManager.Secrets.Tests.Chain;
 
 public class SecretKeyRegistryTests
 {

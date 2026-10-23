@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.CreationEngine.Morrowind.OpenMw;
+using SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.CreationEngine.Tests.Morrowind.OpenMw;
+namespace SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
 
 /// <summary>
 /// Two empty OpenMW config roots in temp folders. Every service graph that registers the Morrowind game must

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <XunitStartupAssembly>NexusMods.Games.Unity.Tests</XunitStartupAssembly>
+        <XunitStartupAssembly>SilverModManager.Games.Unity.Tests</XunitStartupAssembly>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -9,8 +9,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\src\NexusMods.Games.Unity\NexusMods.Games.Unity.csproj" />
-        <ProjectReference Include="..\..\NexusMods.StandardGameLocators.TestHelpers\NexusMods.StandardGameLocators.TestHelpers.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
+        <ProjectReference Include="..\..\..\src\SilverModManager.Games.Unity\SilverModManager.Games.Unity.csproj" />
+        <ProjectReference Include="..\..\SilverModManager.StandardGameLocators.TestHelpers\SilverModManager.StandardGameLocators.TestHelpers.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
     </ItemGroup>
 </Project>

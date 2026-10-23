@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using TransparentValueObjects;
 
-namespace NexusMods.Abstractions.Diagnostics.References;
+namespace SilverModManager.Abstractions.Diagnostics.References;
 
 /// <summary>
 /// Represents the description of a <see cref="IDataReference"/> instance.

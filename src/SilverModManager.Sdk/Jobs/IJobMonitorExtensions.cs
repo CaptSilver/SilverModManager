@@ -1,7 +1,7 @@
 using System.Reactive.Linq;
 using DynamicData;
 
-namespace NexusMods.Sdk.Jobs;
+namespace SilverModManager.Sdk.Jobs;
 
 // ReSharper disable once InconsistentNaming
 /// <summary>

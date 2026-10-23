@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Abstractions.Library;
+namespace SilverModManager.Abstractions.Library;
 
 /// <summary>
 /// Looks at a file as it is being added to the library and can attach a model that says what it is.

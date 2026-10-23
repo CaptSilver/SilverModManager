@@ -5,30 +5,30 @@ using System.Text.Json;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Collections;
-using NexusMods.Abstractions.Collections.Json;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Collections.Json;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.NexusWebApi;
-using NexusMods.Networking.NexusWebApi.Errors;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Networking.NexusWebApi.Errors;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Library;
-using CollectionMod = NexusMods.Abstractions.Collections.Json.Mod;
-using ModSource = NexusMods.Abstractions.Collections.Json.ModSource;
-using UpdatePolicy = NexusMods.Abstractions.Collections.Json.UpdatePolicy;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Library;
+using CollectionMod = SilverModManager.Abstractions.Collections.Json.Mod;
+using ModSource = SilverModManager.Abstractions.Collections.Json.ModSource;
+using UpdatePolicy = SilverModManager.Abstractions.Collections.Json.UpdatePolicy;
 
-namespace NexusMods.Collections;
+namespace SilverModManager.Collections;
 
 public static class CollectionCreator
 {
@@ -289,7 +289,7 @@ public static class CollectionCreator
         var (collection, revisionId) = await nexusModsLibrary.CreateCollection(streamFactory, collectionManifest, cancellationToken);
         var uploadTime = DateTimeOffset.UtcNow;
 
-        var defaultImageStreamFactory = new EmbeddedResourceStreamFactory<CollectionDownloader>("NexusMods.Collections.default-collection-image.webp");
+        var defaultImageStreamFactory = new EmbeddedResourceStreamFactory<CollectionDownloader>("SilverModManager.Collections.default-collection-image.webp");
         var defaultImageMimeType = "image/webp";
 
         var prefillResult = await nexusModsLibrary.PrefillCollectionMetadata(collection, defaultImageStreamFactory, defaultImageMimeType, cancellationToken);

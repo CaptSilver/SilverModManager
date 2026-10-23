@@ -1,8 +1,8 @@
 using System.Collections.ObjectModel;
-using NexusMods.App.UI.Controls.LoadoutCard;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.LoadoutCard;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Pages.MyLoadouts.GameLoadoutsSectionEntry;
+namespace SilverModManager.App.UI.Pages.MyLoadouts.GameLoadoutsSectionEntry;
 
 public interface IGameLoadoutsSectionEntryViewModel : IViewModelInterface, IDisposable
 {

@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Abstractions.NexusModsLibrary.Models;
+namespace SilverModManager.Abstractions.NexusModsLibrary.Models;
 
 /// <summary>
 /// <see cref="CollectionDownload"/> for a file on Nexus Mods.

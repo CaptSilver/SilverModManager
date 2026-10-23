@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization.Metadata;
 
-namespace NexusMods.Abstractions.NexusWebApi.DTOs.Interfaces;
+namespace SilverModManager.Abstractions.NexusWebApi.DTOs.Interfaces;
 
 /// <summary>
 /// This interface marks DTOs as JSON Serializable.

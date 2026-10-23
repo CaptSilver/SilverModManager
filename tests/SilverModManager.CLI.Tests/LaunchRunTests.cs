@@ -1,18 +1,18 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.App;
-using NexusMods.Backend;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.App;
+using SilverModManager.Backend;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.DataModel;
-using NexusMods.Games.FileHashes;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.DataModel;
+using SilverModManager.Games.FileHashes;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 public class LaunchRunTests
 {

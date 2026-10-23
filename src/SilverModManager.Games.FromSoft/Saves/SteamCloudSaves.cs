@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Saves;
+namespace SilverModManager.Games.FromSoft.Saves;
 
 /// <summary>A save file Steam Cloud holds for one account, as Steam's local cache of the remote files lists it.</summary>
 /// <param name="AccountId">The Steam account's folder name under <c>userdata</c>.</param>

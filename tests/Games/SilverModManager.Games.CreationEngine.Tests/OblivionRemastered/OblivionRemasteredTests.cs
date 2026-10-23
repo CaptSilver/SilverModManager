@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.PluginLists;
-using NexusMods.Games.TestFramework.Helpers;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.PluginLists;
+using SilverModManager.Games.TestFramework.Helpers;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.OblivionRemastered;
+namespace SilverModManager.Games.CreationEngine.Tests.OblivionRemastered;
 
 /// <summary>
 /// Oblivion Remastered is an Unreal game with the old Data folder buried in its Content: saves go under My

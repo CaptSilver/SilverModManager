@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Fuse.Mount;
+namespace SilverModManager.Deployment.Fuse.Mount;
 
 public enum UnmountStatus
 {

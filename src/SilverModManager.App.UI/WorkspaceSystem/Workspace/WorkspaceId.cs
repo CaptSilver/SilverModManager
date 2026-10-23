@@ -1,6 +1,6 @@
 using TransparentValueObjects;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [ValueObject<Guid>]
 public readonly partial struct WorkspaceId : IAugmentWith<DefaultValueAugment, JsonAugment>

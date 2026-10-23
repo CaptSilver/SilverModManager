@@ -1,15 +1,15 @@
 ﻿using System.Reactive;
 using DynamicData.Kernel;
 
-using NexusMods.App.UI.Helpers;
-using NexusMods.App.UI.Helpers.TreeDataGrid;
-using NexusMods.Games.AdvancedInstaller.UI.Preview;
+using SilverModManager.App.UI.Helpers;
+using SilverModManager.App.UI.Helpers.TreeDataGrid;
+using SilverModManager.Games.AdvancedInstaller.UI.Preview;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.ModContent;
+namespace SilverModManager.Games.AdvancedInstaller.UI.ModContent;
 
 /// <summary>
 ///     Represents an individual node in the 'Mod Content' section.

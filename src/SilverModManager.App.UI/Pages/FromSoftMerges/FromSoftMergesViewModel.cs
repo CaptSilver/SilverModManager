@@ -4,18 +4,18 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Pages.FromSoftMerges;
+namespace SilverModManager.App.UI.Pages.FromSoftMerges;
 
 [UsedImplicitly]
 public class FromSoftMergesViewModel : APageViewModel<IFromSoftMergesViewModel>, IFromSoftMergesViewModel

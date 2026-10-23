@@ -3,11 +3,11 @@ using GameFinder.StoreHandlers.Steam;
 using GameFinder.StoreHandlers.Steam.Models;
 using GameFinder.StoreHandlers.Steam.Services;
 using Microsoft.Extensions.Logging;
-using NexusMods.Backend.Games.Locators;
+using SilverModManager.Backend.Games.Locators;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Backend.Games.UserGames;
+namespace SilverModManager.Backend.Games.UserGames;
 
 /// <inheritdoc />
 internal sealed class AddGameByPathService : IAddGameByPath

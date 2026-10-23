@@ -1,26 +1,26 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.Cleanup;
-using NexusMods.Games.FromSoft.Diagnostics;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Heal;
-using NexusMods.Games.FromSoft.Launch;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Games.FromSoft.Overlay;
-using NexusMods.Games.FromSoft.Saves;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Heal;
+using SilverModManager.Games.FromSoft.Launch;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Saves;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.FromSoft;
+namespace SilverModManager.Games.FromSoft;
 
 public static class Services
 {

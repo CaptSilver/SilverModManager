@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.CodeAnalysis;
 
-namespace NexusMods.MnemonicDB.SourceGenerator;
+namespace SilverModManager.MnemonicDB.SourceGenerator;
 
 /// <summary>
 /// Generates the model classes from the given contexts

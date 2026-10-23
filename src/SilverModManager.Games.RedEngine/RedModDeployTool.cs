@@ -1,16 +1,16 @@
 using System.Reflection;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 using R3;
-using static NexusMods.Games.RedEngine.Constants;
+using static SilverModManager.Games.RedEngine.Constants;
 
-namespace NexusMods.Games.RedEngine;
+namespace SilverModManager.Games.RedEngine;
 
 public class RedModDeployTool : ITool
 {

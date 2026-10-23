@@ -2,7 +2,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace NexusMods.Games.Bethesda.LoadOrder;
+namespace SilverModManager.Games.Bethesda.LoadOrder;
 
 /// <summary>Reads the header record (TES3 or TES4) of a plugin. Nothing past that record is touched.</summary>
 public static class PluginHeaderReader

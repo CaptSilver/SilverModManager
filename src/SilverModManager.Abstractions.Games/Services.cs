@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 ///     Adds games related serialization services.

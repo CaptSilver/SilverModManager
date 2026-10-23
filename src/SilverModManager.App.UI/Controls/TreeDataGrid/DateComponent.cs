@@ -1,11 +1,11 @@
 using JetBrains.Annotations;
-using NexusMods.App.UI.Controls.Filters;
-using NexusMods.App.UI.Controls.TreeDataGrid.Filters;
-using NexusMods.App.UI.Extensions;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.Filters;
+using SilverModManager.App.UI.Controls.TreeDataGrid.Filters;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.UI.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// Component for dates.

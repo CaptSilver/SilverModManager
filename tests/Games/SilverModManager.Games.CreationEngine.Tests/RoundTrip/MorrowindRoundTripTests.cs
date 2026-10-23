@@ -1,20 +1,20 @@
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.LoadOrder.Tests;
-using NexusMods.Games.CreationEngine.Morrowind.OpenMw;
-using NexusMods.Games.CreationEngine.PluginLists;
-using NexusMods.Games.CreationEngine.Tests.Morrowind.OpenMw;
-using NexusMods.Games.CreationEngine.Tests.SortOrder;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder.Tests;
+using SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
+using SilverModManager.Games.CreationEngine.PluginLists;
+using SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
+using SilverModManager.Games.CreationEngine.Tests.SortOrder;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.RoundTrip;
+namespace SilverModManager.Games.CreationEngine.Tests.RoundTrip;
 
 /// <summary>
 /// Morrowind without OpenMW: the active plugins go into the [Game Files] section of Morrowind.ini and the game

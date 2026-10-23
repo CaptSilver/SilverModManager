@@ -1,16 +1,16 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Abstractions.Diagnostics.Values;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Resources;
-using NexusMods.Games.StardewValley.Models;
-using NexusMods.Games.StardewValley.WebAPI;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Diagnostics.Values;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Resources;
+using SilverModManager.Games.StardewValley.Models;
+using SilverModManager.Games.StardewValley.WebAPI;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Loadouts;
 using StardewModdingAPI.Toolkit;
 using StardewModdingAPI.Toolkit.Framework.ModData;
 using ModStatus = StardewModdingAPI.Toolkit.Framework.ModData.ModStatus;
@@ -18,7 +18,7 @@ using SMAPIManifest = StardewModdingAPI.Toolkit.Serialization.Models.Manifest;
 using SMAPIModDatabase = StardewModdingAPI.Toolkit.Framework.ModData.ModDatabase;
 
 
-namespace NexusMods.Games.StardewValley.Emitters;
+namespace SilverModManager.Games.StardewValley.Emitters;
 
 /// <summary>
 /// This diagnostic emitter uses the internal SMAPI "mod database" to create

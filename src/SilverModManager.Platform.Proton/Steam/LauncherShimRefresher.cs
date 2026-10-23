@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Platform.Proton.Steam;
+namespace SilverModManager.Platform.Proton.Steam;
 
 /// <summary>
 /// Points the launcher shim at the executable this app instance was started as. A failure is logged and does

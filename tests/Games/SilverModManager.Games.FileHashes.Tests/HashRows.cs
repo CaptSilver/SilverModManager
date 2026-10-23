@@ -1,17 +1,17 @@
-using OperatingSystem = NexusMods.Abstractions.Games.FileHashes.Values.OperatingSystem;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.GOG.Values;
-using NexusMods.Abstractions.Steam.Values;
-using NexusMods.MnemonicDB.Abstractions;
+using OperatingSystem = SilverModManager.Abstractions.Games.FileHashes.Values.OperatingSystem;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.GOG.Values;
+using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 /// <summary>
 /// Writes the rows the file_hashes queries and the service lookups read. Every method commits one

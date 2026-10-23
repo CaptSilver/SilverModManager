@@ -1,12 +1,12 @@
 using FluentAssertions;
 
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.UI.Tests.Helpers.TreeDataGrid.FolderGenerator;
+namespace SilverModManager.UI.Tests.Helpers.TreeDataGrid.FolderGenerator;
 
 public class TreeFolderGeneratorTests
 {

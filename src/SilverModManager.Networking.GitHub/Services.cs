@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 
-namespace NexusMods.Networking.GitHub;
+namespace SilverModManager.Networking.GitHub;
 
 /// <summary>
 /// Service registration.

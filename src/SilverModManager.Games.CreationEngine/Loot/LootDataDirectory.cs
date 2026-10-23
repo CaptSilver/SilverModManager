@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Games.CreationEngine.Loot;
+namespace SilverModManager.Games.CreationEngine.Loot;
 
 /// <summary>
 /// The folder that holds the <c>loot</c> directory: downloaded masterlists and the user's userlists. Registered once

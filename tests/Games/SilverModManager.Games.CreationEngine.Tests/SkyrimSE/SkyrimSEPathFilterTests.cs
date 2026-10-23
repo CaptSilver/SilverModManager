@@ -1,11 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.SkyrimSE;
+namespace SilverModManager.Games.CreationEngine.Tests.SkyrimSE;
 
 public class SkyrimSEPathFilterTests(IServiceProvider serviceProvider)
 {

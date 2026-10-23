@@ -1,9 +1,9 @@
 using FluentAssertions;
 
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.AdvancedInstaller.Tests;
+namespace SilverModManager.Games.AdvancedInstaller.Tests;
 
 /// <summary>
 /// Tests for ModInstallDestination and friends.

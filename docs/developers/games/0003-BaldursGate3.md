@@ -81,7 +81,7 @@ There are a handful of popular native dlls mods, which are installed in the `Bin
 These require a loader, like [Native Mod Loader](https://www.nexusmods.com/baldursgate3/mods/944) to be installed to work.
 
 ## BG3 Official modding support
-BG3 added official modding support through ModIo in Patch 7 (sep 2024), but majority od mods are still available on NexusMods.
+BG3 added official modding support through ModIo in Patch 7 (sep 2024), but majority od mods are still available on SilverModManager.
 BG3 offers an in-game mod manager, to download, toggle and remove mods from ModIo. There is no Load Order management support as of Patch 7.
 "Third party" mods are still recognized and used by the game, but they are not officially supported.
 

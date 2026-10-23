@@ -1,15 +1,15 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Settings;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public class HealthCheckLeftMenuItemViewModel : LeftMenuItemViewModel
 {

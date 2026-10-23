@@ -1,12 +1,12 @@
 using System.Net;
 using System.Text.Json;
 using FluentAssertions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Networking.NexusWebApi.Auth;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Networking.NexusWebApi.Auth;
+using SilverModManager.Sdk.Jobs;
 using NSubstitute;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 public class OAuth2MessageFactoryTests : IDisposable
 {

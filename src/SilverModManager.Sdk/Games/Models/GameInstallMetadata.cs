@@ -1,10 +1,10 @@
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.BuiltInEntities;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.BuiltInEntities;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// Metadata about a game installation. This model exists so that parts of the system can reference a single

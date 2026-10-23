@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Settings;
+namespace SilverModManager.Sdk.Settings;
 
 /// <summary>
 /// Builds the storage name of a settings value from <see cref="ISettings.SettingsId"/>.

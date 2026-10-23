@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Me3;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class SeamlessCoopSettingsTests
 {

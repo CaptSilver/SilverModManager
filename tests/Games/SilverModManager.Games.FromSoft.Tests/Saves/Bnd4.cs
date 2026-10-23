@@ -2,7 +2,7 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace NexusMods.Games.FromSoft.Tests.Saves;
+namespace SilverModManager.Games.FromSoft.Tests.Saves;
 
 /// <summary>
 /// Builds a well-formed BND4 container, the shape the game's save files have: a 0x40 byte header, one 0x20 byte

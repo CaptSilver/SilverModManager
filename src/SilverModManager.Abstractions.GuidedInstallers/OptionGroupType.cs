@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.GuidedInstallers;
+namespace SilverModManager.Abstractions.GuidedInstallers;
 
 /// <summary>
 /// The rules used with regards to making a choice among multiple possibilities.

@@ -1,13 +1,13 @@
 using System.Collections.Immutable;
 using FluentAssertions;
-using NexusMods.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 using Xunit;
 
-namespace NexusMods.Games.Generic.Tests;
+namespace SilverModManager.Games.Generic.Tests;
 
 public class WineDiagnosticHelperTests
 {

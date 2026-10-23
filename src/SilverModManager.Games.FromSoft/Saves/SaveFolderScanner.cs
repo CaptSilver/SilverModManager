@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Saves;
+namespace SilverModManager.Games.FromSoft.Saves;
 
 /// <summary>What a file in a save folder is, going by its name.</summary>
 public enum SaveKind

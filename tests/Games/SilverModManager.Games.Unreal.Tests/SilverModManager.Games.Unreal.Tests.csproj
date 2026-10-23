@@ -5,6 +5,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\src\NexusMods.Games.Unreal\NexusMods.Games.Unreal.csproj" />
+        <ProjectReference Include="..\..\..\src\SilverModManager.Games.Unreal\SilverModManager.Games.Unreal.csproj" />
     </ItemGroup>
 </Project>

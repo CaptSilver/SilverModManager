@@ -1,9 +1,9 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Threading;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Threading;
 
-namespace NexusMods.Benchmarks.Benchmarks.Loadouts.Harness;
+namespace SilverModManager.Benchmarks.Benchmarks.Loadouts.Harness;
 
 public class DummyFileStore : IFileStore
 {

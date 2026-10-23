@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Abstractions.Games.Diagnostics\NexusMods.Abstractions.Games.Diagnostics.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Games\NexusMods.Abstractions.Games.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.FileHashes\NexusMods.Games.FileHashes.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.Generic\NexusMods.Games.Generic.csproj" />
-        <ProjectReference Include="..\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
-        <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
-        <ProjectReference Include="..\NexusMods.App.Generators.Diagnostics\NexusMods.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.FileHashes\SilverModManager.Games.FileHashes.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.Generic\SilverModManager.Games.Generic.csproj" />
+        <ProjectReference Include="..\SilverModManager.Platform.Proton\SilverModManager.Platform.Proton.csproj" />
+        <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.App.Generators.Diagnostics\SilverModManager.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Games.Unity.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Games.Unity.Tests" />
     </ItemGroup>
 </Project>

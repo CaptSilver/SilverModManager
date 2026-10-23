@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Cleanup;
+namespace SilverModManager.Games.FromSoft.Cleanup;
 
 /// <summary>The plan as lines of text, which the command line and the Health Check dialog both show.</summary>
 public static class CleanupPlanText

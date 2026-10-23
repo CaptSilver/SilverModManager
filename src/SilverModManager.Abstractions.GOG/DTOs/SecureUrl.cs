@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.GOG.JsonConverters;
+using SilverModManager.Abstractions.GOG.JsonConverters;
 // ReSharper disable InconsistentNaming
 
-namespace NexusMods.Abstractions.GOG.DTOs;
+namespace SilverModManager.Abstractions.GOG.DTOs;
 
 /// <summary>
 /// A secure URL for a GOG endpoint. These are tempoarary URLs, that are combined with a given

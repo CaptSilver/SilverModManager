@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using FluentAssertions;
 
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 /// <summary>
 /// Scans over build files for names that nothing checks at compile time: an
@@ -13,8 +13,8 @@ public partial class BuildReferenceGuardTests
 {
     private const string LegacyPrefix = "NEXUSMODS" + "_";
     private const string SystemExtractorSymbol = "SMM_USE_SYSTEM_EXTRACTOR";
-    private const string ExtractorTargetsFile = "src/NexusMods.Backend/build/NexusMods.FileExtractor.targets";
-    private const string ExtractorSourceFile = "src/NexusMods.Backend/FileExtractor/Extractors/SevenZipExtractor.cs";
+    private const string ExtractorTargetsFile = "src/SilverModManager.Backend/build/SilverModManager.FileExtractor.targets";
+    private const string ExtractorSourceFile = "src/SilverModManager.Backend/FileExtractor/Extractors/SevenZipExtractor.cs";
     private const string ContributingFile = "docs/developers/Contributing.md";
 
     [GeneratedRegex("""<InternalsVisibleTo\s+Include="([^"]+)""")]

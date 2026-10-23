@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using System.Text.RegularExpressions;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
 /// <summary>
 /// Finds a member of a real mod archive inside a checkout of the erm tool, for the opt-in tests that need real

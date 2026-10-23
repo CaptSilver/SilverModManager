@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Me3;
+namespace SilverModManager.Games.FromSoft.Me3;
 
 /// <summary>What differs between games in the me3 profile.</summary>
 /// <param name="GameName">The game as me3 spells it, such as <c>eldenring</c>.</param>

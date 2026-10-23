@@ -1,7 +1,7 @@
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.ProxyConsole;
 using Ansi = Spectre.Console.Rendering;
 
-namespace NexusMods.ProxyConsole;
+namespace SilverModManager.ProxyConsole;
 
 /// <summary>
 /// An adapter for rendering <see cref="IRenderable"/>s to the console using Spectre.Console. Put here to decouple

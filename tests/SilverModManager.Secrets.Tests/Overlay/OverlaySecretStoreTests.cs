@@ -1,10 +1,10 @@
 using R3;
 using FluentAssertions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Secrets.Overlay;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Secrets.Overlay;
 using Xunit;
 
-namespace NexusMods.Secrets.Tests.Overlay;
+namespace SilverModManager.Secrets.Tests.Overlay;
 
 public class OverlaySecretStoreTests : IDisposable
 {

@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI.Pages.About;
+namespace SilverModManager.App.UI.Pages.About;
 
 [JsonName("SilverModManager.App.UI.Pages.About.AboutPageContext")]
 public record AboutPageContext : IPageFactoryContext;

@@ -1,10 +1,10 @@
-using NexusMods.Abstractions.NexusModsLibrary.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk.Resources;
+using SilverModManager.Abstractions.NexusModsLibrary.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Resources;
 
-namespace NexusMods.Abstractions.NexusModsLibrary.Models;
+namespace SilverModManager.Abstractions.NexusModsLibrary.Models;
 
 /// <summary>
 /// Metadata about a collection on Nexus Mods.

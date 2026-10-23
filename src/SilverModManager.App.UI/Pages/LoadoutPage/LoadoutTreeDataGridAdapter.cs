@@ -2,15 +2,15 @@ using System.ComponentModel;
 using Avalonia.Controls.Models.TreeDataGrid;
 using DynamicData;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.MnemonicDB.Abstractions;
 using OneOf;
 using R3;
 
-namespace NexusMods.App.UI.Pages.LoadoutPage;
+namespace SilverModManager.App.UI.Pages.LoadoutPage;
 
 public readonly record struct ToggleEnableStateMessage(LoadoutItemId[] Ids);
 public readonly record struct OpenCollectionMessage(LoadoutItemId[] Ids, NavigationInformation NavigationInformation);

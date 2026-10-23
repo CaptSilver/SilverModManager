@@ -4,7 +4,7 @@ using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Overlays.Login;
+namespace SilverModManager.App.UI.Overlays.Login;
 
 public partial class NexusLoginOverlayView : ReactiveUserControl<INexusLoginOverlayViewModel>
 {
@@ -21,7 +21,7 @@ public partial class NexusLoginOverlayView : ReactiveUserControl<INexusLoginOver
             this.BindCommand<NexusLoginOverlayView, INexusLoginOverlayViewModel, ICommand, Button>(ViewModel, vm => vm.Cancel, v => v.CancelButton)
                 .DisposeWith(d);
 
-            UseApiKeyButton.Text = NexusMods.App.UI.Resources.Language.NexusLoginOverlayView_Use_API_key_instead;
+            UseApiKeyButton.Text = SilverModManager.App.UI.Resources.Language.NexusLoginOverlayView_Use_API_key_instead;
 
             this.BindCommand<NexusLoginOverlayView, INexusLoginOverlayViewModel, ICommand, Button>(ViewModel, vm => vm.UseApiKey, v => v.UseApiKeyButton)
                 .DisposeWith(d);

@@ -1,10 +1,10 @@
 using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.App.UI.Resources;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.App.UI.Resources;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads;
+namespace SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads;
 
 public partial class DialogPremiumCollectionDownloadsView : ReactiveUserControl<IDialogPremiumCollectionDownloadsViewModel>
 {

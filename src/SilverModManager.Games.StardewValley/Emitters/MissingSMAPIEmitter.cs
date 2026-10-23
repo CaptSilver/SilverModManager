@@ -1,13 +1,13 @@
 using System.Runtime.CompilerServices;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Games.StardewValley.Models;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Games.StardewValley.Models;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.StardewValley.Emitters;
+namespace SilverModManager.Games.StardewValley.Emitters;
 
 public class MissingSMAPIEmitter : ILoadoutDiagnosticEmitter
 {

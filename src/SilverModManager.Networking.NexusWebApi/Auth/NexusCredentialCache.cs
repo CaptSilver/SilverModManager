@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk.NexusModsApi;
 using R3;
 
-namespace NexusMods.Networking.NexusWebApi.Auth;
+namespace SilverModManager.Networking.NexusWebApi.Auth;
 
 /// <summary>
 /// Where a cached credential came from.

@@ -1,23 +1,23 @@
 using System.Diagnostics;
 using System.Text;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.LoadOrder.Formats;
-using NexusMods.Games.Bethesda.LoadOrder.Ordering;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.Creations;
-using NexusMods.Games.CreationEngine.PluginLists;
-using NexusMods.Games.CreationEngine.SortOrder;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder.Formats;
+using SilverModManager.Games.Bethesda.LoadOrder.Ordering;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.Creations;
+using SilverModManager.Games.CreationEngine.PluginLists;
+using SilverModManager.Games.CreationEngine.SortOrder;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.CreationEngine;
+namespace SilverModManager.Games.CreationEngine;
 
 /// <summary>
 /// The plugin list file of a game that keeps one as text. The plugins come from the sync tree, their order and

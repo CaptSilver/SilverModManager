@@ -1,7 +1,7 @@
 using DynamicData.Kernel;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.App.UI.Controls.Spine.Buttons.Download;
+namespace SilverModManager.App.UI.Controls.Spine.Buttons.Download;
 
 public interface ISpineDownloadButtonViewModel : ISpineItemViewModel
 {

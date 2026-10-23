@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Loot.Metadata;
-using NexusMods.Games.Bethesda.Loot.Sorting;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Sorting;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Sorting;
 
 // Ports the TestPlugin mock in libloot's sorting/mod.rs.
 internal sealed class TestPlugin(string name) : ISortingPlugin

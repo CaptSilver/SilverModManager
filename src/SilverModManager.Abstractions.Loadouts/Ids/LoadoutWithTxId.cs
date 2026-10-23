@@ -1,7 +1,7 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Abstractions.Loadouts.Ids;
+namespace SilverModManager.Abstractions.Loadouts.Ids;
 
 /// <summary>
 /// A combination of a loadout id and a transaction id.

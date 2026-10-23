@@ -1,6 +1,6 @@
 ﻿using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// Represents a target path for installing simple mods archives

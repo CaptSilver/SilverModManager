@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Diagnostics.References;
 
-namespace NexusMods.Abstractions.Diagnostics;
+namespace SilverModManager.Abstractions.Diagnostics;
 
 /// <summary>
 /// Represents a diagnostic.

@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace NexusMods.Games.Bethesda.Loot.Database;
+namespace SilverModManager.Games.Bethesda.Loot.Database;
 
 /// <summary>
 /// The regex rules for condition arguments. LOOT compiles them with Rust's regex crate, a

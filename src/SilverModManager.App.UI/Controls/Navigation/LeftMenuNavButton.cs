@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Metadata;
 using JetBrains.Annotations;
 
-namespace NexusMods.App.UI.Controls.Navigation;
+namespace SilverModManager.App.UI.Controls.Navigation;
 
 /// <summary>
 /// A standard left menu button with active and selected states, as well as workspace navigation capabilities.

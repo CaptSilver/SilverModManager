@@ -2,10 +2,10 @@ using System.Reactive;
 using JetBrains.Annotations;
 using Markdown.Avalonia.Plugins;
 using Markdown.Avalonia.Utils;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.MarkdownRenderer;
+namespace SilverModManager.App.UI.Controls.MarkdownRenderer;
 
 public interface IMarkdownRendererViewModel : IViewModelInterface
 {

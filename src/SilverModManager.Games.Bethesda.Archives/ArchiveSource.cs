@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// The stream an archive was opened over, with the lock that serialises seeks and reads on it. Every

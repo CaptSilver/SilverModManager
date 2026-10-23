@@ -2,21 +2,21 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
 using NexusMods.HyperDuck;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Storage;
-using NexusMods.MnemonicDB.Storage.RocksDbBackend;
+using SilverModManager.MnemonicDB;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
-using Connection = NexusMods.MnemonicDB.Connection;
+using Connection = SilverModManager.MnemonicDB.Connection;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 public sealed class LocalHashesStoreTests : IDisposable
 {

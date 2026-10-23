@@ -1,17 +1,17 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.LoadOrder.Formats;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.Models;
-using NexusMods.Games.CreationEngine.PluginLists;
-using NexusMods.Games.CreationEngine.SortOrder;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder.Formats;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.Models;
+using SilverModManager.Games.CreationEngine.PluginLists;
+using SilverModManager.Games.CreationEngine.SortOrder;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.CreationEngine.Modlists;
+namespace SilverModManager.Games.CreationEngine.Modlists;
 
 /// <summary>
 /// How the Creation Engine titles answer <see cref="Abstractions.Games.Modlists.IMo2InstanceTarget"/>; the game

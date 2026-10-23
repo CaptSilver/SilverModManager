@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.ProxyConsole.RenderDefinitions;
+using SilverModManager.ProxyConsole.RenderDefinitions;
 
-namespace NexusMods.ProxyConsole;
+namespace SilverModManager.ProxyConsole;
 
 /// <summary>
 /// Extension methods for <see cref="IServiceCollection"/> to make it easier to add renderable types.

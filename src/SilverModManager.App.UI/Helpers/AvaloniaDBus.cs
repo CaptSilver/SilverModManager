@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace NexusMods.App.UI.Helpers;
+namespace SilverModManager.App.UI.Helpers;
 
 /// <summary>
 /// Controls the D-Bus connection Avalonia.FreeDesktop opens on Linux.

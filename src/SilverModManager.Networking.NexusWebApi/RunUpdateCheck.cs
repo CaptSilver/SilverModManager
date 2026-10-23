@@ -1,15 +1,15 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.ModUpdates;
-using NexusMods.Networking.ModUpdates.Mixins;
-using NexusMods.Networking.ModUpdates.Traits;
-using NexusMods.Networking.NexusWebApi.Extensions;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.ModUpdates;
+using SilverModManager.Networking.ModUpdates.Mixins;
+using SilverModManager.Networking.ModUpdates.Traits;
+using SilverModManager.Networking.NexusWebApi.Extensions;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 /// <summary>
 /// Utility class that encapsulates the logic for running the actual update check.

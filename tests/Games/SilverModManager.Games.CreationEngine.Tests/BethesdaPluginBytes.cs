@@ -4,10 +4,10 @@ using Mutagen.Bethesda.Plugins;
 using Mutagen.Bethesda.Plugins.Binary.Parameters;
 using Mutagen.Bethesda.Plugins.Records;
 using Mutagen.Bethesda.Skyrim;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.LoadOrder.Tests;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder.Tests;
 
-namespace NexusMods.Games.CreationEngine.Tests;
+namespace SilverModManager.Games.CreationEngine.Tests;
 
 /// <summary>Small real plugins for any release Mutagen reads: an empty mod whose header lists its masters.</summary>
 internal static class BethesdaPluginBytes

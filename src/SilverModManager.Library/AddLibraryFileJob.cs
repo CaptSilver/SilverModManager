@@ -3,19 +3,19 @@ using System.IO.Hashing;
 using System.Security.Cryptography;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library;
+using SilverModManager.Abstractions.Library;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
-using NexusMods.Sdk.FileExtractor;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.FileExtractor;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Library;
+namespace SilverModManager.Library;
 
 internal class AddLibraryFileJob : IJobDefinitionWithStart<AddLibraryFileJob, LibraryFile.New>, IAsyncDisposable
 {

@@ -2,7 +2,7 @@ using System.Globalization;
 using Avalonia.Data;
 using Avalonia.Data.Converters;
 
-namespace NexusMods.App.UI.Converters;
+namespace SilverModManager.App.UI.Converters;
 
 public sealed class TextCaseConverter : IValueConverter
 {

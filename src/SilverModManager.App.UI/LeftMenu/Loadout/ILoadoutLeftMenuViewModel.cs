@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
-using NexusMods.App.UI.LeftMenu.Items;
+using SilverModManager.App.UI.LeftMenu.Items;
 
-namespace NexusMods.App.UI.LeftMenu.Loadout;
+namespace SilverModManager.App.UI.LeftMenu.Loadout;
 
 public interface ILoadoutLeftMenuViewModel : ILeftMenuViewModel
 {

@@ -3,7 +3,7 @@ using System.Text.Json;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Overlay;
+namespace SilverModManager.Games.FromSoft.Overlay;
 
 /// <summary>What is wrong with a path the audit found.</summary>
 public enum AuditFindingKind

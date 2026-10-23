@@ -1,11 +1,11 @@
-using NexusMods.App.UI.Dialog;
-using NexusMods.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads;
-using NexusMods.App.UI.Resources;
-using NexusMods.UI.Sdk.Dialog;
-using NexusMods.UI.Sdk.Dialog.Enums;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.UI.Sdk.Dialog;
+using SilverModManager.UI.Sdk.Dialog.Enums;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Pages.CollectionDownload;
+namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
 public static class CollectionDialogs
 {

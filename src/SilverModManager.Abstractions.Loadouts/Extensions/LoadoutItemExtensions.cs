@@ -1,8 +1,8 @@
 using System.Reactive.Linq;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
-namespace NexusMods.Abstractions.Loadouts.Extensions;
+namespace SilverModManager.Abstractions.Loadouts.Extensions;
 
 /// <summary>
 /// Extensions for loadout items.

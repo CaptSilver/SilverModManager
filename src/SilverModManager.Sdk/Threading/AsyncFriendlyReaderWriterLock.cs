@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.Threading;
+namespace SilverModManager.Sdk.Threading;
 
 /// <summary>
 /// This is an implementation of a simple <see cref="ReaderWriterLock"/>.

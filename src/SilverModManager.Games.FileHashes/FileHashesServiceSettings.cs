@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 using NexusMods.Paths;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Games.FileHashes;
+namespace SilverModManager.Games.FileHashes;
 
 [PublicAPI]
 public record FileHashesServiceSettings : ISettings

@@ -1,14 +1,14 @@
 ﻿using System.Reactive;
 using DynamicData.Kernel;
 
-using NexusMods.Games.AdvancedInstaller.UI.Preview;
+using SilverModManager.Games.AdvancedInstaller.UI.Preview;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.ModContent;
+namespace SilverModManager.Games.AdvancedInstaller.UI.ModContent;
 
 public class ModContentTreeEntryViewModel : AViewModel<IModContentTreeEntryViewModel>, IModContentTreeEntryViewModel
 {

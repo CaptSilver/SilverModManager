@@ -3,7 +3,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace NexusMods.MnemonicDB.SourceGenerator;
+namespace SilverModManager.MnemonicDB.SourceGenerator;
 
 internal class SyntaxReceiver : ISyntaxReceiver
 {

@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
-    <ProjectReference Include="..\..\src\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+    <ProjectReference Include="..\..\src\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
   </ItemGroup>
 
 </Project>

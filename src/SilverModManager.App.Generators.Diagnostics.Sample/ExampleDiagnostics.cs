@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Generators.Diagnostics;
 
-namespace NexusMods.App.Generators.Diagnostics.Sample;
+namespace SilverModManager.App.Generators.Diagnostics.Sample;
 
 public partial class ExampleDiagnostics
 {

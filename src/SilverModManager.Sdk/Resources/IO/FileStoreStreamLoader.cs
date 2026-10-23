@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Sdk.FileStore;
+using SilverModManager.Sdk.FileStore;
 
-namespace NexusMods.Sdk.Resources;
+namespace SilverModManager.Sdk.Resources;
 
 /// <summary>
 /// Resource loader that returns a stream of a file in the file store.

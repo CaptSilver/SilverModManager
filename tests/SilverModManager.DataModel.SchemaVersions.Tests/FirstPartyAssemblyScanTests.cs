@@ -1,9 +1,9 @@
 using System.Reflection;
 using FluentAssertions;
-using NexusMods.App;
-using NexusMods.Sdk;
+using SilverModManager.App;
+using SilverModManager.Sdk;
 
-namespace NexusMods.DataModel.SchemaVersions.Tests;
+namespace SilverModManager.DataModel.SchemaVersions.Tests;
 
 public class FirstPartyAssemblyScanTests
 {

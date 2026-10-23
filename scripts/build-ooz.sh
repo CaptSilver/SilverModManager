@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds libooz.so (Kraken decompression, from extern/ooz) in a pinned container image and writes it to
-# src/NexusMods.Games.FromSoft/runtimes/linux-x64/native/libooz.so.
+# src/SilverModManager.Games.FromSoft/runtimes/linux-x64/native/libooz.so.
 #
 # It is not built in the fedora distrobox: the AppImage is built on ubuntu (build-linux-pupnet.yaml), and a
 # library linked against a newer glibc than the AppImage's own native libraries fails to load on the
@@ -17,7 +17,7 @@ IMAGE="docker.io/library/ubuntu:20.04@sha256:c664f8f86ed5a386b0a340d981b8f81714e
 SOURCES=(kraken_lib.cpp bitknit.cpp lzna.cpp)
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-out_dir="$root/src/NexusMods.Games.FromSoft/runtimes/linux-x64/native"
+out_dir="$root/src/SilverModManager.Games.FromSoft/runtimes/linux-x64/native"
 out="$out_dir/libooz.so"
 
 max_glibc() { objdump -T "$1" | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1; }

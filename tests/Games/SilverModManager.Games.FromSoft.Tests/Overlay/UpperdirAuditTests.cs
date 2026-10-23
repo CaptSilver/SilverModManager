@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.Overlay;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Tests.Overlay;
+namespace SilverModManager.Games.FromSoft.Tests.Overlay;
 
 public class UpperdirAuditTests : IDisposable
 {

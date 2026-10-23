@@ -1,8 +1,8 @@
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Install;
+using SilverModManager.Wabbajack.Install;
 
-namespace NexusMods.Wabbajack.Tests.Install;
+namespace SilverModManager.Wabbajack.Tests.Install;
 
 public class ModlistInstallProgressTests
 {

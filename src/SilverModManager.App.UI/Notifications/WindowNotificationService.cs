@@ -1,10 +1,10 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Dialog;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Dialog;
 
-namespace NexusMods.App.UI.Notifications;
+namespace SilverModManager.App.UI.Notifications;
 
 public class WindowNotificationService : IWindowNotificationService
 {

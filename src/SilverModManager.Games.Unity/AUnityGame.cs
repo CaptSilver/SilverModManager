@@ -1,20 +1,20 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FileHashes.Emitters;
-using NexusMods.Games.Generic.Diagnostics;
-using NexusMods.Games.Unity.BepInEx;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FileHashes.Emitters;
+using SilverModManager.Games.Generic.Diagnostics;
+using SilverModManager.Games.Unity.BepInEx;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.Unity;
+namespace SilverModManager.Games.Unity;
 
 /// <summary>
 /// What every Unity game shares. It implements <see cref="IUnityGame"/> only: the concrete game lists

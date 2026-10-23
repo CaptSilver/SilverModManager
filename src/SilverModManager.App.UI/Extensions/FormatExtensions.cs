@@ -4,7 +4,7 @@ using Humanizer.Bytes;
 using NexusMods.Paths;
 using R3;
 
-namespace NexusMods.App.UI.Extensions;
+namespace SilverModManager.App.UI.Extensions;
 
 public static class FormatExtensions
 {

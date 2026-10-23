@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace NexusMods.Sdk.Jobs;
+namespace SilverModManager.Sdk.Jobs;
 
 /// <summary>
 /// A job context, this is what jobs use internally to communicate with the job monitor

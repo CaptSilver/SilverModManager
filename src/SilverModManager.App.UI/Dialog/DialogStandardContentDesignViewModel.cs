@@ -1,10 +1,10 @@
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI.Fody.Helpers;
 using ReactiveCommand = R3.ReactiveCommand;
 
-namespace NexusMods.App.UI.Dialog;
+namespace SilverModManager.App.UI.Dialog;
 
 
 public class DialogStandardContentDesignViewModel : AViewModel<IDialogStandardContentViewModel>, IDialogStandardContentViewModel

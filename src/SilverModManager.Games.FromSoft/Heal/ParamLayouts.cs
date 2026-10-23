@@ -1,6 +1,6 @@
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 
-namespace NexusMods.Games.FromSoft.Heal;
+namespace SilverModManager.Games.FromSoft.Heal;
 
 /// <summary>What a param's shape has to agree on before rows can be transplanted between two files.</summary>
 public sealed record Layout(int Rows, int Stride, int ParamdefVersion);

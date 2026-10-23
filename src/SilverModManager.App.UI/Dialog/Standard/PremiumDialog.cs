@@ -1,13 +1,13 @@
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.Sdk;
-using NexusMods.UI.Sdk.Dialog;
-using NexusMods.UI.Sdk.Dialog.Enums;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.Sdk;
+using SilverModManager.UI.Sdk.Dialog;
+using SilverModManager.UI.Sdk.Dialog.Enums;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Dialog.Standard;
+namespace SilverModManager.App.UI.Dialog.Standard;
 
 /// <summary>
 /// Helper class for showing premium upgrade dialogs

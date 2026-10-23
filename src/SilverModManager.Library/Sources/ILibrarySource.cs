@@ -1,13 +1,13 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Library.Lock;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Library.Lock;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Library.Sources;
+namespace SilverModManager.Library.Sources;
 
 /// <summary>
 /// One pinned file of a <see cref="ILibrarySource"/>. It maps one to one onto a <see cref="LockEntry"/>; the fields have

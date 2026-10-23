@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Serialization.Attributes;
+namespace SilverModManager.Abstractions.Serialization.Attributes;
 
 /// <summary>
 /// Similar to <see cref="JsonNameAttribute"/>, but provides additional names for the class

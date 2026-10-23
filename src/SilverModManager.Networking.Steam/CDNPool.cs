@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
-using NexusMods.Abstractions.Steam.DTOs;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam.DTOs;
+using SilverModManager.Abstractions.Steam.Values;
 using SteamKit2;
 using SteamKit2.CDN;
 
-namespace NexusMods.Networking.Steam;
+namespace SilverModManager.Networking.Steam;
 
 public class CDNPool
 {

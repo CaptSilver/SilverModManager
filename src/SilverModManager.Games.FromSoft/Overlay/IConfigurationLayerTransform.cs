@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Overlay;
+namespace SilverModManager.Games.FromSoft.Overlay;
 
 /// <summary>
 /// Rewrites one file of the configuration layer on its way into the overlay's upper folder, for a value that must not

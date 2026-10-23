@@ -1,8 +1,8 @@
 using System.Text;
 using System.Text.Json;
-using NexusMods.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Corpus;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Corpus;
 
 /// <summary>
 /// Reads the plugin headers of a Mod Organizer instance of Oblivion Remastered, read-only, and writes

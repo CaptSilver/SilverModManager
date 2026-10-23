@@ -1,9 +1,9 @@
 using Avalonia.Media.Imaging;
 using JetBrains.Annotations;
-using NexusMods.Sdk.Resources;
+using SilverModManager.Sdk.Resources;
 using R3;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// Component for <see cref="Bitmap"/>.

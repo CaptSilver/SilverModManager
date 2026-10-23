@@ -1,8 +1,8 @@
-using NexusMods.Games.Bethesda.Loot.Database;
-using NexusMods.Games.Bethesda.Loot.Metadata;
-using NexusMods.Games.Bethesda.Loot.Sorting;
+using SilverModManager.Games.Bethesda.Loot.Database;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Sorting;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Sorting;
 
 // Ports the database-backed sort entry in libloot's game.rs (sort_plugins, to_plugin_sorting_data).
 public class DatabaseSortTests

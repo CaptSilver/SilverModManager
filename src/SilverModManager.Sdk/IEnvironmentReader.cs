@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// Reads environment variables, so code that depends on them can be tested without touching the process.

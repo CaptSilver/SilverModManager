@@ -2,18 +2,18 @@
     d:DesignHeight="88"
     d:DesignWidth="184"
     mc:Ignorable="d"
-    x:Class="NexusMods.App.UI.LeftMenu.Items.LaunchButtonView"
+    x:Class="SilverModManager.App.UI.LeftMenu.Items.LaunchButtonView"
     x:TypeArguments="items:ILaunchButtonViewModel"
     xmlns="https://github.com/avaloniaui"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:items="clr-namespace:NexusMods.App.UI.LeftMenu.Items"
+    xmlns:items="clr-namespace:SilverModManager.App.UI.LeftMenu.Items"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactiveUi="http://reactiveui.net"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:spinner="clr-namespace:NexusMods.App.UI.Controls.Spinner;assembly=NexusMods.App.UI"
-    xmlns:progressRing="clr-namespace:NexusMods.App.UI.Controls.ProgressRing"
-    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources">
+    xmlns:spinner="clr-namespace:SilverModManager.App.UI.Controls.Spinner;assembly=SilverModManager.App.UI"
+    xmlns:progressRing="clr-namespace:SilverModManager.App.UI.Controls.ProgressRing"
+    xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources">
     <Design.DataContext>
         <items:LaunchButtonDesignViewModel />
     </Design.DataContext>

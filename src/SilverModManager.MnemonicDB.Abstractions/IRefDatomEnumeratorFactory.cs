@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// A snapshot that returns a specific type of low-level iterator.

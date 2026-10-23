@@ -4,25 +4,25 @@ using Avalonia.Threading;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Controls.Spine;
-using NexusMods.App.UI.Controls.Spine.Buttons.Download;
-using NexusMods.App.UI.Controls.Spine.Buttons.Icon;
-using NexusMods.App.UI.Controls.Spine.Buttons.Image;
-using NexusMods.App.UI.Settings;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceAttachments;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Controls.Spine;
+using SilverModManager.App.UI.Controls.Spine.Buttons.Download;
+using SilverModManager.App.UI.Controls.Spine.Buttons.Icon;
+using SilverModManager.App.UI.Controls.Spine.Buttons.Image;
+using SilverModManager.App.UI.Settings;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceAttachments;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 using ReactiveUI;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.UI.Tests.Controls.Spine;
+namespace SilverModManager.UI.Tests.Controls.Spine;
 
 public class SpineLoadoutOrderTests(IServiceProvider provider) : AUiTest(provider)
 {

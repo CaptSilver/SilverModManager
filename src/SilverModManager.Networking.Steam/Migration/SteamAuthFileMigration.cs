@@ -1,10 +1,10 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 using NexusMods.Paths;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Networking.Steam.Migration;
+namespace SilverModManager.Networking.Steam.Migration;
 
 /// <summary>
 /// Moves the login that older versions kept in a plain file into the secret store.

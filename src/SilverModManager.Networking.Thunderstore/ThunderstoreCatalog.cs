@@ -1,9 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
-using NexusMods.Networking.Thunderstore.DTOs;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Networking.Thunderstore.DTOs;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.Networking.Thunderstore;
+namespace SilverModManager.Networking.Thunderstore;
 
 /// <summary>
 /// Every package of one community, held in memory. Built from the cached listing chunks, never from the

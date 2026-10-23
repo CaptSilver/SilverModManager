@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.Loot.Sorting;
+using SilverModManager.Games.Bethesda.Loot.Sorting;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Sorting;
 
 // Hand-computed from petgraph 0.8.2's toposort and bellman_ford.
 public class AlgorithmsTests

@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.FileExtractor;
+using SilverModManager.Abstractions.FileExtractor;
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Backend.FileExtractor.Extractors;
+namespace SilverModManager.Backend.FileExtractor.Extractors;
 
 /// <summary>
 /// Generic enum for expressing the priority of a given operation. Most operations will be Normal priority, but

@@ -1,14 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.LoadOrder.Formats;
-using NexusMods.Games.CreationEngine.Abstractions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder.Formats;
+using SilverModManager.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.CreationEngine.PluginLists;
+namespace SilverModManager.Games.CreationEngine.PluginLists;
 
 /// <summary>Active plugins are prefixed with <c>*</c> and unmarked ones are inactive (Skyrim SE, Fallout 4 and newer).</summary>
 public sealed class AsteriskMechanism : IPluginListMechanism, IPluginListCodec

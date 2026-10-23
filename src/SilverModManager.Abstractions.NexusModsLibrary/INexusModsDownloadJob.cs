@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Downloads;
-using NexusMods.Abstractions.HttpDownloads;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.Abstractions.HttpDownloads;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Abstractions.NexusModsLibrary;
+namespace SilverModManager.Abstractions.NexusModsLibrary;
 
 /// <summary>
 /// Represents a Nexus Mods download job with associated metadata.

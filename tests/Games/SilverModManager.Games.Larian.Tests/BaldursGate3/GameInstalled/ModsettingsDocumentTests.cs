@@ -1,10 +1,10 @@
 using System.Xml;
 using FluentAssertions;
-using NexusMods.Games.Larian.BaldursGate3.GameInstalled;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3.GameInstalled;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3.GameInstalled;
 
 public class ModsettingsDocumentTests(IFileSystem fs)
 {

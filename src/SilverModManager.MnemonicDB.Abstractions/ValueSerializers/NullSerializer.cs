@@ -1,8 +1,8 @@
 using System;
 using System.Buffers;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
-namespace NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+namespace SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
 /// <summary>
 /// A serializer for the Null value

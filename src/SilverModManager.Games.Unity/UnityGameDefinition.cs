@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Unity;
+namespace SilverModManager.Games.Unity;
 
 /// <summary>What sets one Unity game apart from the next: its files, its store id and where its mods come from.</summary>
 /// <param name="Executable">The game's executable, relative to the game folder.</param>

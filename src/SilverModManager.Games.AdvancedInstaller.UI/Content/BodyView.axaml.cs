@@ -4,7 +4,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI;
+namespace SilverModManager.Games.AdvancedInstaller.UI;
 
 [ExcludeFromCodeCoverage]
 public partial class BodyView : ReactiveUserControl<IBodyViewModel>

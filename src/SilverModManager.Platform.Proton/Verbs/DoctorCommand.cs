@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Cli;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Platform.Proton.Verbs;
+namespace SilverModManager.Platform.Proton.Verbs;
 
 /// <summary>
 /// Prints the doctor report: the managed games and, after them, what the game locators had to leave out.

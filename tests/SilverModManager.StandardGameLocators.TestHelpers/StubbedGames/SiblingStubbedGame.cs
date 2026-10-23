@@ -1,14 +1,14 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+namespace SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
 /// <summary>
 /// A second game that shares <see cref="StubbedGame"/>'s Nexus id, the way Skyrim VR shares Skyrim SE's.

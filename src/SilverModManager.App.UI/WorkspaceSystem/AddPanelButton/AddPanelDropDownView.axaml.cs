@@ -3,10 +3,10 @@ using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Resources;
+using SilverModManager.App.UI.Resources;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [UsedImplicitly]
 public partial class AddPanelDropDownView : ReactiveUserControl<IAddPanelDropDownViewModel>

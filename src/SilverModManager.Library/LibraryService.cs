@@ -1,19 +1,19 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Downloads;
-using NexusMods.Abstractions.GC;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.Library.Jobs;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.Abstractions.GC;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Library.Jobs;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Library;
+namespace SilverModManager.Library;
 
 /// <summary>
 /// Implementation of <see cref="ILibraryService"/>.

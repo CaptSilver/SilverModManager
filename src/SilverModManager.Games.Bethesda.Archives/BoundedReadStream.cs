@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// Exposes <c>length</c> bytes of an archive from its current position, so a decompressor can neither read

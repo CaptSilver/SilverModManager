@@ -1,12 +1,12 @@
 using System.Text;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.Library.Sources;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Library.Sources;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Library.Lock;
+namespace SilverModManager.Library.Lock;
 
 /// <summary>
 /// Turns the mods of a loadout into a <see cref="LockFile"/>.

@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 /// <summary>
 /// Stands in for the guided installer window: records every installation it is asked to run and answers

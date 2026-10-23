@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace NexusMods.App.UI.Extensions;
+namespace SilverModManager.App.UI.Extensions;
 
 public static class ClassesExtensions
 {

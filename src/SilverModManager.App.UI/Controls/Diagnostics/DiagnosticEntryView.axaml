@@ -4,12 +4,12 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:diagnostics="clr-namespace:NexusMods.App.UI.Controls.Diagnostics"
-                                xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-                                xmlns:navigation="clr-namespace:NexusMods.App.UI.Controls.Navigation"
+                                xmlns:diagnostics="clr-namespace:SilverModManager.App.UI.Controls.Diagnostics"
+                                xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+                                xmlns:navigation="clr-namespace:SilverModManager.App.UI.Controls.Navigation"
                                 xmlns:panels="clr-namespace:Avalonia.Labs.Panels;assembly=Avalonia.Labs.Panels"
                                 mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="100"
-                                x:Class="NexusMods.App.UI.Controls.Diagnostics.DiagnosticEntryView">
+                                x:Class="SilverModManager.App.UI.Controls.Diagnostics.DiagnosticEntryView">
     
     <Design.DataContext>
         <diagnostics:DiagnosticEntryDesignViewModel />

@@ -1,4 +1,4 @@
-﻿namespace NexusMods.MnemonicDB.Abstractions;
+﻿namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// Represents the cardinality of an attribute

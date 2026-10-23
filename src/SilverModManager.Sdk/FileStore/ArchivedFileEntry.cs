@@ -1,8 +1,8 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Sdk.FileStore;
+namespace SilverModManager.Sdk.FileStore;
 
 /// <summary>
 /// A helper class for <see cref="IFileStore"/> that represents a file to be backed up. The Path is optional,

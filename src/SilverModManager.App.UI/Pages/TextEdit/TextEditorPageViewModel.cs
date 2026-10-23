@@ -7,26 +7,26 @@ using System.Text;
 using AvaloniaEdit.Document;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Settings;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Settings;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk.Icons;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Query;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Settings;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Library;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using TextMateSharp.Grammars;
 using Hash = NexusMods.Hashing.xxHash3.Hash;
 using ObservableExtensions = R3.ObservableExtensions;
 
-namespace NexusMods.App.UI.Pages.TextEdit;
+namespace SilverModManager.App.UI.Pages.TextEdit;
 
 [UsedImplicitly]
 public class TextEditorPageViewModel : APageViewModel<ITextEditorPageViewModel>, ITextEditorPageViewModel

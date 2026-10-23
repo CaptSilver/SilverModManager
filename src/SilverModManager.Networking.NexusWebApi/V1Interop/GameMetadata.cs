@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NexusMods.Networking.NexusWebApi.V1Interop;
+namespace SilverModManager.Networking.NexusWebApi.V1Interop;
 
 // https://data.nexusmods.com/file/nexus-data/games.json
 internal record GameMetadata(

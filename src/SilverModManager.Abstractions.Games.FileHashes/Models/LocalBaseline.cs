@@ -1,8 +1,8 @@
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Games;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Games.FileHashes.Models;
+namespace SilverModManager.Abstractions.Games.FileHashes.Models;
 
 /// <summary>
 /// The vanilla file list of one installation, built from the game's own install data and kept in the

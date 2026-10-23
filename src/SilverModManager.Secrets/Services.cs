@@ -1,16 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
-using NexusMods.Secrets.Chain;
-using NexusMods.Secrets.File;
-using NexusMods.Secrets.Migration;
-using NexusMods.Secrets.Overlay;
-using NexusMods.Secrets.Verbs;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Secrets.Chain;
+using SilverModManager.Secrets.File;
+using SilverModManager.Secrets.Migration;
+using SilverModManager.Secrets.Overlay;
+using SilverModManager.Secrets.Verbs;
 
-namespace NexusMods.Secrets;
+namespace SilverModManager.Secrets;
 
 public static class Services
 {

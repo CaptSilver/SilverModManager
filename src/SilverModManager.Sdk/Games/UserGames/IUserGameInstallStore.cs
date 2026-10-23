@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// A game install the user pointed the app at, instead of one a store client reported.

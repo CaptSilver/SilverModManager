@@ -1,10 +1,10 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 /// <summary>
 /// A FromSoft game that shares no value with Elden Ring: id, name, layout, save names, check and cleanup rules,

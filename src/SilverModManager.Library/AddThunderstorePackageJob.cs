@@ -1,13 +1,13 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.Thunderstore;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.Thunderstore;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.Library;
+namespace SilverModManager.Library;
 
 /// <summary>
 /// Adds a Thunderstore package version to the library, together with the dependencies it needs. Which versions

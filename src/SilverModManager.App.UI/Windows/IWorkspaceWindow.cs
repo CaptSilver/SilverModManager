@@ -1,8 +1,8 @@
 using System.Reactive;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.WorkspaceSystem;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Windows;
+namespace SilverModManager.App.UI.Windows;
 
 /// <summary>
 /// Represents a window with a workspace.

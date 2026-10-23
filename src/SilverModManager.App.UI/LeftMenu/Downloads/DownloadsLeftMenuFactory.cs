@@ -1,6 +1,6 @@
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI.LeftMenu.Downloads;
+namespace SilverModManager.App.UI.LeftMenu.Downloads;
 
 public class DownloadsLeftMenuFactory(IServiceProvider serviceProvider) : ILeftMenuFactory<DownloadsContext>
 {

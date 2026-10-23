@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.Bethesda.LoadOrder\NexusMods.Games.Bethesda.LoadOrder.csproj" />
+        <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.Games.Bethesda.LoadOrder\SilverModManager.Games.Bethesda.LoadOrder.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -15,6 +15,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Games.Bethesda.Loot.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Games.Bethesda.Loot.Tests" />
     </ItemGroup>
 </Project>

@@ -1,9 +1,9 @@
 using System.Text;
-using NexusMods.Abstractions.Steam.Values;
-using NexusMods.Networking.Steam.Tests;
+using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.Networking.Steam.Tests;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.TestFramework.Helpers;
+namespace SilverModManager.Games.TestFramework.Helpers;
 
 /// <summary>One file of a depot: the path as it sits in the game folder and its bytes.</summary>
 public sealed record SteamFile(string Path, byte[] Content)

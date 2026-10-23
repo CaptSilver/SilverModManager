@@ -1,6 +1,6 @@
 using FluentAssertions;
 
-namespace NexusMods.Deployment.Vfs.Tests;
+namespace SilverModManager.Deployment.Vfs.Tests;
 
 public class InodeTableTests
 {

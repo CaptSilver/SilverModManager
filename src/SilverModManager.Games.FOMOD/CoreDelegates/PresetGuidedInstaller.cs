@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Games.FOMOD.CoreDelegates;
+namespace SilverModManager.Games.FOMOD.CoreDelegates;
 
 /// <summary>
 /// A IGuidedInstaller implementation that uses a preset list of steps to make the same choices

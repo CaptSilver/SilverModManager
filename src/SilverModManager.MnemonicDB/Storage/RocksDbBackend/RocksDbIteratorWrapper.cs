@@ -1,9 +1,9 @@
 using System;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 using RocksDbSharp;
 
-namespace NexusMods.MnemonicDB.Storage.RocksDbBackend;
+namespace SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 
 internal struct RocksDbIteratorWrapper : ILowLevelIterator, IRefDatomPeekingEnumerator
 {

@@ -1,14 +1,14 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
-using NexusMods.Sdk;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.NexusModsApi;
 using FluentAssertions;
-using NexusMods.App.UI.Pages.MyGames;
+using SilverModManager.App.UI.Pages.MyGames;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class AddGamePromptTests
 {

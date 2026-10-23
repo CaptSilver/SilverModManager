@@ -1,8 +1,8 @@
 using Avalonia.Controls;
 using JetBrains.Annotations;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.App.UI.Overlays.Updater;
+namespace SilverModManager.App.UI.Overlays.Updater;
 
 [UsedImplicitly]
 public partial class UpdaterDesignView : UserControl

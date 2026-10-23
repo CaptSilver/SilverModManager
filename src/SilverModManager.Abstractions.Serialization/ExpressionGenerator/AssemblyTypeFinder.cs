@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace NexusMods.Abstractions.Serialization.ExpressionGenerator;
+namespace SilverModManager.Abstractions.Serialization.ExpressionGenerator;
 
 /// <summary>
 /// An implementation of <see cref="ITypeFinder"/> that finds all types

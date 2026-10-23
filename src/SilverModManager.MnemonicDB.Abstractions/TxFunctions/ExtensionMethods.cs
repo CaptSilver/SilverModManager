@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
-namespace NexusMods.MnemonicDB.Abstractions.TxFunctions;
+namespace SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 
 /// <summary>
 /// Extension methods for TxFunctions.

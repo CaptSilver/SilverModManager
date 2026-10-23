@@ -2,7 +2,7 @@ using System.ComponentModel;
 using JetBrains.Annotations;
 using R3;
 
-namespace NexusMods.UI.Sdk;
+namespace SilverModManager.UI.Sdk;
 
 /// <summary>
 /// Represents a View with R3 support for the View Model.

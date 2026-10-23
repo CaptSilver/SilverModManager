@@ -3,7 +3,7 @@ using Humanizer.Bytes;
 using NexusMods.Paths;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Converters;
+namespace SilverModManager.App.UI.Converters;
 
 /// <summary>
 /// NexusMods.Paths.Size To String Type Converter.

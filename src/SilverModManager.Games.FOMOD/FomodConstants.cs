@@ -1,4 +1,4 @@
-﻿namespace NexusMods.Games.FOMOD;
+﻿namespace SilverModManager.Games.FOMOD;
 
 public static class FomodConstants
 {

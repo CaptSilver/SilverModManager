@@ -1,9 +1,9 @@
 using Avalonia.Media.Imaging;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Helpers;
+namespace SilverModManager.App.UI.Helpers;
 
 /// <summary>
 /// Shared utility for loading game images and creating IconValues.

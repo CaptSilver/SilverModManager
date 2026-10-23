@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>One texture in a TPF: its name, the DDS bytes as stored, and the entry flags the game reads them with.</summary>
 public sealed record Texture(string Name, byte[] Data, byte Format, byte Type, byte Mipmaps, byte Flags1);

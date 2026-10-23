@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Loot.Metadata;
-using NexusMods.Games.Bethesda.Loot.Sorting;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Sorting;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Sorting;
 
 // Ports the tests in libloot's sorting/groups.rs, plus coverage for the traversal helpers on GroupsGraph.
 public class GroupsGraphTests

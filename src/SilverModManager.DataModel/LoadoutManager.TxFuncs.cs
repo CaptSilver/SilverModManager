@@ -1,13 +1,13 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.DataModel;
+namespace SilverModManager.DataModel;
 
 internal partial class LoadoutManager
 {

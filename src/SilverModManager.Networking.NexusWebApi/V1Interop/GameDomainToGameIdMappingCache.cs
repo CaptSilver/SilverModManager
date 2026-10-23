@@ -1,13 +1,13 @@
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.NexusModsApi;
 using StrawberryShake;
 
-namespace NexusMods.Networking.NexusWebApi.V1Interop;
+namespace SilverModManager.Networking.NexusWebApi.V1Interop;
 
 /// <summary>
 /// Caches the mapping between <see cref="GameDomain"/> and <see cref="NexusModsGameId"/> values for fast lookup.

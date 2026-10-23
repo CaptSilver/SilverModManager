@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.Library.Sources;
+using SilverModManager.Library.Sources;
 
-namespace NexusMods.Library.Lock;
+namespace SilverModManager.Library.Lock;
 
 /// <summary>
 /// One pinned mod in a lock file: which version it is, which file of the source it is, and the SHA-256 the bytes

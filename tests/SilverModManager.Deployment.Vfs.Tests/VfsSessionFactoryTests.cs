@@ -2,15 +2,15 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.Deployment.Vfs.Tests;
+namespace SilverModManager.Deployment.Vfs.Tests;
 
 /// <summary>
 /// Sessions come out of the factory with the staging location and size cap from <see cref="VfsSettings"/>

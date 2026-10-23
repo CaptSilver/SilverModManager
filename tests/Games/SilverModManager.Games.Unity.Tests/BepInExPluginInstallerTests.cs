@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Games.Unity.BepInEx;
-using NexusMods.Games.Unity.Tests.Fixtures;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Games.Unity.BepInEx;
+using SilverModManager.Games.Unity.Tests.Fixtures;
 
-namespace NexusMods.Games.Unity.Tests;
+namespace SilverModManager.Games.Unity.Tests;
 
 public class BepInExPluginInstallerTests(ITestOutputHelper outputHelper) : AUnityInstallerTests<BepInExPluginInstallerTests>(outputHelper)
 {

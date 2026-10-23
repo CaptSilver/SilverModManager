@@ -6,18 +6,18 @@ using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.HttpDownloads;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.HttpDownloads;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using Polly;
 using Polly.Retry;
 using System.ComponentModel;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.Networking.HttpDownloader;
+namespace SilverModManager.Networking.HttpDownloader;
 
 /// <summary>
 /// Download job.

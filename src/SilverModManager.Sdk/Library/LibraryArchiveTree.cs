@@ -3,8 +3,8 @@ using NexusMods.Paths;
 using NexusMods.Paths.Trees;
 using NexusMods.Paths.Trees.Traits;
 
-namespace NexusMods.Sdk.Library;
-using LibraryArchiveTreeNode = Paths.Trees.KeyedBox<Paths.RelativePath, LibraryArchiveTree>;
+namespace SilverModManager.Sdk.Library;
+using LibraryArchiveTreeNode = NexusMods.Paths.Trees.KeyedBox<NexusMods.Paths.RelativePath, LibraryArchiveTree>;
 
 /// <summary>
 ///     Represents a tree of files sourced from a downloaded mod.

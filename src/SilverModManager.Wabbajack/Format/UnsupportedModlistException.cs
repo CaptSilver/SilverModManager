@@ -1,4 +1,4 @@
-namespace NexusMods.Wabbajack.Format;
+namespace SilverModManager.Wabbajack.Format;
 
 /// <summary>
 /// The modlist cannot be read in full: an unknown directive type, a missing required field, or not a

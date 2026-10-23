@@ -1,4 +1,4 @@
-namespace NexusMods.Deployment.Links.Probe;
+namespace SilverModManager.Deployment.Links.Probe;
 
 /// <summary>
 /// Symbolic names for the errnos a link attempt can return, so a refusal reads

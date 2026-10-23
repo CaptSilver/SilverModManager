@@ -1,6 +1,6 @@
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.DataModel.Undo;
+namespace SilverModManager.DataModel.Undo;
 
 /// <summary>
 /// Row definition for the LoadoutRevision entity.

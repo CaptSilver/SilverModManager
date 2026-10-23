@@ -1,16 +1,16 @@
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Backend;
-using NexusMods.Library.Lock;
-using NexusMods.Library.Tests.DownloadsService;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Library;
+using SilverModManager.Backend;
+using SilverModManager.Library.Lock;
+using SilverModManager.Library.Tests.DownloadsService;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Library;
 using NSubstitute;
 using Xunit;
 
-namespace NexusMods.Library.Tests.Lock;
+namespace SilverModManager.Library.Tests.Lock;
 
 public class LockVerifyTests(IConnection connection)
 {

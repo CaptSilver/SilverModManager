@@ -7,7 +7,7 @@ using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Hashes;
+namespace SilverModManager.Sdk.Hashes;
 
 /// <summary>
 /// Represents a MD5 value.

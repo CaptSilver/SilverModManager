@@ -1,25 +1,25 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Values;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.App.UI.DiagnosticSystem;
-using NexusMods.Backend;
-using NexusMods.Games.MountAndBlade2Bannerlord.Diagnostics;
-using NexusMods.Games.Generic;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Values;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Backend;
+using SilverModManager.Games.MountAndBlade2Bannerlord.Diagnostics;
+using SilverModManager.Games.Generic;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using NSubstitute;
 using Xunit;
 using static Bannerlord.LauncherManager.Constants;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.Tests;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.Tests;
 
 public class BannerlordRunGameToolTests(ITestOutputHelper helper) : AIsolatedGameTest<BannerlordRunGameToolTests, Bannerlord>(helper)
 {

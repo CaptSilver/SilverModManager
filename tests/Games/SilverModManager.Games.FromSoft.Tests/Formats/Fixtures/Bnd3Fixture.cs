@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
 /// <summary>
 /// Builds BND3 archives: a 0x20-byte header, the entry headers, null-terminated Shift_JIS names and 0x10-aligned

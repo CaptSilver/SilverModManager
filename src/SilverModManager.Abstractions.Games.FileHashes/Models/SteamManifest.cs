@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Games.FileHashes.Attributes.Steam;
-using NexusMods.Abstractions.Steam.Values;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.Abstractions.Games.FileHashes.Attributes.Steam;
+using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Abstractions.Games.FileHashes.Models;
+namespace SilverModManager.Abstractions.Games.FileHashes.Models;
 
 public partial class SteamManifest : IModelDefinition
 {

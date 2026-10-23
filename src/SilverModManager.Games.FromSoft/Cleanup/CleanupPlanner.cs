@@ -1,8 +1,8 @@
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk.Games;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft.Cleanup;
+namespace SilverModManager.Games.FromSoft.Cleanup;
 
 /// <summary>Steam's launch options line and what would replace it.</summary>
 public sealed record LaunchOptionChange(string OldLine, string NewLine);

@@ -1,6 +1,6 @@
 using Avalonia.Controls.Primitives;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// A divider control.

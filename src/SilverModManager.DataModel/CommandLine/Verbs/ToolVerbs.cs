@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.DataModel.CommandLine.Verbs;
+namespace SilverModManager.DataModel.CommandLine.Verbs;
 
 internal static class ToolVerbs
 {

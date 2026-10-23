@@ -1,14 +1,14 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk.Resources;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Resources;
 
-namespace NexusMods.Abstractions.NexusModsLibrary;
+namespace SilverModManager.Abstractions.NexusModsLibrary;
 
 /// <summary>
-/// Represents a remote mod page on NexusMods.
+/// Represents a remote mod page on SilverModManager.
 /// </summary>
 [PublicAPI]
 public partial class NexusModsModPageMetadata : IModelDefinition

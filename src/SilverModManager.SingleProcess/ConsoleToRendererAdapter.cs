@@ -1,8 +1,8 @@
 using System.CommandLine;
 using System.CommandLine.IO;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.SingleProcess;
+namespace SilverModManager.SingleProcess;
 
 internal class ConsoleToRendererAdapter(IRenderer renderer) : IConsole
 {

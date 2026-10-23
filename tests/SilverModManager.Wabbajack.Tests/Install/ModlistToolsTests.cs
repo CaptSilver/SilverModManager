@@ -1,14 +1,14 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.ToolRunner;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Wabbajack.Install;
-using NexusMods.Wabbajack.Models;
+using SilverModManager.Platform.Proton.ToolRunner;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Install;
+using SilverModManager.Wabbajack.Models;
 
-namespace NexusMods.Wabbajack.Tests.Install;
+namespace SilverModManager.Wabbajack.Tests.Install;
 
 public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<ModlistToolsTests>(helper)
 {
@@ -37,7 +37,7 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
             list.Remapped("ModOrganizer.ini", "[General]\nselected_profile=@ByteArray(Default)\n\n" + executables),
             list.Inline("profiles/Default/modlist.txt", "+A\n"),
             list.Inline("mods/A/A.esp", "a"),
-            new NexusMods.Wabbajack.Format.FromArchive(P("Stock Game/SkyrimSE.exe"), Hash64(StubExe), StubExe.Length, new NexusMods.Wabbajack.Format.ArchiveHashPath(exe.XxHash64, [])),
+            new SilverModManager.Wabbajack.Format.FromArchive(P("Stock Game/SkyrimSE.exe"), Hash64(StubExe), StubExe.Length, new SilverModManager.Wabbajack.Format.ArchiveHashPath(exe.XxHash64, [])),
         ]);
         if (withTools)
         {

@@ -1,8 +1,8 @@
 using System.Net.Http.Headers;
 using JetBrains.Annotations;
-using NexusMods.Networking.GitHub.DTOs;
+using SilverModManager.Networking.GitHub.DTOs;
 
-namespace NexusMods.Networking.GitHub;
+namespace SilverModManager.Networking.GitHub;
 
 /// <summary>
 /// Wrapper for the GitHub API.

@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.App.UI.Pages.Wabbajack;
+using SilverModManager.App.UI.Pages.Wabbajack;
 using NexusMods.Paths;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 public class WabbajackInboxCopyTests : IDisposable
 {

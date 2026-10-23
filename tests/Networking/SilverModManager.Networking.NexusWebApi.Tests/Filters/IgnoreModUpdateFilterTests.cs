@@ -1,17 +1,17 @@
-using NexusMods.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusModsLibrary;
 using Size = NexusMods.Paths.Size;
 using FluentAssertions;
 using NSubstitute;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.NexusWebApi.UpdateFilters;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.NexusWebApi.UpdateFilters;
 using System.Reactive.Linq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
-using NexusMods.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi;
 using DynamicData.Kernel;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi.Tests.Filters;
+namespace SilverModManager.Networking.NexusWebApi.Tests.Filters;
 
 public class IgnoreModUpdateFilterTests(IConnection connection)
 {

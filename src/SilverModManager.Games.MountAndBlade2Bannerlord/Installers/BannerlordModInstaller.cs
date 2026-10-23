@@ -6,20 +6,20 @@ using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.MountAndBlade2Bannerlord.LauncherManager;
-using NexusMods.Games.MountAndBlade2Bannerlord.Models;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.MountAndBlade2Bannerlord.LauncherManager;
+using SilverModManager.Games.MountAndBlade2Bannerlord.Models;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using static NexusMods.Games.MountAndBlade2Bannerlord.BannerlordConstants;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using static SilverModManager.Games.MountAndBlade2Bannerlord.BannerlordConstants;
 using GameStore = Bannerlord.LauncherManager.Models.GameStore;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.Installers;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.Installers;
 
 public sealed class BannerlordModInstaller : ALibraryArchiveInstaller
 {

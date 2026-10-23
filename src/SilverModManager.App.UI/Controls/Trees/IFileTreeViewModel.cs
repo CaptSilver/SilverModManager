@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
 using Avalonia.Controls;
-using NexusMods.App.UI.Controls.Trees.Files;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.Trees.Files;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Controls.Trees;
+namespace SilverModManager.App.UI.Controls.Trees;
 
 public interface IFileTreeViewModel : IViewModelInterface
 {

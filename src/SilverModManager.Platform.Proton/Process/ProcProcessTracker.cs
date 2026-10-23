@@ -1,7 +1,7 @@
 using System.Text;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton;
+namespace SilverModManager.Platform.Proton;
 
 /// <summary>
 /// Finds processes by reading <c>/proc</c>. The root is a parameter so tests can point it at a fixture tree.

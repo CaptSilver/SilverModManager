@@ -1,12 +1,12 @@
 using System.Runtime.CompilerServices;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.Larian.BaldursGate3.ModList;
-using NexusMods.Games.Larian.BaldursGate3.SortOrder;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.Larian.BaldursGate3.ModList;
+using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.Larian.BaldursGate3.Emitters;
+namespace SilverModManager.Games.Larian.BaldursGate3.Emitters;
 
 /// <summary>
 /// Says when two active paks are the same module. The mod list names a module once, so the writer leaves the

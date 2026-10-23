@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Logging;
+namespace SilverModManager.Abstractions.Logging;
 
 /// <summary>
 /// A global source of exceptions that have been observed by the application.

@@ -1,12 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Backend;
-using NexusMods.Games.TestFramework;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Backend;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
-namespace NexusMods.App.GarbageCollection.DataModel.Tests;
+namespace SilverModManager.App.GarbageCollection.DataModel.Tests;
 
 public static class DIHelpers
 {

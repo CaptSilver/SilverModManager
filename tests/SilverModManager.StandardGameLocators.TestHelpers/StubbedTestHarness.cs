@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
+using SilverModManager.Abstractions.Games;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.StandardGameLocators.TestHelpers;
+namespace SilverModManager.StandardGameLocators.TestHelpers;
 
 public static class StubbedTestHarnessExtensions
 {

@@ -3,7 +3,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
 
-namespace NexusMods.Backend.Tests.FileExtractor;
+namespace SilverModManager.Backend.Tests.FileExtractor;
 
 public class GenericExtractionTests : AFileExtractorTest
 {

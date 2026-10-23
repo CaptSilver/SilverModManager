@@ -1,14 +1,14 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Games.CreationEngine.Models;
+namespace SilverModManager.Games.CreationEngine.Models;
 
 /// <summary>
 /// The plugin load order of a Creation Engine loadout.
 /// </summary>
 [PublicAPI]
-[Include<NexusMods.Abstractions.Loadouts.SortOrder>]
+[Include<SilverModManager.Abstractions.Loadouts.SortOrder>]
 public partial class PluginSortOrder : IModelDefinition
 {
     private const string Namespace = "SilverModManager.Games.CreationEngine.PluginSortOrder";

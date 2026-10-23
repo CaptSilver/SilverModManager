@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using DynamicData.Kernel;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 public class GameLocationDescriptor
 {

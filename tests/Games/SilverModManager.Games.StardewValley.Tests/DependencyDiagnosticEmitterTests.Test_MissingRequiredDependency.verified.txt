@@ -1,4 +1,4 @@
-﻿[Id] NexusMods.Games.StardewValley: 1
+﻿[Id] SilverModManager.Games.StardewValley: 1
 [Title] Missing Dependency
 [Summary] 'Farm Type Manager v1.24.0' requires 'Content Patcher' which is not installed
 [Details]

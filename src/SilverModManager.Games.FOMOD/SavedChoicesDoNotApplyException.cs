@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FOMOD;
+namespace SilverModManager.Games.FOMOD;
 
 /// <summary>
 /// The choices saved for a FOMOD (for example by a collection author) don't fit the FOMOD that is

@@ -2,19 +2,19 @@ using System.Reactive.Disposables;
 using Avalonia.Platform.Storage;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Settings;
 using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
-using ConfigurablePathsContainer = NexusMods.UI.Sdk.Settings.ConfigurablePathsContainer;
+using ConfigurablePathsContainer = SilverModManager.UI.Sdk.Settings.ConfigurablePathsContainer;
 using Disposable = R3.Disposable;
-using ISettingsManager = NexusMods.Sdk.Settings.ISettingsManager;
+using ISettingsManager = SilverModManager.Sdk.Settings.ISettingsManager;
 using ReactiveCommand = R3.ReactiveCommand;
 
-namespace NexusMods.App.UI.Controls.Settings.SettingEntries.PathsList;
+namespace SilverModManager.App.UI.Controls.Settings.SettingEntries.PathsList;
 
 public class SettingPathsViewModel : AViewModel<ISettingPathsViewModel>, ISettingPathsViewModel
 {

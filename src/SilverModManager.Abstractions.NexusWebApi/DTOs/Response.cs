@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace NexusMods.Abstractions.NexusWebApi.DTOs;
+namespace SilverModManager.Abstractions.NexusWebApi.DTOs;
 
 /// <summary>
 /// Represents an individual response from a Nexus API request; containing the received raw data

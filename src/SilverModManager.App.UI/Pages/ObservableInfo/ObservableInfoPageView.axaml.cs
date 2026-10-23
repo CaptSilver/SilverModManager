@@ -5,7 +5,7 @@ using DynamicData.Kernel;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.ObservableInfo;
+namespace SilverModManager.App.UI.Pages.ObservableInfo;
 
 public partial class ObservableInfoPageView : ReactiveUserControl<IObservableInfoPageViewModel>
 {

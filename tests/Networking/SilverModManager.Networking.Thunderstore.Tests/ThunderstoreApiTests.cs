@@ -3,12 +3,12 @@ using Xunit;
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using NexusMods.Networking.Thunderstore.DTOs;
-using NexusMods.Networking.Thunderstore.Tests.Fixtures;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Networking.Thunderstore.DTOs;
+using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.Networking.Thunderstore.Tests;
+namespace SilverModManager.Networking.Thunderstore.Tests;
 
 public class ThunderstoreApiTests
 {

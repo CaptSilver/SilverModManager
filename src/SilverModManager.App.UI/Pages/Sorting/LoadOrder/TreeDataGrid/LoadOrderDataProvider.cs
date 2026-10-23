@@ -4,19 +4,19 @@ using Avalonia.Media.Imaging;
 using DynamicData;
 using Humanizer;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Sdk.Resources;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Resources;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Sdk.Resources;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 using ReactiveUI;
 // ReSharper disable InvokeAsExtensionMethod
 
-namespace NexusMods.App.UI.Pages.Sorting;
+namespace SilverModManager.App.UI.Pages.Sorting;
 
 public class LoadOrderDataProvider : ILoadOrderDataProvider
 {

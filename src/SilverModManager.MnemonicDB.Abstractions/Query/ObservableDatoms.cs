@@ -5,13 +5,13 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
 using DynamicData;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.DatomComparators;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.DatomComparators;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 
-namespace NexusMods.MnemonicDB.Abstractions.Query;
+namespace SilverModManager.MnemonicDB.Abstractions.Query;
 
 /// <summary>
 /// Extensions for observing datoms in the database

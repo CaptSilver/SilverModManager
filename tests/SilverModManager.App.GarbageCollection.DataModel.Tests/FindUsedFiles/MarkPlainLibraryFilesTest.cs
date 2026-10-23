@@ -1,20 +1,20 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.Abstractions.Library;
-using NexusMods.App.GarbageCollection.Nx;
-using NexusMods.DataModel;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.App.GarbageCollection.Nx;
+using SilverModManager.DataModel;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Library;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
-using static NexusMods.App.GarbageCollection.DataModel.Tests.FindUsedFiles.Helpers;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Library;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
+using static SilverModManager.App.GarbageCollection.DataModel.Tests.FindUsedFiles.Helpers;
 
-namespace NexusMods.App.GarbageCollection.DataModel.Tests.FindUsedFiles;
+namespace SilverModManager.App.GarbageCollection.DataModel.Tests.FindUsedFiles;
 
 /// <summary>
 /// A library file that is not an archive (an .esp added on its own) keeps its bytes in the store under its own hash,

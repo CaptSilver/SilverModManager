@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <XunitStartupAssembly>NexusMods.Deployment.Fuse.Tests</XunitStartupAssembly>
+    <XunitStartupAssembly>SilverModManager.Deployment.Fuse.Tests</XunitStartupAssembly>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,9 +9,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\NexusMods.Deployment.Fuse\NexusMods.Deployment.Fuse.csproj" />
-    <ProjectReference Include="..\..\src\NexusMods.Backend\NexusMods.Backend.csproj" />
-    <ProjectReference Include="..\..\src\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
+    <ProjectReference Include="..\..\src\SilverModManager.Deployment.Fuse\SilverModManager.Deployment.Fuse.csproj" />
+    <ProjectReference Include="..\..\src\SilverModManager.Backend\SilverModManager.Backend.csproj" />
+    <ProjectReference Include="..\..\src\SilverModManager.Platform.Proton\SilverModManager.Platform.Proton.csproj" />
   </ItemGroup>
 
 </Project>

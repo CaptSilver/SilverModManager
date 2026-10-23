@@ -1,14 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Installers;
+namespace SilverModManager.Games.FromSoft.Installers;
 
 /// <summary>
 /// Recognises a Seamless Co-op release (<c>ersc_launcher.exe</c> beside a <c>SeamlessCoop</c> folder with

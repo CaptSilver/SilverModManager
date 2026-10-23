@@ -1,6 +1,6 @@
 ﻿using Reloaded.Memory.Extensions;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// An extremely lightweight LRU cache that is not thread safe. All values are expected

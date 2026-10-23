@@ -2,7 +2,7 @@ using System.Linq.Expressions;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 public class CustomTextColumn<TModel, TValue> : TextColumn<TModel, TValue>
     where TModel : class

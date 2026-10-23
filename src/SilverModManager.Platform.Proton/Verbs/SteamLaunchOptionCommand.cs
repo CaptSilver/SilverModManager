@@ -1,13 +1,13 @@
-using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.Games;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Platform.Proton.Verbs;
+namespace SilverModManager.Platform.Proton.Verbs;
 
 /// <summary>
 /// Prints the Steam launch options line that starts a loadout, and with <c>--write</c> stores it in Steam's

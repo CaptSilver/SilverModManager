@@ -1,11 +1,11 @@
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.Secrets;
 
-namespace NexusMods.Networking.NexusWebApi.Auth;
+namespace SilverModManager.Networking.NexusWebApi.Auth;
 
 /// <summary>
 /// OAuth2 based authentication

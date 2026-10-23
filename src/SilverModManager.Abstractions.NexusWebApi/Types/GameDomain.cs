@@ -1,9 +1,9 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 using TransparentValueObjects;
-namespace NexusMods.Abstractions.NexusWebApi.Types;
+namespace SilverModManager.Abstractions.NexusWebApi.Types;
 
 /// <summary>
 /// Machine friendly name for the game, should be devoid of special characters

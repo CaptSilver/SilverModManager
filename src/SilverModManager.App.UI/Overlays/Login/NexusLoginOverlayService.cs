@@ -2,10 +2,10 @@ using System.Reactive.Disposables;
 using DynamicData;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Hosting;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.App.UI.Overlays.Login;
+namespace SilverModManager.App.UI.Overlays.Login;
 
 [UsedImplicitly]
 public class NexusLoginOverlayService : IHostedService

@@ -1,13 +1,13 @@
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using NexusMods.App.UI;
-using NexusMods.Sdk.Jobs;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 public class FooterStepperViewModel : AViewModel<IFooterStepperViewModel>, IFooterStepperViewModel
 {

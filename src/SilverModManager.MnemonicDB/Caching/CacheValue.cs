@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 
-namespace NexusMods.MnemonicDB.Caching;
+namespace SilverModManager.MnemonicDB.Caching;
 
 /// <summary>
 /// The value of a cache entry.

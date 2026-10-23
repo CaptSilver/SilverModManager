@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Loot.Metadata;
-using static NexusMods.Games.Bethesda.Loot.Tests.Metadata.TestNames;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
+using static SilverModManager.Games.Bethesda.Loot.Tests.Metadata.TestNames;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Metadata;
 
 // Test names follow libloot's metadata/plugin_metadata.rs; its YAML and emitter tests are not ported here.
 public class PluginMetadataTests

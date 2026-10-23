@@ -2,9 +2,9 @@ using System.Collections.Concurrent;
 using System.Xml;
 using Avalonia.Media;
 using Avalonia.Svg.Skia;
-using NexusMods.Sdk.Resources;
+using SilverModManager.Sdk.Resources;
 
-namespace NexusMods.UI.Sdk.Resources;
+namespace SilverModManager.UI.Sdk.Resources;
 
 public sealed class SvgLoader<TResourceIdentifier, TInnerType> : ANestedResourceLoader<TResourceIdentifier, IImage, byte[]>
     where TResourceIdentifier : notnull

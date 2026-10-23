@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 
-namespace NexusMods.Secrets.Migration;
+namespace SilverModManager.Secrets.Migration;
 
 /// <summary>
 /// Runs the registered migration steps against the persistent store, so a credential an older version

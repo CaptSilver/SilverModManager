@@ -1,18 +1,18 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library;
-using NexusMods.Backend;
-using NexusMods.Library.Tests.DownloadsService;
-using NexusMods.Sdk.Games;
-using NexusMods.Library.Lock;
-using NexusMods.Library.Sources;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Library;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Backend;
+using SilverModManager.Library.Tests.DownloadsService;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Library.Lock;
+using SilverModManager.Library.Sources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Library;
 using NSubstitute;
 using Xunit;
 
-namespace NexusMods.Library.Tests.Lock;
+namespace SilverModManager.Library.Tests.Lock;
 
 public class LockSourceDispatchTests(IConnection connection)
 {
@@ -72,7 +72,7 @@ public class LockSourceDispatchTests(IConnection connection)
     [Fact]
     public async Task ANexusDownloadWithoutANexusGameFailsBeforeTouchingAnyService()
     {
-        var source = new NexusLibrarySource(new ServiceCollection().BuildServiceProvider(), new LibraryFileDigests(Substitute.For<NexusMods.Sdk.FileStore.IFileStore>(), connection));
+        var source = new NexusLibrarySource(new ServiceCollection().BuildServiceProvider(), new LibraryFileDigests(Substitute.For<SilverModManager.Sdk.FileStore.IFileStore>(), connection));
         var entry = new LibrarySourceEntry("pkg", "1.0", "6", "pkg.zip", LockFixtures.DigestOf("x").ToString(), LockSources.Nexus);
 
         var act = async () => await source.Download(entry, LockFixtures.DigestOf("x"), new LibrarySourceContext(connection, null, null), TestContext.Current.CancellationToken);
@@ -127,7 +127,7 @@ public class LockSourceDispatchTests(IConnection connection)
         public string Name => "refusing";
         public ValueTask<LibrarySourceEntry?> Describe(string groupName, LibraryItem.ReadOnly item, LibraryFile.ReadOnly file, CancellationToken cancellationToken) => ValueTask.FromResult<LibrarySourceEntry?>(null);
         public string? WhyNotDownloadable(LibrarySourceEntry entry, LibrarySourceContext context) => $"{entry.Id}: not today";
-        public ValueTask<LibraryFile.ReadOnly> Download(LibrarySourceEntry entry, NexusMods.Sdk.Hashes.Sha256Value expected, LibrarySourceContext context, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public ValueTask<LibraryFile.ReadOnly> Download(LibrarySourceEntry entry, SilverModManager.Sdk.Hashes.Sha256Value expected, LibrarySourceContext context, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     public class Startup

@@ -1,8 +1,8 @@
 using System.Runtime.CompilerServices;
 using Avalonia;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.UI.Tests.WorkspaceSystem;
+namespace SilverModManager.UI.Tests.WorkspaceSystem;
 
 public class IconUtilsTests(IServiceProvider provider) : AUiTest(provider)
 {

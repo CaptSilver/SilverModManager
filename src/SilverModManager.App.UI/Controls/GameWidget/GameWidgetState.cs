@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI.Controls.GameWidget;
+namespace SilverModManager.App.UI.Controls.GameWidget;
 
 public enum GameWidgetState : byte
 {

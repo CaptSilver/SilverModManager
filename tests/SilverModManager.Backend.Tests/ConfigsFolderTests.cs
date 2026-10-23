@@ -1,7 +1,7 @@
 using FluentAssertions;
 using NexusMods.Paths;
 
-namespace NexusMods.Backend.Tests;
+namespace SilverModManager.Backend.Tests;
 
 public class ConfigsFolderTests
 {

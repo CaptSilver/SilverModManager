@@ -1,11 +1,11 @@
 ﻿using FluentAssertions;
 using IniParser;
 using IniParser.Parser;
-using NexusMods.Games.Generic.FileAnalyzers;
+using SilverModManager.Games.Generic.FileAnalyzers;
 using NexusMods.Paths;
 using Xunit;
 
-namespace NexusMods.Games.Generic.Tests;
+namespace SilverModManager.Games.Generic.Tests;
 
 public class IniParsingTests
 {

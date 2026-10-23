@@ -1,17 +1,17 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Deployment;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Native;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Native;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.Deployment.Staging.Tests;
+namespace SilverModManager.Deployment.Staging.Tests;
 
 /// <summary>
 /// Stores on other filesystems. The filesystem layout is faked: a "device" is a temp directory that

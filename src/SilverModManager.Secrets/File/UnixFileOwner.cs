@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
-namespace NexusMods.Secrets.File;
+namespace SilverModManager.Secrets.File;
 
 /// <summary>
 /// Who owns a file. .NET exposes the mode of a file but not its owner, and a secrets file that

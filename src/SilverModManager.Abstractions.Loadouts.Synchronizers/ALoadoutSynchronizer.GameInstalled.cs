@@ -1,18 +1,18 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.HyperDuck;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 public partial class ALoadoutSynchronizer
 {

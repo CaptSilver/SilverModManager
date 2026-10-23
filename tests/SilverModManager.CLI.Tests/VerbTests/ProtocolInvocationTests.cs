@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.CLI.Types;
+using SilverModManager.CLI.Types;
 using NSubstitute;
 
-namespace NexusMods.CLI.Tests.VerbTests;
+namespace SilverModManager.CLI.Tests.VerbTests;
 
 public class ProtocolInvocationTests(IServiceProvider provider) : AVerbTest(provider)
 {

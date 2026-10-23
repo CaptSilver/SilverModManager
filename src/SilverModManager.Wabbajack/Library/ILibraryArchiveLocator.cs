@@ -1,8 +1,8 @@
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Library;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Wabbajack.Library;
+namespace SilverModManager.Wabbajack.Library;
 
 /// <summary>
 /// Finds library files by the xxHash64 a modlist names them with.

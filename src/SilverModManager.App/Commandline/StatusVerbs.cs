@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using Humanizer;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.App.Commandline;
+namespace SilverModManager.App.Commandline;
 
 
 /// <summary>

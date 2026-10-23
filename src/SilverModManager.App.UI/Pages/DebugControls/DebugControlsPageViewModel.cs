@@ -1,14 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk.Icons;
 using System.Reactive;
 using Avalonia.Controls.Notifications;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.DebugControls;
+namespace SilverModManager.App.UI.Pages.DebugControls;
 
 public interface IDebugControlsPageViewModel : IPageViewModelInterface
 {

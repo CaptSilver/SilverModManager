@@ -1,6 +1,6 @@
 using TransparentValueObjects;
 
-namespace NexusMods.App.UI.Windows;
+namespace SilverModManager.App.UI.Windows;
 
 [ValueObject<Guid>]
 public readonly partial struct WindowId : IAugmentWith<DefaultValueAugment, JsonAugment>

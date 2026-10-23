@@ -3,7 +3,7 @@ using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Settings.SettingEntries;
+namespace SilverModManager.App.UI.Controls.Settings.SettingEntries;
 
 [UsedImplicitly]
 public partial class SettingComboBoxView : ReactiveUserControl<ISettingComboBoxViewModel>

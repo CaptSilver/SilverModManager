@@ -1,13 +1,13 @@
 using FluentAssertions;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.App.UI.Overlays;
-using NexusMods.App.UI.Overlays.Login;
-using NexusMods.Sdk;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Overlays.Login;
+using SilverModManager.Sdk;
+using SilverModManager.UI.Sdk;
 using NSubstitute;
 using R3;
 
-namespace NexusMods.UI.Tests.Overlays;
+namespace SilverModManager.UI.Tests.Overlays;
 
 public class WelcomeOverlayLoginTests
 {

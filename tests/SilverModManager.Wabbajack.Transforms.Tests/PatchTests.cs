@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
-using NexusMods.Wabbajack.Transforms;
+using SilverModManager.Wabbajack.Transforms;
 using Octodiff.Core;
 using Octodiff.Diagnostics;
 
-namespace NexusMods.Wabbajack.Transforms.Tests;
+namespace SilverModManager.Wabbajack.Transforms.Tests;
 
 public class PatchTests
 {

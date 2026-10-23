@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Games.FileHashes.Values;
+namespace SilverModManager.Abstractions.Games.FileHashes.Values;
 
 /// <summary>
 /// An operating system enum

@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
-using NexusMods.App.UI.Controls.Settings.Section;
-using NexusMods.App.UI.Controls.Settings.SettingEntries;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.Controls.Settings.Section;
+using SilverModManager.App.UI.Controls.Settings.SettingEntries;
+using SilverModManager.App.UI.WorkspaceSystem;
 using R3;
 
-namespace NexusMods.App.UI.Pages.Settings;
+namespace SilverModManager.App.UI.Pages.Settings;
 
 public interface ISettingsPageViewModel : IPageViewModelInterface
 {

@@ -1,10 +1,10 @@
 using System.Collections.Frozen;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.CreationEngine.Morrowind.OpenMw;
+namespace SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
 
 /// <summary>Warns when native and Flatpak OpenMW both have an openmw.cfg, since the app will not guess between them.</summary>
 public class OpenMwDiagnosticEmitter(IOpenMwConfigRoots roots, IFileSystem fileSystem) : ILoadoutDiagnosticEmitter

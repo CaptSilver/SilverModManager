@@ -1,8 +1,8 @@
-using NexusMods.UI.Sdk.Dialog.Enums;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Dialog.Enums;
+using SilverModManager.UI.Sdk.Icons;
 using TransparentValueObjects;
 
-namespace NexusMods.UI.Sdk.Dialog;
+namespace SilverModManager.UI.Sdk.Dialog;
 
 /// <summary>
 /// Represents a unique identifier for a button definition in a message box.

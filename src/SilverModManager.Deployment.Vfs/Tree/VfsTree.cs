@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// The merged view of the game directory as an inode tree with case-insensitive lookup. Nothing

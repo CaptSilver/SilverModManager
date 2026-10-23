@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace NexusMods.MnemonicDB.SourceGenerator;
+namespace SilverModManager.MnemonicDB.SourceGenerator;
 
 [Flags]
 internal enum AttributeFlags

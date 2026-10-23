@@ -1,7 +1,7 @@
 
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.RedEngine;
+namespace SilverModManager.Games.RedEngine;
 
 internal class Constants
 {

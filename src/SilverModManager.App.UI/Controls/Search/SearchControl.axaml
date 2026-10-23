@@ -1,11 +1,11 @@
-<UserControl x:Class="NexusMods.App.UI.Controls.Search.SearchControl"
+<UserControl x:Class="SilverModManager.App.UI.Controls.Search.SearchControl"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-             xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-             xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
+             xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+             xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+             xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
              mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="40">
     <DockPanel>
         <controls:StandardButton x:Name="SearchButton"

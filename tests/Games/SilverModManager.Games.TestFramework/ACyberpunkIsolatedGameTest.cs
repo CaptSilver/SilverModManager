@@ -1,13 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Backend;
-using NexusMods.CrossPlatform;
-using NexusMods.Games.Generic;
-using NexusMods.Games.RedEngine;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Backend;
+using SilverModManager.CrossPlatform;
+using SilverModManager.Games.Generic;
+using SilverModManager.Games.RedEngine;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 /// <summary>
 /// A override for the <see cref="AIsolatedGameTest{TGame}"/> for the <see cref="Cyberpunk2077Game"/>.

@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Games.CreationEngine.Morrowind.OpenMw;
+namespace SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
 
 /// <summary>Which config root holds an openmw.cfg.</summary>
 public abstract record OpenMwConfigLocation

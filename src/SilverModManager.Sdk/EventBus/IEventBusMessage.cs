@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.EventBus;
+namespace SilverModManager.Sdk.EventBus;
 
 /// <summary>
 /// Represents a message.

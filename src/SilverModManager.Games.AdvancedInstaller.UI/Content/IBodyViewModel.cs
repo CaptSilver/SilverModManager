@@ -1,10 +1,10 @@
-﻿using NexusMods.Games.AdvancedInstaller.UI.EmptyPreview;
-using NexusMods.Games.AdvancedInstaller.UI.ModContent;
-using NexusMods.Games.AdvancedInstaller.UI.Preview;
-using NexusMods.Games.AdvancedInstaller.UI.SelectLocation;
-using NexusMods.UI.Sdk;
+﻿using SilverModManager.Games.AdvancedInstaller.UI.EmptyPreview;
+using SilverModManager.Games.AdvancedInstaller.UI.ModContent;
+using SilverModManager.Games.AdvancedInstaller.UI.Preview;
+using SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.Games.AdvancedInstaller.UI;
+namespace SilverModManager.Games.AdvancedInstaller.UI;
 
 /// <summary>
 /// Main body of the Advanced Manual Installer UI. Drives most of the UI logic.

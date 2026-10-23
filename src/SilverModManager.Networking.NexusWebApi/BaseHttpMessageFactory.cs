@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 /// <inheritdoc/>
 public class BaseHttpMessageFactory : IHttpMessageFactory

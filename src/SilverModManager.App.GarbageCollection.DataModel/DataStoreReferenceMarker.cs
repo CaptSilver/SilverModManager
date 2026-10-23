@@ -1,12 +1,12 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.GarbageCollection.Interfaces;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.GarbageCollection.Interfaces;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.App.GarbageCollection.DataModel;
+namespace SilverModManager.App.GarbageCollection.DataModel;
 
 /// <summary>
 /// This class is responsible for finding all used files within the data store

@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Games.Larian.BaldursGate3.GameInstalled;
-using NexusMods.Games.Larian.BaldursGate3.ModList;
+using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.BaldursGate3.ModList;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3.Modsettings;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3.Modsettings;
 
 public class Bg3ModListPlanTests
 {

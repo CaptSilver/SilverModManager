@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// Runs Windows programs inside the Wine prefix a game lives in, the way that game's launcher would.

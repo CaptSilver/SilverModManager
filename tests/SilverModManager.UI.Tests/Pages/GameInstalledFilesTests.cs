@@ -2,23 +2,23 @@ using DynamicData;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Dialog;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Dialog;
 using NSubstitute;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 /// <summary>
 /// A game-installed item's files page lists its paths, and the External Changes page finds the claim behind a

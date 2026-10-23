@@ -23,7 +23,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
-      <ProjectReference Include="..\..\tests\NexusMods.DataModel.Tests\NexusMods.DataModel.Tests.csproj" />
+      <ProjectReference Include="..\..\src\SilverModManager.DataModel\SilverModManager.DataModel.csproj" />
+      <ProjectReference Include="..\..\tests\SilverModManager.DataModel.Tests\SilverModManager.DataModel.Tests.csproj" />
     </ItemGroup>
 </Project>

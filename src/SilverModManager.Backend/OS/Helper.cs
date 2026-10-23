@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 
-namespace NexusMods.Backend.OS;
+namespace SilverModManager.Backend.OS;
 
 internal static class Helper
 {

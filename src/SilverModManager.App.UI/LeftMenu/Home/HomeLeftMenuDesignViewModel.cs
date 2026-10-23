@@ -1,11 +1,11 @@
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.LeftMenu.Items;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.LeftMenu.Items;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.LeftMenu.Home;
+namespace SilverModManager.App.UI.LeftMenu.Home;
 
 public class HomeLeftMenuDesignViewModel : AViewModel<IHomeLeftMenuViewModel>, IHomeLeftMenuViewModel
 {

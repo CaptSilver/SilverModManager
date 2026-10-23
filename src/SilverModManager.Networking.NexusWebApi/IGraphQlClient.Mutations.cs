@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Networking.NexusWebApi.Errors;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Networking.NexusWebApi.Errors;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 public partial interface IGraphQlClient
 {

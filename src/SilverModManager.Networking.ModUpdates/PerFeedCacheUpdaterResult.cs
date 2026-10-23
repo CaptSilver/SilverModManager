@@ -1,4 +1,4 @@
-namespace NexusMods.Networking.ModUpdates;
+namespace SilverModManager.Networking.ModUpdates;
 
 /// <summary>
 /// Stores the result of updating the 'mod page' cache for a given feed or sets

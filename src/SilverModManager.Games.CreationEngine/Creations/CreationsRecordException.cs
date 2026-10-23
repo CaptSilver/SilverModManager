@@ -1,4 +1,4 @@
-namespace NexusMods.Games.CreationEngine.Creations;
+namespace SilverModManager.Games.CreationEngine.Creations;
 
 /// <summary>
 /// A Creations catalog or manifest exists but is not in the format the game writes. The recognizer turns it

@@ -1,19 +1,19 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.Thunderstore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.Thunderstore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.Library.Verbs;
+namespace SilverModManager.Library.Verbs;
 
 /// <summary>
 /// Search, install and update-check verbs for the games whose mods come from Thunderstore. They read the cached

@@ -1,6 +1,6 @@
-using NexusMods.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using R3;
-namespace NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
+namespace SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 
 /// <summary>
 /// Interface for a message box model with an 'ok' button.

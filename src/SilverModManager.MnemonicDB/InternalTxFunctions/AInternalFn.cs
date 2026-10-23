@@ -1,9 +1,9 @@
 using System;
 using System.Threading.Tasks;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Storage;
 
-namespace NexusMods.MnemonicDB.InternalTxFunctions;
+namespace SilverModManager.MnemonicDB.InternalTxFunctions;
 
 internal abstract class AInternalFn : IInternalTxFunctionImpl
 {

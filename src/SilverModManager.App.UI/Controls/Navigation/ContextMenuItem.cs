@@ -1,8 +1,8 @@
 using System.Reactive;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Navigation;
+namespace SilverModManager.App.UI.Controls.Navigation;
 
 /// <summary>
 /// Default implementation of <see cref="IContextMenuItem"/>.

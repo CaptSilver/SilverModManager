@@ -1,11 +1,11 @@
 using System.Text.Json;
-using NexusMods.Games.Bethesda.Archives;
+using SilverModManager.Games.Bethesda.Archives;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Transforms;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Transforms;
 
-namespace NexusMods.Wabbajack.Install;
+namespace SilverModManager.Wabbajack.Install;
 
 /// <summary>
 /// The transforms this build has: Octodiff patching, texture re-encoding and Bethesda archive building.

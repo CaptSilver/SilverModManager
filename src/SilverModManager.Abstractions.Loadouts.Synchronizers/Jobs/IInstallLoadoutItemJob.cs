@@ -1,11 +1,11 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 /// <summary>
 /// A job that installs a library item to a loadout

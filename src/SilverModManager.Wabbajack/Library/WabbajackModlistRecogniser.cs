@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Library;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Models;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Models;
 
-namespace NexusMods.Wabbajack.Library;
+namespace SilverModManager.Wabbajack.Library;
 
 /// <summary>
 /// Marks a <c>.wabbajack</c> file that holds a modlist with a <see cref="WabbajackModlistLibraryFile"/>.

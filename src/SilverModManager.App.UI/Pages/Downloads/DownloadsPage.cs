@@ -1,12 +1,12 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.App.UI.Pages.Downloads;
+namespace SilverModManager.App.UI.Pages.Downloads;
 
 [JsonName("SilverModManager.App.UI.Pages.Downloads.DownloadsPageContext")]
 public record DownloadsPageContext : IPageFactoryContext

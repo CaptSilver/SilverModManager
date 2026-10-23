@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata;
 
 /// <summary>
 /// A file in a game's Data folder, possibly in a subdirectory. Follows libloot's metadata/file.rs.

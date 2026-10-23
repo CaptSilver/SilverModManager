@@ -1,13 +1,13 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library;
+using SilverModManager.Abstractions.Library;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Library;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Library;
 
-namespace NexusMods.Wabbajack.Tests.Acquire;
+namespace SilverModManager.Wabbajack.Tests.Acquire;
 
 public class ArchiveInboxTests(ITestOutputHelper helper) : AcquireTestBase<ArchiveInboxTests>(helper)
 {

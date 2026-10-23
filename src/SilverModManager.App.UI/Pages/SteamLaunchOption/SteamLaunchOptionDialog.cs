@@ -1,12 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI.Overlays;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.App.UI.Pages.SteamLaunchOption;
+namespace SilverModManager.App.UI.Pages.SteamLaunchOption;
 
 /// <summary>
 /// Opens "Use this loadout from Steam", for the loadout card and the Health Check fix.

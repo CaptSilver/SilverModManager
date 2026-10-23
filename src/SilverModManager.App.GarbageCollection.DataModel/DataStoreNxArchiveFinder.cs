@@ -1,10 +1,10 @@
-using NexusMods.App.GarbageCollection.Nx;
+using SilverModManager.App.GarbageCollection.Nx;
 using NexusMods.Archives.Nx.Headers;
 using NexusMods.Paths;
 using NexusMods.Paths.Extensions.Nx.FileProviders;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.App.GarbageCollection.DataModel;
+namespace SilverModManager.App.GarbageCollection.DataModel;
 
 /// <summary>
 /// This class is responsible for finding all used files within all Nx archives

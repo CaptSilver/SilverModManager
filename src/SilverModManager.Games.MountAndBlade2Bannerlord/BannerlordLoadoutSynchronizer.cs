@@ -1,17 +1,17 @@
 using Microsoft.Extensions.DependencyInjection;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Sdk.Settings;
-using NexusMods.Games.MountAndBlade2Bannerlord.Models;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Games.MountAndBlade2Bannerlord.Models;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using static NexusMods.Games.MountAndBlade2Bannerlord.BannerlordConstants;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using static SilverModManager.Games.MountAndBlade2Bannerlord.BannerlordConstants;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord;
 
 public class BannerlordLoadoutSynchronizer : ALoadoutSynchronizer
 {

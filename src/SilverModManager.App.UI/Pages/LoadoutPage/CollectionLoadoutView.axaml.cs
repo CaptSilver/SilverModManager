@@ -4,12 +4,12 @@ using System.Reactive.Linq;
 using Avalonia.Media;
 using Avalonia.ReactiveUI;
 using Humanizer;
-using NexusMods.App.UI.Controls;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.MnemonicDB.Abstractions;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.LoadoutPage;
+namespace SilverModManager.App.UI.Pages.LoadoutPage;
 
 public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoadoutViewModel>
 {

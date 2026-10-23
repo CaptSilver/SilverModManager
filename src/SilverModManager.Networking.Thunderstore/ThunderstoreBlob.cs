@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Networking.Thunderstore;
+namespace SilverModManager.Networking.Thunderstore;
 
 /// <summary>
 /// A content-addressed blob on Thunderstore's CDN: the final URI after redirects, and the SHA-256 of its bytes.

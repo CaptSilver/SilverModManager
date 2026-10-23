@@ -1,4 +1,4 @@
-namespace NexusMods.Deployment.Fuse.Tests;
+namespace SilverModManager.Deployment.Fuse.Tests;
 
 /// <summary>
 /// Skips a test where FUSE is not installed. Tests that mount carry <c>[Trait("RequiresFuse", "True")]</c>

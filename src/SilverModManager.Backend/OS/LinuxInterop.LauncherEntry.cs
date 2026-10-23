@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Backend.OS;
+namespace SilverModManager.Backend.OS;
 
 internal partial class LinuxInterop
 {

@@ -2,13 +2,13 @@ using System.Diagnostics;
 using CliWrap;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.CrossPlatform;
+using SilverModManager.CrossPlatform;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Backend.Process;
+namespace SilverModManager.Backend.Process;
 
 internal class ProcessRunner : IProcessRunner
 {

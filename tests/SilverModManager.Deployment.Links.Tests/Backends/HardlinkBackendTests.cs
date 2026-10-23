@@ -1,22 +1,22 @@
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Deployment.Links.Backends;
-using NexusMods.Deployment.Links.Native;
-using NexusMods.Deployment.Links.Tests.Fixtures;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Deployment.Links.Backends;
+using SilverModManager.Deployment.Links.Native;
+using SilverModManager.Deployment.Links.Tests.Fixtures;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Links.Tests.Backends;
+namespace SilverModManager.Deployment.Links.Tests.Backends;
 
 public class HardlinkBackendTests(ITestOutputHelper helper)
     : LinkedGameTest<HardlinkBackendTests>(helper, Placement.TempDirectory, Placement.TempDirectory, DeploymentBackendId.Hardlink)
@@ -299,7 +299,7 @@ public class HardlinkBackendTests(ITestOutputHelper helper)
         {
             public GamePath Path => path;
             public async Task Write(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree) => await stream.WriteAsync(System.Text.Encoding.UTF8.GetBytes(content));
-            public Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, NexusMods.MnemonicDB.Abstractions.ITransaction tx) => Task.CompletedTask;
+            public Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, SilverModManager.MnemonicDB.Abstractions.ITransaction tx) => Task.CompletedTask;
         }
     }
 }

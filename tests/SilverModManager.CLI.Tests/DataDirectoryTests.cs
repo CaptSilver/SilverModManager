@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.FileHashes;
+using SilverModManager.Games.FileHashes;
 using NexusMods.Paths;
-using NexusMods.SingleProcess;
+using SilverModManager.SingleProcess;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 public class DataDirectoryTests
 {

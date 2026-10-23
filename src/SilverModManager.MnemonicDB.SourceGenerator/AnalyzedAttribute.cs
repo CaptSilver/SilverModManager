@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
 
-namespace NexusMods.MnemonicDB.SourceGenerator;
+namespace SilverModManager.MnemonicDB.SourceGenerator;
 
 internal class AnalyzedAttribute
 {

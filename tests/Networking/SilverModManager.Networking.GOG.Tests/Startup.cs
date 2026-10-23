@@ -1,15 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Backend;
-using NexusMods.DataModel;
-using NexusMods.Networking.GOG;
+using SilverModManager.Backend;
+using SilverModManager.DataModel;
+using SilverModManager.Networking.GOG;
 using NexusMods.Paths;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Secrets;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Secrets;
+using SilverModManager.Sdk.Settings;
 using Xunit.DependencyInjection.Logging;
 
-namespace NexusMods.Networking.GOG.Tests;
+namespace SilverModManager.Networking.GOG.Tests;
 
 public class Startup
 {

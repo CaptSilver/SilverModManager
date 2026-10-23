@@ -2,9 +2,9 @@ using System.Collections.Immutable;
 using GameFinder.StoreHandlers.GOG;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Backend.Games.Locators;
+namespace SilverModManager.Backend.Games.Locators;
 
 internal class GOGLocator : IGameLocator
 {

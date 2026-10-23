@@ -1,14 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library;
-using NexusMods.Library.Lock;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.Thunderstore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Library.Lock;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.Thunderstore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.Library.Sources;
+namespace SilverModManager.Library.Sources;
 
 /// <summary>
 /// Thunderstore package zips. The lock carries no namespace/name split, only the archive name

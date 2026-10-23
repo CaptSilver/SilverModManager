@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Thunderstore;
+namespace SilverModManager.Sdk.Thunderstore;
 
 /// <summary>
 /// One published version of a Thunderstore package.

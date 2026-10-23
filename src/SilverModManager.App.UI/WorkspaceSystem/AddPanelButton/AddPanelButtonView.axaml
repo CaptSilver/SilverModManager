@@ -5,11 +5,11 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactive="http://reactiveui.net"
-    xmlns:workspace="clr-namespace:NexusMods.App.UI.WorkspaceSystem"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
+    xmlns:workspace="clr-namespace:SilverModManager.App.UI.WorkspaceSystem"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
     mc:Ignorable="d"
-    x:Class="NexusMods.App.UI.WorkspaceSystem.AddPanelButtonView">
+    x:Class="SilverModManager.App.UI.WorkspaceSystem.AddPanelButtonView">
 
     <Design.DataContext>
         <workspace:AddPanelButtonDesignViewModel />

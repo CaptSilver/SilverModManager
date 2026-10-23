@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Me3;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class Me3HostFilesTests
 {

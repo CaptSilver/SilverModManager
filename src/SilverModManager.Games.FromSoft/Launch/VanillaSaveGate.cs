@@ -1,15 +1,15 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.Saves;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.Saves;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.FromSoft.Launch;
+namespace SilverModManager.Games.FromSoft.Launch;
 
 /// <summary>
 /// Keeps a modded session from changing the vanilla save unnoticed. The overlay does not cover the Wine prefix, so

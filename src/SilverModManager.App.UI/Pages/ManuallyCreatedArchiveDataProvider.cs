@@ -3,16 +3,16 @@ using DynamicData;
 using DynamicData.Aggregation;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Pages.LibraryPage;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
-using UIObservableExtensions = NexusMods.App.UI.Extensions.ObservableExtensions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
+using UIObservableExtensions = SilverModManager.App.UI.Extensions.ObservableExtensions;
 
-namespace NexusMods.App.UI.Pages;
+namespace SilverModManager.App.UI.Pages;
 
 [UsedImplicitly]
 internal class ManuallyCreatedArchiveDataProvider : ILibraryDataProvider, ILoadoutDataProvider

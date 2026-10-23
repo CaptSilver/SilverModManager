@@ -1,9 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using CliWrap;
 using JetBrains.Annotations;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Backend.RuntimeDependency;
+namespace SilverModManager.Backend.RuntimeDependency;
 
 [UsedImplicitly]
 internal class XdgSettingsDependency : ExecutableRuntimeDependency

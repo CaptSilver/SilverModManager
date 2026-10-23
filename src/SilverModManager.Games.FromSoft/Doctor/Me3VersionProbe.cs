@@ -2,9 +2,9 @@ using System.ComponentModel;
 using System.Text;
 using CliWrap;
 using NexusMods.Paths;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Games.FromSoft.Doctor;
+namespace SilverModManager.Games.FromSoft.Doctor;
 
 /// <summary>Runs <c>me3 --version</c> through the process abstraction.</summary>
 public class Me3VersionProbe(IProcessRunner processRunner)

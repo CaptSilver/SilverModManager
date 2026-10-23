@@ -1,20 +1,20 @@
 using System.Security.Cryptography;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library;
-using NexusMods.Backend;
-using NexusMods.Library.Lock;
-using NexusMods.Library.Sources;
-using NexusMods.Library.Tests.DownloadsService;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.Thunderstore;
-using NexusMods.Networking.Thunderstore.Tests.Fixtures;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Backend;
+using SilverModManager.Library.Lock;
+using SilverModManager.Library.Sources;
+using SilverModManager.Library.Tests.DownloadsService;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.Thunderstore;
+using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using Xunit;
 
-namespace NexusMods.Library.Tests.Lock;
+namespace SilverModManager.Library.Tests.Lock;
 
 /// <summary>
 /// The real Thunderstore lock source against canned Thunderstore responses. Each test uses its own team names so the

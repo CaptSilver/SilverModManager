@@ -2,19 +2,19 @@ using System.Collections.Frozen;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Networking.NexusWebApi.Auth;
-using NexusMods.Networking.NexusWebApi.Migration;
-using NexusMods.Networking.NexusWebApi.UpdateFilters;
-using NexusMods.Networking.NexusWebApi.V1Interop;
-using NexusMods.Sdk;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Networking.NexusWebApi.Auth;
+using SilverModManager.Networking.NexusWebApi.Migration;
+using SilverModManager.Networking.NexusWebApi.UpdateFilters;
+using SilverModManager.Networking.NexusWebApi.V1Interop;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 /// <summary>
 /// Helps with registration of services for Microsoft DI container.

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 using R3;
 
-namespace NexusMods.Secrets.Chain;
+namespace SilverModManager.Secrets.Chain;
 
 /// <summary>
 /// The Secret Service first, the owner-only file second.

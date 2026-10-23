@@ -1,5 +1,5 @@
 // Follows esplugin src/plugin.rs (is_master_file, is_light_plugin, is_medium_plugin, is_update_plugin, is_blueprint_plugin).
-namespace NexusMods.Games.Bethesda.LoadOrder;
+namespace SilverModManager.Games.Bethesda.LoadOrder;
 
 /// <summary>
 /// Per-game reading of a header's flags. esplugin branches on the game in each of these, so the

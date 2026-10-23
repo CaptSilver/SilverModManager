@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.ObjectPool;
 
-namespace NexusMods.DataModel.Extensions;
+namespace SilverModManager.DataModel.Extensions;
 
 /// <summary>
 /// Extensions for <see cref="ObjectPool{T}"/>.

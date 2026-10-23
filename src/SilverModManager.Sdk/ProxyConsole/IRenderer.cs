@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.ProxyConsole;
+namespace SilverModManager.Sdk.ProxyConsole;
 
 /// <summary>
 /// An object that can render implementations of <see cref="IRenderable"/>.

@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Backend.Games;
+using SilverModManager.Backend.Games;
 using NexusMods.Paths;
 
-namespace NexusMods.Backend.Tests.Games;
+namespace SilverModManager.Backend.Tests.Games;
 
 /// <summary>
 /// An install folder is the same folder however its path is spelled. Steam writes the home library as

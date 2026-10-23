@@ -1,8 +1,8 @@
 
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.Larian.BaldursGate3;
+namespace SilverModManager.Games.Larian.BaldursGate3;
 
 public static class Bg3Constants
 {

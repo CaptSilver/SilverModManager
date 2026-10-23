@@ -1,14 +1,14 @@
 using System.Runtime.CompilerServices;
 using System.Text;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.Generic.Diagnostics;
+namespace SilverModManager.Games.Generic.Diagnostics;
 
 /// <summary>
 /// Reports a save or settings folder of a game that is a link to a folder that no longer exists, and offers to

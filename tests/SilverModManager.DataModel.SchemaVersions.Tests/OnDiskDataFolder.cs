@@ -1,15 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.App;
-using NexusMods.Backend;
-using NexusMods.DataModel;
-using NexusMods.Games.FileHashes;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.App;
+using SilverModManager.Backend;
+using SilverModManager.DataModel;
+using SilverModManager.Games.FileHashes;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.DataModel.SchemaVersions.Tests;
+namespace SilverModManager.DataModel.SchemaVersions.Tests;
 
 /// <summary>
 /// A throwaway folder next to the test binaries holding a real on-disk database, for tests

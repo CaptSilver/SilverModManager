@@ -1,15 +1,15 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Downloads;
-using NexusMods.Abstractions.GC;
-using NexusMods.Abstractions.Library.Jobs;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.Abstractions.GC;
+using SilverModManager.Abstractions.Library.Jobs;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Abstractions.Library;
+namespace SilverModManager.Abstractions.Library;
 
 /// <summary>
 /// Represents the library, this class provides access to various functionalities
@@ -105,7 +105,7 @@ public interface ILibraryService
 }
 
 /// <summary>
-/// Represents the result of a <see cref="ILibraryService.ReplaceLinkedItemsInAllLoadouts(LibraryItem.ReadOnly,LibraryItem.ReadOnly,NexusMods.Abstractions.Library.ReplaceLibraryItemOptions,NexusMods.MnemonicDB.Abstractions.ITransaction)"/> operation.
+/// Represents the result of a <see cref="ILibraryService.ReplaceLinkedItemsInAllLoadouts(LibraryItem.ReadOnly,LibraryItem.ReadOnly,SilverModManager.Abstractions.Library.ReplaceLibraryItemOptions,SilverModManager.MnemonicDB.Abstractions.ITransaction)"/> operation.
 /// </summary>
 public enum LibraryItemReplacementResult
 {
@@ -121,7 +121,7 @@ public enum LibraryItemReplacementResult
 }
 
 /// <summary>
-/// Options for the <see cref="ILibraryService.ReplaceLinkedItemsInAllLoadouts(LibraryItem.ReadOnly,LibraryItem.ReadOnly,NexusMods.Abstractions.Library.ReplaceLibraryItemOptions,NexusMods.MnemonicDB.Abstractions.ITransaction)"/>
+/// Options for the <see cref="ILibraryService.ReplaceLinkedItemsInAllLoadouts(LibraryItem.ReadOnly,LibraryItem.ReadOnly,SilverModManager.Abstractions.Library.ReplaceLibraryItemOptions,SilverModManager.MnemonicDB.Abstractions.ITransaction)"/>
 /// API.
 /// </summary>
 public struct ReplaceLibraryItemOptions

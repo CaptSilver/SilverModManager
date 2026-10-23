@@ -1,4 +1,4 @@
-namespace NexusMods.SingleProcess.Exceptions;
+namespace SilverModManager.SingleProcess.Exceptions;
 
 
 /// <summary>

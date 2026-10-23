@@ -1,10 +1,10 @@
 using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.App.UI.Extensions;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.GameWidget;
+namespace SilverModManager.App.UI.Controls.GameWidget;
 
 public partial class GameWidget : ReactiveUserControl<IGameWidgetViewModel>
 {

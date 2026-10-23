@@ -2,10 +2,10 @@ using System.Text.Json;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Settings;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Backend;
+namespace SilverModManager.Backend;
 
 [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
 internal class MnemonicDBStorageBackend : IAsyncStorageBackend

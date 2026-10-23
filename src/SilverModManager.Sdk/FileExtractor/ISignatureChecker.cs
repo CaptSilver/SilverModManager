@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.FileExtractor;
+using SilverModManager.Abstractions.FileExtractor;
 
-namespace NexusMods.Sdk.FileExtractor;
+namespace SilverModManager.Sdk.FileExtractor;
 
 /// <summary>
 /// A class that can look at the first few bytes of a file and determine what type of file it is

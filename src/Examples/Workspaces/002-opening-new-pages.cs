@@ -1,8 +1,8 @@
 using DynamicData.Kernel;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Pages.Changelog;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Pages.Changelog;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
 // ReSharper disable All
 
 namespace Examples.Workspaces;

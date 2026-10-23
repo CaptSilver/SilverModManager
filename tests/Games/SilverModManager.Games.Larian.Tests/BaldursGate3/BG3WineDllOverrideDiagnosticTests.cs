@@ -1,22 +1,22 @@
 using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.App.UI.DiagnosticSystem;
-using NexusMods.Games.Larian.BaldursGate3;
-using NexusMods.Games.Larian.BaldursGate3.Emitters;
-using NexusMods.Games.Larian.BaldursGate3.Installers;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Games.Larian.BaldursGate3;
+using SilverModManager.Games.Larian.BaldursGate3.Emitters;
+using SilverModManager.Games.Larian.BaldursGate3.Installers;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using NSubstitute;
 using Xunit;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3;
 
 /// <summary>
 /// The script extender's DLL override diagnostic follows the prefix: it is reported while DWrite is not
@@ -25,7 +25,7 @@ namespace NexusMods.Games.Larian.Tests.BaldursGate3;
 /// </summary>
 public class BG3WineDllOverrideDiagnosticTests(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<BG3WineDllOverrideDiagnosticTests, Larian.BaldursGate3.BaldursGate3>(outputHelper)
 {
-    private static readonly DiagnosticId ScriptExtenderOverrideId = new("NexusMods.Games.Larian.BaldursGate3", number: 5);
+    private static readonly DiagnosticId ScriptExtenderOverrideId = new("SilverModManager.Games.Larian.BaldursGate3", number: 5);
 
     private readonly ILinuxCompatabilityDataProvider _provider = Substitute.For<ILinuxCompatabilityDataProvider>();
 
@@ -95,7 +95,7 @@ public class BG3WineDllOverrideDiagnosticTests(ITestOutputHelper outputHelper) :
 /// </summary>
 public class BG3WineDllOverrideSteamDiagnosticTests(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<BG3WineDllOverrideSteamDiagnosticTests, Larian.BaldursGate3.BaldursGate3>(outputHelper)
 {
-    private static readonly DiagnosticId ScriptExtenderOverrideId = new("NexusMods.Games.Larian.BaldursGate3", number: 5);
+    private static readonly DiagnosticId ScriptExtenderOverrideId = new("SilverModManager.Games.Larian.BaldursGate3", number: 5);
 
     private readonly ILinuxCompatabilityDataProvider _provider = Substitute.For<ILinuxCompatabilityDataProvider>();
 

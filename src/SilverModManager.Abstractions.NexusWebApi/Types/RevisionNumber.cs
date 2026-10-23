@@ -1,6 +1,6 @@
 using TransparentValueObjects;
 
-namespace NexusMods.Abstractions.NexusWebApi.Types;
+namespace SilverModManager.Abstractions.NexusWebApi.Types;
 
 /// <summary>
 /// revision number (aka "version") of a revision. Only unique within one collection

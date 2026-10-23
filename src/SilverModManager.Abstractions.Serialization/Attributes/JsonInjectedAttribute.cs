@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Serialization.Attributes;
+namespace SilverModManager.Abstractions.Serialization.Attributes;
 
 /// <summary>
 /// Used to mark individual types which are injected during serialization/deserialization.

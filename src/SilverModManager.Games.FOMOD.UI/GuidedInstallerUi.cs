@@ -4,12 +4,12 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.App.UI;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.App.UI;
+using SilverModManager.Sdk.Jobs;
 using ReactiveUI;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 [UsedImplicitly]
 public sealed class GuidedInstallerUi : IGuidedInstaller

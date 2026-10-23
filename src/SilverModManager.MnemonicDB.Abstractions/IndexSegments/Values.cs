@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using NexusMods.Paths.Utilities;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
 /// <summary>
 /// A subview of an IndexSegment that returns a specific value type

@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Games;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts;
+namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 /// Represents a loadout item with a target path.

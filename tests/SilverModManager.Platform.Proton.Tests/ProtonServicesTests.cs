@@ -1,24 +1,24 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Protontricks;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Platform.Proton.ToolRunner;
-using NexusMods.Platform.Proton.UserTools;
-using NexusMods.Platform.Proton.Verbs;
-using NexusMods.Sdk;
+using SilverModManager.Platform.Proton.Protontricks;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Platform.Proton.ToolRunner;
+using SilverModManager.Platform.Proton.UserTools;
+using SilverModManager.Platform.Proton.Verbs;
+using SilverModManager.Sdk;
 using NSubstitute;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
-using NexusMods.Platform.Proton.Support;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Platform.Proton.Support;
 
-namespace NexusMods.Platform.Proton.Tests;
+namespace SilverModManager.Platform.Proton.Tests;
 
 public class ProtonServicesTests
 {

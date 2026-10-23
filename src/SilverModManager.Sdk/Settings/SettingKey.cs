@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.Settings;
+namespace SilverModManager.Sdk.Settings;
 
 
 /// <summary>

@@ -1,23 +1,23 @@
 using System.Reactive.Linq;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Controls.LoadoutCard;
-using NexusMods.App.UI.Dialog;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.Sdk;
-using NexusMods.App.UI.Windows;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk.Dialog;
-using NexusMods.UI.Sdk.Dialog.Enums;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Controls.LoadoutCard;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.Sdk;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk.Dialog;
+using SilverModManager.UI.Sdk.Dialog.Enums;
 using NSubstitute;
 using ReactiveUI;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class LoadoutCardRenameTests(IServiceProvider provider) : AUiTest(provider)
 {

@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace NexusMods.Games.CreationEngine.Creations;
+namespace SilverModManager.Games.CreationEngine.Creations;
 
 /// <summary>
 /// Reads a <c>Creations/&lt;id&gt;-&lt;n&gt;.manifest</c> file: back-to-back entries of a little-endian

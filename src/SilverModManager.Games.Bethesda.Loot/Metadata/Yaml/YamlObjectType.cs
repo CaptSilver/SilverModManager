@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 
 /// <summary>
 /// The kind of metadata object being read, named in parse errors. Follows libloot's metadata/yaml/parse.rs.

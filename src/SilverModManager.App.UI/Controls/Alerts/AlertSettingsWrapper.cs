@@ -1,9 +1,9 @@
-using NexusMods.Sdk.Settings;
-using NexusMods.App.UI.Settings;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.App.UI.Settings;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Controls.Alerts;
+namespace SilverModManager.App.UI.Controls.Alerts;
 
 public sealed class AlertSettingsWrapper : ReactiveObject
 {

@@ -1,20 +1,20 @@
 using System.Collections.Concurrent;
 using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Steam;
-using NexusMods.Abstractions.Steam.DTOs;
-using NexusMods.Abstractions.Steam.Values;
-using NexusMods.Networking.Steam.DTOs;
-using NexusMods.Networking.Steam.Exceptions;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Abstractions.Steam.DTOs;
+using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.Networking.Steam.DTOs;
+using SilverModManager.Networking.Steam.Exceptions;
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 using Polly;
 using Polly.Retry;
 using SteamKit2;
 using SteamKit2.Authentication;
 using SteamKit2.CDN;
 
-namespace NexusMods.Networking.Steam;
+namespace SilverModManager.Networking.Steam;
 
 /// <summary>
 /// Base class for a Steam session. Steam works in a rather strange way. Internally it communicates

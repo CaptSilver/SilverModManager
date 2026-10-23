@@ -5,12 +5,12 @@ using FluentAssertions;
 using Markdown.Avalonia;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.App.UI;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.Sdk;
+using SilverModManager.App.UI;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.Sdk;
 using NSubstitute;
 
-namespace NexusMods.UI.Tests.Controls;
+namespace SilverModManager.UI.Tests.Controls;
 
 public class MarkdownRendererTests(IServiceProvider provider) : AUiTest(provider)
 {

@@ -1,14 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.GC;
-using NexusMods.Abstractions.Library;
-using NexusMods.Library.Lock;
-using NexusMods.Library.Sources;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
+using SilverModManager.Abstractions.GC;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Library.Lock;
+using SilverModManager.Library.Sources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
 using NSubstitute;
 
-namespace NexusMods.Library.Tests.Lock;
+namespace SilverModManager.Library.Tests.Lock;
 
 /// <summary>
 /// A source that serves content from memory and records every call. A download adds a library file whose digest
@@ -55,7 +55,7 @@ internal sealed class FakeSources
     public FakeSources(LockFixtures fixtures, IConnection connection, Dictionary<string, string> served)
     {
         var provider = new ServiceCollection().BuildServiceProvider();
-        var digests = new LibraryFileDigests(Substitute.For<NexusMods.Sdk.FileStore.IFileStore>(), connection);
+        var digests = new LibraryFileDigests(Substitute.For<SilverModManager.Sdk.FileStore.IFileStore>(), connection);
 
         Nexus = new FakeLibrarySource(LockSources.Nexus, fixtures, served, entry => $"{entry.FileId}:{entry.Asset}", new NexusLibrarySource(provider, digests), Downloads);
         GitHub = new FakeLibrarySource(LockSources.GitHub, fixtures, served, entry =>

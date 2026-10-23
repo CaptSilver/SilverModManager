@@ -1,10 +1,10 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.IO;
-using NexusMods.Wabbajack.Acquire;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Wabbajack.Acquire;
 
-namespace NexusMods.Wabbajack.Install;
+namespace SilverModManager.Wabbajack.Install;
 
 /// <summary>A generated file waiting in a temp file to be stored. Disposing deletes the temp file.</summary>
 public sealed class GeneratedFile : IAsyncDisposable

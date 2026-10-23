@@ -1,13 +1,13 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Games.CreationEngine.Models;
-using NexusMods.Games.CreationEngine.Tests.SortOrder;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Games.CreationEngine.Models;
+using SilverModManager.Games.CreationEngine.Tests.SortOrder;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.RoundTrip;
+namespace SilverModManager.Games.CreationEngine.Tests.RoundTrip;
 
 /// <summary>
 /// The titles that write plugins.txt (active plugins) and loadorder.txt (every plugin in order) next to each
@@ -15,7 +15,7 @@ namespace NexusMods.Games.CreationEngine.Tests.RoundTrip;
 /// </summary>
 public abstract class ATextfileRoundTripTest<TTest, TGame>(ITestOutputHelper helper) : ACreationEngineRoundTripTest<TTest, TGame>(helper)
     where TTest : class
-    where TGame : class, NexusMods.Abstractions.Games.IGame
+    where TGame : class, SilverModManager.Abstractions.Games.IGame
 {
     protected override string Marker => "";
     protected override GamePath[] CompanionFiles => [LoadOrderFile];

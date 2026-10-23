@@ -1,18 +1,18 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.DataModel.SchemaVersions;
+using SilverModManager.DataModel.SchemaVersions;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
 
-namespace NexusMods.DataModel.SchemaVersions.Tests;
+namespace SilverModManager.DataModel.SchemaVersions.Tests;
 
 public class SchemaFailsafes(IConnection connection)
 {
     private const string HashesContract = "symbols of the downloaded game-hashes database, renaming them needs that database rebuilt and re-released first";
 
     /// <summary>
-    /// The only attribute namespaces that keep a `NexusMods.` name.
+    /// The only attribute namespaces that keep upstream's `NexusMods.` name.
     /// </summary>
     public static readonly (string Namespace, string Reason)[] AllowedLegacyNamespaces =
     [
@@ -24,8 +24,8 @@ public class SchemaFailsafes(IConnection connection)
         ("NexusMods.Abstractions.Games.FileHashes.SteamManifest", HashesContract),
         ("NexusMods.Abstractions.Games.FileHashes.VersionDefinition", HashesContract),
         ("NexusMods.Stores.EpicGameStore.EpicGameStoreBuild", HashesContract),
-        ("NexusMods.MnemonicDB.DatomStore", "defined by the MnemonicDB NuGet package"),
-        ("NexusMods.MnemonicDB.Transaction", "defined by the MnemonicDB NuGet package"),
+        ("NexusMods.MnemonicDB.DatomStore", "stored by MnemonicDB under this name, renaming it needs a database migration"),
+        ("NexusMods.MnemonicDB.Transaction", "stored by MnemonicDB under this name, renaming it needs a database migration"),
     ];
 
     [Fact]

@@ -1,4 +1,4 @@
--- namespace: NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder
+-- namespace: SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder
 
 CREATE SCHEMA IF NOT EXISTS redmod;
 

@@ -1,11 +1,11 @@
 using System.Text.RegularExpressions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Steam;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Steam;
 
-namespace NexusMods.Platform.Proton;
+namespace SilverModManager.Platform.Proton;
 
 /// <summary>
 /// Finds Proton builds the way Steam does and applies the per-app compat tool choice from <c>config.vdf</c>.

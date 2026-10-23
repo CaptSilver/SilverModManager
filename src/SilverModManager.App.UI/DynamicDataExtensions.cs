@@ -1,7 +1,7 @@
 using System.Reactive.Linq;
 using DynamicData;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 public static class DynamicDataExtensions
 {

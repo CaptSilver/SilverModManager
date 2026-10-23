@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi;
 
-namespace NexusMods.App.UI.Overlays.Login;
+namespace SilverModManager.App.UI.Overlays.Login;
 
 /// <summary>
 /// Asks for the API key in an overlay.

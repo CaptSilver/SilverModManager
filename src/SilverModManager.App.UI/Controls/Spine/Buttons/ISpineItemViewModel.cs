@@ -1,9 +1,9 @@
 ﻿using System.Reactive;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Spine.Buttons;
+namespace SilverModManager.App.UI.Controls.Spine.Buttons;
 
 public interface ISpineItemViewModel : IViewModelInterface
 {

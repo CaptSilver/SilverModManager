@@ -1,10 +1,10 @@
 using System.Runtime.InteropServices;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.App.UI.Pages.Library;
+namespace SilverModManager.App.UI.Pages.Library;
 
 /// <summary>
 /// Processes library items to determine potential warnings before deletion of

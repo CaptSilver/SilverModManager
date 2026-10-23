@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Games.TestFramework;
 
-namespace NexusMods.Networking.ModUpdates.Tests;
+namespace SilverModManager.Networking.ModUpdates.Tests;
 
 public class Startup
 {

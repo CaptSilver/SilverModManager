@@ -3,7 +3,7 @@
   "profiles": {
     "DebugRoslynSourceGenerator": {
       "commandName": "DebugRoslynComponent",
-      "targetProject": "../NexusMods.App.Generators.Diagnostics.Sample/NexusMods.App.Generators.Diagnostics.Sample.csproj"
+      "targetProject": "../SilverModManager.App.Generators.Diagnostics.Sample/SilverModManager.App.Generators.Diagnostics.Sample.csproj"
     }
   }
 }

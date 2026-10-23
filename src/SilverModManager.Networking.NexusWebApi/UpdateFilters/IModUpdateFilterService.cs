@@ -1,7 +1,7 @@
 using System.Reactive;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi.UpdateFilters;
+namespace SilverModManager.Networking.NexusWebApi.UpdateFilters;
 
 /// <summary>
 /// This service provides services for filtering mod updates in SilverModManager.

@@ -3,12 +3,12 @@ using System.Reactive.Linq;
 using Avalonia.Controls.Models.TreeDataGrid;
 using DynamicData;
 using JetBrains.Annotations;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ObservableCollections;
 using R3;
 using Observable = System.Reactive.Linq.Observable;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 [PublicAPI]
 public interface ITreeDataGridItemModel : IReactiveR3Object

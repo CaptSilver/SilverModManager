@@ -1,11 +1,11 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI;
-using NexusMods.Games.FOMOD.UI.Resources;
+using SilverModManager.App.UI;
+using SilverModManager.Games.FOMOD.UI.Resources;
 using ReactiveUI;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 public partial class GuidedInstallerStepView : ReactiveUserControl<IGuidedInstallerStepViewModel>
 {

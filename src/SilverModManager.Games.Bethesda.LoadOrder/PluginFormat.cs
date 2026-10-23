@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.LoadOrder;
+namespace SilverModManager.Games.Bethesda.LoadOrder;
 
 /// <summary>
 /// The header layout a game's plugins use. It decides the record header size

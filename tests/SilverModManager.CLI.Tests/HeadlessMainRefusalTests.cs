@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.App;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.SingleProcess;
-using NexusMods.SingleProcess.Exceptions;
+using SilverModManager.App;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.SingleProcess;
+using SilverModManager.SingleProcess.Exceptions;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 public class HeadlessMainRefusalTests : IDisposable
 {

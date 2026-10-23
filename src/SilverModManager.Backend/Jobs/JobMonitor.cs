@@ -2,10 +2,10 @@ using System.Collections.ObjectModel;
 using DynamicData;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 using CompositeDisposable = System.Reactive.Disposables.CompositeDisposable;
 
-namespace NexusMods.Backend.Jobs;
+namespace SilverModManager.Backend.Jobs;
 
 [UsedImplicitly]
 public sealed class JobMonitor : IJobMonitor, IDisposable

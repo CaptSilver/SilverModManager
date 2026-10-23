@@ -1,15 +1,15 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 using NexusMods.Hashing.xxHash3;
-using FormatEsd = NexusMods.Games.FromSoft.Formats.Esd;
-using FormatRegulation = NexusMods.Games.FromSoft.Formats.Regulation;
-using FormatTpf = NexusMods.Games.FromSoft.Formats.Tpf;
+using FormatEsd = SilverModManager.Games.FromSoft.Formats.Esd;
+using FormatRegulation = SilverModManager.Games.FromSoft.Formats.Regulation;
+using FormatTpf = SilverModManager.Games.FromSoft.Formats.Tpf;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 /// <summary>
 /// Ports of the erm resolve tests that still apply when the merge is automatic: test_resolve_is_atomic_on_a_later_path_failure,

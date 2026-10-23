@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace NexusMods.SingleProcess;
+namespace SilverModManager.SingleProcess;
 
 /// <summary>
 /// A shared (multiprocess) array of 64-bit unsigned integers, supports atomic operations via a CAS operation

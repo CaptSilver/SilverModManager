@@ -5,23 +5,23 @@ using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Overlay;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Steam;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Steam;
 using NSubstitute;
-using NexusMods.Sdk;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.NexusModsApi;
 using DynamicData.Kernel;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class EldenRingInstallationCheckTests(ITestOutputHelper helper) : AModdedEldenRingTest<EldenRingInstallationCheckTests>(helper)
 {

@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 
-namespace NexusMods.Networking.Steam.DTOs;
+namespace SilverModManager.Networking.Steam.DTOs;
 
 internal class AuthData
 {

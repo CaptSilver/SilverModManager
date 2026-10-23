@@ -1,11 +1,11 @@
 using Avalonia.ReactiveUI;
 using Humanizer;
 using Humanizer.Bytes;
-using NexusMods.App.UI.Resources;
+using SilverModManager.App.UI.Resources;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Overlays;
+namespace SilverModManager.App.UI.Overlays;
 
 public partial class RemoveGameOverlayView : ReactiveUserControl<IRemoveGameOverlayViewModel>
 {

@@ -1,13 +1,13 @@
 using System.Reactive;
 using DynamicData.Kernel;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Jobs;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Controls.Spine.Buttons.Download;
+namespace SilverModManager.App.UI.Controls.Spine.Buttons.Download;
 
 public class SpineDownloadButtonDesignerViewModel : AViewModel<ISpineDownloadButtonViewModel>, ISpineDownloadButtonViewModel
 {

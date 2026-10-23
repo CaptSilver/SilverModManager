@@ -1,11 +1,11 @@
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi.UpdateFilters;
+namespace SilverModManager.Networking.NexusWebApi.UpdateFilters;
 
 /// <inheritdoc />
 public class ModUpdateFilterService : IModUpdateFilterService

@@ -3,7 +3,7 @@ using System.Collections.Frozen;
 using System.Numerics;
 using System.Text;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>The bytes of a payload, <paramref name="Start"/> inclusive to <paramref name="End"/> exclusive, that are AES-encrypted.</summary>
 public readonly record struct AesRange(long Start, long End);

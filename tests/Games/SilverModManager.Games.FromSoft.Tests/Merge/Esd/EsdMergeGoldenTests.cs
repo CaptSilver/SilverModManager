@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Games.FromSoft.Tests.Formats;
-using EsdFormat = NexusMods.Games.FromSoft.Formats.Esd;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Tests.Formats;
+using EsdFormat = SilverModManager.Games.FromSoft.Formats.Esd;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 /// <summary>
 /// The merged machine through this writer is the machine erm's merge writes through its own, byte for byte, and the

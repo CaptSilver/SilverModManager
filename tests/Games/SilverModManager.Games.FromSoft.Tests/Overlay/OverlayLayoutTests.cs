@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Overlay;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.FromSoft.Tests.Overlay;
+namespace SilverModManager.Games.FromSoft.Tests.Overlay;
 
 public class OverlayLayoutTests(ITestOutputHelper helper) : AEldenRingTest<OverlayLayoutTests>(helper)
 {
-    private OverlayLayout For(NexusMods.Sdk.Loadouts.LoadoutId loadout)
+    private OverlayLayout For(SilverModManager.Sdk.Loadouts.LoadoutId loadout)
         => OverlayLayout.For(ServiceProvider.GetRequiredService<ISettingsManager>().Get<FromSoftSettings>(), FileSystem, GameInstallation, loadout);
 
     [Fact]
@@ -57,6 +57,6 @@ public class OverlayLayoutTests(ITestOutputHelper helper) : AEldenRingTest<Overl
 
         layout.Upper.InFolder(dataRoot / "1245620" / "overlay").Should().BeTrue();
         layout.Work.InFolder(dataRoot / "1245620" / "overlay").Should().BeTrue();
-        layout.Upper.InFolder(GameInstallation.Locations[NexusMods.Sdk.Games.LocationId.Game].Path).Should().BeFalse();
+        layout.Upper.InFolder(GameInstallation.Locations[SilverModManager.Sdk.Games.LocationId.Game].Path).Should().BeFalse();
     }
 }

@@ -1,6 +1,6 @@
 using R3;
 
-namespace NexusMods.App.UI.Overlays.Login;
+namespace SilverModManager.App.UI.Overlays.Login;
 
 /// <summary>
 /// The dialog where the user pastes a personal Nexus Mods API key. The result is the trimmed key,

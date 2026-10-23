@@ -2,9 +2,9 @@
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.Logging;
-using NexusMods.App.UI.Windows;
+using SilverModManager.App.UI.Windows;
 
-namespace NexusMods.UI.Tests.Framework;
+namespace SilverModManager.UI.Tests.Framework;
 
 public class WindowHost : IAsyncDisposable
 {

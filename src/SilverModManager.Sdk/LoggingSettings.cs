@@ -1,10 +1,10 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.CrossPlatform;
+namespace SilverModManager.CrossPlatform;
 
 /// <summary>
 /// Settings related to logging in SilverModManager. 

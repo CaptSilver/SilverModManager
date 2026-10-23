@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 
-namespace NexusMods.Abstractions.Collections.Json;
+namespace SilverModManager.Abstractions.Collections.Json;
 
 /// <summary>
 /// Update policy.

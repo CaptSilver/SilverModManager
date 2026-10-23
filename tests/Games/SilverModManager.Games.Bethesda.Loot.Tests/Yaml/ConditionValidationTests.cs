@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Loot.Metadata;
-using NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Yaml;
 
 // libloot's should_error_if_given_an_invalid_condition and ..._constraint cases for File, Tag and
 // Message, plus the cleaning data condition.
@@ -60,6 +60,6 @@ public class ConditionValidationTests
             .Should().Throw<MetadataParseException>().Which;
 
         thrown.Line.Should().Be(2);
-        thrown.InnerException.Should().BeOfType<NexusMods.Games.Bethesda.Loot.Database.ConditionParseException>();
+        thrown.InnerException.Should().BeOfType<SilverModManager.Games.Bethesda.Loot.Database.ConditionParseException>();
     }
 }

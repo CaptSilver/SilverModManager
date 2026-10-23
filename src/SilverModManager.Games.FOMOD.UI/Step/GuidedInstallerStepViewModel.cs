@@ -7,16 +7,16 @@ using DynamicData;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Abstractions.GuidedInstallers.ValueObjects;
-using NexusMods.App.UI;
-using NexusMods.App.UI.Extensions;
-using NexusMods.Sdk.Jobs;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Abstractions.GuidedInstallers.ValueObjects;
+using SilverModManager.App.UI;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 [UsedImplicitly]
 public class GuidedInstallerStepViewModel : AViewModel<IGuidedInstallerStepViewModel>, IGuidedInstallerStepViewModel

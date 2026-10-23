@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Overlay;
+namespace SilverModManager.Games.FromSoft.Overlay;
 
 /// <summary>
 /// The command that runs a game's mod loader inside a bwrap sandbox with a writable overlay on the game folder, built from one

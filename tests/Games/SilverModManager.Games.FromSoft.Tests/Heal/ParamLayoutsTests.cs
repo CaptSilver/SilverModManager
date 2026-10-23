@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Heal;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Heal;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
-namespace NexusMods.Games.FromSoft.Tests.Heal;
+namespace SilverModManager.Games.FromSoft.Tests.Heal;
 
 public class ParamLayoutsTests
 {

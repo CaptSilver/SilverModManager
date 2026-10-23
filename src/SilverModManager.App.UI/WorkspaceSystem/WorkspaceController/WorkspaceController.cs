@@ -7,15 +7,15 @@ using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.UI.Sdk.Icons;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceAttachments;
-using NexusMods.Sdk;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceAttachments;
+using SilverModManager.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [UsedImplicitly]
 internal sealed class WorkspaceController : ReactiveObject, IWorkspaceController

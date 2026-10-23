@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using NexusMods.Abstractions.GOG.DTOs;
+using SilverModManager.Abstractions.GOG.DTOs;
 
-namespace NexusMods.Networking.GOG.DTOs;
+namespace SilverModManager.Networking.GOG.DTOs;
 
 internal class BuildListResponse
 {

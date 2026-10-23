@@ -3,14 +3,14 @@ using Avalonia.Controls;
 using Avalonia.Labs.Panels;
 using Avalonia.Platform;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Controls;
-using NexusMods.UI.Sdk.Dialog;
-using NexusMods.UI.Sdk.Dialog.Enums;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.UI.Sdk.Dialog;
+using SilverModManager.UI.Sdk.Dialog.Enums;
 using R3;
 using ReactiveUI;
 using SerialDisposable = System.Reactive.Disposables.SerialDisposable;
 
-namespace NexusMods.App.UI.Dialog;
+namespace SilverModManager.App.UI.Dialog;
 
 public partial class DialogWindow : ReactiveWindow<IDialogViewModel>, IDisposable
 {

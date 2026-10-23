@@ -1,29 +1,29 @@
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Steam;
-using NexusMods.Abstractions.Steam.Values;
-using NexusMods.Networking.Steam;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Backend;
-using NexusMods.CrossPlatform;
-using NexusMods.Games.Generic;
-using NexusMods.Games.RedEngine;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
-using NexusMods.Games.TestFramework.Helpers;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.Networking.Steam;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Backend;
+using SilverModManager.CrossPlatform;
+using SilverModManager.Games.Generic;
+using SilverModManager.Games.RedEngine;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.TestFramework.Helpers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.DataModel.Synchronizer.Tests;
+namespace SilverModManager.DataModel.Synchronizer.Tests;
 
 /// <summary>
 /// Cyberpunk 2077 installed from a Steam library on a symlinked mount, taken through the real service graph:
@@ -136,10 +136,10 @@ public class SteamInstalledGameTests(ITestOutputHelper helper) : ASteamInstalled
 
         // The prefix Proton wrote is bare, so the Wine setup checks have their say; the file checks must not.
         Ids(diagnostics).Should().Equal(
-            "NexusMods.Games.FileHashes: 3",
-            "NexusMods.Games.RedEngine.Cyberpunk2077: 1",
-            "NexusMods.Games.RedEngine.Cyberpunk2077: 5",
-            "NexusMods.Games.RedEngine.Cyberpunk2077: 6");
+            "SilverModManager.Games.FileHashes: 3",
+            "SilverModManager.Games.RedEngine.Cyberpunk2077: 1",
+            "SilverModManager.Games.RedEngine.Cyberpunk2077: 5",
+            "SilverModManager.Games.RedEngine.Cyberpunk2077: 6");
         var differ = Describe(diagnostics[0]);
         differ.Should().Contain("3 file(s) in the Cyberpunk 2077 folder");
         foreach (var file in PlayerFiles) differ.Should().Contain(file);
@@ -156,7 +156,7 @@ public class SteamInstalledGameTests(ITestOutputHelper helper) : ASteamInstalled
         var diagnostics = await RunEveryEmitter(Refresh(loadout));
 
         foreach (var file in AppliedModFiles) (GameFolder / file).FileExists.Should().BeTrue();
-        Ids(diagnostics).Should().NotContain(["NexusMods.Games.FileHashes: 2", "NexusMods.Games.FileHashes: 4"]);
+        Ids(diagnostics).Should().NotContain(["SilverModManager.Games.FileHashes: 2", "SilverModManager.Games.FileHashes: 4"]);
     }
 
     [Fact]

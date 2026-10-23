@@ -1,4 +1,4 @@
--- namespace: NexusMods.Games.Larian.BaldursGate3.SortOrder
+-- namespace: SilverModManager.Games.Larian.BaldursGate3.SortOrder
 -- Hash stores and loadout tables are read with the macros of the data model project.
 
 CREATE SCHEMA IF NOT EXISTS bg3;

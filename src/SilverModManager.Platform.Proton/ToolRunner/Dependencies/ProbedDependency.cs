@@ -1,9 +1,9 @@
 using System.ComponentModel;
 using CliWrap;
 using DynamicData.Kernel;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Platform.Proton.ToolRunner.Dependencies;
+namespace SilverModManager.Platform.Proton.ToolRunner.Dependencies;
 
 /// <summary>
 /// An executable that is considered installed when a query command exits with zero.

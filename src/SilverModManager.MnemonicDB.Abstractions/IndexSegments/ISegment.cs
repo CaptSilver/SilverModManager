@@ -2,7 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
 public interface ISegment
 {

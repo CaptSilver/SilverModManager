@@ -1,10 +1,10 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-                    xmlns:downloads="clr-namespace:NexusMods.App.UI.Pages.Downloads"
-                    xmlns:abstractions="clr-namespace:NexusMods.Abstractions.Downloads;assembly=NexusMods.Abstractions.Downloads"
-                    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-                    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources">
+                    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+                    xmlns:downloads="clr-namespace:SilverModManager.App.UI.Pages.Downloads"
+                    xmlns:abstractions="clr-namespace:SilverModManager.Abstractions.Downloads;assembly=SilverModManager.Abstractions.Downloads"
+                    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+                    xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources">
 
     <!-- Game column template -->
     <DataTemplate x:Key="{x:Static downloads:DownloadColumns+Game.ColumnTemplateResourceKey}">

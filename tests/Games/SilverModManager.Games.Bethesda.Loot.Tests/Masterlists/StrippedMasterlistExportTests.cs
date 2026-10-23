@@ -1,9 +1,9 @@
 using System.Text;
 using System.Text.Json;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Games.Bethesda.Loot.Tests.Corpus;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.Bethesda.Loot.Tests.Corpus;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Masterlists;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Masterlists;
 
 /// <summary>
 /// Writes the condition-free masterlists the oracle generator sorts with. Not a check: it only runs

@@ -1,12 +1,12 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class GameFileStreamSourceTests(ITestOutputHelper helper) : AStubbedGameIsolatedTest<GameFileStreamSourceTests>(helper)
 {

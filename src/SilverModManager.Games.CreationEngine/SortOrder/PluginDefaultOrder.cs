@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.LoadOrder.Ordering;
+using SilverModManager.Games.Bethesda.LoadOrder.Ordering;
 
-namespace NexusMods.Games.CreationEngine.SortOrder;
+namespace SilverModManager.Games.CreationEngine.SortOrder;
 
 /// <summary>
 /// The order plugins take when the user has not placed them: what <see cref="PluginOrderResolver"/> makes of

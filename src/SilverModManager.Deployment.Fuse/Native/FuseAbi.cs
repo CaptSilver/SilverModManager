@@ -1,4 +1,4 @@
-namespace NexusMods.Deployment.Fuse.Native;
+namespace SilverModManager.Deployment.Fuse.Native;
 
 internal readonly record struct FuseAbiCheck(bool Ok, bool NewerThanVerified, string Reason)
 {

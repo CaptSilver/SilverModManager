@@ -1,4 +1,4 @@
-namespace NexusMods.DataModel.Extensions;
+namespace SilverModManager.DataModel.Extensions;
 
 /// <summary>
 /// Provides various extensions for implementations of <see cref="IAsyncEnumerable{T}"/>.

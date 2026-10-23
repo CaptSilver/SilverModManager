@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.CreationEngine.PluginLists;
+namespace SilverModManager.Games.CreationEngine.PluginLists;
 
 /// <summary>
 /// How a game keeps its load order: which files the app writes at sync time and how the game's own copy is read back.

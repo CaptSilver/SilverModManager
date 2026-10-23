@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI.Helpers;
+namespace SilverModManager.App.UI.Helpers;
 
 /// <summary>
 /// Just a bunch of constants to make refactoring easier down the road.

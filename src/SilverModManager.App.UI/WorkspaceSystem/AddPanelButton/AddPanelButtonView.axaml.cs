@@ -1,10 +1,10 @@
 using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [UsedImplicitly]
 public partial class AddPanelButtonView : ReactiveUserControl<IAddPanelButtonViewModel>

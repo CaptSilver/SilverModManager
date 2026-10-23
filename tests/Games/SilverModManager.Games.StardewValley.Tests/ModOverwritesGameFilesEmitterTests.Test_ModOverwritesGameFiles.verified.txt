@@ -1,4 +1,4 @@
-﻿[Id] NexusMods.Games.StardewValley: 13
+﻿[Id] SilverModManager.Games.StardewValley: 13
 [Title] Overwritten Game Files
 [Summary] 'TileFile' overwrites game files directly which can cause issues
 [Details]

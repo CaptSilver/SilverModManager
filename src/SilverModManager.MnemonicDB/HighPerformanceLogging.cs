@@ -1,8 +1,8 @@
 using System;
 using Microsoft.Extensions.Logging;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.MnemonicDB;
+namespace SilverModManager.MnemonicDB;
 
 internal static partial class HighPerformanceLogging
 {

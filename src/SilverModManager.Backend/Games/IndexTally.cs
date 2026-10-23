@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
-namespace NexusMods.Backend.Games;
+namespace SilverModManager.Backend.Games;
 
 /// <summary>
 /// Why a file's hash could not be taken from the stored hash rows.

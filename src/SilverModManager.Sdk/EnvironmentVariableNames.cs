@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// Environment variables

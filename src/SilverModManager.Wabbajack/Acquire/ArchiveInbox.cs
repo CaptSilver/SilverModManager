@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Library;
+using SilverModManager.Abstractions.Library;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Wabbajack.Library;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Wabbajack.Library;
 
-namespace NexusMods.Wabbajack.Acquire;
+namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>A file in the inbox that no archive of the current plan wants.</summary>
 public sealed record UnmatchedInbox(string FileName, Hash XxHash64);

@@ -1,8 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
-namespace NexusMods.MnemonicDB.Abstractions.Models;
+namespace SilverModManager.MnemonicDB.Abstractions.Models;
 
 /// <summary>
 /// An entity is a reference to the attributes of a specific EnityId. Think of this as a hashmap

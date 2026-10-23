@@ -1,8 +1,8 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts.Deployment;
+namespace SilverModManager.Abstractions.Loadouts.Deployment;
 
 /// <summary>
 /// Loose, content-addressed copies of archived files on disk, kept per managed game. Backends that

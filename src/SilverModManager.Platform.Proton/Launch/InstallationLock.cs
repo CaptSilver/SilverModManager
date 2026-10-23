@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// Serialises launches of one game installation across processes with an advisory lock on

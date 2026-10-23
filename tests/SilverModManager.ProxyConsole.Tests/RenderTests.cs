@@ -1,8 +1,8 @@
 ﻿using FluentAssertions;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.ProxyConsole;
 using Spectre.Console.Testing;
 
-namespace NexusMods.ProxyConsole.Tests;
+namespace SilverModManager.ProxyConsole.Tests;
 
 public class RenderTests
 {

@@ -1,8 +1,8 @@
 using System.Buffers.Binary;
 using NexusMods.Paths;
-using static NexusMods.Games.Bethesda.Archives.Tests.TestArchives;
+using static SilverModManager.Games.Bethesda.Archives.Tests.TestArchives;
 
-namespace NexusMods.Games.Bethesda.Archives.Tests;
+namespace SilverModManager.Games.Bethesda.Archives.Tests;
 
 public class Ba2ArchiveTests
 {

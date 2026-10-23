@@ -1,14 +1,14 @@
 using Avalonia.Media;
 using JetBrains.Annotations;
 using Union = OneOf.OneOf<
-    NexusMods.UI.Sdk.Icons.Empty,
-    NexusMods.UI.Sdk.Icons.ProjektankerIcon,
-    NexusMods.UI.Sdk.Icons.AvaloniaImage,
-    NexusMods.UI.Sdk.Icons.AvaloniaSvg,
-    NexusMods.UI.Sdk.Icons.AvaloniaPathIcon,
-    NexusMods.UI.Sdk.Icons.SimpleVectorIcon>;
+    SilverModManager.UI.Sdk.Icons.Empty,
+    SilverModManager.UI.Sdk.Icons.ProjektankerIcon,
+    SilverModManager.UI.Sdk.Icons.AvaloniaImage,
+    SilverModManager.UI.Sdk.Icons.AvaloniaSvg,
+    SilverModManager.UI.Sdk.Icons.AvaloniaPathIcon,
+    SilverModManager.UI.Sdk.Icons.SimpleVectorIcon>;
 
-namespace NexusMods.UI.Sdk.Icons;
+namespace SilverModManager.UI.Sdk.Icons;
 
 /// <summary>
 /// Represents a union between

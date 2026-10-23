@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Collections;
+namespace SilverModManager.Collections;
 
 public class DownloadSettings : ISettings
 {

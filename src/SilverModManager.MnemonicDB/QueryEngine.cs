@@ -8,11 +8,11 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.HyperDuck;
 using NexusMods.HyperDuck.Adaptor;
 using NexusMods.HyperDuck.Adaptor.Impls;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.QueryFunctions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.QueryFunctions;
 
-namespace NexusMods.MnemonicDB;
+namespace SilverModManager.MnemonicDB;
 
 /// <summary>
 /// Container class for the DuckDB based query engine elements
@@ -22,7 +22,7 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
     public record ActiveConnection(ushort LocalId, string Name, ushort UniqueId, IConnection Connection);
     
     private readonly Registry _registry;
-    private readonly HyperDuck.DuckDB _db;
+    private readonly NexusMods.HyperDuck.DuckDB _db;
     private readonly IAttribute[] _declaredAttributes;
     private readonly Dictionary<string, IAttribute> _attrsByShortName;
     private LogicalType _attrEnumLogicalType;
@@ -42,7 +42,7 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
             services.GetServices<IValueAdaptorFactory>(),
             services.GetServices<IBindingConverter>(),
             services.GetServices<AmbientSqlFragment>());
-        _db = HyperDuck.DuckDB.Open(_registry, services.GetServices<ATableFunction>(), services.GetServices<AScalarFunction>());
+        _db = NexusMods.HyperDuck.DuckDB.Open(_registry, services.GetServices<ATableFunction>(), services.GetServices<AScalarFunction>());
         _declaredAttributes = services.GetServices<IAttribute>().OrderBy(a => a.Id.Id).ToArray();
         _attrsByShortName = _declaredAttributes.ToDictionary(a => a.ShortName, a => a);
         _attrEnumLogicalType = LogicalType.CreateEnum(_declaredAttributes.Select(s => s.ShortName).Prepend("UNKNOWN").ToArray());
@@ -118,5 +118,5 @@ public class QueryEngine : IQueryEngine, IAsyncDisposable
         await _db.DisposeAsync().ConfigureAwait(false);
     }
 
-    public HyperDuck.DuckDB DuckDb => _db;
+    public NexusMods.HyperDuck.DuckDB DuckDb => _db;
 }

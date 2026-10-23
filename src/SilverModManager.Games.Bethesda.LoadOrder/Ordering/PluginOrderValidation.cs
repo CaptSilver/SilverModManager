@@ -1,5 +1,5 @@
 // Ported from libloadorder src/load_order/mutable.rs (validate_load_order and the checks it calls).
-namespace NexusMods.Games.Bethesda.LoadOrder.Ordering;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Ordering;
 
 public enum PluginOrderErrorKind
 {

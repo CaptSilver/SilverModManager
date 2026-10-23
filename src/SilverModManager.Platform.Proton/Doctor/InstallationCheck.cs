@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.Doctor;
+namespace SilverModManager.Platform.Proton.Doctor;
 
 /// <summary>How serious a <see cref="DoctorCheck"/> result is.</summary>
 public enum DoctorCheckLevel

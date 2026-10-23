@@ -1,12 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
+using SilverModManager.Abstractions.Cli;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Selftest;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Platform.Proton.Selftest;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Platform.Proton.Verbs;
+namespace SilverModManager.Platform.Proton.Verbs;
 
 internal static class SelftestVerbs
 {

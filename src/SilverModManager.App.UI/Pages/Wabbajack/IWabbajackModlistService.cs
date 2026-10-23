@@ -1,12 +1,12 @@
 using Avalonia.Media.Imaging;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Install;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Install;
 
-namespace NexusMods.App.UI.Pages.Wabbajack;
+namespace SilverModManager.App.UI.Pages.Wabbajack;
 
 /// <summary>What the page shows about a list before any loadout is involved.</summary>
 /// <param name="GameType">The list's game as Wabbajack names it.</param>

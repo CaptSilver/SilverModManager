@@ -1,8 +1,8 @@
 using System.Text.Json;
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.Wabbajack.Install;
+namespace SilverModManager.Wabbajack.Install;
 
 /// <summary>
 /// The directives that make a file out of other bytes: patching, recompressing a texture and building a Bethesda

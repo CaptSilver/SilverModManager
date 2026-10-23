@@ -139,12 +139,12 @@ After that, you may also need to add it to [AddApp][add-app] and call `services.
 
 !!! tip "If your code targets a specific common 'game engine' or middleware, you might want to put your logic there."
 
-For example, the Nexus Mods app has `NexusMods.Games.BethesdaGameStudios`, which contains code for the `Creation` engine.
+For example, the Nexus Mods app has `SilverModManager.Games.BethesdaGameStudios`, which contains code for the `Creation` engine.
 
 This code is used by games such as `Skyrim LE` and `Skyrim SE`, so these two games live in the
-`NexusMods.Games.BethesdaGameStudios` project.
+`SilverModManager.Games.BethesdaGameStudios` project.
 
-[add-app]: https://github.com/Nexus-Mods/NexusMods.App/blob/71ed7f186c6a5fe0dd0e45e2cf24c7a624c1bed4/src/NexusMods.App/Services.cs#L51
+[add-app]: https://github.com/Nexus-Mods/NexusMods.App/blob/71ed7f186c6a5fe0dd0e45e2cf24c7a624c1bed4/src/SilverModManager.App/Services.cs#L51
 [dependency-injection]: ./DependencyInjection.md#how-does-it-know
 [ea-gamefinder]: https://github.com/erri120/GameFinder/wiki/EA-Desktop
 [epic-gamefinder]: https://github.com/erri120/GameFinder/wiki/Epic-Games-Store

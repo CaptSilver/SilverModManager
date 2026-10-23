@@ -1,12 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NexusMods.CrossPlatform;
+using SilverModManager.CrossPlatform;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileExtractor;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.FileExtractor;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Backend.Tests.FileExtractor;
+namespace SilverModManager.Backend.Tests.FileExtractor;
 
 public class AFileExtractorTest : IAsyncLifetime
 {
@@ -18,7 +18,7 @@ public class AFileExtractorTest : IAsyncLifetime
             .ConfigureServices(services =>
                 {
                     const KnownPath baseKnownPath = KnownPath.EntryDirectory;
-                    var baseDirectory = $"NexusMods.Examples.Tests-{Guid.NewGuid()}";
+                    var baseDirectory = $"SilverModManager.Examples.Tests-{Guid.NewGuid()}";
                     var prefix = NexusMods.Paths.FileSystem.Shared.GetKnownPath(baseKnownPath).Combine(baseDirectory);
 
                     services

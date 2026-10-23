@@ -1,9 +1,9 @@
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.Games.Unreal.Tests;
+namespace SilverModManager.Games.Unreal.Tests;
 
 /// <summary>
 /// The layout of a made-up Unreal game, "Fake", whose project folder sits under the game folder. Nothing here

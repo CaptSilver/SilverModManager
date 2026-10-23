@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using NexusMods.Networking.ModUpdates.Private;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Networking.ModUpdates.Private;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.ModUpdates;
+namespace SilverModManager.Networking.ModUpdates;
 
 /// <summary>
 /// This is a helper struct which helps us make use of the 'most recently updated mods for game'

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 
-namespace NexusMods.MnemonicDB.Abstractions.ElementComparers;
+namespace SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
 /// <summary>
 /// Compares the A part of the key.

@@ -1,10 +1,10 @@
 using System.ComponentModel;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Dialog;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Dialog;
+namespace SilverModManager.App.UI.Dialog;
 
 public class DialogViewModel: IDialogViewModel
 {

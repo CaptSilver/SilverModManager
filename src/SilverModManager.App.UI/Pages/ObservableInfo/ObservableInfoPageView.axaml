@@ -5,11 +5,11 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactive="http://reactiveui.net"
-    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.ObservableInfo"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.ObservableInfo"
     xmlns:r3="clr-namespace:R3;assembly=R3"
     xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.Avalonia;assembly=LiveChartsCore.SkiaSharpView.Avalonia"
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-    x:Class="NexusMods.App.UI.Pages.ObservableInfo.ObservableInfoPageView">
+    x:Class="SilverModManager.App.UI.Pages.ObservableInfo.ObservableInfoPageView">
 
     <Grid RowDefinitions="Auto, *, 4, *">
         <StackPanel Grid.Row="0" Spacing="{StaticResource Spacing-2}" Orientation="Horizontal">

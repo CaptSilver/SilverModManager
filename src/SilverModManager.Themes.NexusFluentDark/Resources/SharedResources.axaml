@@ -3,7 +3,7 @@
                     xmlns:sys="using:System">
     
     <!-- Used when we need to see if something hasn't been overriden with our system, primarily in 
-    NexusMods.Themes.NexusFluentDark.NexusFluentDarkTheme.axaml when overriding native Fluent theme palette -->
+    SilverModManager.Themes.NexusFluentDark.NexusFluentDarkTheme.axaml when overriding native Fluent theme palette -->
     <Color x:Key="DebugColor">DeepPink</Color>
     <SolidColorBrush x:Key="DebugColorBrush" Color="{StaticResource DebugColor}" />
     

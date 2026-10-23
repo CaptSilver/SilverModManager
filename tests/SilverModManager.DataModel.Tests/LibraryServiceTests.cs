@@ -3,21 +3,21 @@ using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
-using NexusMods.Sdk;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using Xunit;
-using NexusMods.Sdk.Library;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using SilverModManager.Sdk.Library;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTests>
 {

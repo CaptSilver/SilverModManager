@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.MnemonicDB.QueryFunctions;
+namespace SilverModManager.MnemonicDB.QueryFunctions;
 
 public interface IRevisableFromAttributes
 {

@@ -1,12 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Backend;
+using SilverModManager.Backend;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.Deployment.Staging.Tests;
+namespace SilverModManager.Deployment.Staging.Tests;
 
 public class Startup
 {

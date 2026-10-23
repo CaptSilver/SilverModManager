@@ -3,11 +3,11 @@ using System.Reactive.Linq;
 using Avalonia.Media;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.App.UI.Resources;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.App.UI.Resources;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Diagnostics;
+namespace SilverModManager.App.UI.Pages.Diagnostics;
 
 [UsedImplicitly]
 public partial class DiagnosticDetailsView : ReactiveUserControl<IDiagnosticDetailsViewModel>

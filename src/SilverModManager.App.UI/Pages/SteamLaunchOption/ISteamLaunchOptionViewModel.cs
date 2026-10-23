@@ -1,8 +1,8 @@
 using System.Reactive;
-using NexusMods.App.UI.Overlays;
+using SilverModManager.App.UI.Overlays;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.SteamLaunchOption;
+namespace SilverModManager.App.UI.Pages.SteamLaunchOption;
 
 /// <summary>
 /// The 'Use this loadout from Steam' dialog: shows the launch options line for a loadout, copies it, or writes it

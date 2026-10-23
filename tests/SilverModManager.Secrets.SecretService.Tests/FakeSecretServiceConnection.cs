@@ -1,7 +1,7 @@
-using NexusMods.Secrets.SecretService;
+using SilverModManager.Secrets.SecretService;
 using R3;
 
-namespace NexusMods.Secrets.SecretService.Tests;
+namespace SilverModManager.Secrets.SecretService.Tests;
 
 /// <summary>
 /// A scripted <see cref="ISecretServiceConnection"/>. Each method has a queue of steps that are consumed in order,

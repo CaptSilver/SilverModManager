@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Me3;
+namespace SilverModManager.Games.FromSoft.Me3;
 
 /// <summary>
 /// A native DLL that arrives as a file of the overlay rather than as a native mod, and that the profile loads from

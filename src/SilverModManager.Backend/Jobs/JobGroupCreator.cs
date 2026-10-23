@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Backend.Jobs;
+namespace SilverModManager.Backend.Jobs;
 
 public sealed class JobGroupCreator
 {

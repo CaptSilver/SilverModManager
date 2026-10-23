@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Examples.TreeDataGrid.Basic.ViewModel;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 
 namespace Examples.TreeDataGrid.Basic;
 

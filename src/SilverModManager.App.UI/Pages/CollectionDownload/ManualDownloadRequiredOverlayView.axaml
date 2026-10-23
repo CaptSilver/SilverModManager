@@ -5,14 +5,14 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactive="http://reactiveui.net"
-    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.CollectionDownload"
-    xmlns:spinner="clr-namespace:NexusMods.App.UI.Controls.Spinner"
-    xmlns:base="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.Base"
-    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.CollectionDownload"
+    xmlns:spinner="clr-namespace:SilverModManager.App.UI.Controls.Spinner"
+    xmlns:base="clr-namespace:SilverModManager.App.UI.Overlays.Generic.MessageBox.Base"
+    xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
     mc:Ignorable="d" d:DesignHeight="800"
-    x:Class="NexusMods.App.UI.Pages.CollectionDownload.ManualDownloadRequiredOverlayView">
+    x:Class="SilverModManager.App.UI.Pages.CollectionDownload.ManualDownloadRequiredOverlayView">
 
     <Design.DataContext>
         <local:ManualDownloadRequiredOverlayDesignViewModel />

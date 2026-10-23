@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace NexusMods.MnemonicDB.Abstractions.TxFunctions;
+namespace SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 
 /// <summary>
 /// Defines a transactor function. These are functions that are applied inside the guts

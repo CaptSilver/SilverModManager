@@ -1,6 +1,6 @@
-﻿using NexusMods.App.UI.WorkspaceSystem;
+﻿using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI.LeftMenu;
+namespace SilverModManager.App.UI.LeftMenu;
 
 /// <summary>
 /// Represents a factory for creating LeftMenu ViewModels for a workspace using the provided workspace context.

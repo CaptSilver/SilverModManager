@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Games.Bethesda.LoadOrder.Formats;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Formats;
 
 /// <summary>
 /// Shared line handling of the plugin list files: a leading generated-by comment on render, and on parse

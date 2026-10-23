@@ -4,7 +4,7 @@ using System.Reflection;
 using Avalonia.Controls;
 using DynamicData;
 
-namespace NexusMods.App.UI.Helpers;
+namespace SilverModManager.App.UI.Helpers;
 
 /// <summary>
 /// A helper class that provides an observable collection of selected items for a DataGrid using DynamicData and Observables.

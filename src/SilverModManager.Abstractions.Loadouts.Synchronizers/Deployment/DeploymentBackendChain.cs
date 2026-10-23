@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 
 /// <summary>
 /// Picks the first backend in <see cref="Order"/> that is registered and whose preflight accepts the root.

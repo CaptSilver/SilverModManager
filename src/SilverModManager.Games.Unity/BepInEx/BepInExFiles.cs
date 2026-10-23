@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Unity.BepInEx;
+namespace SilverModManager.Games.Unity.BepInEx;
 
 /// <summary>Names of the folders and files BepInEx lays out in a game folder.</summary>
 internal static class BepInExFiles

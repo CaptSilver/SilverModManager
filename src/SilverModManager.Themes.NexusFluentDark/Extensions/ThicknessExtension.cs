@@ -3,7 +3,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using JetBrains.Annotations;
 
-namespace NexusMods.Themes.NexusFluentDark.Extensions;
+namespace SilverModManager.Themes.NexusFluentDark.Extensions;
 
 /// <summary>
 /// Xaml extension for Thickness (used by Margin, Padding, BorderThickness).

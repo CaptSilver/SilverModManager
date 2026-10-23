@@ -5,10 +5,10 @@ using System.Reactive.Linq;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 public static class ReactiveUiExtensions
 {

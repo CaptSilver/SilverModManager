@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// Works out which game a folder the user pointed at is an install of and records it, so the locators report it.

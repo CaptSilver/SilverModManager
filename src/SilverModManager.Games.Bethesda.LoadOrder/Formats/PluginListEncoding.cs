@@ -1,7 +1,7 @@
 // Follows libloadorder src/load_order/{mod,mutable,textfile_based}.rs (strict_encode, read_plugin_names, read_utf8_plugin_names).
 using System.Text;
 
-namespace NexusMods.Games.Bethesda.LoadOrder.Formats;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Formats;
 
 /// <summary>
 /// How the games' plugin lists are encoded. plugins.txt is Windows-1252 in both directions; libloadorder

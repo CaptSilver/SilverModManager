@@ -1,10 +1,10 @@
 using System.Reflection;
 using FluentAssertions;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 /// <summary>
 /// The saved window layout stores each open page's context by its <see cref="JsonNameAttribute"/>, and reading it

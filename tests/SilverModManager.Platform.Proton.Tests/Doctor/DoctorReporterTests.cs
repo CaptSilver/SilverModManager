@@ -3,17 +3,17 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Deployment;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Platform.Proton.Tests.Launch;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Platform.Proton.Tests.Launch;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests.Doctor;
+namespace SilverModManager.Platform.Proton.Tests.Doctor;
 
 public class DoctorReporterTests : IDisposable
 {

@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// The names that identify this repository's own assemblies and solution. Tests that scan assemblies,
@@ -27,7 +27,7 @@ public static class FirstPartyNames
     public const string AppAssemblyName = "SilverModManager";
 
     /// <summary>File name of the solution, used to find the repository root from test binaries.</summary>
-    public const string SolutionFile = "NexusMods.App.sln";
+    public const string SolutionFile = "SilverModManager.App.sln";
 
     /// <summary>The prefix upstream used for persisted names; a stored name must not start with it.</summary>
     public const string UpstreamPersistedPrefix = "NexusMods.";

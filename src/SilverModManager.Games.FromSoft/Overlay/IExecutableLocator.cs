@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Overlay;
+namespace SilverModManager.Games.FromSoft.Overlay;
 
 /// <summary>Finds a program the way a shell would, so a test can say where (or whether) it is.</summary>
 public interface IExecutableLocator

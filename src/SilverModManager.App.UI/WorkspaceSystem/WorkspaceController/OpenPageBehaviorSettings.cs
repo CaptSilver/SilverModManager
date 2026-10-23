@@ -3,7 +3,7 @@ using MouseButton = Avalonia.Input.MouseButton;
 using KeyboardKey = Avalonia.Input.Key;
 using KeyboardModifiers = Avalonia.Input.KeyModifiers;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 // TODO: https://github.com/Nexus-Mods/NexusMods.App/issues/1058
 // TODO: https://github.com/Nexus-Mods/NexusMods.App/issues/946

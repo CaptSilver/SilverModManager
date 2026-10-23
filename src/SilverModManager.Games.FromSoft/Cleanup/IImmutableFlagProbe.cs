@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Cleanup;
+namespace SilverModManager.Games.FromSoft.Cleanup;
 
 /// <summary>Reads the immutable attribute of a file. Reading is all the app does with it: clearing it needs root.</summary>
 public interface IImmutableFlagProbe

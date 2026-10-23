@@ -1,4 +1,4 @@
-﻿namespace NexusMods.App.UI.Overlays;
+﻿namespace SilverModManager.App.UI.Overlays;
 
 /// <summary>
 /// Interface for managing and triggering various overlays that can happen within the application.

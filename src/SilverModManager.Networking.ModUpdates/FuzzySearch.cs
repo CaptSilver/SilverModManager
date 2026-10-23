@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-namespace NexusMods.Networking.ModUpdates;
+namespace SilverModManager.Networking.ModUpdates;
 
 /// <summary>
 /// This class has all the code around the 'fuzzy search' feature documented in

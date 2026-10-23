@@ -1,6 +1,6 @@
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Games.Unity.BepInEx;
+namespace SilverModManager.Games.Unity.BepInEx;
 
 /// <summary>
 /// The folder name a package gets below BepInEx's plugins, patchers, core and monomod folders. It matches the

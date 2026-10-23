@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using static NexusMods.Abstractions.Loadouts.Synchronizers.Rules.Actions;
-using static NexusMods.Abstractions.Loadouts.Synchronizers.Rules.SignatureShorthand;
+using static SilverModManager.Abstractions.Loadouts.Synchronizers.Rules.Actions;
+using static SilverModManager.Abstractions.Loadouts.Synchronizers.Rules.SignatureShorthand;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 
 public class ActionMapping
 {

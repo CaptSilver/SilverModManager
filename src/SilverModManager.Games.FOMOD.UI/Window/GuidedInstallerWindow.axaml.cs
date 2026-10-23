@@ -5,10 +5,10 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI;
+using SilverModManager.App.UI;
 using ReactiveUI;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 public partial class GuidedInstallerWindow : ReactiveWindow<IGuidedInstallerWindowViewModel>
 {            

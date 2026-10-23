@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Steam;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
 using Xunit;
 
-namespace NexusMods.Networking.Steam.Tests;
+namespace SilverModManager.Networking.Steam.Tests;
 
 public sealed class DepotCacheTests : IDisposable
 {

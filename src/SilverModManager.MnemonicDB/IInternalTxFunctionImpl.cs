@@ -1,10 +1,10 @@
 using System;
 using System.Threading.Tasks;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.MnemonicDB.Storage;
 
-namespace NexusMods.MnemonicDB;
+namespace SilverModManager.MnemonicDB;
 
 /// <summary>
 /// A TxFunction that is internal to the MnemonicDB, used mostly for schema updates

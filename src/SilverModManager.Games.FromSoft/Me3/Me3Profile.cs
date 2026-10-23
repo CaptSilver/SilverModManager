@@ -1,7 +1,7 @@
 using System.Text;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Me3;
+namespace SilverModManager.Games.FromSoft.Me3;
 
 /// <summary>
 /// The text of the me3 profile, as a pure function of the files the loadout puts in the mods folder. Every apply

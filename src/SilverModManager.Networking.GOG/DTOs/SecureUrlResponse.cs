@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
-using NexusMods.Abstractions.GOG.DTOs;
-using NexusMods.Abstractions.GOG.Values;
+using SilverModManager.Abstractions.GOG.DTOs;
+using SilverModManager.Abstractions.GOG.Values;
 
-namespace NexusMods.Networking.GOG.DTOs;
+namespace SilverModManager.Networking.GOG.DTOs;
 
 internal class SecureUrlResponse
 {

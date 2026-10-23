@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Masterlists;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Masterlists;
 
 public class LootGameTests
 {

@@ -4,7 +4,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
 
-namespace NexusMods.Networking.HttpDownloader.Tests;
+namespace SilverModManager.Networking.HttpDownloader.Tests;
 
 public class HttpDownloadJobWorkerTests
 {

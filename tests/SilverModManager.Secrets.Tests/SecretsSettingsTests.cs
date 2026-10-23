@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 using Xunit;
 
-namespace NexusMods.Secrets.Tests;
+namespace SilverModManager.Secrets.Tests;
 
 public class SecretsSettingsTests
 {

@@ -1,6 +1,6 @@
-﻿using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+﻿using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
-namespace NexusMods.MnemonicDB.Abstractions.DatomComparators;
+namespace SilverModManager.MnemonicDB.Abstractions.DatomComparators;
 
 /// <summary>
 /// VAE Comparator.

@@ -1,16 +1,16 @@
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk.Settings;
-using NexusMods.App.GarbageCollection.Nx;
-using NexusMods.DataModel;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.App.GarbageCollection.Nx;
+using SilverModManager.DataModel;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.App.GarbageCollection.DataModel.Tests;
+namespace SilverModManager.App.GarbageCollection.DataModel.Tests;
 
 public class DataStoreNxArchiveFinderTests(NxFileStore fileStore, IConnection connection, ISettingsManager settingsManager)
 {

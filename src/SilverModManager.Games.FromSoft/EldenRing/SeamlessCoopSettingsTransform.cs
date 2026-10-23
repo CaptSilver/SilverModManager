@@ -1,9 +1,9 @@
 using System.Text;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Overlay;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Overlay;
 
-namespace NexusMods.Games.FromSoft.EldenRing;
+namespace SilverModManager.Games.FromSoft.EldenRing;
 
 /// <summary>
 /// Puts the co-op password into Seamless Co-op's settings file as it is written for a session. The deployed file and

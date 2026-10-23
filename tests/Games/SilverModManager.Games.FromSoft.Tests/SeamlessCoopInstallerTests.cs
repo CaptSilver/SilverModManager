@@ -1,13 +1,13 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Installers;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Installers;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class SeamlessCoopInstallerTests(ITestOutputHelper outputHelper) : AEldenRingInstallerTests<SeamlessCoopInstallerTests>(outputHelper)
 {
@@ -80,7 +80,7 @@ public class SeamlessCoopInstallerTests(ITestOutputHelper outputHelper) : AElden
         await LoadoutManager.InstallItem(archive.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId, installer: Game.LibraryItemInstallers.OfType<SeamlessCoopInstaller>().Single());
         await Synchronizer.Synchronize(Refresh(loadout));
 
-        var settings = GameInstallation.Locations[NexusMods.Sdk.Games.LocationId.Me3Mods].Path / "overlay/SeamlessCoop/ersc_settings.ini";
+        var settings = GameInstallation.Locations[SilverModManager.Sdk.Games.LocationId.Me3Mods].Path / "overlay/SeamlessCoop/ersc_settings.ini";
 
         (await settings.ReadAllTextAsync()).Should().Be(ErscRelease.SettingsText);
     }

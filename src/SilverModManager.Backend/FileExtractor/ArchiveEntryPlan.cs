@@ -1,4 +1,4 @@
-namespace NexusMods.Backend.FileExtractor;
+namespace SilverModManager.Backend.FileExtractor;
 
 /// <summary>
 /// What to do with the entries of an archive that 7z lists, when 7z's own handling of their names differs

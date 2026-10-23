@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
 /// <summary>Builds Kraken streams the decoder accepts without needing an encoder.</summary>
 public static class KrakenFixture

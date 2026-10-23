@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// A sort order variety that can stop writing its list and hand the file back to the game, because something the

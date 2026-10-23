@@ -1,16 +1,16 @@
 ﻿using System.Collections.ObjectModel;
 using DynamicData;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Helpers.TreeDataGrid;
-using NexusMods.Games.AdvancedInstaller.UI.Resources;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Helpers.TreeDataGrid;
+using SilverModManager.Games.AdvancedInstaller.UI.Resources;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.SelectLocation;
+namespace SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 
 using SelectableTreeNode = TreeNodeVM<ISelectableTreeEntryViewModel, GamePath>;
 

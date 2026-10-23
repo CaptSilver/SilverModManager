@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.Steam;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Sdk.ProxyConsole;
 using QRCoder;
 
-namespace NexusMods.Networking.Steam.CLI;
+namespace SilverModManager.Networking.Steam.CLI;
 
 public class RenderingAuthenticationHandler: IAuthInterventionHandler
 {

@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.Diagnostics;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 public class MergeDiagnosticsEmitterTests(ITestOutputHelper helper) : AVanillaDumpTest<MergeDiagnosticsEmitterTests>(helper)
 {
@@ -52,7 +52,7 @@ public class MergeDiagnosticsEmitterTests(ITestOutputHelper helper) : AVanillaDu
         var diagnostic = (await Run(loadout)).Should().ContainSingle().Which;
 
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
-        diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.FromSoft", 11));
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 11));
         var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.MergeNoteMessageData>>().Which.MessageData;
         data.Path.Should().Be(Msg);
         data.Mods.Should().Contain("Alpha").And.Contain("Beta");
@@ -88,7 +88,7 @@ public class MergeDiagnosticsEmitterTests(ITestOutputHelper helper) : AVanillaDu
         var thrown = (await act.Should().ThrowAsync<MergeRefusedException>()).Which;
 
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
-        diagnostic.Id.Should().Be(new DiagnosticId("NexusMods.Games.FromSoft", 12));
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 12));
         var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.MergeRefusedMessageData>>().Which.MessageData;
         data.Message.Should().Be(thrown.Message);
         data.Path.Should().Be(RegulationPath);

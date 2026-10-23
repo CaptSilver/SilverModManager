@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Secrets.SecretService;
+namespace SilverModManager.Secrets.SecretService;
 
 public static class Services
 {

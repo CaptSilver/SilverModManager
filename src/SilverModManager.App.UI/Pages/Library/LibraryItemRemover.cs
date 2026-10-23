@@ -1,10 +1,10 @@
-using NexusMods.Abstractions.Library;
-using NexusMods.App.UI.Overlays;
-using NexusMods.App.UI.Overlays.LibraryDeleteConfirmation;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Library;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Overlays.LibraryDeleteConfirmation;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.App.UI.Pages.Library;
+namespace SilverModManager.App.UI.Pages.Library;
 
 /// <summary>
 ///     Utility helper class for removing a set of library items from inside a ViewModel.

@@ -1,7 +1,7 @@
 using System;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
 public readonly struct AVSegment : ISegment<AttributeId, ValueTag, Offset>
 {

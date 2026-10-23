@@ -1,8 +1,8 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Sdk.Tests.Hashes;
+namespace SilverModManager.Sdk.Tests.Hashes;
 
 public class Md5Tests : HasherTestBase<Md5Value, Md5Hasher, Md5Tests>, IHasherTestData<Md5Value>
 {

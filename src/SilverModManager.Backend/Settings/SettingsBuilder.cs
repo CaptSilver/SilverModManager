@@ -1,8 +1,8 @@
 using System.Linq.Expressions;
 using System.Reflection;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Backend;
+namespace SilverModManager.Backend;
 
 internal class SettingsBuilder : ISettingsBuilder
 {

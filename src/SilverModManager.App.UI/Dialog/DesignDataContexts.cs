@@ -1,9 +1,9 @@
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.UI.Sdk.Dialog;
-using NexusMods.UI.Sdk.Dialog.Enums;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.UI.Sdk.Dialog;
+using SilverModManager.UI.Sdk.Dialog.Enums;
 
-namespace NexusMods.App.UI.Dialog;
+namespace SilverModManager.App.UI.Dialog;
 
 /// <summary>
 /// ViewModel instances used for design views

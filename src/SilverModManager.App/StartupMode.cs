@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Launch;
 
-namespace NexusMods.App;
+namespace SilverModManager.App;
 
 public class StartupMode
 {

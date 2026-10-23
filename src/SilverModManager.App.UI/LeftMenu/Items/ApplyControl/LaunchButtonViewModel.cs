@@ -2,20 +2,20 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Exceptions;
-using NexusMods.App.UI.Overlays;
-using NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
-using NexusMods.App.UI.Resources;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>, ILaunchButtonViewModel
 {

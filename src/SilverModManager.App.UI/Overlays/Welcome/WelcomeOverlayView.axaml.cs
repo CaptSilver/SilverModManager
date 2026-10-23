@@ -2,7 +2,7 @@ using Avalonia.ReactiveUI;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Overlays;
+namespace SilverModManager.App.UI.Overlays;
 
 public partial class WelcomeOverlayView : ReactiveUserControl<IWelcomeOverlayViewModel>
 {

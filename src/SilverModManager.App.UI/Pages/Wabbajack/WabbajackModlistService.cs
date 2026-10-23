@@ -3,28 +3,28 @@ using Avalonia.Media.Imaging;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.Modlists;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Modlists;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Settings;
-using NexusMods.Wabbajack;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Install;
-using NexusMods.Wabbajack.Mapping;
-using NexusMods.Wabbajack.Models;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Wabbajack;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Install;
+using SilverModManager.Wabbajack.Mapping;
+using SilverModManager.Wabbajack.Models;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.App.UI.Pages.Wabbajack;
+namespace SilverModManager.App.UI.Pages.Wabbajack;
 
 /// <summary>The real <see cref="IWabbajackModlistService"/>: the library, the games registry and the install job.</summary>
 [UsedImplicitly]
@@ -189,7 +189,7 @@ public sealed class WabbajackModlistService(IServiceProvider provider) : IWabbaj
         try
         {
             var fileSystem = provider.GetRequiredService<IFileSystem>();
-            var location = provider.GetRequiredService<ISettingsManager>().Get<NexusMods.DataModel.DataModelSettings>().ArchiveLocations[0].ToPath(fileSystem);
+            var location = provider.GetRequiredService<ISettingsManager>().Get<SilverModManager.DataModel.DataModelSettings>().ArchiveLocations[0].ToPath(fileSystem);
             // The folder may not exist yet; its nearest existing parent is on the same filesystem.
             var probe = location;
             while (!probe.DirectoryExists() && probe.Parent != probe) probe = probe.Parent;

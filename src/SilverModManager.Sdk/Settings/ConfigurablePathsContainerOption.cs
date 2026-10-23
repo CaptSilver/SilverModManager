@@ -1,3 +1,3 @@
-namespace NexusMods.Sdk.Settings;
+namespace SilverModManager.Sdk.Settings;
 
 public class ConfigurablePathsContainerOption : IContainerOptions;

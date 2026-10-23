@@ -1,22 +1,22 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
 
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.Emitters;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
 using Xunit;
 
-namespace NexusMods.Games.RedEngine.Tests;
+namespace SilverModManager.Games.RedEngine.Tests;
 
 public class Cyberpunk2077DiagnosticTests(ITestOutputHelper outputHelper) : ACyberpunkIsolatedGameTest<Cyberpunk2077DiagnosticTests>(outputHelper)
 {

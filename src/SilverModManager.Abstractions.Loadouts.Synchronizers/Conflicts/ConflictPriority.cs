@@ -1,10 +1,10 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 using TransparentValueObjects;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 
 /// <summary>
 /// Conflict priority is defined as higher number = winning and lower number = losing.

@@ -1,6 +1,6 @@
 ﻿using TransparentValueObjects;
 
-namespace NexusMods.DataModel;
+namespace SilverModManager.DataModel;
 
 /// <summary>
 /// A unique identifier for an archive in a ArchiveManager

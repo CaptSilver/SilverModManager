@@ -1,9 +1,9 @@
 using System;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Storage.RocksDbBackend;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 
-namespace NexusMods.MnemonicDB;
+namespace SilverModManager.MnemonicDB;
 
 
 using ResultIterator = HistoryRefDatomEnumerator<RocksDbIteratorWrapper, RocksDbIteratorWrapper>;

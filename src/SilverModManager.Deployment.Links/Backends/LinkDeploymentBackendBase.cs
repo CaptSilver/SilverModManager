@@ -1,20 +1,20 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
-using NexusMods.Deployment.Links.Native;
-using NexusMods.Deployment.Links.Probe;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.Deployment.Links.Native;
+using SilverModManager.Deployment.Links.Probe;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Links.Backends;
+namespace SilverModManager.Deployment.Links.Backends;
 
 /// <summary>
 /// Deploys each file by linking it to, or cloning it from, the copy in the loose staging store, so a file

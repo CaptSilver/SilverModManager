@@ -1,4 +1,4 @@
-﻿namespace NexusMods.MnemonicDB.Abstractions.Models;
+﻿namespace SilverModManager.MnemonicDB.Abstractions.Models;
 
 /// <summary>
 /// Defines something that is attached to a transaction and has a Transaction reference.

@@ -9,19 +9,19 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.BuiltInEntities;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Internals;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using NexusMods.MnemonicDB.InternalTxFunctions;
-using NexusMods.MnemonicDB.Storage.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.BuiltInEntities;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.MnemonicDB.InternalTxFunctions;
+using SilverModManager.MnemonicDB.Storage.Abstractions;
 using Reloaded.Memory.Extensions;
-using static NexusMods.MnemonicDB.Abstractions.IndexType;
+using static SilverModManager.MnemonicDB.Abstractions.IndexType;
 
-namespace NexusMods.MnemonicDB.Storage;
+namespace SilverModManager.MnemonicDB.Storage;
 
 /// <summary>
 /// Implementation of the datom store

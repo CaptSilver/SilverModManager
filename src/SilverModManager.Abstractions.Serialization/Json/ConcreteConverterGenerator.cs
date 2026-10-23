@@ -3,7 +3,7 @@ using System.Text.Json;
 
 #pragma warning disable CS1591
 
-namespace NexusMods.Abstractions.Serialization.Json;
+namespace SilverModManager.Abstractions.Serialization.Json;
 
 /// <summary>
 /// Several classes in the app don't map directly to JSON classes. Inheritance isn't supported super well, and in some

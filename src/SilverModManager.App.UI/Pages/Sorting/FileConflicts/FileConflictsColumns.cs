@@ -1,9 +1,9 @@
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Extensions;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.MnemonicDB.Abstractions;
 using R3;
 
-namespace NexusMods.App.UI.Pages.Sorting;
+namespace SilverModManager.App.UI.Pages.Sorting;
 
 public static class FileConflictsComponents
 {

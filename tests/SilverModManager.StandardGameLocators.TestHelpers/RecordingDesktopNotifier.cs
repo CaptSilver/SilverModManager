@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.StandardGameLocators.TestHelpers;
+namespace SilverModManager.StandardGameLocators.TestHelpers;
 
 /// <summary>
 /// Stands in for the notify-send backed notifier: the test runner keeps the D-Bus session,

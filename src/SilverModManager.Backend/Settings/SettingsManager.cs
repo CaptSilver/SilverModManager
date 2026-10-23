@@ -5,10 +5,10 @@ using System.Reactive.Concurrency;
 using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 using R3;
 
-namespace NexusMods.Backend;
+namespace SilverModManager.Backend;
 
 internal class SettingsManager : ISettingsManager
 {

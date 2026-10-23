@@ -1,8 +1,8 @@
 using Bannerlord.LauncherManager;
 using FluentAssertions;
-using NexusMods.Games.MountAndBlade2Bannerlord.LauncherManager;
+using SilverModManager.Games.MountAndBlade2Bannerlord.LauncherManager;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.Tests;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.Tests;
 
 public class LauncherManagerTypeTests
 {

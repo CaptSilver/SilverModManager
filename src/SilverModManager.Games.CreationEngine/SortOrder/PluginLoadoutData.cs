@@ -1,10 +1,10 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Games.CreationEngine.SortOrder;
+namespace SilverModManager.Games.CreationEngine.SortOrder;
 
 /// <summary>
 /// A plugin the loadout offers to the game, with what its header says. <see cref="IsEnabled"/> is the owning

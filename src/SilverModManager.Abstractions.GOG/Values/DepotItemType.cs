@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.GOG.Values;
+namespace SilverModManager.Abstractions.GOG.Values;
 
 /// <summary>
 /// Enum representing the type of depot, for now we only care about depots, but GOG also allows for

@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 
 /// <summary>
 /// Lets a caller switch off the check that refuses an apply when a root's recorded backend no longer works

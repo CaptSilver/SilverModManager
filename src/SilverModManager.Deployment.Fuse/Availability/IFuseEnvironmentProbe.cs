@@ -1,4 +1,4 @@
-namespace NexusMods.Deployment.Fuse.Availability;
+namespace SilverModManager.Deployment.Fuse.Availability;
 
 /// <summary>The machine facts <see cref="FuseAvailability"/> reads, behind an interface so tests can fake each one.</summary>
 public interface IFuseEnvironmentProbe

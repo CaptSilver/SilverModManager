@@ -1,17 +1,17 @@
 using System.Text;
 using System.Xml;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.Larian.BaldursGate3.GameInstalled;
-using NexusMods.Games.Larian.BaldursGate3.ModList;
-using NexusMods.Games.Larian.BaldursGate3.SortOrder;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.BaldursGate3.ModList;
+using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.Larian.BaldursGate3;
+namespace SilverModManager.Games.Larian.BaldursGate3;
 
 /// <summary>
 /// The game's mod list, <c>modsettings.lsx</c>. The paks in it, and their order, come from the loadout's pak sort

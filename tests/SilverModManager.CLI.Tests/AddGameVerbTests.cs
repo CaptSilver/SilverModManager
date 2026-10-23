@@ -1,14 +1,14 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.CreationEngine;
-using NexusMods.Games.CreationEngine.Fallout76;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.SingleProcess;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Games.CreationEngine;
+using SilverModManager.Games.CreationEngine.Fallout76;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.SingleProcess;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 /// <summary>
 /// <c>silvermod add-game</c> against made-up game folders. The host records into the in-memory store, so no
@@ -88,7 +88,7 @@ public class AddGameVerbTests(ITestOutputHelper helper) : AIsolatedGameTest<AddG
 
         exitCode.Should().Be(0, output);
         output.Should().Contain("Added Skyrim");
-        Store.GetAll().Should().ContainSingle().Which.Game.Should().Be(NexusMods.Games.CreationEngine.SkyrimLE.SkyrimLE.GameId);
+        Store.GetAll().Should().ContainSingle().Which.Game.Should().Be(SilverModManager.Games.CreationEngine.SkyrimLE.SkyrimLE.GameId);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class AddGameVerbTests(ITestOutputHelper helper) : AIsolatedGameTest<AddG
 
         exitCode.Should().Be(0, output);
         output.Should().Contain("Added Enderal");
-        Store.GetAll().Should().ContainSingle().Which.Game.Should().Be(NexusMods.Games.CreationEngine.Enderal.Enderal.GameId);
+        Store.GetAll().Should().ContainSingle().Which.Game.Should().Be(SilverModManager.Games.CreationEngine.Enderal.Enderal.GameId);
     }
 
     // The folder alone says Skyrim, so only an honoured --game gives Enderal: the game id is applied before the
@@ -112,7 +112,7 @@ public class AddGameVerbTests(ITestOutputHelper helper) : AIsolatedGameTest<AddG
 
         exitCode.Should().Be(0, output);
         output.Should().Contain("Added Enderal");
-        Store.GetAll().Should().ContainSingle().Which.Game.Should().Be(NexusMods.Games.CreationEngine.Enderal.Enderal.GameId);
+        Store.GetAll().Should().ContainSingle().Which.Game.Should().Be(SilverModManager.Games.CreationEngine.Enderal.Enderal.GameId);
     }
 
     [Fact]

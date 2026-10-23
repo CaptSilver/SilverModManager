@@ -1,7 +1,7 @@
 using System.Text;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Platform.Proton.Steam;
+namespace SilverModManager.Platform.Proton.Steam;
 
 /// <summary>
 /// Composes, parses, replaces and removes the launcher span in a Steam launch options line.

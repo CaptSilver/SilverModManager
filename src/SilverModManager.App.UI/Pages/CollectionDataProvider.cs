@@ -4,22 +4,22 @@ using Avalonia.Media.Imaging;
 using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Sdk.Resources;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Pages.CollectionDownload;
-using NexusMods.App.UI.Pages.LibraryPage;
-using NexusMods.Collections;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using NexusMods.Networking.NexusWebApi;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Sdk.Resources;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.Collections;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 
-namespace NexusMods.App.UI.Pages;
+namespace SilverModManager.App.UI.Pages;
 using CollectionDownloadEntity = Abstractions.NexusModsLibrary.Models.CollectionDownload;
 
 public enum CollectionDownloadsFilter

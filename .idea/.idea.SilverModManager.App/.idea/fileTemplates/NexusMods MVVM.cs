@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 public interface I${NAME}ViewModel : IViewModelInterface
 {

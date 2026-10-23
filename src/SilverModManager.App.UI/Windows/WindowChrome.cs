@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 
-namespace NexusMods.App.UI.Windows;
+namespace SilverModManager.App.UI.Windows;
 
 /// <summary>
 /// Hit testing for the undecorated main window. Without a window manager title bar and border,

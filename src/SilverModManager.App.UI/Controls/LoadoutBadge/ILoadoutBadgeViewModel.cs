@@ -1,9 +1,9 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Controls.LoadoutBadge;
+namespace SilverModManager.App.UI.Controls.LoadoutBadge;
 
 public interface ILoadoutBadgeViewModel : IViewModelInterface
 {

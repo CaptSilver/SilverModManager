@@ -2,11 +2,11 @@ using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.UI.Sdk.Icons;
-using NexusMods.App.UI.Windows;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.App.UI.Windows;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 /// <summary>
 /// Represents a controller for all workspaces inside a window.

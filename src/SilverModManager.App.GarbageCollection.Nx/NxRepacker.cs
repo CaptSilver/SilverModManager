@@ -1,11 +1,11 @@
-using NexusMods.App.GarbageCollection.Structs;
+using SilverModManager.App.GarbageCollection.Structs;
 using NexusMods.Archives.Nx.Headers.Managed;
 using NexusMods.Archives.Nx.Packing;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.Paths.Extensions.Nx.FileProviders;
 using NexusMods.Paths.Utilities;
-namespace NexusMods.App.GarbageCollection.Nx;
+namespace SilverModManager.App.GarbageCollection.Nx;
 
 /// <summary>
 ///     This contains the code responsible for repacking the actual Nx archives

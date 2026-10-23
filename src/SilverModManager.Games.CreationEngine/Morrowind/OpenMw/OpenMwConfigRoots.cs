@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Games.CreationEngine.Morrowind.OpenMw;
+namespace SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
 
 /// <summary>
 /// The native install's <c>$XDG_CONFIG_HOME/openmw</c> and the Flatpak's config folder, in that order: the

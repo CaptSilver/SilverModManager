@@ -2,7 +2,7 @@
 using Octodiff.Core;
 using Octodiff.Diagnostics;
 
-namespace NexusMods.Wabbajack.Transforms;
+namespace SilverModManager.Wabbajack.Transforms;
 
 /// <summary>
 /// Applies Octodiff binary deltas, the format Wabbajack uses for patched files.

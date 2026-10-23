@@ -6,11 +6,11 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Controls;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.LibraryPage.Collections;
+namespace SilverModManager.App.UI.Pages.LibraryPage.Collections;
 
 public partial class CollectionCardView : ReactiveUserControl<ICollectionCardViewModel>
 {

@@ -4,12 +4,12 @@ using System.Runtime.InteropServices;
 using CliWrap;
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.ToolRunner;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Platform.Proton.ToolRunner;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests;
+namespace SilverModManager.Platform.Proton.Tests;
 
 /// <summary>
 /// The strategies for prefixes that Steam does not own: umu and Proton for native Heroic, Heroic's Flatpak

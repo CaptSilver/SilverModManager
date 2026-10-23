@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Me3;
+namespace SilverModManager.Games.FromSoft.Me3;
 
 /// <summary>What a game says about how me3 loads it. The modded save name is the game definition's, not repeated here.</summary>
 /// <param name="GameName">The game as me3 spells it, such as <c>eldenring</c>.</param>

@@ -2,10 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using NexusMods.Networking.Thunderstore.DTOs;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Networking.Thunderstore.DTOs;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.Networking.Thunderstore;
+namespace SilverModManager.Networking.Thunderstore;
 
 internal sealed class ThunderstoreApi : IThunderstoreApi
 {

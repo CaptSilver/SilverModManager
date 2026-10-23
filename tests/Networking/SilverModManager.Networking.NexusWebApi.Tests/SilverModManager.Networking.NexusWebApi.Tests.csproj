@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <XunitStartupAssembly>NexusMods.Networking.NexusWebApi.Tests</XunitStartupAssembly>
+        <XunitStartupAssembly>SilverModManager.Networking.NexusWebApi.Tests</XunitStartupAssembly>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\src\NexusMods.Networking.NexusWebApi\NexusMods.Networking.NexusWebApi.csproj" />
-        <ProjectReference Include="..\..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.HttpDownloader.Tests\NexusMods.Networking.HttpDownloader.Tests.csproj" />
-        <ProjectReference Include="..\..\Games\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
+        <ProjectReference Include="..\..\..\src\SilverModManager.Networking.NexusWebApi\SilverModManager.Networking.NexusWebApi.csproj" />
+        <ProjectReference Include="..\..\..\src\SilverModManager.DataModel\SilverModManager.DataModel.csproj" />
+        <ProjectReference Include="..\SilverModManager.Networking.HttpDownloader.Tests\SilverModManager.Networking.HttpDownloader.Tests.csproj" />
+        <ProjectReference Include="..\..\Games\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
     </ItemGroup>
 
     <ItemGroup>

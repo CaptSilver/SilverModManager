@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.Larian.BaldursGate3.SortOrder;
+namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
 
 /// <summary>
 /// What the pak load order offers beyond <see cref="ISortOrderVariety"/>: switching a pak on and off, and the

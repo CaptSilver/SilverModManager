@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using NexusMods.MnemonicDB.Abstractions.DatomComparators;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.DatomComparators;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// Comparer that also includes the index type

@@ -1,7 +1,7 @@
 ﻿using NexusMods.Hashing.xxHash3;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Games.TestFramework.Downloader;
+namespace SilverModManager.Games.TestFramework.Downloader;
 
 /// <summary>
 /// Metadata for a remote mod.

@@ -7,7 +7,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace NexusMods.Games.FOMOD.UI.Resources {
+namespace SilverModManager.Games.FOMOD.UI.Resources {
     using System;
     
     
@@ -38,7 +38,7 @@ namespace NexusMods.Games.FOMOD.UI.Resources {
         public static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("NexusMods.Games.FOMOD.UI.Resources.Language", typeof(Language).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("SilverModManager.Games.FOMOD.UI.Resources.Language", typeof(Language).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;

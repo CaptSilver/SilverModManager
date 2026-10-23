@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// What the window decided the game should be started with, as the state file records it. A Steam wrapper

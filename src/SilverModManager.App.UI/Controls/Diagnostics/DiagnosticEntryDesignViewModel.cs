@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.References;
 
-namespace NexusMods.App.UI.Controls.Diagnostics;
+namespace SilverModManager.App.UI.Controls.Diagnostics;
 
 public class DiagnosticEntryDesignViewModel : DiagnosticEntryViewModel
 {

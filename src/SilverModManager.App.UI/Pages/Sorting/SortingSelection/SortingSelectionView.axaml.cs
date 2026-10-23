@@ -2,7 +2,7 @@ using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Sorting;
+namespace SilverModManager.App.UI.Pages.Sorting;
 
 public partial class SortingSelectionView : ReactiveUserControl<ISortingSelectionViewModel>
 {

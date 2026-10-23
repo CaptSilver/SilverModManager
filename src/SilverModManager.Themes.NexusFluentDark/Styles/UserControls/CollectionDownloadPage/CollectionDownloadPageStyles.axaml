@@ -1,11 +1,11 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:panels="clr-namespace:Avalonia.Labs.Panels;assembly=Avalonia.Labs.Panels"
-        xmlns:collections="clr-namespace:NexusMods.App.UI.Pages.CollectionDownload;assembly=NexusMods.App.UI"
-        xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+        xmlns:collections="clr-namespace:SilverModManager.App.UI.Pages.CollectionDownload;assembly=SilverModManager.App.UI"
+        xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
         xmlns:reactiveUi="http://reactiveui.net"
-        xmlns:markdownRenderer="clr-namespace:NexusMods.App.UI.Controls.MarkdownRenderer;assembly=NexusMods.App.UI"
-        xmlns:loadoutPage="clr-namespace:NexusMods.App.UI.Pages.LoadoutPage;assembly=NexusMods.App.UI">
+        xmlns:markdownRenderer="clr-namespace:SilverModManager.App.UI.Controls.MarkdownRenderer;assembly=SilverModManager.App.UI"
+        xmlns:loadoutPage="clr-namespace:SilverModManager.App.UI.Pages.LoadoutPage;assembly=SilverModManager.App.UI">
 
     <Design.PreviewWith>
         <Border Width="1000" Height="800">

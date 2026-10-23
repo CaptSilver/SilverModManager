@@ -10,7 +10,7 @@ using Avalonia.Threading;
 using JetBrains.Annotations;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Wabbajack;
+namespace SilverModManager.App.UI.Pages.Wabbajack;
 
 [UsedImplicitly]
 public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlistViewModel>

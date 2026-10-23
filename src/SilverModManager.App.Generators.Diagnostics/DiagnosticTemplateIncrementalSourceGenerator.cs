@@ -1,8 +1,8 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using NexusMods.App.Generators.Diagnostics.PostInitializationOutput;
+using SilverModManager.App.Generators.Diagnostics.PostInitializationOutput;
 
-namespace NexusMods.App.Generators.Diagnostics;
+namespace SilverModManager.App.Generators.Diagnostics;
 
 [Generator(LanguageNames.CSharp)]
 public class DiagnosticTemplateIncrementalSourceGenerator : IIncrementalGenerator

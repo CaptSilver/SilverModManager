@@ -1,10 +1,10 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:loadoutCard="clr-namespace:NexusMods.App.UI.Controls.LoadoutCard;assembly=NexusMods.App.UI"
+        xmlns:loadoutCard="clr-namespace:SilverModManager.App.UI.Controls.LoadoutCard;assembly=SilverModManager.App.UI"
         xmlns:panels="clr-namespace:Avalonia.Labs.Panels;assembly=Avalonia.Labs.Panels"
-        xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-        xmlns:element="clr-namespace:NexusMods.App.UI.Controls.Spinner;assembly=NexusMods.App.UI"
-        xmlns:controls="clr-namespace:NexusMods.App.UI.Controls;assembly=NexusMods.App.UI">
+        xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+        xmlns:element="clr-namespace:SilverModManager.App.UI.Controls.Spinner;assembly=SilverModManager.App.UI"
+        xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls;assembly=SilverModManager.App.UI">
 
     <Design.PreviewWith>
         <StackPanel>

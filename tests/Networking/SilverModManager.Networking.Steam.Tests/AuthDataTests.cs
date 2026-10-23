@@ -1,9 +1,9 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.Networking.Steam.DTOs;
+using SilverModManager.Networking.Steam.DTOs;
 using Xunit;
 
-namespace NexusMods.Networking.Steam.Tests;
+namespace SilverModManager.Networking.Steam.Tests;
 
 public class AuthDataTests
 {

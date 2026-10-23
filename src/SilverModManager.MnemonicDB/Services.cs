@@ -3,16 +3,16 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.HyperDuck;
 using NexusMods.HyperDuck.Adaptor.Impls.ValueAdaptor;
 using NexusMods.HyperDuck.BindingConverters;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.BuiltInEntities;
-using NexusMods.MnemonicDB.BindingConverters;
-using NexusMods.MnemonicDB.QueryFunctions;
-using NexusMods.MnemonicDB.Storage;
-using NexusMods.MnemonicDB.Storage.Abstractions;
-using NexusMods.MnemonicDB.Storage.RocksDbBackend;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.BuiltInEntities;
+using SilverModManager.MnemonicDB.BindingConverters;
+using SilverModManager.MnemonicDB.QueryFunctions;
+using SilverModManager.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Storage.Abstractions;
+using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 using NexusMods.Paths;
 
-namespace NexusMods.MnemonicDB;
+namespace SilverModManager.MnemonicDB;
 
 /// <summary>
 ///     Extension methods for adding attributes and other types to the service collection.

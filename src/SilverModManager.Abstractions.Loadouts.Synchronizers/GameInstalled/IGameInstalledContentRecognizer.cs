@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 /// <summary>
 /// Finds the content a game installed into its own folder. Takes the installation and disk state, never a

@@ -1,13 +1,13 @@
 using System.Reactive.Subjects;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Library.Tests.DownloadsService.Helpers;
+namespace SilverModManager.Library.Tests.DownloadsService.Helpers;
 
 /// <summary>
 /// Factory for creating test download jobs

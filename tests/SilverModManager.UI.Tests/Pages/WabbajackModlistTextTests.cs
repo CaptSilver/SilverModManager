@@ -1,11 +1,11 @@
 using FluentAssertions;
-using NexusMods.App.UI.Pages.Wabbajack;
+using SilverModManager.App.UI.Pages.Wabbajack;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Wabbajack.Install;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Install;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 public class WabbajackModlistTextTests
 {
@@ -67,9 +67,9 @@ public class WabbajackModlistTextTests
     {
         var skyrim = GameId.From("CreationEngine.SkyrimSE");
         var fallout = GameId.From("CreationEngine.Fallout4");
-        var a = LoadoutId.From(NexusMods.MnemonicDB.Abstractions.EntityId.From(1));
-        var b = LoadoutId.From(NexusMods.MnemonicDB.Abstractions.EntityId.From(2));
-        var c = LoadoutId.From(NexusMods.MnemonicDB.Abstractions.EntityId.From(3));
+        var a = LoadoutId.From(SilverModManager.MnemonicDB.Abstractions.EntityId.From(1));
+        var b = LoadoutId.From(SilverModManager.MnemonicDB.Abstractions.EntityId.From(2));
+        var c = LoadoutId.From(SilverModManager.MnemonicDB.Abstractions.EntityId.From(3));
 
         var chosen = WabbajackModlistText.LoadoutsFor([(a, skyrim), (b, fallout), (c, skyrim)], skyrim);
 

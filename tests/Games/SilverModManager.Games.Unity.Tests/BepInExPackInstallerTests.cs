@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Games.Unity.Tests.Fixtures;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Games.Unity.Tests.Fixtures;
 
-namespace NexusMods.Games.Unity.Tests;
+namespace SilverModManager.Games.Unity.Tests;
 
 public class BepInExPackInstallerTests(ITestOutputHelper outputHelper) : AUnityInstallerTests<BepInExPackInstallerTests>(outputHelper)
 {

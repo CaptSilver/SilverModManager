@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Deployment.Fuse.Availability;
-using NexusMods.Deployment.Fuse.Kernel;
-using NexusMods.Deployment.Fuse.Mount;
-using NexusMods.Deployment.Vfs;
+using SilverModManager.Deployment.Fuse.Availability;
+using SilverModManager.Deployment.Fuse.Kernel;
+using SilverModManager.Deployment.Fuse.Mount;
+using SilverModManager.Deployment.Vfs;
 
-namespace NexusMods.Deployment.Fuse;
+namespace SilverModManager.Deployment.Fuse;
 
 public static class Services
 {

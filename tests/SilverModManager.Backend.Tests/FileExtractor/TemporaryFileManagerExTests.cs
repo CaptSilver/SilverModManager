@@ -1,12 +1,12 @@
 using FluentAssertions;
-using NexusMods.FileExtractor;
+using SilverModManager.FileExtractor;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.FileExtractor;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileExtractor;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.Backend.Tests.FileExtractor;
+namespace SilverModManager.Backend.Tests.FileExtractor;
 
 public sealed class TemporaryFileManagerExTests : IDisposable
 {

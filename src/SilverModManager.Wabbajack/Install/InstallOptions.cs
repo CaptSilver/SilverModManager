@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Acquire;
 
-namespace NexusMods.Wabbajack.Install;
+namespace SilverModManager.Wabbajack.Install;
 
 /// <summary>What the caller chose before starting an install.</summary>
 /// <param name="SkipMissingArchives">Install what can be installed when archives are missing, and leave a skip row for each file that needed one.</param>

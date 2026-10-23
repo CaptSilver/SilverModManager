@@ -1,15 +1,15 @@
 using System.Collections.Immutable;
 using System.Text.Json;
 using FluentAssertions;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Verbs;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Verbs;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.ProxyConsole;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests.Verbs;
+namespace SilverModManager.Platform.Proton.Tests.Verbs;
 
 public class DoctorCommandTests : IDisposable
 {

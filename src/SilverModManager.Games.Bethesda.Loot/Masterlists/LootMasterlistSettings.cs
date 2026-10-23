@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.Bethesda.Loot.Masterlists;
+namespace SilverModManager.Games.Bethesda.Loot.Masterlists;
 
 /// <summary>
 /// Controls whether the LOOT masterlists are refreshed from GitHub.

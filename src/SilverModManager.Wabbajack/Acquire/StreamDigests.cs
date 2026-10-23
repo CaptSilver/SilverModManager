@@ -1,9 +1,9 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using DigestHasher = NexusMods.Sdk.Hashes.MultiHasher<NexusMods.Hashing.xxHash3.Hash, System.IO.Hashing.XxHash3, NexusMods.Sdk.Hashes.Xx3Hasher, NexusMods.Hashing.xxHash3.Hash, System.IO.Hashing.XxHash64, NexusMods.Sdk.Hashes.Xx64Hasher>;
+using SilverModManager.Sdk.Hashes;
+using DigestHasher = SilverModManager.Sdk.Hashes.MultiHasher<NexusMods.Hashing.xxHash3.Hash, System.IO.Hashing.XxHash3, SilverModManager.Sdk.Hashes.Xx3Hasher, NexusMods.Hashing.xxHash3.Hash, System.IO.Hashing.XxHash64, SilverModManager.Sdk.Hashes.Xx64Hasher>;
 
-namespace NexusMods.Wabbajack.Acquire;
+namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>Both digests the library and a modlist use, computed over one read of a stream.</summary>
 internal static class StreamDigests

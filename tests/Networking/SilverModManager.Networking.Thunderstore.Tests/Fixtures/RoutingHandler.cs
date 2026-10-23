@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 
-namespace NexusMods.Networking.Thunderstore.Tests.Fixtures;
+namespace SilverModManager.Networking.Thunderstore.Tests.Fixtures;
 
 /// <summary>
 /// Answers requests from a fixed URL table and records what was asked, so tests never touch the network.

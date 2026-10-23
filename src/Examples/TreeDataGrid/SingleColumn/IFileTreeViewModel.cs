@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Examples.TreeDataGrid.SingleColumn.FileColumn;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 
 namespace Examples.TreeDataGrid.SingleColumn;
 

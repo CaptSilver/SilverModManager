@@ -1,11 +1,11 @@
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using NexusMods.Abstractions.Serialization.Attributes;
+using SilverModManager.Abstractions.Serialization.Attributes;
 
 #pragma warning disable CS1591
 
-namespace NexusMods.Abstractions.Serialization.Json;
+namespace SilverModManager.Abstractions.Serialization.Json;
 
 public abstract class AExpressionConverterGenerator<T> : JsonConverter<T>
 {

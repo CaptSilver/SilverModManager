@@ -2,7 +2,7 @@ using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.MiniGameWidget.ComingSoon;
+namespace SilverModManager.App.UI.Controls.MiniGameWidget.ComingSoon;
 
 public partial class ComingSoonMiniGameWidget : ReactiveUserControl<IComingSoonMiniGameWidgetViewModel>
 {

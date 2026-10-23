@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.Secrets.Overlay;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Secrets.Overlay;
 
-namespace NexusMods.Secrets.Verbs;
+namespace SilverModManager.Secrets.Verbs;
 
 internal static class SecretVerbs
 {

@@ -1,23 +1,23 @@
 using System.Text;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk;
-using NexusMods.Sdk.IO;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.IO;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Pages.About;
+namespace SilverModManager.App.UI.Pages.About;
 
 [UsedImplicitly]
 public class AboutPageViewModel : APageViewModel<IAboutPageViewModel>, IAboutPageViewModel
 {
     // Both texts ship inside the app so the copyright and modification notice travel with the binary,
     // not only with the repository.
-    private const string TemplateResourceName = "NexusMods.App.UI.About.md";
-    private const string NoticeResourceName = "NexusMods.App.UI.NOTICE";
+    private const string TemplateResourceName = "SilverModManager.App.UI.About.md";
+    private const string NoticeResourceName = "SilverModManager.App.UI.NOTICE";
 
     public IMarkdownRendererViewModel MarkdownRendererViewModel { get; }
 

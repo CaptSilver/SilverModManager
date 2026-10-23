@@ -1,7 +1,7 @@
-using NexusMods.CrossPlatform;
-using NexusMods.Sdk;
+using SilverModManager.CrossPlatform;
+using SilverModManager.Sdk;
 
-namespace NexusMods.App;
+namespace SilverModManager.App;
 
 /// <summary>
 /// Picks which of the log files in <see cref="LoggingSettings"/> a process writes to.

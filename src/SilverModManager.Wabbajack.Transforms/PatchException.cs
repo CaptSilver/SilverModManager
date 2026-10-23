@@ -1,4 +1,4 @@
-namespace NexusMods.Wabbajack.Transforms;
+namespace SilverModManager.Wabbajack.Transforms;
 
 /// <summary>
 /// A delta could not be applied: it is corrupt, truncated, or does not belong to the basis.

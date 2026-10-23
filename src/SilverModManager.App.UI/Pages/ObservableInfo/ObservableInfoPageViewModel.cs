@@ -1,12 +1,12 @@
 using DynamicData.Kernel;
 using LiveChartsCore.SkiaSharpView;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
 using ObservableCollections;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.ObservableInfo;
+namespace SilverModManager.App.UI.Pages.ObservableInfo;
 
 public interface IObservableInfoPageViewModel : IPageViewModelInterface
 {

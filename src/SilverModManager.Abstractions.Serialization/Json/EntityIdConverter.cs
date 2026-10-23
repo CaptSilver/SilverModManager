@@ -1,9 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Abstractions.Serialization.Json;
+namespace SilverModManager.Abstractions.Serialization.Json;
 
 /// <inheritdoc/>
 [UsedImplicitly]

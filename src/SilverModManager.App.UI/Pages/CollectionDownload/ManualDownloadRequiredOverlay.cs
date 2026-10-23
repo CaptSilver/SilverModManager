@@ -3,18 +3,18 @@ using Humanizer;
 using Humanizer.Bytes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Overlays;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk;
 using R3;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Pages.CollectionDownload;
+namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
 public interface IManualDownloadRequiredOverlayViewModel : IOverlayViewModel
 {

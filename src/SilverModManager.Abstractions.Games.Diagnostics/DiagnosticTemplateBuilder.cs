@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Diagnostics.References;
 
-namespace NexusMods.Abstractions.Diagnostics;
+namespace SilverModManager.Abstractions.Diagnostics;
 
 /// <summary>
 /// A builder used at compile time by a source generator to create a diagnostic template.

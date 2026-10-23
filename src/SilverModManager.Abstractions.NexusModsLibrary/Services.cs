@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
 
-namespace NexusMods.Abstractions.NexusModsLibrary;
+namespace SilverModManager.Abstractions.NexusModsLibrary;
 
 /// <summary>
 /// Extension methods.

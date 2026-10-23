@@ -1,15 +1,15 @@
 using System;
 using System.Linq;
 using System.Threading;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.BuiltInEntities;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using NexusMods.MnemonicDB.Storage;
-using NexusMods.MnemonicDB.Storage.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.BuiltInEntities;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Storage.Abstractions;
 
-namespace NexusMods.MnemonicDB.InternalTxFunctions;
+namespace SilverModManager.MnemonicDB.InternalTxFunctions;
 
 internal class SimpleMigration : AInternalFn
 {

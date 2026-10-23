@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
-using NexusMods.Secrets.Chain;
-using NexusMods.Secrets.Overlay;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Secrets.Chain;
+using SilverModManager.Secrets.Overlay;
 using NSubstitute;
 using Xunit;
 
-namespace NexusMods.Secrets.Tests.Chain;
+namespace SilverModManager.Secrets.Tests.Chain;
 
 public class AddSecretsTests : IDisposable
 {

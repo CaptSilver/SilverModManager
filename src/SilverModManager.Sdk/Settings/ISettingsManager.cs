@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using R3;
 
-namespace NexusMods.Sdk.Settings;
+namespace SilverModManager.Sdk.Settings;
 
 /// <summary>
 /// Represents a settings manager.

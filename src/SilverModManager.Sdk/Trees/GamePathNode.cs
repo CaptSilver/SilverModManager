@@ -1,9 +1,9 @@
 using NexusMods.Paths;
 using NexusMods.Paths.Trees;
 using NexusMods.Paths.Trees.Traits;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Sdk.Trees;
+namespace SilverModManager.Sdk.Trees;
 
 /// <summary>
 ///     Represents a tree node used for storing a game pathed location.

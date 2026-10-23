@@ -1,16 +1,16 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.GitHub;
-using NexusMods.Networking.GitHub.DTOs;
-using NexusMods.Networking.HttpDownloader;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.GitHub;
+using SilverModManager.Networking.GitHub.DTOs;
+using SilverModManager.Networking.HttpDownloader;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Library;
+namespace SilverModManager.Library;
 
 /// <summary>
 /// Downloads one asset of a GitHub release, checks it against a SHA-256 and adds it to the library together

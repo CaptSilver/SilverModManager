@@ -4,10 +4,10 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:resources="clr-namespace:NexusMods.Games.AdvancedInstaller.UI.Resources"
-                                xmlns:preview="clr-namespace:NexusMods.Games.AdvancedInstaller.UI.Preview"
+                                xmlns:resources="clr-namespace:SilverModManager.Games.AdvancedInstaller.UI.Resources"
+                                xmlns:preview="clr-namespace:SilverModManager.Games.AdvancedInstaller.UI.Preview"
                                 mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-                                x:Class="NexusMods.Games.AdvancedInstaller.UI.Preview.PreviewView">
+                                x:Class="SilverModManager.Games.AdvancedInstaller.UI.Preview.PreviewView">
     <Design.DataContext>
         <preview:PreviewViewModel />
     </Design.DataContext>

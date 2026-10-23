@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.GOG.Values;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.Abstractions.GOG.Values;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
-namespace NexusMods.Abstractions.Games.FileHashes.Attributes.Gog;
+namespace SilverModManager.Abstractions.Games.FileHashes.Attributes.Gog;
 
 /// <summary>
 /// An attribute for storing GOG product IDs.

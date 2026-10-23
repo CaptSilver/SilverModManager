@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
-using NexusMods.Networking.EpicGameStore.DTOs.EgData;
+using SilverModManager.Networking.EpicGameStore.DTOs.EgData;
 
-namespace NexusMods.Networking.EpicGameStore;
+namespace SilverModManager.Networking.EpicGameStore;
 
 public class EgDataClient
 {

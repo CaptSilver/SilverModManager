@@ -1,13 +1,13 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Deployment.Fuse.Availability;
-using NexusMods.Deployment.Fuse.Kernel;
-using NexusMods.Deployment.Fuse.Mount;
-using NexusMods.Deployment.Vfs;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Deployment.Fuse.Availability;
+using SilverModManager.Deployment.Fuse.Kernel;
+using SilverModManager.Deployment.Fuse.Mount;
+using SilverModManager.Deployment.Vfs;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Deployment.Fuse.Tests;
+namespace SilverModManager.Deployment.Fuse.Tests;
 
 public class ServicesTests
 {

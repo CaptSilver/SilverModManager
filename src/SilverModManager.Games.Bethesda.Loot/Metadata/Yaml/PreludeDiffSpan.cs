@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 
 /// <summary>
 /// A line and column in the YAML text being parsed. The line is 1-based, the column 0-based, as

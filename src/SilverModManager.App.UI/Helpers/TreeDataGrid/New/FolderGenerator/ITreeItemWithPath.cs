@@ -1,8 +1,8 @@
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
+namespace SilverModManager.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
 
 /// <summary>
 /// Represents an item (file) inserted into the tree with a given path.

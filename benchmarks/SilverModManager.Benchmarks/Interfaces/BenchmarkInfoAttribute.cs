@@ -1,4 +1,4 @@
-namespace NexusMods.Benchmarks.Interfaces;
+namespace SilverModManager.Benchmarks.Interfaces;
 
 public class BenchmarkInfoAttribute : Attribute
 {

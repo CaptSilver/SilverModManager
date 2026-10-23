@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 [PublicAPI]
 public readonly record struct WineDllOverride(string DllName, ImmutableArray<WineDllOverrideType> OverrideTypes)

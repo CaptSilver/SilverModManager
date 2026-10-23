@@ -1,24 +1,24 @@
 using Avalonia.Threading;
 using DynamicData;
-using NexusMods.Abstractions.Collections;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.App.UI.Dialog;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.App.UI.Pages.CollectionDownload;
-using NexusMods.App.UI.Pages.LoadoutPage;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Collections;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Dialog;
-using NexusMods.UI.Sdk.Dialog.Enums;
-using NexusMods.Wabbajack.Models;
+using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Pages.LoadoutPage;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Collections;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Dialog;
+using SilverModManager.UI.Sdk.Dialog.Enums;
+using SilverModManager.Wabbajack.Models;
 using R3;
 
-namespace NexusMods.App.UI.Helpers;
+namespace SilverModManager.App.UI.Helpers;
 
 public static class CollectionDeleteHelpers
 {

@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace NexusMods.App.Generators.Diagnostics.Tests;
+namespace SilverModManager.App.Generators.Diagnostics.Tests;
 
 public static class ModuleInitializer
 {

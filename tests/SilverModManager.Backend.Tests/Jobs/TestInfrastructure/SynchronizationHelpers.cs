@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Backend.Tests.Jobs.TestInfrastructure;
+namespace SilverModManager.Backend.Tests.Jobs.TestInfrastructure;
 
 public static class SynchronizationHelpers
 {

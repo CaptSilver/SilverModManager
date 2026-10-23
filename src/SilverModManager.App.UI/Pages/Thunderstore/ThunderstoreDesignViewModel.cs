@@ -1,10 +1,10 @@
 using System.Reactive;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Loadouts;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Thunderstore;
+namespace SilverModManager.App.UI.Pages.Thunderstore;
 
 public class ThunderstoreDesignViewModel : APageViewModel<IThunderstoreViewModel>, IThunderstoreViewModel
 {

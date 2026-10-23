@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using YamlDotNet.Core;
 using YamlDotNet.RepresentationModel;
 
-namespace NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 
 /// <summary>
 /// What a scalar resolves to under the YAML 1.2 core schema, as far as libloot's typed getters care.

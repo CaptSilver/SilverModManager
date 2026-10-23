@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Games;
+using SilverModManager.Abstractions.Games;
 
-namespace NexusMods.Games.Larian.BaldursGate3.RunGameTools;
+namespace SilverModManager.Games.Larian.BaldursGate3.RunGameTools;
 
 public class BG3RunGameTool : RunGameTool<BaldursGate3>
 {

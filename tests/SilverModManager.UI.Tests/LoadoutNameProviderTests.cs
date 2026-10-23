@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class LoadoutNameProviderTests
 {

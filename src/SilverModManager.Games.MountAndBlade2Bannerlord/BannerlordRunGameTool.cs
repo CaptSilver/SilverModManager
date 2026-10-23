@@ -1,11 +1,11 @@
 using Bannerlord.LauncherManager.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using static Bannerlord.LauncherManager.Constants;
-namespace NexusMods.Games.MountAndBlade2Bannerlord;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord;
 
 /// <summary>
 /// This is to run the game or SMAPI using the shell, which allows them to start their own console,

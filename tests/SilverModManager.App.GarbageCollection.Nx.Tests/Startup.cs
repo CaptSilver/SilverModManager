@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-namespace NexusMods.App.GarbageCollection.Nx.Tests;
+namespace SilverModManager.App.GarbageCollection.Nx.Tests;
 
 public class Startup
 {

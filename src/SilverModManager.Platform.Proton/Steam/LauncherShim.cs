@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Platform.Proton.Steam;
+namespace SilverModManager.Platform.Proton.Steam;
 
 /// <summary>
 /// The stable <c>silvermod</c> script that Steam launch options point at. The app's own path changes with

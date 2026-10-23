@@ -1,8 +1,8 @@
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.SingleProcess;
-using NexusMods.SingleProcess.Exceptions;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.SingleProcess;
+using SilverModManager.SingleProcess.Exceptions;
 
-namespace NexusMods.App;
+namespace SilverModManager.App;
 
 /// <summary>
 /// Words the refusal for a start that runs into a live headless main. A <c>run</c> main can say which loadout

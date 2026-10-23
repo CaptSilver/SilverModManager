@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi.UpdateFilters;
+namespace SilverModManager.Networking.NexusWebApi.UpdateFilters;
 
 /// <summary>
 /// Represents a remote file on Nexus Mods which is currently ignored from update checks.

@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.ToolRunner.Dependencies;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Platform.Proton.ToolRunner.Dependencies;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.ToolRunner;
+namespace SilverModManager.Platform.Proton.ToolRunner;
 
 /// <summary>
 /// Runs a program with a <c>wine</c> executable and <c>WINEPREFIX</c>: the binary the locator recorded for the

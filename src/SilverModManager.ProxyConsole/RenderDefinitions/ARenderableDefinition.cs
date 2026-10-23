@@ -2,9 +2,9 @@ using System;
 using System.Threading.Tasks;
 
 using Ansi = Spectre.Console.Rendering;
-using IRenderable = NexusMods.Sdk.ProxyConsole.IRenderable;
+using IRenderable = SilverModManager.Sdk.ProxyConsole.IRenderable;
 
-namespace NexusMods.ProxyConsole.RenderDefinitions;
+namespace SilverModManager.ProxyConsole.RenderDefinitions;
 
 /// <summary>
 /// A base class for <see cref="IRenderableDefinition"/>s that render a specific type of <see cref="IRenderable"/>.

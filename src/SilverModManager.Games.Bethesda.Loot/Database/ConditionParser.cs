@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace NexusMods.Games.Bethesda.Loot.Database;
+namespace SilverModManager.Games.Bethesda.Loot.Database;
 
 // Follows loot-condition-interpreter's lib.rs (expression grammar) and function/parse.rs (function arguments).
 

@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>What the apply would do with one path that more than one mod provides.</summary>
 public enum MergeReportOutcome

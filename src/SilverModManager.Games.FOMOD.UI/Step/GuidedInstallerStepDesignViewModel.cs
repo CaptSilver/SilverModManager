@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Abstractions.GuidedInstallers.ValueObjects;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Abstractions.GuidedInstallers.ValueObjects;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 public class GuidedInstallerStepDesignViewModel : GuidedInstallerStepViewModel
 {

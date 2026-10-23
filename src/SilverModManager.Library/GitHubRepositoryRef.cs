@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Library;
+namespace SilverModManager.Library;
 
 /// <summary>
 /// Names a GitHub repository either by its numeric id or by owner and name.

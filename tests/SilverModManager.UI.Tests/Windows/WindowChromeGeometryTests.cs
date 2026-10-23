@@ -1,9 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using FluentAssertions;
-using NexusMods.App.UI.Windows;
+using SilverModManager.App.UI.Windows;
 
-namespace NexusMods.UI.Tests.Windows;
+namespace SilverModManager.UI.Tests.Windows;
 
 public class WindowChromeGeometryTests
 {

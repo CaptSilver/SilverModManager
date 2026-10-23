@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.AdvancedInstaller.Exceptions;
+namespace SilverModManager.Games.AdvancedInstaller.Exceptions;
 
 /// <summary>
 /// This is an exception thrown when trying to map an file to a location which is already mapped by another file.

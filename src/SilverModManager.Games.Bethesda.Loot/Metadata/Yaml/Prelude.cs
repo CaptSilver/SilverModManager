@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 
 /// <summary>A masterlist whose <c>prelude:</c> block has been replaced, and where the new block sits.</summary>
 /// <param name="Masterlist">The text to parse.</param>

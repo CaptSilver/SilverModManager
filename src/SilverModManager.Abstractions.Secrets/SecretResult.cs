@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Secrets;
+namespace SilverModManager.Abstractions.Secrets;
 
 /// <summary>
 /// The outcome of reading one secret.

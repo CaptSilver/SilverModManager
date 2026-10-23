@@ -1,15 +1,15 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.CreationEngine.Models;
-using NexusMods.Games.CreationEngine.SortOrder;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.CreationEngine.Models;
+using SilverModManager.Games.CreationEngine.SortOrder;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.CreationEngine.Tests.SortOrder;
+namespace SilverModManager.Games.CreationEngine.Tests.SortOrder;
 
 internal static class PluginSortOrderTestHelpers
 {

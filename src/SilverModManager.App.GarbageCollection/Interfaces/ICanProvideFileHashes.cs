@@ -1,4 +1,4 @@
-namespace NexusMods.App.GarbageCollection.Interfaces;
+namespace SilverModManager.App.GarbageCollection.Interfaces;
 
 /// <summary>
 ///     This is a marker interface for types which are capable of providing file hashes.

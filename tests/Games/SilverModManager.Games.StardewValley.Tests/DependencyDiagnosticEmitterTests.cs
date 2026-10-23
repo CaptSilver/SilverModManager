@@ -1,13 +1,13 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Games.StardewValley.Emitters;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Games.StardewValley.Emitters;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.Games.StardewValley.Tests;
+namespace SilverModManager.Games.StardewValley.Tests;
 
 [Trait("RequiresNetworking", "True")]
 public class DependencyDiagnosticEmitterTests : ALoadoutDiagnosticEmitterTest<DependencyDiagnosticEmitterTests, StardewValley, DependencyDiagnosticEmitter>

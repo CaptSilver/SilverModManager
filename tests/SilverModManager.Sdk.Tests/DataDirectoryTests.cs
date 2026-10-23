@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.CrossPlatform;
+using SilverModManager.CrossPlatform;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileExtractor;
+using SilverModManager.Sdk.FileExtractor;
 
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 public class DataDirectoryTests
 {

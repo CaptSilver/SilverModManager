@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft.Overlay;
+namespace SilverModManager.Games.FromSoft.Overlay;
 
 /// <summary>
 /// What the small files of the game folder looked like at one moment. A modded session must leave the real folder

@@ -2,11 +2,11 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Thunderstore;
 
-namespace NexusMods.Networking.Thunderstore;
+namespace SilverModManager.Networking.Thunderstore;
 
 /// <summary>
 /// Compares the Thunderstore packages in the library with a community's catalog. Thunderstore has no

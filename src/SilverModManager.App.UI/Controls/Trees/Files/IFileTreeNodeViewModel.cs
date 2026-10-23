@@ -1,11 +1,11 @@
-using NexusMods.Abstractions.Loadouts.Files.Diff;
-using NexusMods.App.UI.Controls.Trees.Common;
-using NexusMods.App.UI.Helpers.TreeDataGrid;
-using NexusMods.App.UI.Resources;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.Loadouts.Files.Diff;
+using SilverModManager.App.UI.Controls.Trees.Common;
+using SilverModManager.App.UI.Helpers.TreeDataGrid;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Controls.Trees.Files;
+namespace SilverModManager.App.UI.Controls.Trees.Files;
 
 public interface IFileTreeNodeViewModel : IViewModelInterface, IExpandableItem, IDynamicDataTreeItem<IFileTreeNodeViewModel, GamePath>
 {

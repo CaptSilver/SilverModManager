@@ -3,7 +3,7 @@ using System.Reflection;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace NexusMods.Sdk.ProxyConsole;
+namespace SilverModManager.Sdk.ProxyConsole;
 
 /// <summary>
 /// Extension methods for <see cref="IServiceCollection"/>.

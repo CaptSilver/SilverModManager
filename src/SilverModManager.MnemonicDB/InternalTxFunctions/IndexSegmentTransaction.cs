@@ -1,7 +1,7 @@
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Storage;
 
-namespace NexusMods.MnemonicDB.InternalTxFunctions;
+namespace SilverModManager.MnemonicDB.InternalTxFunctions;
 
 /// <summary>
 /// A standard transaction that simply processes an index segment

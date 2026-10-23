@@ -1,6 +1,6 @@
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 public class TestHostIsolationTests(IServiceProvider serviceProvider)
 {

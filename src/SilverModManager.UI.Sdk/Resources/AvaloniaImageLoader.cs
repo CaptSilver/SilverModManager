@@ -1,10 +1,10 @@
 using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Skia;
-using NexusMods.Sdk.Resources;
+using SilverModManager.Sdk.Resources;
 using SkiaSharp;
 
-namespace NexusMods.UI.Sdk.Resources;
+namespace SilverModManager.UI.Sdk.Resources;
 
 public sealed class AvaloniaImageLoader<TResourceIdentifier> : ANestedResourceLoader<TResourceIdentifier, Bitmap, SKBitmap>
     where TResourceIdentifier : notnull

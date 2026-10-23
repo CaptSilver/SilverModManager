@@ -1,4 +1,4 @@
-﻿[Id] NexusMods.Games.StardewValley: 2
+﻿[Id] SilverModManager.Games.StardewValley: 2
 [Title] Outdated Dependency
 [Summary] 'Farm Type Manager v1.24.0' requires an updated version of 'Content Patcher 1.30.4'
 [Details]

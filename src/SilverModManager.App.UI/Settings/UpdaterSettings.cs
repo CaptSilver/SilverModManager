@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.App.UI.Settings;
+namespace SilverModManager.App.UI.Settings;
 
 public class UpdaterSettings : ISettings
 {

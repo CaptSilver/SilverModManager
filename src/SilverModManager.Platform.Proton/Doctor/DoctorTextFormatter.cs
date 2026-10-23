@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace NexusMods.Platform.Proton.Doctor;
+namespace SilverModManager.Platform.Proton.Doctor;
 
 /// <summary>
 /// The human-readable form of a <see cref="DoctorReport"/>.

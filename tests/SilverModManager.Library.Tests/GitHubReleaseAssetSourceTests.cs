@@ -1,12 +1,12 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Library;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.GitHub.DTOs;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.GitHub.DTOs;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
 using Xunit;
 
-namespace NexusMods.Library.Tests;
+namespace SilverModManager.Library.Tests;
 
 // Part of the job's test class: its nested Startup is what builds the service graph these tests need.
 public partial class AddGitHubReleaseAssetJobTests

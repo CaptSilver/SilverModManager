@@ -54,14 +54,14 @@ jobs:
           dotnet-version: '10.x'
 
       - name: Restore
-        run: dotnet restore NexusMods.App.sln
+        run: dotnet restore SilverModManager.App.sln
 
       - name: Build
-        run: dotnet build NexusMods.App.sln --no-restore
+        run: dotnet build SilverModManager.App.sln --no-restore
 
       # Same filters as scripts/test.sh: the offline suite only. Exit code 8 means a project
       # ran zero tests (helpers, or everything filtered out), which is not a failure.
       - name: Test
         run: >
-          dotnet test --solution NexusMods.App.sln --no-build --ignore-exit-code 8
+          dotnet test --solution SilverModManager.App.sln --no-build --ignore-exit-code 8
           -p:XunitArgs="--report-github --timeout 20m --filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait FlakeyTest=True"

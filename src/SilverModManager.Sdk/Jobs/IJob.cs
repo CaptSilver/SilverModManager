@@ -1,6 +1,6 @@
 using DynamicData.Kernel;
 
-namespace NexusMods.Sdk.Jobs;
+namespace SilverModManager.Sdk.Jobs;
 
 /// <summary>
 /// An untyped job interface, this is the reporting end of a job. The writable side is the <see cref="IJobContext{TJobType}"/>

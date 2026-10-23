@@ -1,4 +1,4 @@
-namespace NexusMods.Games.CreationEngine;
+namespace SilverModManager.Games.CreationEngine;
 
 /// <summary>
 /// Thrown when a plugin list cannot be written because a plugin name has a character the game's text encoding

@@ -4,13 +4,13 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.ReactiveUI;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.App.UI.Resources;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.LoadoutPage.Dialogs.CollectionPublished;
+namespace SilverModManager.App.UI.Pages.LoadoutPage.Dialogs.CollectionPublished;
 
 public partial class DialogCollectionPublishedView : ReactiveUserControl<IDialogCollectionPublishedViewModel>
 {

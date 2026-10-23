@@ -1,6 +1,6 @@
 using FluentAssertions;
 
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 public class RepoScanGuardTests
 {
@@ -10,9 +10,9 @@ public class RepoScanGuardTests
         var root = RepoScanGuard.FindRepoRoot();
         var files = RepoScanGuard.EnumerateFiles(root, "src", "*.cs").ToArray();
 
-        Directory.Exists(Path.Combine(root, "src", "NexusMods.MnemonicDB")).Should().BeTrue("the library is vendored as source");
-        files.Should().NotContain(f => f.StartsWith("src/NexusMods.MnemonicDB/") || f.StartsWith("src/NexusMods.MnemonicDB.Abstractions/") || f.StartsWith("src/NexusMods.MnemonicDB.SourceGenerator/"),
-            "the guards police first-party source, and the vendored library keeps upstream's names and style");
-        files.Should().Contain("src/NexusMods.Sdk/ApplicationConstants.cs", "everything else under src is still scanned");
+        Directory.Exists(Path.Combine(root, "src", "SilverModManager.MnemonicDB")).Should().BeTrue("the library is vendored as source");
+        files.Should().NotContain(f => f.StartsWith("src/SilverModManager.MnemonicDB/") || f.StartsWith("src/SilverModManager.MnemonicDB.Abstractions/") || f.StartsWith("src/SilverModManager.MnemonicDB.SourceGenerator/"),
+            "the guards police first-party source, and the vendored library keeps upstream's code and style");
+        files.Should().Contain("src/SilverModManager.Sdk/ApplicationConstants.cs", "everything else under src is still scanned");
     }
 }

@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.DataModel.Undo;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.DataModel.Undo;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.DataModel.Tests.Undo;
+namespace SilverModManager.DataModel.Tests.Undo;
 
 /// <summary>
 /// The check that runs after a revert commits. It has to catch an entity whose state is not exactly the
@@ -50,7 +50,7 @@ public class OwnedEntityDiffTests(ITestOutputHelper helper) : ANexusCollectionTe
 
     private AttributeId LocatorIdsAttribute => Connection.AttributeCache.GetAttributeId(Loadout.LocatorIds.Id);
 
-    private async Task<(NexusMods.MnemonicDB.Abstractions.IndexSegments.EntitySegment Current, NexusMods.MnemonicDB.Abstractions.IndexSegments.EntitySegment Wanted)> TwoEntities(
+    private async Task<(SilverModManager.MnemonicDB.Abstractions.IndexSegments.EntitySegment Current, SilverModManager.MnemonicDB.Abstractions.IndexSegments.EntitySegment Wanted)> TwoEntities(
         string[] currentValues, string[] wantedValues)
     {
         using var tx = Connection.BeginTransaction();

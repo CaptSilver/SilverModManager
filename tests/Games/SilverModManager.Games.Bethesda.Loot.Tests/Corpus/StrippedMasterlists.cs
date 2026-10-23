@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
-using NexusMods.Games.Bethesda.Loot.Database;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.Bethesda.Loot.Database;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Corpus;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Corpus;
 
 /// <summary>A bundled file, its condition-free form, and the SHA-256 of each.</summary>
 internal sealed record StrippedFile(string BundledSha256, string Stripped, string StrippedSha256);

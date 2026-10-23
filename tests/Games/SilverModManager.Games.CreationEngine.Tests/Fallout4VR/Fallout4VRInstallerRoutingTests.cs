@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Fallout4VR;
+namespace SilverModManager.Games.CreationEngine.Tests.Fallout4VR;
 
 /// <summary>Where Fallout 4 VR's own installers put the common archive layouts.</summary>
 public class Fallout4VRInstallerRoutingTests(ITestOutputHelper helper)

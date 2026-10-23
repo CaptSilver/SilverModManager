@@ -1,8 +1,8 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Abstractions.Games.FileHashes;
+namespace SilverModManager.Abstractions.Games.FileHashes;
 
 /// <summary>
 /// A struct that contains information about a file in a game

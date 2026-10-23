@@ -1,7 +1,7 @@
 ﻿using NexusMods.Paths;
 using NexusMods.Paths.Extensions;
 
-namespace NexusMods.Games.StardewValley;
+namespace SilverModManager.Games.StardewValley;
 
 public static class Constants
 {

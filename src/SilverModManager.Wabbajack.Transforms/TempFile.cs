@@ -1,4 +1,4 @@
-namespace NexusMods.Wabbajack.Transforms;
+namespace SilverModManager.Wabbajack.Transforms;
 
 /// <summary>
 /// A seekable scratch file that deletes itself on dispose. Delta application needs random access

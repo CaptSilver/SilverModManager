@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
 /// <summary>
 /// Text and names shared by the write-guard in the synchronizer and the diagnostics that report the same

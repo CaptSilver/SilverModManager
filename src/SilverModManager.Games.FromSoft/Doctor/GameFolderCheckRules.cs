@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Doctor;
+namespace SilverModManager.Games.FromSoft.Doctor;
 
 /// <summary>
 /// What the game folder checks look for in one game's <c>Game</c> folder. The mod loader files and the

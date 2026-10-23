@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Values;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Values;
 
-namespace NexusMods.App.UI.DiagnosticSystem;
+namespace SilverModManager.App.UI.DiagnosticSystem;
 
 internal sealed class NamedLinkFormatter : IValueFormatter<NamedLink>
 {

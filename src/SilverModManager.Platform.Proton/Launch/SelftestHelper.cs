@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// The hidden <c>selftest-helper</c> subcommands. The selftest spawns the shipped binary with these to check

@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.DataModel.Synchronizer.Tests;
+namespace SilverModManager.DataModel.Synchronizer.Tests;
 
 public class GamePathFilterTests(ITestOutputHelper helper) : AStubbedGameTest<GamePathFilterTests>(helper)
 {

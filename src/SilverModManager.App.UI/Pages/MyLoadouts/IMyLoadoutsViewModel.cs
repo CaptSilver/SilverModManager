@@ -1,8 +1,8 @@
 using System.Collections.ObjectModel;
-using NexusMods.App.UI.Pages.MyLoadouts.GameLoadoutsSectionEntry;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.Pages.MyLoadouts.GameLoadoutsSectionEntry;
+using SilverModManager.App.UI.WorkspaceSystem;
 
-namespace NexusMods.App.UI.Pages.MyLoadouts;
+namespace SilverModManager.App.UI.Pages.MyLoadouts;
 
 
 public interface IMyLoadoutsViewModel : IPageViewModelInterface

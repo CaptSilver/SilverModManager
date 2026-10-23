@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Refreshes the vendored games.json embedded in NexusMods.Networking.NexusWebApi.
+# Refreshes the vendored games.json embedded in SilverModManager.Networking.NexusWebApi.
 # The build never downloads it, so run this when you want newer game ids and
 # commit the result. Only id and domain_name are kept, the rest of the upstream
 # file (download counts etc.) changes constantly and nothing reads it.
@@ -8,7 +8,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 url="${GAMES_JSON_URL:-https://data.nexusmods.com/file/nexus-data/games.json}"
-target="$root/src/NexusMods.Networking.NexusWebApi/V1Interop/games.json"
+target="$root/src/SilverModManager.Networking.NexusWebApi/V1Interop/games.json"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT

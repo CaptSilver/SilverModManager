@@ -1,6 +1,6 @@
-using NexusMods.UI.Sdk.Dialog;
+using SilverModManager.UI.Sdk.Dialog;
 
-namespace NexusMods.App.UI.Dialog;
+namespace SilverModManager.App.UI.Dialog;
 
 public record StandardDialogResult
 {

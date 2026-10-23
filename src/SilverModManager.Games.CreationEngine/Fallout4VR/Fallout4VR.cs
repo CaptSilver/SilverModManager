@@ -1,12 +1,12 @@
 using DynamicData.Kernel;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.PluginLists;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.PluginLists;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Fallout4VR;
+namespace SilverModManager.Games.CreationEngine.Fallout4VR;
 
 public class Fallout4VR(IServiceProvider provider) : ACreationEngineGame<Fallout4VR>(provider), IGameData<Fallout4VR>
 {

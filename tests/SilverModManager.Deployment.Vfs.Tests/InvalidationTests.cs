@@ -1,10 +1,10 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.Deployment.Vfs.Testing;
+using SilverModManager.Deployment.Vfs.Testing;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Deployment.Vfs.Tests;
+namespace SilverModManager.Deployment.Vfs.Tests;
 
 public class InvalidationTests : IDisposable
 {

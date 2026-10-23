@@ -1,14 +1,14 @@
 using System.Collections.ObjectModel;
 using DynamicData;
-using NexusMods.App.UI.Helpers.TreeDataGrid;
+using SilverModManager.App.UI.Helpers.TreeDataGrid;
 using NexusMods.Paths;
 using NexusMods.Paths.Trees;
 using NexusMods.Paths.Trees.Traits;
-using NexusMods.Sdk.Library;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Library;
+using SilverModManager.UI.Sdk;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.ModContent;
+namespace SilverModManager.Games.AdvancedInstaller.UI.ModContent;
 
 using TreeDataGridSource = HierarchicalTreeDataGridSource<TreeNodeVM<IModContentTreeEntryViewModel, RelativePath>>;
 using ModContentNode = TreeNodeVM<IModContentTreeEntryViewModel, RelativePath>;

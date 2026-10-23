@@ -1,6 +1,6 @@
 using TransparentValueObjects;
 
-namespace NexusMods.Abstractions.NexusWebApi.Types;
+namespace SilverModManager.Abstractions.NexusWebApi.Types;
 
 /// <summary>
 /// Name of the CDN server that handles your download request.

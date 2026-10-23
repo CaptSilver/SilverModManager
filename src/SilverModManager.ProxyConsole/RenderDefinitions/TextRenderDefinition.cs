@@ -1,8 +1,8 @@
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.ProxyConsole;
 using Rendering = Spectre.Console.Rendering;
 using Console = Spectre.Console;
 
-namespace NexusMods.ProxyConsole.RenderDefinitions;
+namespace SilverModManager.ProxyConsole.RenderDefinitions;
 
 /// <summary>
 /// A definition for rendering <see cref="Text"/>s to the console using Spectre.Console.

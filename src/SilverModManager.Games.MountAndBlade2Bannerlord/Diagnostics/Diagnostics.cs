@@ -1,12 +1,12 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Values;
-using NexusMods.Generators.Diagnostics;
-namespace NexusMods.Games.MountAndBlade2Bannerlord.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Values;
+using SilverModManager.Generators.Diagnostics;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.Diagnostics;
 
 internal static partial class Diagnostics
 {
-    private const string Source = "NexusMods.Games.MountAndBlade2Bannerlord";
+    private const string Source = "SilverModManager.Games.MountAndBlade2Bannerlord";
 
     [DiagnosticTemplate, UsedImplicitly]
     internal static IDiagnosticTemplate MissingDependencyTemplate = DiagnosticTemplateBuilder

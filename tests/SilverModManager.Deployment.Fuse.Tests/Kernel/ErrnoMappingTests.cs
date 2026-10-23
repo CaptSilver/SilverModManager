@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Deployment.Fuse.Kernel;
-using NexusMods.Deployment.Vfs;
+using SilverModManager.Deployment.Fuse.Kernel;
+using SilverModManager.Deployment.Vfs;
 
-namespace NexusMods.Deployment.Fuse.Tests.Kernel;
+namespace SilverModManager.Deployment.Fuse.Tests.Kernel;
 
 public class ErrnoMappingTests
 {

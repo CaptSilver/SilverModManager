@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.App.UI.Controls;
+using SilverModManager.App.UI.Controls;
 
-namespace NexusMods.App.UI.Pages.Sorting;
+namespace SilverModManager.App.UI.Pages.Sorting;
 
 
 public static class LoadOrderColumns

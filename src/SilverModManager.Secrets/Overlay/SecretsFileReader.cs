@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.Secrets.Overlay;
+namespace SilverModManager.Secrets.Overlay;
 
 /// <summary>
 /// Where a secrets file went wrong. <see cref="Line"/> is 1-based, or 0 when the problem is the file itself.

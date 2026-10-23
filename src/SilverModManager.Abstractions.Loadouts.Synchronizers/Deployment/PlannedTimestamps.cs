@@ -1,10 +1,10 @@
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 
 /// <summary>
 /// Sets the modification times a timestamp-ordered game asked for (<see cref="ITimestampOrderedGame"/>) and keeps

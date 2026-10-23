@@ -1,7 +1,7 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Default implementation to cover most use cases of <see cref="ISortItemLoadoutData"/>.

@@ -1,7 +1,7 @@
-using NexusMods.Deployment.Links.Probe;
-using NexusMods.Deployment.Links.Tests.Fixtures;
+using SilverModManager.Deployment.Links.Probe;
+using SilverModManager.Deployment.Links.Tests.Fixtures;
 
-namespace NexusMods.Deployment.Links.Tests;
+namespace SilverModManager.Deployment.Links.Tests;
 
 public sealed class LinkProbeTests : IDisposable
 {

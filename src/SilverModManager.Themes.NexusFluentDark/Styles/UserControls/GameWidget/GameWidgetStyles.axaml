@@ -1,8 +1,8 @@
 ﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:ui="clr-namespace:NexusMods.App.UI.Controls.GameWidget;assembly=NexusMods.App.UI"
-        xmlns:progressRing="clr-namespace:NexusMods.App.UI.Controls.ProgressRing;assembly=NexusMods.App.UI"
-        xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk">
+        xmlns:ui="clr-namespace:SilverModManager.App.UI.Controls.GameWidget;assembly=SilverModManager.App.UI"
+        xmlns:progressRing="clr-namespace:SilverModManager.App.UI.Controls.ProgressRing;assembly=SilverModManager.App.UI"
+        xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk">
     <Design.PreviewWith>
         <Border Padding="8">
             <ui:GameWidget>

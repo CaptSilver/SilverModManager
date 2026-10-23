@@ -1,11 +1,11 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Games.FromSoft.Installers;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Games.FromSoft.Installers;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public abstract class AEldenRingApplyTests<TTest>(ITestOutputHelper helper, bool dirty) : AEldenRingTest<TTest>(helper, dirty)
 {

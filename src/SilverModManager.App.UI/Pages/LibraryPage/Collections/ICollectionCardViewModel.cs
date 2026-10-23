@@ -1,12 +1,12 @@
 using Avalonia.Media.Imaging;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.App.UI.Controls.Navigation;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.App.UI.Controls.Navigation;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Pages.LibraryPage.Collections;
+namespace SilverModManager.App.UI.Pages.LibraryPage.Collections;
 
 /// <summary>
 /// Collection card view model.

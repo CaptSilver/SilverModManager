@@ -1,6 +1,6 @@
 using FluentAssertions;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats;
+namespace SilverModManager.Games.FromSoft.Tests.Formats;
 
 public class GoldenFilesTests
 {

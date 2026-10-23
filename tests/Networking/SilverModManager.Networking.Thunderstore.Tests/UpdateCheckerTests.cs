@@ -3,16 +3,16 @@ using System.Text.Json;
 using DynamicData.Kernel;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.Thunderstore.DTOs;
-using NexusMods.Networking.Thunderstore.Tests.Fixtures;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.Thunderstore.DTOs;
+using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Thunderstore;
 using Xunit;
 
-namespace NexusMods.Networking.Thunderstore.Tests;
+namespace SilverModManager.Networking.Thunderstore.Tests;
 
 public class UpdateCheckerTests(IConnection connection)
 {

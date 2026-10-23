@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Sdk.Tests.IO;
+namespace SilverModManager.Sdk.Tests.IO;
 
 public class FileFingerprintTests : IDisposable
 {

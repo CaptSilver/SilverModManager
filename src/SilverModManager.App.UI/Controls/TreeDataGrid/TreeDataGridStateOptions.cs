@@ -1,7 +1,7 @@
 
-using NexusMods.App.UI.Settings;
+using SilverModManager.App.UI.Settings;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 public record TreeDataGridSortingOptions
 {

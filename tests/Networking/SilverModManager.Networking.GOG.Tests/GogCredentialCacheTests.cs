@@ -1,8 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 
-namespace NexusMods.Networking.GOG.Tests;
+namespace SilverModManager.Networking.GOG.Tests;
 
 public class GogCredentialCacheTests : IDisposable
 {

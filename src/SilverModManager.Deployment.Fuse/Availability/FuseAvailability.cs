@@ -1,6 +1,6 @@
-using NexusMods.Deployment.Fuse.Native;
+using SilverModManager.Deployment.Fuse.Native;
 
-namespace NexusMods.Deployment.Fuse.Availability;
+namespace SilverModManager.Deployment.Fuse.Availability;
 
 /// <summary>Outcome of the FUSE preflight. <see cref="Reason"/> is the first failing check, null when usable.</summary>
 public sealed record FuseAvailabilityReport(bool Usable, string? Reason, IReadOnlyList<string> Lines);

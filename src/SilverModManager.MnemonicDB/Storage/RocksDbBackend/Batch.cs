@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 using Reloaded.Memory.Extensions;
 using RocksDbSharp;
-using IWriteBatch = NexusMods.MnemonicDB.Storage.Abstractions.IWriteBatch;
+using IWriteBatch = SilverModManager.MnemonicDB.Storage.Abstractions.IWriteBatch;
 
-namespace NexusMods.MnemonicDB.Storage.RocksDbBackend;
+namespace SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 
 internal class Batch(RocksDb db) : IWriteBatch
 {

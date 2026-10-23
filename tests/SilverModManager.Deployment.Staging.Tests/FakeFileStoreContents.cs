@@ -1,9 +1,9 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
+using SilverModManager.Sdk.FileStore;
 using NSubstitute;
 
-namespace NexusMods.Deployment.Staging.Tests;
+namespace SilverModManager.Deployment.Staging.Tests;
 
 /// <summary>
 /// The bytes the substitute <see cref="IFileStore"/> writes when asked to extract a hash.

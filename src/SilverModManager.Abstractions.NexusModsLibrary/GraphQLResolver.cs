@@ -1,10 +1,10 @@
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 using Splat.ModeDetection;
 
-namespace NexusMods.Abstractions.NexusModsLibrary;
+namespace SilverModManager.Abstractions.NexusModsLibrary;
 
 /// <summary>
 /// A helper for upserting entities in the database. When created, you must define a "pimary key" attribute and value,

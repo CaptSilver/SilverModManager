@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.GC;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Sdk.Settings;
-using NexusMods.DataModel;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.GC;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.DataModel;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
-namespace NexusMods.App.GarbageCollection.DataModel.Tests;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
+namespace SilverModManager.App.GarbageCollection.DataModel.Tests;
 
 public class FullSystemTest(IServiceProvider serviceProvider, ISettingsManager settingsManager) : AGameTest<StubbedGame>(serviceProvider)
 {

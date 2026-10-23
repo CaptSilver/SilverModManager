@@ -1,11 +1,11 @@
 ﻿using System.Reactive;
 
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.SelectLocation;
+namespace SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 
 public class SuggestedEntryViewModel : AViewModel<ISuggestedEntryViewModel>, ISuggestedEntryViewModel
 {

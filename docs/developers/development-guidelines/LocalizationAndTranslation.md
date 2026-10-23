@@ -10,7 +10,7 @@ the App to different languages and cultures.
 You can find them in `Resources` folder for any project that contains UI elements.
 
 ```
-NexusMods.App.UI
+SilverModManager.App.UI
 └── Resources
    ├── Language.de.resx // Autobahn (German)
    ├── Language.it.resx // Pizza (Italian)

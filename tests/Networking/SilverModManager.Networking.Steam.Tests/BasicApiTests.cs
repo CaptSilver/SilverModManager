@@ -1,12 +1,12 @@
 using System.Security.Cryptography;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Abstractions.Steam;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Abstractions.Steam.Values;
 using Xunit;
 
-namespace NexusMods.Networking.Steam.Tests;
+namespace SilverModManager.Networking.Steam.Tests;
 
 public class BasicApiTests(ILogger<BasicApiTests> logger, ISteamSession session)
 {

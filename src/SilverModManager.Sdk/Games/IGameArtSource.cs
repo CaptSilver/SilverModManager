@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using JetBrains.Annotations;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// Supplies cover art for a game from what the user's own machine already holds, so the

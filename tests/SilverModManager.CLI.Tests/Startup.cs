@@ -1,37 +1,37 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Abstractions.Serialization;
-using NexusMods.Backend;
-using NexusMods.CrossPlatform;
-using NexusMods.DataModel;
-using NexusMods.FileExtractor;
-using NexusMods.Games.FileHashes;
-using NexusMods.Library;
-using NexusMods.Networking.HttpDownloader;
-using NexusMods.Networking.HttpDownloader.Tests;
-using NexusMods.Networking.NexusWebApi;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Abstractions.Serialization;
+using SilverModManager.Backend;
+using SilverModManager.CrossPlatform;
+using SilverModManager.DataModel;
+using SilverModManager.FileExtractor;
+using SilverModManager.Games.FileHashes;
+using SilverModManager.Library;
+using SilverModManager.Networking.HttpDownloader;
+using SilverModManager.Networking.HttpDownloader.Tests;
+using SilverModManager.Networking.NexusWebApi;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Settings;
-using NexusMods.Secrets;
-using NexusMods.SingleProcess;
-using NexusMods.StandardGameLocators;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.Wabbajack.Cli;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Secrets;
+using SilverModManager.SingleProcess;
+using SilverModManager.StandardGameLocators;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.Wabbajack.Cli;
 using Xunit.DependencyInjection.Logging;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 public class Startup
 {
     public void ConfigureServices(IServiceCollection services)
     {
         const KnownPath baseKnownPath = KnownPath.EntryDirectory;
-        var baseDirectory = $"NexusMods.UI.Tests.Tests-{Guid.NewGuid()}";
+        var baseDirectory = $"SilverModManager.UI.Tests.Tests-{Guid.NewGuid()}";
 
         services
                 .AddSingleton<CommandLineConfigurator>()

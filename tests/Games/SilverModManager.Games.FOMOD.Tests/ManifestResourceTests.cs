@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Games.FOMOD.UI.Resources;
+using SilverModManager.Games.FOMOD.UI.Resources;
 
-namespace NexusMods.Games.FOMOD.Tests;
+namespace SilverModManager.Games.FOMOD.Tests;
 
 /// <summary>
 /// The generated resource class names its resx by a string literal in the designer file, which nothing

@@ -1,9 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Dialog;
+namespace SilverModManager.App.UI.Dialog;
 
 public class Dialog : IDialog
 {

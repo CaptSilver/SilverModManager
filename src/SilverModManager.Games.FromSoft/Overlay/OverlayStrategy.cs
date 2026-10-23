@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Overlay;
+namespace SilverModManager.Games.FromSoft.Overlay;
 
 /// <summary>
 /// How the overlay over the game folder is made. A FUSE overlay (fuse-overlayfs) for kernels that refuse an

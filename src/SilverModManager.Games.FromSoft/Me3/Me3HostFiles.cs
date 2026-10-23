@@ -1,9 +1,9 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Me3;
+namespace SilverModManager.Games.FromSoft.Me3;
 
 /// <summary>
-/// The files of the me3 release that are kept in <see cref="NexusMods.Sdk.Games.LocationId.Me3Host"/>, and the
+/// The files of the me3 release that are kept in <see cref="SilverModManager.Sdk.Games.LocationId.Me3Host"/>, and the
 /// executable bit the binary needs. Deploying by copy or link does not carry a file mode, so the binary arrives
 /// without it.
 /// </summary>

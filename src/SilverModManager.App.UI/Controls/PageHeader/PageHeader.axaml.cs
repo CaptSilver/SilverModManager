@@ -1,9 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Controls.PageHeader;
+namespace SilverModManager.App.UI.Controls.PageHeader;
 
 public class PageHeader : ContentControl
 {

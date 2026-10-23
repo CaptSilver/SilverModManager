@@ -1,11 +1,11 @@
 using System.Reactive;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.MiniGameWidget.ComingSoon;
+namespace SilverModManager.App.UI.Controls.MiniGameWidget.ComingSoon;
 
 public class ComingSoonMiniGameWidgetViewModel : AViewModel<IComingSoonMiniGameWidgetViewModel>, IComingSoonMiniGameWidgetViewModel
 {

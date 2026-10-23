@@ -1,7 +1,7 @@
 ﻿using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 
-namespace NexusMods.Themes.NexusFluentDark.Extensions;
+namespace SilverModManager.Themes.NexusFluentDark.Extensions;
 
 /// <summary>
 /// Xaml extension for BoxShadow.

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 using R3;
 
-namespace NexusMods.Networking.GOG;
+namespace SilverModManager.Networking.GOG;
 
 /// <summary>
 /// The GOG login as the client sees it. It owns the conversation with the secret store: it loads the

@@ -1,15 +1,15 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Games.CreationEngine.PluginLists;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.CreationEngine.PluginLists;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
 
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Abstractions;
+namespace SilverModManager.Games.CreationEngine.Abstractions;
 
 /// <summary>
 /// A Bethesda game whose plugin headers the load order reader can parse.

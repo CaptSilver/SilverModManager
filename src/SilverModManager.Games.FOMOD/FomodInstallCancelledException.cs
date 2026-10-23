@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FOMOD;
+namespace SilverModManager.Games.FOMOD;
 
 /// <summary>
 /// The user cancelled, or closed the window of, an interactive FOMOD installation.

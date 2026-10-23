@@ -2,22 +2,22 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.Thunderstore;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Thunderstore;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.Thunderstore;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Thunderstore;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Pages.Thunderstore;
+namespace SilverModManager.App.UI.Pages.Thunderstore;
 
 [UsedImplicitly]
 public class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, IThunderstoreViewModel
@@ -208,14 +208,14 @@ public class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, ITh
             : _catalog.Search(SearchText, ShowDeprecated).Select(ToRow).ToArray();
     }
 
-    private static ThunderstoreVersionRef? LatestRef(NexusMods.Networking.Thunderstore.DTOs.PackageListing package, NexusMods.Networking.Thunderstore.DTOs.PackageVersion? latest)
+    private static ThunderstoreVersionRef? LatestRef(SilverModManager.Networking.Thunderstore.DTOs.PackageListing package, SilverModManager.Networking.Thunderstore.DTOs.PackageVersion? latest)
     {
         if (latest is null || package.Owner is null) return null;
         if (!ThunderstorePackageRef.TryCreate(package.Owner, package.Name, out var reference)) return null;
         return ThunderstoreVersionNumber.TryParse(latest.VersionNumber, out var number) ? new ThunderstoreVersionRef(reference, number) : null;
     }
 
-    private static ThunderstorePackageRow ToRow(NexusMods.Networking.Thunderstore.DTOs.PackageListing package)
+    private static ThunderstorePackageRow ToRow(SilverModManager.Networking.Thunderstore.DTOs.PackageListing package)
     {
         var latest = package.Versions.FirstOrDefault(v => v.IsActive) ?? package.Versions.FirstOrDefault();
         return new ThunderstorePackageRow(

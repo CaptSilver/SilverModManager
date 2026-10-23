@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI.Pages.LibraryPage;
+namespace SilverModManager.App.UI.Pages.LibraryPage;
 
 /// <summary>
 /// Common code between <see cref="ILibraryItemModel"/> implementations that aren't

@@ -7,14 +7,14 @@ using DynamicData;
 using DynamicData.Aggregation;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Windows;
-using NexusMods.Sdk;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public class PanelViewModel : AViewModel<IPanelViewModel>, IPanelViewModel
 {

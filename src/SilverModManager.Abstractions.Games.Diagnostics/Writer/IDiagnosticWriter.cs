@@ -1,7 +1,7 @@
 using System.Text;
 using JetBrains.Annotations;
 
-namespace NexusMods.Abstractions.Diagnostics;
+namespace SilverModManager.Abstractions.Diagnostics;
 
 /// <summary>
 /// Represents a writer of diagnostic messages.

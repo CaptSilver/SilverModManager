@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.Wabbajack.Format;
+namespace SilverModManager.Wabbajack.Format;
 
 /// <summary>
 /// Wabbajack writes an xxHash64 as base64 of its eight little-endian bytes. The app's <see cref="Hash"/>

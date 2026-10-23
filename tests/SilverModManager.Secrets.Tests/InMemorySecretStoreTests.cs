@@ -1,9 +1,9 @@
 using FluentAssertions;
 using Xunit;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 using R3;
 
-namespace NexusMods.Secrets.Tests;
+namespace SilverModManager.Secrets.Tests;
 
 public class InMemorySecretStoreTests
 {

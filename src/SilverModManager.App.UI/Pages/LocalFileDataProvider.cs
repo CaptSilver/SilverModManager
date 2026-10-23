@@ -3,20 +3,20 @@ using DynamicData;
 using DynamicData.Aggregation;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Pages.LibraryPage;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Models;
-using UIObservableExtensions = NexusMods.App.UI.Extensions.ObservableExtensions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Models;
+using UIObservableExtensions = SilverModManager.App.UI.Extensions.ObservableExtensions;
 
-namespace NexusMods.App.UI.Pages;
+namespace SilverModManager.App.UI.Pages;
 
 [UsedImplicitly]
 internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvider
@@ -116,7 +116,7 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
                 .FilterImmutable(datom => Md5Value.From(UInt128Serializer.Read(datom.ValueSpan)) == md5.Value)
                 .AsEntityIds()
                 .Distinct()
-                .Transform(datom => NexusMods.Abstractions.NexusModsLibrary.Models.CollectionDownload.Load(conn.Db, datom.E).CollectionRevision.Collection)
+                .Transform(datom => SilverModManager.Abstractions.NexusModsLibrary.Models.CollectionDownload.Load(conn.Db, datom.E).CollectionRevision.Collection)
                 .ChangeKey(collection => collection.Id);
             
             LibraryDataProviderHelper.AddRelatedCollectionsComponent(itemModel, linkedLoadoutItemsObservable, relatedDownloadedCollectionsObservable );

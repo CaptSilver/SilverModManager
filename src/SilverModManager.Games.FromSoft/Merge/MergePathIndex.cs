@@ -1,7 +1,7 @@
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>One enabled file under a package folder of the mods location.</summary>
 /// <param name="PackageId">The package folder.</param>

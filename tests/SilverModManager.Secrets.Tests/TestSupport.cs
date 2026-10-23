@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
+using SilverModManager.Abstractions.Secrets;
 using R3;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Secrets.Tests;
+namespace SilverModManager.Secrets.Tests;
 
 internal sealed class FakeEnvironment(Dictionary<string, string>? values = null) : IEnvironmentReader
 {

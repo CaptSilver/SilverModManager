@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts.Exceptions;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.App.UI.Resources;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Resources;
 using R3;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
+namespace SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 
 public class MessageBoxOkViewModel : AOverlayViewModel<IMessageBoxOkViewModel, Unit>, IMessageBoxOkViewModel
 {

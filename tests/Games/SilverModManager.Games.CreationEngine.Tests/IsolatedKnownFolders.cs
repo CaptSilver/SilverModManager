@@ -1,9 +1,9 @@
 using GameFinder.Wine;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.CreationEngine.Tests;
+namespace SilverModManager.Games.CreationEngine.Tests;
 
 /// <summary>
 /// A file system whose Documents and AppData folders live in a throwaway prefix. Passed as the

@@ -1,15 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.App;
-using NexusMods.Backend;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Secrets.Overlay;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.App;
+using SilverModManager.Backend;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Secrets.Overlay;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class TestHostIsolationTests(IServiceProvider serviceProvider)
 {

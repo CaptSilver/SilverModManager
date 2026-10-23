@@ -1,4 +1,4 @@
--- namespace: NexusMods.Abstractions.Loadouts
+-- namespace: SilverModManager.Abstractions.Loadouts
 CREATE SCHEMA IF NOT EXISTS loadouts;
 
 -- Returns all the entity IDs that should be tracked for a given loadout Id

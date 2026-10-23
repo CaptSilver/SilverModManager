@@ -1,10 +1,10 @@
 ﻿using System.Collections.ObjectModel;
 using DynamicData;
 
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.Preview;
+namespace SilverModManager.Games.AdvancedInstaller.UI.Preview;
 
 using PreviewTreeNode = TreeNodeVM<IPreviewTreeEntryViewModel, GamePath>;
 

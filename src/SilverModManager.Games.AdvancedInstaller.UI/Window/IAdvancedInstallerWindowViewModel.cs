@@ -1,6 +1,6 @@
-﻿using NexusMods.UI.Sdk;
+﻿using SilverModManager.UI.Sdk;
 
-namespace NexusMods.Games.AdvancedInstaller.UI;
+namespace SilverModManager.Games.AdvancedInstaller.UI;
 
 public interface IAdvancedInstallerWindowViewModel : IViewModelInterface
 {

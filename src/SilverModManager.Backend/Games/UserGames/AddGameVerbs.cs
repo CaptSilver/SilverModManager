@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
+using SilverModManager.Abstractions.Cli;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Backend.Games.UserGames;
+namespace SilverModManager.Backend.Games.UserGames;
 
 internal static class AddGameVerbs
 {

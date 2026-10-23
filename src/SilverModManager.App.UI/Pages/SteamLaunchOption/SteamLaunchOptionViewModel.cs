@@ -2,16 +2,16 @@ using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Overlays;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Pages.SteamLaunchOption;
+namespace SilverModManager.App.UI.Pages.SteamLaunchOption;
 
 public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionViewModel, Unit>, ISteamLaunchOptionViewModel
 {

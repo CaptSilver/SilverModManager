@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Loot.Sorting;
-using static NexusMods.Games.Bethesda.Loot.Tests.Sorting.SortingFixture;
+using SilverModManager.Games.Bethesda.Loot.Sorting;
+using static SilverModManager.Games.Bethesda.Loot.Tests.Sorting.SortingFixture;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Sorting;
 
 // Ports the add_overlap_edges tests in libloot's sorting/plugins.rs, plus the rules those do not
 // reach: skipped plugins, existing edges and cycles.

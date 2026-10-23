@@ -1,7 +1,7 @@
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Pages.LoadoutPage.Dialogs.ShareCollection;
+namespace SilverModManager.App.UI.Pages.LoadoutPage.Dialogs.ShareCollection;
 
 public interface IDialogShareCollectionViewModel: IViewModelInterface
 {

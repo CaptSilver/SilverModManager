@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-namespace NexusMods.Deployment.Links.Native;
+namespace SilverModManager.Deployment.Links.Native;
 
 /// <summary>
 /// The libc calls the link backends need, each wrapped to return 0 or the errno instead of throwing,

@@ -1,11 +1,11 @@
 using System.Text;
-using NexusMods.Games.StardewValley.Models;
-using NexusMods.Sdk.FileStore;
+using SilverModManager.Games.StardewValley.Models;
+using SilverModManager.Sdk.FileStore;
 using StardewModdingAPI.Toolkit.Framework.ModData;
 using StardewModdingAPI.Toolkit.Serialization;
 using StardewModdingAPI.Toolkit.Serialization.Models;
 
-namespace NexusMods.Games.StardewValley;
+namespace SilverModManager.Games.StardewValley;
 
 /// <summary>
 /// Interop to the SMAPI libraries

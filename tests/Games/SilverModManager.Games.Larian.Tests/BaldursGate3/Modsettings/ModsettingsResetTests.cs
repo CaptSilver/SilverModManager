@@ -1,16 +1,16 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Games.Larian.BaldursGate3.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Games.Larian.BaldursGate3.Models;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3.Modsettings;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3.Modsettings;
 
 /// <summary>
 /// Handing the game back (Unmanage) and moving an existing loadout's <c>modsettings.lsx</c> from the Overrides

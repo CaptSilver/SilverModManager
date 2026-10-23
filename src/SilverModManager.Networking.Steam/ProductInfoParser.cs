@@ -1,10 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
-using NexusMods.Abstractions.Steam.DTOs;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam.DTOs;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
 using SteamKit2;
 
-namespace NexusMods.Networking.Steam;
+namespace SilverModManager.Networking.Steam;
 
 /// <summary>
 /// Parses a PICSProductInfoCallback into a <see cref="ProductInfo"/>.

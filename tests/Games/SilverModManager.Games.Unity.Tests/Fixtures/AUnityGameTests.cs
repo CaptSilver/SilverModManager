@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.Unity.Tests.Fixtures;
+namespace SilverModManager.Games.Unity.Tests.Fixtures;
 
 /// <summary>Runs a test against one of the real Unity games, registered the way the app registers them.</summary>
 public abstract class AUnityGameTests<TTest, TGame>(ITestOutputHelper outputHelper) : AIsolatedGameTest<TTest, TGame>(outputHelper)

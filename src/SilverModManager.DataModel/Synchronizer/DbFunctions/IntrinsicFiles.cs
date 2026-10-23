@@ -1,13 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.HyperDuck;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.DataModel.Synchronizer.DbFunctions;
+namespace SilverModManager.DataModel.Synchronizer.DbFunctions;
 
 /// <summary>
 /// A Table function that lists all intrinsic files for all loadouts. 

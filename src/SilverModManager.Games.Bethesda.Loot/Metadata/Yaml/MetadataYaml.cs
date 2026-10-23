@@ -1,7 +1,7 @@
 using YamlDotNet.RepresentationModel;
-using static NexusMods.Games.Bethesda.Loot.Metadata.Yaml.YamlGetters;
+using static SilverModManager.Games.Bethesda.Loot.Metadata.Yaml.YamlGetters;
 
-namespace NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 
 /// <summary>
 /// Reads each metadata type from a YAML node, including the shorthand forms such as a bare

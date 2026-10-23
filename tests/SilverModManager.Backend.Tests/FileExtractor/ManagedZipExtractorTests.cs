@@ -3,11 +3,11 @@ using System.Text;
 using FluentAssertions;
 using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Backend.FileExtractor.Extractors;
+using SilverModManager.Backend.FileExtractor.Extractors;
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Backend.Tests.FileExtractor;
+namespace SilverModManager.Backend.Tests.FileExtractor;
 
 public class ManagedZipExtractorTests
 {
@@ -15,7 +15,7 @@ public class ManagedZipExtractorTests
     // disposing a manager deletes its folder, so each test here gets its own.
     private static TemporaryFileManager CreateTemporaryFileManager()
     {
-        var prefix = FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine($"NexusMods.Backend.Tests-{Guid.NewGuid()}");
+        var prefix = FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine($"SilverModManager.Backend.Tests-{Guid.NewGuid()}");
         return new TemporaryFileManager(FileSystem.Shared, prefix);
     }
 

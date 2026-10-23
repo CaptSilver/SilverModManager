@@ -1,7 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.TestFramework.Downloader;
+namespace SilverModManager.Games.TestFramework.Downloader;
 
 /// <summary>
 /// Metadata used for downloading mods from the FileSystem.

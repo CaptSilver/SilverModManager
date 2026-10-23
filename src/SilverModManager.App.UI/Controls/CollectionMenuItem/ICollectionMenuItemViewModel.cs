@@ -1,6 +1,6 @@
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Controls.CollectionMenuItem;
+namespace SilverModManager.App.UI.Controls.CollectionMenuItem;
 
 public interface ICollectionMenuItemViewModel : IViewModelInterface
 {

@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Hashes;
+namespace SilverModManager.Sdk.Hashes;
 
 [PublicAPI]
 public record struct MultiHash<THash1, THash2, THash3>(THash1 Hash1, THash2 Hash2, THash3 Hash3)

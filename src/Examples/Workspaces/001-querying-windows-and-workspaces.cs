@@ -1,5 +1,5 @@
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
 // ReSharper disable All
 
 namespace Examples.Workspaces;

@@ -1,14 +1,14 @@
 using System.Reactive.Linq;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI;
-using NexusMods.App.UI.Pages.Diagnostics;
+using SilverModManager.App.UI;
+using SilverModManager.App.UI.Pages.Diagnostics;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Support;
+using SilverModManager.Platform.Proton.Support;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 public class DiagnosticListSupportBundleTests(IServiceProvider provider) : AUiTest(provider)
 {

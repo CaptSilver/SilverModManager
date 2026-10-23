@@ -2,10 +2,10 @@ using System.Diagnostics.CodeAnalysis;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk.EventBus;
+using SilverModManager.Sdk.EventBus;
 using R3;
 
-namespace NexusMods.CLI;
+namespace SilverModManager.CLI;
 
 public sealed class EventBus : IEventBus, IDisposable
 {

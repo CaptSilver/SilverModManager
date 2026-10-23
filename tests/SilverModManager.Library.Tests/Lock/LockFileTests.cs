@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Library.Lock;
+using SilverModManager.Library.Lock;
 using Xunit;
 
-namespace NexusMods.Library.Tests.Lock;
+namespace SilverModManager.Library.Tests.Lock;
 
 public class LockFileTests
 {

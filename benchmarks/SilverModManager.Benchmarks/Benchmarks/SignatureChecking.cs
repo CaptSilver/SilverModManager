@@ -1,10 +1,10 @@
 using BenchmarkDotNet.Attributes;
-using NexusMods.Abstractions.FileExtractor;
-using NexusMods.Backend.FileExtractor.FileSignatures;
-using NexusMods.Benchmarks.Interfaces;
-using NexusMods.Sdk.FileExtractor;
+using SilverModManager.Abstractions.FileExtractor;
+using SilverModManager.Backend.FileExtractor.FileSignatures;
+using SilverModManager.Benchmarks.Interfaces;
+using SilverModManager.Sdk.FileExtractor;
 
-namespace NexusMods.Benchmarks.Benchmarks;
+namespace SilverModManager.Benchmarks.Benchmarks;
 
 [BenchmarkInfo("Signature Check", "Tests signature checker performance.")]
 [MemoryDiagnoser]

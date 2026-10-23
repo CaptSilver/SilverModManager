@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Deployment;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// Whether a loadout's mods only exist when the game is started through the app. Linked and copied files are

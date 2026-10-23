@@ -4,10 +4,10 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:workspaceSystem="clr-namespace:NexusMods.App.UI.WorkspaceSystem"
-                                xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
+                                xmlns:workspaceSystem="clr-namespace:SilverModManager.App.UI.WorkspaceSystem"
+                                xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
                                 mc:Ignorable="d" d:DesignHeight="36"
-                                x:Class="NexusMods.App.UI.WorkspaceSystem.AddPanelDropDownView">
+                                x:Class="SilverModManager.App.UI.WorkspaceSystem.AddPanelDropDownView">
     <Design.DataContext>
         <workspaceSystem:AddPanelDropDownDesignViewModel />
     </Design.DataContext>

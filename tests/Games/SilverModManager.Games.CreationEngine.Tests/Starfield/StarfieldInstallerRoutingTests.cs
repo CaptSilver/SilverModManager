@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Starfield;
+namespace SilverModManager.Games.CreationEngine.Tests.Starfield;
 
 /// <summary>Where Starfield's own installers put the common archive layouts.</summary>
 public class StarfieldInstallerRoutingTests(ITestOutputHelper helper)

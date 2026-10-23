@@ -2,10 +2,10 @@
 using Avalonia;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.DevelopmentBuildBanner;
+namespace SilverModManager.App.UI.Controls.DevelopmentBuildBanner;
 
 [UsedImplicitly]
 public partial class DevelopmentBuildBannerView : ReactiveUserControl<IDevelopmentBuildBannerViewModel>

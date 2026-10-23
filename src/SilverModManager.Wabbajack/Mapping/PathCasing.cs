@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Wabbajack.Mapping;
+namespace SilverModManager.Wabbajack.Mapping;
 
 /// <summary>
 /// Gives every path of a modlist one spelling. Lists are built on Windows, where <c>Mods\A</c> and <c>mods\a</c> are

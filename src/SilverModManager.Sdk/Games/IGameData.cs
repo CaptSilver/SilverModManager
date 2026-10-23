@@ -2,9 +2,9 @@ using System.Collections.Immutable;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 [PublicAPI]
 public interface IGameData

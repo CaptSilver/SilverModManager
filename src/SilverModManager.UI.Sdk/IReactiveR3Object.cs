@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using R3;
 
-namespace NexusMods.UI.Sdk;
+namespace SilverModManager.UI.Sdk;
 
 [PublicAPI]
 public interface IReactiveR3Object : ReactiveUI.IReactiveObject, IDisposable

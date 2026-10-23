@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Serialization.Attributes;
+using SilverModManager.Abstractions.Serialization.Attributes;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [PublicAPI]
 public sealed record WindowData

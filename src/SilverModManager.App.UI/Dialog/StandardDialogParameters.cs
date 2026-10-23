@@ -1,7 +1,7 @@
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Dialog;
+namespace SilverModManager.App.UI.Dialog;
 
 public struct StandardDialogParameters
 {

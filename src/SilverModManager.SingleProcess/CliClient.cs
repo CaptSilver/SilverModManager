@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
-using NexusMods.ProxyConsole;
-using NexusMods.SingleProcess.Exceptions;
+using SilverModManager.ProxyConsole;
+using SilverModManager.SingleProcess.Exceptions;
 using Spectre.Console;
 
-namespace NexusMods.SingleProcess;
+namespace SilverModManager.SingleProcess;
 
 /// <summary>
 /// Client helper for connecting to a CliServer and executing commands

@@ -1,4 +1,4 @@
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// Creates the lock that serialises launches of one game installation.

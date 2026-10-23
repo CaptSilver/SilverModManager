@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace NexusMods.Platform.Proton.Selftest;
+namespace SilverModManager.Platform.Proton.Selftest;
 
 /// <summary>
 /// A child process the selftest talks to line by line and may signal. Everything that waits has a timeout, so

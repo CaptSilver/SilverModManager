@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.Generic.Diagnostics;
-using NexusMods.Games.Generic.FileAnalyzers;
+using SilverModManager.Games.Generic.Diagnostics;
+using SilverModManager.Games.Generic.FileAnalyzers;
 
-namespace NexusMods.Games.Generic;
+namespace SilverModManager.Games.Generic;
 
 public static class Services
 {

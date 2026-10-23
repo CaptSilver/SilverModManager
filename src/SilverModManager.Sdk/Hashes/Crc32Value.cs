@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 using TransparentValueObjects;
 
-namespace NexusMods.Sdk.Hashes;
+namespace SilverModManager.Sdk.Hashes;
 
 /// <summary>
 /// A value representing a 32-bit Cyclic Redundancy Check (CRC) hash.

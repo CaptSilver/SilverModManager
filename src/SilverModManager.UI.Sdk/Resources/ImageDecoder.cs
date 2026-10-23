@@ -1,7 +1,7 @@
-using NexusMods.Sdk.Resources;
+using SilverModManager.Sdk.Resources;
 using SkiaSharp;
 
-namespace NexusMods.UI.Sdk.Resources;
+namespace SilverModManager.UI.Sdk.Resources;
 
 public sealed class ImageDecoder<TResourceIdentifier> : ANestedResourceLoader<TResourceIdentifier, SKBitmap, byte[]>
     where TResourceIdentifier : notnull

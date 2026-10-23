@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft.Saves;
+namespace SilverModManager.Games.FromSoft.Saves;
 
 /// <param name="MovedTo">Where the save went, absent when it was not in the folder.</param>
 /// <param name="Notes">What happened and what is left for the user, in order, including the Steam Cloud instructions.</param>

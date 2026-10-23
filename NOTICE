@@ -16,9 +16,13 @@ of their owners; the fork's name, icon and artwork are its own.
 What carried over and what did not
 ----------------------------------
 
-* The source code, the NexusMods.* project and namespace names, and the
-  developer notes under docs/developers are upstream's, kept so changes can
-  be merged across. Their names are provenance, not a claim to the brand.
+* The source code and the developer notes under docs/developers come from
+  upstream. The first-party projects and namespaces carry the fork's name
+  (SilverModManager.*). The third-party packages that keep upstream's
+  prefix are NexusMods.Paths, NexusMods.Hashing, NexusMods.Archives and
+  NexusMods.HyperDuck; they are used as published. A few stored names, such
+  as the ids of the downloaded game-hash database, also keep it because the
+  data they name was written under it.
 * Artwork that Nexus Mods wrote and that stays in the tree (placeholder
   images, pictograms) comes with the GPL-3.0-only code it shipped in. The
   license covers the files, not the Nexus Mods trademarks. The Nexus Mods
@@ -28,11 +32,8 @@ What carried over and what did not
   allows.
 * NexusMods.MnemonicDB (https://github.com/Nexus-Mods/NexusMods.MnemonicDB, tag v0.28.2, GPL-3.0-only),
   the database library the app stores its data in, is vendored as source under
-  src/NexusMods.MnemonicDB*. It was a NuGet package before; the databases it
-  wrote still open unchanged. Its license is in src/NexusMods.MnemonicDB/LICENSE.
-* The docs theme submodule (NexusMods.MkDocsMaterial.Themes.Next, GPL-3.0)
-  was dropped along with the documentation site it built. Its license text
-  is the GPL, the same as this project's.
+  src/SilverModManager.MnemonicDB*. It was a NuGet package before; the databases it
+  wrote still open unchanged. Its license is in src/SilverModManager.MnemonicDB/LICENSE.
 * Data from an installed Nexus Mods App is not imported. SilverModManager
   keeps its own data directory and does not read upstream's.
 

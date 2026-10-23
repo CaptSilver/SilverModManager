@@ -1,16 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Mutagen.Bethesda;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.CreationEngine.Tests.Creations;
-using NexusMods.Games.TestFramework;
-using NexusMods.Games.TestFramework.Helpers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.CreationEngine.Tests.Creations;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.TestFramework.Helpers;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Starfield;
+namespace SilverModManager.Games.CreationEngine.Tests.Starfield;
 
 /// <summary>
 /// Starfield Creations: the catalog keys are TM_ guids, the files sit in the game-root Data folder and there is

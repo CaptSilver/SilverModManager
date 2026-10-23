@@ -2,7 +2,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Data.Converters;
 
-namespace NexusMods.Themes.NexusFluentDark.Converters;
+namespace SilverModManager.Themes.NexusFluentDark.Converters;
 
 /// <summary>
 /// Converts the indent level of a TreeDataGrid item to a padding values for the first column.

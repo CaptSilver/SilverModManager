@@ -1,4 +1,4 @@
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// Interface for a transaction analyzer. These can be injected via DI and they will then be fed each database transaction

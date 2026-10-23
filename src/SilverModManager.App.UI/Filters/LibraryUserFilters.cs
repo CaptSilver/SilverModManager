@@ -1,10 +1,10 @@
 using DynamicData;
 using DynamicData.Alias;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Library;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 /// <summary>
 /// Filters for displaying the contents of the Library to the user.

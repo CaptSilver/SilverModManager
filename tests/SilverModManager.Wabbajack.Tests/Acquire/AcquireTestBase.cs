@@ -1,24 +1,24 @@
 using GameFinder.Wine;
-using SkyrimSe = NexusMods.Games.CreationEngine.SkyrimSE.SkyrimSE;
+using SkyrimSe = SilverModManager.Games.CreationEngine.SkyrimSE.SkyrimSE;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Library;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
-using NexusMods.Games.CreationEngine;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Tests.Fixtures;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Games.CreationEngine;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Tests.Fixtures;
 using NSubstitute;
 
-namespace NexusMods.Wabbajack.Tests.Acquire;
+namespace SilverModManager.Wabbajack.Tests.Acquire;
 
 /// <summary>
 /// A stubbed Skyrim SE install (game files from <see cref="StubGameFiles"/>, Documents in a throwaway prefix) with the

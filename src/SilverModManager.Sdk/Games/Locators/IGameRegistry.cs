@@ -1,9 +1,9 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 [PublicAPI]
 public interface IGameRegistry

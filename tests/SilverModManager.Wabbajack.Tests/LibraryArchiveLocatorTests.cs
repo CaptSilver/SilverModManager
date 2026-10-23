@@ -1,14 +1,14 @@
 using System.IO.Compression;
 using FluentAssertions;
-using NexusMods.Abstractions.Library;
+using SilverModManager.Abstractions.Library;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Library;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Library;
 
-namespace NexusMods.Wabbajack.Tests;
+namespace SilverModManager.Wabbajack.Tests;
 
 public class LibraryArchiveLocatorTests(ILibraryService libraryService, IConnection connection, ILibraryArchiveLocator locator, TemporaryFileManager temporaryFileManager)
 {

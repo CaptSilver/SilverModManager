@@ -4,7 +4,7 @@ using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
 using K4os.Compression.LZ4.Streams;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 internal sealed class Tes5ArchiveEntry : IBethesdaArchiveEntry
 {

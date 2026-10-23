@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Downloads;
+using SilverModManager.Abstractions.Downloads;
 
-namespace NexusMods.Abstractions.NexusModsLibrary;
+namespace SilverModManager.Abstractions.NexusModsLibrary;
 
 /// <summary>
 /// Represents an NXM download.

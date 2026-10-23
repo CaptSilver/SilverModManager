@@ -1,4 +1,4 @@
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// A marker attribute for functions that are internal to the MnemonicDB, used mostly for schema updates

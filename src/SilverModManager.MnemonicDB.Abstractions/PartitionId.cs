@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using TransparentValueObjects;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 /// Represents a partition id

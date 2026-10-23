@@ -1,10 +1,10 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Controls.Trees.Common;
+using SilverModManager.App.UI.Controls.Trees.Common;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.Preview;
+namespace SilverModManager.Games.AdvancedInstaller.UI.Preview;
 
 [ExcludeFromCodeCoverage]
 public partial class PreviewTreeEntryView : ReactiveUserControl<IPreviewTreeEntryViewModel>

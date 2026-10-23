@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace NexusMods.MnemonicDB.Abstractions.ElementComparers;
+namespace SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
 /// <summary>
 /// A null value, used to represent a null as a value. This is mostly used for

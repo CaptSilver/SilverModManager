@@ -1,12 +1,12 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls;assembly=NexusMods.App.UI"
-                    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+                    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls;assembly=SilverModManager.App.UI"
+                    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
                     xmlns:sys="clr-namespace:System;assembly=System.Runtime"
                     x:ClassModifier="internal">
 
     <!--
-    Control Theme for our StandardButton (src/NexusMods.App.UI/Controls/StandardButton.cs) which is based on the default 
+    Control Theme for our StandardButton (src/SilverModManager.App.UI/Controls/StandardButton.cs) which is based on the default 
     Avalonia Button. This allows us to set properties like Type, Fill, Size and ShowIcon to get the desired button style 
     to exactly match Figma.
     -->

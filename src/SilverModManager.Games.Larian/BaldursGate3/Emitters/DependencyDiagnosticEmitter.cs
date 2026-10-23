@@ -2,28 +2,28 @@ using System.Runtime.CompilerServices;
 using System.Xml;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Abstractions.Diagnostics.Values;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Games.Generic;
-using NexusMods.Games.Larian.BaldursGate3.Utils;
-using NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Diagnostics.Values;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Games.Generic;
+using SilverModManager.Games.Larian.BaldursGate3.Utils;
+using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Games.Larian.BaldursGate3.Utils.PakParsing;
+using SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
 using Polly;
-using NexusMods.Sdk.Resources;
+using SilverModManager.Sdk.Resources;
 
-namespace NexusMods.Games.Larian.BaldursGate3.Emitters;
+namespace SilverModManager.Games.Larian.BaldursGate3.Emitters;
 
 public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
 {

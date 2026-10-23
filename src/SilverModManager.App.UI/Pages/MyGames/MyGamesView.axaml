@@ -2,21 +2,21 @@
     d:DesignHeight="700"
     d:DesignWidth="800"
     mc:Ignorable="d"
-    x:Class="NexusMods.App.UI.Pages.MyGames.MyGamesView"
+    x:Class="SilverModManager.App.UI.Pages.MyGames.MyGamesView"
     x:TypeArguments="myGames:IMyGamesViewModel"
     xmlns="https://github.com/avaloniaui"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactiveUi="http://reactiveui.net"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
-    xmlns:myGames="clr-namespace:NexusMods.App.UI.Pages.MyGames"
-    xmlns:gameWidget="clr-namespace:NexusMods.App.UI.Controls.GameWidget"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+    xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
+    xmlns:myGames="clr-namespace:SilverModManager.App.UI.Pages.MyGames"
+    xmlns:gameWidget="clr-namespace:SilverModManager.App.UI.Controls.GameWidget"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
     xmlns:panels="clr-namespace:Avalonia.Labs.Panels;assembly=Avalonia.Labs.Panels"
-    xmlns:pageHeader="clr-namespace:NexusMods.App.UI.Controls.PageHeader"
-    xmlns:sdk="clr-namespace:NexusMods.UI.Sdk;assembly=NexusMods.UI.Sdk">
+    xmlns:pageHeader="clr-namespace:SilverModManager.App.UI.Controls.PageHeader"
+    xmlns:sdk="clr-namespace:SilverModManager.UI.Sdk;assembly=SilverModManager.UI.Sdk">
 
     <Design.DataContext>
         <myGames:MyGamesDesignViewModel />

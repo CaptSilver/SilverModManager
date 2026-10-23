@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using TransparentValueObjects;
 
-namespace NexusMods.Abstractions.Diagnostics;
+namespace SilverModManager.Abstractions.Diagnostics;
 
 /// <summary>
 /// Represents a message of a diagnostic.

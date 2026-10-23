@@ -1,4 +1,4 @@
-﻿namespace NexusMods.MnemonicDB.Abstractions.Models;
+﻿namespace SilverModManager.MnemonicDB.Abstractions.Models;
 
 /// <summary>
 /// Marker interface for model definitions, this triggers the soruce generator to generate the model

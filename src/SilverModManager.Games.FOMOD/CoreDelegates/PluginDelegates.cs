@@ -1,7 +1,7 @@
 using FomodInstaller.Interface;
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.Games.FOMOD.CoreDelegates;
+namespace SilverModManager.Games.FOMOD.CoreDelegates;
 
 // TODO: This entire class needs to be implemented properly.
 // See this for usages: https://github.com/Nexus-Mods/fomod-installer/blob/bfd8d4dee8e6e75c450d1b8bb5f66f243ab5d1ca/InstallScripting/XmlScript/PluginCondition.cs#L99-L105

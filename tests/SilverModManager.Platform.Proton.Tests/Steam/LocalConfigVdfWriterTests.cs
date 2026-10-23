@@ -1,12 +1,12 @@
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 using SteamKit2;
 
-namespace NexusMods.Platform.Proton.Tests.Steam;
+namespace SilverModManager.Platform.Proton.Tests.Steam;
 
 public class LocalConfigVdfWriterTests : IDisposable
 {

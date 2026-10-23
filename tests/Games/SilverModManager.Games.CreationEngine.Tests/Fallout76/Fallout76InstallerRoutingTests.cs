@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Fallout76;
+namespace SilverModManager.Games.CreationEngine.Tests.Fallout76;
 
 /// <summary>
 /// Fallout 76 mods are almost always one .ba2, often inside a folder named after the mod. The game has no

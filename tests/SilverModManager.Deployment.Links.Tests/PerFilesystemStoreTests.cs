@@ -1,18 +1,18 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.GC;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Deployment.Links.Tests.Fixtures;
-using NexusMods.Deployment.Links.Backends;
-using NexusMods.Deployment.Staging;
-using NexusMods.DataModel.Synchronizer;
+using SilverModManager.Abstractions.GC;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Deployment.Links.Tests.Fixtures;
+using SilverModManager.Deployment.Links.Backends;
+using SilverModManager.Deployment.Staging;
+using SilverModManager.DataModel.Synchronizer;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Links.Tests;
+namespace SilverModManager.Deployment.Links.Tests;
 
 /// <summary>
 /// Reads devices from the real filesystems, but puts "the root of the other filesystem" in a directory the test

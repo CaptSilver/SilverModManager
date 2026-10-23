@@ -3,7 +3,7 @@ using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
 using K4os.Compression.LZ4;
 using K4os.Compression.LZ4.Streams;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// The codecs the archive formats use and the stream helpers a builder needs around them.

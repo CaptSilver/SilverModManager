@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Networking.Thunderstore.DTOs;
+namespace SilverModManager.Networking.Thunderstore.DTOs;
 
 /// <summary>
 /// A package from the experimental package endpoint. It carries only the newest version, not a version list.

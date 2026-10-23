@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
-        <ProjectReference Include="..\..\..\src\NexusMods.Games.Bethesda.Archives\NexusMods.Games.Bethesda.Archives.csproj" />
+        <ProjectReference Include="..\..\..\src\SilverModManager.Games.Bethesda.Archives\SilverModManager.Games.Bethesda.Archives.csproj" />
     </ItemGroup>
 </Project>

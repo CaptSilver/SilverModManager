@@ -4,13 +4,13 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Backend.Process;
+using SilverModManager.Backend.Process;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.Backend.Tests.OS;
+namespace SilverModManager.Backend.Tests.OS;
 
 /// <summary>
 /// A tool probe whose process ignores interrupts, with a child that does too, must still end: the real runner

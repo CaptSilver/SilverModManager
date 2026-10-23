@@ -1,7 +1,7 @@
 using NexusMods.Paths;
 using SteamKit2;
 
-namespace NexusMods.Sdk.Steam;
+namespace SilverModManager.Sdk.Steam;
 
 public static class VdfFile
 {

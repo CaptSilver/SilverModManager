@@ -1,8 +1,8 @@
-using NexusMods.Games.Bethesda.Loot.Metadata;
-using NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
-using static NexusMods.Games.Bethesda.Loot.Tests.Metadata.TestNames;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
+using static SilverModManager.Games.Bethesda.Loot.Tests.Metadata.TestNames;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Yaml;
 
 // libloot's try_from_yaml tests for each metadata type. The invalid condition and constraint cases
 // are in ConditionValidationTests.

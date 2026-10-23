@@ -1,7 +1,7 @@
 ﻿
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.Preview;
+namespace SilverModManager.Games.AdvancedInstaller.UI.Preview;
 
 public class PreviewTreeEntryDesignViewModel() : PreviewTreeEntryViewModel(
     new GamePath(LocationId.Game, "Data/Textures/texture.dds"),

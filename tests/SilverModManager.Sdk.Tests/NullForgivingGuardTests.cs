@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 /// <summary>
 /// Nullable warnings already fail the build in <c>src</c>, so the way a null still reaches a crash is
@@ -13,7 +13,7 @@ namespace NexusMods.Sdk.Tests;
 /// <c>NullForgivingBaseline.txt</c>: a file's count may go down but never up, and a new file starts at zero.
 /// <para>
 /// After removing suppressions, rewrite the baseline with
-/// <c>UPDATE_NULL_FORGIVING_BASELINE=1 scripts/test.sh --project tests/NexusMods.Sdk.Tests --filter-class NexusMods.Sdk.Tests.NullForgivingGuardTests</c>
+/// <c>UPDATE_NULL_FORGIVING_BASELINE=1 scripts/test.sh --project tests/SilverModManager.Sdk.Tests --filter-class SilverModManager.Sdk.Tests.NullForgivingGuardTests</c>
 /// and commit the diff. The update refuses to raise a count.
 /// </para>
 /// </summary>
@@ -21,7 +21,7 @@ public class NullForgivingGuardTests
 {
     private const string UpdateVariable = "UPDATE_NULL_FORGIVING_BASELINE";
 
-    private static string BaselinePath(string root) => Path.Combine(root, "tests", "NexusMods.Sdk.Tests", "NullForgivingBaseline.txt");
+    private static string BaselinePath(string root) => Path.Combine(root, "tests", "SilverModManager.Sdk.Tests", "NullForgivingBaseline.txt");
 
     /// <summary>
     /// Line numbers of every null-forgiving operator in <paramref name="source"/>. Code in an inactive

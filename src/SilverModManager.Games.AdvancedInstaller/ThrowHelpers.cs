@@ -1,8 +1,8 @@
-using NexusMods.Games.AdvancedInstaller.Exceptions;
+using SilverModManager.Games.AdvancedInstaller.Exceptions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.AdvancedInstaller;
+namespace SilverModManager.Games.AdvancedInstaller;
 
 /// <summary>
 /// Helpers for throwing methods with high performance.

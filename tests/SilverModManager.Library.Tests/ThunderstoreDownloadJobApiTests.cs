@@ -1,16 +1,16 @@
 using System.Security.Cryptography;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Backend;
-using NexusMods.Library.Tests.DownloadsService;
-using NexusMods.Networking.Thunderstore;
-using NexusMods.Networking.Thunderstore.Tests.Fixtures;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Thunderstore;
+using SilverModManager.Backend;
+using SilverModManager.Library.Tests.DownloadsService;
+using SilverModManager.Networking.Thunderstore;
+using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Thunderstore;
 using Xunit;
 
-namespace NexusMods.Library.Tests;
+namespace SilverModManager.Library.Tests;
 
 /// <summary>
 /// Runs the job through the overload the app uses: the registered <see cref="IThunderstoreApi"/> and

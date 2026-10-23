@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Resources;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.IO;
+namespace SilverModManager.Sdk.IO;
 
 /// <summary>
 /// A Stream Factory that's backed by an embedded resource.

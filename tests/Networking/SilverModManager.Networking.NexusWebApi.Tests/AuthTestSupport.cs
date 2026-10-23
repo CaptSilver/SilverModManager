@@ -1,15 +1,15 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Networking.NexusWebApi.Auth;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Networking.NexusWebApi.Auth;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 using R3;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 /// <summary>
 /// The credential tests share the process environment (NEXUS_API_KEY), so they run in a single

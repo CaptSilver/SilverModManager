@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using TransparentValueObjects;
 
-namespace NexusMods.Sdk.Jobs;
+namespace SilverModManager.Sdk.Jobs;
 
 /// <summary>
 /// Represents the ID of a job.

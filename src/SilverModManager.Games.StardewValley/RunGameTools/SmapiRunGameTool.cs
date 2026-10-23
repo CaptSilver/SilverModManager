@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Games;
+using SilverModManager.Abstractions.Games;
 
-namespace NexusMods.Games.StardewValley.RunGameTools;
+namespace SilverModManager.Games.StardewValley.RunGameTools;
 
 /// <summary>
 /// This is to run the game or SMAPI using the shell, which allows them to start their own console,

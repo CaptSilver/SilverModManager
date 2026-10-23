@@ -1,24 +1,24 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Secrets;
-using NexusMods.Abstractions.Serialization;
-using NexusMods.Backend;
-using NexusMods.CrossPlatform;
-using NexusMods.DataModel;
-using NexusMods.FileExtractor;
-using NexusMods.Games.FileHashes;
-using NexusMods.Library;
-using NexusMods.Networking.HttpDownloader;
-using NexusMods.Networking.HttpDownloader.Tests;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Secrets;
+using SilverModManager.Abstractions.Serialization;
+using SilverModManager.Backend;
+using SilverModManager.CrossPlatform;
+using SilverModManager.DataModel;
+using SilverModManager.FileExtractor;
+using SilverModManager.Games.FileHashes;
+using SilverModManager.Library;
+using SilverModManager.Networking.HttpDownloader;
+using SilverModManager.Networking.HttpDownloader.Tests;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Settings;
 using Xunit.DependencyInjection.Logging;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 public class Startup
 {

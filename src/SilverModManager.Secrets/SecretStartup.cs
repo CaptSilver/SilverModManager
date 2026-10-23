@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Secrets.Migration;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Secrets.Migration;
 
-namespace NexusMods.Secrets;
+namespace SilverModManager.Secrets;
 
 /// <summary>
 /// The warm-up a process runs once at start: look at the store, move credentials from where older versions

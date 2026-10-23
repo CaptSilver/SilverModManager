@@ -1,11 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Paths;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.SingleProcess;
-using Table = NexusMods.Sdk.ProxyConsole.Table;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.SingleProcess;
+using Table = SilverModManager.Sdk.ProxyConsole.Table;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 /// <summary>
 /// <c>silvermod wabbajack inspect</c> over the checked-in real modlist. The verb only reads the file, so the

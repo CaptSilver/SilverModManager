@@ -1,22 +1,22 @@
 using System.Collections.Frozen;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Steam;
-using NexusMods.App.UI.DiagnosticSystem;
-using NexusMods.Backend;
-using NexusMods.Games.FileHashes;
-using NexusMods.Games.TestFramework.Helpers;
-using NexusMods.Networking.Steam;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Backend;
+using SilverModManager.Games.FileHashes;
+using SilverModManager.Games.TestFramework.Helpers;
+using SilverModManager.Networking.Steam;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using Xunit;
 
-namespace NexusMods.Games.TestFramework;
+namespace SilverModManager.Games.TestFramework;
 
 /// <summary>
 /// A game found the way the app finds it on the dev machine: the real Steam locator reads an app manifest from

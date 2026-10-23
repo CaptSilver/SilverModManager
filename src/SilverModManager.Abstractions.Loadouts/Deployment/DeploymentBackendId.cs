@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Loadouts.Deployment;
+namespace SilverModManager.Abstractions.Loadouts.Deployment;
 
 /// <summary>
 /// Names a deployment backend. The value is persisted in plan rows, so it must stay stable.

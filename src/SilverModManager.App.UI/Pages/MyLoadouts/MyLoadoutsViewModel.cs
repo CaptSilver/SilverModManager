@@ -2,17 +2,17 @@ using System.Collections.ObjectModel;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using DynamicData;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Pages.MyLoadouts.GameLoadoutsSectionEntry;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk.Icons;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Pages.MyLoadouts.GameLoadoutsSectionEntry;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.MyLoadouts;
+namespace SilverModManager.App.UI.Pages.MyLoadouts;
 
 public class MyLoadoutsViewModel : APageViewModel<IMyLoadoutsViewModel>, IMyLoadoutsViewModel
 {

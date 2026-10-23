@@ -1,21 +1,21 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.HyperDuck;
 using NexusMods.HyperDuck.Adaptor.Impls.ValueAdaptor;
 using NexusMods.HyperDuck.BindingConverters;
-using NexusMods.MnemonicDB;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Storage;
-using NexusMods.MnemonicDB.Storage.RocksDbBackend;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.Loadouts;
-using Connection = NexusMods.MnemonicDB.Connection;
+using SilverModManager.MnemonicDB;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.Loadouts;
+using Connection = SilverModManager.MnemonicDB.Connection;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 /// <summary>
 /// A service provider with the real query engine and the hash models, and nothing else: no settings

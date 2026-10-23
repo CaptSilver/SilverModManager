@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using FluentAssertions;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Platform.Proton.Tests.Steam;
+namespace SilverModManager.Platform.Proton.Tests.Steam;
 
 public class SteamLaunchOptionLineTests : IDisposable
 {

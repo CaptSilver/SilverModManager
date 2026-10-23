@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using JetBrains.Annotations;
 
-namespace NexusMods.App.Generators.Diagnostics;
+namespace SilverModManager.App.Generators.Diagnostics;
 
 [PublicAPI]
 public sealed class CodeWriter

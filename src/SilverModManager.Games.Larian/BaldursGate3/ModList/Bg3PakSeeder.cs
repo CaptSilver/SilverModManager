@@ -1,11 +1,11 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Larian.BaldursGate3.GameInstalled;
-using NexusMods.Games.Larian.BaldursGate3.Models;
-using NexusMods.Games.Larian.BaldursGate3.SortOrder;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.BaldursGate3.Models;
+using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Games.Larian.BaldursGate3.ModList;
+namespace SilverModManager.Games.Larian.BaldursGate3.ModList;
 
 /// <summary>
 /// Fills a loadout's pak order once, from the mod list the game already has on disk, so the first Apply writes

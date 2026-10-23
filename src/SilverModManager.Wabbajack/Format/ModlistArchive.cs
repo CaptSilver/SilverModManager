@@ -1,7 +1,7 @@
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Wabbajack.Format;
+namespace SilverModManager.Wabbajack.Format;
 
 /// <summary>
 /// Reads the members of a <c>.wabbajack</c> file after it was added to the library. The file is a zip, so adding it

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace NexusMods.Networking.EpicGameStore;
+namespace SilverModManager.Networking.EpicGameStore;
 
 public static class Services
 {

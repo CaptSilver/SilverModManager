@@ -2,14 +2,14 @@
 using System.Reactive;
 using DynamicData.Kernel;
 
-using NexusMods.App.UI.Helpers;
-using NexusMods.App.UI.Helpers.TreeDataGrid;
-using NexusMods.Games.AdvancedInstaller.UI.ModContent;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Helpers;
+using SilverModManager.App.UI.Helpers.TreeDataGrid;
+using SilverModManager.Games.AdvancedInstaller.UI.ModContent;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.Preview;
+namespace SilverModManager.Games.AdvancedInstaller.UI.Preview;
 
 /// <summary>
 ///     Represents an individual tree entry in the Preview section.

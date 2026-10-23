@@ -6,22 +6,22 @@ using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Helpers;
-using NexusMods.App.UI.LeftMenu.Items;
-using NexusMods.App.UI.Pages.Downloads;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Helpers;
+using SilverModManager.App.UI.LeftMenu.Items;
+using SilverModManager.App.UI.Pages.Downloads;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.NexusModsApi;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 using R3;
 
-namespace NexusMods.App.UI.LeftMenu.Downloads;
+namespace SilverModManager.App.UI.LeftMenu.Downloads;
 
 [UsedImplicitly]
 public class DownloadsLeftMenuViewModel : AViewModel<IDownloadsLeftMenuViewModel>, IDownloadsLeftMenuViewModel

@@ -1,16 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Backend;
-using NexusMods.Games.FOMOD;
-using NexusMods.Games.TestFramework;
-using NexusMods.Games.CreationEngine.Tests.Morrowind.OpenMw;
-using NexusMods.Sdk;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Backend;
+using SilverModManager.Games.FOMOD;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
+using SilverModManager.Sdk;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.CreationEngine.Tests;
+namespace SilverModManager.Games.CreationEngine.Tests;
 
 public class Startup
 {

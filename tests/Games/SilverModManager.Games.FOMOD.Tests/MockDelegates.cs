@@ -3,7 +3,7 @@ using FomodInstaller.Interface.ui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.Games.FOMOD.Tests;
+namespace SilverModManager.Games.FOMOD.Tests;
 
 public class PluginDelegates : IPluginDelegates
 {

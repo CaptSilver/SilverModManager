@@ -1,8 +1,8 @@
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.App.UI.Pages.Wabbajack;
+namespace SilverModManager.App.UI.Pages.Wabbajack;
 
 /// <summary>One line of the archive table.</summary>
 public sealed record WabbajackArchiveRow(ArchivePlanRow Plan)

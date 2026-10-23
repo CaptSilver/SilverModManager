@@ -1,8 +1,8 @@
 using System.Runtime.CompilerServices;
-using NexusMods.Sdk.ProxyConsole;
-using Table = NexusMods.Sdk.ProxyConsole.Table;
+using SilverModManager.Sdk.ProxyConsole;
+using Table = SilverModManager.Sdk.ProxyConsole.Table;
 
-namespace NexusMods.Abstractions.Cli;
+namespace SilverModManager.Abstractions.Cli;
 
 /// <summary>
 /// Extensions to the <see cref="IRenderer"/> interface to make rendering easier and to do common converssions

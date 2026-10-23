@@ -6,7 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <InternalsVisibleTo Include="NexusMods.Networking.GOG.Tests" />
+      <InternalsVisibleTo Include="SilverModManager.Networking.GOG.Tests" />
     </ItemGroup>
 
     <ItemGroup>
@@ -14,16 +14,16 @@
       <PackageReference Include="Microsoft.AspNetCore.WebUtilities" />
       <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
       <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
-      <ProjectReference Include="..\NexusMods.MnemonicDB.Abstractions\NexusMods.MnemonicDB.Abstractions.csproj" />
-      <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+      <ProjectReference Include="..\SilverModManager.MnemonicDB.Abstractions\SilverModManager.MnemonicDB.Abstractions.csproj" />
+      <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
       <PackageReference Include="Polly.Core" />
       <PackageReference Include="SmartFormat" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.Abstractions.Cli\NexusMods.Abstractions.Cli.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.GOG\NexusMods.Abstractions.GOG.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.Secrets\NexusMods.Abstractions.Secrets.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Cli\SilverModManager.Abstractions.Cli.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.GOG\SilverModManager.Abstractions.GOG.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Secrets\SilverModManager.Abstractions.Secrets.csproj" />
     </ItemGroup>
 
 </Project>

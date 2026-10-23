@@ -1,7 +1,7 @@
-namespace NexusMods.Games.FromSoft.Me3;
+namespace SilverModManager.Games.FromSoft.Me3;
 
 /// <summary>
-/// The names that have a meaning inside <see cref="NexusMods.Sdk.Games.LocationId.Me3Mods"/>. A mod package is a
+/// The names that have a meaning inside <see cref="SilverModManager.Sdk.Games.LocationId.Me3Mods"/>. A mod package is a
 /// folder there named after its id, so the folders below that the app uses itself cannot be package ids.
 /// </summary>
 public static class Me3ModsLayout

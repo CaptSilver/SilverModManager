@@ -1,13 +1,13 @@
 using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Backend.Games;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Backend.Games;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Backend.Tests.Games;
+namespace SilverModManager.Backend.Tests.Games;
 
 /// <summary>
 /// A store whose files sit on a drive that is gone must cost the user that store's games and nothing else.

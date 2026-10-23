@@ -2,9 +2,9 @@ using System.Diagnostics;
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Abstractions.Collections.Json;
+namespace SilverModManager.Abstractions.Collections.Json;
 
 /// <summary>
 /// Vortex-style rules between two items.

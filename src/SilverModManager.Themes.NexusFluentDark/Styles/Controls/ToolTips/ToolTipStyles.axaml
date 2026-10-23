@@ -1,6 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:extensions="clr-namespace:NexusMods.Themes.NexusFluentDark.Extensions"
+        xmlns:extensions="clr-namespace:SilverModManager.Themes.NexusFluentDark.Extensions"
         xmlns:system="clr-namespace:System;assembly=System.Runtime">
     <Design.PreviewWith>
         <Border Width="500" Height="300" Padding="16">

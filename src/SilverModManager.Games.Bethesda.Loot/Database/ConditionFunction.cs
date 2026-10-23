@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Database;
+namespace SilverModManager.Games.Bethesda.Loot.Database;
 
 // Follows loot-condition-interpreter's function/mod.rs (Function, ComparisonOperator).
 

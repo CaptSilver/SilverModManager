@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.SkyrimFamily;
+namespace SilverModManager.Games.CreationEngine.Tests.SkyrimFamily;
 
 /// <summary>Where SkyrimLE's own installers put the common archive layouts.</summary>
 public class SkyrimLEInstallerRoutingTests(ITestOutputHelper helper)

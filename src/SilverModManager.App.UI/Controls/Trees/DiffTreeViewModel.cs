@@ -2,19 +2,19 @@ using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using DynamicData;
 using Humanizer.Bytes;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Files.Diff;
-using NexusMods.App.UI.Controls.Trees.Files;
-using NexusMods.App.UI.Helpers.TreeDataGrid;
-using NexusMods.App.UI.Resources;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Files.Diff;
+using SilverModManager.App.UI.Controls.Trees.Files;
+using SilverModManager.App.UI.Helpers.TreeDataGrid;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths.Trees.Traits;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Trees;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Trees;
+using SilverModManager.UI.Sdk;
 
-namespace NexusMods.App.UI.Controls.Trees;
+namespace SilverModManager.App.UI.Controls.Trees;
 
 public class DiffTreeViewModel : AViewModel<IFileTreeViewModel>, IFileTreeViewModel
 {

@@ -1,4 +1,4 @@
-﻿namespace NexusMods.App.UI.Overlays.Login;
+﻿namespace SilverModManager.App.UI.Overlays.Login;
 
 public interface INexusLoginOverlayViewModel : IOverlayViewModel
 {

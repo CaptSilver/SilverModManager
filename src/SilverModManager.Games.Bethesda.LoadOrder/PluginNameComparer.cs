@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.LoadOrder;
+namespace SilverModManager.Games.Bethesda.LoadOrder;
 
 /// <summary>
 /// The comparer for every plugin-name lookup. The games and libloadorder match names

@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Deployment.Fuse.Availability;
-using NexusMods.Deployment.Fuse.Mount;
-using NexusMods.Deployment.Fuse.Native;
-using NexusMods.Deployment.Vfs;
+using SilverModManager.Deployment.Fuse.Availability;
+using SilverModManager.Deployment.Fuse.Mount;
+using SilverModManager.Deployment.Fuse.Native;
+using SilverModManager.Deployment.Vfs;
 
-namespace NexusMods.Deployment.Fuse.Kernel;
+namespace SilverModManager.Deployment.Fuse.Kernel;
 
 /// <summary>
 /// Mounts an <see cref="IVfsOperations"/> through libfuse3's low-level API. The library is bound by hand

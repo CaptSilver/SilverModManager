@@ -1,10 +1,10 @@
 using System.Runtime.InteropServices;
-using NexusMods.Abstractions.GOG.DTOs;
-using NexusMods.Abstractions.GOG.Values;
-using NexusMods.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.GOG.DTOs;
+using SilverModManager.Abstractions.GOG.Values;
+using SilverModManager.Abstractions.NexusWebApi.Types;
 using NexusMods.Paths;
 
-namespace NexusMods.Abstractions.GOG;
+namespace SilverModManager.Abstractions.GOG;
 
 /// <summary>
 /// Interface for the GOG API client.

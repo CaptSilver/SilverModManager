@@ -1,7 +1,7 @@
 using FluentAssertions;
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Vfs.Tests;
+namespace SilverModManager.Deployment.Vfs.Tests;
 
 public class BackingScannerTests : IDisposable
 {

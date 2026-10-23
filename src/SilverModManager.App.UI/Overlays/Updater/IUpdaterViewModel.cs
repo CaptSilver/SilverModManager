@@ -1,7 +1,7 @@
-﻿using NexusMods.Sdk;
+﻿using SilverModManager.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Overlays.Updater;
+namespace SilverModManager.App.UI.Overlays.Updater;
 
 public interface IUpdaterViewModel : IOverlayViewModel
 {

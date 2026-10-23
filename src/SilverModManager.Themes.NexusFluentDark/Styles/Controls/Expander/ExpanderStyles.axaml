@@ -1,6 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk">
+        xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk">
     <Design.PreviewWith>
         <Border Padding="8" Width="500">
             <StackPanel>
@@ -43,7 +43,7 @@
     </Design.PreviewWith>
 
     <!-- not currently used as we now have a custom Expander control theme located at 
-    src/NexusMods.Themes.NexusFluentDark/Controls/Expander.axaml -->
+    src/SilverModManager.Themes.NexusFluentDark/Controls/Expander.axaml -->
     
     <Style Selector="Expander" />
 

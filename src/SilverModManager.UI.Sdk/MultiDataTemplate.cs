@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 
-namespace NexusMods.UI.Sdk;
+namespace SilverModManager.UI.Sdk;
 
 public class MultiDataTemplate : IDataTemplate
 {

@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Networking.HttpDownloader.Tests;
+namespace SilverModManager.Networking.HttpDownloader.Tests;
 
 public class Startup
 {
@@ -12,7 +12,7 @@ public class Startup
     {
         var prefix = FileSystem.Shared
             .GetKnownPath(KnownPath.EntryDirectory)
-            .Combine($"NexusMods.Networking.HttpDownloader.Tests-{Guid.NewGuid()}");
+            .Combine($"SilverModManager.Networking.HttpDownloader.Tests-{Guid.NewGuid()}");
 
         container
             .AddDefaultServicesForTesting(prefix)

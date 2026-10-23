@@ -1,10 +1,10 @@
 using System;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.Query;
-using NexusMods.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.MnemonicDB.Storage;
 
-namespace NexusMods.MnemonicDB.InternalTxFunctions;
+namespace SilverModManager.MnemonicDB.InternalTxFunctions;
 
 internal class ScanUpdate : AInternalFn
 {

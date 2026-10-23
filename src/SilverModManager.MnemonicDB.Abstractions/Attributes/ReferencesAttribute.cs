@@ -1,8 +1,8 @@
 ﻿using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
-namespace NexusMods.MnemonicDB.Abstractions.Attributes;
+namespace SilverModManager.MnemonicDB.Abstractions.Attributes;
 
 /// <summary>
 /// Represents a collection of references to other entities.

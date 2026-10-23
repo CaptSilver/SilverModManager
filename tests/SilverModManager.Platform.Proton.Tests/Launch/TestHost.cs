@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace NexusMods.Platform.Proton.Tests.Launch;
+namespace SilverModManager.Platform.Proton.Tests.Launch;
 
 /// <summary>
 /// Runs the silvermod-testhost helper, which owns every scenario that needs a second process.

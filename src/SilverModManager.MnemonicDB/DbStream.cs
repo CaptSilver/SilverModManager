@@ -2,9 +2,9 @@ using System;
 using System.Collections.Immutable;
 using System.Reactive;
 using System.Threading;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.MnemonicDB;
+namespace SilverModManager.MnemonicDB;
 
 /// <summary>
 /// Represents an observable stream of database changes, a IObservable of IDb changes that never goes backwards or repeats transactions

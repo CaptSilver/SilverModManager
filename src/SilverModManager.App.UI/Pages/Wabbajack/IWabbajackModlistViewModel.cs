@@ -1,10 +1,10 @@
 using System.Reactive;
 using Avalonia.Media.Imaging;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Library;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Library;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Wabbajack;
+namespace SilverModManager.App.UI.Pages.Wabbajack;
 
 /// <summary>
 /// A modlist file of the library: what is in it, what is still missing for it, and the install into a loadout.

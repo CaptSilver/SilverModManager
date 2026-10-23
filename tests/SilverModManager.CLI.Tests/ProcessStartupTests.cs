@@ -5,13 +5,13 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
-using NexusMods.App;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk;
-using NexusMods.SingleProcess;
-using NexusMods.SingleProcess.Exceptions;
+using SilverModManager.App;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
+using SilverModManager.SingleProcess;
+using SilverModManager.SingleProcess.Exceptions;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 public class ProcessStartupTests
 {

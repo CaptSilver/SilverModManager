@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Deployment.Fuse.Kernel;
+using SilverModManager.Deployment.Fuse.Kernel;
 
-namespace NexusMods.Deployment.Fuse.Tests.Kernel;
+namespace SilverModManager.Deployment.Fuse.Tests.Kernel;
 
 public class MountTableTests
 {

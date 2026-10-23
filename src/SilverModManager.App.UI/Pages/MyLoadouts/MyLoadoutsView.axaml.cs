@@ -3,7 +3,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.MyLoadouts;
+namespace SilverModManager.App.UI.Pages.MyLoadouts;
 
 public partial class MyLoadoutsView : ReactiveUserControl<IMyLoadoutsViewModel>
 {

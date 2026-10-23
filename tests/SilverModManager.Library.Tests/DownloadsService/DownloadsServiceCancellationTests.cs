@@ -2,14 +2,14 @@ using System.Reactive.Disposables;
 using DynamicData;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Downloads;
-using NexusMods.Library.Tests.DownloadsService.Helpers;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.Library.Tests.DownloadsService.Helpers;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.NexusModsApi;
 using Xunit;
-using SyncHelpers = NexusMods.Library.Tests.DownloadsService.Helpers.SynchronizationHelpers;
+using SyncHelpers = SilverModManager.Library.Tests.DownloadsService.Helpers.SynchronizationHelpers;
 
-namespace NexusMods.Library.Tests.DownloadsService;
+namespace SilverModManager.Library.Tests.DownloadsService;
 
 public class DownloadsServiceCancellationTests(
     IJobMonitor jobMonitor,

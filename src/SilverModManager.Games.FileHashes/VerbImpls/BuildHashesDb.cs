@@ -2,33 +2,33 @@ using System.IO.Compression;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.EpicGameStore.Values;
-using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.GOG.DTOs;
-using NexusMods.Abstractions.GOG.Values;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Abstractions.Steam.DTOs;
-using NexusMods.Abstractions.Steam.Values;
-using NexusMods.Games.FileHashes.DTOs;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.EpicGameStore.Values;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.GOG.DTOs;
+using SilverModManager.Abstractions.GOG.Values;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Abstractions.Steam.DTOs;
+using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.Games.FileHashes.DTOs;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
-using NexusMods.MnemonicDB;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Storage;
-using NexusMods.Networking.EpicGameStore.DTOs.EgData;
+using SilverModManager.MnemonicDB;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Storage;
+using SilverModManager.Networking.EpicGameStore.DTOs.EgData;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.ProxyConsole;
 using YamlDotNet.Serialization;
-using Build = NexusMods.Networking.EpicGameStore.DTOs.EgData.Build;
-using BuildId = NexusMods.Abstractions.GOG.Values.BuildId;
-using Manifest = NexusMods.Abstractions.Steam.DTOs.Manifest;
-using OperatingSystem = NexusMods.Abstractions.Games.FileHashes.Values.OperatingSystem;
+using Build = SilverModManager.Networking.EpicGameStore.DTOs.EgData.Build;
+using BuildId = SilverModManager.Abstractions.GOG.Values.BuildId;
+using Manifest = SilverModManager.Abstractions.Steam.DTOs.Manifest;
+using OperatingSystem = SilverModManager.Abstractions.Games.FileHashes.Values.OperatingSystem;
 
-namespace NexusMods.Games.FileHashes.VerbImpls;
+namespace SilverModManager.Games.FileHashes.VerbImpls;
 
 // Format is a list of (Game, (OS, (Version, VersionDefinition)))
 using VersionFileFormat = Dictionary<string, Dictionary<string, VersionContribDefinition[]>>;
@@ -310,7 +310,7 @@ public class BuildHashesDb : IAsyncDisposable
         
         var buildDetails = await LoadAllFromFolder<BuildDetails>(path / "json" / "stores" / "gog" / "build_details");
         var foundHashes = await LoadAllFromFolder<Dictionary<string, Hash>>(path / "json" / "stores" / "gog" / "found_hashes");
-        var builds = await LoadAllFromFolder<NexusMods.Abstractions.GOG.DTOs.Build>(path / "json" / "stores" / "gog" / "builds");
+        var builds = await LoadAllFromFolder<SilverModManager.Abstractions.GOG.DTOs.Build>(path / "json" / "stores" / "gog" / "builds");
 
         var refDb = _connection.Db;
         var pathCount = 0;
@@ -471,7 +471,7 @@ public class BuildHashesDb : IAsyncDisposable
 
                 _ = new EpicGameStoreBuild.New(tx)
                 {
-                    BuildId = NexusMods.Abstractions.EpicGameStore.Values.BuildId.FromUnsanitized(build.Id),
+                    BuildId = SilverModManager.Abstractions.EpicGameStore.Values.BuildId.FromUnsanitized(build.Id),
                     ManifestHash = ManifestHash.FromUnsanitized(build.ManifestHash),
                     ItemId = ItemId.FromUnsanitized(id),
                     AppName = build.AppName,

@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Text;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Hashes;
+namespace SilverModManager.Sdk.Hashes;
 
 /// <summary>
 /// Thread-safe string hash pool using provided hasher.

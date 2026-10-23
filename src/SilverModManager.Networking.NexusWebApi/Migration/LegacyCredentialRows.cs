@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Secrets;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Networking.NexusWebApi.Migration;
+namespace SilverModManager.Networking.NexusWebApi.Migration;
 
 /// <summary>
 /// The steps shared by the two migrations that lift a credential out of the database: find every row an

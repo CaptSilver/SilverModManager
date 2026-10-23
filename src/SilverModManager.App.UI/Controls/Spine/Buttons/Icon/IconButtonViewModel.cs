@@ -1,10 +1,10 @@
 using System.Reactive;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Controls.Spine.Buttons.Icon;
+namespace SilverModManager.App.UI.Controls.Spine.Buttons.Icon;
 
 public class IconButtonViewModel : AViewModel<IIconButtonViewModel>, IIconButtonViewModel
 {

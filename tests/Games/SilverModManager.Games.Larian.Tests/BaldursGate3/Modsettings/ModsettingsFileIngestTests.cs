@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3.Modsettings;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3.Modsettings;
 
 /// <summary>
 /// What the game does to <c>modsettings.lsx</c> between two Applies. Its edits are never adopted: the next Apply

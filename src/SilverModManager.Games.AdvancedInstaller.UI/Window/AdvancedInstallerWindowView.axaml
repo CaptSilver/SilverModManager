@@ -3,9 +3,9 @@
                            xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                            xmlns:reactiveUi="http://reactiveui.net"
-                           xmlns:ui="clr-namespace:NexusMods.Games.AdvancedInstaller.UI"
+                           xmlns:ui="clr-namespace:SilverModManager.Games.AdvancedInstaller.UI"
                            mc:Ignorable="d" d:DesignWidth="1232" d:DesignHeight="672"
-                           x:Class="NexusMods.Games.AdvancedInstaller.UI.AdvancedInstallerWindowView"
+                           x:Class="SilverModManager.Games.AdvancedInstaller.UI.AdvancedInstallerWindowView"
                            MinWidth="1024" MinHeight="540"
                            Width="1232" Height="672"
                            Classes="Dialog WithDecorations">

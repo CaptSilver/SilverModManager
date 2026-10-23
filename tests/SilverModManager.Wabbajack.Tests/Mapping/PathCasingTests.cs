@@ -1,8 +1,8 @@
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Wabbajack.Mapping;
+using SilverModManager.Wabbajack.Mapping;
 
-namespace NexusMods.Wabbajack.Tests.Mapping;
+namespace SilverModManager.Wabbajack.Tests.Mapping;
 
 public class PathCasingTests
 {

@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.Unity.BepInEx;
+namespace SilverModManager.Games.Unity.BepInEx;
 
 /// <summary>Two files of one archive resolve to the same place, so one would overwrite the other.</summary>
 public sealed class BepInExLayoutException(string message) : Exception(message);

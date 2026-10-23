@@ -5,12 +5,12 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactive="http://reactiveui.net"
-    xmlns:local="clr-namespace:NexusMods.App.UI.Overlays"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Overlays"
     mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
-    xmlns:base="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.Base"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
-    x:Class="NexusMods.App.UI.Overlays.UpgradeToPremiumView">
+    xmlns:base="clr-namespace:SilverModManager.App.UI.Overlays.Generic.MessageBox.Base"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
+    x:Class="SilverModManager.App.UI.Overlays.UpgradeToPremiumView">
 
     <base:MessageBoxBackground MinWidth="576" MaxWidth="576" HorizontalAlignment="Center" VerticalAlignment="Center">
         <base:MessageBoxBackground.TopContent>

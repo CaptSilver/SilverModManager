@@ -2,9 +2,9 @@ using System.Diagnostics;
 using BCnEncoder.Decoder;
 using BCnEncoder.Shared;
 using DdsFile = BCnEncoder.Shared.ImageFiles.DdsFile;
-using NexusMods.Wabbajack.Transforms;
+using SilverModManager.Wabbajack.Transforms;
 
-namespace NexusMods.Wabbajack.Transforms.Tests;
+namespace SilverModManager.Wabbajack.Transforms.Tests;
 
 public class DdsRecompressorTests(ITestOutputHelper output)
 {

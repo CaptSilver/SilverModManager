@@ -1,18 +1,18 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.FromSoft.Installers;
+namespace SilverModManager.Games.FromSoft.Installers;
 
 /// <summary>
 /// Installs a mod archive as a me3 package: the folder that mirrors the game's archive layout, placed under
-/// <see cref="NexusMods.Sdk.Games.LocationId.Me3Mods"/> in a folder named after the archive. Nothing is ever installed into
+/// <see cref="SilverModManager.Sdk.Games.LocationId.Me3Mods"/> in a folder named after the archive. Nothing is ever installed into
 /// the game folder.
 /// </summary>
 public class Me3PackageInstaller : ALibraryArchiveInstaller

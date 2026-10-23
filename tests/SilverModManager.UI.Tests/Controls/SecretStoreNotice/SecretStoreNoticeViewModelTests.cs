@@ -1,15 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.App.UI.Controls.Alerts;
-using NexusMods.App.UI.Controls.SecretStoreNotice;
-using NexusMods.App.UI.Settings;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.App.UI.Controls.Alerts;
+using SilverModManager.App.UI.Controls.SecretStoreNotice;
+using SilverModManager.App.UI.Settings;
+using SilverModManager.Sdk.Settings;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.UI.Tests.Controls.SecretStoreNotice;
+namespace SilverModManager.UI.Tests.Controls.SecretStoreNotice;
 
 public class SecretStoreNoticeViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {

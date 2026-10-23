@@ -3,7 +3,7 @@ using Avalonia;
 using JetBrains.Annotations;
 using R3;
 
-namespace NexusMods.UI.Sdk;
+namespace SilverModManager.UI.Sdk;
 
 /// <summary>
 /// <see cref="Avalonia.Controls.Window"/> with R3 support.

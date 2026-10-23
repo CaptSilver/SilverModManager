@@ -2,7 +2,7 @@ using System.Text.Json;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
-namespace NexusMods.Wabbajack.Format;
+namespace SilverModManager.Wabbajack.Format;
 
 /// <summary>
 /// One instruction of the list: put a file at <paramref name="To"/> (relative to the MO2 instance root).

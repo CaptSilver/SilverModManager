@@ -1,17 +1,17 @@
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.RedEngine.Cyberpunk2077.Extensions;
-using NexusMods.Games.RedEngine.Cyberpunk2077.Models;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.Extensions;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.Models;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 using OneOf;
 
-namespace NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
 
 public class RedModSortOrderVariety : ASortOrderVariety<
     SortItemKey<string>, 

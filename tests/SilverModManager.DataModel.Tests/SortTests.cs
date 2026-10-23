@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Sorting;
-using NexusMods.DataModel.Sorting;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Sorting;
+using SilverModManager.DataModel.Sorting;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class SortTests
 {

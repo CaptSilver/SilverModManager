@@ -2,11 +2,11 @@ using FluentAssertions;
 using FluentAssertions.Collections;
 using FluentAssertions.Execution;
 
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.TestFramework.FluentAssertionExtensions;
+namespace SilverModManager.Games.TestFramework.FluentAssertionExtensions;
 
 public static class LoadoutExtensions
 {

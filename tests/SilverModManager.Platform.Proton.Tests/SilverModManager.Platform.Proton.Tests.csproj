@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <XunitStartupAssembly>NexusMods.Platform.Proton.Tests</XunitStartupAssembly>
+    <XunitStartupAssembly>SilverModManager.Platform.Proton.Tests</XunitStartupAssembly>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,9 +9,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
+    <ProjectReference Include="..\..\src\SilverModManager.Platform.Proton\SilverModManager.Platform.Proton.csproj" />
     <!-- An in-memory MnemonicDB for the loadout resolver tests. -->
-    <ProjectReference Include="..\Games\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
+    <ProjectReference Include="..\Games\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
   </ItemGroup>
 
   <ItemGroup>

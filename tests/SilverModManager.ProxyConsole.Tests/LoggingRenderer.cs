@@ -1,6 +1,6 @@
-﻿using NexusMods.Sdk.ProxyConsole;
+﻿using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.ProxyConsole.Tests;
+namespace SilverModManager.ProxyConsole.Tests;
 
 public class LoggingRenderer : IRenderer
 {

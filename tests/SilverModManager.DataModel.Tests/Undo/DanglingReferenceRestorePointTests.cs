@@ -1,24 +1,24 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.GC;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.App.GarbageCollection;
-using NexusMods.App.GarbageCollection.DataModel;
-using NexusMods.App.GarbageCollection.Nx;
+using SilverModManager.Abstractions.GC;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.App.GarbageCollection;
+using SilverModManager.App.GarbageCollection.DataModel;
+using SilverModManager.App.GarbageCollection.Nx;
 using NexusMods.Archives.Nx.Headers;
-using NexusMods.DataModel.Undo;
+using SilverModManager.DataModel.Undo;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Paths.Extensions.Nx.FileProviders;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 using System.Text;
 
-namespace NexusMods.DataModel.Tests.Undo;
+namespace SilverModManager.DataModel.Tests.Undo;
 
 /// <summary>
 /// A revert restores items faithfully even when what they point at is gone, and says which references it left dangling.

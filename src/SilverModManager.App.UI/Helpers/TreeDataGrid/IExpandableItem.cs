@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI.Helpers.TreeDataGrid;
+namespace SilverModManager.App.UI.Helpers.TreeDataGrid;
 
 /// <summary>
 ///     Represents a ViewModel that can be expanded.

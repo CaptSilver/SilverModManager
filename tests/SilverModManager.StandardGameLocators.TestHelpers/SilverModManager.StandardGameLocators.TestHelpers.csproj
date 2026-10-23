@@ -4,9 +4,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NexusMods.Games.StardewValley\NexusMods.Games.StardewValley.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Games.StardewValley\SilverModManager.Games.StardewValley.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.DataModel\SilverModManager.DataModel.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.DataModel\SilverModManager.DataModel.csproj" />
     </ItemGroup>
 
     <ItemGroup>

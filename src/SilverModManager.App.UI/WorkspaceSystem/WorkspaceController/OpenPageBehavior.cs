@@ -2,7 +2,7 @@ using DynamicData.Kernel;
 using JetBrains.Annotations;
 using OneOf;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 /// <summary>
 /// Behavior for opening a new page in the workspace.

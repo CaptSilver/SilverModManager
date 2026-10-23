@@ -5,7 +5,7 @@ using Avalonia.ReactiveUI;
 using NexusMods.Paths;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.ModContent;
+namespace SilverModManager.Games.AdvancedInstaller.UI.ModContent;
 
 [ExcludeFromCodeCoverage]
 public partial class ModContentView : ReactiveUserControl<IModContentViewModel>

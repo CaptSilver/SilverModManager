@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Sorting;
 
 /// <summary>Thrown by <see cref="Algorithms.TopologicalSort{TNode,TEdge}"/> when the graph has a cycle.</summary>
 public sealed class GraphCycleException(int node) : Exception("The graph contains a cycle.")

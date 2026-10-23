@@ -1,15 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.App.UI.Overlays.Updater;
-using NexusMods.App.UI.Settings;
-using NexusMods.Networking.GitHub;
-using NexusMods.Networking.GitHub.DTOs;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.App.UI.Overlays.Updater;
+using SilverModManager.App.UI.Settings;
+using SilverModManager.Networking.GitHub;
+using SilverModManager.Networking.GitHub.DTOs;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class UpdateCheckerTests
 {

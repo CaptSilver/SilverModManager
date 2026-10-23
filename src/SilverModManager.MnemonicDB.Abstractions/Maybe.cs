@@ -1,4 +1,4 @@
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 public struct Maybe<T>
 {

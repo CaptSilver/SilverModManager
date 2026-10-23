@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.ModUpdates.Mixins;
+namespace SilverModManager.Networking.ModUpdates.Mixins;
 
 /// <summary>
 /// Implements the MnemonicDB mod page mixin based on V2 API Results.

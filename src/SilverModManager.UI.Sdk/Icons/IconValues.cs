@@ -3,7 +3,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
-namespace NexusMods.UI.Sdk.Icons;
+namespace SilverModManager.UI.Sdk.Icons;
 
 // https://www.figma.com/file/8pjtQeNggvVi7RWoLNGV80/%F0%9F%A7%B0-Nexus-Mods-Design-System?type=design&node-id=130-463
 
@@ -23,7 +23,7 @@ namespace NexusMods.UI.Sdk.Icons;
             - This will give you the correct icon size, as padding etc. is preserved.
             - We can't use the raw SVGs as they don't support recolouring.
         - If you explicitly don't want recolouring for brand purposes, import an SVG like
-            - AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/health.svg");
+            - AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/health.svg");
 
     How to Import SVG:
     
@@ -662,7 +662,7 @@ public static class IconValues
         new Rect(0, 0, 16, 16 )
     ));
     
-    public static readonly IconValue AvatarTest = new AvaloniaImage(new Bitmap(AssetLoader.Open(new Uri("avares://NexusMods.App.UI/Assets/DesignTime/cyberpunk_game.png"))));
+    public static readonly IconValue AvatarTest = new AvaloniaImage(new Bitmap(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/cyberpunk_game.png"))));
 
 #endregion
 
@@ -684,62 +684,62 @@ public static class IconValues
     /// <summary>
     /// Brand pictogram for Health
     /// </summary>
-    public static readonly IconValue PictogramHealth = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/health.svg");
+    public static readonly IconValue PictogramHealth = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/health.svg");
     
     /// <summary>
     /// Brand pictogram for Games in 3D
     /// </summary>
-    public static readonly IconValue PictogramGame3D = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/game-3d.svg");
+    public static readonly IconValue PictogramGame3D = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/game-3d.svg");
     
     /// <summary>
     /// Brand pictogram for Loadouts
     /// </summary>
-    public static readonly IconValue PictogramBox2 = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/box2.svg");
+    public static readonly IconValue PictogramBox2 = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/box2.svg");
     
     /// <summary>
     /// Brand pictogram for Settings
     /// </summary>
-    public static readonly IconValue PictogramSettings = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/settings.svg");
+    public static readonly IconValue PictogramSettings = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/settings.svg");
 
     /// <summary>
     /// Brand pictogram for Celebrate
     /// </summary>
-    public static readonly IconValue PictogramCelebrate = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/celebrate.svg");
+    public static readonly IconValue PictogramCelebrate = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/celebrate.svg");
     
     /// <summary>
     /// Brand pictogram for Playlist Add
     /// </summary>
-    public static readonly IconValue PictogramPlaylistAdd = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/playlist-add.svg");
+    public static readonly IconValue PictogramPlaylistAdd = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/playlist-add.svg");
     
     /// <summary>
     /// Brand pictogram for Collection in 3D
     /// </summary>
-    public static readonly IconValue PictogramCollection3D = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/collection-3d.svg");
+    public static readonly IconValue PictogramCollection3D = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/collection-3d.svg");
     
     /// <summary>
     /// Brand pictogram for Library
     /// </summary>
-    public static readonly IconValue PictogramLibrary = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/library.svg");
+    public static readonly IconValue PictogramLibrary = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/library.svg");
     
     /// <summary>
     /// Brand pictogram for Upload
     /// </summary>
-    public static readonly IconValue PictogramUpload = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/upload.svg");
+    public static readonly IconValue PictogramUpload = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/upload.svg");
     
     /// <summary>
     /// Pictogram for the dialogs that explain free-account download limits
     /// </summary>
-    public static readonly IconValue PictogramPremium = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/download.svg");
+    public static readonly IconValue PictogramPremium = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/download.svg");
 
     /// <summary>
     /// Brand pictogram for Success
     /// </summary>
-    public static readonly IconValue PictogramSuccess = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/success.svg");
+    public static readonly IconValue PictogramSuccess = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/success.svg");
     
     /// <summary>
     /// Brand pictogram for Download
     /// </summary>
-    public static readonly IconValue PictogramDownload = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/Pictograms/download.svg");
+    public static readonly IconValue PictogramDownload = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/download.svg");
 
 
 #endregion

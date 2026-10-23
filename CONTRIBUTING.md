@@ -17,7 +17,7 @@ distrobox create --name fedora --image fedora-toolbox:latest
 Use another box by setting `SILVER_BOX=<name>`. Inside a container, or on a machine without
 distrobox, the scripts run in place. `dev-setup.sh` refuses to run outside a container, so
 elsewhere install the .NET 10 SDK yourself, run `git submodule update --init --recursive` and
-`dotnet restore NexusMods.App.sln`, and use the other scripts as they are.
+`dotnet restore SilverModManager.App.sln`, and use the other scripts as they are.
 
 ## Scripts
 
@@ -26,8 +26,8 @@ All of these re-run themselves inside the box, so call them from anywhere on the
 | Command | What it does |
 |---|---|
 | `scripts/dev-setup.sh` | `dnf install`s `dotnet-sdk-10.0`, `libicu` and `git` in the box, fetches the submodules and runs `dotnet restore`. Safe to repeat. |
-| `scripts/dev-build.sh` | `dotnet build NexusMods.App.sln`. Extra arguments go to `dotnet build`, e.g. `scripts/dev-build.sh -c Release`. |
-| `scripts/dev-package.sh` | Builds an AppImage with PupNet. The result lands in `src/NexusMods.App/Deploy/OUT`. `SILVER_APP_VERSION` sets the version (default `0.0.1`). |
+| `scripts/dev-build.sh` | `dotnet build SilverModManager.App.sln`. Extra arguments go to `dotnet build`, e.g. `scripts/dev-build.sh -c Release`. |
+| `scripts/dev-package.sh` | Builds an AppImage with PupNet. The result lands in `src/SilverModManager.App/Deploy/OUT`. `SILVER_APP_VERSION` sets the version (default `0.0.1`). |
 | `scripts/test.sh` | Runs the offline test suite. Extra arguments go to `dotnet test`. |
 
 First time through: `scripts/dev-setup.sh`, then `scripts/dev-build.sh`, then `scripts/test.sh`.
@@ -36,7 +36,7 @@ First time through: `scripts/dev-setup.sh`, then `scripts/dev-build.sh`, then `s
 
 ```bash
 scripts/test.sh                                          # whole suite
-scripts/test.sh --project tests/NexusMods.CLI.Tests      # one test project
+scripts/test.sh --project tests/SilverModManager.CLI.Tests      # one test project
 ```
 
 `test.sh` leaves out tests tagged with these xUnit traits:

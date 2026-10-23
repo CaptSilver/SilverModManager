@@ -1,12 +1,12 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Generators.Diagnostics;
 
-namespace NexusMods.Platform.Proton.Steam;
+namespace SilverModManager.Platform.Proton.Steam;
 
 internal static partial class SteamLaunchDiagnostics
 {
-    private const string Source = "NexusMods.Platform.Proton";
+    private const string Source = "SilverModManager.Platform.Proton";
 
     [DiagnosticTemplate]
     [UsedImplicitly]

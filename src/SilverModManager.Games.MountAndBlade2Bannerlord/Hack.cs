@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Xml;
 using Bannerlord.ModuleManager;
-namespace NexusMods.Games.MountAndBlade2Bannerlord;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord;
 
 /// <summary>
 /// Temporary code, to make game 'usable' while we wait for approval to make the game

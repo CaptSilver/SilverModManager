@@ -11,11 +11,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Networking.ModUpdates.Tests"/>
+        <InternalsVisibleTo Include="SilverModManager.Networking.ModUpdates.Tests"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.Abstractions.NexusModsLibrary\NexusMods.Abstractions.NexusModsLibrary.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.NexusWebApi\NexusMods.Abstractions.NexusWebApi.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.NexusModsLibrary\SilverModManager.Abstractions.NexusModsLibrary.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.NexusWebApi\SilverModManager.Abstractions.NexusWebApi.csproj" />
     </ItemGroup>
 </Project>

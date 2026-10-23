@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Games.Bethesda.LoadOrder.Formats;
+using SilverModManager.Games.Bethesda.LoadOrder.Formats;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.SortOrder;
+namespace SilverModManager.Games.CreationEngine.Tests.SortOrder;
 
 public class PluginListDifferenceTests
 {

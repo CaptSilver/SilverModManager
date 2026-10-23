@@ -1,6 +1,6 @@
 using TransparentValueObjects;
 
-namespace NexusMods.Networking.NexusWebApi.Errors;
+namespace SilverModManager.Networking.NexusWebApi.Errors;
 
 /// <summary>
 /// Represents an error code.

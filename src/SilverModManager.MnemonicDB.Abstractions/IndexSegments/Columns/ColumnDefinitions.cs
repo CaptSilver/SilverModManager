@@ -1,8 +1,8 @@
 using System;
 using System.Runtime.CompilerServices;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments.Columns;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments.Columns;
 
 public static class ColumnDefinitions
 {

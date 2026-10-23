@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Fallout3;
+namespace SilverModManager.Games.CreationEngine.Tests.Fallout3;
 
 /// <summary>Where Fallout3's own installers put the common archive layouts.</summary>
 public class Fallout3InstallerRoutingTests(ITestOutputHelper helper)

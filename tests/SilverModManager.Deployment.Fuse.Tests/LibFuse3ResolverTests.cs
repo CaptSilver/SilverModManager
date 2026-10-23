@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Deployment.Fuse.Native;
+using SilverModManager.Deployment.Fuse.Native;
 
-namespace NexusMods.Deployment.Fuse.Tests;
+namespace SilverModManager.Deployment.Fuse.Tests;
 
 public class LibFuse3ResolverTests(ITestOutputHelper output)
 {

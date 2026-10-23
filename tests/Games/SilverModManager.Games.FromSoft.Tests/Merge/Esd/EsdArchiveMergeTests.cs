@@ -1,14 +1,14 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Merge;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Games.FromSoft.Tests.Formats;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
-using EsdFormat = NexusMods.Games.FromSoft.Formats.Esd;
-using static NexusMods.Games.FromSoft.Tests.Merge.EsdMergeFixture;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Merge;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.Tests.Formats;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
+using EsdFormat = SilverModManager.Games.FromSoft.Formats.Esd;
+using static SilverModManager.Games.FromSoft.Tests.Merge.EsdMergeFixture;
 
-namespace NexusMods.Games.FromSoft.Tests.Merge;
+namespace SilverModManager.Games.FromSoft.Tests.Merge;
 
 /// <summary>Every rule is run for a BND4 game and a BND3 game: the merge reads and rebuilds through the game's binder.</summary>
 public class EsdArchiveMergeTests

@@ -1,6 +1,6 @@
 using TransparentValueObjects;
 
-namespace NexusMods.Abstractions.NexusWebApi.Types;
+namespace SilverModManager.Abstractions.NexusWebApi.Types;
 
 /// <summary>
 /// Globally unique identifier of a collection.

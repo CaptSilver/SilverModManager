@@ -1,11 +1,11 @@
 using JetBrains.Annotations;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Abstractions.Loadouts;
+namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 /// A file in the game folder that belongs to a <see cref="GameInstalledItem"/>. It is a plain

@@ -1,17 +1,17 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.Abstractions.Loadouts.Exceptions;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.DataModel.Synchronizer;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Native;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.DataModel.Synchronizer;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.DataModel.Tests.Deployment;
+namespace SilverModManager.DataModel.Tests.Deployment;
 
 /// <summary>
 /// What an apply does with rows that were recorded before the selection chain could pick a link backend.

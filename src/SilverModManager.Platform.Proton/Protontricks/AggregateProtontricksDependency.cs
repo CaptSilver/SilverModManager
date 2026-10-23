@@ -1,6 +1,6 @@
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Platform.Proton.Protontricks;
+namespace SilverModManager.Platform.Proton.Protontricks;
 
 /// <summary>
 /// Aggregates multiple Protontricks implementations, using either the native or Flatpak version

@@ -3,8 +3,8 @@
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
     
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.Abstractions.GuidedInstallers\NexusMods.Abstractions.GuidedInstallers.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.Library.Installers\NexusMods.Abstractions.Library.Installers.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.GuidedInstallers\SilverModManager.Abstractions.GuidedInstallers.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Library.Installers\SilverModManager.Abstractions.Library.Installers.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -13,7 +13,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Games.FOMOD.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Games.FOMOD.Tests" />
     </ItemGroup>
 
     <ItemGroup>

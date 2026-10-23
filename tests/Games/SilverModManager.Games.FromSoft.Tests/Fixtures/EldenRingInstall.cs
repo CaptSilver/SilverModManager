@@ -1,10 +1,10 @@
 using System.Text.RegularExpressions;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
-using NexusMods.Games.TestFramework.Helpers;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Games.TestFramework.Helpers;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 /// <summary>
 /// Elden Ring as Steam installs it: a <c>Game</c> folder with the executable, the archives and the DLLs, and two

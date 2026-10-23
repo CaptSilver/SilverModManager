@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Represents a game-specific identifier for a sortable item

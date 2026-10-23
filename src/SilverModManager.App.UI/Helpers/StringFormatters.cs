@@ -1,7 +1,7 @@
 using Humanizer.Bytes;
-using NexusMods.App.UI.Resources;
+using SilverModManager.App.UI.Resources;
 
-namespace NexusMods.App.UI.Helpers;
+namespace SilverModManager.App.UI.Helpers;
 
 /// <summary>
 /// Class that helps you format file sizes as strings.

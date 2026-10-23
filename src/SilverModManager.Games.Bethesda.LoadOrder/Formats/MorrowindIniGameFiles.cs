@@ -1,7 +1,7 @@
 // Follows libloadorder src/ini.rs (the [Game Files] section of Morrowind.ini).
 using System.Text.RegularExpressions;
 
-namespace NexusMods.Games.Bethesda.LoadOrder.Formats;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Formats;
 
 /// <summary>
 /// The <c>[Game Files]</c> section of Morrowind.ini: <c>GameFile0=Morrowind.esm</c>, <c>GameFile1=...</c>, one

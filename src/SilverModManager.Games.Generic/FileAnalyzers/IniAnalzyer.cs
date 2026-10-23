@@ -1,9 +1,9 @@
 using IniParser;
 using IniParser.Model.Configuration;
 using IniParser.Parser;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Games.Generic.FileAnalyzers;
+namespace SilverModManager.Games.Generic.FileAnalyzers;
 
 
 public class IniAnalzyer

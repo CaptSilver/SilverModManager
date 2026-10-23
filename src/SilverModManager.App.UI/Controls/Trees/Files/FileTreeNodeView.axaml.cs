@@ -3,13 +3,13 @@ using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.ReactiveUI;
-using NexusMods.Abstractions.Loadouts.Files.Diff;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.App.UI.Controls.Trees.Common;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.Abstractions.Loadouts.Files.Diff;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.App.UI.Controls.Trees.Common;
+using SilverModManager.App.UI.Extensions;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Trees.Files;
+namespace SilverModManager.App.UI.Controls.Trees.Files;
 
 public partial class FileTreeNodeView : ReactiveUserControl<IFileTreeNodeViewModel>
 {

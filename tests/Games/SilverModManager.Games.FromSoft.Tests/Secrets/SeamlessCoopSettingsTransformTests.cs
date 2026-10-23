@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Games.FromSoft.EldenRing;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Games.FromSoft.EldenRing;
 
-namespace NexusMods.Games.FromSoft.Tests.Secrets;
+namespace SilverModManager.Games.FromSoft.Tests.Secrets;
 
 public class SeamlessCoopSettingsTransformTests : IDisposable
 {

@@ -1,16 +1,16 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.RedEngine.ModInstallers;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.RedEngine.ModInstallers;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 using Xunit.DependencyInjection;
 
-namespace NexusMods.Games.RedEngine.Tests.LibraryArchiveInstallerTests;
+namespace SilverModManager.Games.RedEngine.Tests.LibraryArchiveInstallerTests;
 
 public class PathBasedInstallerTests(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<PathBasedInstallerTests, Cyberpunk2077Game>(outputHelper)
 {

@@ -1,11 +1,11 @@
 using System.Net;
 using FluentAssertions;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
 using Xunit;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 [Trait("RequiresNetworking", "True")]
 public class NexusApiClientTests

@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using JetBrains.Annotations;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 [PublicAPI]
 public interface ILinuxCompatabilityDataProvider

@@ -1,8 +1,8 @@
 using Xunit;
 using FluentAssertions;
-using NexusMods.Secrets.File;
+using SilverModManager.Secrets.File;
 
-namespace NexusMods.Secrets.Tests.File;
+namespace SilverModManager.Secrets.Tests.File;
 
 public class UnixFileOwnerTests : IDisposable
 {

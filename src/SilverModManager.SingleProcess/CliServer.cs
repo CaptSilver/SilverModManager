@@ -3,11 +3,11 @@ using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk.Settings;
-using NexusMods.ProxyConsole;
-using NexusMods.SingleProcess.Exceptions;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.ProxyConsole;
+using SilverModManager.SingleProcess.Exceptions;
 
-namespace NexusMods.SingleProcess;
+namespace SilverModManager.SingleProcess;
 
 /// <summary>
 /// A long-running service that listens for incoming connections from clients and executes them as if they ran

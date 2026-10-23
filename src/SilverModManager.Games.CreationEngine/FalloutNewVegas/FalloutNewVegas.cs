@@ -1,14 +1,14 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.Bethesda.Loot.Masterlists;
-using NexusMods.Games.CreationEngine.PluginLists;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Games.CreationEngine.Abstractions;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.Loot.Masterlists;
+using SilverModManager.Games.CreationEngine.PluginLists;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.FalloutNewVegas;
+namespace SilverModManager.Games.CreationEngine.FalloutNewVegas;
 
 /// <summary>
 /// New Vegas orders its plugins by file modification time and reads the active ones from plugins.txt in AppData.

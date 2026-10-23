@@ -1,11 +1,11 @@
 using System.IO.Compression;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
+using SilverModManager.Abstractions.Cli;
 using NexusMods.Paths;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.Wabbajack.Format;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Wabbajack.Format;
 
-namespace NexusMods.Wabbajack.Cli;
+namespace SilverModManager.Wabbajack.Cli;
 
 public static class Verbs
 {

@@ -4,11 +4,11 @@ using Avalonia.Controls;
 using Avalonia.Controls.Metadata;
 using Avalonia.ReactiveUI;
 using DynamicData.Binding;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.TopBar;
+namespace SilverModManager.App.UI.Controls.TopBar;
 
 [PseudoClasses(":window-active")]
 public partial class TopBarView : ReactiveUserControl<ITopBarViewModel>

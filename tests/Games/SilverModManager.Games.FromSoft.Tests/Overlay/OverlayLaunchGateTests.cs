@@ -1,14 +1,14 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Me3;
-using NexusMods.Games.FromSoft.Overlay;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Me3;
+using SilverModManager.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.FromSoft.Tests.Overlay;
+namespace SilverModManager.Games.FromSoft.Tests.Overlay;
 
 public class OverlayLaunchGateTests(ITestOutputHelper helper) : AModdedEldenRingTest<OverlayLaunchGateTests>(helper)
 {
@@ -107,7 +107,7 @@ public class OverlayLaunchGateTests(ITestOutputHelper helper) : AModdedEldenRing
         (await deployed.ReadAllTextAsync()).Should().Be(ErscRelease.SettingsText);
 
         // And the password is nowhere else under the app's data.
-        var dataRoot = EldenRingPaths.Me3Root(ServiceProvider.GetRequiredService<NexusMods.Sdk.Settings.ISettingsManager>().Get<FromSoftSettings>(), FileSystem).GetFullPath();
+        var dataRoot = EldenRingPaths.Me3Root(ServiceProvider.GetRequiredService<SilverModManager.Sdk.Settings.ISettingsManager>().Get<FromSoftSettings>(), FileSystem).GetFullPath();
         var holders = Directory.EnumerateFiles(dataRoot, "*", SearchOption.AllDirectories)
             .Where(f => !f.StartsWith(layout.Upper.GetFullPath()) && File.ReadAllText(f).Contains(Password));
         holders.Should().BeEmpty();

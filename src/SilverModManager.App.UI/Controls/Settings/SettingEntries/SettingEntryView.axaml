@@ -3,11 +3,11 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:settingEntries="clr-namespace:NexusMods.App.UI.Controls.Settings.SettingEntries"
-                                xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-                                xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
+                                xmlns:settingEntries="clr-namespace:SilverModManager.App.UI.Controls.Settings.SettingEntries"
+                                xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+                                xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
                                 mc:Ignorable="d" d:DesignWidth="1232" 
-                                x:Class="NexusMods.App.UI.Controls.Settings.SettingEntries.SettingEntryView">
+                                x:Class="SilverModManager.App.UI.Controls.Settings.SettingEntries.SettingEntryView">
 
     <Border Padding="16,12"
             Background="{StaticResource SurfaceMidBrush}"

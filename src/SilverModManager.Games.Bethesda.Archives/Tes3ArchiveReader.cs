@@ -1,7 +1,7 @@
 // Follows Wabbajack.Compression.BSA/TES3Archive/Reader.cs and FileEntry.cs (GPL-3.0).
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 internal sealed class Tes3ArchiveReader : IBethesdaArchiveReader
 {

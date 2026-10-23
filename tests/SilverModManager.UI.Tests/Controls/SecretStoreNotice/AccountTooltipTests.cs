@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.App.UI.Controls.TopBar;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.App.UI.Controls.TopBar;
+using SilverModManager.Sdk.NexusModsApi;
 using NSubstitute;
 
-namespace NexusMods.UI.Tests.Controls.SecretStoreNotice;
+namespace SilverModManager.UI.Tests.Controls.SecretStoreNotice;
 
 public class AccountTooltipTests
 {

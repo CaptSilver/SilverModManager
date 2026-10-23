@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Hosting;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// A host lifetime that installs no signal handlers, so SIGTERM and SIGINT reach <see cref="StopHandler"/>

@@ -4,19 +4,19 @@ using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Hashes;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using OneOf;
 
-namespace NexusMods.Abstractions.Games.Tests;
+namespace SilverModManager.Abstractions.Games.Tests;
 
 /// <summary>
 /// Sort orders follow the loadouts of one game. Two games that share a Nexus id (Skyrim SE and Skyrim VR)

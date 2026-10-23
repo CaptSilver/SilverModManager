@@ -3,11 +3,11 @@
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Networking.Thunderstore.Tests"/>
+        <InternalsVisibleTo Include="SilverModManager.Networking.Thunderstore.Tests"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+        <ProjectReference Include="..\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
     </ItemGroup>
 
 </Project>

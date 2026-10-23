@@ -1,23 +1,23 @@
 using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Games;
-using NexusMods.Backend;
-using NexusMods.CrossPlatform;
-using NexusMods.Games.Generic;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Backend;
+using SilverModManager.CrossPlatform;
+using SilverModManager.Games.Generic;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.Emitters;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using NSubstitute;
 using Xunit;
 
-namespace NexusMods.Games.RedEngine.Tests;
+namespace SilverModManager.Games.RedEngine.Tests;
 
 /// <summary>
 /// The Wine emitter reports what the game declares and nothing of its own. The prefix is a substitute,
@@ -70,7 +70,7 @@ public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolated
     {
         ((IGameUserDataFolders)Game).UserDataFolders.Should().Equal(
             new UserDataFolder(KnownPath.HomeDirectory, "Saved Games/CD Projekt Red/Cyberpunk 2077"));
-        Game.DiagnosticEmitters.OfType<NexusMods.Games.Generic.Diagnostics.UserDataLinkEmitter>().Should().ContainSingle();
+        Game.DiagnosticEmitters.OfType<SilverModManager.Games.Generic.Diagnostics.UserDataLinkEmitter>().Should().ContainSingle();
     }
 
     [Fact]

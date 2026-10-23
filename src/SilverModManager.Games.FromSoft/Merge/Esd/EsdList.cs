@@ -1,6 +1,6 @@
 using System.Collections;
 
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>
 /// An immutable list that compares by content. The canonical forms are records nested several levels deep, and a

@@ -1,11 +1,11 @@
 using System.Runtime.InteropServices;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using NexusMods.Backend.Games.UserGames;
+using SilverModManager.Backend.Games.UserGames;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Backend.Tests.Games;
+namespace SilverModManager.Backend.Tests.Games;
 
 public class YamlUserGameInstallStoreTests
 {

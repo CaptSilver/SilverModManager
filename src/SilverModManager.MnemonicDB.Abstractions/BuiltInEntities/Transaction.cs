@@ -1,8 +1,8 @@
-﻿using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using TimestampAttribute = NexusMods.MnemonicDB.Abstractions.Attributes.TimestampAttribute;
+﻿using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using TimestampAttribute = SilverModManager.MnemonicDB.Abstractions.Attributes.TimestampAttribute;
 
-namespace NexusMods.MnemonicDB.Abstractions.BuiltInEntities;
+namespace SilverModManager.MnemonicDB.Abstractions.BuiltInEntities;
 
 /// <summary>
 /// Metadata for a transaction, transactions are themselves entities in the database, and

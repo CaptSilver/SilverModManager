@@ -1,24 +1,24 @@
 using Avalonia.Media.Imaging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Sdk.Resources;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Pages.CollectionDownload;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Collections;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Sdk.Resources;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Collections;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Pages.LibraryPage.Collections;
+namespace SilverModManager.App.UI.Pages.LibraryPage.Collections;
 
 public class CollectionCardViewModel : AViewModel<ICollectionCardViewModel>, ICollectionCardViewModel
 {

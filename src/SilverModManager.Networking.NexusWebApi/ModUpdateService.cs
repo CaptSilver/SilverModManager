@@ -1,17 +1,17 @@
 using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.ModUpdates;
-using NexusMods.Networking.ModUpdates.Mixins;
-using NexusMods.Networking.NexusWebApi.UpdateFilters;
-using NexusMods.Sdk.Library;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.ModUpdates;
+using SilverModManager.Networking.ModUpdates.Mixins;
+using SilverModManager.Networking.NexusWebApi.UpdateFilters;
+using SilverModManager.Sdk.Library;
 using System.Reactive.Linq;
 using R3;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 /// <summary>
 ///     Provides services related to updating of mods.

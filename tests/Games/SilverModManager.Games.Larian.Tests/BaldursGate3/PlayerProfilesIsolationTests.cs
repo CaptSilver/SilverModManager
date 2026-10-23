@@ -1,12 +1,12 @@
 using System.Reflection;
 using FluentAssertions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.Larian.BaldursGate3;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.Larian.BaldursGate3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3;
 
 /// <summary>
 /// Every BG3 fixture runs in parallel with the others, so each one needs its own PlayerProfiles folder. A shared

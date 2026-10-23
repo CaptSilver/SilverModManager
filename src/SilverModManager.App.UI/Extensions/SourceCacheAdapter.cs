@@ -1,6 +1,6 @@
 using DynamicData;
 
-namespace NexusMods.App.UI.Extensions;
+namespace SilverModManager.App.UI.Extensions;
 
 public class SourceCacheAdapter<TObject, TKey> : IChangeSetAdaptor<TObject, TKey>
     where TObject : notnull

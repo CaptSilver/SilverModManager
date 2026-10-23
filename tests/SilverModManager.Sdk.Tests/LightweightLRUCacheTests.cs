@@ -1,6 +1,6 @@
 using FluentAssertions;
 
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 public class LightweightLRUCacheTests
 {

@@ -1,9 +1,9 @@
 using System.ComponentModel;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
+namespace SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 
 public class MessageBoxOkDesignViewModel: IMessageBoxOkViewModel
 {

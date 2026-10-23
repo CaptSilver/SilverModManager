@@ -1,7 +1,7 @@
-using NexusMods.Games.FromSoft.Formats;
-using static NexusMods.Games.FromSoft.Merge.EsdExpressions;
+using SilverModManager.Games.FromSoft.Formats;
+using static SilverModManager.Games.FromSoft.Merge.EsdExpressions;
 
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 public sealed record CanonicalCall(int Bank, int Id, EsdList<EsdExpr?> Args);
 

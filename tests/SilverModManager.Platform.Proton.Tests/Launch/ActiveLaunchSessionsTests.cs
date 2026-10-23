@@ -2,15 +2,15 @@ using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests.Launch;
+namespace SilverModManager.Platform.Proton.Tests.Launch;
 
 public class ActiveLaunchSessionsTests
 {

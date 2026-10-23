@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
+    <ProjectReference Include="..\..\src\SilverModManager.Platform.Proton\SilverModManager.Platform.Proton.csproj" />
   </ItemGroup>
 
 </Project>

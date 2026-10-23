@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace NexusMods.Deployment.Fuse.Native;
+namespace SilverModManager.Deployment.Fuse.Native;
 
 // Linux only, like the rest of the app: libfuse3 and /dev/fuse do not exist elsewhere, so there is no platform check.
 internal static partial class LibFuse3

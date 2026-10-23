@@ -1,6 +1,6 @@
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 internal static class ClientConfig
 {

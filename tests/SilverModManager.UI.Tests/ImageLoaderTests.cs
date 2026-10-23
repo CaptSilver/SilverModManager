@@ -3,16 +3,16 @@ using BitFaster.Caching;
 using BitFaster.Caching.Lru;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Sdk.Resources;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Sdk.Resources;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.UI.Sdk.Resources;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.NexusWebApi;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.UI.Sdk.Resources;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Sdk.NexusModsApi;
 using SkiaSharp;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class ImageLoaderTests : AUiTest
 {

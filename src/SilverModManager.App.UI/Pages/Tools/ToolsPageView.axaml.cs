@@ -2,13 +2,13 @@ using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Controls;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.Sdk.Games;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Tools;
+namespace SilverModManager.App.UI.Pages.Tools;
 
 [UsedImplicitly]
 public partial class ToolsPageView : ReactiveUserControl<IToolsPageViewModel>

@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Games.FileHashes.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Abstractions.Games.FileHashes.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Abstractions.Games.FileHashes.Models;
+namespace SilverModManager.Abstractions.Games.FileHashes.Models;
 
 /// <summary>
 /// A relation of hashes. Given one hash, you can find the others.

@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Staging;
+namespace SilverModManager.Deployment.Staging;
 
 /// <summary>
 /// Tells filesystems apart and finds where one starts, so a store can sit on the filesystem a game folder is on.

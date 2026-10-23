@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Deployment.Links.Tests.Fixtures;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Deployment.Links.Tests.Fixtures;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Deployment.Links.Tests;
+namespace SilverModManager.Deployment.Links.Tests;
 
 /// <summary>
 /// The selection chain with the real backends: where the game and the staging store sit decides the

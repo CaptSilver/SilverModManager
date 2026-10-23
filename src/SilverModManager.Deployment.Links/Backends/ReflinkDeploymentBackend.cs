@@ -1,13 +1,13 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Deployment.Links.Native;
-using NexusMods.Deployment.Links.Probe;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Deployment.Links.Native;
+using SilverModManager.Deployment.Links.Probe;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Deployment.Links.Backends;
+namespace SilverModManager.Deployment.Links.Backends;
 
 /// <summary>
 /// Deploys each file as a copy-on-write clone of its staged copy. Every clone is its own inode, so an edit

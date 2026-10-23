@@ -2,13 +2,13 @@ using System.Reactive;
 using System.Reactive.Linq;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Controls.GameWidget;
+namespace SilverModManager.App.UI.Controls.GameWidget;
 
 public class GameWidgetDesignViewModel : AViewModel<IGameWidgetViewModel>, IGameWidgetViewModel
 {
@@ -29,7 +29,7 @@ public class GameWidgetDesignViewModel : AViewModel<IGameWidgetViewModel>, IGame
  
     public GameWidgetDesignViewModel()
     {
-        Image = new Bitmap(AssetLoader.Open(new Uri("avares://NexusMods.App.UI/Assets/DesignTime/tile.webp")));
+        Image = new Bitmap(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/tile.webp")));
         State = GameWidgetState.ManagedGame;
         Version = $"Version: 1.5.6";
         Store = "Foo";

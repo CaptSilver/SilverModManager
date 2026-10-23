@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk;
 using R3;
 
-namespace NexusMods.Secrets.SecretService;
+namespace SilverModManager.Secrets.SecretService;
 
 /// <summary>
 /// Keeps secrets as items in the user's default Secret Service collection (KWallet's ksecretd, GNOME Keyring).

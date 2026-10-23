@@ -5,7 +5,7 @@ using System.Reactive.Subjects;
 using DynamicData;
 using DynamicData.Binding;
 
-namespace NexusMods.App.UI.Extensions;
+namespace SilverModManager.App.UI.Extensions;
 
 public static class ObservableExtensions
 {

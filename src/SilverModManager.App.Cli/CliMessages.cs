@@ -1,8 +1,8 @@
-using NexusMods.Sdk.EventBus;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.EventBus;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.CLI;
+namespace SilverModManager.CLI;
 
 /// <summary>
 /// Messages passed from the CLI to the main application.

@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Text;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 /// <summary>
 /// Static values that are constant for the entire lifetime of the application.

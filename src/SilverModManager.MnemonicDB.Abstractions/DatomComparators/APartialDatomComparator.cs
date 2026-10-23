@@ -1,9 +1,9 @@
 ﻿using System;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 
-namespace NexusMods.MnemonicDB.Abstractions.DatomComparators;
+namespace SilverModManager.MnemonicDB.Abstractions.DatomComparators;
 
 /// <summary>
 /// A comparator that only considers the EAV portion of the datom, useful for in-memory sets that

@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Jobs;
+namespace SilverModManager.Sdk.Jobs;
 
 /// <summary>
 /// Stream wrapper for progress reporting.

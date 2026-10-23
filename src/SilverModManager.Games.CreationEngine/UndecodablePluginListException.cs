@@ -1,4 +1,4 @@
-namespace NexusMods.Games.CreationEngine;
+namespace SilverModManager.Games.CreationEngine;
 
 /// <summary>
 /// Thrown when a plugin list on disk isn't valid text in the encoding its game reads it in. Rewriting it with

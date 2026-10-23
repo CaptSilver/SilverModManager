@@ -24,7 +24,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// Builds the DDS header that goes in front of a BA2 texture's mip data. The BA2 keeps no header, and an

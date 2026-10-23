@@ -1,8 +1,8 @@
 using JetBrains.Annotations;
-using NexusMods.Networking.GitHub.DTOs;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Networking.GitHub.DTOs;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Networking.GitHub;
+namespace SilverModManager.Networking.GitHub;
 
 /// <summary>
 /// Helpers for choosing and verifying release assets.

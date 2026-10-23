@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
-using NexusMods.Abstractions.NexusWebApi.DTOs.Interfaces;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.Interfaces;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
-namespace NexusMods.Abstractions.NexusWebApi.DTOs;
+namespace SilverModManager.Abstractions.NexusWebApi.DTOs;
 
 // 👇 Suppress uninitialised variables. Currently Nexus has mostly read-only API and we expect server to return the data.
 #pragma warning disable CS8618

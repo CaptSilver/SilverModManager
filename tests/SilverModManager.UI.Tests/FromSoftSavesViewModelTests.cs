@@ -3,21 +3,21 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Games;
-using NexusMods.App.UI.Pages.FromSoftSaves;
-using NexusMods.App.UI.Windows;
-using NexusMods.Games.FromSoft;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Saves;
-using FromSoftSavesService = NexusMods.Games.FromSoft.Saves.FromSoftSaves;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.App.UI.Pages.FromSoftSaves;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.Games.FromSoft;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Saves;
+using FromSoftSavesService = SilverModManager.Games.FromSoft.Saves.FromSoftSaves;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 using ReactiveUI;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class FromSoftSavesViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {
@@ -44,7 +44,7 @@ public class FromSoftSavesViewModelTests(IServiceProvider provider) : AUiTest(pr
             settings.Get<FromSoftSettings>().Returns(new FromSoftSettings { DataRoot = new ConfigurablePath(KnownPath.EntryDirectory, Path.GetRelativePath(AppContext.BaseDirectory, DataRoot)) });
 
             var saves = new FromSoftSavesService(settings, fileSystem, prefixes, Tracker, TimeProvider.System, NullLogger<FromSoftSavesService>.Instance);
-            Vm = new FromSoftSavesViewModel(Substitute.For<IWindowManager>(), provider.GetRequiredService<NexusMods.MnemonicDB.Abstractions.IConnection>(), saves, NullLogger<FromSoftSavesViewModel>.Instance)
+            Vm = new FromSoftSavesViewModel(Substitute.For<IWindowManager>(), provider.GetRequiredService<SilverModManager.MnemonicDB.Abstractions.IConnection>(), saves, NullLogger<FromSoftSavesViewModel>.Instance)
             {
                 Installation = EldenRingInstallation(provider),
             };

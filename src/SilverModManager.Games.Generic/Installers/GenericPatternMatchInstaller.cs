@@ -1,19 +1,19 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Generic.Extensions;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Generic.Extensions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Paths.Trees;
 using NexusMods.Paths.Trees.Traits;
-using NexusMods.Sdk.Library;
-using LibraryArchiveTreeExtensions = NexusMods.Sdk.Library.LibraryArchiveTreeExtensions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Library;
+using LibraryArchiveTreeExtensions = SilverModManager.Sdk.Library.LibraryArchiveTreeExtensions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.Generic.Installers;
+namespace SilverModManager.Games.Generic.Installers;
 
 using InstallDataTuple = (LoadoutItemGroup.New loadoutGroup, ITransaction transaction, Loadout.ReadOnly loadout);
 

@@ -1,9 +1,9 @@
 using System.Reactive.Linq;
 using DynamicData;
-using NexusMods.Abstractions.Games;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.App.UI;
+namespace SilverModManager.App.UI;
 
 /// <summary>
 /// This class helps us efficiently identify whether a game is currently running.

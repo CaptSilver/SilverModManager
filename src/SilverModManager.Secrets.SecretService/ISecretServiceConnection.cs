@@ -1,10 +1,10 @@
 using R3;
 
-namespace NexusMods.Secrets.SecretService;
+namespace SilverModManager.Secrets.SecretService;
 
 /// <summary>
 /// The Secret Service calls the store needs, one method per D-Bus call. The store owns timeouts, retries
-/// and the mapping onto <see cref="NexusMods.Abstractions.Secrets.ISecretStore"/>; an implementation only
+/// and the mapping onto <see cref="SilverModManager.Abstractions.Secrets.ISecretStore"/>; an implementation only
 /// talks to the bus and maps raw bus errors into <see cref="SecretServiceException"/>.
 /// Every method must give up when its token is cancelled, including a wait for a prompt to complete: the
 /// store's timeouts are only that token, and ksecretd without a prompter never answers at all.

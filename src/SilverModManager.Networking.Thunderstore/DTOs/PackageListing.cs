@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Networking.Thunderstore.DTOs;
+namespace SilverModManager.Networking.Thunderstore.DTOs;
 
 /// <summary>
 /// A package record from the community package list and its chunks. <see cref="Versions"/> is newest first.

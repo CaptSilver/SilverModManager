@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Avalonia;
 using DynamicData;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public static class GridUtils
 {

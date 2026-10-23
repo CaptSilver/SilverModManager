@@ -2,10 +2,10 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.GuidedInstallers;
+using SilverModManager.Abstractions.GuidedInstallers;
 using ReactiveUI;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 [UsedImplicitly]
 public partial class GuidedInstallerGroupView : ReactiveUserControl<IGuidedInstallerGroupViewModel>

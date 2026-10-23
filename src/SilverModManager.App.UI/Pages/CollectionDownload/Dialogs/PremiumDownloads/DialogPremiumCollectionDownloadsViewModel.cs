@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.UI.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads;
+namespace SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads;
 
 public interface IDialogPremiumCollectionDownloadsViewModel : IViewModelInterface
 {

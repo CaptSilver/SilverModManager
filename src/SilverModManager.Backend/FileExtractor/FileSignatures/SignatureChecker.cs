@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.FileExtractor;
+using SilverModManager.Abstractions.FileExtractor;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileExtractor;
+using SilverModManager.Sdk.FileExtractor;
 
-namespace NexusMods.Backend.FileExtractor.FileSignatures;
+namespace SilverModManager.Backend.FileExtractor.FileSignatures;
 
 /// <summary>
 /// Utility for checking the file types of specific files by matching the magic signatures on their headers.

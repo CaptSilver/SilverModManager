@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Secrets;
+namespace SilverModManager.Secrets;
 
 /// <summary>
 /// Where sign-in tokens and passwords are kept.

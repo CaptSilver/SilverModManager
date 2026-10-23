@@ -1,4 +1,4 @@
-namespace NexusMods.UI.Sdk.Dialog.Enums;
+namespace SilverModManager.UI.Sdk.Dialog.Enums;
 
 /// <summary>
 /// Represents the action that a button can have in a dialog.

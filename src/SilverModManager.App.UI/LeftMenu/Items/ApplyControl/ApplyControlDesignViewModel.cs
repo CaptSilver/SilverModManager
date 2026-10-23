@@ -1,11 +1,11 @@
 ﻿using System.Reactive;
-using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.Resources;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.LeftMenu.Items;
+namespace SilverModManager.App.UI.LeftMenu.Items;
 
 public class ApplyControlDesignViewModel : AViewModel<IApplyControlViewModel>, IApplyControlViewModel
 {

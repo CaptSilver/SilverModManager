@@ -3,7 +3,7 @@ using CliWrap;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk;
+namespace SilverModManager.Sdk;
 
 [PublicAPI]
 public abstract class ExecutableRuntimeDependency : IRuntimeDependency

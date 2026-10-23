@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using JetBrains.Annotations;
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 [PublicAPI]
 public class GameLocatorResult

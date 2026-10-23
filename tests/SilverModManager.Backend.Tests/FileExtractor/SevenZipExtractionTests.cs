@@ -1,12 +1,12 @@
 using System.Formats.Tar;
 using System.IO.Compression;
 using FluentAssertions;
-using NexusMods.Backend.FileExtractor.Extractors;
+using SilverModManager.Backend.FileExtractor.Extractors;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
 
-namespace NexusMods.Backend.Tests.FileExtractor;
+namespace SilverModManager.Backend.Tests.FileExtractor;
 
 public class SevenZipExtractionTests : AFileExtractorTest
 {

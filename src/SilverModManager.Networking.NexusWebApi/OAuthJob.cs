@@ -2,15 +2,15 @@ using System.Security.Cryptography;
 using System.Text;
 using DynamicData.Kernel;
 using Microsoft.AspNetCore.WebUtilities;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Networking.NexusWebApi.Auth;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Networking.NexusWebApi.Auth;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Jobs;
 using R3;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 internal sealed class OAuthJob : IOAuthJob, IJobDefinitionWithStart<OAuthJob, Optional<JwtTokenReply>>
 {

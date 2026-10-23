@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Library.Installers;
-using NexusMods.Games.FromSoft.Installers;
-using NexusMods.Games.FromSoft.Tests.Fixtures;
-using NexusMods.Sdk.Library;
+using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Games.FromSoft.Installers;
+using SilverModManager.Games.FromSoft.Tests.Fixtures;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class Me3NativeInstallerTests(ITestOutputHelper outputHelper) : AEldenRingInstallerTests<Me3NativeInstallerTests>(outputHelper)
 {

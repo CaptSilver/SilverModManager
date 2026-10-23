@@ -1,8 +1,8 @@
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Games;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft.Build;
+namespace SilverModManager.Games.FromSoft.Build;
 
 /// <summary>
 /// The build of a FromSoft game an installation had when it was first launched through the app. A later build that

@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Represents UI documentation metadata for a type of sort order

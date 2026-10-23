@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FileHashes.DTOs;
+namespace SilverModManager.Games.FileHashes.DTOs;
 
 /// <summary>
 /// The contents of a manifest.json file for a release of the hashes DB. We use

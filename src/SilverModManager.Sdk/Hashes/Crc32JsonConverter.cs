@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace NexusMods.Sdk.Hashes;
+namespace SilverModManager.Sdk.Hashes;
 
 /// <summary>
 /// Custom JSON converter for <see cref="Crc32Value"/>. We're not using augments here as we want hex strings not

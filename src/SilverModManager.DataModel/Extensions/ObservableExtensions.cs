@@ -1,6 +1,6 @@
 ﻿using System.Reactive.Linq;
 
-namespace NexusMods.DataModel.Extensions;
+namespace SilverModManager.DataModel.Extensions;
 
 /// <summary>
 /// Extension methods for <see cref="IObservable{T}"/>.

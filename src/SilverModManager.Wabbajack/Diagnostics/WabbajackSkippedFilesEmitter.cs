@@ -1,12 +1,12 @@
 using System.Runtime.CompilerServices;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Wabbajack.Models;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Models;
 
-namespace NexusMods.Wabbajack.Diagnostics;
+namespace SilverModManager.Wabbajack.Diagnostics;
 
 /// <summary>
 /// Warns, once per installed modlist, that some of its directives were not executed. Registered for every game.

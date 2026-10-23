@@ -6,21 +6,21 @@ using System.Text;
 using System.Text.Json;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Collections.Json;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.NexusWebApi.Errors;
-using NexusMods.Networking.NexusWebApi.Extensions;
+using SilverModManager.Abstractions.Collections.Json;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.NexusWebApi.Errors;
+using SilverModManager.Networking.NexusWebApi.Extensions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi;
+namespace SilverModManager.Networking.NexusWebApi;
 
 using GameIdCache = Dictionary<GameDomain, NexusModsGameId>;
 using ResolvedEntitiesLookup = Dictionary<FileUid, ValueTuple<NexusModsModPageMetadataId, NexusModsFileMetadataId>>;
@@ -666,9 +666,9 @@ public partial class NexusModsLibrary
         return resolver.Id;
     }
 
-    private static Optional<NexusMods.Abstractions.NexusModsLibrary.Models.CollectionStatus> ToStatus(ICollection collectionFragment)
+    private static Optional<SilverModManager.Abstractions.NexusModsLibrary.Models.CollectionStatus> ToStatus(ICollection collectionFragment)
     {
-        if (collectionFragment.CollectionStatus is null) return Optional<NexusMods.Abstractions.NexusModsLibrary.Models.CollectionStatus>.None;
+        if (collectionFragment.CollectionStatus is null) return Optional<SilverModManager.Abstractions.NexusModsLibrary.Models.CollectionStatus>.None;
         return collectionFragment.CollectionStatus.Value switch
         {
             CollectionStatus.Unlisted => Abstractions.NexusModsLibrary.Models.CollectionStatus.Unlisted,

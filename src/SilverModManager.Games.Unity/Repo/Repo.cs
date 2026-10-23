@@ -1,8 +1,8 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.Unity.Repo;
+namespace SilverModManager.Games.Unity.Repo;
 
 [UsedImplicitly]
 public class Repo(IServiceProvider provider) : AUnityGame<Repo>(provider, Definition), IGameData<Repo>

@@ -2,10 +2,10 @@ using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Abstractions.Games.Tests;
+namespace SilverModManager.Abstractions.Games.Tests;
 
 public class LaunchPlatformTests
 {

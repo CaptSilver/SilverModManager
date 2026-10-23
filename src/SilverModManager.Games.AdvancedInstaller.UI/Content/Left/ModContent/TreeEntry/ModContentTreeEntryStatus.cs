@@ -1,7 +1,7 @@
-﻿namespace NexusMods.Games.AdvancedInstaller.UI.ModContent;
+﻿namespace SilverModManager.Games.AdvancedInstaller.UI.ModContent;
 
 /// <summary>
-///     Represents the current status of the <see cref="NexusMods.Games.AdvancedInstaller.UI.ModContent.IModContentTreeEntryViewModel" />.
+///     Represents the current status of the <see cref="SilverModManager.Games.AdvancedInstaller.UI.ModContent.IModContentTreeEntryViewModel" />.
 /// </summary>
 public enum ModContentTreeEntryStatus : byte
 {

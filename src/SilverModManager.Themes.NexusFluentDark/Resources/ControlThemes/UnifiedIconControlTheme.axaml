@@ -1,6 +1,6 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk">
+                    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk">
 
     <Design.PreviewWith>
 
@@ -14,11 +14,11 @@
 
                     <!-- Image -->
                     <icons:IconValue x:Key="AvaloniaImageValue"
-                                     ImageSetter="avares://NexusMods.App.UI/Assets/DesignTime/cyberpunk_game.png" />
+                                     ImageSetter="avares://SilverModManager.App.UI/Assets/DesignTime/cyberpunk_game.png" />
 
                     <!-- Svg -->
                     <icons:IconValue x:Key="AvaloniaSvgValue"
-                                     SvgSetter="avares://NexusMods.App.UI/Assets/Pictograms/health.svg" />
+                                     SvgSetter="avares://SilverModManager.App.UI/Assets/Pictograms/health.svg" />
 
                     <!-- PathIcon -->
                     <icons:IconValue x:Key="AvaloniaPathIconValue">

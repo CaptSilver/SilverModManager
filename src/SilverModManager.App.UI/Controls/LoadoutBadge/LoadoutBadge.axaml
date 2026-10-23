@@ -3,12 +3,12 @@
                                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                                xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-                                xmlns:spinner="clr-namespace:NexusMods.App.UI.Controls.Spinner"
+                                xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+                                xmlns:spinner="clr-namespace:SilverModManager.App.UI.Controls.Spinner"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:loadoutBadge="clr-namespace:NexusMods.App.UI.Controls.LoadoutBadge"
+                                xmlns:loadoutBadge="clr-namespace:SilverModManager.App.UI.Controls.LoadoutBadge"
                                 mc:Ignorable="d" d:DesignWidth="48" d:DesignHeight="48"
-                                x:Class="NexusMods.App.UI.Controls.LoadoutBadge.LoadoutBadge"
+                                x:Class="SilverModManager.App.UI.Controls.LoadoutBadge.LoadoutBadge"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Top">
     

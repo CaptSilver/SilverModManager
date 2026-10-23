@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.FileExtractor;
+using SilverModManager.Abstractions.FileExtractor;
 
-namespace NexusMods.Sdk.FileExtractor;
+namespace SilverModManager.Sdk.FileExtractor;
 
 /// <summary>
 /// A factory for creating signature checkers

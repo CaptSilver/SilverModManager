@@ -4,14 +4,14 @@
 
     <ItemGroup>
         <PackageReference Include="BsDiff" />
-        <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.Games.FOMOD\NexusMods.Games.FOMOD.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.Loadouts\NexusMods.Abstractions.Loadouts.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.NexusModsLibrary\NexusMods.Abstractions.NexusModsLibrary.csproj" />
+      <ProjectReference Include="..\SilverModManager.Games.FOMOD\SilverModManager.Games.FOMOD.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts\SilverModManager.Abstractions.Loadouts.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.NexusModsLibrary\SilverModManager.Abstractions.NexusModsLibrary.csproj" />
     </ItemGroup>
 
 </Project>

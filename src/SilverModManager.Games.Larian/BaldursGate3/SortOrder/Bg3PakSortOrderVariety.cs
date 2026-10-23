@@ -1,18 +1,18 @@
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Larian.BaldursGate3.ModList;
-using NexusMods.Games.Larian.BaldursGate3.Models;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Larian.BaldursGate3.ModList;
+using SilverModManager.Games.Larian.BaldursGate3.Models;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk.Loadouts;
 using OneOf;
-using LoadoutSortOrder = NexusMods.Abstractions.Loadouts.SortOrder;
+using LoadoutSortOrder = SilverModManager.Abstractions.Loadouts.SortOrder;
 
-namespace NexusMods.Games.Larian.BaldursGate3.SortOrder;
+namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
 
 /// <summary>
 /// The pak load order of a Baldur's Gate 3 loadout, one instance per game. Follows the shape of the Creation

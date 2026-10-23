@@ -3,26 +3,26 @@ using System.Reactive.Linq;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Abstractions.Games;
-using NexusMods.App.UI.Dialog;
-using NexusMods.UI.Sdk.Dialog;
-using NexusMods.App.UI.Dialog.Enums;
-using NexusMods.UI.Sdk.Dialog.Enums;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.App.UI.Overlays;
-using NexusMods.App.UI.Pages.Diagnostics;
-using NexusMods.App.UI.Pages.SteamLaunchOption;
-using NexusMods.App.UI.Windows;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.App.UI.Dialog;
+using SilverModManager.UI.Sdk.Dialog;
+using SilverModManager.App.UI.Dialog.Enums;
+using SilverModManager.UI.Sdk.Dialog.Enums;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Pages.Diagnostics;
+using SilverModManager.App.UI.Pages.SteamLaunchOption;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider)
 {
@@ -53,7 +53,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
 
     private static Diagnostic DiagnosticWith(params DiagnosticAction[] actions) => new()
     {
-        Id = new DiagnosticId("NexusMods.UI.Tests", 1),
+        Id = new DiagnosticId("SilverModManager.UI.Tests", 1),
         Title = "Title",
         Severity = DiagnosticSeverity.Suggestion,
         Summary = DiagnosticMessage.From("Summary"),

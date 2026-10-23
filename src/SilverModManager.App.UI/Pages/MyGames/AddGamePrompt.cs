@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.App.UI.Pages.MyGames;
+namespace SilverModManager.App.UI.Pages.MyGames;
 
 /// <summary>
 /// What to tell the player after they pointed My Games at a folder, and which games to offer when the folder

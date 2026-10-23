@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Backend.Tests.Jobs.Unit;
+namespace SilverModManager.Backend.Tests.Jobs.Unit;
 
 public class JobCancellationTokenTests
 {

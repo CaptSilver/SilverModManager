@@ -1,8 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.FOMOD.UI;
+using SilverModManager.Games.FOMOD.UI;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class GuidedInstallerUiTests
 {

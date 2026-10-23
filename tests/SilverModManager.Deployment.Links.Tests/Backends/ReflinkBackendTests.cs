@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Deployment.Links.Backends;
-using NexusMods.Deployment.Links.Tests.Fixtures;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Deployment.Links.Backends;
+using SilverModManager.Deployment.Links.Tests.Fixtures;
 
-namespace NexusMods.Deployment.Links.Tests.Backends;
+namespace SilverModManager.Deployment.Links.Tests.Backends;
 
 public class ReflinkBackendTests(ITestOutputHelper helper)
     : LinkedGameTest<ReflinkBackendTests>(helper, Placement.EntryDirectory, Placement.EntryDirectory, DeploymentBackendId.Reflink)

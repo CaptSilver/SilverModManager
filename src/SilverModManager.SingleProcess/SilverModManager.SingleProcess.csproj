@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-      <RootNamespace>NexusMods.SingleProcess</RootNamespace>
+      <RootNamespace>SilverModManager.SingleProcess</RootNamespace>
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
       <LangVersion>latest</LangVersion>
     </PropertyGroup>
@@ -11,12 +11,12 @@
       <PackageReference Include="System.CommandLine" />  
     </ItemGroup>
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.App.Cli\NexusMods.App.Cli.csproj" />
-      <ProjectReference Include="..\NexusMods.ProxyConsole\NexusMods.ProxyConsole.csproj" />
+      <ProjectReference Include="..\SilverModManager.App.Cli\SilverModManager.App.Cli.csproj" />
+      <ProjectReference Include="..\SilverModManager.ProxyConsole\SilverModManager.ProxyConsole.csproj" />
     </ItemGroup>
     <ItemGroup>
-      <InternalsVisibleTo Include="NexusMods.CLI.Tests" />
-      <InternalsVisibleTo Include="NexusMods.SingleProcess.Tests" />
+      <InternalsVisibleTo Include="SilverModManager.CLI.Tests" />
+      <InternalsVisibleTo Include="SilverModManager.SingleProcess.Tests" />
     </ItemGroup>
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 </Project>

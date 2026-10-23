@@ -2,9 +2,9 @@ using System.Buffers.Binary;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
 /// <summary>
 /// Builds archive indexes and the packed files around them: the plaintext BHD5, the RSA wrapping FromSoft applies with

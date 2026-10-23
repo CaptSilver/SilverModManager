@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit.DependencyInjection;
 
-namespace NexusMods.Abstractions.Installers.Tests;
+namespace SilverModManager.Abstractions.Installers.Tests;
 
 public class Startup
 {

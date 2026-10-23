@@ -1,6 +1,6 @@
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.Abstractions.EpicGameStore.Values;
+namespace SilverModManager.Abstractions.EpicGameStore.Values;
 
 /// <summary>
 /// A unique identifier for a build in the Epic Game Store

@@ -2,13 +2,13 @@ using CliWrap;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Backend.OS;
-using NexusMods.Backend.RuntimeDependency;
+using SilverModManager.Backend.OS;
+using SilverModManager.Backend.RuntimeDependency;
 using NexusMods.Paths;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 using NSubstitute;
 
-namespace NexusMods.CrossPlatform.Tests;
+namespace SilverModManager.CrossPlatform.Tests;
 
 using Xunit;
 

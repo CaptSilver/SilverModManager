@@ -1,4 +1,4 @@
-namespace NexusMods.Secrets.SecretService;
+namespace SilverModManager.Secrets.SecretService;
 
 /// <summary>
 /// How long the store waits on the service. The keyring never shows UI for the plain calls, but a daemon

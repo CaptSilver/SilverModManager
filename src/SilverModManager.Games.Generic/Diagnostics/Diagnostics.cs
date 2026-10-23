@@ -1,13 +1,13 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Generators.Diagnostics;
 
-namespace NexusMods.Games.Generic.Diagnostics;
+namespace SilverModManager.Games.Generic.Diagnostics;
 
 internal static partial class Diagnostics
 {
-    private const string Source = "NexusMods.Games.Generic";
+    private const string Source = "SilverModManager.Games.Generic";
 
     [DiagnosticTemplate]
     [UsedImplicitly]

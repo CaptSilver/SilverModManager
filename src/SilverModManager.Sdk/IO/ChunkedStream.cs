@@ -1,7 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
 
-namespace NexusMods.Sdk.IO;
+namespace SilverModManager.Sdk.IO;
 
 /// <summary>
 /// A stream that reads data in chunks, caching the chunks in a cache and allowing

@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using DynamicData;
 
-namespace NexusMods.App.UI.Helpers.TreeDataGrid;
+namespace SilverModManager.App.UI.Helpers.TreeDataGrid;
 
 /// <summary>
 ///     This interface provides the implementation for ViewModels which are based on

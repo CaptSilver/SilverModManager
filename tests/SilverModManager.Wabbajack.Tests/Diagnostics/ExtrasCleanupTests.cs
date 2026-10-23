@@ -1,15 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Wabbajack.Install;
-using NexusMods.Wabbajack.Models;
-using NexusMods.Wabbajack.Tests.Install;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Install;
+using SilverModManager.Wabbajack.Models;
+using SilverModManager.Wabbajack.Tests.Install;
 
-namespace NexusMods.Wabbajack.Tests.Diagnostics;
+namespace SilverModManager.Wabbajack.Tests.Diagnostics;
 
 public class ExtrasCleanupTests(ITestOutputHelper helper) : InstallTestBase<ExtrasCleanupTests>(helper)
 {

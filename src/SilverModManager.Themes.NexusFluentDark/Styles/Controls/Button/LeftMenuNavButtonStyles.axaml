@@ -1,7 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-        xmlns:navigation="clr-namespace:NexusMods.App.UI.Controls.Navigation;assembly=NexusMods.App.UI">
+        xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+        xmlns:navigation="clr-namespace:SilverModManager.App.UI.Controls.Navigation;assembly=SilverModManager.App.UI">
     <Design.PreviewWith>
         <Border Padding="16">
             <StackPanel Spacing="8" Orientation="Horizontal">

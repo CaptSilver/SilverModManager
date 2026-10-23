@@ -1,22 +1,22 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.DataModel.Undo;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.DataModel.Undo;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Wabbajack.Diagnostics;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Install;
-using NexusMods.Wabbajack.Models;
-using NexusMods.Wabbajack.Tests.Install;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Diagnostics;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Install;
+using SilverModManager.Wabbajack.Models;
+using SilverModManager.Wabbajack.Tests.Install;
 
-namespace NexusMods.Wabbajack.Tests.Diagnostics;
+namespace SilverModManager.Wabbajack.Tests.Diagnostics;
 
 public class SkippedFilesTests(ITestOutputHelper helper) : InstallTestBase<SkippedFilesTests>(helper)
 {

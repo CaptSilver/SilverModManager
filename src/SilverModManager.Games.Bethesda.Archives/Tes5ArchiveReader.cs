@@ -3,7 +3,7 @@ using System.Buffers.Binary;
 using System.Text;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 internal sealed class Tes5ArchiveReader : IBethesdaArchiveReader
 {

@@ -1,10 +1,10 @@
 using System.Diagnostics;
-using NexusMods.App.UI.Controls;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.UI.Sdk;
 using R3;
 using Unit = R3.Unit;
 
-namespace NexusMods.App.UI.Pages.Sorting;
+namespace SilverModManager.App.UI.Pages.Sorting;
 
 /// <summary>
 /// The on/off switch of a Load Order row. A locked row shows the switch but cannot be toggled.

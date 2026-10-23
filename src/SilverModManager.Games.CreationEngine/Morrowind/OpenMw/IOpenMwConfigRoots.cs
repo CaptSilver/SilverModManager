@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Games.CreationEngine.Morrowind.OpenMw;
+namespace SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
 
 /// <summary>
 /// The folders an openmw.cfg can live in. Kept behind a service so that the one place that knows the real

@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Downloads;
+using SilverModManager.Abstractions.Downloads;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Abstractions.Library.Jobs;
+namespace SilverModManager.Abstractions.Library.Jobs;
 
 /// <summary>
 /// A job that adds a download job to the library after the download has been completed

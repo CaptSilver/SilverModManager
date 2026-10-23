@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
 
-namespace NexusMods.Abstractions.Games.Tests;
+namespace SilverModManager.Abstractions.Games.Tests;
 
 public class WineDllOverrideRequirementsTests
 {

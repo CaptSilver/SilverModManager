@@ -2,12 +2,12 @@ using System.ComponentModel;
 using CliWrap;
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Selftest;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
+using SilverModManager.Platform.Proton.Selftest;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests.Selftest;
+namespace SilverModManager.Platform.Proton.Tests.Selftest;
 
 /// <summary>
 /// The selftest checks, run against silvermod-testhost standing in for the shipped binary. The flock and

@@ -1,4 +1,4 @@
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// Where a launch is, as recorded next to the installation lock.

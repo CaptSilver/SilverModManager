@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Games.Bethesda.LoadOrder.Tests;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Tests;
 
 /// <summary>Everything a synthetic plugin header can carry. Null fields are left out of the file.</summary>
 internal sealed record PluginSpec

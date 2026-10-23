@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Collections;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Abstractions.Collections;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Collections;
+namespace SilverModManager.Collections;
 
 public static class Services
 {

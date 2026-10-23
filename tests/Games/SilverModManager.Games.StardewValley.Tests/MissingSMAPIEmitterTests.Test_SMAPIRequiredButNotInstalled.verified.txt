@@ -1,4 +1,4 @@
-﻿[Id] NexusMods.Games.StardewValley: 3
+﻿[Id] SilverModManager.Games.StardewValley: 3
 [Title] SMAPI is not installed
 [Summary] Stardew Modding API (SMAPI) is required for 2 mod(s) but is not installed
 [Details]

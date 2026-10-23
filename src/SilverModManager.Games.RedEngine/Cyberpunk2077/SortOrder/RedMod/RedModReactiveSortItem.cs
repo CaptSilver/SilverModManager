@@ -1,9 +1,9 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
 
 public class RedModReactiveSortItem : IReactiveSortItem<RedModReactiveSortItem, SortItemKey<string>>
 {

@@ -11,7 +11,7 @@ using NexusMods.Paths;
 using ReactiveUI;
 using TextMateSharp.Grammars;
 
-namespace NexusMods.App.UI.Pages.TextEdit;
+namespace SilverModManager.App.UI.Pages.TextEdit;
 
 [UsedImplicitly]
 public partial class TextEditorPageView : ReactiveUserControl<ITextEditorPageViewModel>

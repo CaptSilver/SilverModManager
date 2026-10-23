@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Overlays.Generic.MessageBox.OkCancel;
+namespace SilverModManager.App.UI.Overlays.Generic.MessageBox.OkCancel;
 
 public partial class MessageBoxOkCancelView : ReactiveUserControl<IMessageBoxOkCancelViewModel>
 {

@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Unity.BepInEx;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Unity.BepInEx;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.Unity;
+namespace SilverModManager.Games.Unity;
 
 public static class Services
 {

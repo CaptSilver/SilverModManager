@@ -1,9 +1,9 @@
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.ToolRunner.Dependencies;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Platform.Proton.ToolRunner.Dependencies;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.ToolRunner;
+namespace SilverModManager.Platform.Proton.ToolRunner;
 
 /// <summary>
 /// Runs a program inside the Flatpak sandbox of Heroic, with the runner Heroic picked for the game, so the

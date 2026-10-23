@@ -1,10 +1,10 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Pages.ObservableInfo;
+namespace SilverModManager.App.UI.Pages.ObservableInfo;
 
 [JsonName("ObservableInfoPageContext")]
 public record ObservableInfoPageContext : IPageFactoryContext

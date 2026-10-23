@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
 /// <summary>
 /// Extensions for working with index segments

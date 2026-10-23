@@ -1,11 +1,11 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.CollectionDownload"
-                    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-                    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-                    xmlns:spinner="clr-namespace:NexusMods.App.UI.Controls.Spinner;assembly=NexusMods.App.UI"
-                    xmlns:abstractions="clr-namespace:NexusMods.MnemonicDB.Abstractions;assembly=NexusMods.MnemonicDB.Abstractions"
-                    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources">
+                    xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.CollectionDownload"
+                    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
+                    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+                    xmlns:spinner="clr-namespace:SilverModManager.App.UI.Controls.Spinner;assembly=SilverModManager.App.UI"
+                    xmlns:abstractions="clr-namespace:SilverModManager.MnemonicDB.Abstractions;assembly=SilverModManager.MnemonicDB.Abstractions"
+                    xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources">
 
     <!-- Actions -->
     <DataTemplate x:Key="{x:Static local:CollectionColumns+Actions.ColumnTemplateResourceKey}">

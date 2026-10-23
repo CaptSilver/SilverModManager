@@ -1,21 +1,21 @@
 using Avalonia.Platform.Storage;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.App.UI.Windows;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.UI.Sdk.Icons;
 using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using Unit = R3.Unit;
 
-namespace NexusMods.App.UI.Pages.Tools;
+namespace SilverModManager.App.UI.Pages.Tools;
 
 [UsedImplicitly]
 internal class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>, IToolsPageViewModel

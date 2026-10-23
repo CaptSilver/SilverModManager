@@ -1,6 +1,6 @@
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Secrets.SecretService.Tests.Integration;
+namespace SilverModManager.Secrets.SecretService.Tests.Integration;
 
 internal sealed class FakeEnvironment(string? busAddress) : IEnvironmentReader
 {

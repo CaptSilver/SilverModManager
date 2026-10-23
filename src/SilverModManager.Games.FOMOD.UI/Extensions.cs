@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.GuidedInstallers;
+using SilverModManager.Abstractions.GuidedInstallers;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 internal static class Extensions
 {

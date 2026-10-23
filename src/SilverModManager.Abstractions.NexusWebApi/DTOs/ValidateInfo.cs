@@ -1,11 +1,11 @@
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
-using NexusMods.Abstractions.NexusWebApi.DTOs.Interfaces;
-using UserId = NexusMods.Abstractions.NexusWebApi.Types.UserId;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.Interfaces;
+using UserId = SilverModManager.Abstractions.NexusWebApi.Types.UserId;
 
 // ReSharper disable InconsistentNaming
 
-namespace NexusMods.Abstractions.NexusWebApi.DTOs;
+namespace SilverModManager.Abstractions.NexusWebApi.DTOs;
 
 /// <summary>
 /// Contains the current user's details.

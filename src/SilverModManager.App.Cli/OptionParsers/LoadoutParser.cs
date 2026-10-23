@@ -1,12 +1,12 @@
 using System.Globalization;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Games;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.CLI.OptionParsers;
+namespace SilverModManager.CLI.OptionParsers;
 
 /// <summary>
 /// Parses a string into a loadout marker

@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.CreationEngine.Emitters;
+namespace SilverModManager.Games.CreationEngine.Emitters;
 
 /// <summary>
 /// Warns when the game's ini sets <c>sTestFile1</c> to <c>sTestFile10</c>. Fallout 4, Fallout 4 VR and Starfield then

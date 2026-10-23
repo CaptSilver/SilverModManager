@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Merge;
+namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>The ways the app combines several mods' copies of one file into one.</summary>
 public enum MergeStrategy

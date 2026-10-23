@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Numerics;
 
-namespace NexusMods.Games.FromSoft.Formats;
+namespace SilverModManager.Games.FromSoft.Formats;
 
 /// <summary>How a game's binder archives (BND3 or BND4) are laid out.</summary>
 public enum BinderFormat

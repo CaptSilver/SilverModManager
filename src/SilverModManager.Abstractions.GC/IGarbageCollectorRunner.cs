@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.GC;
+namespace SilverModManager.Abstractions.GC;
 
 /// <summary>
 /// Utility for running the garbage collection process.

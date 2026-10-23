@@ -1,6 +1,6 @@
 ﻿using JetBrains.Annotations;
 
-namespace NexusMods.Games.TestFramework.Helpers;
+namespace SilverModManager.Games.TestFramework.Helpers;
 
 /// <summary>
 /// Contains routines for stubbing mods.

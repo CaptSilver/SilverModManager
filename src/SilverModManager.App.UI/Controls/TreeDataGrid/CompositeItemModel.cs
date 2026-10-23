@@ -3,12 +3,12 @@ using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Converters;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Converters;
+using SilverModManager.UI.Sdk;
 using ObservableCollections;
 using R3;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// Item model that allows for composition over inheritance with components.

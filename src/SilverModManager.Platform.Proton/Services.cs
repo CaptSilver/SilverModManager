@@ -1,19 +1,19 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Support;
-using NexusMods.Platform.Proton.Protontricks;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Platform.Proton.Verbs;
-using NexusMods.Platform.Proton.ToolRunner;
-using NexusMods.Platform.Proton.UserTools;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Support;
+using SilverModManager.Platform.Proton.Protontricks;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Platform.Proton.Verbs;
+using SilverModManager.Platform.Proton.ToolRunner;
+using SilverModManager.Platform.Proton.UserTools;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton;
+namespace SilverModManager.Platform.Proton;
 
 public static class Services
 {

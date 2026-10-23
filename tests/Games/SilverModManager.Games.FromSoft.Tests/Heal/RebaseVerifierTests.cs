@@ -1,13 +1,13 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Build;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Heal;
-using NexusMods.Games.FromSoft.Tests.Build;
-using NexusMods.Games.FromSoft.Tests.Formats;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Games.FromSoft.Build;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Heal;
+using SilverModManager.Games.FromSoft.Tests.Build;
+using SilverModManager.Games.FromSoft.Tests.Formats;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
-namespace NexusMods.Games.FromSoft.Tests.Heal;
+namespace SilverModManager.Games.FromSoft.Tests.Heal;
 
 public class RebaseVerifierTests
 {

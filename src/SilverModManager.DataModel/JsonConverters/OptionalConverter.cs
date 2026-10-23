@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 
-namespace NexusMods.DataModel.JsonConverters;
+namespace SilverModManager.DataModel.JsonConverters;
 
 /// <summary>
 /// Converter factory for <see cref="Optional{T}"/>

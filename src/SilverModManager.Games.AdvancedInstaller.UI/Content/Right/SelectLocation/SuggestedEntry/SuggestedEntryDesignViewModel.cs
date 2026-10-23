@@ -1,8 +1,8 @@
 ﻿
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.SelectLocation;
+namespace SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 
 public class SuggestedEntryDesignViewModel() : SuggestedEntryViewModel(
     Guid.NewGuid(),

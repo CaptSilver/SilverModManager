@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Backend.OS;
+using SilverModManager.Backend.OS;
 
-namespace NexusMods.CrossPlatform.Tests;
+namespace SilverModManager.CrossPlatform.Tests;
 
 using Xunit;
 

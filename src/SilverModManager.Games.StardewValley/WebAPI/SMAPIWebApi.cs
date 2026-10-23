@@ -1,15 +1,15 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics.Values;
-using NexusMods.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.Diagnostics.Values;
+using SilverModManager.Abstractions.NexusWebApi;
 using NexusMods.Paths;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.NexusModsApi;
 using StardewModdingAPI;
 using StardewModdingAPI.Toolkit.Framework.Clients.WebApi;
 using StardewModdingAPI.Toolkit.Utilities;
 
-namespace NexusMods.Games.StardewValley.WebAPI;
+namespace SilverModManager.Games.StardewValley.WebAPI;
 
 /// <summary>
 /// Implementation of <see cref="ISMAPIWebApi"/> using <see cref="WebApiClient"/>

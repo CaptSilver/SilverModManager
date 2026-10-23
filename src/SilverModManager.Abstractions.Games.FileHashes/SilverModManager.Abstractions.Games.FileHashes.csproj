@@ -3,15 +3,15 @@
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.MnemonicDB\NexusMods.MnemonicDB.csproj" />
-      <ProjectReference Include="..\NexusMods.MnemonicDB.Abstractions\NexusMods.MnemonicDB.Abstractions.csproj" />
-        <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+      <ProjectReference Include="..\SilverModManager.MnemonicDB\SilverModManager.MnemonicDB.csproj" />
+      <ProjectReference Include="..\SilverModManager.MnemonicDB.Abstractions\SilverModManager.MnemonicDB.Abstractions.csproj" />
+        <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Abstractions.EpicGameStore\NexusMods.Abstractions.EpicGameStore.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.Steam\NexusMods.Abstractions.Steam.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.GOG\NexusMods.Abstractions.GOG.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.EpicGameStore\SilverModManager.Abstractions.EpicGameStore.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Steam\SilverModManager.Abstractions.Steam.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.GOG\SilverModManager.Abstractions.GOG.csproj" />
     </ItemGroup>
 
     <ItemGroup>

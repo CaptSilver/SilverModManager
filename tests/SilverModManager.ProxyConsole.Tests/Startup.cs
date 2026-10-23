@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit.DependencyInjection.Logging;
 
-namespace NexusMods.ProxyConsole.Tests;
+namespace SilverModManager.ProxyConsole.Tests;
 
 public class Startup
 {

@@ -1,9 +1,9 @@
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
-using NexusMods.Wabbajack.Models;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Wabbajack.Models;
 
-namespace NexusMods.Wabbajack;
+namespace SilverModManager.Wabbajack;
 
 /// <summary>
 /// The folders Wabbajack support writes to, resolved from <see cref="WabbajackSettings"/> and created when first

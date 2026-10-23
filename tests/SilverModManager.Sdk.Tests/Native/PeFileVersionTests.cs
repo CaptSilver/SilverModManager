@@ -1,6 +1,6 @@
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Sdk.Tests.Native;
+namespace SilverModManager.Sdk.Tests.Native;
 
 public class PeFileVersionTests
 {

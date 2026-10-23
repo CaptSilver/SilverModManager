@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.SortOrder;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.SortOrder;
 using NexusMods.Hashing.xxHash3;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Morrowind;
+namespace SilverModManager.Games.CreationEngine.Tests.Morrowind;
 
 public class PluginHeaderCacheMorrowindTests(IServiceProvider serviceProvider)
 {

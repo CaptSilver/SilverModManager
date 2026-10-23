@@ -22,7 +22,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="NexusMods.Games.StardewValley"/>
+        <InternalsVisibleTo Include="SilverModManager.Games.StardewValley"/>
     </ItemGroup>
 
     <Target Name="ValidateSubmodule" AfterTargets="BeforeBuild">

@@ -2,7 +2,7 @@ using ICSharpCode.SharpZipLib;
 using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
 using K4os.Compression.LZ4;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// Reads one stored or compressed run of bytes out of a BA2: a general file's data or one texture chunk.

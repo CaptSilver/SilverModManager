@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Wabbajack;
+namespace SilverModManager.Wabbajack;
 
 [PublicAPI]
 public record WabbajackSettings : ISettings

@@ -1,7 +1,7 @@
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Extensions;
 
-namespace NexusMods.App.UI.Pages.Downloads;
+namespace SilverModManager.App.UI.Pages.Downloads;
 
 /// <summary>
 /// Defines column template resource keys and component keys for Downloads.

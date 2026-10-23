@@ -3,12 +3,12 @@ using System.Runtime.InteropServices;
 using CliWrap;
 using FluentAssertions;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.UserTools;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Platform.Proton.UserTools;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 using NSubstitute;
 
-namespace NexusMods.Platform.Proton.Tests;
+namespace SilverModManager.Platform.Proton.Tests;
 
 public class UserToolAdapterTests
 {

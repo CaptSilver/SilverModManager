@@ -6,21 +6,21 @@ namespace TestNamespace;
 
 partial class MyClass
 {
-	internal static global::NexusMods.Abstractions.Diagnostics.Diagnostic<Diagnostic1MessageData> CreateDiagnostic1(global::System.String Something, global::System.Int32 Count)
+	internal static global::SilverModManager.Abstractions.Diagnostics.Diagnostic<Diagnostic1MessageData> CreateDiagnostic1(global::System.String Something, global::System.Int32 Count)
 	{
 		var messageData = new Diagnostic1MessageData(Something, Count);
 
-		return new global::NexusMods.Abstractions.Diagnostics.Diagnostic<Diagnostic1MessageData>
+		return new global::SilverModManager.Abstractions.Diagnostics.Diagnostic<Diagnostic1MessageData>
 		{
-			Id = new global::NexusMods.Abstractions.Diagnostics.DiagnosticId(source: Source, number: 1),
+			Id = new global::SilverModManager.Abstractions.Diagnostics.DiagnosticId(source: Source, number: 1),
 			Title = "Diagnostic 1",
-			Severity = global::NexusMods.Abstractions.Diagnostics.DiagnosticSeverity.Warning,
-			Summary = global::NexusMods.Abstractions.Diagnostics.DiagnosticMessage.From("""
+			Severity = global::SilverModManager.Abstractions.Diagnostics.DiagnosticSeverity.Warning,
+			Summary = global::SilverModManager.Abstractions.Diagnostics.DiagnosticMessage.From("""
 Mod conflicts with because it's missing '{Something}' and {Count} other stuff!
 """),
-			Details = global::NexusMods.Abstractions.Diagnostics.DiagnosticMessage.DefaultValue,
+			Details = global::SilverModManager.Abstractions.Diagnostics.DiagnosticMessage.DefaultValue,
 			MessageData = messageData,
-			DataReferences = new global::System.Collections.Generic.Dictionary<global::NexusMods.Abstractions.Diagnostics.References.DataReferenceDescription, global::NexusMods.Abstractions.Diagnostics.References.IDataReference>
+			DataReferences = new global::System.Collections.Generic.Dictionary<global::SilverModManager.Abstractions.Diagnostics.References.DataReferenceDescription, global::SilverModManager.Abstractions.Diagnostics.References.IDataReference>
 			{
 			}
 
@@ -30,7 +30,7 @@ Mod conflicts with because it's missing '{Something}' and {Count} other stuff!
 		;
 	}
 
-	internal readonly struct Diagnostic1MessageData : global::NexusMods.Abstractions.Diagnostics.IDiagnosticMessageData
+	internal readonly struct Diagnostic1MessageData : global::SilverModManager.Abstractions.Diagnostics.IDiagnosticMessageData
 	{
 		public readonly global::System.String Something;
 		public readonly global::System.Int32 Count;
@@ -41,7 +41,7 @@ Mod conflicts with because it's missing '{Something}' and {Count} other stuff!
 			this.Count = Count;
 		}
 
-		public void Format(global::NexusMods.Abstractions.Diagnostics.IDiagnosticWriter writer, ref global::NexusMods.Abstractions.Diagnostics.DiagnosticWriterState state, global::NexusMods.Abstractions.Diagnostics.DiagnosticMessage message)
+		public void Format(global::SilverModManager.Abstractions.Diagnostics.IDiagnosticWriter writer, ref global::SilverModManager.Abstractions.Diagnostics.DiagnosticWriterState state, global::SilverModManager.Abstractions.Diagnostics.DiagnosticMessage message)
 		{
 			var value = message.Value;
 			var span = value.AsSpan();

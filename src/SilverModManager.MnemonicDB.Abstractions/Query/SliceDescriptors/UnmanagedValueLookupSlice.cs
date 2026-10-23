@@ -1,11 +1,11 @@
 using System;
 using System.Runtime.InteropServices;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.ElementComparers;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.MnemonicDB.Abstractions.Query.SliceDescriptors;
+namespace SilverModManager.MnemonicDB.Abstractions.Query.SliceDescriptors;
 
 public readonly unsafe struct UnmanagedValueLookupSlice<T>(AttributeId attrId, ValueTag tag, T value) : ISliceDescriptor
     where T : unmanaged

@@ -3,24 +3,24 @@
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
     
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.MnemonicDB\NexusMods.MnemonicDB.csproj" />
-      <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+      <ProjectReference Include="..\SilverModManager.MnemonicDB\SilverModManager.MnemonicDB.csproj" />
+      <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
       <PackageReference Include="NexusMods.Paths" />
       <PackageReference Include="YamlDotNet" />
     </ItemGroup>
 
     <ItemGroup>
-      <InternalsVisibleTo Include="NexusMods.Games.FileHashes.Tests" />
+      <InternalsVisibleTo Include="SilverModManager.Games.FileHashes.Tests" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.Abstractions.Steam\NexusMods.Abstractions.Steam.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.Cli\NexusMods.Abstractions.Cli.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.Games.Diagnostics\NexusMods.Abstractions.Games.Diagnostics.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.Games.FileHashes\NexusMods.Abstractions.Games.FileHashes.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.Games\NexusMods.Abstractions.Games.csproj" />
-      <ProjectReference Include="..\NexusMods.App.Generators.Diagnostics\NexusMods.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"  />
-      <ProjectReference Include="..\NexusMods.Networking.EpicGameStore\NexusMods.Networking.EpicGameStore.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Steam\SilverModManager.Abstractions.Steam.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Cli\SilverModManager.Abstractions.Cli.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Games.FileHashes\SilverModManager.Abstractions.Games.FileHashes.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
+      <ProjectReference Include="..\SilverModManager.App.Generators.Diagnostics\SilverModManager.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"  />
+      <ProjectReference Include="..\SilverModManager.Networking.EpicGameStore\SilverModManager.Networking.EpicGameStore.csproj" />
     </ItemGroup>
 
     <PropertyGroup>

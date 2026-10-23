@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.UI.Sdk.Settings;
+namespace SilverModManager.UI.Sdk.Settings;
 
 [PublicAPI]
 public class SingleValueMultipleChoiceContainer : APropertyValueContainer<object, SingleValueMultipleChoiceContainerOptions>

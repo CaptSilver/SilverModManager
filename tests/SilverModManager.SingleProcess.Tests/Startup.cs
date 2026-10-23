@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace NexusMods.SingleProcess.Tests;
+namespace SilverModManager.SingleProcess.Tests;
 
 public class Startup
 {

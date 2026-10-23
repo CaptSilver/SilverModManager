@@ -1,6 +1,6 @@
-using NexusMods.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Storage;
 
-namespace NexusMods.MnemonicDB.InternalTxFunctions;
+namespace SilverModManager.MnemonicDB.InternalTxFunctions;
 
 /// <summary>
 /// Performs a flush and compact operation on the backend.

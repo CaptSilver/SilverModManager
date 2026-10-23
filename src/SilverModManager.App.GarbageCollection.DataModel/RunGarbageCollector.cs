@@ -1,14 +1,14 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.App.GarbageCollection.Nx;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.App.GarbageCollection.Nx;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Threading;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Threading;
 
-namespace NexusMods.App.GarbageCollection.DataModel;
+namespace SilverModManager.App.GarbageCollection.DataModel;
 
 /// <summary>
 /// Utility class for running the garbage collector against the DataModel and

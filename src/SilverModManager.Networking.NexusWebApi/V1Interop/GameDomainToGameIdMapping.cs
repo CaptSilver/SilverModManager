@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.NexusWebApi.V1Interop;
+namespace SilverModManager.Networking.NexusWebApi.V1Interop;
 
 /// <summary>
 /// Maps between game domains and Game IDs.

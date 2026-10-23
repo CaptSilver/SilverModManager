@@ -1,20 +1,20 @@
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics.Values;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Extensions;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Sdk.Resources;
-using NexusMods.Games.StardewValley.Models;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Abstractions.Diagnostics.Values;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Extensions;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Sdk.Resources;
+using SilverModManager.Games.StardewValley.Models;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
 using StardewModdingAPI;
 using StardewModdingAPI.Toolkit;
 using StardewModdingAPI.Toolkit.Serialization.Models;
 
-namespace NexusMods.Games.StardewValley.Emitters;
+namespace SilverModManager.Games.StardewValley.Emitters;
 
 internal static class Helpers
 {

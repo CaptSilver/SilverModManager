@@ -3,10 +3,10 @@ using DynamicData.Kernel;
 using GameFinder.StoreHandlers.Steam.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Backend.Games;
+namespace SilverModManager.Backend.Games;
 
 /// <summary>
 /// Reads cover art out of Steam's own <c>appcache/librarycache</c> folder. Steam fills it
@@ -21,8 +21,8 @@ internal sealed class SteamLibraryCacheArtSource : IGameArtSource
     // fills the tile just as well. Listed in order of preference.
     private static readonly string[] CoverFileNames = [TileFileName, "library_capsule.jpg"];
 
-    private static readonly EmbeddedResourceStreamFactory<SteamLibraryCacheArtSource> TilePlaceholder = new("NexusMods.Backend.Resources.game-tile-placeholder.png");
-    private static readonly EmbeddedResourceStreamFactory<SteamLibraryCacheArtSource> IconPlaceholder = new("NexusMods.Backend.Resources.game-icon-placeholder.png");
+    private static readonly EmbeddedResourceStreamFactory<SteamLibraryCacheArtSource> TilePlaceholder = new("SilverModManager.Backend.Resources.game-tile-placeholder.png");
+    private static readonly EmbeddedResourceStreamFactory<SteamLibraryCacheArtSource> IconPlaceholder = new("SilverModManager.Backend.Resources.game-icon-placeholder.png");
 
     // Besides the covers, Steam keeps these named files in an app folder. The one remaining
     // .jpg at the top level, named by a hash, is the 32x32 client icon.

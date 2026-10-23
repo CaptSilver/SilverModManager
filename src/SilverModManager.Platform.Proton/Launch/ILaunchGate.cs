@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// The launch a gate is asked about.

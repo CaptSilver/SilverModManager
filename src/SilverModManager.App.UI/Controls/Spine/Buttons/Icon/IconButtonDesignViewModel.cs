@@ -1,6 +1,6 @@
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Spine.Buttons.Icon;
+namespace SilverModManager.App.UI.Controls.Spine.Buttons.Icon;
 
 public class IconButtonDesignViewModel : IconButtonViewModel
 {

@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 
-namespace NexusMods.App.UI.Overlays.Generic.MessageBox.Base;
+namespace SilverModManager.App.UI.Overlays.Generic.MessageBox.Base;
 
 /// <summary>
 /// This provides the background 'pill' for the MessageBox class.

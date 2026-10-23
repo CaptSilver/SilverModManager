@@ -2,18 +2,18 @@ using System.Diagnostics;
 using System.Reactive.Disposables;
 using DynamicData;
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Downloads;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Downloads;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Networking.HttpDownloader;
-using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Networking.HttpDownloader;
+using SilverModManager.Abstractions.NexusModsLibrary;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.NexusModsApi;
 using R3;
 using ReactiveUI;
 
-namespace NexusMods.Library;
+namespace SilverModManager.Library;
 
 /// <summary>
 /// Implementation of <see cref="IDownloadsService"/>.

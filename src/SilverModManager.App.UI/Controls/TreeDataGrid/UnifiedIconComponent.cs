@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Icons;
 using R3;
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// Component for a value assigned to a <see cref="UnifiedIcon"/> via the <see cref="IconValue"/>.

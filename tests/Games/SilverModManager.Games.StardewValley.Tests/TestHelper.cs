@@ -2,7 +2,7 @@ using System.Text;
 using NexusMods.Paths;
 using SMAPIManifest = StardewModdingAPI.Toolkit.Serialization.Models.Manifest;
 
-namespace NexusMods.Games.StardewValley.Tests;
+namespace SilverModManager.Games.StardewValley.Tests;
 
 public static class TestHelper
 {

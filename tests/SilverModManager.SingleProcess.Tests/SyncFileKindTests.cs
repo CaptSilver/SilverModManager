@@ -2,12 +2,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
-using NexusMods.SingleProcess.Exceptions;
+using SilverModManager.SingleProcess.Exceptions;
 using NSubstitute;
 using FluentAssertions;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.SingleProcess.Tests;
+namespace SilverModManager.SingleProcess.Tests;
 
 public sealed class SyncFileKindTests : IDisposable
 {

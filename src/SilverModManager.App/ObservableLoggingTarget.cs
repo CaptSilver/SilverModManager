@@ -1,9 +1,9 @@
 using System.Reactive.Subjects;
-using NexusMods.Abstractions.Logging;
+using SilverModManager.Abstractions.Logging;
 using NLog;
 using NLog.Targets;
 
-namespace NexusMods.App;
+namespace SilverModManager.App;
 
 public class ObservableLoggingTarget : Target, IObservableExceptionSource
 {

@@ -2,9 +2,9 @@ using System.Diagnostics;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.IO;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Sdk.Tests.IO;
+namespace SilverModManager.Sdk.Tests.IO;
 
 public class ChunkedStreamTests
 {

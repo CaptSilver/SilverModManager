@@ -1,8 +1,8 @@
-using NexusMods.Deployment.Links.Native;
+using SilverModManager.Deployment.Links.Native;
 using NexusMods.Paths;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Links.Tests.Fixtures;
+namespace SilverModManager.Deployment.Links.Tests.Fixtures;
 
 /// <summary>
 /// Throwaway directories on known filesystems. Each one deletes itself on dispose; none of them

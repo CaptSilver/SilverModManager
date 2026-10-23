@@ -2,9 +2,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
 /// <summary>
 /// A subview of an IndexSegment that returns the entity ids of the segment

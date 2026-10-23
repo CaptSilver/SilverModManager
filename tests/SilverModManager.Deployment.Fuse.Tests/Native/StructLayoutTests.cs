@@ -1,9 +1,9 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 using FluentAssertions;
-using NexusMods.Deployment.Fuse.Native;
+using SilverModManager.Deployment.Fuse.Native;
 
-namespace NexusMods.Deployment.Fuse.Tests.Native;
+namespace SilverModManager.Deployment.Fuse.Tests.Native;
 
 /// <summary>
 /// Pins every transcribed libfuse3 struct to the sizes and offsets a C compiler prints for the same headers.

@@ -5,7 +5,7 @@ using MouseButton = Avalonia.Input.MouseButton;
 using KeyboardKey = Avalonia.Input.Key;
 using KeyboardModifiers = Avalonia.Input.KeyModifiers;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 using KeyType = OneOf<MouseButton, KeyboardKey>;
 using ModifierType = KeyboardModifiers;
 

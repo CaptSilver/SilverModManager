@@ -1,10 +1,10 @@
 using System.Runtime.CompilerServices;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.DataModel.GameInstalled;
+namespace SilverModManager.DataModel.GameInstalled;
 
 /// <summary>
 /// Warns while the "Installed by the game" group is switched off. Switching it off only stops the app

@@ -1,6 +1,6 @@
 using FluentAssertions;
 
-namespace NexusMods.CLI.Tests.VerbTests;
+namespace SilverModManager.CLI.Tests.VerbTests;
 
 public class ExtractArchive(IServiceProvider provider) : AVerbTest(provider)
 {

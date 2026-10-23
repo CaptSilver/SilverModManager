@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Extra per-row information a sort item can offer the Load Order page. An <see cref="IReactiveSortItem"/>

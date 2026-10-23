@@ -1,7 +1,7 @@
 using Microsoft.Win32.SafeHandles;
 using NexusMods.Paths;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// The filesystem as the kernel sees it: inode based and shaped after <c>fuse_lowlevel_ops</c>, so a

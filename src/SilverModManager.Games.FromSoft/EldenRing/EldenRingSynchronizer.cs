@@ -1,5 +1,5 @@
 
-namespace NexusMods.Games.FromSoft.EldenRing;
+namespace SilverModManager.Games.FromSoft.EldenRing;
 
 public class EldenRingSynchronizer : AFromSoftSynchronizer
 {

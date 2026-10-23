@@ -1,5 +1,5 @@
 using System.Runtime.Serialization;
-namespace NexusMods.Abstractions.Loadouts.Exceptions;
+namespace SilverModManager.Abstractions.Loadouts.Exceptions;
 
 /// <summary>
 /// Exception thrown when an executable is in use

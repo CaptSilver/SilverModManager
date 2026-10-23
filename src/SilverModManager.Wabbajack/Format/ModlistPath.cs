@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Wabbajack.Format;
+namespace SilverModManager.Wabbajack.Format;
 
 /// <summary>
 /// Turns a path as Wabbajack writes it (backslashes, possibly <c>..</c>) into a <see cref="RelativePath"/> that

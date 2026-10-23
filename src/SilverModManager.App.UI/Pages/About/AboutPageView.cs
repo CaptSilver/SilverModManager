@@ -3,7 +3,7 @@ using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.About;
+namespace SilverModManager.App.UI.Pages.About;
 
 [UsedImplicitly]
 public partial class AboutPageView : ReactiveUserControl<IAboutPageViewModel>

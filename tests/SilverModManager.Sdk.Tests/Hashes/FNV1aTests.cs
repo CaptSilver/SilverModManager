@@ -1,8 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using FluentAssertions;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.Sdk.Tests.Hashes;
+namespace SilverModManager.Sdk.Tests.Hashes;
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public class FNV1a16Tests : HasherTestBase<ushort, FNV1a16Hasher, FNV1a16Tests>, IHasherTestData<ushort>

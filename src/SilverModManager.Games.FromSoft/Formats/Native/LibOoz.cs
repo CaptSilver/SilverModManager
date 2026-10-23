@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace NexusMods.Games.FromSoft.Formats.Native;
+namespace SilverModManager.Games.FromSoft.Formats.Native;
 
 // Linux only, like the rest of the app. The library is built from extern/ooz by scripts/build-ooz.sh.
 internal static unsafe partial class LibOoz

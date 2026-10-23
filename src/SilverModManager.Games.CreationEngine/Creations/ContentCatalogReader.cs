@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace NexusMods.Games.CreationEngine.Creations;
+namespace SilverModManager.Games.CreationEngine.Creations;
 
 /// <summary>One entry of <c>ContentCatalog.txt</c>.</summary>
 /// <param name="Key">The entry's key (<c>CSV2_n</c> for Skyrim, <c>TM_&lt;guid&gt;</c> for Starfield).</param>

@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.EpicGameStore.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using BuildIdAttribute = NexusMods.Abstractions.EpicGameStore.Attributes.BuildIdAttribute;
+using SilverModManager.Abstractions.EpicGameStore.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using BuildIdAttribute = SilverModManager.Abstractions.EpicGameStore.Attributes.BuildIdAttribute;
 
-namespace NexusMods.Abstractions.Games.FileHashes.Models;
+namespace SilverModManager.Abstractions.Games.FileHashes.Models;
 
 public partial class EpicGameStoreBuild : IModelDefinition
 {

@@ -3,7 +3,7 @@ using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.MarkdownRenderer;
+namespace SilverModManager.App.UI.Controls.MarkdownRenderer;
 
 [UsedImplicitly]
 public partial class MarkdownRendererView : ReactiveUserControl<IMarkdownRendererViewModel>

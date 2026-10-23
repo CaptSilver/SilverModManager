@@ -4,11 +4,11 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                                 xmlns:reactiveUi="http://reactiveui.net"
-                                xmlns:premiumDownloads="clr-namespace:NexusMods.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads"
-                                xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-                                xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
+                                xmlns:premiumDownloads="clr-namespace:SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads"
+                                xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+                                xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
                                 mc:Ignorable="d" d:DesignWidth="500"
-                                x:Class="NexusMods.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads.DialogPremiumCollectionDownloadsView">
+                                x:Class="SilverModManager.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads.DialogPremiumCollectionDownloadsView">
 
     <StackPanel Spacing="{StaticResource Spacing-4}">
         

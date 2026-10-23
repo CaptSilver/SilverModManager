@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// Where a locator puts what it could not resolve cleanly during one <see cref="IGameLocator.Locate(IGameLocatorProblemSink)"/>.

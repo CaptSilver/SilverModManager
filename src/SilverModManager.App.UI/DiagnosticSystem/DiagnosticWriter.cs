@@ -1,8 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
 
-namespace NexusMods.App.UI.DiagnosticSystem;
+namespace SilverModManager.App.UI.DiagnosticSystem;
 
 internal sealed class DiagnosticWriter : IDiagnosticWriter
 {

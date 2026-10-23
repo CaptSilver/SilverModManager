@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Games.AdvancedInstaller.UI.EmptyPreview;
-using NexusMods.Games.AdvancedInstaller.UI.ModContent;
-using NexusMods.Games.AdvancedInstaller.UI.Preview;
-using NexusMods.Games.AdvancedInstaller.UI.SelectLocation;
-using ModContentView = NexusMods.Games.AdvancedInstaller.UI.ModContent.ModContentView;
+using SilverModManager.Games.AdvancedInstaller.UI.EmptyPreview;
+using SilverModManager.Games.AdvancedInstaller.UI.ModContent;
+using SilverModManager.Games.AdvancedInstaller.UI.Preview;
+using SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
+using ModContentView = SilverModManager.Games.AdvancedInstaller.UI.ModContent.ModContentView;
 
-namespace NexusMods.Games.AdvancedInstaller.UI;
+namespace SilverModManager.Games.AdvancedInstaller.UI;
 
 public static class Services
 {

@@ -5,7 +5,7 @@ date: {2023-11-21 when the decision was last updated}
 deciders: {App Team}
 ```
 
-# Default Storage Locations for NexusMods.App Files
+# Default Storage Locations for SilverModManager.App Files
 
 ## Context and Problem Statement
 
@@ -76,7 +76,7 @@ With the following caveats/notes:
 
 ⚠️ Non-standard location. This is because we risk RAM starvation on large downloads as `tmpfs` is often in RAM+swap.
 
-Inside `NexusMods.App` subfolder, of course.
+Inside `SilverModManager.App` subfolder, of course.
 macOS is not yet implemented, so is currently omitted.
 
 ## Pros and Cons of the Options

@@ -5,7 +5,7 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 
-namespace NexusMods.MnemonicDB.SourceGenerator;
+namespace SilverModManager.MnemonicDB.SourceGenerator;
 
 [Generator(LanguageNames.CSharp)]
 public class AmbientSqlSourceGenerator : IIncrementalGenerator

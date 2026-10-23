@@ -1,15 +1,15 @@
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.HttpDownloads;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.HttpDownloader;
+using SilverModManager.Abstractions.HttpDownloads;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.HttpDownloader;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.Library.Tests.DownloadsService.Helpers;
+namespace SilverModManager.Library.Tests.DownloadsService.Helpers;
 
 /// <summary>
 /// Test implementation of <see cref="IHttpDownloadState"/> for testing

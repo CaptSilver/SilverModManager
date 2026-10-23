@@ -6,7 +6,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="NexusMods.Games.MountAndBlade2Bannerlord.Tests" />
+    <InternalsVisibleTo Include="SilverModManager.Games.MountAndBlade2Bannerlord.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -18,11 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NexusMods.Abstractions.Games.Diagnostics\NexusMods.Abstractions.Games.Diagnostics.csproj" />
-    <ProjectReference Include="..\NexusMods.Abstractions.Games\NexusMods.Abstractions.Games.csproj" />
-    <ProjectReference Include="..\NexusMods.App.Generators.Diagnostics\NexusMods.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\NexusMods.Games.Generic\NexusMods.Games.Generic.csproj" />
+    <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />
+    <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
+    <ProjectReference Include="..\SilverModManager.App.Generators.Diagnostics\SilverModManager.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\SilverModManager.Games.Generic\SilverModManager.Games.Generic.csproj" />
   </ItemGroup>
 
 </Project>

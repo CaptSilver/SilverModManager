@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Sdk.ProxyConsole;
-using Table = NexusMods.Sdk.ProxyConsole.Table;
+using SilverModManager.Sdk.ProxyConsole;
+using Table = SilverModManager.Sdk.ProxyConsole.Table;
 
-namespace NexusMods.ProxyConsole.Tests;
+namespace SilverModManager.ProxyConsole.Tests;
 
 public class ProxyTests(IServiceProvider provider) : AProxyConsoleTest(provider)
 {

@@ -1,19 +1,19 @@
 ﻿<reactiveUi:ReactiveUserControl
     d:DesignWidth="1024"
     mc:Ignorable="d"
-    x:Class="NexusMods.App.UI.Controls.TopBar.TopBarView"
+    x:Class="SilverModManager.App.UI.Controls.TopBar.TopBarView"
     x:TypeArguments="topBar:ITopBarViewModel"
     xmlns="https://github.com/avaloniaui"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactiveUi="http://reactiveui.net"
-    xmlns:topBar="clr-namespace:NexusMods.App.UI.Controls.TopBar"
+    xmlns:topBar="clr-namespace:SilverModManager.App.UI.Controls.TopBar"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
-    xmlns:navigation="clr-namespace:NexusMods.App.UI.Controls.Navigation"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-    xmlns:workspaceSystem="clr-namespace:NexusMods.App.UI.WorkspaceSystem">
+    xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
+    xmlns:navigation="clr-namespace:SilverModManager.App.UI.Controls.Navigation"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:workspaceSystem="clr-namespace:SilverModManager.App.UI.WorkspaceSystem">
 
     <Design.DataContext>
         <topBar:TopBarDesignViewModel />

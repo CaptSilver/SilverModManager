@@ -1,11 +1,11 @@
 using System.Reflection;
 using FluentAssertions;
-using NexusMods.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.EldenRing;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class EldenRingPathsTests
 {

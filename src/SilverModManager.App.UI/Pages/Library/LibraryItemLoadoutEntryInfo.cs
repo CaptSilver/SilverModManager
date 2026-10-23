@@ -1,5 +1,5 @@
-using NexusMods.App.UI.Resources;
-namespace NexusMods.App.UI.Pages.Library;
+using SilverModManager.App.UI.Resources;
+namespace SilverModManager.App.UI.Pages.Library;
 
 public class LibraryItemUsedLoadoutInfo
 {

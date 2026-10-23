@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Downloads;
+using SilverModManager.Abstractions.Downloads;
 
-namespace NexusMods.Abstractions.HttpDownloads;
+namespace SilverModManager.Abstractions.HttpDownloads;
 
 /// <summary>
 /// Represents an HTTP download.

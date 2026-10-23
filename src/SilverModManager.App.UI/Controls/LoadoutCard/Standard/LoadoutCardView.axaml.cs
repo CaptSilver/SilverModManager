@@ -1,10 +1,10 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Resources;
+using SilverModManager.App.UI.Resources;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.LoadoutCard;
+namespace SilverModManager.App.UI.Controls.LoadoutCard;
 
 public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel>
 {

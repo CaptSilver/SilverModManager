@@ -1,8 +1,8 @@
 using System.Reactive;
-using NexusMods.UI.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.LoadoutCard;
+namespace SilverModManager.App.UI.Controls.LoadoutCard;
 
 public interface ICreateNewLoadoutCardViewModel : IViewModelInterface
 {

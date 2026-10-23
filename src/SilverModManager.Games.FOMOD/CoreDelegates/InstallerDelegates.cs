@@ -2,9 +2,9 @@ using FomodInstaller.Interface;
 using FomodInstaller.Interface.ui;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.GuidedInstallers;
+using SilverModManager.Abstractions.GuidedInstallers;
 
-namespace NexusMods.Games.FOMOD.CoreDelegates;
+namespace SilverModManager.Games.FOMOD.CoreDelegates;
 
 [UsedImplicitly]
 public sealed class InstallerDelegates : ICoreDelegates

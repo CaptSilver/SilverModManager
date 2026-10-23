@@ -1,13 +1,13 @@
 using System.Reactive;
 using System.Reactive.Disposables;
 using Avalonia.Media;
-using NexusMods.App.UI.Controls.LoadoutBadge;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI.Controls.LoadoutBadge;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.Controls.Spine.Buttons.Image;
+namespace SilverModManager.App.UI.Controls.Spine.Buttons.Image;
 
 public class ImageButtonViewModel : AViewModel<IImageButtonViewModel>, IImageButtonViewModel
 {

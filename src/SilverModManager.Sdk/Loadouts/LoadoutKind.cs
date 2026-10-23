@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.Loadouts;
+namespace SilverModManager.Sdk.Loadouts;
 
 /// <summary>
 /// Specifies the 'type' of loadout that the current loadout represents.

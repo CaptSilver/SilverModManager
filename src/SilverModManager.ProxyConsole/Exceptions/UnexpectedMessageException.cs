@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace NexusMods.ProxyConsole.Exceptions;
+namespace SilverModManager.ProxyConsole.Exceptions;
 
 /// <summary>
 /// An exception that is thrown when an unexpected message is received, most often happens during the single threaded

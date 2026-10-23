@@ -3,7 +3,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.SteamLaunchOption;
+namespace SilverModManager.App.UI.Pages.SteamLaunchOption;
 
 public partial class SteamLaunchOptionView : ReactiveUserControl<ISteamLaunchOptionViewModel>
 {

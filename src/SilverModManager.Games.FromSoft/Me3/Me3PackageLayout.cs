@@ -1,7 +1,7 @@
 using System.Collections.Frozen;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Me3;
+namespace SilverModManager.Games.FromSoft.Me3;
 
 /// <summary>
 /// Finds the folder of an archive that a me3 package is made of: the one that mirrors the game's archive layout.

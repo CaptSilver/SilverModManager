@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Steam.Values;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
+using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.ValueSerializers;
 
-namespace NexusMods.Abstractions.Games.FileHashes.Attributes.Steam;
+namespace SilverModManager.Abstractions.Games.FileHashes.Attributes.Steam;
 
 /// <summary>
 /// A <see cref="DepotId"/> attribute.

@@ -4,6 +4,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NexusMods.Wabbajack.Transforms\NexusMods.Wabbajack.Transforms.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Wabbajack.Transforms\SilverModManager.Wabbajack.Transforms.csproj" />
     </ItemGroup>
 </Project>

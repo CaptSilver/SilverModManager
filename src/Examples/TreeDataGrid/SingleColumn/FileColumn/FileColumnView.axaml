@@ -4,8 +4,8 @@
                                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                                 xmlns:reactiveUi="http://reactiveui.net"
                                 xmlns:fileColumn="clr-namespace:Examples.TreeDataGrid.SingleColumn.FileColumn"
-                                xmlns:files="clr-namespace:NexusMods.App.UI.Controls.Trees.Files;assembly=NexusMods.App.UI"
-                                xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+                                xmlns:files="clr-namespace:SilverModManager.App.UI.Controls.Trees.Files;assembly=SilverModManager.App.UI"
+                                xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
                                 d:DesignWidth="400"
                                 x:Class="Examples.TreeDataGrid.SingleColumn.FileColumn.FileColumnView"
                                 d:DataContext="{x:Static fileColumn:FileColumnDesignViewModel.SampleFolder}">

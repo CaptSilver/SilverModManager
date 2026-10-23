@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.NexusWebApi;
+namespace SilverModManager.Abstractions.NexusWebApi;
 
 /// <summary>
 /// Asks the user for a personal Nexus Mods API key.

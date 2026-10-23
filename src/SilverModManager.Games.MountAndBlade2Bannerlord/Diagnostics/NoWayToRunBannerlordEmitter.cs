@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.Diagnostics;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.Diagnostics;
 
 /// <summary>
 /// Warns when nothing on this machine can run Bannerlord's Windows executables.

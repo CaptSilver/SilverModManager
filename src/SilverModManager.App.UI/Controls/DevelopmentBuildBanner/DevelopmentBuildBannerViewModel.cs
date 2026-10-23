@@ -1,9 +1,9 @@
 ﻿using System.Reactive;
-using NexusMods.Sdk;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.DevelopmentBuildBanner;
+namespace SilverModManager.App.UI.Controls.DevelopmentBuildBanner;
 
 public class DevelopmentBuildBannerViewModel : AViewModel<IDevelopmentBuildBannerViewModel>, IDevelopmentBuildBannerViewModel
 {

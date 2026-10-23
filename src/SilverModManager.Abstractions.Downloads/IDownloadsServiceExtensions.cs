@@ -1,11 +1,11 @@
 using DynamicData;
 using JetBrains.Annotations;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.NexusModsApi;
 using R3;
 using Observable = System.Reactive.Linq.Observable;
 
-namespace NexusMods.Abstractions.Downloads;
+namespace SilverModManager.Abstractions.Downloads;
 
 /// <summary>
 /// Extension methods for <see cref="IDownloadsService"/>.

@@ -1,8 +1,8 @@
 using System.Text.Json;
 using FluentAssertions;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Deployment.Vfs.Tests;
+namespace SilverModManager.Deployment.Vfs.Tests;
 
 public class VfsSettingsTests
 {

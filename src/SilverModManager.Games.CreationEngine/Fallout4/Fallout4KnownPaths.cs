@@ -1,7 +1,7 @@
 
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Fallout4;
+namespace SilverModManager.Games.CreationEngine.Fallout4;
 
 public class Fallout4KnownPaths
 {

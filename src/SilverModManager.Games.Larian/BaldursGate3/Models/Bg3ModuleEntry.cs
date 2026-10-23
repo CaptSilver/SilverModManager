@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Games.Larian.BaldursGate3.Models;
+namespace SilverModManager.Games.Larian.BaldursGate3.Models;
 
 /// <summary>
 /// What the game's <c>modsettings.lsx</c> says about a pak it installed itself: the <c>ModuleShortDesc</c> entry,

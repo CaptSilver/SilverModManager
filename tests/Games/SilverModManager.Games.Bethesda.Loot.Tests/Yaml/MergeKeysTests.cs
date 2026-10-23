@@ -1,8 +1,8 @@
-using NexusMods.Games.Bethesda.Loot.Metadata;
-using NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 using YamlDotNet.RepresentationModel;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Yaml;
 
 // libloot's yaml/merge.rs tests, plus the merge behaviour its metadata_document tests rely on.
 public class MergeKeysTests

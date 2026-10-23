@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 
 /// <summary>
 /// Which deployed files get the execute bit, and the one place that sets it.

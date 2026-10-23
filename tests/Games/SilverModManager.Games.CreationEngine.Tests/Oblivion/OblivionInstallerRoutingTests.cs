@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.Oblivion;
+namespace SilverModManager.Games.CreationEngine.Tests.Oblivion;
 
 /// <summary>Where Oblivion's own installers put the common archive layouts.</summary>
 public class OblivionInstallerRoutingTests(ITestOutputHelper helper)

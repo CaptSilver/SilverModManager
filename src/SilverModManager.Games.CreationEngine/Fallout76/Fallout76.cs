@@ -1,9 +1,9 @@
 using DynamicData.Kernel;
-using NexusMods.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Fallout76;
+namespace SilverModManager.Games.CreationEngine.Fallout76;
 
 /// <summary>
 /// Fallout 76 has no plugin list: mods are .ba2 archives that the game loads once they are named in

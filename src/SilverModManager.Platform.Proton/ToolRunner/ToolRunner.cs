@@ -1,12 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
 using CliWrap;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.ToolRunner;
+namespace SilverModManager.Platform.Proton.ToolRunner;
 
 /// <summary>
 /// Picks the strategy for the kind of prefix the game runs in and runs the program through it.

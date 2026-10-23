@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.App.UI.Pages.CollectionDownload;
-using NexusMods.Collections;
+using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.Collections;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 public class CollectionInstallProgressTextTests
 {

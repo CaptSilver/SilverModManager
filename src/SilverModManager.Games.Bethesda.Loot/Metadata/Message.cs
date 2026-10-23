@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Games.Bethesda.Loot.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata;
 
 /// <summary>
 /// A message with localisable text. Follows libloot's metadata/message.rs.

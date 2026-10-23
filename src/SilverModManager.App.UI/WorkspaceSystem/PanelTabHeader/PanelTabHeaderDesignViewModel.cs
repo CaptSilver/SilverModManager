@@ -1,8 +1,8 @@
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public class PanelTabHeaderDesignViewModel : PanelTabHeaderViewModel
 {
@@ -12,7 +12,7 @@ public class PanelTabHeaderDesignViewModel : PanelTabHeaderViewModel
 
         try
         {
-            using var stream = AssetLoader.Open(new Uri("avares://NexusMods.App.UI/Assets/DesignTime/cyberpunk_game.png"));
+            using var stream = AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/DesignTime/cyberpunk_game.png"));
             Icon = new AvaloniaImage(new Bitmap(stream));
         }
         catch (Exception e)

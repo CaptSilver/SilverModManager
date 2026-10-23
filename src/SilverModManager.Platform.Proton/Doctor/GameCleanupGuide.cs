@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Platform.Proton.Doctor;
+namespace SilverModManager.Platform.Proton.Doctor;
 
 /// <summary>
 /// A game's guided cleanup of an install another mod manager left behind, as text. Health Check shows it through

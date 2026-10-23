@@ -1,4 +1,4 @@
-﻿namespace NexusMods.MnemonicDB.Abstractions.Models;
+﻿namespace SilverModManager.MnemonicDB.Abstractions.Models;
 
 /// <summary>
 /// Defines something that has a reference to a database

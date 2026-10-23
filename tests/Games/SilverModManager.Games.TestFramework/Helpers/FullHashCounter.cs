@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Backend.Games;
+using SilverModManager.Backend.Games;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.TestFramework.Helpers;
+namespace SilverModManager.Games.TestFramework.Helpers;
 
 /// <summary>
 /// Counts the files the game indexer had to read whole to hash. A file it can vouch for from stored hash rows or

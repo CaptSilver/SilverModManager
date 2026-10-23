@@ -1,14 +1,14 @@
 using System.Text;
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Abstractions.Library;
+using SilverModManager.Abstractions.Library;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Tests.Fixtures;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Tests.Fixtures;
 
-namespace NexusMods.Wabbajack.Tests;
+namespace SilverModManager.Wabbajack.Tests;
 
 public class ModlistArchiveTests(ILibraryService libraryService, IFileStore fileStore, TemporaryFileManager temporaryFileManager)
 {

@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.App.UI.Pages.About;
-using NexusMods.Sdk;
+using SilverModManager.App.UI.Pages.About;
+using SilverModManager.Sdk;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 public class AboutPageViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {
@@ -27,7 +27,7 @@ public class AboutPageViewModelTests(IServiceProvider provider) : AUiTest(provid
     public async Task Test_ContentsCarryTheFullNoticeText()
     {
         // Read independently of the view model so a missing or renamed resource fails here.
-        await using var stream = typeof(AboutPageViewModel).Assembly.GetManifestResourceStream("NexusMods.App.UI.NOTICE")
+        await using var stream = typeof(AboutPageViewModel).Assembly.GetManifestResourceStream("SilverModManager.App.UI.NOTICE")
                                  ?? throw new InvalidOperationException("NOTICE is not embedded in the UI assembly");
         using var reader = new StreamReader(stream);
         var notice = (await reader.ReadToEndAsync(TestContext.Current.CancellationToken)).Trim();

@@ -3,7 +3,7 @@ using Avalonia.Controls.Models.TreeDataGrid;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// Static interface for column definitions

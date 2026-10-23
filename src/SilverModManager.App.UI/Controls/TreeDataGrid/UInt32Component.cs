@@ -1,5 +1,5 @@
 using R3;
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 /// <summary>
 /// Component based on <see cref="uint"/>; for XAML binding convenience.

@@ -2,13 +2,13 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Games.FromSoft.EldenRing;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Games.FromSoft.EldenRing;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.FromSoft.Tests.Secrets;
+namespace SilverModManager.Games.FromSoft.Tests.Secrets;
 
 public class CoopPasswordMigrationTests
 {

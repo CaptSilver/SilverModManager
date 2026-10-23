@@ -5,10 +5,10 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactive="http://reactiveui.net"
-    xmlns:section="clr-namespace:NexusMods.App.UI.Controls.Settings.Section"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+    xmlns:section="clr-namespace:SilverModManager.App.UI.Controls.Settings.Section"
+    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-    x:Class="NexusMods.App.UI.Controls.Settings.Section.SettingSectionView">
+    x:Class="SilverModManager.App.UI.Controls.Settings.Section.SettingSectionView">
 
     <StackPanel Orientation="Horizontal"
                 Spacing="{StaticResource Spacing-2}"

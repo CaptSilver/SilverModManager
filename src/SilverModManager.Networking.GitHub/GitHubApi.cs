@@ -2,10 +2,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Networking.GitHub.DTOs;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Networking.GitHub.DTOs;
 
-namespace NexusMods.Networking.GitHub;
+namespace SilverModManager.Networking.GitHub;
 
 [PublicAPI]
 internal class GitHubApi : IGitHubApi

@@ -1,4 +1,4 @@
-namespace NexusMods.Backend.FileExtractor;
+namespace SilverModManager.Backend.FileExtractor;
 
 internal static class PathsHelper
 {

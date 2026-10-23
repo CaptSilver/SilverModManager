@@ -1,15 +1,15 @@
 using System.Reflection;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.DataModel.Tests.Undo;
+namespace SilverModManager.DataModel.Tests.Undo;
 
 /// <summary>
 /// UndoService.RevertTo rewrites exactly the entities <c>loadouts.TrackedEntitiesForLoadout</c> returns and
@@ -108,7 +108,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         var item = await AddLinkedItem(loadout.LoadoutId, "Item");
         var priority = await AddPriority(loadout.LoadoutId, item);
         await AddRedMod(loadout.LoadoutId, "ModA");
-        var variety = ServiceProvider.GetRequiredService<NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder.RedModSortOrderVariety>();
+        var variety = ServiceProvider.GetRequiredService<SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder.RedModSortOrderVariety>();
         var sortOrder = await variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId);
         await variety.ReconcileSortOrder(sortOrder);
         var sortItems = Connection.Db.Datoms(SortOrderItem.ParentSortOrder, sortOrder).Select(d => d.E).ToArray();
@@ -194,8 +194,8 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         {
             if (!type.IsGenericType) continue;
             var definition = type.GetGenericTypeDefinition();
-            if (definition == typeof(NexusMods.MnemonicDB.Abstractions.Attributes.ReferenceAttribute<>) ||
-                definition == typeof(NexusMods.MnemonicDB.Abstractions.Attributes.ReferencesAttribute<>))
+            if (definition == typeof(SilverModManager.MnemonicDB.Abstractions.Attributes.ReferenceAttribute<>) ||
+                definition == typeof(SilverModManager.MnemonicDB.Abstractions.Attributes.ReferencesAttribute<>))
                 return type.GetGenericArguments()[0];
         }
         return null;
@@ -203,7 +203,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
 
     /// <summary>
     /// Fewest first-party assemblies the scan may find before it is considered to be looking in the wrong
-    /// place; count them with <c>ls tests/NexusMods.DataModel.Tests/bin/Debug/net*/NexusMods.*.dll | wc -l</c>.
+    /// place; count them with <c>ls tests/SilverModManager.DataModel.Tests/bin/Debug/net*/SilverModManager.*.dll | wc -l</c>.
     /// </summary>
     private const int MinimumFirstPartyAssemblies = 35;
 

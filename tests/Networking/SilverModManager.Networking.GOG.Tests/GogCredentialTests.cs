@@ -1,8 +1,8 @@
 using System.Text.Json;
 using FluentAssertions;
-using NexusMods.Networking.GOG;
+using SilverModManager.Networking.GOG;
 
-namespace NexusMods.Networking.GOG.Tests;
+namespace SilverModManager.Networking.GOG.Tests;
 
 public class GogCredentialTests
 {

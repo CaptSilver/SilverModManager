@@ -1,8 +1,8 @@
 using FluentAssertions;
-using NexusMods.Games.Bethesda.LoadOrder;
-using NexusMods.Games.CreationEngine.SortOrder;
+using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.CreationEngine.SortOrder;
 
-namespace NexusMods.Games.CreationEngine.Tests.Modlists;
+namespace SilverModManager.Games.CreationEngine.Tests.Modlists;
 
 public class PluginOrderMergeTests
 {

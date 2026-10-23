@@ -1,8 +1,8 @@
 ﻿using JetBrains.Annotations;
 using NexusMods.Paths;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Sdk.FileExtractor;
+namespace SilverModManager.Sdk.FileExtractor;
 
 /// <summary>
 /// Settings for the file extractor.

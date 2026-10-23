@@ -1,10 +1,10 @@
-using NexusMods.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Overlay;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.FromSoft.Doctor;
+namespace SilverModManager.Games.FromSoft.Doctor;
 
 /// <summary>Puts <see cref="FromSoftChecks"/> and the mod loader's own check into the doctor report of a FromSoft installation.</summary>
 public class FromSoftInstallationCheck(

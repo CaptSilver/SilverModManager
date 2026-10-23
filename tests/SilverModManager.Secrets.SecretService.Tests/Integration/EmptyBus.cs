@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace NexusMods.Secrets.SecretService.Tests.Integration;
+namespace SilverModManager.Secrets.SecretService.Tests.Integration;
 
 /// <summary>
 /// A session bus with no service directories, so nothing owns <c>org.freedesktop.secrets</c> and nothing can

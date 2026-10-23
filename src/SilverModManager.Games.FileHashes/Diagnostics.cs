@@ -1,13 +1,13 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Generators.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Generators.Diagnostics;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FileHashes;
+namespace SilverModManager.Games.FileHashes;
 
 public partial class Diagnostics
 {
-    private const string Source = "NexusMods.Games.FileHashes";
+    private const string Source = "SilverModManager.Games.FileHashes";
 
     [DiagnosticTemplate] 
     [UsedImplicitly] 

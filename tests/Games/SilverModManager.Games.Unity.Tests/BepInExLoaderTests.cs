@@ -1,12 +1,12 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Games.Unity.Tests.Fixtures;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Games.Unity.Tests.Fixtures;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.Unity.Tests;
+namespace SilverModManager.Games.Unity.Tests;
 
 public class BepInExLoaderTests(ITestOutputHelper outputHelper) : AUnityInstallerTests<BepInExLoaderTests>(outputHelper)
 {

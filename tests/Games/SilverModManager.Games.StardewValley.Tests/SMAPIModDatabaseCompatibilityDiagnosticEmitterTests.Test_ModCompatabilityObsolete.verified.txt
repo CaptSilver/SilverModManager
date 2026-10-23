@@ -1,4 +1,4 @@
-﻿[Id] NexusMods.Games.StardewValley: 6
+﻿[Id] SilverModManager.Games.StardewValley: 6
 [Title] Obsolete Mod
 [Summary] 'Extra Map Layers' is reported as obsolete by SMAPI
 [Details]

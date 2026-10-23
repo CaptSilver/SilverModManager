@@ -1,7 +1,7 @@
 ﻿using JetBrains.Annotations;
 using MemoryPack;
 
-namespace NexusMods.Sdk.ProxyConsole;
+namespace SilverModManager.Sdk.ProxyConsole;
 
 /// <summary>
 /// A thing that can be rendered to the console.

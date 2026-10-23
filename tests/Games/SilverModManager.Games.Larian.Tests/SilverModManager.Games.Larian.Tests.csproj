@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\NexusMods.Abstractions.GuidedInstallers\NexusMods.Abstractions.GuidedInstallers.csproj" />
-    <ProjectReference Include="..\..\..\src\NexusMods.Games.Larian\NexusMods.Games.Larian.csproj" />
-    <ProjectReference Include="..\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
+    <ProjectReference Include="..\..\..\src\SilverModManager.Abstractions.GuidedInstallers\SilverModManager.Abstractions.GuidedInstallers.csproj" />
+    <ProjectReference Include="..\..\..\src\SilverModManager.Games.Larian\SilverModManager.Games.Larian.csproj" />
+    <ProjectReference Include="..\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="BaldursGate3\Resources\PakFiles\AllItems.pak">

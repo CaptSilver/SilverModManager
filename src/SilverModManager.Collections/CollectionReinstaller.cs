@@ -1,13 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Collections;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Collections;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Collections;
+namespace SilverModManager.Collections;
 
 /// <summary>
 /// Installs an already installed Nexus collection again from the files in the library.

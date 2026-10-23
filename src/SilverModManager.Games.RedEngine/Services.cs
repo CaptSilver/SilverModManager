@@ -1,12 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Sdk.Settings;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.RedEngine.Cyberpunk2077.Models;
-using NexusMods.Games.RedEngine.Cyberpunk2077.SortOrder;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.Models;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
 
-namespace NexusMods.Games.RedEngine;
+namespace SilverModManager.Games.RedEngine;
 
 public static class Services
 {

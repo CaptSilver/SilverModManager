@@ -1,8 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Backend.Tests;
+namespace SilverModManager.Backend.Tests;
 
 public class SettingsOverrideTests
 {

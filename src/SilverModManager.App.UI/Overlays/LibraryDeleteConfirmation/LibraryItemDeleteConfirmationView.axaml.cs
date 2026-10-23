@@ -1,9 +1,9 @@
 using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
-using NexusMods.App.UI.Resources;
+using SilverModManager.App.UI.Resources;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Overlays.LibraryDeleteConfirmation;
+namespace SilverModManager.App.UI.Overlays.LibraryDeleteConfirmation;
 
 public partial class LibraryItemDeleteConfirmationView : ReactiveUserControl<ILibraryItemDeleteConfirmationViewModel>
 {

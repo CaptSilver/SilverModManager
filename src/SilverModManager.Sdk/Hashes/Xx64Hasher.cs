@@ -2,12 +2,12 @@ using System.IO.Hashing;
 using JetBrains.Annotations;
 using NexusMods.Hashing.xxHash3;
 
-namespace NexusMods.Sdk.Hashes;
+namespace SilverModManager.Sdk.Hashes;
 
 [PublicAPI]
 public class Xx64Hasher : IStreamingHasher<Hash, XxHash64, Xx64Hasher>
 {
-    public static Hash Hash(ReadOnlySpan<byte> input) => Hashing.xxHash3.Hash.From(XxHash64.HashToUInt64(input));
+    public static Hash Hash(ReadOnlySpan<byte> input) => NexusMods.Hashing.xxHash3.Hash.From(XxHash64.HashToUInt64(input));
 
     public static XxHash64 Initialize() => new();
 
@@ -17,7 +17,7 @@ public class Xx64Hasher : IStreamingHasher<Hash, XxHash64, Xx64Hasher>
         return state;
     }
 
-    public static Hash Finish(XxHash64 state) => Hashing.xxHash3.Hash.From(state.GetCurrentHashAsUInt64());
+    public static Hash Finish(XxHash64 state) => NexusMods.Hashing.xxHash3.Hash.From(state.GetCurrentHashAsUInt64());
 
     public static ValueTask<Hash> HashAsync(Stream stream, int bufferSize = IStreamingHasher<Hash, XxHash64, Xx64Hasher>.DefaultBufferSize, CancellationToken cancellationToken = default)
     {

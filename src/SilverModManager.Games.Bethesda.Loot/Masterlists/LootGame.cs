@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.Loot.Masterlists;
+namespace SilverModManager.Games.Bethesda.Loot.Masterlists;
 
 /// <summary>
 /// The games LOOT has metadata for. Several games share a masterlist repository.

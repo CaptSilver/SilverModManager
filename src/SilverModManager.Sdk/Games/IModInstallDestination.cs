@@ -1,6 +1,6 @@
 using NexusMods.Paths;
 
-namespace NexusMods.Sdk.Games;
+namespace SilverModManager.Sdk.Games;
 
 /// <summary>
 /// Represents a target used for where user mods may be manually installed when using human assisted installers

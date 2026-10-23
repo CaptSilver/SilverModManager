@@ -1,7 +1,7 @@
 using NexusMods.HyperDuck;
-using NexusMods.Sdk.Hashes;
+using SilverModManager.Sdk.Hashes;
 
-namespace NexusMods.DataModel.Synchronizer.DbFunctions;
+namespace SilverModManager.DataModel.Synchronizer.DbFunctions;
 
 public class FNV1aHashScalar : AScalarFunction
 {

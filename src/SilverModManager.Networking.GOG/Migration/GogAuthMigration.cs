@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.GOG.Models.Legacy;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.GOG.Models.Legacy;
 
-namespace NexusMods.Networking.GOG.Migration;
+namespace SilverModManager.Networking.GOG.Migration;
 
 /// <summary>
 /// Moves the login an older version kept in the database into the secret store, then excises the row.

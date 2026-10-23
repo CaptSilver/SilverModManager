@@ -1,22 +1,22 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.FromSoft;
-using NexusMods.Games.FromSoft.Cleanup;
-using NexusMods.Games.FromSoft.EldenRing;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.FromSoft;
+using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.EldenRing;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.Sdk.Settings;
-using NexusMods.SingleProcess;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.SingleProcess;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using NSubstitute;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 /// <summary>
 /// <c>silvermod elden-ring cleanup</c> against a made-up game folder shaped like an install another mod manager left

@@ -1,11 +1,11 @@
 using System.Reactive;
 using AvaloniaEdit.Document;
 using JetBrains.Annotations;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.WorkspaceSystem;
 using ReactiveUI;
 using TextMateSharp.Grammars;
 
-namespace NexusMods.App.UI.Pages.TextEdit;
+namespace SilverModManager.App.UI.Pages.TextEdit;
 
 public interface ITextEditorPageViewModel : IPageViewModelInterface
 {

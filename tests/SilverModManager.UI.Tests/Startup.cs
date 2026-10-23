@@ -1,27 +1,27 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.App;
-using NexusMods.Backend;
-using NexusMods.DataModel;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.App;
+using SilverModManager.Backend;
+using SilverModManager.DataModel;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
-using NexusMods.StandardGameLocators.TestHelpers;
-using NexusMods.UI.Tests.Framework;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.StandardGameLocators.TestHelpers;
+using SilverModManager.UI.Tests.Framework;
 using Xunit.DependencyInjection.Logging;
-using NexusMods.Games.FileHashes;
+using SilverModManager.Games.FileHashes;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class Startup
 {
     public void ConfigureServices(IServiceCollection services)
     {
         const KnownPath baseKnownPath = KnownPath.EntryDirectory;
-        var baseDirectory = $"NexusMods.UI.Tests.Tests-{Guid.NewGuid()}";
+        var baseDirectory = $"SilverModManager.UI.Tests.Tests-{Guid.NewGuid()}";
         
         var path = FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine("temp").Combine(Guid.NewGuid().ToString());
         path.CreateDirectory();

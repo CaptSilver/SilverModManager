@@ -1,10 +1,10 @@
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Abstractions.Downloads;
+namespace SilverModManager.Abstractions.Downloads;
 
 /// <summary>
 /// Represents the work associated with downloading a single file.

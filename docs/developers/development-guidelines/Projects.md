@@ -4,8 +4,8 @@ There are two types of projects: projects that provide code and projects that te
 
 We use `Directory.Build.props` files in both the top level directory and the `src` and `tests` subdirectories to provide common configurations for all projects in those directories. Having subdirectories in `src` and `tests` that aren't project directories can sometimes mess with that setup and introduces unnecessary differences between project files when importing properties from files like `NuGet.Build.props`.
 
-- ❌ `src/Cool Stuff/NexusMods.Foo/NexusMods.Foo.csproj`
-- ✅ `src/NexusMods.Foo/NexusMods.Foo.csproj`
+- ❌ `src/Cool Stuff/SilverModManager.Foo/SilverModManager.Foo.csproj`
+- ✅ `src/SilverModManager.Foo/SilverModManager.Foo.csproj`
 
 Solutions allow you to create "Solution Folders" which are virtual directories that you can use to group projects together. Use those virtual directories instead of filesystem directories for grouping projects.
 
@@ -15,20 +15,20 @@ Solutions allow you to create "Solution Folders" which are virtual directories t
 
 The namespace should be the same as the project name:
 
-- ❌ `src/NexusMods.Foo/NexusMods.Foo.csproj` with namespace `NexusMods.Bar`
-- ✅ `src/NexusMods.Foo/NexusMods.Foo.csproj` with namespace `NexusMods.Foo`
+- ❌ `src/SilverModManager.Foo/SilverModManager.Foo.csproj` with namespace `SilverModManager.Bar`
+- ✅ `src/SilverModManager.Foo/SilverModManager.Foo.csproj` with namespace `SilverModManager.Foo`
 
 ### Prefix
 
-All projects should start with the same prefix `NexusMods.`. For consistency, any other prefixes aren't allowed:
+All projects should start with the same prefix `SilverModManager.`. For consistency, any other prefixes aren't allowed:
 
-- ❌ `NexusMods.App.Foo`
-- ❌ `NexusMods.App.Bar`
-- ❌ `NexusMods.Abstractions.Foo`
-- ❌ `NexusMods.Abstractions.Bar`
-- ✅ `NexusMods.Foo`
-- ✅ `NexusMods.Bar`
-- ✅ `NexusMods.App`
+- ❌ `SilverModManager.App.Foo`
+- ❌ `SilverModManager.App.Bar`
+- ❌ `SilverModManager.Abstractions.Foo`
+- ❌ `SilverModManager.Abstractions.Bar`
+- ✅ `SilverModManager.Foo`
+- ✅ `SilverModManager.Bar`
+- ✅ `SilverModManager.App`
 
 ### Suffix
 
@@ -45,5 +45,5 @@ Projects can have a suffix describing the type of code that's in the project:
 
 Unit test projects should only test one project and can thus be named after the original project and suffixed with `.Tests`. Example:
 
-- Project providing code: `NexusMods.Foo`
-- Project testing the code: `NexusMods.Foo.Tests`
+- Project providing code: `SilverModManager.Foo`
+- Project testing the code: `SilverModManager.Foo.Tests`

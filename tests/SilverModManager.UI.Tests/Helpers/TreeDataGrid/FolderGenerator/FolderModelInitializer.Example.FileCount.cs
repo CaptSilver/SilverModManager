@@ -1,12 +1,12 @@
 using System.Reactive.Linq;
 using FluentAssertions;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
 using DynamicData.Aggregation;
 
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.UI.Tests.Helpers.TreeDataGrid.FolderGenerator;
+namespace SilverModManager.UI.Tests.Helpers.TreeDataGrid.FolderGenerator;
 
 /// <summary>
 /// An example of how to use the <see cref="IFolderModelInitializer{TTreeItemWithPath}"/> for measuring file counts; 

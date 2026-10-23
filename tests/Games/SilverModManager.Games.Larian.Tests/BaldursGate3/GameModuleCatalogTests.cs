@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Games.Larian.BaldursGate3.Utils;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Games.Larian.BaldursGate3.Utils;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3;
 
 public class GameModuleCatalogTests(TemporaryFileManager temporaryFileManager) : IDisposable
 {

@@ -3,9 +3,9 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Backend.Tests;
+namespace SilverModManager.Backend.Tests;
 
 public class SettingsFileNameTests
 {

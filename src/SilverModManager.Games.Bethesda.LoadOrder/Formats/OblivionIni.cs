@@ -1,5 +1,5 @@
 // Follows libloadorder src/ini.rs (use_my_games_directory).
-namespace NexusMods.Games.Bethesda.LoadOrder.Formats;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Formats;
 
 /// <summary>The one Oblivion.ini setting the plugin list depends on.</summary>
 public static class OblivionIni

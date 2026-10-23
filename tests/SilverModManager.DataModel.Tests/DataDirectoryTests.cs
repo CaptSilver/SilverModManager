@@ -1,7 +1,7 @@
 using FluentAssertions;
 using NexusMods.Paths;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class DataDirectoryTests
 {

@@ -1,6 +1,6 @@
-using NexusMods.Networking.ModUpdates.Traits;
+using SilverModManager.Networking.ModUpdates.Traits;
 
-namespace NexusMods.Networking.ModUpdates.Tests.Helpers;
+namespace SilverModManager.Networking.ModUpdates.Tests.Helpers;
 
 /// <summary>
 /// Represents a mock mod page for testing

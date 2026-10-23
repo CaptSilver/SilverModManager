@@ -1,15 +1,15 @@
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
-using NexusMods.CrossPlatform;
+using SilverModManager.CrossPlatform;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.Doctor;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Platform.Proton.Steam;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Platform.Proton.Doctor;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Steam;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Platform.Proton.Support;
+namespace SilverModManager.Platform.Proton.Support;
 
 /// <summary>
 /// Writes a zip under the app's state directory with the log files, the doctor report, the launch state files

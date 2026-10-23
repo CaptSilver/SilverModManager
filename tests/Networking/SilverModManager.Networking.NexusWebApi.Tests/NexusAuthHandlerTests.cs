@@ -1,13 +1,13 @@
 using System.Net;
 using System.Text.Json;
 using FluentAssertions;
-using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Networking.NexusWebApi.Auth;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Networking.NexusWebApi.Auth;
+using SilverModManager.Sdk.Jobs;
 using NSubstitute;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 [Collection(AuthStateCollection.Name)]
 public class NexusAuthHandlerTests : IAsyncLifetime

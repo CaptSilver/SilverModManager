@@ -1,10 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
 using NexusMods.Paths;
-using NexusMods.Platform.Proton.ToolRunner.Dependencies;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
+using SilverModManager.Platform.Proton.ToolRunner.Dependencies;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Platform.Proton.ToolRunner;
+namespace SilverModManager.Platform.Proton.ToolRunner;
 
 /// <summary>
 /// Runs a program for a game in a native Heroic's prefix. A Proton runner goes through <c>umu-run</c> when

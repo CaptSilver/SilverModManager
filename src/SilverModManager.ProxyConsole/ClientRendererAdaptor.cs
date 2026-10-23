@@ -1,8 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using NexusMods.ProxyConsole.Messages;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.ProxyConsole.Messages;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.ProxyConsole;
+namespace SilverModManager.ProxyConsole;
 
 /// <summary>
 /// Forwards commands from the duplexStream to the console. .Start() must be called to start forwarding.

@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 
-namespace NexusMods.Library.Lock;
+namespace SilverModManager.Library.Lock;
 
 [PublicAPI]
 public enum LockLevel

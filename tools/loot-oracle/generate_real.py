@@ -2,7 +2,7 @@
 """Generates the "real" LOOT oracle cases: load orders that came from real installs, sorted by libloot.
 
 Two sources, one subcommand each. Both write
-tests/Games/NexusMods.Games.Bethesda.Loot.Tests/Corpus/real/<name>.json, in the same shape as the
+tests/Games/SilverModManager.Games.Bethesda.Loot.Tests/Corpus/real/<name>.json, in the same shape as the
 tier 3 cases (stripped bundled masterlist and prelude, named by SHA-256), so the C# side loads them
 with the code it already has. Run with the interpreter from README.md, in isolated mode:
 
@@ -38,7 +38,7 @@ import urllib.request
 import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "..", "..", "tests", "Games", "NexusMods.Games.Bethesda.Loot.Tests", "Corpus", "real")
+OUT = os.path.join(HERE, "..", "..", "tests", "Games", "SilverModManager.Games.Bethesda.Loot.Tests", "Corpus", "real")
 LIST_INDEX = "https://raw.githubusercontent.com/wabbajack-tools/mod-lists/master/modlists.json"
 
 SKYRIM_SE_OFFICIAL = ["Skyrim.esm", "Update.esm", "Dawnguard.esm", "HearthFires.esm", "Dragonborn.esm"]

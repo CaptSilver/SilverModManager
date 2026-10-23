@@ -5,7 +5,7 @@ using NexusMods.Paths;
 using YamlDotNet.Core;
 using YamlDotNet.RepresentationModel;
 
-namespace NexusMods.Backend.Games.Locators;
+namespace SilverModManager.Backend.Games.Locators;
 
 /// <summary>
 /// One row of Lutris's <c>games</c> table, limited to the columns the locator uses.

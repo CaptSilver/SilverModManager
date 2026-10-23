@@ -1,25 +1,25 @@
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Games;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games;
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.DiagnosticSystem;
-using NexusMods.Games.Larian.BaldursGate3;
-using NexusMods.Games.Larian.BaldursGate3.GameInstalled;
-using NexusMods.Games.Larian.BaldursGate3.Models;
-using NexusMods.Games.Larian.BaldursGate3.SortOrder;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.DiagnosticSystem;
+using SilverModManager.Games.Larian.BaldursGate3;
+using SilverModManager.Games.Larian.BaldursGate3.GameInstalled;
+using SilverModManager.Games.Larian.BaldursGate3.Models;
+using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3.Modsettings;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3.Modsettings;
 
 /// <summary>
 /// An isolated Baldur's Gate 3 with a synthetic <c>modsettings.lsx</c>, for tests that run real syncs and read the

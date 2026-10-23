@@ -6,10 +6,10 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Sdk;
-using NexusMods.UI.Tests.Framework;
+using SilverModManager.Sdk;
+using SilverModManager.UI.Tests.Framework;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 /// <summary>
 /// App.axaml pulls in the page resource dictionaries and the theme by <c>avares://</c> URI, whose host is an

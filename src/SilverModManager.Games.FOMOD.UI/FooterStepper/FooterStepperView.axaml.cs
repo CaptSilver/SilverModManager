@@ -1,12 +1,12 @@
 using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.App.UI;
-using NexusMods.App.UI.Controls;
-using NexusMods.Games.FOMOD.UI.Resources;
+using SilverModManager.App.UI;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.Games.FOMOD.UI.Resources;
 using ReactiveUI;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 [UsedImplicitly]
 public partial class FooterStepperView : ReactiveUserControl<IFooterStepperViewModel>

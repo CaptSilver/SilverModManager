@@ -1,4 +1,4 @@
-namespace NexusMods.Platform.Proton.Steam;
+namespace SilverModManager.Platform.Proton.Steam;
 
 public enum SteamCloseOutcome
 {

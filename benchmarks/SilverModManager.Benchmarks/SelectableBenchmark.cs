@@ -1,7 +1,7 @@
 using System.Reflection;
-using NexusMods.Benchmarks.Interfaces;
+using SilverModManager.Benchmarks.Interfaces;
 
-namespace NexusMods.Benchmarks;
+namespace SilverModManager.Benchmarks;
 
 /// <summary>
 /// A benchmark that can be ran by the user.  

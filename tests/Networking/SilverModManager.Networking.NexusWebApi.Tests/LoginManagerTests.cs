@@ -2,18 +2,18 @@ using System.Net;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Networking.NexusWebApi.Auth;
-using NexusMods.Secrets.Overlay;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Networking.NexusWebApi.Auth;
+using SilverModManager.Secrets.Overlay;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.ProxyConsole;
 using NSubstitute;
 using R3;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 [Collection(AuthStateCollection.Name)]
 public class LoginManagerTests : IAsyncLifetime

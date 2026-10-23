@@ -2,15 +2,15 @@ using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 
 using NexusMods.Paths;
-using NexusMods.ProxyConsole;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.SingleProcess;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.ProxyConsole;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.SingleProcess;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using Spectre.Console.Testing;
-using Table = NexusMods.Sdk.ProxyConsole.Table;
+using Table = SilverModManager.Sdk.ProxyConsole.Table;
 
-namespace NexusMods.CLI.Tests.VerbTests;
+namespace SilverModManager.CLI.Tests.VerbTests;
 
 public class AVerbTest(IServiceProvider provider)
 {

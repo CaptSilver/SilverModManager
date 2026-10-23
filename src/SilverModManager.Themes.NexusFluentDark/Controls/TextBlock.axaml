@@ -19,7 +19,7 @@
 
     <!-- 
     Defaults all TextBlock to BodySMNormalTheme 
-    Found at src/Themes/NexusMods.Themes.NexusFluentDark/Resources/Typography/TextBlockControlThemes.axaml
+    Found at src/Themes/SilverModManager.Themes.NexusFluentDark/Resources/Typography/TextBlockControlThemes.axaml
      -->
     <ControlTheme x:Key="{x:Type TextBlock}" TargetType="TextBlock" BasedOn="{StaticResource BodySMNormalTheme}"/>
 

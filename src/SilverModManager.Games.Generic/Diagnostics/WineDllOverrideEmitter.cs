@@ -1,10 +1,10 @@
 using System.Runtime.CompilerServices;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.Generic.Diagnostics;
+namespace SilverModManager.Games.Generic.Diagnostics;
 
 /// <summary>
 /// Reports the Wine DLL overrides a game declares through <see cref="IWineDllOverrideRequirements"/> that the

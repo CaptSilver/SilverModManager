@@ -1,9 +1,9 @@
 using System.Text.Json;
 using FluentAssertions;
-using NexusMods.Abstractions.NexusWebApi.DTOs.OAuth;
-using NexusMods.Networking.NexusWebApi.Auth;
+using SilverModManager.Abstractions.NexusWebApi.DTOs.OAuth;
+using SilverModManager.Networking.NexusWebApi.Auth;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 public class NexusOAuthTokenTests
 {

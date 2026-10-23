@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
 
-namespace NexusMods.Abstractions.Steam.DTOs;
+namespace SilverModManager.Abstractions.Steam.DTOs;
 
 /// <summary>
 /// Meta information about a manifest, not the actual contents, just the id

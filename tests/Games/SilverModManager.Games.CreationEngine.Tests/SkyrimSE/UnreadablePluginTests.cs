@@ -8,26 +8,26 @@ using Mutagen.Bethesda.Plugins.Binary.Parameters;
 using Mutagen.Bethesda.Plugins.Records;
 using Mutagen.Bethesda.Skyrim;
 using Size = NexusMods.Paths.Size;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
-using NexusMods.Games.CreationEngine.Abstractions;
-using NexusMods.Games.CreationEngine.Emitters;
-using NexusMods.Games.CreationEngine.PluginLists;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Games.CreationEngine.Emitters;
+using SilverModManager.Games.CreationEngine.PluginLists;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.SkyrimSE;
+namespace SilverModManager.Games.CreationEngine.Tests.SkyrimSE;
 
 /// <summary>
 /// A plugin whose bytes no stream source can supply must come out as "unreadable", never as a null stream
@@ -35,8 +35,8 @@ namespace NexusMods.Games.CreationEngine.Tests.SkyrimSE;
 /// </summary>
 public class UnreadablePluginTests(ITestOutputHelper helper) : AIsolatedGameTest<UnreadablePluginTests, CreationEngine.SkyrimSE.SkyrimSE>(helper)
 {
-    private static readonly DiagnosticId MissingMasterId = new("NexusMods.Games.CreationEngine", number: 1);
-    private static readonly DiagnosticId UnreadablePluginsId = new("NexusMods.Games.CreationEngine", number: 3);
+    private static readonly DiagnosticId MissingMasterId = new("SilverModManager.Games.CreationEngine", number: 1);
+    private static readonly DiagnosticId UnreadablePluginsId = new("SilverModManager.Games.CreationEngine", number: 3);
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {

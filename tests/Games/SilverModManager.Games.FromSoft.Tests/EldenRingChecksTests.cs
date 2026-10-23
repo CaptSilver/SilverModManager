@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Games.FromSoft.Doctor;
-using NexusMods.Games.FromSoft.Overlay;
+using SilverModManager.Games.FromSoft.Doctor;
+using SilverModManager.Games.FromSoft.Overlay;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.FromSoft.Tests;
+namespace SilverModManager.Games.FromSoft.Tests;
 
 public class EldenRingChecksTests
 {

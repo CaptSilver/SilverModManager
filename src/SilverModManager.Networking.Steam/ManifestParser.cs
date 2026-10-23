@@ -1,10 +1,10 @@
-using NexusMods.Sdk.Hashes;
-using NexusMods.Abstractions.Steam.DTOs;
-using NexusMods.Abstractions.Steam.Values;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Abstractions.Steam.DTOs;
+using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
 using SteamKit2;
 
-namespace NexusMods.Networking.Steam;
+namespace SilverModManager.Networking.Steam;
 
 public static class ManifestParser
 {

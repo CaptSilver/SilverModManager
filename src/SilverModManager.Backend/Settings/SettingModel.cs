@@ -1,7 +1,7 @@
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Backend;
+namespace SilverModManager.Backend;
 
 /// <summary>
 /// Settings are stored as a simple key-value pair.

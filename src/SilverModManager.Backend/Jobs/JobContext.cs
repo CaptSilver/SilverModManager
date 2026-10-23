@@ -1,9 +1,9 @@
 using System.Numerics;
 using System.Reactive.Subjects;
 using DynamicData.Kernel;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Backend.Jobs;
+namespace SilverModManager.Backend.Jobs;
 
 public sealed class JobContext<TJobDefinition, TJobResult> : IJobWithResult<TJobResult>, IJobContext<TJobDefinition> where TJobDefinition : IJobDefinition<TJobResult> where TJobResult : notnull
 {

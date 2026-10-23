@@ -1,19 +1,19 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Mutagen.Bethesda;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.Modlists;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.CreationEngine.Models;
-using NexusMods.Games.CreationEngine.SortOrder;
-using NexusMods.Games.CreationEngine.Tests.SortOrder;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Modlists;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.CreationEngine.Models;
+using SilverModManager.Games.CreationEngine.SortOrder;
+using SilverModManager.Games.CreationEngine.Tests.SortOrder;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.CreationEngine.Tests.Modlists;
+namespace SilverModManager.Games.CreationEngine.Tests.Modlists;
 
 /// <summary>
 /// A profile's plugins.txt and loadorder.txt staged into a loadout's plugin order, as an import does it before the

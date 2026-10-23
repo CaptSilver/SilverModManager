@@ -2,9 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 using NexusMods.Paths;
 using NexusMods.Paths.Trees;
 using NexusMods.Paths.Trees.Traits;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Sdk.Trees;
+namespace SilverModManager.Sdk.Trees;
 
 /// <summary>
 ///     The base class for a tree which stores items using <see cref="GamePath"/>(s)

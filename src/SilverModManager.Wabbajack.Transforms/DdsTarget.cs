@@ -1,4 +1,4 @@
-namespace NexusMods.Wabbajack.Transforms;
+namespace SilverModManager.Wabbajack.Transforms;
 
 /// <summary>
 /// What a re-encoded texture must look like. <paramref name="MipLevels"/> of 0 asks for a full chain.

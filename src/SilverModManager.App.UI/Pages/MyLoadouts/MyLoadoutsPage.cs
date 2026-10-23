@@ -1,11 +1,11 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.Resources;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.Pages.MyLoadouts;
+namespace SilverModManager.App.UI.Pages.MyLoadouts;
 
 [JsonName("SilverModManager.App.UI.Pages.MyLoadoutsPageContext")]
 public record MyLoadoutsPageContext : IPageFactoryContext;

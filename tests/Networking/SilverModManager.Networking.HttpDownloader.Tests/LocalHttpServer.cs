@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
-namespace NexusMods.Networking.HttpDownloader.Tests;
+namespace SilverModManager.Networking.HttpDownloader.Tests;
 
 public class LocalHttpServer : IDisposable
 {

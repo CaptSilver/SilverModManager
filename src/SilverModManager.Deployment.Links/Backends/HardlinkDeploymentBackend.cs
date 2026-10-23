@@ -1,14 +1,14 @@
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.Deployment.Links.Native;
-using NexusMods.Deployment.Links.Probe;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.Deployment.Links.Native;
+using SilverModManager.Deployment.Links.Probe;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Links.Backends;
+namespace SilverModManager.Deployment.Links.Backends;
 
 /// <summary>
 /// Deploys each file as a hard link to its staged copy. Works where the game folder and the staging store

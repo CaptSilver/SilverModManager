@@ -1,9 +1,9 @@
 using System.Collections.Immutable;
-using NexusMods.Games.FromSoft.Formats;
-using NexusMods.Games.FromSoft.Saves;
-using NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Saves;
+using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
-namespace NexusMods.Games.FromSoft.Tests.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Fixtures;
 
 /// <summary>
 /// A made-up FromSoft game whose every name differs from Elden Ring's, so a test that passes with it cannot be

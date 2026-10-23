@@ -1,7 +1,7 @@
 using System;
-using NexusMods.MnemonicDB.Abstractions.IndexSegments.Columns;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments.Columns;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
 /// <summary>
 /// A interface for a segment builder

@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
-using NexusMods.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Formats;
 
-namespace NexusMods.Games.FromSoft.Tests.Formats.Fixtures;
+namespace SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 
 /// <summary>
 /// Builds minimal valid ESD files by hand, not through <see cref="Esd.Write"/>, so the reader is tested against bytes

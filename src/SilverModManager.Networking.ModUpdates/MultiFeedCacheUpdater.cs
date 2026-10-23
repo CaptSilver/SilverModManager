@@ -1,6 +1,6 @@
-﻿using NexusMods.Sdk.NexusModsApi;
+﻿using SilverModManager.Sdk.NexusModsApi;
 
-namespace NexusMods.Networking.ModUpdates;
+namespace SilverModManager.Networking.ModUpdates;
 
 /// <summary>
 /// This is a helper struct which combines multiple <see cref="PerFeedCacheUpdater{TUpdateableItem}"/>

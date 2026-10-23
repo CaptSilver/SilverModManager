@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Platform.Proton.UserTools;
+namespace SilverModManager.Platform.Proton.UserTools;
 
 /// <summary>
 /// Splits the arguments line a user types into words: spaces separate, double quotes group, and nothing is

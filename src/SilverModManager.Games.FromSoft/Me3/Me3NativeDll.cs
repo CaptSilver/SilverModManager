@@ -1,4 +1,4 @@
-namespace NexusMods.Games.FromSoft.Me3;
+namespace SilverModManager.Games.FromSoft.Me3;
 
 /// <summary>
 /// Picks the DLL me3 loads out of a native mod's files. Archives that carry a redistributable beside the real

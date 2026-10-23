@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Sdk.Jobs;
 
-namespace NexusMods.Jobs.Tests.TestInfrastructure;
+namespace SilverModManager.Jobs.Tests.TestInfrastructure;
 
 public record SimpleTestJob : IJobDefinitionWithStart<SimpleTestJob, string>
 {

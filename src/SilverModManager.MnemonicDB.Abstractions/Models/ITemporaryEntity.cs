@@ -1,4 +1,4 @@
-﻿namespace NexusMods.MnemonicDB.Abstractions.Models;
+﻿namespace SilverModManager.MnemonicDB.Abstractions.Models;
 
 /// <summary>
 /// An entity that is temporary and is added to a transaction during construction.

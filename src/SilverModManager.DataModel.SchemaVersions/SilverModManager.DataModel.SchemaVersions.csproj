@@ -5,18 +5,18 @@
     <ItemGroup>
       <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
       <PackageReference Include="NexusMods.Hashing.xxHash3" />
-      <ProjectReference Include="..\NexusMods.MnemonicDB.Abstractions\NexusMods.MnemonicDB.Abstractions.csproj" />
-      <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+      <ProjectReference Include="..\SilverModManager.MnemonicDB.Abstractions\SilverModManager.MnemonicDB.Abstractions.csproj" />
+      <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.Abstractions.Games.FileHashes\NexusMods.Abstractions.Games.FileHashes.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.Loadouts\NexusMods.Abstractions.Loadouts.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.Collections\NexusMods.Abstractions.Collections.csproj" />
-      <ProjectReference Include="..\NexusMods.Collections\NexusMods.Collections.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.NexusModsLibrary\NexusMods.Abstractions.NexusModsLibrary.csproj" />
-      <ProjectReference Include="..\NexusMods.Collections\NexusMods.Collections.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.NexusModsLibrary\NexusMods.Abstractions.NexusModsLibrary.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Games.FileHashes\SilverModManager.Abstractions.Games.FileHashes.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts\SilverModManager.Abstractions.Loadouts.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Collections\SilverModManager.Abstractions.Collections.csproj" />
+      <ProjectReference Include="..\SilverModManager.Collections\SilverModManager.Collections.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.NexusModsLibrary\SilverModManager.Abstractions.NexusModsLibrary.csproj" />
+      <ProjectReference Include="..\SilverModManager.Collections\SilverModManager.Collections.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.NexusModsLibrary\SilverModManager.Abstractions.NexusModsLibrary.csproj" />
     </ItemGroup>
 
     <ItemGroup>

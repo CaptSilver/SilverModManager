@@ -40,7 +40,7 @@ jobs:
       # Exit code 8 (zero tests ran) is not a failure.
       - name: Tests
         run: >
-          dotnet test --solution NexusMods.App.sln --no-build --ignore-exit-code 8
+          dotnet test --solution SilverModManager.App.sln --no-build --ignore-exit-code 8
           -p:XunitArgs="--report-github --timeout 20m --filter-trait RequiresNetworking=True"
 
 

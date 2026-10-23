@@ -1,10 +1,10 @@
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.Larian.BaldursGate3.Models;
-using NexusMods.Games.Larian.Tests.BaldursGate3.Modsettings;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.Larian.BaldursGate3.Models;
+using SilverModManager.Games.Larian.Tests.BaldursGate3.Modsettings;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3.GameInstalled;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3.GameInstalled;
 
 /// <summary>
 /// A game-installed pak keeps the <c>modsettings.lsx</c> entry the game gave it, and the writer brings that exact

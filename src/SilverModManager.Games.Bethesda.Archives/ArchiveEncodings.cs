@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 /// <summary>
 /// The name decodings Wabbajack uses per archive version. Modlists record member paths as Wabbajack decoded

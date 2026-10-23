@@ -2,7 +2,7 @@ using System.IO.Compression;
 using System.Text;
 using K4os.Compression.LZ4.Streams;
 
-namespace NexusMods.Games.Bethesda.Archives.Tests;
+namespace SilverModManager.Games.Bethesda.Archives.Tests;
 
 /// <summary>
 /// Writes minimal archives from the on-disk layouts documented by the UESP wiki

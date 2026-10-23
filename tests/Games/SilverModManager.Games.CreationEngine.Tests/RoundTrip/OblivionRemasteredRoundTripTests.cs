@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Mutagen.Bethesda;
-using NexusMods.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using LoadOrderTests = NexusMods.Games.Bethesda.LoadOrder.Tests;
+using SilverModManager.Sdk.Games;
+using LoadOrderTests = SilverModManager.Games.Bethesda.LoadOrder.Tests;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.RoundTrip;
+namespace SilverModManager.Games.CreationEngine.Tests.RoundTrip;
 
 public class OblivionRemasteredRoundTripTests(ITestOutputHelper helper)
     : ATextfileRoundTripTest<OblivionRemasteredRoundTripTests, CreationEngine.OblivionRemastered.OblivionRemastered>(helper)

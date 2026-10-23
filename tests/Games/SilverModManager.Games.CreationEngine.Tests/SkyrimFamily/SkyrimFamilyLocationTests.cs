@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.TestFramework.Helpers;
-using NexusMods.Sdk.Games;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.TestFramework.Helpers;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Tests.SkyrimFamily;
+namespace SilverModManager.Games.CreationEngine.Tests.SkyrimFamily;
 
 /// <summary>
 /// Where Skyrim LE, Skyrim VR, Enderal and Enderal SE keep their plugin list and their ini files and saves

@@ -4,18 +4,18 @@ using System.Collections.Frozen;
 using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Diagnostics.References;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Games.RedEngine.Cyberpunk2077;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.References;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.DataModel.Tests;
+namespace SilverModManager.DataModel.Tests;
 
 public class DiagnosticManagerTests(IServiceProvider provider) : AGameTest<Cyberpunk2077Game>(provider)
 {
@@ -198,7 +198,7 @@ public sealed class ScriptedLoadoutEmitter : ILoadoutDiagnosticEmitter
 
         yield return new Diagnostic
         {
-            Id = new DiagnosticId("NexusMods.DataModel.Tests", 1),
+            Id = new DiagnosticId("SilverModManager.DataModel.Tests", 1),
             Title = script.Answer,
             Severity = DiagnosticSeverity.Warning,
             Summary = DiagnosticMessage.From(script.Answer),

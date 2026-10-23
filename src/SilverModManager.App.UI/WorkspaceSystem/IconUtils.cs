@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Media.Imaging;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.App.UI.Extensions;
 using SkiaSharp;
 using Svg.Skia;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 internal static class IconUtils
 {

@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+using SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 
-namespace NexusMods.Games.Bethesda.Loot.Metadata;
+namespace SilverModManager.Games.Bethesda.Loot.Metadata;
 
 /// <summary>
 /// Thrown when a <c>&lt;&lt;</c> merge key's value is neither a mapping nor a sequence of mappings.

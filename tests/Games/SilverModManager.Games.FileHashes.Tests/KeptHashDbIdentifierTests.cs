@@ -1,16 +1,16 @@
 using System.IO.Compression;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Abstractions.EpicGameStore.Values;
-using NexusMods.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.EpicGameStore.Values;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
-using EpicBuildId = NexusMods.Abstractions.EpicGameStore.Values.BuildId;
-using OperatingSystem = NexusMods.Abstractions.Games.FileHashes.Values.OperatingSystem;
+using EpicBuildId = SilverModManager.Abstractions.EpicGameStore.Values.BuildId;
+using OperatingSystem = SilverModManager.Abstractions.Games.FileHashes.Values.OperatingSystem;
 
-namespace NexusMods.Games.FileHashes.Tests;
+namespace SilverModManager.Games.FileHashes.Tests;
 
 /// <summary>
 /// The game-hashes database is built and released outside this repository, so the attribute ids stored in it

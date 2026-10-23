@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.Loot.Metadata;
+using SilverModManager.Games.Bethesda.Loot.Metadata;
 
-namespace NexusMods.Games.Bethesda.Loot.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Sorting;
 
 // Follows libloot's sorting/plugins.rs (add_group_edges, GroupsPathVisitor).
 

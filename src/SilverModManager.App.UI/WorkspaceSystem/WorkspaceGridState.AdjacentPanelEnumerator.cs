@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 public readonly partial struct WorkspaceGridState
 {

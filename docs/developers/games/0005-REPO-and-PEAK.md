@@ -4,7 +4,7 @@
 - Release Date: 2025
 - Engine: Unity, modded through BepInEx
 
-Both games share one implementation, `NexusMods.Games.Unity`. A game there is a small class that supplies a
+Both games share one implementation, `SilverModManager.Games.Unity`. A game there is a small class that supplies a
 `UnityGameDefinition`; installers, diagnostics and the loader logic are common.
 
 ### Stores and Ids
@@ -106,6 +106,6 @@ and `BepInEx/cache/`, so a play session does not show up as loadout changes.
 ## Work To Do
 
 - Another BepInEx Unity game needs a class like `Repo` or `Peak` that supplies its `UnityGameDefinition`, plus its
-  registration in `NexusMods.Games.Unity.Services`.
+  registration in `SilverModManager.Games.Unity.Services`.
 
 ## Misc Notes

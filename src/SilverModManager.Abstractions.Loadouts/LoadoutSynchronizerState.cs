@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Loadouts;
+namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 /// The synchronization state of a loadout.

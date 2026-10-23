@@ -4,11 +4,11 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input.Platform;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.UI.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Pages.LoadoutPage.Dialogs.CollectionPublished;
+namespace SilverModManager.App.UI.Pages.LoadoutPage.Dialogs.CollectionPublished;
 
 public interface IDialogCollectionPublishedViewModel : IViewModelInterface
 {

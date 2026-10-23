@@ -2,7 +2,7 @@ using System.Reactive.Subjects;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Data;
 
-namespace NexusMods.App.UI.Controls;
+namespace SilverModManager.App.UI.Controls;
 
 public class CustomTextCell<T> : TextCell<T>, ICustomCell
 {

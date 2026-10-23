@@ -1,13 +1,13 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.Abstractions.Diagnostics.Emitters;
-using NexusMods.Abstractions.Games;
-using NexusMods.Games.Larian.BaldursGate3.Emitters;
-using NexusMods.Games.Larian.BaldursGate3.SortOrder;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Games.Larian.BaldursGate3.Emitters;
+using SilverModManager.Games.Larian.BaldursGate3.SortOrder;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3.Modsettings;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3.Modsettings;
 
 /// <summary>
 /// The game throwing the mod list away: the app puts its list back once, and when the game does it again it
@@ -15,8 +15,8 @@ namespace NexusMods.Games.Larian.Tests.BaldursGate3.Modsettings;
 /// </summary>
 public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : ModsettingsFixture(helper)
 {
-    private static readonly DiagnosticId ReplacedId = new("NexusMods.Games.Larian.BaldursGate3", number: 12);
-    private static readonly DiagnosticId ResetId = new("NexusMods.Games.Larian.BaldursGate3", number: 13);
+    private static readonly DiagnosticId ReplacedId = new("SilverModManager.Games.Larian.BaldursGate3", number: 12);
+    private static readonly DiagnosticId ResetId = new("SilverModManager.Games.Larian.BaldursGate3", number: 13);
 
     private async Task<Loadout.ReadOnly> AppliedTwoPaks()
     {

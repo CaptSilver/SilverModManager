@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 using R3;
 
-namespace NexusMods.Networking.NexusWebApi.Tests;
+namespace SilverModManager.Networking.NexusWebApi.Tests;
 
 public class HandlerRegistrationTests
 {

@@ -1,6 +1,6 @@
 using R3;
 
-namespace NexusMods.Abstractions.Secrets;
+namespace SilverModManager.Abstractions.Secrets;
 
 /// <summary>
 /// Stores credentials. Backends report trouble through <see cref="SecretResult.Unavailable"/> rather

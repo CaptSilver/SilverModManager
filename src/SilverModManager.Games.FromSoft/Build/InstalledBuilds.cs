@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.FromSoft.Build;
+namespace SilverModManager.Games.FromSoft.Build;
 
 /// <summary>
 /// Reads the installed build for the merge path, which asks for it several times in one Apply (choosing a vanilla

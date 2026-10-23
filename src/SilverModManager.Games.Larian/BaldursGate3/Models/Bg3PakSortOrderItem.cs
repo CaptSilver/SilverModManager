@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Games;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Games.Larian.BaldursGate3.Models;
+namespace SilverModManager.Games.Larian.BaldursGate3.Models;
 
 /// <summary>
 /// One pak in a <see cref="Bg3PakSortOrder"/>.

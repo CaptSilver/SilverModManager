@@ -3,13 +3,13 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.Diagnostics;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Resources;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Resources;
 using ReactiveUI;
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.App.UI.Pages.Diagnostics;
+namespace SilverModManager.App.UI.Pages.Diagnostics;
 
 [UsedImplicitly]
 public partial class DiagnosticListView : ReactiveUserControl<IDiagnosticListViewModel>

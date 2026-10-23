@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Games.RedEngine.Cyberpunk2077.Models;
+namespace SilverModManager.Games.RedEngine.Cyberpunk2077.Models;
 
 [Obsolete("RedMod manifests files should not longer be marked explicitly, they should be identified by path format `{Game}/mods/<redModName>/info.json`")]
 [Include<LoadoutFile>]

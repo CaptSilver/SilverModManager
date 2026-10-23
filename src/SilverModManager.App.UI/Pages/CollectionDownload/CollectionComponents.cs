@@ -1,17 +1,17 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.Abstractions.NexusModsLibrary.Models;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Pages.LibraryPage;
-using NexusMods.App.UI.Resources;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Jobs;
-using NexusMods.UI.Sdk;
+using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.App.UI.Resources;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.UI.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Pages.CollectionDownload;
-using CollectionDownloadEntity = NexusMods.Abstractions.NexusModsLibrary.Models.CollectionDownload;
+namespace SilverModManager.App.UI.Pages.CollectionDownload;
+using CollectionDownloadEntity = SilverModManager.Abstractions.NexusModsLibrary.Models.CollectionDownload;
 
 public static class CollectionColumns
 {

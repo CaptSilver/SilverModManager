@@ -1,13 +1,13 @@
 using FluentAssertions;
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.App.UI.Overlays;
-using NexusMods.App.UI.Overlays.Login;
-using NexusMods.Sdk.Jobs;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.App.UI.Overlays;
+using SilverModManager.App.UI.Overlays.Login;
+using SilverModManager.Sdk.Jobs;
 using NSubstitute;
 using System.Windows.Input;
 using R3;
 
-namespace NexusMods.UI.Tests.Overlays;
+namespace SilverModManager.UI.Tests.Overlays;
 
 public class ApiKeyLoginOverlayTests
 {

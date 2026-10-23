@@ -1,8 +1,8 @@
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
-using NexusMods.Sdk.Library;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
+using SilverModManager.Sdk.Library;
 
-namespace NexusMods.Abstractions.Collections;
+namespace SilverModManager.Abstractions.Collections;
 
 /// <summary>
 /// A direct downloaded file from a collection

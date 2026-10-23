@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Library.Installers;
 
-namespace NexusMods.Games.AdvancedInstaller;
+namespace SilverModManager.Games.AdvancedInstaller;
 
 public static class Services
 {

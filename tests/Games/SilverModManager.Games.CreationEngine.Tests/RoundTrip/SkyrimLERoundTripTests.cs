@@ -1,7 +1,7 @@
 using Mutagen.Bethesda;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.Games.CreationEngine.Tests.RoundTrip;
+namespace SilverModManager.Games.CreationEngine.Tests.RoundTrip;
 
 public class SkyrimLERoundTripTests(ITestOutputHelper helper)
     : ATextfileRoundTripTest<SkyrimLERoundTripTests, CreationEngine.SkyrimLE.SkyrimLE>(helper)

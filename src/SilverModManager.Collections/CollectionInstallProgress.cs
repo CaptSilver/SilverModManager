@@ -1,6 +1,6 @@
 using System.Reactive.Subjects;
 
-namespace NexusMods.Collections;
+namespace SilverModManager.Collections;
 
 /// <summary>
 /// What an <see cref="InstallCollectionJob"/> has done so far. The job updates it from several

@@ -2,7 +2,7 @@ using Bannerlord.LauncherManager;
 using NexusMods.Paths;
 using NexusMods.Paths.Extensions;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord;
 
 public static class BannerlordConstants
 {

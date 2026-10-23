@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using FluentAssertions;
 
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 /// <summary>
 /// First-party code, project files, resources and scripts carry the fork's name. A leftover upstream

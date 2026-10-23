@@ -1,7 +1,7 @@
 using DynamicData.Kernel;
-using NexusMods.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
 
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// An abstraction for a sortable item that can be moved around in a list relative to its siblings.

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
-      <ProjectReference Include="..\..\src\NexusMods.ProxyConsole\NexusMods.ProxyConsole.csproj" />
+      <ProjectReference Include="..\..\src\SilverModManager.ProxyConsole\SilverModManager.ProxyConsole.csproj" />
     </ItemGroup>
 
     <ItemGroup>

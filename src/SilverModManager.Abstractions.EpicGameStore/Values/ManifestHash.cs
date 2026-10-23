@@ -1,6 +1,6 @@
 using Reloaded.Memory.Extensions;
 
-namespace NexusMods.Abstractions.EpicGameStore.Values;
+namespace SilverModManager.Abstractions.EpicGameStore.Values;
 
 public readonly struct ManifestHash : IEquatable<ManifestHash>, IComparable<ManifestHash>
 {

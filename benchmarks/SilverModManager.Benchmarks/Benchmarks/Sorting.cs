@@ -1,10 +1,10 @@
 using BenchmarkDotNet.Attributes;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Sorting;
-using NexusMods.Benchmarks.Interfaces;
-using NexusMods.DataModel.Sorting;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Sorting;
+using SilverModManager.Benchmarks.Interfaces;
+using SilverModManager.DataModel.Sorting;
 
-namespace NexusMods.Benchmarks.Benchmarks;
+namespace SilverModManager.Benchmarks.Benchmarks;
 
 [BenchmarkInfo("Sorting", "Tests how quickly it usually takes to sort the load order of X mods.")]
 [MemoryDiagnoser]

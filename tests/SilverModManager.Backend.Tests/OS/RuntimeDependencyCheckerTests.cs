@@ -2,10 +2,10 @@ using DynamicData.Kernel;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 using NSubstitute;
 
-namespace NexusMods.Backend.Tests.OS;
+namespace SilverModManager.Backend.Tests.OS;
 
 public class RuntimeDependencyCheckerTests
 {

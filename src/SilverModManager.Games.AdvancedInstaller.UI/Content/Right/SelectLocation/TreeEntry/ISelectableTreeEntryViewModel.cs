@@ -1,13 +1,13 @@
 ﻿using System.Reactive;
 
-using NexusMods.App.UI.Helpers;
-using NexusMods.App.UI.Helpers.TreeDataGrid;
+using SilverModManager.App.UI.Helpers;
+using SilverModManager.App.UI.Helpers.TreeDataGrid;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 
-namespace NexusMods.Games.AdvancedInstaller.UI.SelectLocation;
+namespace SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 
 /// <summary>
 /// Represents an individual entry in the 'All Folders' tree when selecting an install location.

@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk.Settings;
-using NexusMods.Backend;
+using SilverModManager.Sdk.Settings;
+using SilverModManager.Backend;
 using NexusMods.Paths;
 using Xunit.DependencyInjection;
 
-namespace NexusMods.CrossPlatform.Tests;
+namespace SilverModManager.CrossPlatform.Tests;
 
 public class Startup
 {

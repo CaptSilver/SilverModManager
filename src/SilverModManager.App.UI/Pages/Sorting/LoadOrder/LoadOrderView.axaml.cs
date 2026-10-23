@@ -2,13 +2,13 @@ using System.ComponentModel;
 using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
-using NexusMods.Abstractions.Games;
-using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Extensions;
-using NexusMods.App.UI.Resources;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Resources;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.Sorting;
+namespace SilverModManager.App.UI.Pages.Sorting;
 
 public partial class LoadOrderView : ReactiveUserControl<ILoadOrderViewModel>
 {

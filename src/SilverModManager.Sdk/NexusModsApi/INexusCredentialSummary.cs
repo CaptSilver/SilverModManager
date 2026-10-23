@@ -1,4 +1,4 @@
-namespace NexusMods.Sdk.NexusModsApi;
+namespace SilverModManager.Sdk.NexusModsApi;
 
 /// <summary>
 /// Which kind of Nexus credential a process holds.

@@ -1,4 +1,4 @@
-namespace NexusMods.SingleProcess.Exceptions;
+namespace SilverModManager.SingleProcess.Exceptions;
 
 /// <summary>
 /// Thrown when a client tries to connect to a main process that is not started

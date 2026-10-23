@@ -4,10 +4,10 @@ using Avalonia.Controls.Models.TreeDataGrid;
 using DynamicData;
 using Examples.TreeDataGrid.Basic.ViewModel;
 using JetBrains.Annotations;
-using NexusMods.App.UI.Helpers.TreeDataGrid;
+using SilverModManager.App.UI.Helpers.TreeDataGrid;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
 
 namespace Examples.TreeDataGrid.Basic;
 

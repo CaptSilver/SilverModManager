@@ -1,15 +1,15 @@
 using NexusMods.Hashing.xxHash3;
-using NexusMods.Library;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Library;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.FileStore;
-using NexusMods.Sdk.Hashes;
-using NexusMods.Sdk.IO;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Library;
+using SilverModManager.Sdk.FileStore;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Library;
 
-namespace NexusMods.Wabbajack.Acquire;
+namespace SilverModManager.Wabbajack.Acquire;
 
 /// <summary>A file a directive reads, found in the file store. <see cref="Open"/> can be called any number of times.</summary>
 public sealed record ResolvedMember(Hash StoreHash, Hash? XxHash64, Size Size, Func<Task<Stream>> Open);

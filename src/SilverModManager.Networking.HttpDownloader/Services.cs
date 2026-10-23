@@ -1,10 +1,10 @@
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
-using NexusMods.Sdk;
+using SilverModManager.Sdk;
 using Polly;
 
-namespace NexusMods.Networking.HttpDownloader;
+namespace SilverModManager.Networking.HttpDownloader;
 
 public static class Services
 {

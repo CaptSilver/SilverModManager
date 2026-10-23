@@ -3,20 +3,20 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.App.UI.Pages.Wabbajack;
-using NexusMods.App.UI.Windows;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.App.UI.Pages.Wabbajack;
+using SilverModManager.App.UI.Windows;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Library;
-using NexusMods.Wabbajack.Acquire;
-using NexusMods.Wabbajack.Format;
-using NexusMods.Wabbajack.Install;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Wabbajack.Acquire;
+using SilverModManager.Wabbajack.Format;
+using SilverModManager.Wabbajack.Install;
 using ReactiveUI;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {
@@ -72,17 +72,17 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
         public Task Completion => Done.Task;
     }
 
-    private sealed class FakeService(GameId? game, Func<Task<NexusMods.Sdk.Loadouts.LoadoutId>>? createLoadout = null) : IWabbajackModlistService
+    private sealed class FakeService(GameId? game, Func<Task<SilverModManager.Sdk.Loadouts.LoadoutId>>? createLoadout = null) : IWabbajackModlistService
     {
         public int LoadoutsCreated { get; private set; }
-        public List<NexusMods.Sdk.Loadouts.LoadoutId?> PlannedFor { get; } = [];
+        public List<SilverModManager.Sdk.Loadouts.LoadoutId?> PlannedFor { get; } = [];
 
         public ArchivePlan Plan { get; set; } = new([]);
         public Size? Free { get; set; }
         public IReadOnlyList<RelativePath> GameFiles { get; set; } = [];
         public FakeRun Run { get; } = new();
         public List<InstallOptions> Installs { get; } = [];
-        public List<NexusMods.Sdk.Loadouts.LoadoutId> InstalledInto { get; } = [];
+        public List<SilverModManager.Sdk.Loadouts.LoadoutId> InstalledInto { get; } = [];
         public IReadOnlyList<UnmatchedInbox> Unmatched { get; set; } = [];
 
         public Task<WabbajackModlistDetails> Open(LibraryFileId file, CancellationToken cancellationToken)
@@ -91,7 +91,7 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
         /// <summary>When set, the next plan waits for it, like a list whose game files take a while to hash.</summary>
         public TaskCompletionSource? PlanGate { get; set; }
 
-        public async Task<ArchivePlan> BuildPlan(LibraryFileId file, NexusMods.Sdk.Loadouts.LoadoutId? target, CancellationToken cancellationToken)
+        public async Task<ArchivePlan> BuildPlan(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId? target, CancellationToken cancellationToken)
         {
             PlannedFor.Add(target);
             var plan = Plan;
@@ -103,14 +103,14 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
             return plan;
         }
 
-        public Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, NexusMods.Sdk.Loadouts.LoadoutId? target, CancellationToken cancellationToken) => Task.FromResult(GameFiles);
-        public async Task<NexusMods.Sdk.Loadouts.LoadoutId> CreateLoadout(GameId gameId, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<RelativePath>> GameFilesReplaced(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId? target, CancellationToken cancellationToken) => Task.FromResult(GameFiles);
+        public async Task<SilverModManager.Sdk.Loadouts.LoadoutId> CreateLoadout(GameId gameId, CancellationToken cancellationToken)
         {
             LoadoutsCreated++;
             return await (createLoadout ?? throw new NotSupportedException())();
         }
 
-        public IWabbajackInstallRun StartInstall(LibraryFileId file, NexusMods.Sdk.Loadouts.LoadoutId target, InstallOptions options)
+        public IWabbajackInstallRun StartInstall(LibraryFileId file, SilverModManager.Sdk.Loadouts.LoadoutId target, InstallOptions options)
         {
             Installs.Add(options);
             InstalledInto.Add(target);

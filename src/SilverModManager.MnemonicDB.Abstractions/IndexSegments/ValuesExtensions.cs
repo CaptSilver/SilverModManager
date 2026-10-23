@@ -1,6 +1,6 @@
-﻿using NexusMods.MnemonicDB.Abstractions.Models;
+﻿using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.MnemonicDB.Abstractions.IndexSegments;
+namespace SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 
 /// <summary>
 /// Extension methods for working with values

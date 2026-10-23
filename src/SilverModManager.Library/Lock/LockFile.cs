@@ -3,7 +3,7 @@ using JetBrains.Annotations;
 using Tomlyn;
 using Tomlyn.Model;
 
-namespace NexusMods.Library.Lock;
+namespace SilverModManager.Library.Lock;
 
 /// <summary>
 /// A list of pinned mods in the TOML shape erm writes: one table per mod id, sorted by ordinal comparison, with the keys

@@ -1,7 +1,7 @@
 using NexusMods.Paths;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Vfs;
+namespace SilverModManager.Deployment.Vfs;
 
 /// <summary>
 /// What one <c>stat(2)</c> says about an entry in the game's own directory. Device and inode are

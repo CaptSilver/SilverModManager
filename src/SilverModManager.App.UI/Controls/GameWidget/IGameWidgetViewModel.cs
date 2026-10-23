@@ -1,11 +1,11 @@
 using System.Reactive;
 using Avalonia.Media.Imaging;
-using NexusMods.Sdk.Games;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.GameWidget;
+namespace SilverModManager.App.UI.Controls.GameWidget;
 
 public interface IGameWidgetViewModel : IViewModelInterface
 {

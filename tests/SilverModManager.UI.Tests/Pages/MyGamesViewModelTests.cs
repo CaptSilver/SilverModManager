@@ -2,23 +2,23 @@ using System.Collections.Immutable;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.App.UI.Controls.MiniGameWidget.Standard;
-using NexusMods.App.UI;
-using NexusMods.App.UI.Windows;
-using NexusMods.UI.Sdk.Dialog;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.App.UI.Controls.MiniGameWidget.Standard;
+using SilverModManager.App.UI;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Sdk.Dialog;
 using Avalonia.Platform.Storage;
 using System.Reactive.Linq;
 using ReactiveUI;
-using NexusMods.App.UI.Pages.MyGames;
-using NexusMods.App.UI.Settings;
+using SilverModManager.App.UI.Pages.MyGames;
+using SilverModManager.App.UI.Settings;
 using NexusMods.Paths;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Settings;
 using NSubstitute;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 /// <summary>
 /// My Games lists every game the app has a definition for, not just a short allowlist, whatever an older

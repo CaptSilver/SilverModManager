@@ -1,7 +1,7 @@
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Trees;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Trees;
 
-namespace NexusMods.Abstractions.Loadouts.Files.Diff;
+namespace SilverModManager.Abstractions.Loadouts.Files.Diff;
 
 /// <summary>
 /// A tree that files and their change states

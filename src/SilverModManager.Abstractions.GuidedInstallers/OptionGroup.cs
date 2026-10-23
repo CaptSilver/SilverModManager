@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.Abstractions.GuidedInstallers.ValueObjects;
+using SilverModManager.Abstractions.GuidedInstallers.ValueObjects;
 
-namespace NexusMods.Abstractions.GuidedInstallers;
+namespace SilverModManager.Abstractions.GuidedInstallers;
 
 /// <summary>
 /// Represents group of <see cref="Option"/> inside a <see cref="GuidedInstallationStep"/>.

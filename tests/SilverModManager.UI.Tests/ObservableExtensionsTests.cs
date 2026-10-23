@@ -1,9 +1,9 @@
 using System.Reactive.Concurrency;
 using System.Reactive.Subjects;
 using FluentAssertions;
-using NexusMods.App.UI.Extensions;
+using SilverModManager.App.UI.Extensions;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class ObservableExtensionsTests
 {

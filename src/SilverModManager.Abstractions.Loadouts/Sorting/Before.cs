@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Serialization.Attributes;
+using SilverModManager.Abstractions.Serialization.Attributes;
 
-namespace NexusMods.Abstractions.Loadouts.Sorting;
+namespace SilverModManager.Abstractions.Loadouts.Sorting;
 
 /// <summary />
 [JsonName("SilverModManager.Abstractions.DataModel.Entities.Sorting.Before")]

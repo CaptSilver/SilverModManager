@@ -3,12 +3,12 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NexusMods.Platform.Proton.Launch;
-using NexusMods.Sdk;
-using NexusMods.SingleProcess;
-using NexusMods.SingleProcess.Exceptions;
+using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk;
+using SilverModManager.SingleProcess;
+using SilverModManager.SingleProcess.Exceptions;
 
-namespace NexusMods.App;
+namespace SilverModManager.App;
 
 /// <summary>
 /// The parts of process startup that need a real host, a real sync file or a window.
@@ -295,7 +295,7 @@ public static class ProcessStartup
 
     private static bool HasSecretsFileOverride(StartupMode startupMode, IServiceProvider services)
         => startupMode.SecretsFile is not null
-           || !string.IsNullOrEmpty(services.GetService<IEnvironmentReader>()?.Get(NexusMods.Secrets.Services.SecretsFileEnvironmentVariable));
+           || !string.IsNullOrEmpty(services.GetService<IEnvironmentReader>()?.Get(SilverModManager.Secrets.Services.SecretsFileEnvironmentVariable));
 
     private static bool TryClaim(IServiceProvider services, MainKind kind, ProcessStartupSteps steps, out string refusal)
     {

@@ -3,7 +3,7 @@ using System.Reactive.Linq;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 /// <summary>
 /// The tab history is a linear history of non-ephemeral pages implemented using a ring buffer.

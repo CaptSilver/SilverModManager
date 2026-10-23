@@ -1,10 +1,10 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Abstractions.Games.Modlists;
+namespace SilverModManager.Abstractions.Games.Modlists;
 
 /// <summary>
 /// What a game says about the Mod Organizer 2 instance a Wabbajack modlist lays out: where a mod's files go, which

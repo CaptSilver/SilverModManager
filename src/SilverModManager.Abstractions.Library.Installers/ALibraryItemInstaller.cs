@@ -1,11 +1,11 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Loadouts;
 
-namespace NexusMods.Abstractions.Library.Installers;
+namespace SilverModManager.Abstractions.Library.Installers;
 
 /// <summary>
 /// Base implementation of <see cref="ILibraryItemInstaller"/>.

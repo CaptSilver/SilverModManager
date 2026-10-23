@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Mutagen.Bethesda;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.RoundTrip;
+namespace SilverModManager.Games.CreationEngine.Tests.RoundTrip;
 
 public class OblivionRoundTripTests(ITestOutputHelper helper)
     : ATimestampRoundTripTest<OblivionRoundTripTests, CreationEngine.Oblivion.Oblivion>(helper)

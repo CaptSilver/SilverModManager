@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
-using NexusMods.App.UI.Windows;
+using SilverModManager.App.UI.Windows;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [PublicAPI]
 public readonly struct PageIdBundle

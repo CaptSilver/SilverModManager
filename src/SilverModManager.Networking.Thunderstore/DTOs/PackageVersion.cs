@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Networking.Thunderstore.DTOs;
+namespace SilverModManager.Networking.Thunderstore.DTOs;
 
 /// <summary>
 /// One published version of a package. The package-listing chunks carry <see cref="FileSize"/> and no

@@ -1,7 +1,7 @@
 using Bannerlord.LauncherManager.External.UI;
 using Bannerlord.LauncherManager.Models;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.LauncherManager;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.LauncherManager;
 
 internal class DialogProvider : IDialogProvider
 {

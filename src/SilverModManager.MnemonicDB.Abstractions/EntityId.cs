@@ -3,7 +3,7 @@ using System.Globalization;
 using JetBrains.Annotations;
 using TransparentValueObjects;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 /// <summary>
 ///     A unique identifier for an entity.

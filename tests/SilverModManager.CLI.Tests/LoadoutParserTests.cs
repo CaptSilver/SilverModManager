@@ -1,18 +1,18 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.MnemonicDB.Abstractions;
 using DynamicData.Kernel;
-using NexusMods.Sdk;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.NexusModsApi;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 using NSubstitute;
 
-namespace NexusMods.CLI.Tests;
+namespace SilverModManager.CLI.Tests;
 
 public class LoadoutParserTests(IServiceProvider provider)
 {

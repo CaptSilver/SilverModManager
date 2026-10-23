@@ -1,7 +1,7 @@
 // Follows Wabbajack.Compression.BSA/BA2Archive/FileEntry.cs (GPL-3.0).
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Bethesda.Archives;
+namespace SilverModManager.Games.Bethesda.Archives;
 
 internal sealed class Ba2GeneralEntry(
     ArchiveSource source, Ba2FileState state, long offset, uint packedSize, uint fullSize, bool lz4) : IBethesdaArchiveEntry

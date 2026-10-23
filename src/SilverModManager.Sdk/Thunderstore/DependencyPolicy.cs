@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Thunderstore;
+namespace SilverModManager.Sdk.Thunderstore;
 
 /// <summary>
 /// Which version of a dependency to install when a package lists one.

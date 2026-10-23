@@ -1,11 +1,11 @@
 using DynamicData;
-using NexusMods.App.UI.Controls;
+using SilverModManager.App.UI.Controls;
 using NexusMods.Paths;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using NexusMods.Sdk.Games;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
+namespace SilverModManager.App.UI.Helpers.TreeDataGrid.New.FolderGenerator;
 
 /// <summary>
 /// A class responsible for creating 'folders' where we have views of files in a tree

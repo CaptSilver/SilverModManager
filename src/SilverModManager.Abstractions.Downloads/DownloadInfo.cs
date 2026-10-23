@@ -1,16 +1,16 @@
 using System.Runtime.CompilerServices;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.NexusModsApi;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.NexusModsApi;
 using R3;
 
-[assembly: InternalsVisibleTo("NexusMods.Library")]
-[assembly: InternalsVisibleTo("NexusMods.Library.Tests")]
+[assembly: InternalsVisibleTo("SilverModManager.Library")]
+[assembly: InternalsVisibleTo("SilverModManager.Library.Tests")]
 
-namespace NexusMods.Abstractions.Downloads;
+namespace SilverModManager.Abstractions.Downloads;
 
 /// <summary>
 /// Represents download information for UI display.

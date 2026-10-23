@@ -3,10 +3,10 @@ using System.Buffers;
 using System.Threading.Tasks;
 using DynamicData;
 using NexusMods.HyperDuck;
-using NexusMods.MnemonicDB.Abstractions.DatomIterators;
-using NexusMods.MnemonicDB.Abstractions.Internals;
+using SilverModManager.MnemonicDB.Abstractions.DatomIterators;
+using SilverModManager.MnemonicDB.Abstractions.Internals;
 
-namespace NexusMods.MnemonicDB.Abstractions;
+namespace SilverModManager.MnemonicDB.Abstractions;
 
 
 using DatomChangeSet = ChangeSet<Datom, DatomKey, IDb>;

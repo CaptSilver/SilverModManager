@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using Avalonia.Media;
 using JetBrains.Annotations;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [UsedImplicitly]
 public class ColorJsonConverter : JsonConverter<Color>

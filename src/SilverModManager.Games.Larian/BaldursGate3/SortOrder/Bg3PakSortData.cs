@@ -1,7 +1,7 @@
-using NexusMods.Abstractions.Games;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.MnemonicDB.Abstractions;
 
-namespace NexusMods.Games.Larian.BaldursGate3.SortOrder;
+namespace SilverModManager.Games.Larian.BaldursGate3.SortOrder;
 
 /// <summary>
 /// A stored pak row: its place in the order and its on/off switch, plus the on-disk spelling of the name the

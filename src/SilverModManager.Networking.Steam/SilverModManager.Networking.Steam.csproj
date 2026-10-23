@@ -10,13 +10,13 @@
     </ItemGroup>
 
     <ItemGroup>
-      <InternalsVisibleTo Include="NexusMods.Networking.Steam.Tests" />
+      <InternalsVisibleTo Include="SilverModManager.Networking.Steam.Tests" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\NexusMods.Abstractions.Steam\NexusMods.Abstractions.Steam.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.Secrets\NexusMods.Abstractions.Secrets.csproj" />
-      <ProjectReference Include="..\NexusMods.Abstractions.Cli\NexusMods.Abstractions.Cli.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Steam\SilverModManager.Abstractions.Steam.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Secrets\SilverModManager.Abstractions.Secrets.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Cli\SilverModManager.Abstractions.Cli.csproj" />
     </ItemGroup>
 
 </Project>

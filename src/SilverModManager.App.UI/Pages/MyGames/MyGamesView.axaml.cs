@@ -3,7 +3,7 @@ using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Pages.MyGames;
+namespace SilverModManager.App.UI.Pages.MyGames;
 
 public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
 {

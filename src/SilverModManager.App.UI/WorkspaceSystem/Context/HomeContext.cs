@@ -1,6 +1,6 @@
-using NexusMods.Abstractions.Serialization.Attributes;
+using SilverModManager.Abstractions.Serialization.Attributes;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [JsonName("SilverModManager.App.UI.WorkspaceSystem.HomeContext")]
 public record HomeContext : IWorkspaceContext

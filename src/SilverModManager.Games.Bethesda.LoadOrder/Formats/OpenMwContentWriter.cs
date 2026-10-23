@@ -1,4 +1,4 @@
-namespace NexusMods.Games.Bethesda.LoadOrder.Formats;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Formats;
 
 /// <summary>
 /// Rewrites the <c>content=</c> lines of an openmw.cfg that belong to files under Data Files and leaves every

@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace NexusMods.Sdk.Hashes;
+namespace SilverModManager.Sdk.Hashes;
 
 internal class Md5JsonConverter : JsonConverter<Md5Value>
 {

@@ -1,9 +1,9 @@
 using JetBrains.Annotations;
-using NexusMods.App.UI.Windows;
-using NexusMods.UI.Sdk;
-using NexusMods.UI.Sdk.Icons;
+using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Sdk;
+using SilverModManager.UI.Sdk.Icons;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [PublicAPI]
 public interface IPageViewModelInterface : IViewModelInterface

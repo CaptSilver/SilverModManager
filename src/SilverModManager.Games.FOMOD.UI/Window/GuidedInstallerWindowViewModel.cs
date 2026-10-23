@@ -1,11 +1,11 @@
 using System.Reactive;
 using JetBrains.Annotations;
-using NexusMods.App.UI;
-using NexusMods.UI.Sdk;
+using SilverModManager.App.UI;
+using SilverModManager.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
-namespace NexusMods.Games.FOMOD.UI;
+namespace SilverModManager.Games.FOMOD.UI;
 
 [UsedImplicitly]
 public class GuidedInstallerWindowViewModel : AViewModel<IGuidedInstallerWindowViewModel>, IGuidedInstallerWindowViewModel

@@ -1,12 +1,12 @@
-﻿using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Files.Diff;
-using NexusMods.Abstractions.Loadouts.Exceptions;
-using NexusMods.Abstractions.Loadouts.Ids;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
+﻿using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Files.Diff;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
+using SilverModManager.Abstractions.Loadouts.Ids;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using R3;
 
-namespace NexusMods.Abstractions.Loadouts;
+namespace SilverModManager.Abstractions.Loadouts;
 
 /// <summary>
 /// Singleton service for applying loadouts and tracking what loadouts are currently applied/being applied.

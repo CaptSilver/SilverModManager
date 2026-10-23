@@ -1,7 +1,7 @@
-using NexusMods.Games.Bethesda.Loot.Metadata.Yaml;
+using SilverModManager.Games.Bethesda.Loot.Metadata.Yaml;
 using YamlDotNet.RepresentationModel;
 
-namespace NexusMods.Games.Bethesda.Loot.Tests.Yaml;
+namespace SilverModManager.Games.Bethesda.Loot.Tests.Yaml;
 
 // saphyr resolves plain scalars under the YAML 1.2 core schema and libloot's typed getters read
 // that result; YamlDotNet's representation model only returns strings.

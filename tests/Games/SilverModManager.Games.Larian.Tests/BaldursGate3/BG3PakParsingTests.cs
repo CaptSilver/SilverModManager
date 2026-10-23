@@ -1,10 +1,10 @@
 using System.Text;
 using FluentAssertions;
-using NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
-using NexusMods.Games.Larian.BaldursGate3.Utils.PakParsing;
+using SilverModManager.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
+using SilverModManager.Games.Larian.BaldursGate3.Utils.PakParsing;
 using NexusMods.Paths;
 
-namespace NexusMods.Games.Larian.Tests.BaldursGate3;
+namespace SilverModManager.Games.Larian.Tests.BaldursGate3;
 
 public class BG3PakParsingTests
 {

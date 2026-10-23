@@ -1,28 +1,28 @@
 using System.Reactive.Linq;
 using FluentAssertions;
-using NexusMods.App.UI.LeftMenu.Items;
+using SilverModManager.App.UI.LeftMenu.Items;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.App.UI.Helpers;
-using NexusMods.Collections;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.App.UI.Helpers;
+using SilverModManager.Collections;
 using DynamicData;
-using NexusMods.App.UI.Pages;
-using NexusMods.App.UI.LeftMenu.Loadout;
-using NexusMods.App.UI.Pages.LibraryPage;
-using NexusMods.App.UI.Pages.LoadoutPage;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.App.UI.Pages;
+using SilverModManager.App.UI.LeftMenu.Loadout;
+using SilverModManager.App.UI.Pages.LibraryPage;
+using SilverModManager.App.UI.Pages.LoadoutPage;
+using SilverModManager.App.UI.WorkspaceSystem;
 using NexusMods.Hashing.xxHash3;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Wabbajack.Models;
+using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Wabbajack.Models;
 using NSubstitute;
-using Loadout = NexusMods.Sdk.Loadouts.Loadout;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
-namespace NexusMods.UI.Tests.Pages;
+namespace SilverModManager.UI.Tests.Pages;
 
 /// <summary>
 /// A modlist's group is a collection with no Nexus metadata; the UI has to treat it like any other mutable collection,

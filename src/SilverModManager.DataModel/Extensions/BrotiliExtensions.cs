@@ -1,7 +1,7 @@
 ﻿using System.IO.Compression;
 using System.Text.Json;
 
-namespace NexusMods.DataModel.Extensions;
+namespace SilverModManager.DataModel.Extensions;
 
 /// <summary>
 /// In general, Brotli compression is better than GZip compression for Json files and the performance is

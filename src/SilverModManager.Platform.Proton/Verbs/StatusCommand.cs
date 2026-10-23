@@ -1,6 +1,6 @@
-using NexusMods.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.Launch;
 
-namespace NexusMods.Platform.Proton.Verbs;
+namespace SilverModManager.Platform.Proton.Verbs;
 
 /// <summary>
 /// <c>silvermod status [--json]</c>: shows which launches hold or have left a lock. It reads the lock and state

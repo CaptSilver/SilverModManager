@@ -4,7 +4,7 @@ using Avalonia;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace NexusMods.App.UI.Controls.Spine.Buttons.Icon;
+namespace SilverModManager.App.UI.Controls.Spine.Buttons.Icon;
 
 public partial class IconButton : ReactiveUserControl<IIconButtonViewModel>, IViewContract
 {

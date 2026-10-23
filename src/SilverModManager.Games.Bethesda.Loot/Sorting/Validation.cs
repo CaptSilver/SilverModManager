@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder;
 
-namespace NexusMods.Games.Bethesda.Loot.Sorting;
+namespace SilverModManager.Games.Bethesda.Loot.Sorting;
 
 // Follows libloot's sorting/validate.rs.
 

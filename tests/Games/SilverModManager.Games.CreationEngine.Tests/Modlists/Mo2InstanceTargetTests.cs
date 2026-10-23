@@ -1,14 +1,14 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.Modlists;
-using NexusMods.Games.CreationEngine.Modlists;
-using NexusMods.Games.TestFramework;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Modlists;
+using SilverModManager.Games.CreationEngine.Modlists;
+using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.CreationEngine.Tests.Modlists;
+namespace SilverModManager.Games.CreationEngine.Tests.Modlists;
 
 public class Mo2InstanceTargetTests(ITestOutputHelper helper)
     : AIsolatedGameTest<Mo2InstanceTargetTests, CreationEngine.SkyrimSE.SkyrimSE>(helper)

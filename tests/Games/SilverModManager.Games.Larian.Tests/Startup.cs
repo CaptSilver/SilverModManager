@@ -1,15 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.GuidedInstallers;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Backend;
-using NexusMods.Games.Larian.BaldursGate3;
-using NexusMods.Games.TestFramework;
-using NexusMods.Sdk;
-using NexusMods.StandardGameLocators.TestHelpers;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.GuidedInstallers;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Backend;
+using SilverModManager.Games.Larian.BaldursGate3;
+using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk;
+using SilverModManager.StandardGameLocators.TestHelpers;
 
-namespace NexusMods.Games.Larian.Tests;
+namespace SilverModManager.Games.Larian.Tests;
 
 public class Startup
 {

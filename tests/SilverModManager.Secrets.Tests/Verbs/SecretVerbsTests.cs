@@ -1,11 +1,11 @@
 using Xunit;
 using FluentAssertions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Sdk.ProxyConsole;
-using NexusMods.Secrets.Overlay;
-using NexusMods.Secrets.Verbs;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Sdk.ProxyConsole;
+using SilverModManager.Secrets.Overlay;
+using SilverModManager.Secrets.Verbs;
 
-namespace NexusMods.Secrets.Tests.Verbs;
+namespace SilverModManager.Secrets.Tests.Verbs;
 
 public class SecretVerbsTests
 {

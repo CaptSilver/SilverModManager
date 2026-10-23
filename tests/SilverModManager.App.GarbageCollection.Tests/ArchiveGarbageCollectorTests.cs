@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using FluentAssertions;
-using NexusMods.App.GarbageCollection.Errors;
-using NexusMods.App.GarbageCollection.Structs;
-using NexusMods.App.GarbageCollection.Tests.Helpers;
+using SilverModManager.App.GarbageCollection.Errors;
+using SilverModManager.App.GarbageCollection.Structs;
+using SilverModManager.App.GarbageCollection.Tests.Helpers;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.Paths.TestingHelpers;
 using Xunit;
-namespace NexusMods.App.GarbageCollection.Tests;
+namespace SilverModManager.App.GarbageCollection.Tests;
 
 public class ArchiveGarbageCollectorTests
 {

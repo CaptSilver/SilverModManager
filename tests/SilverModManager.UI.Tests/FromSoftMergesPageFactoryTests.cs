@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.App.UI.Pages.FromSoftMerges;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk.Games;
+using SilverModManager.App.UI.Pages.FromSoftMerges;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Games;
 
-namespace NexusMods.UI.Tests;
+namespace SilverModManager.UI.Tests;
 
 public class FromSoftMergesPageFactoryTests(IServiceProvider provider) : AUiTest(provider)
 {

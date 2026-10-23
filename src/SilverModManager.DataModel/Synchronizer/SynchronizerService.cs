@@ -1,25 +1,25 @@
 ﻿using System.Reactive.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Games;
-using NexusMods.Abstractions.Games.FileHashes;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Loadouts.Deployment;
-using NexusMods.Abstractions.Loadouts.Files.Diff;
-using NexusMods.Abstractions.Loadouts.Exceptions;
-using NexusMods.Abstractions.Loadouts.Ids;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Deployment;
+using SilverModManager.Abstractions.Loadouts.Files.Diff;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
+using SilverModManager.Abstractions.Loadouts.Ids;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.Loadouts;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Sdk.Loadouts;
 using ReactiveUI;
 using R3;
-using GameInstallMetadata = NexusMods.Sdk.Games.GameInstallMetadata;
+using GameInstallMetadata = SilverModManager.Sdk.Games.GameInstallMetadata;
 
-namespace NexusMods.DataModel.Synchronizer;
+namespace SilverModManager.DataModel.Synchronizer;
 
 /// <inheritdoc />
 public class SynchronizerService : ISynchronizerService

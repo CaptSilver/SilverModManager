@@ -3,9 +3,9 @@ using Bannerlord.LauncherManager.External;
 using Bannerlord.LauncherManager.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord.LauncherManager;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord.LauncherManager;
 
 /// <summary>
 /// The entry point for integration with the common `LauncherManager` library

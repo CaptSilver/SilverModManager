@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.NexusWebApi;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.Sdk;
 using R3;
 
-namespace NexusMods.App.UI.Overlays;
+namespace SilverModManager.App.UI.Overlays;
 
 public interface IUpgradeToPremiumViewModel : IOverlayViewModel
 {

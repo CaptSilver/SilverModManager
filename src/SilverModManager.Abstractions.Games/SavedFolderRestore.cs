@@ -1,4 +1,4 @@
-namespace NexusMods.Abstractions.Games;
+namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// Puts a backup folder back in place of a link to nowhere. Another tool can replace a game's save folder with a

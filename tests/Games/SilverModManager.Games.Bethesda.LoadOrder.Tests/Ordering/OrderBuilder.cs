@@ -1,6 +1,6 @@
-using NexusMods.Games.Bethesda.LoadOrder.Ordering;
+using SilverModManager.Games.Bethesda.LoadOrder.Ordering;
 
-namespace NexusMods.Games.Bethesda.LoadOrder.Tests.Ordering;
+namespace SilverModManager.Games.Bethesda.LoadOrder.Tests.Ordering;
 
 internal static class OrderBuilder
 {

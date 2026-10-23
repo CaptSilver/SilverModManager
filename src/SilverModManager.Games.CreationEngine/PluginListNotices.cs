@@ -1,9 +1,9 @@
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.CreationEngine.Models;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.CreationEngine.Models;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 
-namespace NexusMods.Games.CreationEngine;
+namespace SilverModManager.Games.CreationEngine;
 
 /// <summary>
 /// The note that the app replaced the game's plugin list. It is its own entity, one per sort order, so writing it

@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace NexusMods.Sdk.Thunderstore;
+namespace SilverModManager.Sdk.Thunderstore;
 
 /// <summary>
 /// A dependency string from a package manifest: <c>{team}-{package}-{version}</c>, with the namespace/name

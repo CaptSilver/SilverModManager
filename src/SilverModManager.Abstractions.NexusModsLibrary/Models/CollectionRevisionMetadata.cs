@@ -1,8 +1,8 @@
-using NexusMods.Abstractions.NexusModsLibrary.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Attributes;
-using NexusMods.MnemonicDB.Abstractions.Models;
+using SilverModManager.Abstractions.NexusModsLibrary.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Attributes;
+using SilverModManager.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Abstractions.NexusModsLibrary.Models;
+namespace SilverModManager.Abstractions.NexusModsLibrary.Models;
 
 /// <summary>
 /// Metadata about a collection revision on Nexus Mods. A revision references a collection, but is itself immutable.

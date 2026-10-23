@@ -1,6 +1,6 @@
-using NexusMods.Games.FromSoft.EldenRing;
+using SilverModManager.Games.FromSoft.EldenRing;
 
-namespace NexusMods.Games.FromSoft.Tests.Saves;
+namespace SilverModManager.Games.FromSoft.Tests.Saves;
 
 /// <summary>A temp folder holding a save folder, a data folder for copies, and a Steam folder, all synthetic.</summary>
 public sealed class SaveFixture : IDisposable

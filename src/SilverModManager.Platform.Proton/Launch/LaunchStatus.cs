@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace NexusMods.Platform.Proton.Launch;
+namespace SilverModManager.Platform.Proton.Launch;
 
 /// <summary>
 /// One installation's launch lock as found on disk.

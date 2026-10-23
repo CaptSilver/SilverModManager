@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using FluentAssertions;
 
-namespace NexusMods.Sdk.Tests;
+namespace SilverModManager.Sdk.Tests;
 
 /// <summary>
 /// The fork keeps its own state and identity, so upstream's names must not leak back into
@@ -15,15 +15,15 @@ public partial class BrandingGuardTests
 
     private static readonly (string File, string Line, string Reason)[] Allowed =
     [
-        ("src/NexusMods.App/UpstreamData.cs", "return fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine(\"NexusMods.App/DataModel\");", "locates upstream's data folder on purpose, to warn about shared game folders"),
-        ("src/NexusMods.App/app.pupnet.conf", "# Reference Config: https://raw.githubusercontent.com/kuiperzone/PupNet-HelloWorld/main/HelloWorld.pupnet.conf", "points at the PupNet tool's sample config, not at upstream"),
+        ("src/SilverModManager.App/UpstreamData.cs", "return fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine(\"NexusMods.App/DataModel\");", "locates upstream's data folder on purpose, to warn about shared game folders"),
+        ("src/SilverModManager.App/app.pupnet.conf", "# Reference Config: https://raw.githubusercontent.com/kuiperzone/PupNet-HelloWorld/main/HelloWorld.pupnet.conf", "points at the PupNet tool's sample config, not at upstream"),
         ("CONTRIBUTING.md", "SilverModManager is a Linux-only fork of the [Nexus Mods App](https://github.com/Nexus-Mods/NexusMods.App),", "credits the project this is forked from"),
-        ("src/NexusMods.App/io.github.CaptSilver.SilverModManager.metainfo.xml", "<p>SilverModManager is a Linux mod manager for your games. It is a fork of the Nexus Mods App and downloads mods from Nexus Mods. It is not affiliated with or endorsed by Nexus Mods.</p>", "non-affiliation statement names the project this is forked from"),
+        ("src/SilverModManager.App/io.github.CaptSilver.SilverModManager.metainfo.xml", "<p>SilverModManager is a Linux mod manager for your games. It is a fork of the Nexus Mods App and downloads mods from Nexus Mods. It is not affiliated with or endorsed by Nexus Mods.</p>", "non-affiliation statement names the project this is forked from"),
         ("README.md", "SilverModManager is a Linux-only fork of the [Nexus Mods App](https://github.com/Nexus-Mods/NexusMods.App) that downloads mods from [Nexus Mods](https://www.nexusmods.com).", "credits the project this is forked from"),
         ("README.md", "It is not affiliated with or endorsed by Nexus Mods. It is a modified version of the Nexus Mods App, which is GPL-3.0-only;", "non-affiliation statement names the project this is forked from"),
-        ("src/NexusMods.App/Program.cs", "_logger.LogWarning(\"Upstream Nexus Mods App data found at {Path}; unmanage shared games there first\", UpstreamData.DataModelPath(fileSystem));", "tells the user about the upstream install on purpose"),
-        ("src/NexusMods.Games.Bethesda.Loot/Masterlists/CachingMasterlistStore.cs", "public const string Endpoint = \"https://raw.githubusercontent.com/loot/\";", "the LOOT masterlist refresh downloads from LOOT's own repositories, not upstream's"),
-        ("src/NexusMods.App/UpstreamData.cs", "/// Detects data left by the upstream Nexus Mods App, which this fork can run next to. The fork", "names the upstream install this class detects"),
+        ("src/SilverModManager.App/Program.cs", "_logger.LogWarning(\"Upstream Nexus Mods App data found at {Path}; unmanage shared games there first\", UpstreamData.DataModelPath(fileSystem));", "tells the user about the upstream install on purpose"),
+        ("src/SilverModManager.Games.Bethesda.Loot/Masterlists/CachingMasterlistStore.cs", "public const string Endpoint = \"https://raw.githubusercontent.com/loot/\";", "the LOOT masterlist refresh downloads from LOOT's own repositories, not upstream's"),
+        ("src/SilverModManager.App/UpstreamData.cs", "/// Detects data left by the upstream Nexus Mods App, which this fork can run next to. The fork", "names the upstream install this class detects"),
     ];
 
     // Data folder, config folder, log and sync file names that would collide with a running
@@ -42,10 +42,10 @@ public partial class BrandingGuardTests
         RepoScanGuard.AssertMatchesAllowlist(found, Allowed, "the fork must not reuse upstream's names; use ApplicationConstants or add the line to the allowlist with a reason");
     }
 
-    // The upstream project name used as a binary or package name. Namespaces, project folders,
-    // `.csproj`/`.sln` names and avares:// URIs keep the name, so the lookahead drops anything
-    // followed by a path or identifier character and the line check drops the declarations that
-    // end right after it.
+    // The upstream project name used as a binary or package name. A namespace, project folder,
+    // `.csproj`/`.sln` name or avares:// host is FirstPartyNamespaceGuardTests' job, so the
+    // lookahead drops anything followed by a path or identifier character and the line check
+    // drops the declarations that end right after it.
     [GeneratedRegex(@"NexusMods\.App(?![\w./\\])")]
     private static partial Regex UpstreamBinaryName();
 
@@ -56,7 +56,7 @@ public partial class BrandingGuardTests
     [
         ("README.md", "SilverModManager is a Linux-only fork of the [Nexus Mods App](https://github.com/Nexus-Mods/NexusMods.App) that downloads mods from [Nexus Mods](https://www.nexusmods.com).", "credits the project this is forked from"),
         ("CONTRIBUTING.md", "SilverModManager is a Linux-only fork of the [Nexus Mods App](https://github.com/Nexus-Mods/NexusMods.App),", "credits the project this is forked from"),
-        ("src/NexusMods.Networking.ModUpdates/PerFeedCacheUpdater.cs", "/// For full info on internals, see the NexusMods.App project documentation.", "points at upstream's documentation, which is where those internals are described"),
+        ("src/SilverModManager.Networking.ModUpdates/PerFeedCacheUpdater.cs", "/// For full info on internals, see the NexusMods.App project documentation.", "points at upstream's documentation, which is where those internals are described"),
     ];
 
     [Fact]
@@ -81,7 +81,7 @@ public partial class BrandingGuardTests
     public void Test_BrandAccentIsNotUpstreamOrange()
     {
         var root = RepoScanGuard.FindRepoRoot();
-        var brandColors = "src/NexusMods.Themes.NexusFluentDark/Resources/Palette/Colors/BrandColors.axaml";
+        var brandColors = "src/SilverModManager.Themes.NexusFluentDark/Resources/Palette/Colors/BrandColors.axaml";
         var found = RepoScanGuard.FindLines(root, [brandColors], line => UpstreamAccent().IsMatch(line));
 
         RepoScanGuard.AssertMatchesAllowlist(found, [], "BrandPrimary* must map to the Zinc primitives, not Orange");
@@ -103,7 +103,7 @@ public partial class BrandingGuardTests
     public void Test_RewordedStringsHaveNoStaleTranslations()
     {
         var root = RepoScanGuard.FindRepoRoot();
-        var resources = Path.Combine(root, "src/NexusMods.App.UI/Resources");
+        var resources = Path.Combine(root, "src/SilverModManager.App.UI/Resources");
 
         var stale = Directory.EnumerateFiles(resources, "Language.*.resx")
             .SelectMany(file => System.Xml.Linq.XDocument.Load(file).Descendants("data")

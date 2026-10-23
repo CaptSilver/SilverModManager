@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
-using NexusMods.Abstractions.Loadouts.Synchronizers;
-using NexusMods.Deployment.Links.Native;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Deployment.Links.Native;
 using NexusMods.Paths;
-using NexusMods.Sdk.Native;
+using SilverModManager.Sdk.Native;
 
-namespace NexusMods.Deployment.Links.Probe;
+namespace SilverModManager.Deployment.Links.Probe;
 
 /// <summary>
 /// Tries each link kind between a store directory and a game root with a throwaway file, so a backend

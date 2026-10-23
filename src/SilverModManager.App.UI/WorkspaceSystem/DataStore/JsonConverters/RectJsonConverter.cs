@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using Avalonia;
 using JetBrains.Annotations;
 
-namespace NexusMods.App.UI.WorkspaceSystem;
+namespace SilverModManager.App.UI.WorkspaceSystem;
 
 [UsedImplicitly]
 public class RectJsonConverter : JsonConverter<Rect>

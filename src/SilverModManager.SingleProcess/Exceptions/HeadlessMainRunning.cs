@@ -1,4 +1,4 @@
-namespace NexusMods.SingleProcess.Exceptions;
+namespace SilverModManager.SingleProcess.Exceptions;
 
 /// <summary>
 /// Thrown when a client finds a live main process that has no CLI server. Unlike

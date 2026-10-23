@@ -1,14 +1,14 @@
 using System.Reflection;
 using System.Text.Json;
 using FluentAssertions;
-using NexusMods.Abstractions.Loadouts.Sorting;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.Pages;
-using NexusMods.App.UI.Pages.CollectionDownload;
-using NexusMods.App.UI.WorkspaceSystem;
-using NexusMods.Sdk;
+using SilverModManager.Abstractions.Loadouts.Sorting;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.Pages;
+using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk;
 
-namespace NexusMods.DataModel.SchemaVersions.Tests;
+namespace SilverModManager.DataModel.SchemaVersions.Tests;
 
 /// <summary>
 /// The <c>$type</c> discriminators in saved window and workspace data are persisted names. Changing one makes
@@ -98,7 +98,7 @@ public class JsonNameCompatibilityTests(JsonSerializerOptions jsonOptions)
     [Fact]
     public void PageContextsWithPrefixedNamesDeserialise()
     {
-        Read<IPageFactoryContext>("""{"$type":"SilverModManager.App.UI.Pages.SettingsPageContext"}""").Should().BeOfType<NexusMods.App.UI.Pages.Settings.SettingsPageContext>();
+        Read<IPageFactoryContext>("""{"$type":"SilverModManager.App.UI.Pages.SettingsPageContext"}""").Should().BeOfType<SilverModManager.App.UI.Pages.Settings.SettingsPageContext>();
     }
 
     private static string NameOf(Type type) => type.GetCustomAttributes(typeof(JsonNameAttribute), inherit: false).Cast<JsonNameAttribute>().Single().Name;

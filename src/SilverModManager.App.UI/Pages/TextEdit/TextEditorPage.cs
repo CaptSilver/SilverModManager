@@ -1,13 +1,13 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Abstractions.Serialization.Attributes;
-using NexusMods.App.UI.WorkspaceSystem;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.WorkspaceSystem;
 using NexusMods.Paths;
-using NexusMods.Sdk.Library;
+using SilverModManager.Sdk.Library;
 using OneOf;
 
-namespace NexusMods.App.UI.Pages.TextEdit;
+namespace SilverModManager.App.UI.Pages.TextEdit;
 
 [JsonName("TextEditorPageContext")]
 public record TextEditorPageContext : IPageFactoryContext

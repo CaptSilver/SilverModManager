@@ -1,12 +1,12 @@
 using System.Runtime.CompilerServices;
 using Bannerlord.ModuleManager;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.MountAndBlade2Bannerlord.Models;
-using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.Resources;
+using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.MountAndBlade2Bannerlord.Models;
+using SilverModManager.Sdk.Loadouts;
+using SilverModManager.Sdk.Resources;
 
-namespace NexusMods.Games.MountAndBlade2Bannerlord;
+namespace SilverModManager.Games.MountAndBlade2Bannerlord;
 
 public class Helpers
 {

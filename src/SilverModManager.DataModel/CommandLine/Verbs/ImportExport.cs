@@ -1,11 +1,11 @@
 using System.IO.Compression;
 using Microsoft.Extensions.DependencyInjection;
-using NexusMods.Abstractions.Cli;
-using NexusMods.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.DataModel.CommandLine.Verbs;
+namespace SilverModManager.DataModel.CommandLine.Verbs;
 
 /// <summary>
 /// Routines for importing and exporting the data model

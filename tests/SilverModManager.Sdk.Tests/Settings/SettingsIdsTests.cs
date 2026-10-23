@@ -1,7 +1,7 @@
 using FluentAssertions;
-using NexusMods.Sdk.Settings;
+using SilverModManager.Sdk.Settings;
 
-namespace NexusMods.Sdk.Tests.Settings;
+namespace SilverModManager.Sdk.Tests.Settings;
 
 public class SettingsIdsTests
 {

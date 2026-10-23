@@ -1,6 +1,6 @@
 ﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:spinner="clr-namespace:NexusMods.App.UI.Controls.Spinner;assembly=NexusMods.App.UI">
+        xmlns:spinner="clr-namespace:SilverModManager.App.UI.Controls.Spinner;assembly=SilverModManager.App.UI">
 
     <Design.PreviewWith>
         <StackPanel Orientation="Horizontal">

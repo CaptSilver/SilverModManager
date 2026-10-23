@@ -1,13 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NexusMods.Abstractions.Secrets;
-using NexusMods.Abstractions.Steam;
-using NexusMods.Abstractions.Steam.Values;
-using NexusMods.Networking.Steam.CLI;
-using NexusMods.Networking.Steam.Migration;
-using NexusMods.Sdk.ProxyConsole;
+using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Abstractions.Steam;
+using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.Networking.Steam.CLI;
+using SilverModManager.Networking.Steam.Migration;
+using SilverModManager.Sdk.ProxyConsole;
 
-namespace NexusMods.Networking.Steam;
+namespace SilverModManager.Networking.Steam;
 
 public static class Services
 {

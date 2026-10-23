@@ -1,9 +1,9 @@
 using FluentAssertions;
-using NexusMods.Backend.OS;
-using NexusMods.Sdk;
-using NexusMods.Sdk.IO;
+using SilverModManager.Backend.OS;
+using SilverModManager.Sdk;
+using SilverModManager.Sdk.IO;
 
-namespace NexusMods.Backend.Tests.OS;
+namespace SilverModManager.Backend.Tests.OS;
 
 public class DesktopFileResourceTests
 {
@@ -12,7 +12,7 @@ public class DesktopFileResourceTests
     [Fact]
     public async Task Test_EmbeddedDesktopFileMatchesApplicationId()
     {
-        LinuxInterop.DesktopFileResourceName.Should().Be($"NexusMods.Backend.{ApplicationConstants.ApplicationId}.desktop");
+        LinuxInterop.DesktopFileResourceName.Should().Be($"SilverModManager.Backend.{ApplicationConstants.ApplicationId}.desktop");
 
         await using var stream = await new EmbeddedResourceStreamFactory<LinuxInterop>(LinuxInterop.DesktopFileResourceName).GetStreamAsync();
         using var reader = new StreamReader(stream);

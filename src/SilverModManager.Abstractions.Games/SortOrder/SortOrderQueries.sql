@@ -1,4 +1,4 @@
--- namespace: NexusMods.Abstractions.Games
+-- namespace: SilverModManager.Abstractions.Games
 
 CREATE SCHEMA IF NOT EXISTS sortorder;
 

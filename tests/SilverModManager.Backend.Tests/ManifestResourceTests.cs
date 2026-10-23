@@ -1,10 +1,10 @@
 using System.Reflection;
 using FluentAssertions;
-using NexusMods.Backend.Games;
-using NexusMods.Backend.OS;
-using NexusMods.Sdk;
+using SilverModManager.Backend.Games;
+using SilverModManager.Backend.OS;
+using SilverModManager.Sdk;
 
-namespace NexusMods.Backend.Tests;
+namespace SilverModManager.Backend.Tests;
 
 /// <summary>
 /// Embedded resources are named from the assembly's root namespace, and the code that opens them holds the

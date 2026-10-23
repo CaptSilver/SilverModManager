@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Xunit;
 
-namespace NexusMods.Games.CreationEngine.Tests.OblivionRemastered;
+namespace SilverModManager.Games.CreationEngine.Tests.OblivionRemastered;
 
 /// <summary>
 /// Where the three mod targets of Oblivion Remastered (the deep Data folder, ~mods and Binaries/Win64) get
