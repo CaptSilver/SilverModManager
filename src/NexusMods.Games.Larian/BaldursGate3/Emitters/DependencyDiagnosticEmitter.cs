@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Xml;
 using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Diagnostics;
@@ -15,6 +16,7 @@ using NexusMods.Games.Larian.BaldursGate3.Utils;
 using NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Games.Larian.BaldursGate3.Utils.PakParsing;
+using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.NexusModsApi;
@@ -67,8 +69,9 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
 
     private async Task<IEnumerable<Diagnostic>> DiagnosePakModulesAsync(Loadout.ReadOnly loadout, Optional<LoadoutFile.ReadOnly> bg3LoadoutFile, CancellationToken cancellationToken)
     {
-        var pakLoadoutFiles = GetAllPakLoadoutFiles(loadout, onlyEnabledMods: true);
-        var metaFileTuples = await GetAllPakMetadata(pakLoadoutFiles,
+        var paks = GetAllPaks(loadout, onlyEnabledMods: true);
+        var metaFileTuples = await GetAllPakMetadata(paks,
+                loadout,
                 _metadataPipeline,
                 _logger,
                 cancellationToken
@@ -87,14 +90,15 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
         foreach (var metaFileTuple in metaFileTuples)
         {
             var (mod, metadataOrError) = metaFileTuple;
-            var loadoutItemGroup = mod.AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent;
+            var loadoutItemGroup = mod.Group;
+            var gameInstalled = mod.Owner == PakOwner.GameInstalled;
 
             // error case
             if (metadataOrError.Exception is not null)
             {
                 diagnostics.Add(Diagnostics.CreateInvalidPakFile(
                         ModName: loadoutItemGroup.ToReference(loadout),
-                        PakFileName: mod.AsLoadoutItemWithTargetPath().TargetPath.Item3.FileName
+                        PakFileName: mod.FileName
                     )
                 );
                 continue;
@@ -159,7 +163,15 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                     var missingVersion = dependency.SemanticVersion.ToString();
                     var moduleName = pakMetaData.MetaFileData.ModuleShortDesc.Name;
                     var moduleVersion = pakMetaData.MetaFileData.ModuleShortDesc.SemanticVersion.ToString();
-                    diagnostics.Add(IsOverridesGroup(loadoutItemGroup)
+                    diagnostics.Add(gameInstalled
+                        ? Diagnostics.CreateMissingDependencyInGameInstalled(
+                            MissingDepName: missingName,
+                            MissingDepVersion: missingVersion,
+                            PakModuleName: moduleName,
+                            PakModuleVersion: moduleVersion,
+                            NexusModsLink: NexusModsLink
+                        )
+                        : IsOverridesGroup(loadoutItemGroup)
                         ? Diagnostics.CreateMissingDependencyInOverrides(
                             ModName: loadoutItemGroup.ToReference(loadout),
                             MissingDepName: missingName,
@@ -187,14 +199,22 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                     x => x.Item2.Result.MetaFileData.ModuleShortDesc.SemanticVersion
                 );
                 var installedMatchModule = highestInstalledMatch.Item2.Result.MetaFileData.ModuleShortDesc;
-                var matchLoadoutItemGroup = highestInstalledMatch.Item1.AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent;
+                var matchLoadoutItemGroup = highestInstalledMatch.Item1.Group;
 
                 // Check if found dependency is outdated
                 if (installedMatchModule.SemanticVersion < dependency.SemanticVersion)
                 {
                     var outdatedModuleName = pakMetaData.MetaFileData.ModuleShortDesc.Name;
                     var outdatedModuleVersion = pakMetaData.MetaFileData.ModuleShortDesc.SemanticVersion.ToString();
-                    diagnostics.Add(IsOverridesGroup(loadoutItemGroup)
+                    diagnostics.Add(gameInstalled
+                        ? Diagnostics.CreateOutdatedDependencyInGameInstalled(
+                            PakModuleName: outdatedModuleName,
+                            PakModuleVersion: outdatedModuleVersion,
+                            DepName: installedMatchModule.Name,
+                            MinDepVersion: dependency.SemanticVersion.ToString(),
+                            CurrentDepVersion: installedMatchModule.SemanticVersion.ToString()
+                        )
+                        : IsOverridesGroup(loadoutItemGroup)
                         ? Diagnostics.CreateOutdatedDependencyInOverrides(
                             ModName: loadoutItemGroup.ToReference(loadout),
                             PakModuleName: outdatedModuleName,
@@ -240,50 +260,107 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
         return modules;
     }
 
-    private static async IAsyncEnumerable<ValueTuple<LoadoutFile.ReadOnly, Outcome<LspkPackageFormat.PakMetaData>>> GetAllPakMetadata(
-        LoadoutFile.ReadOnly[] pakLoadoutFiles,
+    private enum PakOwner { Mod, GameInstalled }
+
+    /// <summary>A pak of the loadout: the group that owns it, and where its bytes come from.</summary>
+    private sealed record PakEntry(LoadoutItemGroup.ReadOnly Group, PakOwner Owner, GamePath Path, Hash Hash)
+    {
+        public RelativePath FileName => Path.FileName;
+    }
+
+    private static async IAsyncEnumerable<ValueTuple<PakEntry, Outcome<LspkPackageFormat.PakMetaData>>> GetAllPakMetadata(
+        PakEntry[] paks,
+        Loadout.ReadOnly loadout,
         IResourceLoader<Hash, Outcome<LspkPackageFormat.PakMetaData>> metadataPipeline,
         ILogger logger,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        foreach (var pakLoadoutFile in pakLoadoutFiles)
+        foreach (var pak in paks)
         {
-            Resource<Outcome<LspkPackageFormat.PakMetaData>> resource;
-            try
+            Outcome<LspkPackageFormat.PakMetaData> outcome;
+            if (pak.Owner == PakOwner.GameInstalled)
             {
-                resource = await metadataPipeline.LoadResourceAsync(pakLoadoutFile.Hash, cancellationToken);
+                // The game's paks are never backed up, so the file store has no copy to read.
+                try
+                {
+                    outcome = ReadFromDisk(loadout, pak, logger);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "Exception while getting metadata for `{Name}`", pak.Path);
+                    continue;
+                }
             }
-            catch (Exception e)
+            else
             {
-                logger.LogError(e, "Exception while getting metadata for `{Name}`", pakLoadoutFile.AsLoadoutItemWithTargetPath().TargetPath.Item3);
-                continue;
+                Resource<Outcome<LspkPackageFormat.PakMetaData>> resource;
+                try
+                {
+                    resource = await metadataPipeline.LoadResourceAsync(pak.Hash, cancellationToken);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "Exception while getting metadata for `{Name}`", pak.Path);
+                    continue;
+                }
+
+                // Log the InvalidDataException case, but still return the resource
+                if (resource.Data.Exception is not null)
+                {
+                    logger.LogWarning(resource.Data.Exception, "Detected invalid BG3 Pak file: `{Name}`", pak.Path);
+                }
+
+                outcome = resource.Data;
             }
 
-            // Log the InvalidDataException case, but still return the resource
-            if (resource.Data.Exception is not null)
-            {
-                logger.LogWarning(resource.Data.Exception, "Detected invalid BG3 Pak file: `{Name}`", pakLoadoutFile.AsLoadoutItemWithTargetPath().TargetPath.Item3);
-            }
-
-            yield return (pakLoadoutFile, resource.Data);
+            yield return (pak, outcome);
         }
     }
 
-    private static LoadoutFile.ReadOnly[] GetAllPakLoadoutFiles(
-        Loadout.ReadOnly loadout,
-        bool onlyEnabledMods)
+    private static Outcome<LspkPackageFormat.PakMetaData> ReadFromDisk(Loadout.ReadOnly loadout, PakEntry pak, ILogger logger)
     {
-        return LoadoutItem.FindByLoadout(loadout.Db, loadout)
+        try
+        {
+            using var stream = loadout.InstallationInstance.Locations.ToAbsolutePath(pak.Path)
+                .Open(FileMode.Open, FileAccess.Read, FileShare.Read);
+            return Outcome.FromResult(PakFileParser.ParsePakMeta(stream, keepGameModuleDependencies: true));
+        }
+        catch (Exception e) when (e is InvalidDataException or XmlException or IOException or UnauthorizedAccessException)
+        {
+            logger.LogWarning(e, "Unable to read the BG3 Pak file the game installed: `{Name}`", pak.Path);
+            return Outcome.FromException<LspkPackageFormat.PakMetaData>(e);
+        }
+    }
+
+    private static PakEntry[] GetAllPaks(Loadout.ReadOnly loadout, bool onlyEnabledMods)
+    {
+        static bool IsPak(GamePath path) => path.LocationId == Bg3Constants.ModsLocationId && path.Extension == Bg3Constants.PakFileExtension;
+
+        var modPaks = LoadoutItem.FindByLoadout(loadout.Db, loadout)
             .OfTypeLoadoutItemGroup()
             .Where(group => !onlyEnabledMods || !group.AsLoadoutItem().IsDisabled)
             // TODO: Quite inefficient way to find pak files, need to add markers on pak LoadoutFiles and mods containing them
             .SelectMany(group => group.Children.OfTypeLoadoutItemWithTargetPath()
                 .OfTypeLoadoutFile()
-                .Where(file => file.AsLoadoutItemWithTargetPath().TargetPath.Item2 == Bg3Constants.ModsLocationId &&
-                               file.AsLoadoutItemWithTargetPath().TargetPath.Item3.Extension == Bg3Constants.PakFileExtension
-                )
-            )
-            .ToArray();
+                .Where(file => IsPak(file.AsLoadoutItemWithTargetPath().TargetPath))
+                .Select(file => new PakEntry(
+                    file.AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent,
+                    PakOwner.Mod,
+                    file.AsLoadoutItemWithTargetPath().TargetPath,
+                    file.Hash
+                ))
+            );
+
+        // The game's paks sit under one group; switching that group off takes them out of the check like any mod.
+        var gameInstalledPaks = GameInstalledGroup.FindByInstalledFor(loadout.Db, loadout.Id)
+            .Where(group => !onlyEnabledMods || !group.AsLoadoutItemGroup().AsLoadoutItem().IsDisabled)
+            .SelectMany(group => group.AsLoadoutItemGroup().Children.OfTypeLoadoutItemGroup().OfTypeGameInstalledItem())
+            .SelectMany(item => item.AsLoadoutItemGroup().Children.OfTypeGameInstalledFile()
+                .Where(file => IsPak(file.Path))
+                .Select(file => new PakEntry(item.AsLoadoutItemGroup(), PakOwner.GameInstalled, file.Path, file.Hash))
+            );
+
+        return modPaks.Concat(gameInstalledPaks).ToArray();
     }
 
     private NamedLink NexusModsLink => new("Nexus Mods - Baldur's Gate 3", NexusModsUrlBuilder.GetGameUri(_gameDomain));

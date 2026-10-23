@@ -201,4 +201,53 @@ internal static partial class Diagnostics
             .AddValue<string>("CurrentDepVersion")
         )
         .Finish();
+
+    /// <summary>
+    /// <see cref="MissingDependencyTemplate"/> for a pak the game downloaded itself, which belongs to no mod in the loadout.
+    /// </summary>
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate MissingDependencyInGameInstalledTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 9))
+        .WithTitle("Missing required dependency")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The mod {PakModuleName} (installed by the game) is missing the required dependency '{MissingDepName}' v{MissingDepVersion}+.")
+        .WithDetails("""
+                     '{MissingDepName}' v{MissingDepVersion}+ is not installed or enabled. This pak module is required by '{PakModuleName}' v{PakModuleVersion}, which the game installed, to run correctly.
+
+
+                     ## Recommended Actions
+                     #### Subscribe to the missing mod in the in-game mod manager
+                     You can also search for '{MissingDepName}' on {NexusModsLink}.
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("MissingDepName")
+            .AddValue<string>("MissingDepVersion")
+            .AddValue<string>("PakModuleName")
+            .AddValue<string>("PakModuleVersion")
+            .AddValue<NamedLink>("NexusModsLink")
+        )
+        .Finish();
+
+    /// <summary>
+    /// <see cref="OutdatedDependencyTemplate"/> for a pak the game downloaded itself, which belongs to no mod in the loadout.
+    /// </summary>
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate OutdatedDependencyInGameInstalledTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 10))
+        .WithTitle("Required dependency is outdated")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The mod {PakModuleName} (installed by the game) requires at least version {MinDepVersion}+ of '{DepName}' but only v{CurrentDepVersion} is installed.")
+        .WithDetails("""
+                     '{PakModuleName}' v{PakModuleVersion}, which the game installed, requires at least version {MinDepVersion}+ of '{DepName}' to run correctly. However, you only have version v{CurrentDepVersion}.
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("PakModuleName")
+            .AddValue<string>("PakModuleVersion")
+            .AddValue<string>("DepName")
+            .AddValue<string>("MinDepVersion")
+            .AddValue<string>("CurrentDepVersion")
+        )
+        .Finish();
 }
