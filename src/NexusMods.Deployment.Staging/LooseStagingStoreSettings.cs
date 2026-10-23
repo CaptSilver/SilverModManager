@@ -14,6 +14,13 @@ public record LooseStagingStoreSettings : ISettings
     /// </summary>
     public ConfigurablePath Location { get; init; }
 
+    /// <summary>
+    /// Keeps a second store on each filesystem a game folder is on when that is not the filesystem of
+    /// <see cref="Location"/>, so every library can use reflinks and hard links instead of falling back to
+    /// symlinks.
+    /// </summary>
+    public bool PerFilesystemStores { get; init; } = true;
+
     /// <inheritdoc/>
     public static string SettingsId => "SilverModManager.Deployment.LooseStagingStoreSettings";
 

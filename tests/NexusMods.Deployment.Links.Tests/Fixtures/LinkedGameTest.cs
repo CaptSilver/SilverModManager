@@ -15,6 +15,8 @@ using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Native;
+using NexusMods.Sdk.Settings;
+using NexusMods.Deployment.Staging;
 
 namespace NexusMods.Deployment.Links.Tests.Fixtures;
 
@@ -79,15 +81,32 @@ public abstract class LinkedGameTest<TTest>(ITestOutputHelper helper, Placement 
 
     protected override AbsolutePath StagingStoreLocation => store == Placement.EntryDirectory ? default : PlacementDirectory(store);
 
+    /// <summary>
+    /// Switches the staging store's per-filesystem stores on. Off by default: a store at the root of a real
+    /// /dev/shm or second disk is not a temp directory.
+    /// </summary>
+    protected virtual bool PerFilesystemStores => false;
+
+    /// <summary>
+    /// Stands in for the filesystem lookup, so a test can say where another filesystem's store goes.
+    /// </summary>
+    protected virtual IFilesystemLocator? FilesystemLocator => null;
+
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
+        if (FilesystemLocator is { } locator) services.AddSingleton(locator);
+
         // Registered first: the data model adds the real chain with TryAdd.
         if (pinned is { } id) services.AddSingleton<IDeploymentBackendSelector>(new PinnedSelector(id));
         services.AddSingleton<ILoggerProvider>(Logs);
-        return base.AddServices(services).AddLinkDeploymentBackends();
+        base.AddServices(services).AddLinkDeploymentBackends();
+
+        // After the base graph: overrides apply in registration order, and its own turns the setting off.
+        if (PerFilesystemStores) services.OverrideSettingsForTests<LooseStagingStoreSettings>(settings => settings with { PerFilesystemStores = true });
+        return services;
     }
 
-    private static AbsolutePath PlacementDirectory(Placement placement)
+    protected static AbsolutePath PlacementDirectory(Placement placement)
     {
         var parent = placement switch
         {

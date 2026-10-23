@@ -22,6 +22,16 @@ public interface ILooseStagingStore
     AbsolutePath Root { get; }
 
     /// <summary>
+    /// The store that files deployed under <paramref name="root"/> link from. A link or clone only works
+    /// within one filesystem, so a root on another filesystem than <see cref="Root"/> gets a store of its
+    /// own on that filesystem, at <c>&lt;filesystem root&gt;/.silvermodmanager/staging</c>. This store is
+    /// returned when the root shares its filesystem, when per-filesystem stores are switched off, and when
+    /// the other filesystem cannot hold a store (read-only, no permission). Stores returned for different
+    /// roots share <see cref="Hold"/> and <see cref="Sweep"/>.
+    /// </summary>
+    ILooseStagingStore ForRoot(AbsolutePath root);
+
+    /// <summary>
     /// Where the file with this hash is, or would be, staged for the installation.
     /// </summary>
     AbsolutePath PathFor(GameInstallMetadataId installation, Hash hash);
@@ -71,10 +81,11 @@ public interface ILooseStagingStore
 
     /// <summary>
     /// Deletes every staged file that is not in the set <paramref name="live"/> returns for its
-    /// installation, together with stale temp and probe files left in the store. An installation that is
-    /// missing from the result loses its whole directory. Waits for every <see cref="Hold"/> first, and
+    /// installation, together with stale temp and probe files left in the store, in this store and in
+    /// every per-filesystem store it created. An installation that is missing from the result loses its
+    /// whole directory. A per-filesystem store whose filesystem is not mounted is skipped untouched. Waits for every <see cref="Hold"/> first, and
     /// calls <paramref name="live"/> only after that, so the set reflects everything those holders
-    /// committed. Does nothing, and creates nothing, when <see cref="Root"/> does not exist.
+    /// committed. Does nothing, and creates nothing, when no store directory exists.
     /// </summary>
     /// <returns>The number of staged files deleted.</returns>
     int Sweep(Func<IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>>> live);

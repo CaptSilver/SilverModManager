@@ -67,9 +67,15 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     public abstract IReadOnlyList<AbsolutePath> RequiredFilesystems(GameInstallation installation, GamePath root);
 
     /// <summary>
-    /// The staging store this backend links from.
+    /// The default staging store. The store a file at a given root links from is <see cref="StoreFor(AbsolutePath)"/>.
     /// </summary>
     protected ILooseStagingStore Store => store;
+
+    /// <summary>
+    /// The store this backend stages from for files deployed under <paramref name="root"/>. Linking works
+    /// within one filesystem, so this is the store on the root's own filesystem when there is one.
+    /// </summary>
+    protected virtual ILooseStagingStore StoreFor(AbsolutePath root) => store.ForRoot(root);
 
     /// <summary>
     /// Creates <paramref name="target"/> as a link to, or clone of, <paramref name="storeFile"/>. The target
@@ -99,7 +105,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     /// Gives the store back a file it can trust after the deployed path <paramref name="deployed"/> was
     /// written through. The deployed path keeps the written bytes.
     /// </summary>
-    protected abstract void RepairStoreAfterWriteThrough(GameInstallMetadataId installation, Hash previous, AbsolutePath deployed, AbsolutePath storeFile);
+    protected abstract void RepairStoreAfterWriteThrough(ILooseStagingStore store, GameInstallMetadataId installation, Hash previous, AbsolutePath deployed, AbsolutePath storeFile);
 
     /// <summary>
     /// Finds which staged file <paramref name="deployed"/> is a link to, by name, when that is not already
@@ -109,10 +115,28 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     protected abstract bool TryFindLinkedStoreHash(GameInstallMetadataId installation, AbsolutePath deployed, Func<IReadOnlyDictionary<(ulong Device, ulong Inode), Hash>> storeInodes, out Hash hash);
 
     /// <summary>
-    /// The installation's directory in the staging store, where the preflight probes write so they see the
-    /// same filesystem as the staged files. Creates the installation's metadata on first use.
+    /// The installation's directory in the staging store for <paramref name="root"/>, where the preflight
+    /// probes write so they see the same filesystem as the staged files. Creates the installation's
+    /// metadata on first use.
     /// </summary>
-    protected AbsolutePath ProbeDirectory(GameInstallation installation) => store.DirectoryFor(gameRegistry.ForceGetMetadata(installation));
+    protected AbsolutePath ProbeDirectory(GameInstallation installation, GamePath root)
+        => StoreFor(installation.Locations.ToAbsolutePath(root)).DirectoryFor(gameRegistry.ForceGetMetadata(installation));
+
+    // The store for a file is looked up from its folder, not its location: a plan root below the location, or a
+    // folder mounted inside it, can sit on another filesystem. One lookup per folder per call, since ForRoot
+    // stats the path.
+    private sealed class StoreLookup(LinkDeploymentBackendBase backend, DeploymentContext context)
+    {
+        private readonly Dictionary<GamePath, ILooseStagingStore> _byFolder = new();
+
+        public ILooseStagingStore For(GamePath path)
+        {
+            var folder = path.Parent;
+            if (!_byFolder.TryGetValue(folder, out var found))
+                _byFolder[folder] = found = backend.StoreFor(context.Locations.ToAbsolutePath(folder));
+            return found;
+        }
+    }
 
     /// <inheritdoc />
     public Task Backup(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes) => copy.Backup(context, nodes);
@@ -130,16 +154,18 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     /// <inheritdoc />
     public void Ingest(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes)
     {
-        var storeInodes = StoreInodes(context);
+        var stores = new StoreLookup(this, context);
+        var storeInodes = StoreInodes(context, stores, nodes.Keys);
         foreach (var (path, node) in nodes)
         {
             if (!node.Actions.HasFlag(Actions.IngestFromDisk)) continue;
 
             var deployed = context.Locations.ToAbsolutePath(path);
-            if (!TryFindDamagedStoreFile(context, deployed, node, storeInodes, out var damaged)) continue;
+            if (!TryFindDamagedStoreFile(context, stores.For(path), deployed, node, storeInodes, out var damaged)) continue;
 
             logger.LogWarning("{Path} was written through its {Backend} link, repairing the staged file for {Hash}", path, Id, damaged);
-            RepairStoreAfterWriteThrough(context.MetadataId, damaged, deployed, store.PathFor(context.MetadataId, damaged));
+            var pathStore = stores.For(path);
+            RepairStoreAfterWriteThrough(pathStore, context.MetadataId, damaged, deployed, pathStore.PathFor(context.MetadataId, damaged));
         }
 
         copy.Ingest(context, nodes);
@@ -149,7 +175,8 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     public IReadOnlyCollection<GamePath> Delete(DeploymentContext context, IReadOnlyDictionary<GamePath, SyncNode> nodes)
     {
         HashSet<GamePath> foldersWithDeletedFiles = [];
-        var storeInodes = StoreInodes(context);
+        var stores = new StoreLookup(this, context);
+        var storeInodes = StoreInodes(context, stores, nodes.Keys);
         var itemIndex = 0;
         var deleteFileCount = nodes.Sum(static x => x.Value.Actions.HasFlag(Actions.DeleteFromDisk) ? 1 : 0);
 
@@ -161,7 +188,8 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
             itemIndex++;
 
             var deployed = context.Locations.ToAbsolutePath(path);
-            if (!IsOurs(context, deployed, node))
+            var pathStore = stores.For(path);
+            if (!IsOurs(context, pathStore, deployed, node))
             {
                 // Replaced after the index the tree was built from. The next index ingests it.
                 logger.LogInformation("Leaving {Path} in place: it is no longer the file that was deployed", deployed);
@@ -171,10 +199,10 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
             // The reset path never ingests, so a store file written through its link has to be repaired here
             // or the next Ensure would hand the damaged file out under its old name. The deployed file is
             // going away, so the written bytes only need the backup that already ran.
-            if (TryFindDamagedStoreFile(context, deployed, node, storeInodes, out var damaged))
+            if (TryFindDamagedStoreFile(context, pathStore, deployed, node, storeInodes, out var damaged))
             {
                 logger.LogWarning("{Path} was written through its {Backend} link, releasing the staged file for {Hash}", path, Id, damaged);
-                store.Release(context.MetadataId, damaged);
+                pathStore.Release(context.MetadataId, damaged);
             }
 
             File.Delete(deployed.ToString());
@@ -202,7 +230,11 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
 
         logger.LogDebug("Linking {Count} files into the game folders with {Backend}", extract.Count, Id);
 
-        var storeFiles = await EnsureVerified(context, extract.Select(static x => x.Value.Loadout.Hash).Distinct());
+        // A hash can be wanted in two stores when the loadout puts the same file under roots on two filesystems.
+        var stores = new StoreLookup(this, context);
+        var storeFiles = new Dictionary<ILooseStagingStore, Dictionary<Hash, AbsolutePath>>();
+        foreach (var group in extract.GroupBy(x => stores.For(x.Key)))
+            storeFiles[group.Key] = await EnsureVerified(context, group.Key, group.Select(static x => x.Value.Loadout.Hash).Distinct());
 
         // Unlink first: whatever is at a target may be a link to a staged file, which must neither be written
         // through nor counted as a link this apply still holds.
@@ -213,17 +245,25 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
             File.Delete(target.ToString());
         }
 
-        var linked = SharesStoreFile ? new HashSet<Hash>(HashesLinkedElsewhere(context, storeFiles)) : [];
+        var linked = new HashSet<(ILooseStagingStore Store, Hash Hash)>();
+        if (SharesStoreFile)
+        {
+            foreach (var (groupStore, files) in storeFiles)
+            {
+                foreach (var hash in HashesLinkedElsewhere(context, files)) linked.Add((groupStore, hash));
+            }
+        }
         var itemIndex = 0;
         foreach (var (path, node) in extract)
         {
             context.Job?.ReportProgress(SyncPhases.Deploying, itemIndex++, extract.Count);
 
             var hash = node.Loadout.Hash;
-            var storeFile = storeFiles[hash];
+            var pathStore = stores.For(path);
+            var storeFile = storeFiles[pathStore][hash];
             var target = context.Locations.ToAbsolutePath(path);
 
-            var privateCopy = SharesStoreFile && linked.Contains(hash);
+            var privateCopy = SharesStoreFile && linked.Contains((pathStore, hash));
             if (!privateCopy)
             {
                 var errno = Place(storeFile, target);
@@ -240,7 +280,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
                 }
                 else if (SharesStoreFile)
                 {
-                    linked.Add(hash);
+                    linked.Add((pathStore, hash));
                 }
             }
 
@@ -271,7 +311,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     /// Stages every hash and returns the staged paths. A file that was staged before this call is hashed
     /// first, and a file whose bytes no longer match its name is released and staged again.
     /// </summary>
-    private async Task<Dictionary<Hash, AbsolutePath>> EnsureVerified(DeploymentContext context, IEnumerable<Hash> hashes)
+    private async Task<Dictionary<Hash, AbsolutePath>> EnsureVerified(DeploymentContext context, ILooseStagingStore store, IEnumerable<Hash> hashes)
     {
         var installation = context.MetadataId;
         var storeFiles = new Dictionary<Hash, AbsolutePath>();
@@ -303,7 +343,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     /// Whether the deployed file is a link to a staged file whose name no longer matches the bytes, which is to
     /// say the staged file was written through the link. Returns the name (hash) of that staged file.
     /// </summary>
-    private bool TryFindDamagedStoreFile(DeploymentContext context, AbsolutePath deployed, SyncNode node, Lazy<IReadOnlyDictionary<(ulong, ulong), Hash>> storeInodes, out Hash damaged)
+    private bool TryFindDamagedStoreFile(DeploymentContext context, ILooseStagingStore store, AbsolutePath deployed, SyncNode node, Lazy<IReadOnlyDictionary<(ulong, ulong), Hash>> storeInodes, out Hash damaged)
     {
         damaged = default;
         if (!node.HaveDisk) return false;
@@ -322,12 +362,20 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         return TryFindLinkedStoreHash(context.MetadataId, deployed, () => storeInodes.Value, out damaged) && damaged != node.Disk.Hash;
     }
 
-    private Lazy<IReadOnlyDictionary<(ulong, ulong), Hash>> StoreInodes(DeploymentContext context) => new(() =>
+    // Every store the nodes' folders use: a hard link to a staged file is recognised by inode, whichever store holds it.
+    private Lazy<IReadOnlyDictionary<(ulong, ulong), Hash>> StoreInodes(DeploymentContext context, StoreLookup stores, IEnumerable<GamePath> paths) => new(() =>
     {
         var inodes = new Dictionary<(ulong, ulong), Hash>();
-        foreach (var (hash, path) in store.Enumerate(context.MetadataId))
+        var seen = new HashSet<ILooseStagingStore>();
+        foreach (var path in paths)
         {
-            if (LibcStat.TryStat(path.ToString(), out var stat) == 0) inodes[(stat.Device, stat.Inode)] = hash;
+            var pathStore = stores.For(path);
+            if (!seen.Add(pathStore)) continue;
+
+            foreach (var (hash, file) in pathStore.Enumerate(context.MetadataId))
+            {
+                if (LibcStat.TryStat(file.ToString(), out var stat) == 0) inodes[(stat.Device, stat.Inode)] = hash;
+            }
         }
         return inodes;
     });
@@ -336,7 +384,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
     /// Whether the file at the deployed path is the one the last apply put there, so deleting it cannot
     /// take something the player or the game wrote since.
     /// </summary>
-    private bool IsOurs(DeploymentContext context, AbsolutePath deployed, SyncNode node)
+    private bool IsOurs(DeploymentContext context, ILooseStagingStore store, AbsolutePath deployed, SyncNode node)
     {
         // Nothing there: nothing to take, and the row can still go.
         if (LibcStat.TryLStat(deployed.ToString(), out _) != 0) return true;

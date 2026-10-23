@@ -96,6 +96,8 @@ public static class DependencyInjectionHelper
             .OverrideSettingsForTests<LooseStagingStoreSettings>(settings => settings with
             {
                 Location = new ConfigurablePath(null, stagingStore.ToString()),
+                // A store at the root of a real /dev/shm or a second disk is not a temp directory.
+                PerFilesystemStores = false,
             })
             .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with
             {

@@ -22,7 +22,7 @@ public sealed class ReflinkDeploymentBackend(CopyDeploymentBackend copy, ILooseS
     /// <inheritdoc />
     public override DeploymentPreflight Preflight(GameInstallation installation, GamePath root)
     {
-        return LinkProbe.TryReflink(ProbeDirectory(installation), installation.Locations.ToAbsolutePath(root), out var reason)
+        return LinkProbe.TryReflink(ProbeDirectory(installation, root), installation.Locations.ToAbsolutePath(root), out var reason)
             ? DeploymentPreflight.Accept("the filesystem clones files between the staging store and the folder")
             : DeploymentPreflight.Refuse(reason);
     }
@@ -62,6 +62,6 @@ public sealed class ReflinkDeploymentBackend(CopyDeploymentBackend copy, ILooseS
     }
 
     /// <inheritdoc />
-    protected override void RepairStoreAfterWriteThrough(GameInstallMetadataId installation, Hash previous, AbsolutePath deployed, AbsolutePath storeFile)
+    protected override void RepairStoreAfterWriteThrough(ILooseStagingStore store, GameInstallMetadataId installation, Hash previous, AbsolutePath deployed, AbsolutePath storeFile)
         => throw new InvalidOperationException("A reflink never shares an inode with the staged file, so there is nothing to repair.");
 }

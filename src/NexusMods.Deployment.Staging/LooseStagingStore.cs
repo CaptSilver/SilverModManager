@@ -13,16 +13,38 @@ using NexusMods.Sdk.Threading;
 namespace NexusMods.Deployment.Staging;
 
 /// <summary>
-/// Stages files from <see cref="IFileStore"/> as plain files under the configured location.
+/// Stages files from <see cref="IFileStore"/> as plain files under the configured location, and under a folder
+/// on each other filesystem a game folder is on (see <see cref="ForRoot"/>).
 /// </summary>
 public sealed class LooseStagingStore : ILooseStagingStore
 {
+    /// <summary>
+    /// Where a store sits on a filesystem other than the default one, relative to that filesystem's root.
+    /// </summary>
+    internal const string FilesystemStoreFolder = ".silvermodmanager/staging";
+
+    // Lists the per-filesystem stores this one has created, one path per line, so a sweep after a restart
+    // still reaches them. It lives in the store root, where nothing parses it as an installation.
+    private const string KnownStoresFile = ".filesystem-stores";
+
     private readonly IFileStore _fileStore;
+    private readonly IFileSystem _fileSystem;
+    private readonly IFilesystemLocator _locator;
+    private readonly bool _perFilesystem;
     private readonly ILogger<LooseStagingStore> _logger;
 
     // Holds are the read side and Sweep the write side, so any number of applies can stage at once
-    // while a sweep sees the store quiet.
-    private readonly AsyncFriendlyReaderWriterLock _sweepLock = new();
+    // while a sweep sees the store quiet. Per-filesystem stores share the lock: an apply holds the default
+    // store and may stage in any of them.
+    private readonly AsyncFriendlyReaderWriterLock _sweepLock;
+
+    // Set on a per-filesystem store, which hands ForRoot to the default store that created it.
+    private readonly LooseStagingStore? _parent;
+
+    // Default store only. Guarded by itself.
+    private readonly Dictionary<ulong, LooseStagingStore> _byDevice = new();
+    private readonly Dictionary<AbsolutePath, LooseStagingStore> _known = new();
+    private readonly HashSet<ulong> _refusedDevices = [];
 
     // One gate per destination: concurrent Ensure calls for the same file share a temp name,
     // so they must not extract at the same time. An entry goes when its last user leaves; dropping
@@ -35,15 +57,116 @@ public sealed class LooseStagingStore : ILooseStagingStore
         public int Users;
     }
 
-    public LooseStagingStore(ISettingsManager settingsManager, IFileStore fileStore, IFileSystem fileSystem, ILogger<LooseStagingStore> logger)
+    public LooseStagingStore(ISettingsManager settingsManager, IFileStore fileStore, IFileSystem fileSystem, IFilesystemLocator locator, ILogger<LooseStagingStore> logger)
     {
+        var settings = settingsManager.Get<LooseStagingStoreSettings>();
         _fileStore = fileStore;
+        _fileSystem = fileSystem;
+        _locator = locator;
         _logger = logger;
-        Root = settingsManager.Get<LooseStagingStoreSettings>().Location.ToPath(fileSystem);
+        _perFilesystem = settings.PerFilesystemStores;
+        _sweepLock = new AsyncFriendlyReaderWriterLock();
+        Root = settings.Location.ToPath(fileSystem);
+    }
+
+    private LooseStagingStore(LooseStagingStore parent, AbsolutePath root)
+    {
+        _fileStore = parent._fileStore;
+        _fileSystem = parent._fileSystem;
+        _locator = parent._locator;
+        _logger = parent._logger;
+        _perFilesystem = parent._perFilesystem;
+        _sweepLock = parent._sweepLock;
+        _parent = parent;
+        Root = root;
     }
 
     /// <inheritdoc/>
     public AbsolutePath Root { get; }
+
+    /// <inheritdoc/>
+    public ILooseStagingStore ForRoot(AbsolutePath root)
+    {
+        if (_parent is not null) return _parent.ForRoot(root);
+        if (!_perFilesystem) return this;
+
+        if (_locator.DeviceOf(Root) is not { } home || _locator.DeviceOf(root) is not { } device || device == home) return this;
+
+        lock (_byDevice)
+        {
+            if (_byDevice.TryGetValue(device, out var existing)) return existing;
+            if (_refusedDevices.Contains(device)) return this;
+
+            var created = TryCreateFilesystemStore(root);
+            if (created is null)
+            {
+                _refusedDevices.Add(device);
+                return this;
+            }
+
+            _byDevice[device] = created;
+            return created;
+        }
+    }
+
+    private LooseStagingStore? TryCreateFilesystemStore(AbsolutePath root)
+    {
+        if (_locator.RootOf(root) is not { } filesystemRoot) return null;
+
+        var storeRoot = filesystemRoot.Combine(FilesystemStoreFolder);
+        try
+        {
+            // An existing folder from an earlier run is reused as it is.
+            storeRoot.CreateDirectory();
+            var probe = storeRoot.Combine($".{ProtonMessages.ProbeFileName}-{Guid.NewGuid():N}");
+            File.WriteAllBytes(probe.ToString(), []);
+            File.Delete(probe.ToString());
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning("Cannot keep a staging store at {Path} ({Reason}); files for {Root} are staged in {Default}, so linking there may fall back to symlinks",
+                storeRoot, e.Message, root, Root);
+            return null;
+        }
+
+        var store = new LooseStagingStore(this, storeRoot);
+        lock (_known)
+        {
+            _known[storeRoot] = store;
+            RememberStore(storeRoot);
+        }
+        return store;
+    }
+
+    private AbsolutePath KnownStoresPath => Root.Combine(KnownStoresFile);
+
+    private void RememberStore(AbsolutePath storeRoot)
+    {
+        var path = KnownStoresPath;
+        var lines = path.FileExists ? File.ReadAllLines(path.ToString()) : [];
+        if (lines.Contains(storeRoot.ToString(), StringComparer.Ordinal)) return;
+
+        Root.CreateDirectory();
+        File.AppendAllLines(path.ToString(), [storeRoot.ToString()]);
+    }
+
+    // Stores made by this run plus any recorded by an earlier one.
+    private List<LooseStagingStore> PerFilesystemStores()
+    {
+        lock (_known)
+        {
+            if (KnownStoresPath.FileExists)
+            {
+                foreach (var line in File.ReadAllLines(KnownStoresPath.ToString()))
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    var storeRoot = _fileSystem.FromUnsanitizedFullPath(line.Trim());
+                    if (!_known.ContainsKey(storeRoot)) _known[storeRoot] = new LooseStagingStore(this, storeRoot);
+                }
+            }
+            return _known.Values.ToList();
+        }
+    }
 
     internal int GateCount { get { lock (_gates) return _gates.Count; } }
 
@@ -173,13 +296,37 @@ public sealed class LooseStagingStore : ILooseStagingStore
     /// <inheritdoc/>
     public int Sweep(Func<IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>>> liveFactory)
     {
+        if (_parent is not null) return _parent.Sweep(liveFactory);
+
         using var exclusive = _sweepLock.WriteLock();
-        if (!Root.DirectoryExists()) return 0;
 
-        // Read after the lock is ours: a holder that just finished has committed what it staged by now.
-        var live = liveFactory();
-        var sweepStart = DateTime.UtcNow;
+        IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>>? live = null;
+        var sweepStart = default(DateTime);
+        var deleted = 0;
+        foreach (var store in new[] { this }.Concat(PerFilesystemStores()))
+        {
+            if (!store.Root.DirectoryExists())
+            {
+                // A filesystem that is not mounted looks like an empty mount point. Its files are not ours to judge.
+                if (store != this) _logger.LogInformation("Skipping the staging store at {Path}: its filesystem is not mounted", store.Root);
+                continue;
+            }
 
+            // Read after the lock is ours: a holder that just finished has committed what it staged by now.
+            if (live is null)
+            {
+                live = liveFactory();
+                sweepStart = DateTime.UtcNow;
+            }
+            deleted += store.SweepOne(live, sweepStart);
+        }
+
+        if (deleted > 0) _logger.LogInformation("Removed {Count} unreferenced staged files", deleted);
+        return deleted;
+    }
+
+    private int SweepOne(IReadOnlyDictionary<GameInstallMetadataId, IReadOnlySet<Hash>> live, DateTime sweepStart)
+    {
         var deleted = 0;
         foreach (var installation in Installations().ToArray())
         {
@@ -215,7 +362,6 @@ public sealed class LooseStagingStore : ILooseStagingStore
                 directory.DeleteDirectory(recursive: false);
         }
 
-        if (deleted > 0) _logger.LogInformation("Removed {Count} unreferenced staged files", deleted);
         return deleted;
     }
 

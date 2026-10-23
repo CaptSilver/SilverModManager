@@ -39,7 +39,7 @@ public class LooseStagingStoreTests
         {
             Location = new ConfigurablePath(null, location.ToString()),
         });
-        _store = new LooseStagingStore(Settings, _fileStore, fileSystem, Microsoft.Extensions.Logging.Abstractions.NullLogger<LooseStagingStore>.Instance);
+        _store = new LooseStagingStore(Settings, _fileStore, fileSystem, new StatFilesystemLocator(), Microsoft.Extensions.Logging.Abstractions.NullLogger<LooseStagingStore>.Instance);
     }
 
     // The first byte of the hash picks the two-character directory the file lands in.
@@ -360,7 +360,7 @@ public class LooseStagingStoreTests
                 dest.Parent.CreateDirectory();
                 await dest.WriteAllTextAsync("x", CancellationToken.None);
             });
-        var store = new LooseStagingStore(Settings, fileStore, _serviceProvider.GetRequiredService<IFileSystem>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<LooseStagingStore>.Instance);
+        var store = new LooseStagingStore(Settings, fileStore, _serviceProvider.GetRequiredService<IFileSystem>(), new StatFilesystemLocator(), Microsoft.Extensions.Logging.Abstractions.NullLogger<LooseStagingStore>.Instance);
 
         var first = store.Ensure(InstallA, hash, TestContext.Current.CancellationToken).AsTask();
         var second = store.Ensure(InstallA, hash, TestContext.Current.CancellationToken).AsTask();

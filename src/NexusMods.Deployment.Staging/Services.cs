@@ -13,6 +13,7 @@ public static class Services
     public static IServiceCollection AddLooseStagingStore(this IServiceCollection services)
     {
         services.AddSettings<LooseStagingStoreSettings>();
+        services.TryAddSingleton<IFilesystemLocator, StatFilesystemLocator>();
         services.TryAddSingleton<ILooseStagingStore, LooseStagingStore>();
         return services;
     }

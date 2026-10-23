@@ -23,7 +23,7 @@ public sealed class HardlinkDeploymentBackend(CopyDeploymentBackend copy, ILoose
     /// <inheritdoc />
     public override DeploymentPreflight Preflight(GameInstallation installation, GamePath root)
     {
-        return LinkProbe.TryHardlink(ProbeDirectory(installation), installation.Locations.ToAbsolutePath(root), out var reason)
+        return LinkProbe.TryHardlink(ProbeDirectory(installation, root), installation.Locations.ToAbsolutePath(root), out var reason)
             ? DeploymentPreflight.Accept("hard links work between the staging store and the folder")
             : DeploymentPreflight.Refuse(reason);
     }
@@ -69,10 +69,10 @@ public sealed class HardlinkDeploymentBackend(CopyDeploymentBackend copy, ILoose
     }
 
     /// <inheritdoc />
-    protected override void RepairStoreAfterWriteThrough(GameInstallMetadataId installation, Hash previous, AbsolutePath deployed, AbsolutePath storeFile)
+    protected override void RepairStoreAfterWriteThrough(ILooseStagingStore store, GameInstallMetadataId installation, Hash previous, AbsolutePath deployed, AbsolutePath storeFile)
     {
         // The game path keeps the inode and the bytes written to it. The staged name goes, and Ensure
         // extracts the hash from the archives the next time it is needed.
-        Store.Release(installation, previous);
+        store.Release(installation, previous);
     }
 }

@@ -6,6 +6,8 @@ using NexusMods.Abstractions.GC;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Deployment;
 using NexusMods.DataModel;
+using NexusMods.Deployment.Staging;
+using NSubstitute;
 using NexusMods.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
@@ -153,6 +155,70 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
         _staging.Contains(installation, hash).Should().BeTrue("the plan row committed under the hold names a staging backend");
     }
 
+    [Fact]
+    public async Task SweepCoversTheStoreOnAnotherFilesystemAndSkipsOneThatIsNotMounted()
+    {
+        var loadout = await CreateLoadout();
+        var installation = loadout.InstallationId;
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, ["mods/two-filesystems"], loadout, "Mods");
+            _plans.Write(tx, Connection.Db, installation, new GamePath(LocationId.Game, "mods"), StagingBackend, chosen: false);
+            await tx.Commit();
+        }
+        var live = Hash("mods/two-filesystems");
+        var dead = Hash("nobody holds this");
+        await _fileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory("dead", new MemoryStream(Encoding.UTF8.GetBytes("nobody holds this"))), dead, Size.FromLong(17))]);
+
+        // The "other filesystem" is a temp directory the locator says is a second device.
+        var fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
+        var temp = fileSystem.GetKnownPath(KnownPath.TempDirectory).Combine($"gc-two-filesystems-{Guid.NewGuid():N}");
+        var mount = temp.Combine("mount");
+        mount.CreateDirectory();
+        try
+        {
+            var settings = NSubstitute.Substitute.For<ISettingsManager>();
+            settings.Get<LooseStagingStoreSettings>().Returns(new LooseStagingStoreSettings
+            {
+                Location = new ConfigurablePath(null, temp.Combine("default").ToString()),
+            });
+            var staging = new LooseStagingStore(settings, _fileStore, fileSystem, new MountLocator(mount), serviceProvider.GetRequiredService<ILogger<LooseStagingStore>>());
+            var other = staging.ForRoot(mount.Combine("game"));
+            other.Should().NotBeSameAs(staging);
+
+            foreach (var store in new[] { staging, other })
+            {
+                await store.Ensure(installation, live);
+                await store.Ensure(installation, dead);
+            }
+
+            // Unmounted: the second store's folder is not there. Nothing in it may be touched.
+            var away = temp.Combine("away");
+            Directory.Move(other.Root.ToString(), away.ToString());
+            RunGc(staging);
+            Directory.Move(away.ToString(), other.Root.ToString());
+            staging.Contains(installation, live).Should().BeTrue();
+            staging.Contains(installation, dead).Should().BeFalse();
+            other.Contains(installation, dead).Should().BeTrue("a store whose filesystem is away is not swept");
+
+            RunGc(staging);
+
+            other.Contains(installation, live).Should().BeTrue();
+            other.Contains(installation, dead).Should().BeFalse();
+        }
+        finally
+        {
+            temp.DeleteDirectory(recursive: true);
+        }
+    }
+
+    private sealed class MountLocator(AbsolutePath mount) : IFilesystemLocator
+    {
+        public ulong? DeviceOf(AbsolutePath path) => path == mount || path.InFolder(mount) ? 2UL : 1UL;
+
+        public AbsolutePath? RootOf(AbsolutePath path) => mount;
+    }
+
     private static void AddDiskState(ITransaction tx, GameInstallMetadataId installation, GamePath path, Hash hash)
     {
         _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
@@ -165,7 +231,9 @@ public class StagingLivenessTests(IServiceProvider serviceProvider, ISettingsMan
         };
     }
 
-    private void RunGc() => RunGarbageCollector.Do(_logger, _dataModelSettings.ArchiveLocations, _fileStore, Connection, _staging, _plans, new HashSet<DeploymentBackendId> { StagingBackend });
+    private void RunGc() => RunGc(_staging);
+
+    private void RunGc(ILooseStagingStore staging) => RunGarbageCollector.Do(_logger, _dataModelSettings.ArchiveLocations, _fileStore, Connection, staging, _plans, new HashSet<DeploymentBackendId> { StagingBackend });
 
     private static Hash Hash(string content) => Encoding.UTF8.GetBytes(content).xxHash3();
 

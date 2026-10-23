@@ -24,7 +24,7 @@ public sealed class SymlinkDeploymentBackend(CopyDeploymentBackend copy, ILooseS
     /// <inheritdoc />
     public override DeploymentPreflight Preflight(GameInstallation installation, GamePath root)
     {
-        return LinkProbe.TrySymlink(ProbeDirectory(installation), installation.Locations.ToAbsolutePath(root), out var reason)
+        return LinkProbe.TrySymlink(ProbeDirectory(installation, root), installation.Locations.ToAbsolutePath(root), out var reason)
             ? DeploymentPreflight.Accept(AcceptedReason(Store.Root, Store.Root.FileSystem.GetKnownPath(KnownPath.HomeDirectory)))
             : DeploymentPreflight.Refuse(reason);
     }
@@ -38,6 +38,10 @@ public sealed class SymlinkDeploymentBackend(CopyDeploymentBackend copy, ILooseS
             ? $"{works}; the store is under the home directory, which the Steam runtime container shares"
             : $"{works}; store root {storeRoot} is outside the home directory: the game sees symlink targets only when launched through the run line";
     }
+
+    // A symlink crosses filesystems, so it has no reason to leave the default store, and that store is the one
+    // under the home directory that the Steam runtime container shares and that earlier applies linked into.
+    protected override ILooseStagingStore StoreFor(AbsolutePath root) => Store;
 
     /// <inheritdoc />
     /// <remarks>
@@ -90,7 +94,7 @@ public sealed class SymlinkDeploymentBackend(CopyDeploymentBackend copy, ILooseS
     }
 
     /// <inheritdoc />
-    protected override void RepairStoreAfterWriteThrough(GameInstallMetadataId installation, Hash previous, AbsolutePath deployed, AbsolutePath storeFile)
+    protected override void RepairStoreAfterWriteThrough(ILooseStagingStore store, GameInstallMetadataId installation, Hash previous, AbsolutePath deployed, AbsolutePath storeFile)
     {
         var modified = File.GetLastWriteTimeUtc(storeFile.ToString());
 
