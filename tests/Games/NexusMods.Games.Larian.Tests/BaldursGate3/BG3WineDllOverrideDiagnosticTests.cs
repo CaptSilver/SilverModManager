@@ -38,7 +38,8 @@ public class BG3WineDllOverrideDiagnosticTests(ITestOutputHelper outputHelper) :
                 provider,
                 provider.GetRequiredService<IFileSystem>(),
                 provider.GetRequiredService<TemporaryFileManager>(),
-                stores: [GameStore.GOG]
+                stores: [GameStore.GOG],
+                locationsFileSystem: IsolatedKnownFolders.Create(provider)
             )
             {
                 // GOG locator ids are numeric build ids, which the hashes queries cast; the stub hasher knows this one.
@@ -107,7 +108,8 @@ public class BG3WineDllOverrideSteamDiagnosticTests(ITestOutputHelper outputHelp
                 provider,
                 provider.GetRequiredService<IFileSystem>(),
                 provider.GetRequiredService<TemporaryFileManager>(),
-                stores: [GameStore.Steam]
+                stores: [GameStore.Steam],
+                locationsFileSystem: IsolatedKnownFolders.Create(provider)
             )
             {
                 LocatorIds = [LocatorId.From("3976631895")],

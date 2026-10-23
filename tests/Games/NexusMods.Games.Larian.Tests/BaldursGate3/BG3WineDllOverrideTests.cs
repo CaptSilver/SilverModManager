@@ -15,7 +15,7 @@ public class BG3WineDllOverrideTests(ITestOutputHelper outputHelper) : ALibraryA
     {
         return base.AddServices(services)
             .AddBaldursGate3()
-            .AddUniversalGameLocator<Larian.BaldursGate3.BaldursGate3>(new Version("1.6.1"));
+            .AddUniversalGameLocator<Larian.BaldursGate3.BaldursGate3>(new Version("1.6.1"), locationsFileSystem: IsolatedKnownFolders.Create);
     }
 
     [Fact]

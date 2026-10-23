@@ -18,7 +18,7 @@ public class Startup
         container
             .AddSingleton<IGuidedInstaller, NullGuidedInstaller>()
             .AddDefaultServicesForTesting()
-            .AddUniversalGameLocator<Larian.BaldursGate3.BaldursGate3>(new Version("1.61"))
+            .AddUniversalGameLocator<Larian.BaldursGate3.BaldursGate3>(new Version("1.61"), locationsFileSystem: IsolatedKnownFolders.Create)
             .AddBaldursGate3()
             .AddLogging(builder => builder.AddXUnit())
             .AddGames()

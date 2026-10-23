@@ -164,7 +164,8 @@ public abstract class ADependencyDiagnosticTests(ITestOutputHelper outputHelper)
                 provider.GetRequiredService<IFileSystem>(),
                 provider.GetRequiredService<TemporaryFileManager>(),
                 GameFiles,
-                stores: [GameStore.Steam]
+                stores: [GameStore.Steam],
+                locationsFileSystem: IsolatedKnownFolders.Create(provider)
             )
             {
                 // Steam locator ids are numeric build ids, which the hashes queries cast; the stub hasher knows this one.
