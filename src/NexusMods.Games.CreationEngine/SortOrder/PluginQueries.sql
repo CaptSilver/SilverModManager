@@ -6,7 +6,7 @@ CREATE SCHEMA IF NOT EXISTS plugins;
 -- Every plugin file directly in the data folder of a loadout, one row per file name (ignoring case).
 -- Two sources feed it: loadout items (mod files), and the game's own files, which are not loadout items and only
 -- exist as rows of file_hashes.loadout_files. A mod's copy wins over the game file of the same name, an enabled
--- copy over a disabled one, and among equals the newest group.
+-- copy over a disabled one, and among equals the newest group. A game file the loadout deletes is dropped.
 CREATE MACRO plugins.LoadoutPlugins(db, loadoutId, gameLocationId, dataFolder) AS TABLE
 WITH candidates AS (
     SELECT
@@ -37,6 +37,15 @@ WITH candidates AS (
     WHERE gameFile.Loadout = loadoutId
         AND lower(regexp_replace(gameFile.Path, '/?[^/]+$', '')) = lower(dataFolder)
         AND lower(regexp_extract(gameFile.Path, '\.[^./]+$')) IN ('.esm', '.esp', '.esl', '.omwaddon', '.omwgame', '.omwscripts')
+        -- A vanilla plugin the loadout deletes is gone from the game folder, so it is not offered.
+        AND NOT EXISTS (
+            SELECT 1
+            FROM synchronizer.WinningLeafLoadoutItem(db) AS winner
+            WHERE winner.Loadout = loadoutId
+                AND winner.TargetPath.Item2 = gameLocationId
+                AND winner.IsDeleted
+                AND lower(winner.TargetPath.Item3) = lower(gameFile.Path)
+        )
 )
 SELECT Name, Hash, IsEnabled, ModName, ModGroupId
 FROM (

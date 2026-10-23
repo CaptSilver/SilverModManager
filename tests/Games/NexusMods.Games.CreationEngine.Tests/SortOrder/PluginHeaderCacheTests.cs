@@ -40,12 +40,12 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
         game.ParsePlugin(b, Arg.Any<RelativePath?>()).Returns(ValueTask.FromResult<PluginHeader?>(HeaderFor("b.esp")));
         var cache = new PluginHeaderCache(game);
 
-        await cache.WarmAsync([a, a, b]);
-        await cache.WarmAsync([b, a]);
+        await cache.WarmAsync([(a, "a.esp"), (a, "a.esp"), (b, "b.esp")]);
+        await cache.WarmAsync([(b, "b.esp"), (a, "a.esp")]);
 
         await game.Received(1).ParsePlugin(a, Arg.Any<RelativePath?>());
         await game.Received(1).ParsePlugin(b, Arg.Any<RelativePath?>());
-        cache.TryGet(a, out var header).Should().BeTrue();
+        cache.TryGet(a, "a.esp", out var header).Should().BeTrue();
         header!.FileName.Should().Be("a.esp");
     }
 
@@ -54,7 +54,7 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
     {
         var cache = new PluginHeaderCache(Substitute.For<ICreationEngineGame>());
 
-        cache.TryGet(Hash.From(7), out var header).Should().BeFalse();
+        cache.TryGet(Hash.From(7), "a.esp", out var header).Should().BeFalse();
         header.Should().BeNull();
     }
 
@@ -64,9 +64,9 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
         var hash = await Store(SkyrimPluginFile.Bytes("Real.esp", "Skyrim.esm"));
         var cache = new PluginHeaderCache(Game);
 
-        await cache.WarmAsync([hash]);
+        await cache.WarmAsync([(hash, "Real.esp")]);
 
-        cache.TryGet(hash, out var header).Should().BeTrue();
+        cache.TryGet(hash, "Real.esp", out var header).Should().BeTrue();
         header!.Masters.Should().Equal("Skyrim.esm");
     }
 
@@ -76,10 +76,10 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
         var garbage = await Store([1, 2, 3, 4, 5, 6, 7, 8]);
         var cache = new PluginHeaderCache(Game);
 
-        var act = async () => await cache.WarmAsync([garbage]);
+        var act = async () => await cache.WarmAsync([(garbage, "Bad.esp")]);
 
         await act.Should().NotThrowAsync();
-        cache.TryGet(garbage, out var header).Should().BeTrue("the hash was tried, so it is not tried again");
+        cache.TryGet(garbage, "Bad.esp", out var header).Should().BeTrue("the hash was tried, so it is not tried again");
         header.Should().BeNull();
     }
 
@@ -89,9 +89,79 @@ public class PluginHeaderCacheTests(ITestOutputHelper helper)
         var cache = new PluginHeaderCache(Game);
         var gone = Hash.From(0xDEAD);
 
-        await cache.WarmAsync([gone]);
+        await cache.WarmAsync([(gone, "Gone.esp")]);
 
-        cache.TryGet(gone, out var header).Should().BeTrue();
+        cache.TryGet(gone, "Gone.esp", out var header).Should().BeTrue();
         header.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task WarmAsync_HandsTheGameTheFileNameOfThePlugin()
+    {
+        var game = Substitute.For<ICreationEngineGame>();
+        var hash = Hash.From(3);
+        game.ParsePlugin(hash, Arg.Any<RelativePath?>()).Returns(ValueTask.FromResult<PluginHeader?>(HeaderFor("x")));
+        var cache = new PluginHeaderCache(game);
+
+        await cache.WarmAsync([(hash, "Scripts.omwscripts")]);
+
+        await game.Received(1).ParsePlugin(hash, RelativePath.FromUnsanitizedInput("Scripts.omwscripts"));
+    }
+
+    [Fact]
+    public async Task WarmAsync_SameBytesUnderDifferentExtensions_AreParsedAndCachedSeparately()
+    {
+        var game = Substitute.For<ICreationEngineGame>();
+        var hash = Hash.From(4);
+        game.ParsePlugin(hash, Arg.Any<RelativePath?>()).Returns(call =>
+            ValueTask.FromResult<PluginHeader?>(HeaderFor(call.Arg<RelativePath?>()!.Value.FileName.ToString())));
+        var cache = new PluginHeaderCache(game);
+
+        await cache.WarmAsync([(hash, "A.esp"), (hash, "A.omwscripts"), (hash, "B.ESP")]);
+
+        await game.Received(2).ParsePlugin(hash, Arg.Any<RelativePath?>());
+        cache.TryGet(hash, "A.omwscripts", out var script).Should().BeTrue();
+        script!.FileName.Should().Be("A.omwscripts");
+        cache.TryGet(hash, "Other.esp", out var plugin).Should().BeTrue("the key is the extension, not the whole name");
+        plugin!.FileName.Should().Be("A.esp");
+    }
+
+    [Fact]
+    public async Task WarmAsync_ConcurrentCallsForTheSameHash_ParseItOnce()
+    {
+        var game = Substitute.For<ICreationEngineGame>();
+        var hash = Hash.From(5);
+        var parses = 0;
+        game.ParsePlugin(hash, Arg.Any<RelativePath?>()).Returns(_ =>
+        {
+            Interlocked.Increment(ref parses);
+            return new ValueTask<PluginHeader?>(Task.Delay(50).ContinueWith(_ => (PluginHeader?)HeaderFor("a.esp")));
+        });
+        var cache = new PluginHeaderCache(game);
+
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(async () => await cache.WarmAsync([(hash, "a.esp")]))));
+
+        parses.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task WarmAsync_AParseThatFails_IsTriedAgainOnTheNextWarm()
+    {
+        var game = Substitute.For<ICreationEngineGame>();
+        var hash = Hash.From(6);
+        var calls = 0;
+        game.ParsePlugin(hash, Arg.Any<RelativePath?>()).Returns(_ => ++calls == 1
+            ? ValueTask.FromException<PluginHeader?>(new IOException("store unavailable"))
+            : ValueTask.FromResult<PluginHeader?>(HeaderFor("a.esp")));
+        var cache = new PluginHeaderCache(game);
+
+        var first = async () => await cache.WarmAsync([(hash, "a.esp")]);
+        await first.Should().ThrowAsync<IOException>();
+        cache.TryGet(hash, "a.esp", out _).Should().BeFalse();
+
+        await cache.WarmAsync([(hash, "a.esp")]);
+
+        cache.TryGet(hash, "a.esp", out var header).Should().BeTrue();
+        header!.FileName.Should().Be("a.esp");
     }
 }

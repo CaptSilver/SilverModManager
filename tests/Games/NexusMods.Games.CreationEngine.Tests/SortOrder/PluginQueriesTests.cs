@@ -125,6 +125,40 @@ public class PluginQueriesTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task LoadoutPlugins_ADeletedVanillaPlugin_IsNotListed()
+    {
+        var loadout = await VanillaLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = AddEmptyGroup(tx, loadout.LoadoutId, "Overrides");
+            AddDeletedFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, "Data/Dawnguard.esm"));
+            await tx.Commit();
+        }
+
+        var rows = LoadoutPlugins(loadout);
+
+        rows.Select(r => r.Name).Should().BeEquivalentTo(VanillaMasters.Where(m => m != "Dawnguard.esm"));
+    }
+
+    private static void AddDeletedFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path)
+    {
+        _ = new DeletedFile.New(tx, out var id)
+        {
+            Reason = "Deleted from disk",
+            LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, id)
+            {
+                TargetPath = path.ToGamePathParentTuple(loadoutId),
+                LoadoutItem = new LoadoutItem.New(tx, id)
+                {
+                    LoadoutId = loadoutId,
+                    ParentId = groupId,
+                    Name = path.Path,
+                },
+            },
+        };
+    }
+
+    [Fact]
     public async Task LoadoutPlugins_AModShippingItsOwnSkyrimEsm_WinsTheRowOverTheGameFile()
     {
         var loadout = await VanillaLoadout();

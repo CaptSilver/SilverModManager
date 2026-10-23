@@ -107,8 +107,8 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         var sortOrder = LoadoutSortOrder.Load(db, sortOrderId);
         if (sortOrder.IsValid())
         {
-            var hashes = QueryLoadoutPlugins(sortOrder.LoadoutId, db).Select(row => row.Hash);
-            await _headers.WarmAsync(hashes);
+            var plugins = QueryLoadoutPlugins(sortOrder.LoadoutId, db).Select(row => (row.Hash, row.Name));
+            await _headers.WarmAsync(plugins);
         }
 
         await base.ReconcileSortOrder(sortOrderId, referenceDb, token);
@@ -131,7 +131,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
             .TransformAsync(async row =>
             {
                 // Rows can arrive before the reconciliation that would warm their headers has run.
-                await _headers.WarmAsync([row.Hash]);
+                await _headers.WarmAsync([(row.Hash, row.PluginName)]);
                 var data = ToLoadoutData(row.PluginName, row.Hash, row.LoadoutIsEnabled, row.ModName, row.ModGroupId, installation, early);
                 return new PluginReactiveSortItem(row.SortIndex, row.PluginName, row.IsEnabled, data);
             });
@@ -458,7 +458,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         string? flags = null;
         var isBlueprint = false;
 
-        if (_headers.TryGet(hash, out var header))
+        if (_headers.TryGet(hash, name, out var header))
         {
             if (header is null)
             {
