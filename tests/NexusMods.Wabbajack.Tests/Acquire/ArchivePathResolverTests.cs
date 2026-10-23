@@ -5,7 +5,9 @@ using NexusMods.Abstractions.Library;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
+using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Hashes;
+using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Library;
 using NexusMods.Wabbajack.Acquire;
@@ -16,12 +18,25 @@ namespace NexusMods.Wabbajack.Tests.Acquire;
 
 public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBase<ArchivePathResolverTests>(helper)
 {
+    private readonly List<ArchivePathResolver> _resolvers = [];
+
+    // Resolvers pin what they back up; releasing them keeps one test's pins out of another's assertions.
+    public override async ValueTask DisposeAsync()
+    {
+        foreach (var resolver in _resolvers) resolver.Dispose();
+        await base.DisposeAsync();
+    }
+
     private static RelativePath P(string path) => RelativePath.FromUnsanitizedInput(path);
 
     private ArchivePathResolver Resolver(ArchivePlan plan, Loadout.ReadOnly loadout, params INestedArchiveOpener[] openers)
-        => new(plan, Connection.Db, FileStore,
+    {
+        var resolver = new ArchivePathResolver(plan, Connection.Db, FileStore,
             new GameFileSourceLookup(loadout, Connection, FileStore, ServiceProvider.GetRequiredService<IFileHashesService>()),
             openers);
+        _resolvers.Add(resolver);
+        return resolver;
+    }
 
     private async Task<(ArchivePathResolver Resolver, Hash ArchiveHash)> ResolverOverZip(Dictionary<RelativePath, byte[]> files)
     {
@@ -112,6 +127,46 @@ public class ArchivePathResolverTests(ITestOutputHelper helper) : AcquireTestBas
         member.XxHash64.Should().Be(gameHash);
         (await FileStore.HaveFile(GameBsaBytes.xxHash3())).Should().BeTrue("the game file is kept so later reads come from the store");
         (await ReadAll(member)).Should().Equal(GameBsaBytes);
+    }
+
+    [Fact]
+    public async Task BytesTheResolverBacksUpStayPinnedUntilItIsDisposed()
+    {
+        // Bytes no other test stores: pins are process-wide and test classes run in parallel.
+        var inner = System.Text.Encoding.UTF8.GetBytes($"opener output {Guid.NewGuid()}");
+        var (_, archive) = await ResolverOverZip(new() { [P("textures.bsa")] = "BSA\0not really"u8.ToArray() });
+        var resolver = Resolver(new ArchivePlan([]), await CreateLoadout(), new FakeOpener(inner));
+
+        await resolver.Resolve(new ArchiveHashPath(archive, [P("textures.bsa"), P("a.dds")]), CancellationToken.None);
+
+        FileStorePins.Pinned().Should().Contain(inner.xxHash3(), "no loadout file references the backup yet");
+
+        resolver.Dispose();
+
+        FileStorePins.Pinned().Should().NotContain(inner.xxHash3());
+    }
+
+    [Fact]
+    public async Task BytesAlreadyInTheStoreAreCheckedOnlyOnceACollectionInProgressHasFinished()
+    {
+        // A collection that marked before the pin existed may still drop bytes the store has right now, so the
+        // resolver must not decide "already stored" while one holds the store.
+        var loadout = await CreateLoadout();
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(GameBsa, new MemoryStream(GameBsaBytes)), GameBsaBytes.xxHash3(), Size.FromLong(GameBsaBytes.Length))]);
+        var gameHash = Hash64(GameBsaBytes);
+        var state = new GameFileSourceState("SkyrimSpecialEdition", GameBsa, gameHash, GameVersion);
+        var plan = new ArchivePlan([new ArchivePlanRow(Entry(state, gameHash, GameBsaBytes.Length), ArchiveState.GameFile, null, null, null)]);
+        var resolver = Resolver(plan, loadout);
+
+        Task<ResolvedMember> resolving;
+        using (FileStore.WriteLock())
+        {
+            resolving = Task.Run(() => resolver.Resolve(new ArchiveHashPath(gameHash, []), CancellationToken.None));
+            await Task.Delay(TimeSpan.FromMilliseconds(500));
+            resolving.IsCompleted.Should().BeFalse("the collection still holds the store");
+        }
+
+        (await ReadAll(await resolving)).Should().Equal(GameBsaBytes);
     }
 
     [Fact]

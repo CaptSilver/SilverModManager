@@ -94,10 +94,18 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var check = await Check(cancellationToken);
         var group = await EnsureGroup(check, cancellationToken);
 
-        var prepared = await Resolve(check, cancellationToken);
-        await Write(check, group, prepared, cancellationToken);
-        await RegisterTools(check, cancellationToken);
-        await Order(check, group, cancellationToken);
+        try
+        {
+            var prepared = await Resolve(check, cancellationToken);
+            await Write(check, group, prepared, cancellationToken);
+            await RegisterTools(check, cancellationToken);
+            await Order(check, group, cancellationToken);
+        }
+        finally
+        {
+            // Releases the pins on the bytes the resolver backed up; the loadout files now reference them.
+            _resolver?.Dispose();
+        }
 
         return WabbajackModlistLoadoutGroup.Load(Connection.Db, group.Value);
     }

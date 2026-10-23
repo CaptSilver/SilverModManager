@@ -2,6 +2,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.App.GarbageCollection.Interfaces;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
 
@@ -36,6 +37,10 @@ public static class DataStoreReferenceMarker
         
         // Mark non Loadout/Library items that are backups (e.g. Backups of original game files)
         MarkItemsMarkedAsBackups(archiveGc, db);
+
+        // Bytes a running job stored but has not yet recorded in any of the above.
+        foreach (var hash in FileStorePins.Pinned())
+            archiveGc.AddReferencedFile(hash);
     }
 
     private static void MarkItemsMarkedAsBackups<TParsedHeaderState, TFileEntryWrapper>(ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc, IDb db) where TParsedHeaderState : ICanProvideFileHashes<TFileEntryWrapper> where TFileEntryWrapper : IHaveFileHash
@@ -57,24 +62,24 @@ public static class DataStoreReferenceMarker
             This is based on reading the implementation of AddLibraryFileJobWorker 
             (which is recursive across a base type, and thus not trivial to follow).
 
-            Essentially, we want to scan for all cases of `LibraryArchiveFileEntry` here.
-            These belong to an `LibraryArchive`; which is the primitive you usually
-            interact with in the UI to add items. Both are of type `LibraryFile`.
-
-            Therefore, we need to scan for all non-retracted `LibraryArchiveFileEntry`
-            items.
+            Essentially, we want to scan for all `LibraryFile` items here. An `LibraryArchive`
+            is the primitive you usually interact with in the UI to add items, and each of its
+            `LibraryArchiveFileEntry` rows is a `LibraryFile` too.
          */
 
-        var libraryFiles = LibraryArchiveFileEntry.All(db);
+        var libraryFiles = LibraryFile.All(db);
         foreach (var file in libraryFiles)
-            archiveGc.AddReferencedFile(file.AsLibraryFile().Hash);
+            archiveGc.AddReferencedFile(file.Hash);
 
         /*
+            This covers every `LibraryFile`: the members of an archive, and plain files added on their own
+            (an .esp, say), which keep their bytes in the store under their own hash. An archive the library
+            expanded has no bytes under its own hash; marking it is harmless, as the collector ignores hashes
+            it holds no archive for.
+
             There is however a caveat that has to be considered here.
-            
-            There is a base assumption that all `LibraryArchiveFileEntry` items
-            are used to represent items that are archived in the File Store.
-            
+
+            There is a base assumption that every `LibraryFile` hash is a file kept in the File Store.
             If this assumption is broken, then the GC will miss files.
             An appropriate warning has been added to the relevant classes.
         */

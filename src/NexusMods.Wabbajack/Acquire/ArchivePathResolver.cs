@@ -31,14 +31,15 @@ public interface INestedArchiveOpener
 /// <summary>
 /// Turns a directive's <see cref="ArchiveHashPath"/> into bytes in the file store. Create one per job: it keeps one
 /// case-folded index of the entries per archive, built on first use, so resolving thousands of directives against one
-/// archive reads its entry rows once.
+/// archive reads its entry rows once. Bytes it backs up are pinned against garbage collection until it is disposed,
+/// since nothing in the database references them until the install writes the loadout file that uses them.
 /// </summary>
 public sealed class ArchivePathResolver(
     ArchivePlan plan,
     IDb db,
     IFileStore store,
     GameFileSourceLookup gameFiles,
-    IEnumerable<INestedArchiveOpener> openers)
+    IEnumerable<INestedArchiveOpener> openers) : IDisposable
 {
     private const int HashBufferSize = 1024 * 1024;
 
@@ -48,6 +49,8 @@ public sealed class ArchivePathResolver(
     private readonly Dictionary<EntityId, Dictionary<string, LibraryArchiveFileEntry.ReadOnly>> _indexes = new();
     private readonly Dictionary<string, ResolvedMember> _stored = new();
     private readonly SemaphoreSlim _storeLock = new(1, 1);
+    private readonly List<IDisposable> _pins = [];
+    private bool _disposed;
 
     /// <summary>How many entry indexes have been built, one per archive that had a member looked up in it.</summary>
     public int IndexesBuilt { get; private set; }
@@ -176,8 +179,11 @@ public sealed class ArchivePathResolver(
                 (xxHash3, xxHash64, size) = await StreamDigests.HashAndCount(stream, cancellationToken);
             }
 
-            if (!await store.HaveFile(xxHash3))
-                await store.BackupFiles([new ArchivedFileEntry(new OpenerStreamFactory(open), xxHash3, size)], deduplicate: false, cancellationToken);
+            // Pinned first, so every collection that marks from here on keeps the bytes. Deduplicating inside
+            // BackupFiles checks for them under the store's read lock, after any collection already running (which
+            // marked before the pin and may drop bytes the store still lists) has finished.
+            Pin(xxHash3);
+            await store.BackupFiles([new ArchivedFileEntry(new OpenerStreamFactory(open), xxHash3, size)], deduplicate: true, cancellationToken);
 
             var resolved = new ResolvedMember(xxHash3, xxHash64, size, async () => await store.GetFileStream(xxHash3, cancellationToken));
             _stored[key] = resolved;
@@ -186,6 +192,33 @@ public sealed class ArchivePathResolver(
         finally
         {
             _storeLock.Release();
+        }
+    }
+
+    private void Pin(Hash hash)
+    {
+        var pin = FileStorePins.Pin(hash);
+        lock (_pins)
+        {
+            if (!_disposed)
+            {
+                _pins.Add(pin);
+                return;
+            }
+        }
+
+        // A store still in flight when the job gave up and disposed the resolver; nothing would release this pin.
+        pin.Dispose();
+    }
+
+    /// <summary>Releases the pins on everything this resolver backed up.</summary>
+    public void Dispose()
+    {
+        lock (_pins)
+        {
+            _disposed = true;
+            foreach (var pin in _pins) pin.Dispose();
+            _pins.Clear();
         }
     }
 
