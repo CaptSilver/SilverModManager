@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Games.FromSoft.Build;
 using NexusMods.Games.FromSoft.Cleanup;
 using NexusMods.Games.FromSoft.Diagnostics;
@@ -44,6 +45,11 @@ public static class Services
     public static IServiceCollection AddFromSoftBase(this IServiceCollection services)
     {
         services.AddSettings<FromSoftSettings>();
+
+        // The co-op password lives in the secret store; the step moves one left in the old settings file
+        services.AddSecretKeys(FromSoftSecretKeys.CoopPassword)
+            .AddSingleton<ISecretMigrationStep, CoopPasswordMigration>();
+        services.AddVerb(() => CoopPasswordVerb.CoopPassword);
 
         // Emitters
         services.AddSingleton<PackageCollisionEmitter>()

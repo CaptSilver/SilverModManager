@@ -43,7 +43,8 @@ public sealed class JsonStorageBackend : IStorageBackend
         return _configDirectory.Combine($"{SettingsIds.For<T>(key, '_')}.json");
     }
 
-    private void Serialize<T>(Stream stream ,T value) where T : class
+    // The failure logs name the type and the file only: a settings value or file may hold a secret, and a log is read by more people than the file.
+    private void Serialize<T>(Stream stream, T value, AbsolutePath configPath) where T : class
     {
         try
         {
@@ -51,11 +52,11 @@ public sealed class JsonStorageBackend : IStorageBackend
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Exception while serializing `{Type}` with value `{Value}`", typeof(T), value);
+            _logger.LogError(e, "Exception while serializing `{Type}` to `{ConfigPath}`", typeof(T), configPath);
         }
     }
 
-    private T? Deserialize<T>(string json) where T : class
+    private T? Deserialize<T>(string json, AbsolutePath configPath) where T : class
     {
         try
         {
@@ -64,7 +65,7 @@ public sealed class JsonStorageBackend : IStorageBackend
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Exception while deserializing to `{Type}` with JSON `{Json}`", typeof(T), json);
+            _logger.LogError(e, "Exception while deserializing `{Type}` from `{ConfigPath}`", typeof(T), configPath);
             return null;
         }
     }
@@ -74,7 +75,7 @@ public sealed class JsonStorageBackend : IStorageBackend
     {
         var configPath = GetConfigPath<T>(key);
         using var stream = configPath.Open(FileMode.Create, FileAccess.ReadWrite, FileShare.None);
-        Serialize(stream, value);
+        Serialize(stream, value, configPath);
     }
 
     /// <inheritdoc/>
@@ -87,7 +88,7 @@ public sealed class JsonStorageBackend : IStorageBackend
         using var sr = new StreamReader(stream, Encoding.UTF8);
 
         var json = sr.ReadToEnd();
-        return Deserialize<T>(json);
+        return Deserialize<T>(json, configPath);
     }
 
     /// <inheritdoc/>

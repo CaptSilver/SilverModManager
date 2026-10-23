@@ -2,6 +2,7 @@ using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using JetBrains.Annotations;
 using NexusMods.Abstractions.Library.Installers;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.FromSoft.Cleanup;
 using NexusMods.Games.FromSoft.Doctor;
@@ -128,7 +129,7 @@ public class EldenRingGame : AFromSoftGame<EldenRingGame>, IGameData<EldenRingGa
 
     /// <summary>Seamless Co-op's settings file gets the co-op password when it is written for a session.</summary>
     public override IReadOnlyList<IConfigurationLayerTransform> LayerTransforms
-        => [new SeamlessCoopSettingsTransform(Provider.GetRequiredService<ISettingsManager>())];
+        => [new SeamlessCoopSettingsTransform(Provider.GetRequiredService<ISecretStore>())];
 
     protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new EldenRingSynchronizer(provider, this);
 

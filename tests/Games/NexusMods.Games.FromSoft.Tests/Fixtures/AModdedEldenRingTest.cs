@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.Secrets;
+using NexusMods.Games.FromSoft.EldenRing;
 using NexusMods.Games.FromSoft.Installers;
 using NexusMods.Games.FromSoft.Overlay;
 using NexusMods.Paths;
@@ -35,7 +37,6 @@ public abstract class AModdedEldenRingTest<TTest>(ITestOutputHelper helper, bool
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         base.AddServices(services)
-            .OverrideSettingsForTests<FromSoftSettings>(settings => settings with { CoopPassword = Password })
             .ReplaceDesktopNotifier();
 
         Fakes.Register(services);
@@ -65,10 +66,22 @@ public abstract class AModdedEldenRingTest<TTest>(ITestOutputHelper helper, bool
         await Install<Me3HostInstaller>(loadout.LoadoutId,
             path => TestArchives.WriteTarGz(path, "bin/me3", "bin/win64/me3-launcher.exe", "bin/win64/me3_mod_host.dll"), "me3-linux-amd64.tar.gz");
         await Install<Me3PackageInstaller>(loadout.LoadoutId, path => TestArchives.Write(path, "parts/wp_a.dcx"), "Weapons.zip");
-        if (seamlessCoop) await Install<SeamlessCoopInstaller>(loadout.LoadoutId, path => ErscRelease.Write(path), "Seamless Co-op.zip");
+        if (seamlessCoop)
+        {
+            await Install<SeamlessCoopInstaller>(loadout.LoadoutId, path => ErscRelease.Write(path), "Seamless Co-op.zip");
+            await StorePassword();
+        }
 
         await Synchronizer.Synchronize(Refresh(loadout));
         return Refresh(loadout);
+    }
+
+    // Written through the host's own store, so the session's transform reads it the way the app does.
+    private async Task StorePassword()
+    {
+        var result = await ServiceProvider.GetRequiredService<ISecretStore>().SetAsync(FromSoftSecretKeys.CoopPassword, Password, CancellationToken.None);
+        if (result is not SecretWriteResult.Written)
+            throw new InvalidOperationException($"The test host's secret store did not take the co-op password: {result}");
     }
 
     public override async ValueTask DisposeAsync()

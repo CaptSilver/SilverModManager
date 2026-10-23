@@ -14,16 +14,9 @@ public record FromSoftSettings : ISettings
     /// </summary>
     public ConfigurablePath DataRoot { get; init; }
 
-    /// <summary>
-    /// The Seamless Co-op session password. Stored as plain text in the settings file.
-    /// </summary>
-    public string CoopPassword { get; init; } = "";
-
     /// <inheritdoc/>
     public static string SettingsId => "SilverModManager.Games.FromSoft.FromSoftSettings";
 
-    // No settings-page entry: the password is not editable in the UI yet, and a plain-text field that looks like
-    // a secret store would be misleading.
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder
