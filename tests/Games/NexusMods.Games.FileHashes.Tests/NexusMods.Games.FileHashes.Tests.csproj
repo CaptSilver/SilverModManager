@@ -4,6 +4,9 @@
     <ProjectReference Include="..\..\..\src\NexusMods.Networking.Steam\NexusMods.Networking.Steam.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- The manifest writer is shared with the Steam networking tests rather than copied. -->
     <Compile Include="..\..\Networking\NexusMods.Networking.Steam.Tests\DepotManifestFixture.cs" Link="DepotManifestFixture.cs" />
   </ItemGroup>

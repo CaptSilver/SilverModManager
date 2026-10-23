@@ -46,7 +46,7 @@ public class PersistedNameGuards
         return found;
     }
 
-    private static IEnumerable<Type> LoadableTypes(Assembly assembly)
+    internal static IEnumerable<Type> LoadableTypes(Assembly assembly)
     {
         try { return assembly.GetTypes(); }
         catch (ReflectionTypeLoadException e) { return e.Types.Where(t => t is not null)!; }

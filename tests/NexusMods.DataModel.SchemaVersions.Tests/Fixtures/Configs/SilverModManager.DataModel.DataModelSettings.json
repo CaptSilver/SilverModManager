@@ -1,0 +1,1 @@
+{"UseInMemoryDataModel":true,"MnemonicDBPath":{"BaseDirectory":"XDG_DATA_HOME","File":"Fixture/DataModel/MnemonicDB.rocksdb"},"ArchiveLocations":[{"BaseDirectory":"XDG_DATA_HOME","File":"Fixture/DataModel/Archives"},{"BaseDirectory":"XDG_DATA_HOME","File":"Fixture/Second/Archives"}]}

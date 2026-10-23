@@ -16,6 +16,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Include="Fixtures\Configs\*.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
       <PackageReference Include="Verify" />
       <PackageReference Include="Verify.XunitV3" />  
     </ItemGroup>
