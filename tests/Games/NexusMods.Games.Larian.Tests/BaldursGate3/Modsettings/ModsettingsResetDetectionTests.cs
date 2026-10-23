@@ -75,6 +75,16 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
     }
 
     [Fact]
+    public async Task TheFirstResetNamesTheNewlyActivePaksInTheNote()
+    {
+        var loadout = await AppliedTwoPaks();
+
+        await GameThrowsTheListAway(loadout);
+
+        Notice(loadout)!.Value.Summary.Should().Contain("put it back").And.Contain("alpha.pak").And.Contain("beta.pak");
+    }
+
+    [Fact]
     public async Task TheSecondTimeTheFileIsLeftAsTheGameWroteIt()
     {
         var loadout = await Held();

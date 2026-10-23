@@ -106,9 +106,15 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
         }
 
         var candidates = await _modules.Candidates(loadout, variety, sortOrderId);
+        var lastWritten = Bg3ModListNotices.LastWritten(loadout.Db, sortOrderId);
+
+        // A list the game threw away was already reported while the sync was prepared, with the paks that
+        // went into it; describing the same file again here would replace that note.
+        if (GameThrewTheListAway(loadout, candidates, lastWritten)) return;
+
         var byName = ByName(candidates);
 
-        var expected = Bg3ModListNotices.LastWritten(loadout.Db, sortOrderId)
+        var expected = lastWritten
             .Select(name => byName.GetValueOrDefault(name.ToLowerInvariant()))
             .OfType<Bg3PakCandidate>()
             .ToList();
