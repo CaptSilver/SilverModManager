@@ -30,6 +30,13 @@ public partial class ALoadoutSynchronizer
     protected virtual void WriteGameInstalledItemExtras(ITransaction tx, EntityId itemId, GameInstalledContent content) { }
 
     /// <summary>
+    /// Whether what a game stored through <see cref="WriteGameInstalledItemExtras"/> for an item differs from
+    /// the extra of the current parse. Without it, a change that touches only the extra opens no transaction and
+    /// the stored copy goes stale.
+    /// </summary>
+    protected virtual bool GameInstalledExtrasDiffer(IDb db, EntityId itemId, GameInstalledContent content) => false;
+
+    /// <summary>
     /// Brings the loadout's game-installed group in line with what the game has installed right now. Runs
     /// before the sync tree is built, so the tree sees the group's files as the game's and never ingests,
     /// backs up or deletes them.
@@ -241,7 +248,7 @@ public partial class ALoadoutSynchronizer
         return item.Content.Confidence.ToString();
     }
 
-    private static bool GameInstalledItemsDiffer(List<DesiredGameInstalledItem> desired, CurrentGameInstalledGroup current, HashSet<string>? depotFiles)
+    private bool GameInstalledItemsDiffer(List<DesiredGameInstalledItem> desired, CurrentGameInstalledGroup current, HashSet<string>? depotFiles)
     {
         if (desired.Count > 0 && current.GroupId is null) return true;
         if (current.Items.Any(item => desired.All(d => d.Key != item.Key))) return true;
@@ -259,6 +266,8 @@ public partial class ALoadoutSynchronizer
                 || model.CanBeClaimed != item.Content.CanBeClaimed
                 || model.DepotShipped != IsDepotShipped(item, depotFiles))
                 return true;
+
+            if (GameInstalledExtrasDiffer(model.Db, existing.Id, item.Content)) return true;
 
             if (existing.Files.Count != item.Files.Count) return true;
             foreach (var (path, (hash, size)) in item.Files)

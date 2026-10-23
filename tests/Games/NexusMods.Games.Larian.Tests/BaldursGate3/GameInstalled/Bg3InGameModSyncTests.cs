@@ -65,10 +65,10 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
             """);
     }
 
-    private static string RecordedEntry(string folder, string name, string handle) => $"""
+    private static string RecordedEntry(string folder, string name, string handle, string md5 = RecordMd5) => $"""
         <node id="ModuleShortDesc">
             <attribute id="Folder" type="LSString" value="{folder}"/>
-            <attribute id="MD5" type="LSString" value="{RecordMd5}"/>
+            <attribute id="MD5" type="LSString" value="{md5}"/>
             <attribute id="Name" type="LSString" value="{name}"/>
             <attribute id="PublishHandle" type="uint64" value="{handle}"/>
             <attribute id="UUID" type="guid" value="{RecordUuid}"/>
@@ -125,6 +125,21 @@ public class Bg3InGameModSyncTests(ITestOutputHelper helper)
 
     private TxId[] ItemTransactions(Loadout.ReadOnly loadout) =>
         Connection.Db.Datoms(Item(Refresh(loadout), RecordedPak).Id).Select(d => d.T).Order().ToArray();
+
+    [Fact]
+    public async Task AChangedModuleEntryUpdatesTheStoredEntryOnTheNextSync()
+    {
+        var loadout = await Fixture();
+        await Apply(loadout);
+
+        // Only the checksum differs: the pak, its title and its files are as before.
+        const string newMd5 = "fedcba9876543210fedcba9876543210";
+        await WriteModsettings(RecordedEntry("MyMod", "My Mod", "4242", newMd5));
+        await Apply(loadout);
+
+        Item(loadout, RecordedPak).TryGetAsBg3ModuleEntry(out var entry).Should().BeTrue();
+        entry.Md5.Value.Should().Be(newMd5);
+    }
 
     [Fact]
     public async Task APatternMatchedPakIsAnItemWithoutAModuleEntry()

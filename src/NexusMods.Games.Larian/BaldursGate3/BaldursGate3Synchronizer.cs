@@ -1,3 +1,4 @@
+using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
@@ -67,6 +68,27 @@ public class BaldursGate3Synchronizer : ALoadoutSynchronizer
         tx.Add(itemId, Bg3ModuleEntry.Md5, entry.Md5);
         tx.Add(itemId, Bg3ModuleEntry.ModuleName, entry.Name);
     }
+
+    /// <summary>
+    /// An entry that differs from the stored one in any field. An item with no entry this time keeps the stored
+    /// one, which is what <see cref="WriteGameInstalledItemExtras"/> does too.
+    /// </summary>
+    protected override bool GameInstalledExtrasDiffer(IDb db, EntityId itemId, GameInstalledContent content)
+    {
+        if (content.Extra is not ModsettingsDocument.ModuleEntry entry) return false;
+
+        var item = GameInstalledItem.Load(db, itemId);
+        if (!item.IsValid() || !item.TryGetAsBg3ModuleEntry(out var stored)) return true;
+
+        return !Same(stored.Folder, entry.Folder)
+            || !Same(stored.Uuid, entry.Uuid)
+            || !Same(stored.Version64, entry.Version64)
+            || !Same(stored.PublishHandle, entry.PublishHandle)
+            || !Same(stored.Md5, entry.Md5)
+            || !Same(stored.ModuleName, entry.Name);
+    }
+
+    private static bool Same(Optional<string> stored, string value) => stored.HasValue && stored.Value == value;
 
     public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout) =>
         new() { [ModsettingsFile.FilePath] = _modsettings };

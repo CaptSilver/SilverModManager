@@ -139,14 +139,28 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
 
         // A pak the reset leaves behind (the game's own, or one nobody deployed) keeps its entry; the app's paks
         // go off disk, and the game would refuse to start a list that names them.
+        bool StaysOnDisk(Bg3PakCandidate pak) =>
+            desiredState.TryGetValue(new GamePath(Bg3Constants.ModsLocationId, pak.Name), out var node) && node.HaveLoadout;
+
         var removed = candidates
             .Where(p => !p.IsGameInstalled)
-            .Where(p => !desiredState.TryGetValue(new GamePath(Bg3Constants.ModsLocationId, p.Name), out var node) || !node.HaveLoadout)
+            .Where(p => !StaysOnDisk(p))
             .Select(p => p.Entry?.Uuid)
             .OfType<string>()
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var text = ModsettingsDocument.Render(VersionOf(disk), disk.Entries.Where(e => !removed.Contains(e.Uuid)));
+        var kept = disk.Entries.Where(e => !removed.Contains(e.Uuid)).ToList();
+
+        // The reset hands the game back its own paks whatever the group's switch said: a pak whose group was off
+        // has no entry in the file the app wrote, and the game would not list it after the app is gone. One the
+        // player deleted since the last sync stays out, for the same reason the app's removed paks do.
+        var listed = kept.Select(e => e.Uuid).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var pak in candidates.Where(p => p.IsGameInstalled && StaysOnDisk(p)))
+        {
+            if (pak.Entry is { } entry && listed.Add(entry.Uuid)) kept.Add(entry);
+        }
+
+        var text = ModsettingsDocument.Render(VersionOf(disk), kept);
         return new UTF8Encoding(false).GetBytes(text);
     }
 

@@ -35,6 +35,40 @@ public class ModsettingsResetTests(ITestOutputHelper helper) : ModsettingsFixtur
     }
 
     [Fact]
+    public async Task UnmanageListsTheGameInstalledPaksWhoseGroupWasSwitchedOff()
+    {
+        await WriteGameInstalledPak();
+        var loadout = await CreateLoadout();
+        await Apply(loadout);
+
+        await DisableItem(GameInstalledGroupOf(loadout).Id);
+        await Apply(loadout);
+        DiskNames().Should().Equal("GustavX", "HonourX");
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, GameInstallation.LocatorResult.LocatorIds.ToArray());
+
+        OnDisk(Pak(GameModPak)).FileExists.Should().BeTrue();
+        DiskNames().Should().Equal("GustavX", "HonourX", "Game Mod");
+        Disk().Entries.Single(e => e.Uuid == GameModUuid).Md5.Should().Be(GameModMd5);
+    }
+
+    [Fact]
+    public async Task UnmanageDoesNotListASwitchedOffGameInstalledPakThatIsGoneFromDisk()
+    {
+        await WriteGameInstalledPak();
+        var loadout = await CreateLoadout();
+        await Apply(loadout);
+
+        await DisableItem(GameInstalledGroupOf(loadout).Id);
+        await Apply(loadout);
+        OnDisk(Pak(GameModPak)).Delete();
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation, GameInstallation.LocatorResult.LocatorIds.ToArray());
+
+        DiskNames().Should().Equal("GustavX", "HonourX");
+    }
+
+    [Fact]
     public async Task AnOverridesRowForTheFileIsDroppedByTheFirstSyncWithoutTouchingTheFileFirst()
     {
         var loadout = await CreateLoadout();
