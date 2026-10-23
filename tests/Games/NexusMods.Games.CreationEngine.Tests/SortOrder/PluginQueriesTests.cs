@@ -5,6 +5,7 @@ using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Games.FileHashes.Models;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.CreationEngine.Models;
+using NexusMods.Games.CreationEngine.SortOrder;
 using NexusMods.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
@@ -32,14 +33,14 @@ public class PluginQueriesTests(ITestOutputHelper helper)
         .AddCreationEngine()
         .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"), locationsFileSystem: IsolatedKnownFolders.Create);
 
-    private record PluginRow(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId);
+    private record PluginRow(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled);
 
     private IDb Db => Connection.Db;
 
     private List<PluginRow> LoadoutPlugins(Loadout.ReadOnly loadout) =>
-        Connection.Query<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId)>(
+        Connection.Query<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>(
                 $"SELECT * FROM plugins.LoadoutPlugins({Connection}, {loadout.LoadoutId}, {LocationId.Game.Value}, {DataFolder})")
-            .Select(r => new PluginRow(r.Name, r.Hash, r.IsEnabled, r.ModName, r.ModGroupId))
+            .Select(r => new PluginRow(r.Name, r.Hash, r.IsEnabled, r.ModName, r.ModGroupId, r.IsGameInstalled))
             .ToList();
 
     /// <summary>Records <paramref name="files"/> as vanilla game files of the loadout's installation.</summary>
@@ -269,5 +270,84 @@ public class PluginQueriesTests(ITestOutputHelper helper)
             PluginName = name,
             IsEnabled = true,
         };
+    }
+
+    [Fact]
+    public async Task LoadoutPlugins_AGameInstalledPlugin_IsListedAsGameInstalledAndFollowsTheGroupSwitch()
+    {
+        var loadout = await VanillaLoadout();
+        var (group, item) = await Connection.AddGameInstalledPlugin(loadout, "Creation Title", "Data/ccnew.esl");
+
+        var row = LoadoutPlugins(loadout).Single(r => r.Name == "ccnew.esl");
+        row.IsGameInstalled.Should().BeTrue();
+        row.ModName.Should().Be("Creation Title");
+        row.ModGroupId.Should().Be(item);
+        row.IsEnabled.Should().BeTrue();
+
+        await DisableItem(group);
+        LoadoutPlugins(loadout).Single(r => r.Name == "ccnew.esl").IsEnabled.Should().BeFalse("the group is switched off");
+
+        await EnableItem(group);
+        LoadoutPlugins(loadout).Single(r => r.Name == "ccnew.esl").IsEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LoadoutPlugins_OnlyGameInstalledRowsAreMarkedGameInstalled()
+    {
+        var loadout = await VanillaLoadout();
+        await AddMod(loadout, "Mod", "Data/Alpha.esp");
+        await Connection.AddGameInstalledPlugin(loadout, "Creation Title", "Data/ccnew.esl");
+
+        LoadoutPlugins(loadout).Where(r => r.IsGameInstalled).Select(r => r.Name).Should().Equal("ccnew.esl");
+    }
+
+    [Fact]
+    public async Task LoadoutPlugins_TheLoadoutCopyOfAName_WinsOverTheGameInstalledOne()
+    {
+        var loadout = await VanillaLoadout();
+        await Connection.AddGameInstalledPlugin(loadout, "Creation Title", "Data/Shared.esp");
+        var mod = await AddMod(loadout, "Mod", "Data/Shared.esp");
+
+        var row = LoadoutPlugins(loadout).Single(r => r.Name == "Shared.esp");
+        row.ModGroupId.Should().Be(mod);
+        row.IsGameInstalled.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LoadoutPlugins_TheGameInstalledCopy_BeatsTheVanillaRowWhateverTheGroupState(bool groupOff)
+    {
+        // A depot-shipped Creation has a vanilla row, always enabled, and a game-installed row that follows the
+        // group. The game-installed row has to win either way, or the page would show an unlocked active plugin.
+        var loadout = await CreateLoadout();
+        await SeedGameFiles(loadout, [.. VanillaMasters.Select(m => $"{DataFolder}/{m}"), "Data/ccdepot.esl"]);
+        var (group, _) = await Connection.AddGameInstalledPlugin(loadout, "Depot Creation", "Data/ccdepot.esl");
+        if (groupOff) await DisableItem(group);
+
+        var rows = LoadoutPlugins(loadout).Where(r => r.Name == "ccdepot.esl").ToList();
+        rows.Should().ContainSingle();
+        rows[0].IsGameInstalled.Should().BeTrue();
+        rows[0].IsEnabled.Should().Be(!groupOff);
+    }
+
+    [Fact]
+    public async Task LiveSortOrderItems_CarryIsGameInstalled_AndFollowAToggleOfTheGroup()
+    {
+        var loadout = await VanillaLoadout();
+        var (group, _) = await Connection.AddGameInstalledPlugin(loadout, "Creation Title", "Data/ccnew.esl");
+        var variety = new PluginSortOrderVariety(ServiceProvider, Game);
+        var sortOrder = await variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId);
+        await variety.ReconcileSortOrder(sortOrder);
+
+        (string PluginName, bool LoadoutIsEnabled, bool IsGameInstalled) Row() =>
+            Connection.Query<(string PluginName, bool LoadoutIsEnabled, bool IsGameInstalled)>(
+                    $"SELECT PluginName, LoadoutIsEnabled, IsGameInstalled FROM plugins.LiveSortOrderItems({Connection}, {sortOrder.Value}, {loadout.LoadoutId}, {LocationId.Game.Value}, {DataFolder})")
+                .Single(r => r.PluginName == "ccnew.esl");
+
+        Row().Should().Be(("ccnew.esl", true, true));
+
+        await DisableItem(group);
+        Row().Should().Be(("ccnew.esl", false, true));
     }
 }

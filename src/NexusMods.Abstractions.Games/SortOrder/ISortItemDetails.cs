@@ -17,9 +17,15 @@ public interface ISortItemDetails
     IReadOnlyList<string> Masters { get; }
 
     /// <summary>
-    /// True when the item cannot be moved by the user.
+    /// True when the item cannot be moved by the user. This says nothing about toggling, see <see cref="LockReason"/>.
     /// </summary>
     bool IsLocked { get; }
+
+    /// <summary>
+    /// Non-null when the user cannot switch the item on or off, and says why. An item can be movable and still have
+    /// a reason, so this and <see cref="IsLocked"/> are independent. Null for varieties that never lock a toggle.
+    /// </summary>
+    SortItemLockReason? LockReason => null;
 
     /// <summary>
     /// True when the item takes part in the game's load order.

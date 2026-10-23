@@ -326,6 +326,76 @@ public class PluginSortOrderVarietyTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task AGameInstalledRow_IsMovableButToggleLockedAndNamesItsGroup()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await Connection.AddGameInstalledPlugin(loadout, "Creation Title", "Data/ccnew.esl");
+        await Connection.AddGameInstalledPlugin(loadout, "Other Title", "Data/ccother.esl");
+        await variety.ReconcileSortOrder(id);
+
+        var row = (ISortItemDetails)variety.GetSortOrderItems(id, Db).Single(i => i.DisplayName == "ccnew.esl");
+        row.IsLocked.Should().BeFalse();
+        row.LockReason.Should().Be(SortItemLockReason.GameInstalledGroup);
+
+        var toggle = () => variety.SetEnabled(id, Key("ccnew.esl"), false);
+        (await toggle.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("Installed by the game");
+
+        await variety.MoveItems(id, [Key("ccother.esl")], Key("ccnew.esl"), TargetRelativePosition.BeforeTarget, Db);
+        Names(variety.GetSortOrderItems(id, Db)).Should().Equal([.. VanillaMasters, "ccother.esl", "ccnew.esl"]);
+        StoredRows(id).Select(r => r.PluginName).Should().Equal([.. VanillaMasters, "ccother.esl", "ccnew.esl"]);
+    }
+
+    [Fact]
+    public async Task AGameInstalledRowWithAPersistedOffSwitch_IsActiveExactlyWhileTheGroupIsOn()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        var (group, _) = await Connection.AddGameInstalledPlugin(loadout, "Creation Title", "Data/ccnew.esl");
+        await variety.ReconcileSortOrder(id);
+
+        // The row's own switch is ignored for a game-installed name, so an off value left in it changes nothing.
+        using (var tx = Connection.BeginTransaction())
+        {
+            var rowId = Connection.Query<EntityId>($"SELECT Id FROM plugins.SortOrderItems({Connection}, {id.Value}) WHERE lower(PluginName) = 'ccnew.esl'").Single();
+            tx.Add(rowId, PluginSortOrderItem.IsEnabled, false);
+            await tx.Commit();
+        }
+
+        variety.GetSortOrderItems(id, Db).Single(i => i.DisplayName == "ccnew.esl").IsActive.Should().BeTrue("the group is on");
+
+        await DisableItem(group);
+        var off = variety.GetSortOrderItems(id, Db).Single(i => i.DisplayName == "ccnew.esl");
+        off.IsActive.Should().BeFalse("the group is off");
+        ((ISortItemDetails)off).IsEnabled.Should().BeFalse("the row mirrors the group");
+
+        await EnableItem(group);
+        var on = variety.GetSortOrderItems(id, Db).Single(i => i.DisplayName == "ccnew.esl");
+        on.IsActive.Should().BeTrue();
+        ((ISortItemDetails)on).IsEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AnEarlyLoaderInstalledByTheGame_IsLockedAsAlwaysLoaded()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await Connection.AddGameInstalledPlugin(loadout, "Base Game", "Data/Skyrim.esm");
+        await variety.ReconcileSortOrder(id);
+
+        var row = (ISortItemDetails)variety.GetSortOrderItems(id, Db).Single(i => i.DisplayName == "Skyrim.esm");
+        row.IsLocked.Should().BeTrue();
+        row.LockReason.Should().Be(SortItemLockReason.AlwaysLoaded);
+    }
+
+    [Fact]
+    public async Task AModsRow_HasNoLockReason()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await AddMod(loadout, "Mod", "A.esp");
+        await variety.ReconcileSortOrder(id);
+
+        ((ISortItemDetails)variety.GetSortOrderItems(id, Db).Single(i => i.DisplayName == "A.esp")).LockReason.Should().BeNull();
+    }
+
+    [Fact]
     public async Task APluginWhoseHeaderCannotBeRead_StillGetsARow()
     {
         var loadout = await CreateLoadout();

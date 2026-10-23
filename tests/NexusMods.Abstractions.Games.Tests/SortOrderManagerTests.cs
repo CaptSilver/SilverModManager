@@ -6,6 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using FluentAssertions;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.TestFramework;
+using NexusMods.Hashing.xxHash3;
+using NexusMods.Paths;
+using NexusMods.Sdk.Hashes;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
@@ -163,6 +166,83 @@ public class SortOrderManagerTests(ITestOutputHelper helper) : AStubbedGameIsola
 
         variety.Created.Should().NotContain(own);
         variety.Reconciled.Should().NotContain(own);
+    }
+
+    [Fact]
+    public async Task AGameInstalledFile_IsTrackedWithNoCollectionAndWakesTheManager()
+    {
+        var variety = new RecordingVariety();
+        using var manager = new SortOrderManager(ServiceProvider);
+        manager.RegisterSortOrderVarieties([variety], GameInstallation.GetGame());
+
+        var own = await SeedLoadout(StubbedGame.GameId);
+        await SeedFile(own);
+        await variety.WaitForReconcile(own);
+        var reconciledBefore = variety.Reconciled.Count(l => l == own);
+
+        var file = await SeedGameInstalledFile(own);
+
+        var tracked = SortOrderQueries.TrackLoadoutItemChanges(Connection, StubbedGame.GameId).AsObservableCache().Items
+            .Single(row => row.ItemId == file.File);
+        tracked.GroupId.Should().Be(file.Item, "the sort order row belongs to the item, not to the group");
+        tracked.CollectionId.Should().Be(EntityId.From(0), "a game-installed group is not a collection group");
+        tracked.LoadoutId.Should().Be(own.Value);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        while (variety.Reconciled.Count(l => l == own) <= reconciledBefore)
+            await Task.Delay(25, cts.Token);
+    }
+
+    [Fact]
+    public void AnItemDetailsImplementationWithoutALockReason_ReadsNull()
+    {
+        ISortItemDetails details = new PlainDetails();
+
+        details.LockReason.Should().BeNull();
+    }
+
+    private sealed class PlainDetails : ISortItemDetails
+    {
+        public string? Flags => null;
+        public IReadOnlyList<string> Masters => [];
+        public bool IsLocked => false;
+        public bool IsEnabled => true;
+    }
+
+    private async Task<(EntityId Group, EntityId Item, EntityId File)> SeedGameInstalledFile(LoadoutId loadoutId)
+    {
+        using var tx = Connection.BeginTransaction();
+        _ = new GameInstalledGroup.New(tx, out var groupId)
+        {
+            InstalledForId = loadoutId,
+            LoadoutItemGroup = new LoadoutItemGroup.New(tx, groupId)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = "Installed by the game", LoadoutId = loadoutId },
+            },
+        };
+        _ = new GameInstalledItem.New(tx, out var itemId)
+        {
+            Source = "SkyrimCreation",
+            SourceId = "ccnew.esl",
+            Confidence = "GameRecord",
+            CanBeClaimed = true,
+            DepotShipped = false,
+            LoadoutItemGroup = new LoadoutItemGroup.New(tx, itemId)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, itemId) { Name = "A Creation", LoadoutId = loadoutId, ParentId = groupId },
+            },
+        };
+        _ = new GameInstalledFile.New(tx, out var fileId)
+        {
+            Path = new GamePath(LocationId.Game, "Data/ccnew.esl").ToGamePathParentTuple(loadoutId),
+            Hash = Hash.From(0xAB),
+            Size = Size.From(10),
+            LoadoutItem = new LoadoutItem.New(tx, fileId) { Name = "ccnew.esl", LoadoutId = loadoutId, ParentId = itemId },
+        };
+        var result = await tx.Commit();
+        return (result[groupId], result[itemId], result[fileId]);
     }
 
     private async Task<LoadoutId> SeedLoadout(GameId? game)

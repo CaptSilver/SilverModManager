@@ -17,15 +17,20 @@ public sealed class PluginReactiveSortItem : IReactiveSortItem<PluginReactiveSor
         SortIndex = sortIndex;
         DisplayName = name;
         Key = PluginSortData.KeyFor(name);
-        IsEnabled = isEnabled;
+        // The row's own switch is ignored for a plugin the game installed: the group's switch is the only one.
+        IsEnabled = loadoutData.IsGameInstalled ? loadoutData.IsEnabled : isEnabled;
         LoadoutData = loadoutData;
         ModName = loadoutData.ModName;
         ModGroupId = loadoutData.ModGroupId is { } id ? LoadoutItemGroupId.From(id) : Optional<LoadoutItemGroupId>.None;
         Masters = loadoutData.Masters;
         Flags = loadoutData.Flags;
         IsLocked = loadoutData.EarlyLoaderIndex is not null;
+        LockReason = IsLocked ? SortItemLockReason.AlwaysLoaded
+            : loadoutData.IsGameInstalled ? SortItemLockReason.GameInstalledGroup
+            : null;
         // Active means the game will load it: switched on here, and the mod that supplies it is enabled too.
-        IsActive = isEnabled && loadoutData.IsEnabled;
+        // For a game-installed plugin the group's switch is all there is.
+        IsActive = loadoutData.IsGameInstalled ? loadoutData.IsEnabled : isEnabled && loadoutData.IsEnabled;
     }
 
     public SortItemKey<string> Key { get; }
@@ -39,5 +44,6 @@ public sealed class PluginReactiveSortItem : IReactiveSortItem<PluginReactiveSor
     public string? Flags { get; }
     public IReadOnlyList<string> Masters { get; }
     public bool IsLocked { get; }
+    public SortItemLockReason? LockReason { get; }
     public bool IsEnabled { get; }
 }

@@ -27,6 +27,9 @@ public sealed class PluginSortData : SortItemData<SortItemKey<string>>
     /// <summary>Where the game loads the plugin among the early loaders, or null when it is not one of them.</summary>
     public int? EarlyLoaderIndex { get; }
 
+    /// <summary>True when the game installed the plugin, so its switch is the game-installed group's and not this row's.</summary>
+    public bool IsGameInstalled { get; init; }
+
     /// <summary>The database entity of the row, null for a row that is not stored yet.</summary>
     public EntityId? RowId { get; }
 

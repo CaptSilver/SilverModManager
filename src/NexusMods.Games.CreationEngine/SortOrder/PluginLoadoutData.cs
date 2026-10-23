@@ -8,7 +8,7 @@ namespace NexusMods.Games.CreationEngine.SortOrder;
 
 /// <summary>
 /// A plugin the loadout offers to the game, with what its header says. <see cref="IsEnabled"/> is the owning
-/// mod's state; the plugin's own on/off switch lives on the sort order row.
+/// mod's state (the game-installed group's, for a plugin the game installed); the plugin's own on/off switch lives on the sort order row.
 /// </summary>
 /// <param name="Masters">Names from the plugin's header. Empty when the header could not be read.</param>
 /// <param name="ModGroupId">The mod that supplies the plugin, null for a file of the game itself.</param>
@@ -26,6 +26,12 @@ public sealed record PluginLoadoutData(
 
     /// <summary>Where the game loads the plugin among the early loaders, or null when it is not one of them.</summary>
     public int? EarlyLoaderIndex { get; init; }
+
+    /// <summary>
+    /// True when the game installed the plugin itself (a Creation). <see cref="IsEnabled"/> is then the switch of the
+    /// "Installed by the game" group, and the plugin's own switch in the sort order is ignored.
+    /// </summary>
+    public bool IsGameInstalled { get; init; }
 
     /// <summary>The header's blueprint flag; the order only treats a blueprint that is also a master specially.</summary>
     public bool IsBlueprint { get; init; }

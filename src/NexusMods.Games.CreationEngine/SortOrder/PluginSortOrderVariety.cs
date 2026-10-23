@@ -30,6 +30,11 @@ namespace NexusMods.Games.CreationEngine.SortOrder;
 public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<string>, PluginReactiveSortItem, PluginLoadoutData, PluginSortData>,
     IPluginSortOrderVariety, IToggleableSortOrderVariety, IReplacedGameEditSource, ILootSortSource
 {
+    // The live-rows query returns the owning mod's state as flags: a value tuple of more than seven columns is
+    // not something the query layer can read.
+    private const int LoadoutStateEnabled = 1;
+    private const int LoadoutStateGameInstalled = 2;
+
     private static readonly SortOrderVarietyId StaticVarietyId = SortOrderVarietyId.From(new Guid("6F2B1C0E-7D3A-4B8E-9A61-3C5D2E8F4A17"));
 
     private readonly IServiceProvider _serviceProvider;
@@ -124,15 +129,17 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         var installation = InstallationOf(loadoutId, Connection.Db);
         var early = EarlyLoaderIndexes(installation);
 
-        return Connection.Query<(string PluginName, int SortIndex, bool IsEnabled, Hash Hash, bool LoadoutIsEnabled, string ModName, EntityId? ModGroupId)>($"""
-                SELECT PluginName, SortIndex, IsEnabled, Hash, LoadoutIsEnabled, ModName, ModGroupId FROM plugins.LiveSortOrderItems({Connection}, {sortOrderId.Value}, {loadoutId}, {DataLocation}, {DataFolder})
+        return Connection.Query<(string PluginName, int SortIndex, bool IsEnabled, Hash Hash, string ModName, EntityId? ModGroupId, int LoadoutState)>($"""
+                SELECT PluginName, SortIndex, IsEnabled, Hash, ModName, ModGroupId,
+                    CASE WHEN LoadoutIsEnabled THEN 1 ELSE 0 END + CASE WHEN IsGameInstalled THEN 2 ELSE 0 END AS LoadoutState
+                FROM plugins.LiveSortOrderItems({Connection}, {sortOrderId.Value}, {loadoutId}, {DataLocation}, {DataFolder})
                 """)
             .Observe(row => PluginSortData.KeyFor(row.PluginName))
             .TransformAsync(async row =>
             {
                 // Rows can arrive before the reconciliation that would warm their headers has run.
                 await _headers.WarmAsync([(row.Hash, row.PluginName)]);
-                var data = ToLoadoutData(row.PluginName, row.Hash, row.LoadoutIsEnabled, row.ModName, row.ModGroupId, installation, early);
+                var data = ToLoadoutData(row.PluginName, row.Hash, (row.LoadoutState & LoadoutStateEnabled) != 0, row.ModName, row.ModGroupId, (row.LoadoutState & LoadoutStateGameInstalled) != 0, installation, early);
                 return new PluginReactiveSortItem(row.SortIndex, row.PluginName, row.IsEnabled, data);
             });
     }
@@ -172,6 +179,9 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
             ?? throw new InvalidOperationException($"Plugin '{item.Key}' is not in sort order {sortOrderId}.");
         if (row.EarlyLoaderIndex is not null)
             throw new InvalidOperationException($"'{row.Name}' is always loaded by the game and cannot be switched off.");
+
+        if (row.IsGameInstalled)
+            throw new InvalidOperationException($"'{row.Name}' was installed by the game and follows its \"Installed by the game\" group; switch the group instead.");
 
         using var tx = Connection.BeginTransaction();
         tx.Add(row.StoredRowId, PluginSortOrderItem.IsEnabled, enabled);
@@ -269,10 +279,10 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
             return [];
 
         var early = EarlyLoaderIndexes(InstallationOf(sortOrder.LoadoutId, dbToUse));
-        var rows = dbToUse.Connection.Query<(string PluginName, int SortIndex, bool IsEnabled, EntityId Id)>($"""
-                SELECT PluginName, SortIndex, IsEnabled, Id FROM plugins.LiveSortOrderItems({dbToUse}, {sortOrderEntityId.Value}, {sortOrder.LoadoutId}, {DataLocation}, {DataFolder})
+        var rows = dbToUse.Connection.Query<(string PluginName, int SortIndex, bool IsEnabled, EntityId Id, bool IsGameInstalled)>($"""
+                SELECT PluginName, SortIndex, IsEnabled, Id, IsGameInstalled FROM plugins.LiveSortOrderItems({dbToUse}, {sortOrderEntityId.Value}, {sortOrder.LoadoutId}, {DataLocation}, {DataFolder})
                 """)
-            .Select(row => new PluginSortData(row.PluginName, row.SortIndex, row.IsEnabled, early.TryGetValue(row.PluginName, out var earlyIndex) ? earlyIndex : null, row.Id))
+            .Select(row => new PluginSortData(row.PluginName, row.SortIndex, row.IsEnabled, early.TryGetValue(row.PluginName, out var earlyIndex) ? earlyIndex : null, row.Id) { IsGameInstalled = row.IsGameInstalled })
             .GroupBy(row => row.SortIndex)
             .OrderBy(group => group.Key)
             // A row that was hidden while its plugin was away keeps the index it had and can share it with a row
@@ -293,7 +303,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         var early = EarlyLoaderIndexes(installation);
 
         return QueryLoadoutPlugins(loadoutId, dbToUse)
-            .Select(row => ToLoadoutData(row.Name, row.Hash, row.IsEnabled, row.ModName, row.ModGroupId, installation, early))
+            .Select(row => ToLoadoutData(row.Name, row.Hash, row.IsEnabled, row.ModName, row.ModGroupId, row.IsGameInstalled, installation, early))
             .ToList();
     }
 
@@ -437,8 +447,8 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         return Reconcile(current, loadoutData, key => !visible.Contains(key) ? tombstones.GetValueOrDefault(key) : null);
     }
 
-    private IEnumerable<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId)> QueryLoadoutPlugins(LoadoutId loadoutId, IDb db) =>
-        db.Connection.Query<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId)>(
+    private IEnumerable<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)> QueryLoadoutPlugins(LoadoutId loadoutId, IDb db) =>
+        db.Connection.Query<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>(
             $"SELECT * FROM plugins.LoadoutPlugins({db}, {loadoutId}, {DataLocation}, {DataFolder})");
 
     private static GameInstallation InstallationOf(LoadoutId loadoutId, IDb db) => Loadout.Load(db, loadoutId).InstallationInstance;
@@ -451,7 +461,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         return early;
     }
 
-    private PluginLoadoutData ToLoadoutData(string name, Hash hash, bool isEnabled, string modName, EntityId? modGroupId, GameInstallation installation, IReadOnlyDictionary<string, int> early)
+    private PluginLoadoutData ToLoadoutData(string name, Hash hash, bool isEnabled, string modName, EntityId? modGroupId, bool isGameInstalled, GameInstallation installation, IReadOnlyDictionary<string, int> early)
     {
         var isMaster = false;
         IReadOnlyList<string> masters = [];
@@ -480,6 +490,7 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         {
             Flags = flags,
             IsBlueprint = isBlueprint,
+            IsGameInstalled = isGameInstalled,
             EarlyLoaderIndex = early.TryGetValue(name, out var index) ? index : null,
         };
     }
