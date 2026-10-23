@@ -1409,6 +1409,9 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="GameInstalled_TreatAsMine_Failed" xml:space="preserve">
         <value>Could not treat these files as yours: {0}</value>
     </data>
+    <data name="GameInstalled_TreatAsMine_NotBackedUp" xml:space="preserve">
+        <value>Moved to External Changes without a backup, so the app can't restore them if they change: {0}</value>
+    </data>
     <data name="GameInstalled_UndoTreatAsMine" xml:space="preserve">
         <value>Undo: treat as installed by the game</value>
     </data>

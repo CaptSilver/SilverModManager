@@ -4,6 +4,8 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Hashing.xxHash3;
+using NexusMods.Hashing.xxHash3.Paths;
+using NexusMods.Paths;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Sdk.FileStore;
@@ -38,13 +40,29 @@ internal sealed class GameInstalledContentService : IGameInstalledContentService
 
         // The overrides row needs an archive like any ingested file, written before the commit so the row never
         // exists without one.
+        // The recorded hash is from the last sync; the game may have rewritten the file since, and the archive must
+        // hold the bytes the row will name. So the live file is hashed and its hash is the one used throughout.
+        var live = new Dictionary<GamePath, (Hash Hash, Size Size)>();
         var backups = new List<ArchivedFileEntry>();
+        var notBackedUp = new List<GamePath>();
         foreach (var file in files)
         {
             GamePath path = file.Path;
-            if (synchronizer.IsIgnoredBackupPath(path)) continue;
-            if (await _fileStore.HaveFile(file.Hash)) continue;
-            backups.Add(new ArchivedFileEntry(new NativeFileStreamFactory(loadout.InstallationInstance.Locations.ToAbsolutePath(path)), file.Hash, file.Size));
+            var onDisk = loadout.InstallationInstance.Locations.ToAbsolutePath(path);
+            if (!onDisk.FileExists) throw new InvalidOperationException($"`{path}` is no longer in the game folder");
+
+            var hash = await onDisk.XxHash3Async(token: token);
+            var size = onDisk.FileInfo.Size;
+            live[path] = (hash, size);
+
+            if (synchronizer.IsIgnoredBackupPath(path))
+            {
+                notBackedUp.Add(path);
+                continue;
+            }
+
+            if (await _fileStore.HaveFile(hash)) continue;
+            backups.Add(new ArchivedFileEntry(new NativeFileStreamFactory(onDisk), hash, size));
         }
 
         if (backups.Count > 0) await _fileStore.BackupFiles(backups, deduplicate: false, token);
@@ -64,13 +82,13 @@ internal sealed class GameInstalledContentService : IGameInstalledContentService
                 ClaimedAt = DateTimeOffset.UtcNow,
             };
             tx.Delete(file.Id, recursive: false);
-            OverridesGroupItems.UpsertFile(tx, loadout, overrides, path, file.Hash, file.Size);
+            OverridesGroupItems.UpsertFile(tx, loadout, overrides, path, live[path].Hash, live[path].Size);
             moved.Add(path);
         }
 
         tx.Delete(item.Id, recursive: false);
         await tx.Commit();
-        return new ClaimOutcome(moved);
+        return new ClaimOutcome(moved, notBackedUp);
     }
 
     public async Task<UnclaimOutcome> Unclaim(GameInstalledClaimId claimId, CancellationToken token = default)
@@ -82,12 +100,15 @@ internal sealed class GameInstalledContentService : IGameInstalledContentService
         var loadout = claim.Loadout;
         GamePath path = claim.Path;
 
-        var disk = DiskStateEntry.FindByGame(db, loadout.Installation).FirstOrDefault(entry => (GamePath)entry.Path == path);
-        if (!disk.IsValid()) return new UnclaimOutcome(false, $"`{path}` is no longer in the game folder");
+        // The last indexed state can be older than the file, so the copy on disk is what gets compared.
+        var onDisk = loadout.InstallationInstance.Locations.ToAbsolutePath(path);
+        if (!onDisk.FileExists) return new UnclaimOutcome(false, $"`{path}` is no longer in the game folder");
+        var diskHash = await onDisk.XxHash3Async(token: token);
+        var diskSize = onDisk.FileInfo.Size;
 
         var row = FindOverridesFile(db, loadout, path);
         if (row is null) return new UnclaimOutcome(false, $"`{path}` is no longer in External Changes");
-        if (row.Value.Hash != disk.Hash) return new UnclaimOutcome(false, $"`{path}` has been changed since it was claimed, the changed copy stays in External Changes");
+        if (row.Value.Hash != diskHash) return new UnclaimOutcome(false, $"`{path}` has been changed since it was claimed, the changed copy stays in External Changes");
 
         using var tx = _connection.BeginTransaction();
         tx.Delete(claim.Id, recursive: false);
@@ -97,8 +118,8 @@ internal sealed class GameInstalledContentService : IGameInstalledContentService
         _ = new GameInstalledFile.New(tx, out var fileId)
         {
             Path = path.ToGamePathParentTuple(loadout.Id),
-            Hash = disk.Hash,
-            Size = disk.Size,
+            Hash = diskHash,
+            Size = diskSize,
             LoadoutItem = new LoadoutItem.New(tx, fileId)
             {
                 Name = path.FileName,

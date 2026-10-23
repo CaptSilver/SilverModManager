@@ -163,6 +163,32 @@ public class GameInstalledClaimTests : AIsolatedGameTest<GameInstalledClaimTests
     }
 
     [Fact]
+    public async Task ClaimingReportsThePathsMovedWithoutABackup()
+    {
+        GameInstalledStubbedGame.IgnoredBackups.Add(CreationA);
+        var (_, item) = await LoadoutWithOneItem((CreationA, "alpha 1"), (CreationB, "beta 1"));
+
+        var outcome = await Service.Claim(item.GameInstalledItemId);
+
+        outcome.MovedToExternalChanges.Should().BeEquivalentTo([CreationA, CreationB]);
+        outcome.NotBackedUp.Should().BeEquivalentTo([CreationA]);
+    }
+
+    [Fact]
+    public async Task ClaimingAFileDeletedFromDiskIsRefusedAndMovesNothing()
+    {
+        var (loadout, item) = await LoadoutWithOneItem((CreationA, "alpha 1"), (CreationB, "beta 1"));
+        OnDisk(CreationB).Delete();
+
+        var claim = async () => await Service.Claim(item.GameInstalledItemId);
+
+        (await claim.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain(CreationB.Path.ToString());
+        Items(Refresh(loadout)).Should().ContainSingle("a refused claim leaves the item where it was");
+        OverridesRows(Refresh(loadout)).Should().BeEmpty();
+        GameInstalledClaim.FindByLoadout(Connection.Db, loadout.Id).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task AClaimedFileCanBeMovedIntoAModAndExtracts()
     {
         var (loadout, item) = await LoadoutWithOneItem((CreationA, "alpha 1"));
@@ -240,7 +266,6 @@ public class GameInstalledClaimTests : AIsolatedGameTest<GameInstalledClaimTests
         var (loadout, item) = await LoadoutWithOneItem((CreationA, "alpha 1"));
         await Service.Claim(item.GameInstalledItemId);
         await WriteOnDisk(CreationA, "alpha edited by the user");
-        await Synchronizer.ReindexState(GameInstallation);
         var claim = GameInstalledClaim.FindByLoadout(Connection.Db, loadout.Id).Single();
 
         var outcome = await Service.Unclaim(claim.GameInstalledClaimId);
@@ -252,6 +277,49 @@ public class GameInstalledClaimTests : AIsolatedGameTest<GameInstalledClaimTests
         file.Hash.Should().Be(HashOf("alpha 1"), "the overrides row is left as it was");
         Items(Refresh(loadout)).Should().BeEmpty();
         GameInstalledClaim.FindByLoadout(Connection.Db, loadout.Id).Should().ContainSingle("a refused undo keeps the claim");
+    }
+
+    [Fact]
+    public async Task ClaimingAFileTheGameRewroteSinceTheLastSyncArchivesTheNewBytesUnderTheirOwnHash()
+    {
+        var (loadout, item) = await LoadoutWithOneItem((CreationA, "alpha 1"));
+        // Not indexed: the recorded hash is still the one from the last sync.
+        await WriteOnDisk(CreationA, "alpha rewritten by the game");
+
+        await Service.Claim(item.GameInstalledItemId);
+
+        var row = OverridesRows(Refresh(loadout)).Should().ContainSingle().Subject;
+        row.TryGetAsLoadoutFile(out var file).Should().BeTrue();
+        file.Hash.Should().Be(HashOf("alpha rewritten by the game"));
+        file.Size.Should().Be(Size.FromLong(Encoding.UTF8.GetByteCount("alpha rewritten by the game")));
+        var extracted = await FileStore.ExtractFiles([file.Hash]);
+        Encoding.UTF8.GetString(extracted[file.Hash]).Should().Be("alpha rewritten by the game");
+    }
+
+    [Fact]
+    public async Task UnclaimingAnUneditedCopyRestoresItEvenWhenTheIndexIsStale()
+    {
+        var (loadout, item) = await LoadoutWithOneItem((CreationA, "alpha 1"));
+        await Service.Claim(item.GameInstalledItemId);
+        var claim = GameInstalledClaim.FindByLoadout(Connection.Db, loadout.Id).Single();
+
+        (await Service.Unclaim(claim.GameInstalledClaimId)).Restored.Should().BeTrue();
+
+        GameInstalledPaths.For(Connection.Db, loadout.LoadoutId)[CreationA].Hash.Should().Be(HashOf("alpha 1"));
+    }
+
+    [Fact]
+    public async Task UnclaimingAFileDeletedFromDiskIsRefused()
+    {
+        var (loadout, item) = await LoadoutWithOneItem((CreationA, "alpha 1"));
+        await Service.Claim(item.GameInstalledItemId);
+        OnDisk(CreationA).Delete();
+        var claim = GameInstalledClaim.FindByLoadout(Connection.Db, loadout.Id).Single();
+
+        var outcome = await Service.Unclaim(claim.GameInstalledClaimId);
+
+        outcome.Restored.Should().BeFalse();
+        outcome.Reason.Should().Contain("no longer in the game folder");
     }
 
     [Fact]

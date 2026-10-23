@@ -134,7 +134,14 @@ internal class GameInstalledDataProvider : ILoadoutDataProvider
     {
         try
         {
-            await _serviceProvider.GetRequiredService<IGameInstalledContentService>().Claim(itemId);
+            var outcome = await _serviceProvider.GetRequiredService<IGameInstalledContentService>().Claim(itemId);
+            // Files the archive keeps a copy of can always be put back; the rest are worth a warning.
+            if (outcome.NotBackedUp.Count > 0)
+            {
+                _serviceProvider.GetRequiredService<IWindowNotificationService>()
+                    .ShowToast(string.Format(Language.GameInstalled_TreatAsMine_NotBackedUp,
+                        string.Join(", ", outcome.NotBackedUp.Select(path => path.Path))));
+            }
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {

@@ -22,8 +22,12 @@ public interface IGameInstalledContentService
 /// <summary>
 /// Result of <see cref="IGameInstalledContentService.Claim"/>.
 /// </summary>
-/// <param name="MovedToExternalChanges">Paths that had no usable bytes to keep and went to External Changes.</param>
-public sealed record ClaimOutcome(IReadOnlyList<GamePath> MovedToExternalChanges);
+/// <param name="MovedToExternalChanges">Every path that went to External Changes.</param>
+/// <param name="NotBackedUp">
+/// The moved paths the game's synchronizer never backs up: the archive holds no copy of them, so a later change
+/// or deletion on disk cannot be undone.
+/// </param>
+public sealed record ClaimOutcome(IReadOnlyList<GamePath> MovedToExternalChanges, IReadOnlyList<GamePath> NotBackedUp);
 
 /// <summary>
 /// Result of <see cref="IGameInstalledContentService.Unclaim"/>.

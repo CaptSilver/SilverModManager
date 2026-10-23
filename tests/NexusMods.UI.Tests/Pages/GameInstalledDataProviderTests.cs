@@ -297,7 +297,7 @@ public class GameInstalledDataProviderTests(IServiceProvider provider) : AUiTest
     {
         var (loadout, group) = await LoadoutWithGroup();
         var itemId = await AddItem(loadout, group, "Claimable", "claimable.pak", canBeClaimed: true);
-        _service.Claim(Arg.Any<GameInstalledItemId>(), Arg.Any<CancellationToken>()).Returns(new ClaimOutcome([]));
+        _service.Claim(Arg.Any<GameInstalledItemId>(), Arg.Any<CancellationToken>()).Returns(new ClaimOutcome([], []));
         var children = await Children(await GroupRow(FilterFor(loadout)));
         await Eventually(() => children.Count.Should().Be(1));
         var action = children.Items.Single().Get<LoadoutComponents.TreatAsMineAction>(LoadoutColumns.EnabledState.TreatAsMineComponentKey);
@@ -324,6 +324,44 @@ public class GameInstalledDataProviderTests(IServiceProvider provider) : AUiTest
             Arg.Is<string>(message => message.Contains("the file is open in another program")),
             Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(),
             Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()));
+    }
+
+    [Fact]
+    public async Task ClaimedPathsMovedWithoutABackupAreShownToTheUser()
+    {
+        var (loadout, group) = await LoadoutWithGroup();
+        await AddItem(loadout, group, "Claimable", "claimable.pak", canBeClaimed: true);
+        var pak = new GamePath(LocationId.Game, "Data/claimable.pak");
+        var esp = new GamePath(LocationId.Game, "Data/claimable.esp");
+        var ini = new GamePath(LocationId.Game, "Data/claimable.ini");
+        _service.Claim(Arg.Any<GameInstalledItemId>(), Arg.Any<CancellationToken>()).Returns(new ClaimOutcome([pak, esp, ini], [pak, esp]));
+        var children = await Children(await GroupRow(FilterFor(loadout)));
+        await Eventually(() => children.Count.Should().Be(1));
+        var action = children.Items.Single().Get<LoadoutComponents.TreatAsMineAction>(LoadoutColumns.EnabledState.TreatAsMineComponentKey);
+
+        await OnUi(() => action.Command.Execute(R3.Unit.Default));
+
+        await Eventually(() => _notifications.Received(1).ShowToast(
+            Arg.Is<string>(message => message.Contains("claimable.pak") && message.Contains("claimable.esp") && !message.Contains("claimable.ini")),
+            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(),
+            Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()));
+    }
+
+    [Fact]
+    public async Task AClaimThatBackedUpEveryFileShowsNoNotice()
+    {
+        var (loadout, group) = await LoadoutWithGroup();
+        await AddItem(loadout, group, "Claimable", "claimable.pak", canBeClaimed: true);
+        _service.Claim(Arg.Any<GameInstalledItemId>(), Arg.Any<CancellationToken>())
+            .Returns(new ClaimOutcome([new GamePath(LocationId.Game, "Data/claimable.pak")], []));
+        var children = await Children(await GroupRow(FilterFor(loadout)));
+        await Eventually(() => children.Count.Should().Be(1));
+        var action = children.Items.Single().Get<LoadoutComponents.TreatAsMineAction>(LoadoutColumns.EnabledState.TreatAsMineComponentKey);
+
+        await OnUi(() => action.Command.Execute(R3.Unit.Default));
+
+        await Eventually(() => _service.Received(1).Claim(Arg.Any<GameInstalledItemId>(), Arg.Any<CancellationToken>()));
+        _notifications.ReceivedCalls().Should().BeEmpty();
     }
 
     [Fact]

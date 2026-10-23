@@ -4030,6 +4030,15 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Moved to External Changes without a backup, so the app can&apos;t restore them if they change: {0}.
+        /// </summary>
+        public static string GameInstalled_TreatAsMine_NotBackedUp {
+            get {
+                return ResourceManager.GetString("GameInstalled_TreatAsMine_NotBackedUp", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Undo: treat as installed by the game.
         /// </summary>
         public static string GameInstalled_UndoTreatAsMine {
