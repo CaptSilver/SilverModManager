@@ -50,8 +50,8 @@ internal sealed class LibFuseLowLevelMount : IFuseMount, IVfsInvalidationSink
     private static readonly TimeSpan UnmountTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan BusyRetryWindow = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan BusyRetryInterval = TimeSpan.FromMilliseconds(50);
-    private static readonly uint Uid = LibcProcess.geteuid();
-    private static readonly uint Gid = LibcProcess.getegid();
+    private static readonly uint Uid = LibcUser.EffectiveUserId;
+    private static readonly uint Gid = LibcUser.EffectiveGroupId;
 
     private readonly IVfsOperations _operations;
     private readonly FuseMountOptions _options;

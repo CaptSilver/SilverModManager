@@ -7,12 +7,6 @@ internal static unsafe partial class LibcProcess
 {
     private const int PathMax = 4096;
 
-    [LibraryImport("libc", EntryPoint = "geteuid")]
-    internal static partial uint geteuid();
-
-    [LibraryImport("libc", EntryPoint = "getegid")]
-    internal static partial uint getegid();
-
     [LibraryImport("libc", EntryPoint = "realpath", StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]
     private static partial IntPtr realpath(string path, byte* resolved);
 

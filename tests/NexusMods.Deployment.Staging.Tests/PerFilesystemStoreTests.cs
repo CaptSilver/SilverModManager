@@ -6,6 +6,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.FileStore;
+using NexusMods.Sdk.Native;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Settings;
 using NSubstitute;
@@ -65,7 +66,11 @@ public class PerFilesystemStoreTests : IDisposable
         return hash;
     }
 
-    private static readonly string StoreFolder = ".silvermodmanager/staging";
+    // Per user, so two accounts sharing a mount never share (or can plant) a store.
+    private static readonly string UserFolder = $".silvermodmanager-{LibcUser.EffectiveUserId}";
+    private static readonly string StoreFolder = $"{UserFolder}/staging";
+
+    private const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
 
     [Fact]
     public void ForRoot_RootOnTheDefaultFilesystem_IsTheDefaultStore()
@@ -126,16 +131,16 @@ public class PerFilesystemStoreTests : IDisposable
         var store = NewStore(perFilesystem: false);
 
         store.ForRoot(steam).Should().BeSameAs(store);
-        steam.Combine(".silvermodmanager").DirectoryExists().Should().BeFalse();
+        steam.Combine(UserFolder).DirectoryExists().Should().BeFalse();
     }
 
     [Fact]
     public void ForRoot_FilesystemThatCannotHoldAStore_FallsBackAndLogsOnce()
     {
-        // A file where the .silvermodmanager folder would go: creating the store folder fails the way a
+        // A file where the user's store folder would go: creating the store folder fails the way a
         // read-only mount does, without depending on permissions.
         var steam = AddFilesystem("steam", device: 2);
-        File.WriteAllText(steam.Combine(".silvermodmanager").ToString(), "in the way");
+        File.WriteAllText(steam.Combine(UserFolder).ToString(), "in the way");
         var store = NewStore();
 
         store.ForRoot(steam.Combine("a")).Should().BeSameAs(store);
@@ -232,10 +237,10 @@ public class PerFilesystemStoreTests : IDisposable
 
         // Unmounted: the mount point is an empty folder again.
         var away = _temp.Combine("steam-unmounted-away");
-        Directory.Move(steam.Combine(".silvermodmanager").ToString(), away.ToString());
+        Directory.Move(steam.Combine(UserFolder).ToString(), away.ToString());
         var store = NewStore();
         var deleted = store.Sweep(() => Nothing);
-        Directory.Move(away.ToString(), steam.Combine(".silvermodmanager").ToString());
+        Directory.Move(away.ToString(), steam.Combine(UserFolder).ToString());
 
         deleted.Should().Be(0);
         path.FileExists.Should().BeTrue();
@@ -257,6 +262,67 @@ public class PerFilesystemStoreTests : IDisposable
 
         hold.Dispose();
         (await sweep.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken)).Should().Be(1);
+    }
+
+    [Fact]
+    public void ForRoot_CreatesTheStoreFoldersForTheUserAlone()
+    {
+        var steam = AddFilesystem("steam", device: 2);
+
+        NewStore().ForRoot(steam);
+
+        File.GetUnixFileMode(steam.Combine(UserFolder).ToString()).Should().Be(OwnerOnly);
+        File.GetUnixFileMode(steam.Combine(StoreFolder).ToString()).Should().Be(OwnerOnly);
+    }
+
+    [Fact]
+    public void ForRoot_StoreFolderThatIsASymlink_FallsBackAndLeavesTheTargetAlone()
+    {
+        // Someone else on a shared mount could plant a link that points the store at a folder they control.
+        var steam = AddFilesystem("steam", device: 2);
+        var elsewhere = _temp.Combine("elsewhere");
+        elsewhere.CreateDirectory();
+        File.CreateSymbolicLink(steam.Combine(UserFolder).ToString(), elsewhere.ToString());
+        var store = NewStore();
+
+        store.ForRoot(steam).Should().BeSameAs(store);
+
+        Directory.EnumerateFileSystemEntries(elsewhere.ToString()).Should().BeEmpty();
+        _logger.Warnings.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void ForRoot_StoreFolderOthersCanWrite_FallsBack()
+    {
+        var steam = AddFilesystem("steam", device: 2);
+        var folder = steam.Combine(UserFolder).ToString();
+        Directory.CreateDirectory(folder);
+        File.SetUnixFileMode(folder, OwnerOnly | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute);
+        var store = NewStore();
+
+        store.ForRoot(steam).Should().BeSameAs(store);
+
+        _logger.Warnings.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Sweep_RecordedStoreReplacedByASymlink_IsSkippedAndNothingBehindTheLinkIsDeleted()
+    {
+        var steam = AddFilesystem("steam", device: 2);
+        var dead = Add(0x51);
+        await NewStore().ForRoot(steam).Ensure(InstallA, dead, TestContext.Current.CancellationToken);
+
+        // The recorded store folder is swapped for a link to a folder holding the same layout.
+        var decoy = _temp.Combine("decoy");
+        Directory.Move(steam.Combine(StoreFolder).ToString(), decoy.ToString());
+        File.CreateSymbolicLink(steam.Combine(StoreFolder).ToString(), decoy.ToString());
+        var before = Directory.EnumerateFiles(decoy.ToString(), "*", SearchOption.AllDirectories).Count();
+
+        var deleted = NewStore().Sweep(() => Nothing);
+
+        deleted.Should().Be(0);
+        Directory.EnumerateFiles(decoy.ToString(), "*", SearchOption.AllDirectories).Count().Should().Be(before);
+        _logger.Warnings.Should().ContainSingle();
     }
 
     [Fact]

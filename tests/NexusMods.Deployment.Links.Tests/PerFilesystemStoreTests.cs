@@ -38,7 +38,7 @@ public class ReflinkThroughAGameFilesystemStoreTests(ITestOutputHelper helper)
 
     protected override IFilesystemLocator FilesystemLocator => new FixedMountLocator(_mount);
 
-    private AbsolutePath GameFilesystemStore => _mount.Combine(".silvermodmanager/staging");
+    private AbsolutePath GameFilesystemStore => _mount.Combine($".silvermodmanager-{LibcUser.EffectiveUserId}/staging");
 
     [Fact]
     public async Task Apply_ChoosesReflinkAndStagesOnTheGameFilesystem()

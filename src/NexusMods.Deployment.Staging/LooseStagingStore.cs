@@ -5,6 +5,7 @@ using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using NexusMods.Sdk.Native;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Settings;
@@ -19,9 +20,13 @@ namespace NexusMods.Deployment.Staging;
 public sealed class LooseStagingStore : ILooseStagingStore
 {
     /// <summary>
-    /// Where a store sits on a filesystem other than the default one, relative to that filesystem's root.
+    /// Where a store sits on a filesystem other than the default one, relative to that filesystem's root. The
+    /// folder is per user: the root of a second drive is often shared, and another account must not be able to
+    /// plant the folder (or a link in its place) that this one stages files into.
     /// </summary>
-    internal const string FilesystemStoreFolder = ".silvermodmanager/staging";
+    internal static string FilesystemStoreFolder => $".silvermodmanager-{LibcUser.EffectiveUserId}/staging";
+
+    private const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
 
     // Lists the per-filesystem stores this one has created, one path per line, so a sweep after a restart
     // still reaches them. It lives in the store root, where nothing parses it as an installation.
@@ -116,8 +121,22 @@ public sealed class LooseStagingStore : ILooseStagingStore
         var storeRoot = filesystemRoot.Combine(FilesystemStoreFolder);
         try
         {
-            // An existing folder from an earlier run is reused as it is.
-            storeRoot.CreateDirectory();
+            // A folder from an earlier run is reused, but only after it passes the same check as a new one. Each level
+            // is checked before anything is created inside it, so nothing lands behind a planted link.
+            CreateOwnerOnly(storeRoot.Parent);
+            var reason = UntrustedFolderReason(storeRoot.Parent);
+            if (reason is null)
+            {
+                CreateOwnerOnly(storeRoot);
+                reason = UntrustedFolderReason(storeRoot);
+            }
+            if (reason is not null)
+            {
+                _logger.LogWarning("Not using the staging store at {Path}: {Reason}; files for {Root} are staged in {Default}, so linking there may fall back to symlinks",
+                    storeRoot, reason, root, Root);
+                return null;
+            }
+
             var probe = storeRoot.Combine($".{ProtonMessages.ProbeFileName}-{Guid.NewGuid():N}");
             File.WriteAllBytes(probe.ToString(), []);
             File.Delete(probe.ToString());
@@ -136,6 +155,33 @@ public sealed class LooseStagingStore : ILooseStagingStore
             RememberStore(storeRoot);
         }
         return store;
+    }
+
+    // Never changes the mode of a folder that is already there: one this user didn't make stays as it is and fails
+    // the check instead.
+    private static void CreateOwnerOnly(AbsolutePath folder)
+    {
+        if (LibcStat.TryLStat(folder.ToString(), out _) == 0) return;
+        Directory.CreateDirectory(folder.ToString(), OwnerOnly);
+    }
+
+    /// <summary>
+    /// Why a per-filesystem store folder can't be trusted, or null when it can: the store folder and its per-user
+    /// parent must both be real folders (not links), owned by this user, that nobody else can write to.
+    /// </summary>
+    internal static string? UntrustedReason(AbsolutePath storeRoot)
+        => UntrustedFolderReason(storeRoot.Parent) ?? UntrustedFolderReason(storeRoot);
+
+    private static string? UntrustedFolderReason(AbsolutePath folder)
+    {
+        var errno = LibcStat.TryLStat(folder.ToString(), out var stat);
+        if (errno != 0) return $"{folder} can't be read (errno {errno})";
+        if (!stat.IsDirectory) return $"{folder} is not a plain folder";
+        var uid = LibcUser.EffectiveUserId;
+        if (stat.Uid != uid) return $"{folder} belongs to user {stat.Uid}, not {uid}";
+        // Group or other write bit.
+        if ((stat.Mode & 0b000_010_010) != 0) return $"{folder} can be written by other users";
+        return null;
     }
 
     private AbsolutePath KnownStoresPath => Root.Combine(KnownStoresFile);
@@ -161,7 +207,17 @@ public sealed class LooseStagingStore : ILooseStagingStore
                 {
                     if (string.IsNullOrWhiteSpace(line)) continue;
                     var storeRoot = _fileSystem.FromUnsanitizedFullPath(line.Trim());
-                    if (!_known.ContainsKey(storeRoot)) _known[storeRoot] = new LooseStagingStore(this, storeRoot);
+                    if (_known.ContainsKey(storeRoot)) continue;
+
+                    // A store that is gone is an unmounted filesystem, which the sweep skips on its own. One that is
+                    // there but no longer passes the check (swapped for a link, opened to others) is never swept:
+                    // deleting through it could reach files that aren't the store's.
+                    if (LibcStat.TryLStat(storeRoot.ToString(), out _) == 0 && UntrustedReason(storeRoot) is { } reason)
+                    {
+                        _logger.LogWarning("Not sweeping the staging store at {Path}: {Reason}", storeRoot, reason);
+                        continue;
+                    }
+                    _known[storeRoot] = new LooseStagingStore(this, storeRoot);
                 }
             }
             return _known.Values.ToList();
