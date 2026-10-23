@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Library;
 using NexusMods.Sdk.Settings;
+using NexusMods.Wabbajack.Acquire;
 using NexusMods.Wabbajack.Library;
 using NexusMods.Wabbajack.Models;
 
@@ -17,6 +18,7 @@ public static class Services
             .AddWabbajackSettings()
             .AddSingleton<WabbajackPaths>()
             .AddSingleton<ILibraryArchiveLocator, LibraryArchiveLocator>()
+            .AddSingleton<ArchiveInventory>()
             .AddSingleton<ILibraryFileRecogniser, WabbajackModlistRecogniser>();
     }
 

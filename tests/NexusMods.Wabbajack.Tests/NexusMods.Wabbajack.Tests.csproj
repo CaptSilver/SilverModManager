@@ -20,5 +20,7 @@
     <ItemGroup>
         <!-- Copied from the Wabbajack repository, see Fixtures/NOTICE -->
         <None Include="Fixtures\MO2AndSKSETest.wabbajack" CopyToOutputDirectory="PreserveNewest" />
+        <!-- Built here with 7z: pack/inner.zip (holding deep/c.txt) and pack/other.txt -->
+        <None Include="Fixtures\ZipInside7z.7z" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 </Project>
