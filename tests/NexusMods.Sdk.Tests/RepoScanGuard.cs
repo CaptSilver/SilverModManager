@@ -10,11 +10,12 @@ namespace NexusMods.Sdk.Tests;
 /// </summary>
 internal static class RepoScanGuard
 {
-    private static readonly string[] SkippedFolders = ["obj", "bin", "extern"];
+    private static readonly string[] SkippedFolders = ["obj", "bin", "extern", ".git"];
 
     /// <summary>
-    /// Third-party libraries kept as source. They keep upstream's names and style, so the guards
-    /// that police first-party code do not apply to them.
+    /// Third-party libraries kept as source. They keep upstream's code and style, so the guards
+    /// that police first-party code do not apply to them. Their namespaces follow the first-party
+    /// rename, so the namespace guard passes includeVendored to scan them anyway.
     /// </summary>
     private static readonly string[] VendoredFolders =
     [
@@ -36,6 +37,14 @@ internal static class RepoScanGuard
     /// Build output and vendored folders are skipped.
     /// </summary>
     public static IEnumerable<string> EnumerateFiles(string root, string directory, params string[] searchPatterns)
+        => EnumerateFiles(root, directory, includeVendored: false, searchPatterns);
+
+    /// <summary>
+    /// Like the overload without the flag, but with <paramref name="includeVendored"/> the vendored
+    /// libraries are scanned too. The vendored sources follow the first-party namespace rename, so a
+    /// guard about that must not skip them.
+    /// </summary>
+    public static IEnumerable<string> EnumerateFiles(string root, string directory, bool includeVendored, params string[] searchPatterns)
     {
         foreach (var searchPattern in searchPatterns)
         {
@@ -43,7 +52,7 @@ internal static class RepoScanGuard
             {
                 var relative = ToRelative(root, path);
                 if (relative.Split('/').Any(part => SkippedFolders.Contains(part))) continue;
-                if (VendoredFolders.Any(folder => relative.StartsWith(folder, StringComparison.Ordinal))) continue;
+                if (!includeVendored && VendoredFolders.Any(folder => relative.StartsWith(folder, StringComparison.Ordinal))) continue;
                 yield return relative;
             }
         }

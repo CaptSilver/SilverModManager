@@ -18,7 +18,7 @@ namespace NexusMods.Sdk;
 public static class FirstPartyNames
 {
     /// <summary>Assembly name prefix shared by every first-party library.</summary>
-    public const string AssemblyPrefix = "NexusMods.";
+    public const string AssemblyPrefix = "SilverModManager.";
 
     /// <summary>File-system glob matching the DLLs of the prefixed first-party libraries.</summary>
     public const string AssemblyGlob = AssemblyPrefix + "*.dll";
