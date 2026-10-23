@@ -1,12 +1,15 @@
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
@@ -116,7 +119,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
 
         var hash = TreeOf(group)["A"]["Game/Data/SKSE/Plugins/x.ini"];
-        await using var stream = await FileStore.GetFileStream(hash);
+        await using var stream = await ServiceProvider.GetRequiredService<IFileStore>().GetFileStream(hash);
         var text = Encoding.UTF8.GetString(await ReadAll(stream));
 
         var gameRoot = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty)).ToString();
@@ -290,10 +293,10 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
     [Fact]
     public async Task ATextureAndABuiltArchiveStillLeaveTransformRows()
     {
-        var archive = await AddZip("a.zip", new() { ["t.dds"] = [1, 2, 3] });
+        var archive = await AddZip("a.zip", new() { ["t.dds"] = Bc1Dds(8) });
         var list = new ListBuilder();
         list.Archives.Add(archive);
-        list.Directives.Add(new TransformedTexture(P("mods/A/t.dds"), Hash64(new byte[] { 1, 2, 3 }), 3, new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(1, 1, 1, "BC7_UNORM")));
+        list.Directives.Add(UnwritableTexture("mods/A/t.dds", archive, "t.dds"));
         list.Directives.Add(list.Inline("TEMP_BSA_FILES/pack/one.txt", "1"));
         list.Directives.Add(new CreateBsa(P("mods/A/pack.bsa"), Hash.From(1), 1, P("pack"), JsonDocument.Parse("{}").RootElement, []));
         var loadout = await CreateLoadout();
@@ -303,7 +306,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
 
         SkipsOf(group).Select(s => (s.To, s.Kind, s.Reason)).Should().BeEquivalentTo(
         [
-            ("mods/A/t.dds", SkipKind.Transform, "this build cannot recompress textures yet"),
+            ("mods/A/t.dds", SkipKind.Transform, "the texture 'mods/A/t.dds' could not be re-encoded: Cannot re-encode a texture with format BC6H_UF16"),
             ("mods/A/pack.bsa", SkipKind.Transform, "this build cannot build archives yet"),
         ]);
     }
@@ -354,12 +357,12 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
     [Fact]
     public async Task RunningTheJobTwiceCreatesNoSecondGroupOrFileAndNoSecondSkipRow()
     {
-        var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3] });
+        var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3], ["tex.dds"] = Bc1Dds(8) });
         var list = new ListBuilder();
         list.Archives.Add(archive);
         list.Directives.Add(list.Member("mods/A/plain.bin", archive, "base.bin", [1, 2, 3]));
         list.Directives.Add(list.Inline("mods/A/inline.txt", "inline"));
-        list.Directives.Add(new TransformedTexture(P("mods/A/patched.bin"), Hash64(new byte[] { 1, 2, 3, 4 }), 4, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), new ImageState(1, 1, 1, "BC7_UNORM")));
+        list.Directives.Add(UnwritableTexture("mods/A/patched.bin", archive, "tex.dds"));
         var loadout = await CreateLoadout();
         var modlist = await AddModlist(list.ToList(), list.Blobs);
         var options = new InstallOptions(false, new HashSet<RelativePath>());
@@ -506,6 +509,123 @@ public class InstallModlistTransformTests(ITestOutputHelper helper) : InstallTes
         SkipsOf(group).Should().BeEmpty();
         LoadoutFile.All(Connection.Db).Should().NotContain(f => f.AsLoadoutItemWithTargetPath().AsLoadoutItem().Name == "one.txt", "inputs of an archive are never loadout files");
         job.Progress.DroppedCount.Should().Be(0, "the inputs went into the archive");
+    }
+}
+
+public class InstallModlistTextureTests(ITestOutputHelper helper) : InstallTestBase<InstallModlistTextureTests>(helper)
+{
+    private readonly CapturingLoggerProvider _logs = new();
+
+    protected override IServiceCollection AddServices(IServiceCollection services)
+        => base.AddServices(services).AddSingleton<ILoggerProvider>(_logs);
+
+    [Fact]
+    public async Task ATextureIsReEncodedToTheRecordedSizeAndALogLineNotASkipSaysItsHashDiffers()
+    {
+        var source = Bc1Dds(64);
+        var archive = await AddZip("a.zip", new() { ["t.dds"] = source });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(new TransformedTexture(P("mods/A/t.dds"), Hash.From(7), 1, new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(32, 32, 3, "BC7_UNORM")));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        var written = await InstalledBytes(group, "A", "Game/Data/t.dds");
+        DdsHeader.Read(written).Should().Be(new DdsHeader(32, 32, 3, Bc7: true));
+        SkipsOf(group).Should().BeEmpty("a re-encoded texture is not expected to match the author's bytes");
+        _logs.Messages.Should().ContainSingle(m => m.Contains("mods/A/t.dds") && m.Contains(Hash64(written).ToString()) && m.Contains(Hash.From(7).ToString()));
+    }
+
+    [Fact]
+    public async Task ATextureWhoseTargetFormatWeCannotWriteBecomesATransformSkipNamingTheFormat()
+    {
+        var archive = await AddZip("a.zip", new() { ["t.dds"] = Bc1Dds(8) });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(UnwritableTexture("mods/A/t.dds", archive, "t.dds"));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        var skip = SkipsOf(group).Should().ContainSingle().Subject;
+        skip.Kind.Should().Be(SkipKind.Transform);
+        skip.Reason.Should().Contain("BC6H_UF16");
+        TreeOf(group).Should().NotContainKey("A");
+    }
+
+    [Fact]
+    public async Task TwoTexturesInOneListBothInstall()
+    {
+        var archive = await AddZip("a.zip", new() { ["one.dds"] = Bc1Dds(64), ["two.dds"] = Bc1Dds(32) });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(new TransformedTexture(P("mods/A/one.dds"), Hash.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("one.dds")]), new ImageState(16, 16, 1, "BC7_UNORM")));
+        list.Directives.Add(new TransformedTexture(P("mods/A/two.dds"), Hash.From(2), 1, new ArchiveHashPath(archive.XxHash64, [P("two.dds")]), new ImageState(8, 8, 1, "BC7_UNORM")));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().BeEmpty();
+        DdsHeader.Read(await InstalledBytes(group, "A", "Game/Data/one.dds")).Should().Be(new DdsHeader(16, 16, 1, Bc7: true));
+        DdsHeader.Read(await InstalledBytes(group, "A", "Game/Data/two.dds")).Should().Be(new DdsHeader(8, 8, 1, Bc7: true));
+    }
+
+    private async Task<byte[]> InstalledBytes(WabbajackModlistLoadoutGroup.ReadOnly group, string mod, string path)
+    {
+        var hash = TreeOf(group)[mod][path];
+        await using var stream = await ServiceProvider.GetRequiredService<IFileStore>().GetFileStream(hash);
+        using var copy = new MemoryStream();
+        await stream.CopyToAsync(copy);
+        return copy.ToArray();
+    }
+}
+
+public class InstallModlistFailingBatchTests(ITestOutputHelper helper) : InstallTestBase<InstallModlistFailingBatchTests>(helper)
+{
+    protected override IServiceCollection AddServices(IServiceCollection services)
+        => base.AddServices(services).AddSingleton<IDirectiveTransforms, FailingPatchSlowTextureTransforms>();
+
+    [Fact]
+    public async Task AFailedBatchStopsItsQueuedTextureEncodesInsteadOfWaitingForThem()
+    {
+        var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3], ["t.dds"] = Bc1Dds(8) });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(new PatchedFromArchive(P("mods/A/patched.bin"), Hash.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), Hash64(new byte[] { 1, 2, 3 }), list.Blob([4])));
+        list.Directives.Add(new TransformedTexture(P("mods/A/t.dds"), Hash.From(2), 1, new ArchiveHashPath(archive.XxHash64, [P("t.dds")]), new ImageState(4, 4, 1, "BC7_UNORM")));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var failure = await Record.ExceptionAsync(() => Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>())).WaitAsync(TimeSpan.FromSeconds(30)));
+
+        failure.Should().BeOfType<InvalidOperationException>().Which.Message.Should().Be("the patch tool crashed");
+    }
+}
+
+internal sealed class CapturingLoggerProvider : ILoggerProvider
+{
+    private readonly ConcurrentQueue<string> _messages = new();
+
+    public IReadOnlyCollection<string> Messages => _messages;
+
+    public ILogger CreateLogger(string categoryName) => new Capture(_messages);
+
+    public void Dispose() { }
+
+    private sealed class Capture(ConcurrentQueue<string> messages) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Information) messages.Enqueue(formatter(state, exception));
+        }
     }
 }
 

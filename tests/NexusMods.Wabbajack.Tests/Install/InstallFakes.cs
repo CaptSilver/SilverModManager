@@ -34,3 +34,19 @@ internal sealed class ConcatenatingTransforms : IDirectiveTransforms
         }
     }
 }
+
+/// <summary>
+/// A patch that fails with an error the job does not turn into a skip row, and a texture encode that only ends when
+/// its token is cancelled: what an install that dies mid-batch with slow encodes still queued looks like.
+/// </summary>
+internal sealed class FailingPatchSlowTextureTransforms : IDirectiveTransforms
+{
+    public Task Patch(Stream basis, Stream delta, Stream output, CancellationToken cancellationToken)
+        => throw new InvalidOperationException("the patch tool crashed");
+
+    public async Task Recompress(Stream dds, NexusMods.Wabbajack.Format.ImageState target, Stream output, CancellationToken cancellationToken)
+        => await Task.Delay(Timeout.Infinite, cancellationToken);
+
+    public Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
+        => throw new InvalidOperationException("no archive is built here");
+}

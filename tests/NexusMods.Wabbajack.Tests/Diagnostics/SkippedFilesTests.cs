@@ -152,10 +152,10 @@ public class SkippedFilesTests(ITestOutputHelper helper) : InstallTestBase<Skipp
     [Fact]
     public async Task UndoingTheRemovalOfAnInstalledListBringsBackItsSkipRows()
     {
-        var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3] });
+        var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3], ["tex.dds"] = Bc1Dds(8) });
         var list = new ListBuilder();
         list.Archives.Add(archive);
-        list.Directives.Add(new TransformedTexture(P("mods/A/patched.bin"), Hash64(new byte[] { 1, 2, 3, 4 }), 4, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), new ImageState(1, 1, 1, "BC7_UNORM")));
+        list.Directives.Add(UnwritableTexture("mods/A/patched.bin", archive, "tex.dds"));
         var loadout = await CreateLoadout();
         var (_, group) = await Install(loadout, await AddModlist(list.ToList(), list.Blobs), new InstallOptions(false, new HashSet<RelativePath>()));
         SkipsOf(group).Should().ContainSingle();

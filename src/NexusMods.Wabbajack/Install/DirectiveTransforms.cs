@@ -6,8 +6,8 @@ using NexusMods.Wabbajack.Transforms;
 namespace NexusMods.Wabbajack.Install;
 
 /// <summary>
-/// The transforms this build has: Octodiff patching. Texture recompression and archive building say they are not
-/// there, so the directives that need them become skip rows instead of failing the install.
+/// The transforms this build has: Octodiff patching and texture re-encoding. Archive building says it is not there,
+/// so the directives that need it become skip rows instead of failing the install.
 /// </summary>
 public sealed class DirectiveTransforms : IDirectiveTransforms
 {
@@ -15,7 +15,15 @@ public sealed class DirectiveTransforms : IDirectiveTransforms
         => OctodiffPatch.Apply(basis, delta, output, cancellationToken);
 
     public Task Recompress(Stream dds, ImageState target, Stream output, CancellationToken cancellationToken)
-        => throw new TransformUnavailableException("recompress textures");
+        => DdsRecompressor.Recompress(dds, ToTarget(target), output, cancellationToken);
+
+    /// <summary>The list names the format as a DXGI_FORMAT; a name this build does not know cannot be written either.</summary>
+    private static DdsTarget ToTarget(ImageState image)
+    {
+        if (!Enum.TryParse<DxgiFormat>(image.Format, ignoreCase: false, out var format) || !Enum.IsDefined(format))
+            throw new UnsupportedTextureFormatException($"Cannot re-encode a texture with format {image.Format}");
+        return new DdsTarget(image.Width, image.Height, image.MipLevels, format);
+    }
 
     public Task BuildBsa(JsonElement state, JsonElement[] fileStates, Func<RelativePath, Task<Stream>> openInput, Stream output, CancellationToken cancellationToken)
         => throw new TransformUnavailableException("build archives");

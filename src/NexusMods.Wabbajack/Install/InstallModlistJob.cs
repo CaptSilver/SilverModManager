@@ -21,6 +21,7 @@ using NexusMods.Wabbajack.Format;
 using NexusMods.Wabbajack.Mapping;
 using NexusMods.Wabbajack.Models;
 using PatchException = NexusMods.Wabbajack.Transforms.PatchException;
+using UnsupportedTextureFormatException = NexusMods.Wabbajack.Transforms.UnsupportedTextureFormatException;
 
 namespace NexusMods.Wabbajack.Install;
 
@@ -507,6 +508,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         /// <summary>Directive destinations, folded, to the file store hash and xxHash64 of what was written, for merges to read back and check.</summary>
         public Dictionary<string, (Hash Store, Hash XxHash64)> Written { get; } = new();
 
+        /// <summary>Textures of the batch being written that are already being re-encoded, taken by <see cref="Produce"/> when it reaches them.</summary>
+        public Dictionary<Prepared, Task<GeneratedFile>> Textures { get; } = new(ReferenceEqualityComparer.Instance);
+
         /// <summary>Generated files waiting for the next batch to the file store.</summary>
         public List<GeneratedFile> Pending { get; } = new();
 
@@ -531,15 +535,27 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         Progress.Enter(InstallPhase.Write, prepared.Count, prepared.Sum(p => p.Placement.Directive.Size));
         var state = LoadExisting(groupId);
         var extras = new ExtrasFolder(extrasFolder);
+        using var textureSlots = new SemaphoreSlim(Environment.ProcessorCount);
 
         foreach (var batch in prepared.Chunk(TransactionSize))
         {
             using var tx = Connection.BeginTransaction();
-            foreach (var item in batch)
+            using var encodes = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                await Execute(check, groupId, state, extras, tx, item, cancellationToken);
-                Progress.Advance(1, item.Placement.Directive.Size);
+                StartTextures(check, extras, state, batch, textureSlots, encodes.Token);
+                foreach (var item in batch)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await Execute(check, groupId, state, extras, tx, item, cancellationToken);
+                    Progress.Advance(1, item.Placement.Directive.Size);
+                }
+            }
+            finally
+            {
+                // A batch that stopped early would otherwise sit through every encode it queued before reporting why.
+                await encodes.CancelAsync();
+                await DiscardTextures(state);
             }
 
             await FlushPending(state, cancellationToken);
@@ -598,6 +614,49 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         state.Pending.Clear();
     }
 
+    /// <summary>
+    /// Starts re-encoding the batch's textures together, at most one per core: a BC7 encode is slow enough that doing
+    /// them one after another dominates the install. Everything that touches the transaction still happens in order.
+    /// </summary>
+    private void StartTextures(Checked check, ExtrasFolder extras, WriteState state, IReadOnlyList<Prepared> batch, SemaphoreSlim slots, CancellationToken cancellationToken)
+    {
+        foreach (var item in batch)
+        {
+            if (item.Silent || item.Skip is not null || item.Placement.Directive is not TransformedTexture || item.Placement.Target is Mo2Target.Extra) continue;
+            state.Textures[item] = EncodeTexture(check, extras, item, slots, cancellationToken);
+        }
+    }
+
+    private async Task<GeneratedFile> EncodeTexture(Checked check, ExtrasFolder extras, Prepared item, SemaphoreSlim slots, CancellationToken cancellationToken)
+    {
+        await slots.WaitAsync(cancellationToken);
+        try
+        {
+            return await Writer.Generate(output => WriteBytes(check, extras, item.Placement, item.Member, output, cancellationToken), cancellationToken);
+        }
+        finally
+        {
+            slots.Release();
+        }
+    }
+
+    /// <summary>Waits out the textures nobody took, because the batch stopped early, and deletes the temp files of those that finished.</summary>
+    private static async Task DiscardTextures(WriteState state)
+    {
+        foreach (var pending in state.Textures.Values)
+        {
+            try
+            {
+                await using var file = await pending;
+            }
+            catch
+            {
+                // The batch is already failing or was cancelled; the encode's own error is not the one to report.
+            }
+        }
+        state.Textures.Clear();
+    }
+
     private async Task Execute(Checked check, LoadoutItemGroupId modlistGroup, WriteState state, ExtrasFolder extras, ITransaction tx, Prepared item, CancellationToken cancellationToken)
     {
         var placement = item.Placement;
@@ -625,6 +684,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         catch (PatchException patchFailed)
         {
             AddSkip(tx, modlistGroup, state, placement, SkipKind.Transform, $"the patch for '{placement.To}' could not be applied: {patchFailed.Message}", check);
+        }
+        catch (UnsupportedTextureFormatException unsupported)
+        {
+            AddSkip(tx, modlistGroup, state, placement, SkipKind.Transform, $"the texture '{placement.To}' could not be re-encoded: {unsupported.Message}", check);
         }
         catch (TransformUnavailableException unavailable)
         {
@@ -963,6 +1026,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             case CreateBsa bsa:
                 return await Generated(state, directive, output => BuildArchive(check, extras, bsa, output, cancellationToken), checkHash: false, cancellationToken);
 
+            case TransformedTexture when state.Textures.Remove(item, out var encoding):
+                return await Register(state, directive, await encoding, checkHash: false, cancellationToken);
+
             default:
                 var exempt = directive is RemappedInlineFile or TransformedTexture || IsHashUnchecked(directive);
                 return await Generated(state, directive, output => WriteBytes(check, extras, item.Placement, item.Member, output, cancellationToken), checkHash: !exempt, cancellationToken);
@@ -973,8 +1039,11 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         => directive is InlineFile or ArchiveMeta && HashUnchecked.Contains(directive.To.FileName.ToString(), StringComparer.OrdinalIgnoreCase);
 
     private async Task<(Hash, Size, Hash)> Generated(WriteState state, Directive directive, Func<Stream, Task> produce, bool checkHash, CancellationToken cancellationToken)
+        => await Register(state, directive, await Writer.Generate(produce, cancellationToken), checkHash, cancellationToken);
+
+    /// <summary>Queues a generated file for the file store, after checking it against the directive's hash when the list promises one.</summary>
+    private async Task<(Hash, Size, Hash)> Register(WriteState state, Directive directive, GeneratedFile file, bool checkHash, CancellationToken cancellationToken)
     {
-        var file = await Writer.Generate(produce, cancellationToken);
         if (checkHash && file.XxHash64 != directive.XxHash64)
         {
             await file.DisposeAsync();

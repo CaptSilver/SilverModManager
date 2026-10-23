@@ -68,11 +68,11 @@ public class InstallConvergenceTests(ITestOutputHelper helper) : InstallTestBase
     [Fact]
     public async Task AFileTheUpdatedListCannotProduceKeepsTheRowAnEarlierRunInstalled()
     {
-        var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3] });
+        var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3], ["tex.dds"] = Bc1Dds(8) });
         var first = List("+A\n", ("mods/A/x.bin", "one"));
         var second = List("+A\n");
         second.Archives.Add(archive);
-        second.Directives.Add(new TransformedTexture(P("mods/A/x.bin"), Hash64(new byte[] { 1, 2, 3, 4 }), 4, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), new ImageState(1, 1, 1, "BC7_UNORM")));
+        second.Directives.Add(UnwritableTexture("mods/A/x.bin", archive, "tex.dds"));
 
         var (_, _, again) = await Reinstall(first, second);
 

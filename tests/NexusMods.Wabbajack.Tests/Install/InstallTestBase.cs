@@ -14,6 +14,7 @@ using NexusMods.Wabbajack.Install;
 using NexusMods.Wabbajack.Models;
 using NexusMods.Wabbajack.Tests.Acquire;
 using NexusMods.Wabbajack.Tests.Fixtures;
+using TestTextures = NexusMods.Wabbajack.Transforms.TestTextures;
 
 namespace NexusMods.Wabbajack.Tests.Install;
 
@@ -41,6 +42,18 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
         });
         return base.AddServices(services).AddFakeToolRunner();
     }
+
+    /// <summary>A square BC1 DDS of <paramref name="size"/> pixels, for a texture directive to read.</summary>
+    protected static byte[] Bc1Dds(int size)
+    {
+        using var stream = new MemoryStream();
+        TestTextures.WriteBc1(stream, size);
+        return stream.ToArray();
+    }
+
+    /// <summary>A texture directive over a real DDS that asks for BC6H, which the re-encoder cannot write, so it always becomes a Transform skip row.</summary>
+    protected static TransformedTexture UnwritableTexture(string to, ArchiveEntry archive, string member)
+        => new(P(to), Hash.From(1), 1, new ArchiveHashPath(archive.XxHash64, [P(member)]), new ImageState(4, 4, 1, "BC6H_UF16"));
 
     protected static RelativePath P(string path) => RelativePath.FromUnsanitizedInput(path);
 
