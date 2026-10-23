@@ -41,8 +41,8 @@ public abstract class AcquireTestBase<TTest>(ITestOutputHelper helper)
             .AddWabbajack()
             .OverrideSettingsForTests<WabbajackSettings>(settings => settings with
             {
-                InboxPath = new ConfigurablePath(KnownPath.EntryDirectory, $"{Startup.SettingsRoot}/Inbox"),
-                ExtrasRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"{Startup.SettingsRoot}/Extras"),
+                InboxPath = new ConfigurablePath(KnownPath.EntryDirectory, $"{Startup.SettingsRoot}/Inbox-{Guid.NewGuid()}"),
+                ExtrasRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"{Startup.SettingsRoot}/Extras-{Guid.NewGuid()}"),
             })
             .AddUniversalGameLocator<SkyrimSe>(new Version(GameVersion), StubGameFiles, locationsFileSystem: IsolatedPrefix);
     }

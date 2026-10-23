@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Library;
+using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Sdk.Settings;
 using NexusMods.Wabbajack.Acquire;
 using NexusMods.Wabbajack.Library;
@@ -19,6 +20,11 @@ public static class Services
             .AddSingleton<WabbajackPaths>()
             .AddSingleton<ILibraryArchiveLocator, LibraryArchiveLocator>()
             .AddSingleton<ArchiveInventory>()
+            .AddSingleton<ExpectedNexusDownloads>()
+            .AddSingleton<IExpectedNexusDownloads>(provider => provider.GetRequiredService<ExpectedNexusDownloads>())
+            .AddSingleton<IArchiveDownloadJobs, ArchiveDownloadJobs>()
+            .AddSingleton<IArchiveAcquirer, ArchiveAcquirer>()
+            .AddSingleton<ArchiveInbox>()
             .AddSingleton<ILibraryFileRecogniser, WabbajackModlistRecogniser>();
     }
 

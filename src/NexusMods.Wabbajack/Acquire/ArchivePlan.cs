@@ -31,9 +31,10 @@ public enum ArchiveState
 
 /// <summary>
 /// One archive of the list and what to do about it. <paramref name="Library"/> is set for <see cref="ArchiveState.Have"/>;
-/// <paramref name="Page"/> for the states that send the user somewhere.
+/// <paramref name="Page"/> for the states that send the user somewhere. <paramref name="Opened"/> is set once a
+/// <see cref="ArchiveState.Browser"/> row's page has been opened in the user's browser.
 /// </summary>
-public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library);
+public sealed record ArchivePlanRow(ArchiveEntry Archive, ArchiveState State, string? Reason, Uri? Page, LibraryFile.ReadOnly? Library, bool Opened = false);
 
 /// <summary>The rows for every archive of a list, in the list's order.</summary>
 public sealed record ArchivePlan(IReadOnlyList<ArchivePlanRow> Rows)

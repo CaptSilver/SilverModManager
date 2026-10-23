@@ -162,21 +162,27 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
         
         var nexusModsLibrary = _serviceProvider.GetRequiredService<NexusModsLibrary>();
 
-        var (alreadyDownloaded, items) = await nexusModsLibrary.IsAlreadyDownloaded(modUrl, cancellationToken: cancel);
-        if (alreadyDownloaded)
-        {
-            _logger.LogInformation("File `{Game}/{ModId}/{FileId}` has already been downloaded and will be skipped", modUrl.Game, modUrl.ModId, modUrl.FileId);
-            _eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.AlreadyExists(items.First().AsLibraryItem().Name)));
-            return;
-        }
-        
         var domain = GameDomain.From(modUrl.Game);
-        var game = GetManagedGameFor(domain);
-        if (game is null)
+        var expected = _serviceProvider.GetService<IExpectedNexusDownloads>()?.IsExpected(domain, modUrl.ModId, modUrl.FileId) ?? false;
+
+        // An expected file is one the app asked the user to download, so the library holding a row for it is no reason to refuse.
+        if (!expected)
         {
-            _logger.LogWarning("Mod download aborted: {Game} is not a managed game", modUrl.Game);
-            _eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.GameNotManaged(modUrl.Game)));
-            return;
+            var (alreadyDownloaded, items) = await nexusModsLibrary.IsAlreadyDownloaded(modUrl, cancellationToken: cancel);
+            if (alreadyDownloaded)
+            {
+                _logger.LogInformation("File `{Game}/{ModId}/{FileId}` has already been downloaded and will be skipped", modUrl.Game, modUrl.ModId, modUrl.FileId);
+                _eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.AlreadyExists(items.First().AsLibraryItem().Name)));
+                return;
+            }
+
+            var game = GetManagedGameFor(domain);
+            if (game is null)
+            {
+                _logger.LogWarning("Mod download aborted: {Game} is not a managed game", modUrl.Game);
+                _eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.GameNotManaged(modUrl.Game)));
+                return;
+            }
         }
 
         var library = _serviceProvider.GetRequiredService<ILibraryService>();
