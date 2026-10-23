@@ -213,6 +213,67 @@ public class MasterlistStoreTests : IDisposable
         handler.Requests.Should().OnlyContain(r => r.Headers.IfNoneMatch.Count == 0);
     }
 
+    private const string OldMasterlist = "plugins:\n  - name: old.esp\n";
+    private const string OldPrelude = "globals:\n  - type: note\n    content: Old prelude.\n";
+
+    private void WriteOldPair()
+    {
+        WriteCache(MasterlistCache, OldMasterlist, AfterLock, "\"old-m\"");
+        WriteCache(PreludeCache, OldPrelude, AfterLock, "\"old-p\"");
+    }
+
+    private async Task<MasterlistRefreshResult> RefreshWithNewPair() =>
+        await Store().RefreshAsync(Game, new HttpClient(new FakeHandler(r =>
+            Ok(r.RequestUri!.AbsolutePath.Contains("prelude") ? ValidPrelude : ValidMasterlist, "\"new\""))), CancellationToken.None);
+
+    [Fact]
+    public async Task AFailureWritingTheMasterlistLeavesTheOldPair()
+    {
+        WriteOldPair();
+        // A directory where the masterlist's temp file belongs makes the write throw.
+        Directory.CreateDirectory(MasterlistCache + ".tmp");
+
+        (await RefreshWithNewPair()).Should().Be(MasterlistRefreshResult.Failed);
+
+        var current = Store().Current(Game);
+        current.Masterlist.Should().Be(OldMasterlist);
+        current.Prelude.Should().Be(OldPrelude);
+        System.IO.File.ReadAllText(PreludeCache + ".etag").Should().Be("\"old-p\"");
+    }
+
+    [Fact]
+    public async Task AFailureAfterThePreludeIsReplacedRestoresThePreviousPair()
+    {
+        WriteOldPair();
+        // The masterlist's ETag cannot be replaced, so the failure comes after the prelude has moved.
+        System.IO.File.Delete(MasterlistCache + ".etag");
+        Directory.CreateDirectory(Path.Combine(MasterlistCache + ".etag", "blocker"));
+
+        (await RefreshWithNewPair()).Should().Be(MasterlistRefreshResult.Failed);
+
+        var current = Store().Current(Game);
+        current.Masterlist.Should().Be(OldMasterlist);
+        current.Prelude.Should().Be(OldPrelude);
+        System.IO.File.ReadAllText(PreludeCache + ".etag").Should().Be("\"old-p\"");
+        Directory.GetFiles(Path.GetDirectoryName(PreludeCache)!, "*", SearchOption.AllDirectories)
+            .Should().NotContain(f => f.EndsWith(".tmp") || f.EndsWith(".bak"));
+    }
+
+    [Fact]
+    public async Task ABackupLeftByAnEarlierRefreshIsNotRestoredWhereNoFileWas()
+    {
+        WriteCache(PreludeCache, OldPrelude, AfterLock, "\"old-p\"");
+        WriteCache(MasterlistCache + ".bak", OldMasterlist, AfterLock);
+        Directory.CreateDirectory(Path.Combine(MasterlistCache + ".etag", "blocker"));
+
+        (await RefreshWithNewPair()).Should().Be(MasterlistRefreshResult.Failed);
+
+        System.IO.File.Exists(MasterlistCache).Should().BeFalse();
+        var current = Store().Current(Game);
+        current.Masterlist.Should().Be(_bundled.MasterlistText("skyrim"));
+        current.Prelude.Should().Be(OldPrelude);
+    }
+
     private static HttpResponseMessage Ok(string body, string etag)
     {
         var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) };

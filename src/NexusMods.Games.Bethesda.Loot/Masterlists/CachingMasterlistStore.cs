@@ -71,8 +71,10 @@ public sealed class CachingMasterlistStore(AbsolutePath dataDir, BundledMasterli
             // masterlist as easily as the reverse.
             MetadataDocument.LoadWithPrelude(masterlist.Body ?? current.Masterlist, prelude.Body ?? current.Prelude);
 
-            if (prelude.Body is not null) Store(PreludePath, prelude.Body, prelude.ETag);
-            if (masterlist.Body is not null) Store(MasterlistPath(repo), masterlist.Body, masterlist.ETag);
+            var files = new List<StagedFile>();
+            if (prelude.Body is not null) files.Add(new StagedFile(PreludePath, prelude.Body, prelude.ETag));
+            if (masterlist.Body is not null) files.Add(new StagedFile(MasterlistPath(repo), masterlist.Body, masterlist.ETag));
+            ReplaceTogether(files);
             return MasterlistRefreshResult.Updated;
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException or IOException
@@ -102,19 +104,63 @@ public sealed class CachingMasterlistStore(AbsolutePath dataDir, BundledMasterli
         return new Fetched(body, response.Headers.ETag?.ToString(), false);
     }
 
-    private static void Store(string path, string body, string? etag)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(path) ?? throw new ArgumentException($"\"{path}\" has no parent directory", nameof(path)));
-        WriteAtomically(path, body);
-        if (etag is not null) WriteAtomically(path + ".etag", etag);
-        else IoFile.Delete(path + ".etag");
-    }
+    private readonly record struct StagedFile(string Path, string Body, string? ETag);
 
-    private static void WriteAtomically(string path, string text)
+    /// <summary>
+    /// Replaces the cache files as one unit. Every new file is written to a temp name first, so a
+    /// failed write touches nothing; if a later move fails, the files already replaced are put back,
+    /// so <see cref="Current"/> never pairs a masterlist with a prelude it wasn't validated with.
+    /// </summary>
+    private static void ReplaceTogether(List<StagedFile> files)
     {
-        var temp = path + ".tmp";
-        IoFile.WriteAllText(temp, text);
-        IoFile.Move(temp, path, overwrite: true);
+        // (target, temp content to move in or null to delete the target)
+        var steps = new List<(string Target, string? Temp)>();
+        var applied = new List<(string Target, bool BackedUp)>();
+        try
+        {
+            foreach (var file in files)
+            {
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(file.Path) ?? throw new ArgumentException($"\"{file.Path}\" has no parent directory", nameof(files)));
+                IoFile.WriteAllText(file.Path + ".tmp", file.Body);
+                steps.Add((file.Path, file.Path + ".tmp"));
+                if (file.ETag is not null)
+                {
+                    IoFile.WriteAllText(file.Path + ".etag.tmp", file.ETag);
+                    steps.Add((file.Path + ".etag", file.Path + ".etag.tmp"));
+                }
+                else
+                {
+                    steps.Add((file.Path + ".etag", null));
+                }
+            }
+
+            foreach (var (target, temp) in steps)
+            {
+                // Set the old file aside first so a later failure can bring it back.
+                var backedUp = IoFile.Exists(target);
+                if (backedUp) IoFile.Move(target, target + ".bak", overwrite: true);
+                applied.Add((target, backedUp));
+                if (temp is not null) IoFile.Move(temp, target, overwrite: true);
+            }
+        }
+        catch
+        {
+            for (var i = applied.Count - 1; i >= 0; i--)
+            {
+                // Only a backup this call made goes back; a .bak left by a crashed refresh is stale.
+                var (target, backedUp) = applied[i];
+                if (backedUp) IoFile.Move(target + ".bak", target, overwrite: true);
+                else if (IoFile.Exists(target)) IoFile.Delete(target);
+            }
+
+            foreach (var (_, temp) in steps)
+            {
+                if (temp is not null) IoFile.Delete(temp);
+            }
+            throw;
+        }
+
+        foreach (var (target, _) in applied) IoFile.Delete(target + ".bak");
     }
 
     private static string? ReadIfPresent(string path) => IoFile.Exists(path) ? IoFile.ReadAllText(path) : null;
