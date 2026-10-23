@@ -123,6 +123,16 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         var variety = NewVariety();
         var id = await variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId);
         await variety.ReconcileSortOrder(id);
+
+        // Creating the loadout synced it, which stored the empty list that sync wrote. These tests write their own
+        // notice, and the app keeps one per sort order, so they start from an order it has written nothing for.
+        var notices = Bg3ModListNotice.FindBySortOrder(Connection.Db, id).ToArray();
+        if (notices.Length > 0)
+        {
+            using var tx = Connection.BeginTransaction();
+            foreach (var notice in notices) tx.Delete(notice.Id, recursive: false);
+            await tx.Commit();
+        }
         return (loadout, variety, id);
     }
 
@@ -459,6 +469,105 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         await variety.DeleteSortOrder(id);
 
         Connection.Db.Datoms(Bg3ModListNotice.SortOrder, id).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ChangeSet_ListsTheLiveRowsAndFollowsTheLoadout()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await AddMod(loadout, "Mod", "First.pak");
+        await variety.ReconcileSortOrder(id);
+
+        var seen = new Dictionary<string, Bg3PakReactiveSortItem>();
+        using var subscription = variety.GetSortOrderItemsChangeSet(id).Subscribe(changes =>
+        {
+            foreach (var change in changes)
+            {
+                if (change.Reason == DynamicData.ChangeReason.Remove) seen.Remove(change.Key.Key);
+                else seen[change.Key.Key] = change.Current;
+            }
+        });
+
+        await WaitUntil(() => seen.ContainsKey("first.pak"));
+        seen["first.pak"].DisplayName.Should().Be("First.pak");
+        seen["first.pak"].LoadoutData.Should().BeOfType<Bg3PakLoadoutData>().Which.ModName.Should().Be("Mod");
+
+        await AddMod(loadout, "Other", "Second.pak");
+        await variety.ReconcileSortOrder(id);
+        await WaitUntil(() => seen.ContainsKey("second.pak"));
+    }
+
+    [Theory]
+    [InlineData(Bg3ModListNotices.HoldAfterResets - 1, true)]
+    [InlineData(Bg3ModListNotices.HoldAfterResets, false)]
+    public async Task ReplacedEditSummary_IsHeldBackExactlyFromTheHoldThreshold(int resetCount, bool shown)
+    {
+        var (_, variety, id) = await Reconciled();
+        using (var tx = Connection.BeginTransaction())
+        {
+            _ = new Bg3ModListNotice.New(tx)
+            {
+                SortOrderId = id,
+                Summary = "the note",
+                ReplacedAt = DateTimeOffset.UtcNow,
+                ResetCount = resetCount,
+            };
+            await tx.Commit();
+        }
+        string? replaced = null;
+        string? held = null;
+        using var a = ((IReplacedGameEditSource)variety).ReplacedEditSummary(id).Subscribe(s => replaced = s);
+        using var b = ((IHeldGameEditSource)variety).HoldSummary(id).Subscribe(s => held = s);
+
+        await WaitUntil(() => (shown ? replaced : held) == "the note");
+
+        (shown ? held : replaced).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task StagePlan_KeepsThePreviousListWhenThePlanDoesNotChange()
+    {
+        var (_, _, id) = await Reconciled();
+
+        async Task<bool> Plan(params string[] names)
+        {
+            using var tx = Connection.BeginTransaction();
+            var staged = Bg3ModListNotices.StagePlan(Connection.Db, id, names, DateTimeOffset.UtcNow, tx);
+            if (staged) await tx.Commit();
+            return staged;
+        }
+
+        (await Plan("a.pak")).Should().BeTrue();
+        (await Plan("a.pak", "b.pak")).Should().BeTrue();
+        (await Plan("a.pak", "b.pak")).Should().BeFalse("nothing changed, so there is nothing to write");
+
+        Bg3ModListNotices.LastWritten(Connection.Db, id).Should().Equal("a.pak", "b.pak");
+        Bg3ModListNotices.NewlyActive(Connection.Db, id).Should().Equal("b.pak");
+    }
+
+    [Fact]
+    public async Task ClearReplacedGameEdit_KeepsAnEmptyWrittenListAndCommitsNothing()
+    {
+        var (_, variety, id) = await Reconciled();
+        EntityId noticeId;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var notice = new Bg3ModListNotice.New(tx)
+            {
+                SortOrderId = id,
+                Summary = "",
+                ReplacedAt = DateTimeOffset.UtcNow,
+                LastWrittenPaks = "",
+            };
+            var result = await tx.Commit();
+            noticeId = result.Remap(notice).Id;
+        }
+        var before = Connection.Db.BasisTxId;
+
+        await variety.ClearReplacedGameEdit(id);
+
+        Connection.Db.BasisTxId.Should().Be(before);
+        Bg3ModListNotice.Load(Connection.Db, noticeId).IsValid().Should().BeTrue("the app wrote a list with no paks");
     }
 
     private static TxId SortOrderTx(SortOrderId id, IDb db) =>

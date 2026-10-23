@@ -65,9 +65,11 @@ public static class Bg3ModListNotices
 
     /// <summary>
     /// Records that <paramref name="names"/> is what is about to be written, and moves the list that was last
-    /// written to the one before it. Creates the notice when the sort order has none.
+    /// written to the one before it. Creates the notice when the sort order has none. A plan equal to the last
+    /// one stages nothing, so the list before it keeps naming the paks that arrived with the last change, which
+    /// is what reset detection and the reset summary look at. Returns whether anything was staged.
     /// </summary>
-    public static void StagePlan(IDb db, SortOrderId sortOrderId, IReadOnlyList<string> names, DateTimeOffset at, ITransaction tx)
+    public static bool StagePlan(IDb db, SortOrderId sortOrderId, IReadOnlyList<string> names, DateTimeOffset at, ITransaction tx)
     {
         var joined = string.Join(Separator, names);
         if (Find(db, sortOrderId) is not { } notice)
@@ -79,11 +81,14 @@ public static class Bg3ModListNotices
                 ReplacedAt = at,
                 LastWrittenPaks = joined,
             };
-            return;
+            return true;
         }
+
+        if (notice.LastWrittenPaks.HasValue && notice.LastWrittenPaks.Value == joined) return false;
 
         if (notice.LastWrittenPaks.HasValue) tx.Add(notice.Id, Bg3ModListNotice.PreviousWrittenPaks, notice.LastWrittenPaks.Value);
         tx.Add(notice.Id, Bg3ModListNotice.LastWrittenPaks, joined);
+        return true;
     }
 
     /// <summary>
@@ -115,10 +120,14 @@ public static class Bg3ModListNotices
         tx.Add(notice.Value.Id, Bg3ModListNotice.ReplacedAt, at);
     }
 
-    /// <summary>Whether the notice holds anything besides the note, which clearing the note must not lose.</summary>
+    /// <summary>
+    /// Whether the notice holds anything besides the note, which clearing the note must not lose. An empty
+    /// written list counts: it is what the next plan is compared against, and losing it would recreate the notice
+    /// on every Apply of a loadout with no paks.
+    /// </summary>
     public static bool HoldsMoreThanTheNote(Bg3ModListNotice.ReadOnly notice) =>
-        notice.LastWrittenPaks is { HasValue: true, Value.Length: > 0 }
-        || notice.PreviousWrittenPaks is { HasValue: true, Value.Length: > 0 }
+        notice.LastWrittenPaks.HasValue
+        || notice.PreviousWrittenPaks.HasValue
         || notice.ResetCount.HasValue;
 
     private static string[] Split(string joined) => joined.Length == 0 ? [] : joined.Split(Separator);

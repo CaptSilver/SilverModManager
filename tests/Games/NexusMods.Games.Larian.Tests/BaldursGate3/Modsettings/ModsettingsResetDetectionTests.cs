@@ -254,4 +254,18 @@ public class ModsettingsResetDetectionTests(ITestOutputHelper helper) : Modsetti
             .Should().Contain("alpha.pak").And.Contain("Restore the mod list");
         (await Diagnose<Bg3ModListReplacedEmitter>(loadout)).Should().BeEmpty("the hold is reported by the reset warning");
     }
+
+    [Fact]
+    public async Task AnApplyThatChangesNothingLeavesTheNoticeAlone()
+    {
+        var loadout = await AppliedTwoPaks();
+        await Apply(loadout);
+        var noticeId = Notice(loadout)!.Value.Id;
+        var before = Connection.Db.Get(noticeId).Max(d => d.T);
+
+        await Apply(loadout);
+
+        Connection.Db.Get(noticeId).Max(d => d.T).Should().Be(before, "the plan and the note are what they were");
+        Lines(Notice(loadout)!.Value.PreviousWrittenPaks).Should().BeEmpty("only one list was ever written");
+    }
 }

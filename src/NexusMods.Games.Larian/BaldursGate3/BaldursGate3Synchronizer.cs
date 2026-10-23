@@ -141,9 +141,13 @@ public class BaldursGate3Synchronizer : ALoadoutSynchronizer
             : Bg3ModListPlan.Build(candidates).Names;
 
         using var tx = Connection.BeginTransaction();
-        Bg3ModListNotices.StagePlan(loadout.Db, sortOrderId, names, DateTimeOffset.UtcNow, tx);
-        foreach (var row in OverridesRowsForModsettings(loadout))
+        var planChanged = Bg3ModListNotices.StagePlan(loadout.Db, sortOrderId, names, DateTimeOffset.UtcNow, tx);
+        var overrides = OverridesRowsForModsettings(loadout).ToList();
+        foreach (var row in overrides)
             tx.Delete(row, recursive: false);
+
+        // An Apply that changes nothing must not write a transaction.
+        if (!planChanged && overrides.Count == 0) return loadout;
         await tx.Commit();
 
         return loadout.Rebase();

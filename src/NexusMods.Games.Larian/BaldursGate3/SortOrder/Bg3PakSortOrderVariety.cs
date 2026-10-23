@@ -93,16 +93,23 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
         var loadoutId = sortOrder.LoadoutId;
 
-        return Connection.Query<(string PakName, int SortIndex, bool IsEnabled, Hash Hash, bool LoadoutIsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>($"""
-                SELECT PakName, SortIndex, IsEnabled, Hash, LoadoutIsEnabled, ModName, ModGroupId, IsGameInstalled FROM bg3.LiveSortOrderItems({Connection}, {sortOrderId.Value}, {loadoutId}, {ModsLocation})
+        // The query layer cannot read a value tuple of more than seven columns, so the owning mod's two flags
+        // travel as one number and are split again below.
+        return Connection.Query<(string PakName, int SortIndex, bool IsEnabled, Hash Hash, string ModName, EntityId? ModGroupId, int LoadoutState)>($"""
+                SELECT PakName, SortIndex, IsEnabled, Hash, ModName, ModGroupId,
+                    CASE WHEN LoadoutIsEnabled THEN 1 ELSE 0 END + CASE WHEN IsGameInstalled THEN 2 ELSE 0 END AS LoadoutState
+                FROM bg3.LiveSortOrderItems({Connection}, {sortOrderId.Value}, {loadoutId}, {ModsLocation})
                 """)
             .Observe(row => Bg3PakSortData.KeyFor(row.PakName))
             .Transform(row =>
             {
-                var data = new Bg3PakLoadoutData(row.PakName, row.Hash, row.LoadoutIsEnabled, row.ModName, row.ModGroupId, row.IsGameInstalled);
+                var data = new Bg3PakLoadoutData(row.PakName, row.Hash, (row.LoadoutState & LoadoutStateEnabled) != 0, row.ModName, row.ModGroupId, (row.LoadoutState & LoadoutStateGameInstalled) != 0);
                 return new Bg3PakReactiveSortItem(row.SortIndex, row.PakName, row.IsEnabled, data);
             });
     }
+
+    private const int LoadoutStateEnabled = 1;
+    private const int LoadoutStateGameInstalled = 2;
 
     public override IReadOnlyList<Bg3PakReactiveSortItem> GetSortOrderItems(SortOrderId sortOrderId, IDb? db)
     {
@@ -188,6 +195,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         if (notices.Length == 0) return;
 
         using var tx = Connection.BeginTransaction();
+        var staged = false;
         foreach (var notice in notices)
         {
             // While the list is held the summary says why, and only releasing the hold ends it.
@@ -196,14 +204,18 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
             // The pak lists the app wrote live on the same entity, so only the note is emptied.
             if (Bg3ModListNotices.HoldsMoreThanTheNote(notice))
             {
-                if (notice.Summary != "") tx.Add(notice.Id, Bg3ModListNotice.Summary, "");
+                if (notice.Summary == "") continue;
+                tx.Add(notice.Id, Bg3ModListNotice.Summary, "");
             }
             else
             {
                 tx.Delete(notice.Id, recursive: false);
             }
+            staged = true;
         }
-        await tx.Commit();
+
+        // Every Apply runs this, and one that finds no note must not write a transaction.
+        if (staged) await tx.Commit();
     }
 
     /// <inheritdoc />
@@ -226,7 +238,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
     /// <inheritdoc />
     public IObservable<string?> HoldSummary(SortOrderId sortOrderId) =>
-        Connection.Query<(EntityId Id, string Summary)>($"SELECT * FROM bg3.HeldNotices({Connection}, {sortOrderId.Value})")
+        Connection.Query<(EntityId Id, string Summary)>($"SELECT * FROM bg3.HeldNotices({Connection}, {sortOrderId.Value}, {Bg3ModListNotices.HoldAfterResets})")
             .Observe(row => row.Id)
             .QueryWhenChanged(items => items.Items.Select(row => row.Summary).FirstOrDefault())
             .StartWith((string?)null)
@@ -260,7 +272,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
 
     /// <inheritdoc />
     public IObservable<string?> ReplacedEditSummary(SortOrderId sortOrderId) =>
-        Connection.Query<(EntityId Id, string Summary)>($"SELECT * FROM bg3.Notices({Connection}, {sortOrderId.Value})")
+        Connection.Query<(EntityId Id, string Summary)>($"SELECT * FROM bg3.Notices({Connection}, {sortOrderId.Value}, {Bg3ModListNotices.HoldAfterResets})")
             .Observe(row => row.Id)
             .QueryWhenChanged(items => items.Items.Select(row => row.Summary).FirstOrDefault())
             .StartWith((string?)null)

@@ -98,18 +98,18 @@ ORDER BY s.SortIndex;
 
 -- The notice recording that the app replaced the game's mod list, if the sort order has one. The notice entity
 -- also stores the pak lists the app wrote and the reset count, so one with an empty summary is not a notice. While
--- the app holds the list back (the game threw it away twice) the summary belongs to the hold, not to this notice.
-CREATE MACRO bg3.Notices(db, sortOrderId) AS TABLE
+-- the app holds the list back (the game threw it away holdAfterResets times) the summary belongs to the hold, not to this notice.
+CREATE MACRO bg3.Notices(db, sortOrderId, holdAfterResets) AS TABLE
 SELECT n.Id, n.Summary
 FROM mdb_Bg3ModListNotice(Db=>db) n
 WHERE n.SortOrder = sortOrderId
     AND n.Summary <> ''
-    AND COALESCE(n.ResetCount, 0) < 2;
+    AND COALESCE(n.ResetCount, 0) < holdAfterResets;
 
--- Why the app is not writing the game's mod list: the game threw it away twice. Empty when it is writing it.
-CREATE MACRO bg3.HeldNotices(db, sortOrderId) AS TABLE
+-- Why the app is not writing the game's mod list: the game threw it away holdAfterResets times. Empty when it is writing it.
+CREATE MACRO bg3.HeldNotices(db, sortOrderId, holdAfterResets) AS TABLE
 SELECT n.Id, n.Summary
 FROM mdb_Bg3ModListNotice(Db=>db) n
 WHERE n.SortOrder = sortOrderId
     AND n.Summary <> ''
-    AND COALESCE(n.ResetCount, 0) >= 2;
+    AND COALESCE(n.ResetCount, 0) >= holdAfterResets;
