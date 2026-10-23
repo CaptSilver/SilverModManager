@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.App.UI.Helpers;
+using NexusMods.Collections;
+using DynamicData;
 using NexusMods.App.UI.Pages;
 using NexusMods.App.UI.LeftMenu.Loadout;
 using NexusMods.App.UI.Pages.LibraryPage;
@@ -74,6 +76,8 @@ public class WabbajackLoadoutGroupUiTests(IServiceProvider provider) : AUiTest(p
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Left menu loadout");
         var group = await AddModlistGroup(loadout, "Left menu list");
 
+        // Only the menu's collection list. The whole menu, activated in a test, leaves work running that crashes the
+        // test host once the shared database closes after the last test.
         // The menu items watch the active workspace for open pages; a workspace with another id never matches.
         var workspace = Substitute.For<IWorkspaceViewModel>();
         workspace.Id.Returns(WorkspaceId.From(Guid.NewGuid()));
@@ -81,20 +85,25 @@ public class WabbajackLoadoutGroupUiTests(IServiceProvider provider) : AUiTest(p
         var controller = Substitute.For<IWorkspaceController>();
         controller.ActiveWorkspace.Returns(workspace);
 
-        var menu = new LoadoutLeftMenuViewModel(
-            new LoadoutContext { LoadoutId = loadout.LoadoutId },
-            WorkspaceId.From(Guid.NewGuid()),
-            controller,
-            Provider);
-        using var activation = menu.Activator.Activate();
+        Exception? failure = null;
+        using var subscription = LoadoutLeftMenuViewModel.ObserveCollectionItems(
+                Connection,
+                Provider.GetRequiredService<CollectionDownloader>(),
+                loadout,
+                controller,
+                WorkspaceId.From(Guid.NewGuid()),
+                Provider)
+            .Bind(out var items)
+            .Subscribe(_ => { }, e => failure = e);
 
         CollectionLeftMenuItemViewModel? item = null;
-        for (var attempt = 0; attempt < 200 && item is null; attempt++)
+        for (var attempt = 0; attempt < 200 && item is null && failure is null; attempt++)
         {
-            item = menu.LeftMenuCollectionItems.OfType<CollectionLeftMenuItemViewModel>().FirstOrDefault(i => i.CollectionGroupId.Value == group.Id);
+            item = items.OfType<CollectionLeftMenuItemViewModel>().FirstOrDefault(i => i.CollectionGroupId.Value == group.Id);
             if (item is null) await Task.Delay(25);
         }
 
+        failure.Should().BeNull();
         item.Should().NotBeNull("the group is a mutable collection of the loadout");
         item!.Text.Value.Value.Should().Be("Left menu list");
         item.IsCollectionReadOnly.Should().BeFalse();

@@ -164,55 +164,7 @@ public class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewModel>, I
             });
 
         // Collections
-        var collectionItemsObservable = CollectionGroup.ObserveAll(conn)
-            .FilterImmutable(f => f.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadoutContext.LoadoutId)
-            .FilterOnObservable(group =>
-                {
-                    if (!group.TryGetAsNexusCollectionLoadoutGroup(out var nexusCollection))
-                        return Observable.Return(true);
-                    return collectionDownloader.IsCollectionInstalledObservable(
-                        nexusCollection.Revision,
-                        Observable.Return(Optional<CollectionGroup.ReadOnly>.Create(group))
-                    );
-                }
-            )
-            .SortBy(item => item.IsReadOnly)
-            .Transform(collection =>
-            {
-                var pageData = collection.IsReadOnly
-                    ? new PageData
-                    {
-                        FactoryId = CollectionLoadoutPageFactory.StaticId,
-                        Context = new CollectionLoadoutPageContext
-                        {
-                            LoadoutId = loadout,
-                            GroupId = collection,
-                        },
-                    }
-                    : new PageData
-                    {
-                        FactoryId = LoadoutPageFactory.StaticId,
-                        Context = new LoadoutPageContext
-                        {
-                            LoadoutId = loadout,
-                            GroupScope = collection.CollectionGroupId,
-                        },
-                    };
-
-                return new CollectionLeftMenuItemViewModel(
-                    workspaceController,
-                    WorkspaceId,
-                    pageData,
-                    serviceProvider,
-                    collection.CollectionGroupId
-                )
-                {
-                    Text = new StringComponent(initialValue: collection.AsLoadoutItemGroup().AsLoadoutItem().Name, LoadoutItem.Observe(conn, collection).Select(x => x.Name)),
-                    Icon = IconValues.CollectionsOutline,
-                    IsCollectionReadOnly = collection.IsReadOnly,
-                };
-            })
-            .Transform(ILeftMenuItemViewModel (item) => item);
+        var collectionItemsObservable = ObserveCollectionItems(conn, collectionDownloader, loadout, workspaceController, WorkspaceId, serviceProvider);
         
         // Health Check
         LeftMenuItemHealthCheck = new HealthCheckLeftMenuItemViewModel(
@@ -350,6 +302,67 @@ public class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewModel>, I
             }
         );
     }
+
+    /// <summary>The loadout's collections as menu items: each opens its own page, or the loadout page scoped to it.</summary>
+    internal static IObservable<IChangeSet<ILeftMenuItemViewModel, EntityId>> ObserveCollectionItems(
+        IConnection conn,
+        CollectionDownloader collectionDownloader,
+        Sdk.Loadouts.Loadout.ReadOnly loadout,
+        IWorkspaceController workspaceController,
+        WorkspaceId workspaceId,
+        IServiceProvider serviceProvider)
+    {
+        return CollectionGroup.ObserveAll(conn)
+            .FilterImmutable(f => f.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadout.LoadoutId)
+            .FilterOnObservable(group =>
+                {
+                    if (!group.TryGetAsNexusCollectionLoadoutGroup(out var nexusCollection))
+                        return Observable.Return(true);
+                    return collectionDownloader.IsCollectionInstalledObservable(
+                        nexusCollection.Revision,
+                        Observable.Return(Optional<CollectionGroup.ReadOnly>.Create(group))
+                    );
+                }
+            )
+            .SortBy(item => item.IsReadOnly)
+            .Transform(collection =>
+            {
+                var pageData = collection.IsReadOnly
+                    ? new PageData
+                    {
+                        FactoryId = CollectionLoadoutPageFactory.StaticId,
+                        Context = new CollectionLoadoutPageContext
+                        {
+                            LoadoutId = loadout,
+                            GroupId = collection,
+                        },
+                    }
+                    : new PageData
+                    {
+                        FactoryId = LoadoutPageFactory.StaticId,
+                        Context = new LoadoutPageContext
+                        {
+                            LoadoutId = loadout,
+                            GroupScope = collection.CollectionGroupId,
+                        },
+                    };
+
+                return new CollectionLeftMenuItemViewModel(
+                    workspaceController,
+                    workspaceId,
+                    pageData,
+                    serviceProvider,
+                    collection.CollectionGroupId
+                )
+                {
+                    Text = new StringComponent(initialValue: collection.AsLoadoutItemGroup().AsLoadoutItem().Name, LoadoutItem.Observe(conn, collection).Select(x => x.Name)),
+                    Icon = IconValues.CollectionsOutline,
+                    IsCollectionReadOnly = collection.IsReadOnly,
+                };
+            })
+            .Transform(ILeftMenuItemViewModel (item) => item);
+    }
+
 }
 
 file class LeftMenuCollectionItemComparer : IComparer<ILeftMenuItemViewModel>
