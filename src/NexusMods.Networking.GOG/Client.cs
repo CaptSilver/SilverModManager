@@ -13,11 +13,9 @@ using NexusMods.Abstractions.GOG.DTOs;
 using NexusMods.Abstractions.GOG.Values;
 using NexusMods.Sdk.Hashes;
 using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.MnemonicDB.Abstractions;
-using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Networking.GOG.DTOs;
 using NexusMods.Networking.GOG.Exceptions;
-using NexusMods.Networking.GOG.Models;
+using NexusMods.Abstractions.Secrets;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.IO;
@@ -29,7 +27,7 @@ namespace NexusMods.Networking.GOG;
 internal class Client : IClient
 {
     private readonly ILogger<Client> _logger;
-    private readonly IConnection _connection;
+    private readonly GogCredentialCache _credentials;
     private readonly HttpClient _client;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
     private readonly JsonSerializerOptions _jsonSerializerOptions;
@@ -69,12 +67,12 @@ internal class Client : IClient
     /// <summary>
     /// Standard DI constructor.
     /// </summary>
-    public Client(ILogger<Client> logger, IConnection connection, IOSInterop osInterop, HttpClient client, JsonSerializerOptions jsonSerializerOptions)
+    public Client(ILogger<Client> logger, GogCredentialCache credentials, IOSInterop osInterop, HttpClient client, JsonSerializerOptions jsonSerializerOptions)
     {
         _osInterop = osInterop;
         _client = client;
         _logger = logger;
-        _connection = connection;
+        _credentials = credentials;
         
         _jsonSerializerOptions = new JsonSerializerOptions(jsonSerializerOptions)
         {
@@ -144,105 +142,89 @@ internal class Client : IClient
             return;
         }
 
-        // Save the login information
-        using var tx = _connection.BeginTransaction();
-        var e = tx.TempId();
-        if (TryGetAuthInfo(out var found))
-            e = found.Id;
-
-        tx.Add(e, AuthInfo.AccessToken, tokenResponse.AccessToken);
-        tx.Add(e, AuthInfo.RefreshToken, tokenResponse.RefreshToken);
-        tx.Add(e, AuthInfo.ExpiresAt, DateTimeOffset.UtcNow.AddSeconds(tokenResponse.ExpiresIn));
-        tx.Add(e, AuthInfo.SessionId, tokenResponse.SessionId);
-        tx.Add(e, AuthInfo.UserId, ulong.Parse(tokenResponse.UserId));
-        await tx.Commit();
+        var saved = await _credentials.SetAsync(ToCredential(tokenResponse), token);
+        if (saved is SecretWriteResult.ReadOnly readOnly)
+            throw new InvalidOperationException($"The GOG login cannot be saved: {readOnly.Source} supplies it.");
         _logger.LogInformation("Logged in successfully to GOG.");
     }
     
+
+    /// <summary>
+    /// The stored login for a token response.
+    /// </summary>
+    private static GogCredential ToCredential(TokenResponse response) => new(
+        response.AccessToken,
+        response.RefreshToken,
+        response.SessionId,
+        ulong.Parse(response.UserId),
+        DateTimeOffset.UtcNow.AddSeconds(response.ExpiresIn));
 
     /// <summary>
     /// Create a new HttpRequestMessage with the OAuth token.
     /// </summary>
     private async ValueTask<HttpRequestMessage> CreateMessage(Uri uri, CancellationToken token)
     {
-        if (!TryGetAuthInfo(out var authInfo))
-            throw new InvalidOperationException("No authentication information found.");
+        var credential = await _credentials.GetAsync(token)
+                         ?? throw new InvalidOperationException("No authentication information found.");
 
-        if (NeedsRefresh(authInfo))
-            authInfo = await RefreshToken(token);
-        
+        if (NeedsRefresh(credential))
+            credential = await RefreshToken(token);
+
         var message = new HttpRequestMessage(HttpMethod.Get, uri);
-        message.Headers.Authorization = new("Bearer", authInfo.AccessToken);
+        message.Headers.Authorization = new("Bearer", credential.AccessToken);
         return message;
     }
-    
+
     /// <summary>
     /// Returns true if the OAuth token needs to be refreshed.
     /// </summary>
-    private bool NeedsRefresh(AuthInfo.ReadOnly authInfo)
+    private static bool NeedsRefresh(GogCredential credential)
     {
-        return authInfo.ExpiresAt < DateTimeOffset.UtcNow + TimeSpan.FromMinutes(1);
+        return credential.ExpiresAt < DateTimeOffset.UtcNow + TimeSpan.FromMinutes(1);
     }
 
     /// <summary>
     /// Refresh the OAuth token.
     /// </summary>
-    private async Task<AuthInfo.ReadOnly> RefreshToken(CancellationToken token)
+    private async Task<GogCredential> RefreshToken(CancellationToken token)
     {
         // Lock so we don't refresh multiple times
         await _semaphore.WaitAsync(token);
         try
         {
-            if (!TryGetAuthInfo(out var authInfo))
-                throw new InvalidOperationException("No authentication information found.");
+            var credential = await _credentials.GetAsync(token)
+                             ?? throw new InvalidOperationException("No authentication information found.");
 
-            if (!NeedsRefresh(authInfo))
-                return authInfo;
+            if (!NeedsRefresh(credential))
+                return credential;
 
             var tokenQuery = new Dictionary<string, string?>
             {
                 { "client_id", ClientId },
                 { "client_secret", ClientSecret },
                 { "grant_type", "refresh_token" },
-                { "refresh_token", authInfo.RefreshToken },
+                { "refresh_token", credential.RefreshToken },
             };
-        
+
             var uri = new Uri(QueryHelpers.AddQueryString(TokenUri.ToString(), tokenQuery));
-        
+
             var tokenResponse = await _client.GetFromJsonAsync<TokenResponse>(uri, token);
             if (tokenResponse == null)
             {
                 throw new Exception("The OAuth login request did not return a token.");
             }
-        
-            using var tx = _connection.BeginTransaction();
-            var e = authInfo.Id;
-            tx.Add(e, AuthInfo.AccessToken, tokenResponse.AccessToken);
-            tx.Add(e, AuthInfo.RefreshToken, tokenResponse.RefreshToken);
-            tx.Add(e, AuthInfo.ExpiresAt, DateTimeOffset.UtcNow.AddSeconds(tokenResponse.ExpiresIn));
-            tx.Add(e, AuthInfo.SessionId, tokenResponse.SessionId);
-            tx.Add(e, AuthInfo.UserId, ulong.Parse(tokenResponse.UserId));
-            var result = await tx.Commit();
-            return authInfo.Rebase(result.Db);
+
+            var refreshed = ToCredential(tokenResponse);
+            var result = await _credentials.SetAsync(refreshed, token);
+            if (result is SecretWriteResult.ReadOnly readOnly)
+                _logger.LogWarning("The refreshed GOG login cannot be saved because {Source} supplies it; using it for this request only", readOnly.Source);
+
+            return refreshed;
         }
         finally
         {
             _semaphore.Release();
         }
-    }
-    
-    /// <summary>
-    /// Try to get the authentication information from the database.
-    /// </summary>
-    public bool TryGetAuthInfo(out AuthInfo.ReadOnly authInfo)
-    {
-        foreach (var found in AuthInfo.All(_connection.Db))
-        {
-            authInfo = found;
-            return true;
-        }
-        authInfo = default(AuthInfo.ReadOnly);
-        return false;
     }
 
     public async ValueTask<(OSPlatform OS, Uri DownloadLink)[]> GetInstallers(ProductId productId, CancellationToken token)
@@ -379,16 +361,9 @@ internal class Client : IClient
     /// </summary>
     public async Task LogOut()
     {
-        using var tx = _connection.BeginTransaction();
-        var infos = AuthInfo.All(_connection.Db).Select(ent => ent.Id).ToArray();
-        foreach (var found in infos)
-        {
-            tx.Delete(found, false);
-        }
-        await tx.Commit();
-
-        await _connection.Excise(infos);
-
+        var result = await _credentials.ClearAsync(CancellationToken.None);
+        if (result is SecretWriteResult.ReadOnly readOnly)
+            throw new InvalidOperationException($"The GOG login cannot be removed: {readOnly.Source} supplies it.");
     }
 
     /// <summary>

@@ -1,8 +1,13 @@
 using NexusMods.MnemonicDB.Abstractions.Attributes;
 using NexusMods.MnemonicDB.Abstractions.Models;
 
-namespace NexusMods.Networking.GOG.Models;
+namespace NexusMods.Networking.GOG.Models.Legacy;
 
+/// <remarks>
+/// The row an older version kept the GOG login in. The login lives in the secret store now; this model stays
+/// registered, with its attribute ids, so the migration can find and excise the rows, and so the schema does
+/// not change. Nothing else should read or write it.
+/// </remarks>
 public partial class AuthInfo : IModelDefinition
 {
     public const string Namespace = "SilverModManager.Networking.GOG.AuthInfo";

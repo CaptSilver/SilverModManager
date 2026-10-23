@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>NexusMods.Networking.GOG.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\NexusMods.Networking.GOG\NexusMods.Networking.GOG.csproj" />
+        <ProjectReference Include="..\..\..\src\NexusMods.Secrets\NexusMods.Secrets.csproj" />
+        <ProjectReference Include="..\..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
+        <ProjectReference Include="..\..\Games\NexusMods.Games.TestFramework\NexusMods.Games.TestFramework.csproj" />
+    </ItemGroup>
+
+</Project>
