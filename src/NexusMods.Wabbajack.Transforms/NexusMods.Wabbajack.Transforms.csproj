@@ -5,9 +5,13 @@
 
     <ItemGroup>
         <PackageReference Include="Octopus.Octodiff" />
+        <PackageReference Include="BCnEncoder.Net" />
+        <PackageReference Include="SkiaSharp" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
     </ItemGroup>
 
     <ItemGroup>
         <InternalsVisibleTo Include="NexusMods.Wabbajack.Transforms.Tests" />
+        <InternalsVisibleTo Include="NexusMods.Wabbajack.Tests" />
     </ItemGroup>
 </Project>
