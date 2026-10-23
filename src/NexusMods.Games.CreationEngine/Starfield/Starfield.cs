@@ -1,7 +1,9 @@
 using DynamicData.Kernel;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.Creations;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -49,6 +51,16 @@ public class Starfield(IServiceProvider provider) : ACreationEngineGame<Starfiel
 
     public override IReadOnlyList<GamePath> TestFileIniFiles =>
         [new(LocationId.Game, "Starfield.ini"), new(LocationId.Preferences, "StarfieldCustom.ini")];
+
+    // The Creations land in the game-root Data folder; the Creations folder holds .ckm files, which the
+    // recognizer ignores.
+    private readonly CreationsCatalogRecognizer _gameInstalledContent = new CreationsCatalogRecognizer(
+        new GamePath(LocationId.AppData, "ContentCatalog.txt"),
+        new GamePath(LocationId.Game, "Creations"),
+        new GamePath(LocationId.Game, "Data"),
+        "StarfieldCreation");
+
+    protected override IGameInstalledContentRecognizer? GameInstalledContent => _gameInstalledContent;
 
     // https://github.com/ModOrganizer2/modorganizer-game_starfield/blob/master/src/gamestarfield.cpp
     // (determineMyGamesPath("Starfield") and the plugins.txt copy from localAppFolder() + "/Starfield")

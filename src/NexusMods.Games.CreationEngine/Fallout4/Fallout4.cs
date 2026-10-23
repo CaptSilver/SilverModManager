@@ -1,7 +1,9 @@
 using DynamicData.Kernel;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.Creations;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -40,6 +42,16 @@ public class Fallout4(IServiceProvider provider) : ACreationEngineGame<Fallout4>
     public override bool MasterByExtension => true;
     public override GamePath? CreationClubListFile => new(LocationId.Game, "Fallout4.ccc");
     public override IReadOnlyList<GamePath> TestFileIniFiles => [new(LocationId.Preferences, "Fallout4.ini"), new(LocationId.Preferences, "Fallout4Custom.ini")];
+
+    // Not checked against an installed Fallout 4: the catalog and manifest locations are taken from Skyrim
+    // Special Edition, which shares the format.
+    private readonly CreationsCatalogRecognizer _gameInstalledContent = new CreationsCatalogRecognizer(
+        new GamePath(LocationId.AppData, "ContentCatalog.txt"),
+        new GamePath(LocationId.Game, "Creations"),
+        new GamePath(LocationId.Game, "Data"),
+        "Fallout4Creation");
+
+    protected override IGameInstalledContentRecognizer? GameInstalledContent => _gameInstalledContent;
 
     protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "Fallout4";
     protected override string MyGamesFolderName(GameLocatorResult gameLocatorResult) => "Fallout4";

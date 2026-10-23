@@ -1,7 +1,9 @@
 using DynamicData.Kernel;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.CreationEngine.Abstractions;
+using NexusMods.Games.CreationEngine.Creations;
 using NexusMods.Games.CreationEngine.PluginLists;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -30,6 +32,14 @@ public class SkyrimSE(IServiceProvider provider) : ACreationEngineGame<SkyrimSE>
     public override bool SupportsLightPlugins => true;
     public override bool MasterByExtension => true;
     public override GamePath? CreationClubListFile => new(LocationId.Game, "Skyrim.ccc");
+
+    private readonly CreationsCatalogRecognizer _gameInstalledContent = new CreationsCatalogRecognizer(
+        new GamePath(LocationId.AppData, "ContentCatalog.txt"),
+        new GamePath(LocationId.Game, "Creations"),
+        new GamePath(LocationId.Game, "Data"),
+        "SkyrimCreation");
+
+    protected override IGameInstalledContentRecognizer? GameInstalledContent => _gameInstalledContent;
 
     // The GOG build keeps both its plugin list and its My Games folder apart from Steam's: gameskyrimse.cpp
     // builds both paths from gameDirectoryName(), which adds the " GOG" suffix for the GOG variant.

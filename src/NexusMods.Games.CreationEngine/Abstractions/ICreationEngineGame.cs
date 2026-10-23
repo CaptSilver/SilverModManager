@@ -1,4 +1,5 @@
 using NexusMods.Abstractions.Games;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.Bethesda.LoadOrder;
 using NexusMods.Games.Bethesda.Loot.Masterlists;
 using NexusMods.Games.CreationEngine.PluginLists;
@@ -37,6 +38,12 @@ public interface ICreationEngineGame : IBethesdaGame
 
     /// <summary>The Creation Club list file, when the game has one. See <see cref="EarlyLoadingPlugins"/>.</summary>
     public GamePath? CreationClubListFile { get; }
+
+    /// <summary>
+    /// Finds the content the game installs into its own folder, or null when the game has no record of it. Its
+    /// <see cref="IGameInstalledContentRecognizer.RecordPaths"/> are also kept out of the sync.
+    /// </summary>
+    public IGameInstalledContentRecognizer? GameInstalledContent { get; }
 
     /// <summary>Ini files that can set <c>sTestFile1</c> to <c>sTestFile10</c>, ordered so that a later file overrides an earlier one.</summary>
     public IReadOnlyList<GamePath> TestFileIniFiles { get; }

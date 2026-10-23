@@ -399,6 +399,25 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
+    public async Task DepotBaselineBuiltBeforeCreationRecordsWereFiltered_IsRebuiltWithoutThem()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        WriteGameFile("Creations/x-1.manifest", "written by the game");
+        _source.Add(101, ("a.esm", "vanilla"));
+
+        // The first build still counted the game's own Creations record as a stray file.
+        await _coordinator.Ensure(Installation("101"));
+        NonVanillaFile.All(_store.Db).Should().ContainSingle().Which.Path.ToString().Should().Be("Creations/x-1.manifest");
+        await SetClassificationVersion(1);
+
+        var result = await _coordinator.Ensure(Make(["101"], filter: path => path.Path.ToString().StartsWith("Creations/", StringComparison.Ordinal)));
+
+        result.Rebuilt.Should().BeTrue("a version 1 baseline predates the filter on the Creations folder");
+        result.NonVanillaCount.Should().Be(0);
+        NonVanillaFile.All(_store.Db).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task DepotBaselineBuiltUnderTheCurrentRules_IsKept()
     {
         WriteGameFile("a.esm", "vanilla");
@@ -517,6 +536,21 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
         using var tx = _store.BeginTransaction();
         tx.Retract(baseline.Id, LocalBaseline.ClassificationVersion, baseline.ClassificationVersion.Value);
+        await tx.Commit();
+    }
+
+    private async Task SetClassificationVersion(int version)
+    {
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        // Two transactions: a retract and an add of the same value in one would cancel out.
+        using (var retract = _store.BeginTransaction())
+        {
+            retract.Retract(baseline.Id, LocalBaseline.ClassificationVersion, baseline.ClassificationVersion.Value);
+            await retract.Commit();
+        }
+
+        using var tx = _store.BeginTransaction();
+        tx.Add(baseline.Id, LocalBaseline.ClassificationVersion, version);
         await tx.Commit();
     }
 

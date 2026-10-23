@@ -102,9 +102,12 @@ internal sealed class LocalVanillaBaseline
     /// ends up vanilla or non-vanilla: <see cref="LocalBaselineCoordinator"/> rebuilds a depot-manifest baseline
     /// carrying a lower number, or none. A baseline without one predates versioning and may predate the rule
     /// that classifies the paths a game keeps out of backups (the Creation Engine archives, all of Baldur's
-    /// Gate 3), which left those files in neither list and showed them as external changes.
+    /// Gate 3), which left those files in neither list and showed them as external changes. Version 2 filters
+    /// the Creation Engine games' own Creations records (the content catalog and the Creations folder), which
+    /// an older baseline reports as non-vanilla. The ignore rule is the synchronizer's path filter, so the
+    /// bump has to land with the filter: a baseline built in between would never be rebuilt.
     /// </summary>
-    internal const int ClassificationVersion = 1;
+    internal const int ClassificationVersion = 2;
 
     /// <summary>
     /// A baseline must classify at least one file in this many of the folder's files. Ignore rules cover

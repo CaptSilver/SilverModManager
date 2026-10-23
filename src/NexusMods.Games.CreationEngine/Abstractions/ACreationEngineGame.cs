@@ -51,6 +51,17 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     /// <summary>A list file the game reads only when <see cref="CreationClubListFile"/> is absent from disk.</summary>
     protected virtual GamePath? FallbackCreationClubListFile => null;
 
+    /// <summary>Overridden by the games that keep a record of the content they install themselves.</summary>
+    protected virtual IGameInstalledContentRecognizer? GameInstalledContent => null;
+
+    IGameInstalledContentRecognizer? ICreationEngineGame.GameInstalledContent => GameInstalledContent;
+
+    // Not on ABethesdaGame: it is the base class and cannot see GameInstalledContent. The game's records are
+    // read by the recognizer only; the sync neither indexes nor reports them.
+    public override bool IsProtectedPath(GamePath path) =>
+        base.IsProtectedPath(path)
+        || (GameInstalledContent?.RecordPaths.Any(record => path == record || path.InFolder(record)) ?? false);
+
     public virtual IReadOnlyList<GamePath> TestFileIniFiles => [];
 
     public virtual Extension[] PluginExtensions => SupportsLightPlugins
