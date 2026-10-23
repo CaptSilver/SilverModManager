@@ -120,7 +120,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         var text = Encoding.UTF8.GetString(await ReadAll(stream));
 
         var gameRoot = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty)).ToString();
-        var extras = ServiceProvider.GetRequiredService<WabbajackPaths>().ExtrasFor("Test list").ToString();
+        var extras = ExtrasOf(group).ToString();
         text.Should().NotContain("{--||");
         AssertSpellings(text, "game", gameRoot);
         AssertSpellings(text, "mo2", extras);

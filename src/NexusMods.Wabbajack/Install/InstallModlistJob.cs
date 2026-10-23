@@ -92,13 +92,13 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var cancellationToken = context.CancellationToken;
 
         var check = await Check(cancellationToken);
-        var group = await EnsureGroup(check, cancellationToken);
+        var (group, extrasFolder) = await EnsureGroup(check, cancellationToken);
 
         try
         {
             var prepared = await Resolve(check, cancellationToken);
-            await Write(check, group, prepared, cancellationToken);
-            await RegisterTools(check, cancellationToken);
+            await Write(check, group, extrasFolder, prepared, cancellationToken);
+            await RegisterTools(check, extrasFolder, cancellationToken);
             await Order(check, group, cancellationToken);
         }
         finally
@@ -317,7 +317,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     #region Group
 
     /// <summary>The group of this list in this loadout, created disabled on the first run. Rows of an earlier run's skips are cleared.</summary>
-    private async Task<LoadoutItemGroupId> EnsureGroup(Checked check, CancellationToken cancellationToken)
+    private async Task<(LoadoutItemGroupId Group, AbsolutePath Extras)> EnsureGroup(Checked check, CancellationToken cancellationToken)
     {
         WabbajackModlistLoadoutGroup.ReadOnly? existing = null;
         foreach (var candidate in WabbajackModlistLoadoutGroup.FindByModlist(Connection.Db, Modlist))
@@ -327,22 +327,24 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             break;
         }
 
-        // Recorded with the group so that removing it finds the folder even if the install never got as far as writing a tool.
-        var extrasFolder = Paths.ExtrasFor(check.List.Name).ToString();
         using var tx = Connection.BeginTransaction();
         if (existing is { } found)
         {
             foreach (var skipped in WabbajackSkippedFile.FindByGroup(Connection.Db, found.Id))
                 tx.Delete(skipped.Id, recursive: false);
-            tx.Add(found.Id, WabbajackModlistLoadoutGroup.ExtrasFolder, extrasFolder);
+            // A group made before folders carried the group id keeps the folder its tools were registered from.
+            var folder = found.ExtrasFolder is { HasValue: true } recorded && recorded.Value.Length > 0
+                ? FileSystem.Shared.FromUnsanitizedFullPath(recorded.Value)
+                : Paths.ExtrasFor(check.List.Name, found.Id);
+            folder.CreateDirectory();
+            tx.Add(found.Id, WabbajackModlistLoadoutGroup.ExtrasFolder, folder.ToString());
             await tx.Commit();
-            return found.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId;
+            return (found.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId, folder);
         }
 
         var group = new WabbajackModlistLoadoutGroup.New(tx, out var id)
         {
             ModlistId = Modlist,
-            ExtrasFolder = extrasFolder,
             CollectionGroup = new CollectionGroup.New(tx, id)
             {
                 IsReadOnly = false,
@@ -359,7 +361,15 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             },
         };
         var result = await tx.Commit();
-        return result.Remap(group).AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId;
+        var created = result.Remap(group);
+
+        // The folder name needs the group's id, so it is recorded once the group exists. It goes in before anything is
+        // written, so that removing the group finds the folder even if the install never got as far as writing a tool.
+        var extras = Paths.ExtrasFor(check.List.Name, created.Id);
+        using var record = Connection.BeginTransaction();
+        record.Add(created.Id, WabbajackModlistLoadoutGroup.ExtrasFolder, extras.ToString());
+        await record.Commit();
+        return (created.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId, extras);
     }
 
     #endregion
@@ -502,11 +512,11 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         public Dictionary<string, HashSet<(GamePath Path, Hash Hash)>> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
-    private async Task Write(Checked check, LoadoutItemGroupId groupId, IReadOnlyList<Prepared> prepared, CancellationToken cancellationToken)
+    private async Task Write(Checked check, LoadoutItemGroupId groupId, AbsolutePath extrasFolder, IReadOnlyList<Prepared> prepared, CancellationToken cancellationToken)
     {
         Progress.Enter(InstallPhase.Write, prepared.Count, prepared.Sum(p => p.Placement.Directive.Size));
         var state = LoadExisting(groupId);
-        var extras = new ExtrasFolder(Paths.ExtrasFor(check.List.Name));
+        var extras = new ExtrasFolder(extrasFolder);
 
         foreach (var batch in prepared.Chunk(TransactionSize))
         {
@@ -656,13 +666,13 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     /// Registers the executables the list's ModOrganizer.ini names as tools of the installation, once their files are on
     /// disk. A tool that is already registered is left as it is, so installing again adds nothing.
     /// </summary>
-    private async Task RegisterTools(Checked check, CancellationToken cancellationToken)
+    private async Task RegisterTools(Checked check, AbsolutePath extrasFolder, CancellationToken cancellationToken)
     {
         var iniText = await ReadModOrganizerIni(check, cancellationToken);
         if (iniText is null) return;
 
         var installation = check.Loadout.InstallationInstance;
-        var extras = new ExtrasFolder(Paths.ExtrasFor(check.List.Name));
+        var extras = new ExtrasFolder(extrasFolder);
         var gameRoot = installation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty));
         var primary = installation.Game.GetPrimaryFile(installation);
 

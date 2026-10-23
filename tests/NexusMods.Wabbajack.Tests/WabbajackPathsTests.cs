@@ -1,6 +1,7 @@
 using FluentAssertions;
 using NexusMods.DataModel;
 using NexusMods.Paths;
+using NexusMods.Wabbajack.Models;
 
 namespace NexusMods.Wabbajack.Tests;
 
@@ -40,11 +41,21 @@ public class WabbajackPathsTests(WabbajackPaths paths, IFileSystem fileSystem)
     [InlineData("Test list", "Test list")]
     [InlineData("a/b\\c:d", "a_b_c_d")]
     [InlineData("  ", "modlist")]
-    public void AListsExtrasFolderIsNamedAfterItWithoutSeparatorsAndIsCreated(string listName, string folderName)
+    public void AListsExtrasFolderIsNamedAfterItWithoutSeparatorsAndEndsWithTheGroupsId(string listName, string folderName)
     {
-        var folder = paths.ExtrasFor(listName);
+        var id = WabbajackModlistLoadoutGroupId.From(0x0100000000000042UL);
+        var folder = paths.ExtrasFor(listName, id);
 
-        folder.Should().Be(TestRoot.Combine("Extras").Combine(folderName));
+        folder.Should().Be(TestRoot.Combine("Extras").Combine($"{folderName}-{id.Value:x}"));
         folder.DirectoryExists().Should().BeTrue();
+    }
+
+    [Fact]
+    public void ListsWhoseNamesSanitiseToTheSameFolderStillGetFoldersOfTheirOwn()
+    {
+        var first = paths.ExtrasFor("a/b", WabbajackModlistLoadoutGroupId.From(0x0100000000000001UL));
+        var second = paths.ExtrasFor("a:b", WabbajackModlistLoadoutGroupId.From(0x0100000000000002UL));
+
+        first.Should().NotBe(second);
     }
 }

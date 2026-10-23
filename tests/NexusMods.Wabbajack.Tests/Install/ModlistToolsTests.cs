@@ -64,7 +64,7 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
         var (_, group, _) = await InstallList(ListWith(DefaultExecutables));
 
         var paths = ServiceProvider.GetRequiredService<WabbajackPaths>();
-        var folder = paths.ExtrasFor("Test list");
+        var folder = ExtrasOf(group);
         var written = folder.Combine("xEdit/SSEEdit.exe");
         written.FileExists.Should().BeTrue();
         (await written.ReadAllBytesAsync()).Should().Equal(EditBytes);
@@ -72,7 +72,7 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
         var everything = Directory.EnumerateFiles(paths.ExtrasRoot.ToString(), "*", SearchOption.AllDirectories)
             .Select(f => f[(paths.ExtrasRoot.ToString().Length + 1)..].Replace('\\', '/'))
             .ToArray();
-        everything.Should().BeEquivalentTo(["Test list/xEdit/SSEEdit.exe"], "Mod Organizer's own explorer++ folder is not a tool folder");
+        everything.Should().BeEquivalentTo([$"{folder.FileName}/xEdit/SSEEdit.exe"], "Mod Organizer's own explorer++ folder is not a tool folder");
 
         TreeOf(group).Values.SelectMany(g => g.Keys).Should().NotContain(k => k.Contains("SSEEdit", StringComparison.OrdinalIgnoreCase));
         Group(group).ExtrasFolder.Value.Should().Be(folder.ToString());
@@ -90,10 +90,10 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
     [Fact]
     public async Task AnExecutableInTheExtrasFolderBecomesAToolWithHostPaths()
     {
-        var (loadout, _, _) = await InstallList(ListWith(DefaultExecutables + SseEditEntry));
+        var (loadout, group, _) = await InstallList(ListWith(DefaultExecutables + SseEditEntry));
 
         var tool = ToolsOf(loadout).Should().ContainSingle().Subject;
-        var extras = ServiceProvider.GetRequiredService<WabbajackPaths>().ExtrasFor("Test list");
+        var extras = ExtrasOf(group);
         var gameRoot = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty)).ToString();
 
         tool.Name.Should().Be("SSEEdit");
@@ -147,6 +147,29 @@ public class ModlistToolsTests(ITestOutputHelper helper) : InstallTestBase<Modli
         await Install(loadout, modlist, Options);
 
         ToolsOf(loadout).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task InstallingAgainKeepsTheFolderTheGroupAlreadyRecords()
+    {
+        var list = ListWith(DefaultExecutables + SseEditEntry);
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+        var (_, group) = await Install(loadout, modlist, Options);
+
+        // A group from before folders carried the group's id records a folder named after the list alone.
+        var recorded = ServiceProvider.GetRequiredService<WabbajackPaths>().ExtrasRoot.Combine("Test list");
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(group.Id, WabbajackModlistLoadoutGroup.ExtrasFolder, recorded.ToString());
+            await tx.Commit();
+        }
+
+        await Install(loadout, modlist, Options);
+
+        Group(group).ExtrasFolder.Value.Should().Be(recorded.ToString());
+        recorded.Combine("xEdit/SSEEdit.exe").FileExists.Should().BeTrue();
+        ToolsOf(loadout).Should().Contain(t => t.Exe == recorded.Combine("xEdit/SSEEdit.exe").ToString());
     }
 
     private WabbajackModlistLoadoutGroup.ReadOnly Group(WabbajackModlistLoadoutGroup.ReadOnly stale)

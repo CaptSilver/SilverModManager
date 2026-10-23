@@ -89,6 +89,7 @@ public sealed class WabbajackModlistRemovalWatcher(IConnection connection, Wabba
         {
             using var tx = connection.BeginTransaction();
             var any = false;
+            var folders = new List<string>();
             foreach (var group in groups)
             {
                 foreach (var skipped in WabbajackSkippedFile.FindByGroup(connection.Db, group.Id))
@@ -96,9 +97,11 @@ public sealed class WabbajackModlistRemovalWatcher(IConnection connection, Wabba
                     tx.Delete(skipped.Id, recursive: false);
                     any = true;
                 }
-                any |= RemoveExtras(tx, group);
+                any |= RemoveExtras(tx, group, folders);
             }
             if (any) await tx.Commit();
+            // Only after the commit: a failed one must not leave registered tools pointing at a deleted folder.
+            foreach (var folder in folders) DeleteFolder(folder);
         }
         catch (Exception ex)
         {
@@ -111,10 +114,11 @@ public sealed class WabbajackModlistRemovalWatcher(IConnection connection, Wabba
     }
 
     /// <summary>
-    /// Deletes the group's tools folder and the tools registered from it. A recorded folder that is not inside the
+    /// Queues the tool rows registered from the group's tools folder for deletion and adds the folder to
+    /// <paramref name="folders"/> for the caller to delete once the transaction has committed. A recorded folder that is not inside the
     /// extras root is left alone, along with its tools: the value is data, not a promise that the folder is ours.
     /// </summary>
-    private bool RemoveExtras(ITransaction tx, RemovedGroup group)
+    private bool RemoveExtras(ITransaction tx, RemovedGroup group, List<string> folders)
     {
         if (string.IsNullOrEmpty(group.ExtrasFolder)) return false;
 
@@ -138,6 +142,12 @@ public sealed class WabbajackModlistRemovalWatcher(IConnection connection, Wabba
             }
         }
 
+        folders.Add(folder);
+        return any;
+    }
+
+    private void DeleteFolder(string folder)
+    {
         try
         {
             if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
@@ -146,7 +156,6 @@ public sealed class WabbajackModlistRemovalWatcher(IConnection connection, Wabba
         {
             logger.LogError(ex, "Could not delete the tools folder '{Folder}' of a removed modlist", folder);
         }
-        return any;
     }
 
     private static GameInstallMetadataId InstallationId(EntityId id) => GameInstallMetadataId.From(id.Value);

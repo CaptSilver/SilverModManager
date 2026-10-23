@@ -1,6 +1,7 @@
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Settings;
+using NexusMods.Wabbajack.Models;
 
 namespace NexusMods.Wabbajack;
 
@@ -18,13 +19,14 @@ public sealed class WabbajackPaths(ISettingsManager settingsManager, IFileSystem
 
     /// <summary>
     /// The folder a list's tools, and the Mod Organizer paths its config files point at, live in. Named after the
-    /// list with anything that is not valid in a folder name replaced.
+    /// list with anything that is not valid in a folder name replaced, and ending in the group's id: two lists can
+    /// sanitise to the same name, and removing one must not touch the other's folder.
     /// </summary>
-    public AbsolutePath ExtrasFor(string listName)
+    public AbsolutePath ExtrasFor(string listName, WabbajackModlistLoadoutGroupId group)
     {
         var invalid = System.IO.Path.GetInvalidFileNameChars().Concat(['/', '\\', ':']).ToHashSet();
         var name = new string(listName.Select(c => invalid.Contains(c) ? '_' : c).ToArray()).Trim();
-        var folder = ExtrasRoot.Combine(name.Length == 0 ? "modlist" : name);
+        var folder = ExtrasRoot.Combine($"{(name.Length == 0 ? "modlist" : name)}-{group.Value:x}");
         folder.CreateDirectory();
         return folder;
     }

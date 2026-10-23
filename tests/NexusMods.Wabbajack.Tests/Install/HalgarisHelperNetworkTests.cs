@@ -88,7 +88,7 @@ public class HalgarisHelperNetworkTests(ITestOutputHelper helper) : InstallTestB
 
         // The stub game folder and the test's prefix are the only places the job could have read or written.
         var gameRoot = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty));
-        var extras = ServiceProvider.GetRequiredService<WabbajackPaths>().ExtrasFor(list.Name);
+        var extras = ExtrasOf(group);
         extras.ToString().Should().NotStartWith(gameRoot.ToString());
         extras.ToString().Should().Contain(Startup.SettingsRoot, "extras stay under the test's own settings folder");
 

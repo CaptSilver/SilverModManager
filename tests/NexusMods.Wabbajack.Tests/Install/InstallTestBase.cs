@@ -73,6 +73,10 @@ public abstract class InstallTestBase<TTest>(ITestOutputHelper helper) : Acquire
         return (task.JobDefinition, group);
     }
 
+    /// <summary>The extras folder recorded on the group, read fresh because it is recorded after the group is created.</summary>
+    protected AbsolutePath ExtrasOf(WabbajackModlistLoadoutGroup.ReadOnly group)
+        => ServiceProvider.GetRequiredService<IFileSystem>().FromUnsanitizedFullPath(WabbajackModlistLoadoutGroup.Load(Connection.Db, group.Id).ExtrasFolder.Value);
+
     /// <summary>Group name to (target path to hash) for each mod group of the list, as the database holds them now.</summary>
     protected Dictionary<string, Dictionary<string, Hash>> TreeOf(WabbajackModlistLoadoutGroup.ReadOnly group)
     {
