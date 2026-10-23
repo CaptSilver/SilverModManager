@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
+using NexusMods.Sdk.NexusModsApi;
 using NexusMods.Sdk.Settings;
 using NexusMods.App.UI.Controls.Navigation;
 using NexusMods.App.UI.Overlays;
@@ -33,6 +34,7 @@ namespace NexusMods.App.UI.Controls.TopBar;
 public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
 {
     private readonly ILoginManager _loginManager;
+    private readonly INexusCredentialSummary _credentialSummary;
     private readonly ILogger<TopBarViewModel> _logger;
     private readonly IWindowNotificationService _notificationService;
 
@@ -61,6 +63,8 @@ public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
 
     [Reactive] public string? Username { get; set; } = string.Empty;
 
+    [Reactive] public string AccountTooltip { get; private set; } = string.Empty;
+
     [Reactive] public IAddPanelDropDownViewModel AddPanelDropDownViewModel { get; set; } = null!;
 
     [Reactive] public IPanelTabViewModel? SelectedTab { get; set; }
@@ -74,8 +78,10 @@ public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
         IOSInterop osInterop,
         ISettingsManager settingsManager,
         IFileSystem fileSystem,
-        IWindowNotificationService notificationService)
+        IWindowNotificationService notificationService,
+        INexusCredentialSummary credentialSummary)
     {
+        _credentialSummary = credentialSummary;
         _logger = logger;
         _loginManager = loginManager;
         _notificationService = notificationService;
@@ -196,7 +202,12 @@ public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
                 _loginManager.UserInfoObservable
                     .Select(u => u?.Name)
                     .ObserveOnUIThreadDispatcher()
-                    .Subscribe(name => Username = name ?? "");
+                    .Subscribe(name =>
+                    {
+                        Username = name ?? "";
+                        AccountTooltip = AccountTooltipText.Describe(Username, _credentialSummary);
+                    })
+                    .DisposeWith(d);
 
                 workspaceController.WhenAnyValue(controller => controller.ActiveWorkspace.Title)
                     .BindToVM(this, vm => vm.ActiveWorkspaceTitle)

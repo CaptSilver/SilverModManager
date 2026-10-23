@@ -100,9 +100,9 @@ public partial class TopBarView : ReactiveUserControl<ITopBarViewModel>
                     )
                     .DisposeWith(d);
 
-                this.WhenValueChanged(x => x.ViewModel!.Username
+                this.WhenValueChanged(x => x.ViewModel!.AccountTooltip
                     )
-                    .Subscribe(username => { ToolTip.SetTip(AvatarMenuItemButton, $"Logged in to Nexus Mods as {username}"); })
+                    .Subscribe(tip => { ToolTip.SetTip(AvatarMenuItemButton, tip); })
                     .DisposeWith(d);
 
                 this.WhenValueChanged(x => x.ViewModel!.IsLoggedIn

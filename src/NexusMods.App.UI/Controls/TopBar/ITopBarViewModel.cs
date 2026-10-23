@@ -35,6 +35,11 @@ public interface ITopBarViewModel : IViewModelInterface
     public IImage? Avatar { get; }
     public string? Username { get; }
 
+    /// <summary>
+    /// The sign-in tooltip, including where the credential comes from when it is not the store.
+    /// </summary>
+    public string AccountTooltip { get; }
+
     public IAddPanelDropDownViewModel AddPanelDropDownViewModel { get; set; }
     
     public IPanelTabViewModel? SelectedTab { get; set; }
