@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.Larian.BaldursGate3;
+using NexusMods.Games.Larian.BaldursGate3.ModList;
 using NexusMods.Games.Larian.BaldursGate3.Models;
 using NexusMods.Games.Larian.BaldursGate3.SortOrder;
 using NexusMods.Games.TestFramework;
@@ -396,6 +397,52 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         }
 
         await variety.ClearReplacedGameEdit(id);
+
+        Connection.Db.Datoms(Bg3ModListNotice.SortOrder, id).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ClearReplacedGameEdit_KeepsTheLastWrittenPaksAndEndsTheNotice()
+    {
+        var (_, variety, id) = await Reconciled();
+        using (var tx = Connection.BeginTransaction())
+        {
+            _ = new Bg3ModListNotice.New(tx)
+            {
+                SortOrderId = id,
+                Summary = "edited",
+                ReplacedAt = DateTimeOffset.UtcNow,
+                LastWrittenPaks = "a.pak\nb.pak",
+            };
+            await tx.Commit();
+        }
+        string? summary = "unset";
+        using var subscription = ((IReplacedGameEditSource)variety).ReplacedEditSummary(id).Subscribe(s => summary = s);
+        await WaitUntil(() => summary == "edited");
+
+        await variety.ClearReplacedGameEdit(id);
+
+        await WaitUntil(() => summary is null);
+        Bg3ModListNotices.LastWritten(Connection.Db, id).Should().Equal("a.pak", "b.pak");
+    }
+
+    [Fact]
+    public async Task DeleteSortOrder_RemovesTheNoticeThatHoldsTheLastWrittenPaks()
+    {
+        var (_, variety, id) = await Reconciled();
+        using (var tx = Connection.BeginTransaction())
+        {
+            _ = new Bg3ModListNotice.New(tx)
+            {
+                SortOrderId = id,
+                Summary = "",
+                ReplacedAt = DateTimeOffset.UtcNow,
+                LastWrittenPaks = "a.pak",
+            };
+            await tx.Commit();
+        }
+
+        await variety.DeleteSortOrder(id);
 
         Connection.Db.Datoms(Bg3ModListNotice.SortOrder, id).Should().BeEmpty();
     }

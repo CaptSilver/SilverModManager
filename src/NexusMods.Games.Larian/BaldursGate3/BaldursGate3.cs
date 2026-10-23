@@ -46,7 +46,7 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequ
         var art = provider.GetRequiredService<IGameArtSource>();
         IconImage = art.Icon(StoreIdentifiers.SteamAppIds);
         TileImage = art.Tile(StoreIdentifiers.SteamAppIds);
-        _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new BaldursGate3Synchronizer(provider));
+        _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new BaldursGate3Synchronizer(provider, this));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {
             var sortOrderManager = provider.GetRequiredService<SortOrderManager>();
@@ -58,6 +58,7 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequ
         [
             provider.GetRequiredService<DependencyDiagnosticEmitter>(),
             provider.GetRequiredService<ProtonPrefixEmitter>(),
+            new DuplicateModuleEmitter(this, provider),
         ];
 
         LibraryItemInstallers =

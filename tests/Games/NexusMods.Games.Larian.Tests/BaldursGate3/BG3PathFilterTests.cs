@@ -29,4 +29,14 @@ public class BG3PathFilterTests(IServiceProvider serviceProvider)
     {
         _filter.ShouldFilter(new GamePath(LocationId.Saves, "x")).Should().BeTrue();
     }
+
+    [Fact]
+    public void Modsettings_IsAnIntrinsicFile()
+    {
+        var synchronizer = (ALoadoutSynchronizer)serviceProvider
+            .GetServices<IGame>().OfType<Larian.BaldursGate3.BaldursGate3>().Single().Synchronizer;
+
+        synchronizer.IntrinsicFiles(default).Keys.Should()
+            .ContainSingle().Which.Should().Be(new GamePath(Larian.BaldursGate3.Bg3Constants.PlayerProfilesLocationId, "modsettings.lsx"));
+    }
 }

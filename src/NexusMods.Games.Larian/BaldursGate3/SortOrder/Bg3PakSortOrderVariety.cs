@@ -3,6 +3,7 @@ using DynamicData;
 using DynamicData.Kernel;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.Larian.BaldursGate3.ModList;
 using NexusMods.Games.Larian.BaldursGate3.Models;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
@@ -116,7 +117,15 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     /// <inheritdoc />
     public override async ValueTask DeleteSortOrder(SortOrderId sortOrderId, CancellationToken token = default)
     {
-        await ClearReplacedGameEdit(sortOrderId);
+        // The notice also holds the pak lists the app wrote, which go with the order.
+        var notices = Connection.Db.Datoms(Bg3ModListNotice.SortOrder, sortOrderId).Select(d => d.E).ToArray();
+        if (notices.Length > 0)
+        {
+            using var tx = Connection.BeginTransaction();
+            foreach (var notice in notices) tx.Delete(notice, recursive: false);
+            await tx.Commit();
+        }
+
         await base.DeleteSortOrder(sortOrderId, token);
     }
 
@@ -170,12 +179,23 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     /// <inheritdoc />
     public async Task ClearReplacedGameEdit(SortOrderId sortOrderId)
     {
-        var notices = Connection.Db.Datoms(Bg3ModListNotice.SortOrder, sortOrderId).Select(d => d.E).ToArray();
+        var db = Connection.Db;
+        var notices = Bg3ModListNotice.FindBySortOrder(db, sortOrderId).ToArray();
         if (notices.Length == 0) return;
 
         using var tx = Connection.BeginTransaction();
         foreach (var notice in notices)
-            tx.Delete(notice, recursive: false);
+        {
+            // The pak lists the app wrote live on the same entity, so only the note is emptied.
+            if (Bg3ModListNotices.HoldsMoreThanTheNote(notice))
+            {
+                if (notice.Summary != "") tx.Add(notice.Id, Bg3ModListNotice.Summary, "");
+            }
+            else
+            {
+                tx.Delete(notice.Id, recursive: false);
+            }
+        }
         await tx.Commit();
     }
 

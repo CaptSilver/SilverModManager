@@ -96,8 +96,10 @@ WHERE s.ParentSortOrder = sortOrderId
 ORDER BY s.SortIndex;
 
 
--- The notice recording that the app replaced the game's mod list, if the sort order has one.
+-- The notice recording that the app replaced the game's mod list, if the sort order has one. The notice entity
+-- also stores the pak lists the app wrote, so one with an empty summary is not a notice.
 CREATE MACRO bg3.Notices(db, sortOrderId) AS TABLE
 SELECT n.Id, n.Summary
 FROM mdb_Bg3ModListNotice(Db=>db) n
-WHERE n.SortOrder = sortOrderId;
+WHERE n.SortOrder = sortOrderId
+    AND n.Summary <> '';

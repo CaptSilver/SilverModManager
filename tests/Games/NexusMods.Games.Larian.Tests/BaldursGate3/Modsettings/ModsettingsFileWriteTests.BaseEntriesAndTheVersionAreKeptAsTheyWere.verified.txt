@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<save>
+  <version major="4" minor="9" revision="1" build="77" />
+  <region id="ModuleSettings">
+    <node id="root">
+      <children>
+        <node id="Mods">
+          <children>
+            <node id="ModuleShortDesc">
+              <attribute id="Folder" type="LSString" value="GustavX" />
+              <attribute id="MD5" type="LSString" value="" />
+              <attribute id="Name" type="LSString" value="GustavX" />
+              <attribute id="PublishHandle" type="uint64" value="0" />
+              <attribute id="UUID" type="guid" value="cb555efe-2d9e-131f-8195-a89329d218ea" />
+              <attribute id="Version64" type="int64" value="145241302737902957" />
+            </node>
+            <node id="ModuleShortDesc">
+              <attribute id="Folder" type="LSString" value="HonourX" />
+              <attribute id="MD5" type="LSString" value="" />
+              <attribute id="Name" type="LSString" value="HonourX" />
+              <attribute id="PublishHandle" type="uint64" value="0" />
+              <attribute id="UUID" type="guid" value="767d0062-d82c-279c-e16b-dfee7fe94cdd" />
+              <attribute id="Version64" type="int64" value="36028797025827000" />
+            </node>
+            <node id="ModuleShortDesc">
+              <attribute id="Folder" type="LSString" value="ThirdParty" />
+              <attribute id="MD5" type="LSString" value="" />
+              <attribute id="Name" type="LSString" value="ThirdParty" />
+              <attribute id="PublishHandle" type="uint64" value="0" />
+              <attribute id="UUID" type="guid" value="d4d4d4d4-0000-4000-8000-000000000004" />
+              <attribute id="Version64" type="int64" value="7" />
+            </node>
+            <node id="ModuleShortDesc">
+              <attribute id="Folder" type="LSString" value="Alpha" />
+              <attribute id="MD5" type="LSString" value="" />
+              <attribute id="Name" type="LSString" value="Alpha" />
+              <attribute id="PublishHandle" type="uint64" value="0" />
+              <attribute id="UUID" type="guid" value="a1a1a1a1-0000-4000-8000-000000000001" />
+              <attribute id="Version64" type="int64" value="36028797018963968" />
+            </node>
+          </children>
+        </node>
+      </children>
+    </node>
+  </region>
+</save>

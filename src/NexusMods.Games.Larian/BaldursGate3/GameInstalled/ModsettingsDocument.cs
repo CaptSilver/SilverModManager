@@ -1,3 +1,4 @@
+using System.Text;
 using System.Xml;
 using NexusMods.Games.Larian.BaldursGate3.Utils.LsxXmlParsing;
 
@@ -93,5 +94,62 @@ public sealed class ModsettingsDocument
         }
 
         return new ModuleEntry(folder, name, handle, uuid, version, md5);
+    }
+
+    /// <summary>
+    /// The file as the game reads it: the given `&lt;version&gt;` attributes, then one module node per entry in the
+    /// order given. Indented like <see cref="ModsettingsFileFormat"/> writes it, and declared UTF-8 because that
+    /// is what the bytes are.
+    /// </summary>
+    public static string Render(IReadOnlyDictionary<string, string> versionAttributes, IEnumerable<ModuleEntry> entries)
+    {
+        using var writer = new Utf8StringWriter();
+        using (var xml = XmlWriter.Create(writer, new XmlWriterSettings { Indent = true }))
+        {
+            xml.WriteStartDocument();
+            xml.WriteStartElement("save");
+
+            xml.WriteStartElement("version");
+            foreach (var (name, value) in versionAttributes) xml.WriteAttributeString(name, value);
+            xml.WriteEndElement();
+
+            xml.WriteStartElement("region");
+            xml.WriteAttributeString("id", "ModuleSettings");
+            xml.WriteStartElement("node");
+            xml.WriteAttributeString("id", "root");
+            xml.WriteStartElement("children");
+            xml.WriteStartElement("node");
+            xml.WriteAttributeString("id", "Mods");
+            xml.WriteStartElement("children");
+
+            foreach (var entry in entries)
+            {
+                ModsettingsFileFormat.WriteModuleShortDesc(xml, new LsxXmlFormat.ModuleShortDesc
+                {
+                    Folder = entry.Folder,
+                    Name = entry.Name,
+                    PublishHandle = entry.PublishHandle,
+                    Uuid = entry.Uuid,
+                    Version = entry.Version64,
+                    Md5 = entry.Md5,
+                });
+            }
+
+            xml.WriteEndElement(); // children
+            xml.WriteEndElement(); // node Mods
+            xml.WriteEndElement(); // children
+            xml.WriteEndElement(); // node root
+            xml.WriteEndElement(); // region
+            xml.WriteEndElement(); // save
+            xml.WriteEndDocument();
+        }
+
+        return writer.ToString();
+    }
+
+    /// <summary>A string writer that says UTF-8 in the XML declaration, where the default says UTF-16.</summary>
+    private sealed class Utf8StringWriter : StringWriter
+    {
+        public override Encoding Encoding => new UTF8Encoding(false);
     }
 }

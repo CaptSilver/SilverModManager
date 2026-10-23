@@ -250,4 +250,29 @@ internal static partial class Diagnostics
             .AddValue<string>("CurrentDepVersion")
         )
         .Finish();
+
+    /// <summary>
+    /// Two paks that are the same module, so the mod list can name it only once.
+    /// </summary>
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate DuplicateModuleTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 11))
+        .WithTitle("The same module is installed twice")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The module {ModuleName} is installed twice, as {KeptPak} and as {IgnoredPaks}.")
+        .WithDetails("""
+                     Two paks provide the module '{ModuleName}'. The game's mod list can name a module only once, so the app lists '{KeptPak}' and leaves out {IgnoredPaks}.
+
+
+                     ## Recommended Actions
+                     #### Remove one of the copies
+                     Keep the one you want: a copy installed through the app is preferred over one the game installed itself.
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("ModuleName")
+            .AddValue<string>("KeptPak")
+            .AddValue<string>("IgnoredPaks")
+        )
+        .Finish();
 }

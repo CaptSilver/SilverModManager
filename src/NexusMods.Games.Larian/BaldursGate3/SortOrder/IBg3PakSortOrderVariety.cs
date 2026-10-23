@@ -45,7 +45,8 @@ public interface IBg3PakSortOrderVariety : ISortOrderVariety
     void StageEnabled(SortOrderId sortOrderId, string name, bool enabled, ITransaction tx);
 
     /// <summary>
-    /// Deletes the notice that the app replaced the game's mod list, if there is one.
+    /// Clears the notice that the app replaced the game's mod list, if there is one. The notice entity stays when
+    /// it also holds the lists of paks the app wrote.
     /// </summary>
     Task ClearReplacedGameEdit(SortOrderId sortOrderId);
 }
