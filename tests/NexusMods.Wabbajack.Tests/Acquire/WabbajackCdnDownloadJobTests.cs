@@ -125,6 +125,27 @@ public class WabbajackCdnDownloadJobTests(IServiceProvider provider, TemporaryFi
     }
 
     [Fact]
+    public async Task OtherPartsStopBeingFetchedOnceOnePartIsGivenUpOn()
+    {
+        const int partCount = 40;
+        var fixture = new CdnFixture(length: CdnFixture.PartSize * partCount);
+        var handler = new CdnHandler(fixture)
+        {
+            Respond = (path, _) => path.EndsWith("/parts/0", StringComparison.Ordinal) ? new HttpResponseMessage(HttpStatusCode.InternalServerError) : null,
+            // The other parts never answer, so only cancelling them lets the job finish; no timing involved.
+            DelayFor = path => path.Contains("/parts/", StringComparison.Ordinal) && !path.EndsWith("/parts/0", StringComparison.Ordinal) ? TimeSpan.FromHours(1) : TimeSpan.Zero,
+        };
+        await using var destination = temporaryFileManager.CreateFile();
+
+        var act = async () => await Task.Run(async () => await Begin(JobFor(handler, destination))).WaitAsync(TimeSpan.FromSeconds(30));
+
+        // The error is the part's own, not the cancellation of its siblings.
+        (await act.Should().ThrowAsync<Exception>()).Which.ToString().Should().Contain("part 0");
+        handler.RequestsFor("/parts/0").Should().Be(6);
+        handler.Requests.Count(r => r.Uri.AbsolutePath.Contains("/parts/")).Should().BeLessThan(partCount / 2);
+    }
+
+    [Fact]
     public async Task ADefinitionWithoutAFileNameFailsNamingTheField()
     {
         var gz = new MemoryStream();

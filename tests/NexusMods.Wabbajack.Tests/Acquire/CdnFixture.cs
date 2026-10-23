@@ -65,7 +65,10 @@ internal sealed class CdnHandler(CdnFixture fixture) : HttpMessageHandler
     /// <summary>Called with the request's path and the number of earlier requests for it; return null to serve the real bytes.</summary>
     public Func<string, int, HttpResponseMessage?>? Respond { get; set; }
 
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    /// <summary>How long a request for the path is held before it is answered; lets a test keep some parts in flight.</summary>
+    public Func<string, TimeSpan>? DelayFor { get; set; }
+
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         int earlier;
         lock (_lock)
@@ -75,16 +78,19 @@ internal sealed class CdnHandler(CdnFixture fixture) : HttpMessageHandler
         }
 
         var path = request.RequestUri!.AbsolutePath;
+        if (DelayFor?.Invoke(path) is { } delay && delay > TimeSpan.Zero)
+            await Task.Delay(delay, cancellationToken);
+
         var custom = Respond?.Invoke(path, earlier);
-        if (custom is not null) return Task.FromResult(custom);
+        if (custom is not null) return custom;
 
         if (path.EndsWith("/definition.json.gz", StringComparison.Ordinal))
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(fixture.DefinitionGz()) });
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(fixture.DefinitionGz()) };
 
         var marker = path.LastIndexOf("/parts/", StringComparison.Ordinal);
         if (marker >= 0 && int.TryParse(path[(marker + "/parts/".Length)..], out var index) && index < fixture.Parts.Count)
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(fixture.Parts[index]) });
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(fixture.Parts[index]) };
 
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        return new HttpResponseMessage(HttpStatusCode.NotFound);
     }
 }

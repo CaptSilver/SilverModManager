@@ -1,6 +1,7 @@
 // Follows Wabbajack.Downloaders.WabbajackCDN/WabbajackCDNDownloader.cs.
 using System.IO.Compression;
 using System.Net;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -110,30 +111,56 @@ public sealed record WabbajackCdnDownloadJob : IJobDefinitionWithStart<Wabbajack
 
             using var gate = new SemaphoreSlim(ParallelParts);
             using var writeLock = new SemaphoreSlim(1);
-            await Task.WhenAll(definition.Parts.Select(async part =>
+
+            // The first part to fail for good stops the rest; otherwise they would all download before the job
+            // reported the failure.
+            using var partsCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            var partToken = partsCts.Token;
+            Exception? firstFailure = null;
+
+            try
             {
-                await gate.WaitAsync(token);
-                try
+                await Task.WhenAll(definition.Parts.Select(async part =>
                 {
-                    var bytes = await FetchPart(definition, part, token);
-                    // One stream, so writes take turns; fetching is what runs in parallel.
-                    await writeLock.WaitAsync(token);
                     try
                     {
-                        file.Position = part.Offset;
-                        await file.WriteAsync(bytes, token);
+                        await gate.WaitAsync(partToken);
+                        try
+                        {
+                            // A slot can free up in the same moment the cancel lands.
+                            partToken.ThrowIfCancellationRequested();
+                            var bytes = await FetchPart(definition, part, partToken);
+                            // One stream, so writes take turns; fetching is what runs in parallel.
+                            await writeLock.WaitAsync(partToken);
+                            try
+                            {
+                                file.Position = part.Offset;
+                                await file.WriteAsync(bytes, partToken);
+                            }
+                            finally
+                            {
+                                writeLock.Release();
+                            }
+                            context.SetPercent(Size.FromLong(Interlocked.Add(ref written, bytes.Length)), Size.FromLong(Math.Max(1, definition.Size)));
+                        }
+                        finally
+                        {
+                            gate.Release();
+                        }
                     }
-                    finally
+                    catch (Exception e) when (!(e is OperationCanceledException && partToken.IsCancellationRequested))
                     {
-                        writeLock.Release();
+                        Interlocked.CompareExchange(ref firstFailure, e, null);
+                        partsCts.Cancel();
+                        throw;
                     }
-                    context.SetPercent(Size.FromLong(Interlocked.Add(ref written, bytes.Length)), Size.FromLong(Math.Max(1, definition.Size)));
-                }
-                finally
-                {
-                    gate.Release();
-                }
-            }));
+                }));
+            }
+            catch when (firstFailure is not null)
+            {
+                // The siblings' cancellations can sort ahead of the real error in WhenAll; report the real one.
+                ExceptionDispatchInfo.Capture(firstFailure).Throw();
+            }
             await file.FlushAsync(token);
         }
 
