@@ -1140,6 +1140,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
         return async output =>
         {
+            // A source this batch generated (a patched or inline file) may still be waiting for the file store.
+            await FlushPending(state, cancellationToken);
             var joined = await Writer.WriteTemporary(async whole =>
             {
                 foreach (var hash in hashes)

@@ -252,6 +252,25 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
     }
 
     [Fact]
+    public async Task AMergedPatchCanMergeFilesTheSameBatchGenerated()
+    {
+        var archive = await AddZip("a.zip", new() { ["patched.bin"] = [3, 4] });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        byte[] merged = [9, 9, 3, 4, 5, 6, 1];
+        list.Directives.Add(list.Inline("mods/A/inline.bin", [9, 9]));
+        list.Directives.Add(list.Patched("mods/A/patched.bin", archive, "patched.bin", [3, 4], [3, 4, 5, 6]));
+        list.Directives.Add(list.Merged("mods/M/merged.bin", merged, ("mods/A/inline.bin", [9, 9]), ("mods/A/patched.bin", [3, 4, 5, 6])));
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        SkipsOf(group).Should().BeEmpty();
+        TreeOf(group)["M"]["Game/Data/merged.bin"].Should().Be(merged.xxHash3());
+    }
+
+    [Fact]
     public async Task AMergedPatchNamingASourceTheListNeverWritesLeavesATransformRowNamingIt()
     {
         var archive = await AddZip("a.zip", new() { ["one.bin"] = [1, 2] });
