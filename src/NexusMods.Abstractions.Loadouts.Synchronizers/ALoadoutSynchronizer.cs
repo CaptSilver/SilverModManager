@@ -210,6 +210,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         MergeStates(latestDiskState, previousDiskState, syncTree);
+        AdoptGameInstalledFiles(syncTree, loadout);
         LeaveUserProtectedFilesAlone(syncTree, loadout);
         return syncTree;
     }
@@ -323,10 +324,18 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     public async Task<Dictionary<GamePath, SyncNode>> BuildSyncTree(Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
     {
         var metadata = await ReindexState(loadout.InstallationInstance, job);
+        return BuildSyncTreeFromIndex(loadout, metadata);
+    }
 
+    /// <summary>
+    /// Builds the tree from a disk state that is already indexed. Split from the public overload so an Apply can
+    /// reconcile and prepare the loadout between the reindex and the tree.
+    /// </summary>
+    private Dictionary<GamePath, SyncNode> BuildSyncTreeFromIndex(Loadout.ReadOnly loadout, GameInstallMetadata.ReadOnly metadata)
+    {
         var currentItems = GetDiskStateForGame(metadata);
         var prevItems = ((ILoadoutSynchronizer)this).GetPreviouslyAppliedDiskState(metadata);
-        
+
         return BuildSyncTree(currentItems, prevItems, loadout);
     }
 
@@ -1011,10 +1020,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             }
         }
 
+        job?.SetStatus(SyncPhases.Collecting);
+        var metadata = await ReindexState(loadout.InstallationInstance, job);
+
+        // Reconcile sees the fresh disk state, and the game's preparation sees the group it writes.
+        loadout = await ReconcileGameInstalledContent(loadout, metadata);
         loadout = await PrepareLoadoutForSync(loadout);
 
-        job?.SetStatus(SyncPhases.Collecting);
-        var tree = await BuildSyncTree(loadout, job);
+        var tree = BuildSyncTreeFromIndex(loadout, metadata);
         ProcessSyncTree(tree);
         loadout = await RunActions(tree, loadout, job);
 
@@ -1260,6 +1273,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     {
         // The loadout-switch path reaches the hook only here: Synchronize hands the switch to the loadout
         // manager, which ends in this method.
+        loadout = await ReconcileGameInstalledContent(loadout, state);
         loadout = await PrepareLoadoutForSync(loadout);
         var diskStateEntries = DiskStateEntry.FindByGame(state.Db, state);
         var tree = BuildSyncTree(DiskStateToPathPartPair(diskStateEntries), DiskStateToPathPartPair(diskStateEntries), loadout);
