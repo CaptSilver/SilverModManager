@@ -9,6 +9,7 @@ using NexusMods.Games.Generic.Diagnostics;
 using NexusMods.Games.Generic.Installers;
 using NexusMods.Games.Larian.BaldursGate3.Emitters;
 using NexusMods.Games.Larian.BaldursGate3.Installers;
+using NexusMods.Games.Larian.BaldursGate3.SortOrder;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
 using NexusMods.Sdk;
@@ -49,7 +50,7 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequ
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {
             var sortOrderManager = provider.GetRequiredService<SortOrderManager>();
-            sortOrderManager.RegisterSortOrderVarieties([], this);
+            sortOrderManager.RegisterSortOrderVarieties([new Bg3PakSortOrderVariety(provider, this)], this);
             return sortOrderManager;
         });
 
