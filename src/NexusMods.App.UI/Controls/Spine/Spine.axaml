@@ -23,14 +23,25 @@
         <Border x:Name="LoadoutSelectorBorder" >
             <panels:FlexPanel x:Name="LoadoutSelector" >
                 <ScrollViewer x:Name="LoadoutSelectorScroller" >
-                    <ItemsControl x:Name="Loadouts">
+                    <Grid x:Name="LoadoutDropGrid">
+                        <!-- A background makes the gaps between icons accept a drop too -->
+                        <ItemsControl x:Name="Loadouts" Background="Transparent">
 
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Classes="Spacing-3" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                    </ItemsControl>
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Classes="Spacing-3" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                        <!-- Shows where a dragged loadout icon would land -->
+                        <Border x:Name="DropIndicator"
+                                Height="3"
+                                CornerRadius="2"
+                                VerticalAlignment="Top"
+                                IsHitTestVisible="False"
+                                IsVisible="False"
+                                Background="{DynamicResource PrimaryModerate}" />
+                    </Grid>
                 </ScrollViewer>
             </panels:FlexPanel>
         </Border>

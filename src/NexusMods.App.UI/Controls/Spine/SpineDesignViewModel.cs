@@ -26,4 +26,6 @@ public class SpineDesignViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
     });
 
     public void NavigateToHome() { }
+
+    public void MoveLoadout(int fromIndex, int toIndex) { }
 }

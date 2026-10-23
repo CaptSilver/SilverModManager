@@ -329,6 +329,12 @@
     <data name="SpineDownloadButton_ToolTip" xml:space="preserve">
         <value>Downloads</value>
     </data>
+    <data name="SpineLoadoutMenu_MoveUp" xml:space="preserve">
+        <value>Move up</value>
+    </data>
+    <data name="SpineLoadoutMenu_MoveDown" xml:space="preserve">
+        <value>Move down</value>
+    </data>
     <data name="SpineHomeButton_ToolTip_Home" xml:space="preserve">
         <value>Home</value>
     </data>

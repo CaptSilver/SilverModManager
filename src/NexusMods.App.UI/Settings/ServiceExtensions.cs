@@ -12,6 +12,7 @@ public static class ServiceExtensions
             .AddSettings<TextEditorSettings>()
             .AddSettings<TreeDataGridSortingStateSettings>()
             .AddSettings<AlertSettings>()
+            .AddSettings<LoadoutSpineOrderSettings>()
             .AddSettings<BehaviorSettings>()
             .AddSettings<UpdaterSettings>()
             .AddSettings<WelcomeSettings>();

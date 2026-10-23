@@ -35,4 +35,10 @@ public interface ISpineViewModel : IViewModelInterface
     public ReadOnlyObservableCollection<IImageButtonViewModel> LoadoutSpineItems { get; }
 
     public void NavigateToHome();
+
+    /// <summary>
+    /// Moves the loadout button at <paramref name="fromIndex"/> of <see cref="LoadoutSpineItems"/> to
+    /// <paramref name="toIndex"/> and saves the resulting order.
+    /// </summary>
+    public void MoveLoadout(int fromIndex, int toIndex);
 }

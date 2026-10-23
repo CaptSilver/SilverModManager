@@ -3436,6 +3436,24 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Move up.
+        /// </summary>
+        public static string SpineLoadoutMenu_MoveUp {
+            get {
+                return ResourceManager.GetString("SpineLoadoutMenu_MoveUp", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Move down.
+        /// </summary>
+        public static string SpineLoadoutMenu_MoveDown {
+            get {
+                return ResourceManager.GetString("SpineLoadoutMenu_MoveDown", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Home.
         /// </summary>
         public static string SpineHomeButton_ToolTip_Home {

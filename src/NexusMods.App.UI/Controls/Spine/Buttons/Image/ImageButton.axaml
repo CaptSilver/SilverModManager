@@ -19,6 +19,12 @@
     <Button Classes="ImageButton"
             x:Name="Button"
             HorizontalAlignment="Stretch">
+        <Button.ContextMenu>
+            <ContextMenu>
+                <MenuItem x:Name="MoveUpItem" />
+                <MenuItem x:Name="MoveDownItem" />
+            </ContextMenu>
+        </Button.ContextMenu>
         <ToolTip.Tip>
             <TextBlock x:Name="ToolTipTextBlock" />
         </ToolTip.Tip>

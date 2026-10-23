@@ -1,5 +1,7 @@
+using System.Reactive;
 using Avalonia.Media;
 using NexusMods.App.UI.Controls.LoadoutBadge;
+using ReactiveUI;
 
 namespace NexusMods.App.UI.Controls.Spine.Buttons.Image;
 
@@ -20,4 +22,14 @@ public interface IImageButtonViewModel : ISpineItemViewModel
     /// ViewModel for the loadout badge
     /// </summary>
     public ILoadoutBadgeViewModel? LoadoutBadgeViewModel { get; set; }
+
+    /// <summary>
+    /// Moves this button one place up the spine; the keyboard path for drag and drop.
+    /// </summary>
+    public ReactiveCommand<Unit, Unit>? MoveUp { get; set; }
+
+    /// <summary>
+    /// Moves this button one place down the spine.
+    /// </summary>
+    public ReactiveCommand<Unit, Unit>? MoveDown { get; set; }
 }

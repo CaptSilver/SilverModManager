@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -20,13 +21,16 @@ using NexusMods.App.UI.LeftMenu;
 using NexusMods.App.UI.Pages.Downloads;
 using NexusMods.App.UI.Pages.LoadoutPage;
 using NexusMods.App.UI.Pages.MyGames;
+using NexusMods.App.UI.Settings;
 using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceAttachments;
 using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.NexusModsApi;
+using NexusMods.Sdk.Settings;
 using NexusMods.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -42,7 +46,7 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
     private readonly ISynchronizerService _syncService;
 
     private ReadOnlyObservableCollection<IImageButtonViewModel> _loadoutSpineItems = new([]);
-    private static readonly LoadoutSpineEntriesComparer LoadoutComparerInstance = new();
+    private readonly ISettingsManager _settingsManager;
     public ReadOnlyObservableCollection<IImageButtonViewModel> LoadoutSpineItems => _loadoutSpineItems;
     public IIconButtonViewModel Home { get; }
     public IIconButtonViewModel AddLoadout { get; }
@@ -70,6 +74,7 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
         _windowManager = windowManager;
         _conn = conn;
         _syncService = serviceProvider.GetRequiredService<ISynchronizerService>();
+        _settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
 
         // Setup the special spine items
         Home = homeButtonViewModel;
@@ -94,9 +99,18 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
         this.WhenActivated(disposables =>
             {
                 var loadouts = Loadout.ObserveAll(_conn);
+                var gameRegistry = serviceProvider.GetRequiredService<IGameRegistry>();
+
+                var orderChanges = R3.ObservableExtensions
+                    .AsSystemObservable(_settingsManager.GetChanges<LoadoutSpineOrderSettings>(prependCurrent: true))
+                    .Select(settings => (IComparer<IImageButtonViewModel>)new LoadoutSpineEntriesComparer(settings.LoadoutIds))
+                    // A new comparer re-sorts the bound collection, which only the UI thread may change.
+                    .OnUI();
 
                 loadouts
-                    .Filter(loadout => loadout.IsVisible())
+                    // A loadout whose game can't be found would make the icon transform throw and end
+                    // the whole stream, taking every other icon off the spine with it.
+                    .Filter(loadout => loadout.IsVisible() && gameRegistry.TryGetGameInstallation(loadout, out _))
                     .TransformAsync(async loadout =>
                         {
                             await using var iconStream = await loadout.InstallationInstance.Game.IconImage.GetStreamAsync();
@@ -108,6 +122,8 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
                             vm.LoadoutBadgeViewModel.LoadoutValue = loadout;
                             vm.WorkspaceContext = new LoadoutContext { LoadoutId = loadout.LoadoutId };
                             vm.Click = ReactiveCommand.Create(() => ChangeToLoadoutWorkspace(loadout.LoadoutId));
+                            vm.MoveUp = ReactiveCommand.Create(() => MoveLoadoutBy(loadout.LoadoutId, -1));
+                            vm.MoveDown = ReactiveCommand.Create(() => MoveLoadoutBy(loadout.LoadoutId, 1));
                             vm.IsActive = false;
 
                             if (workspaceController.ActiveWorkspace.Context is LoadoutContext activeLoadoutContext &&
@@ -125,7 +141,7 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
                             if (loadoutSpineItem.WorkspaceContext is LoadoutContext loadoutContext)
                                 workspaceController.UnregisterWorkspaceByContext<LoadoutContext>(context => loadoutContext == context);
                         })
-                .SortAndBind(out _loadoutSpineItems, LoadoutComparerInstance)
+                .SortAndBind(out _loadoutSpineItems, orderChanges)
                 .SubscribeWithErrorLogging()
                 .DisposeWith(disposables);
 
@@ -297,8 +313,48 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
         );
     }
 
-    private class LoadoutSpineEntriesComparer : IComparer<IImageButtonViewModel>
+    /// <inheritdoc/>
+    public void MoveLoadout(int fromIndex, int toIndex)
     {
+        var displayed = _loadoutSpineItems
+            .Select(LoadoutIdOf)
+            .ToList();
+
+        // Saving the displayed order is also what drops ids of deleted loadouts from the setting.
+        var moved = LoadoutSpineOrder.Move(displayed, fromIndex, toIndex);
+        _settingsManager.Update<LoadoutSpineOrderSettings>(settings => settings with
+        {
+            LoadoutIds = moved.Select(id => id.Value.Value).ToImmutableList(),
+        });
+    }
+
+    private void MoveLoadoutBy(LoadoutId loadoutId, int offset)
+    {
+        var index = _loadoutSpineItems.ToList().FindIndex(item => LoadoutIdOf(item) == loadoutId);
+        var target = index + offset;
+        if (index < 0 || target < 0 || target >= _loadoutSpineItems.Count) return;
+        MoveLoadout(index, target);
+    }
+
+    // Every loadout icon gets its badge in the transform above, so a missing one is a bug, not an empty slot.
+    private static LoadoutId LoadoutIdOf(IImageButtonViewModel item)
+    {
+        var loadout = item.LoadoutBadgeViewModel?.LoadoutValue
+            ?? throw new InvalidOperationException($"Spine icon '{item.Name}' has no loadout badge");
+        if (!loadout.HasValue) throw new InvalidOperationException($"Spine icon '{item.Name}' has no loadout");
+        return loadout.Value.LoadoutId;
+    }
+
+    /// <summary>
+    /// Loadouts in the saved order come first; the rest follow by installation, then loadout creation time.
+    /// </summary>
+    private class LoadoutSpineEntriesComparer(IReadOnlyList<ulong> savedOrder) : IComparer<IImageButtonViewModel>
+    {
+        private readonly Dictionary<ulong, int> _positions = savedOrder
+            .Select((id, index) => (id, index))
+            .DistinctBy(pair => pair.id)
+            .ToDictionary(pair => pair.id, pair => pair.index);
+
         public int Compare(IImageButtonViewModel? x, IImageButtonViewModel? y)
         {
             var xloadout = x?.LoadoutBadgeViewModel?.LoadoutValue;
@@ -306,6 +362,10 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
 
             if (xloadout == null) return yloadout == null ? 0 : -1;
             if (yloadout == null) return 1;
+
+            var xPosition = _positions.GetValueOrDefault(xloadout.Value.Value.LoadoutId.Value.Value, int.MaxValue);
+            var yPosition = _positions.GetValueOrDefault(yloadout.Value.Value.LoadoutId.Value.Value, int.MaxValue);
+            if (xPosition != yPosition) return xPosition.CompareTo(yPosition);
 
             if (xloadout.Value.Value.Installation.Path != yloadout.Value.Value.Installation.Path)
                 return DateTimeOffset.Compare(xloadout.Value.Value.Installation.GetCreatedAt(), yloadout.Value.Value.Installation.GetCreatedAt());

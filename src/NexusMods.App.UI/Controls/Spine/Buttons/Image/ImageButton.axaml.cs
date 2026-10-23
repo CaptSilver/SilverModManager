@@ -1,6 +1,7 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
+using NexusMods.App.UI.Resources;
 using NexusMods.UI.Sdk.Icons;
 using ReactiveUI;
 
@@ -28,6 +29,13 @@ public partial class ImageButton : ReactiveUserControl<IImageButtonViewModel>
             this.OneWayBind(ViewModel, vm => vm.Name, v => v.ToolTipTextBlock.Text)
                 .DisposeWith(d);
             
+            MoveUpItem.Header = Language.SpineLoadoutMenu_MoveUp;
+            MoveDownItem.Header = Language.SpineLoadoutMenu_MoveDown;
+            this.OneWayBind(ViewModel, vm => vm.MoveUp, v => v.MoveUpItem.Command)
+                .DisposeWith(d);
+            this.OneWayBind(ViewModel, vm => vm.MoveDown, v => v.MoveDownItem.Command)
+                .DisposeWith(d);
+
             this.OneWayBind(ViewModel, vm => vm.LoadoutBadgeViewModel, v => v.LoadoutBadge.ViewModel)
                 .DisposeWith(d);
         });

@@ -23,6 +23,10 @@ public class ImageButtonViewModel : AViewModel<IImageButtonViewModel>, IImageBut
     public IWorkspaceContext? WorkspaceContext { get; set; }
     
     public ILoadoutBadgeViewModel? LoadoutBadgeViewModel { get; set; }
+
+    [Reactive] public ReactiveCommand<Unit, Unit>? MoveUp { get; set; }
+
+    [Reactive] public ReactiveCommand<Unit, Unit>? MoveDown { get; set; }
     
     public ImageButtonViewModel()
     {
