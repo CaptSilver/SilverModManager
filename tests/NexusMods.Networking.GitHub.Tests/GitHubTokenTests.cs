@@ -125,4 +125,96 @@ public class GitHubTokenTests
 
         handler.Authorizations.Should().ContainSingle().Which.Should().Be(new AuthenticationHeaderValue("token", "explicit"));
     }
+
+    // Answers 401 to any request that carries a token and 200 to one that doesn't, like GitHub with a revoked token.
+    private sealed class RejectsTokensHandler(string body) : HttpMessageHandler
+    {
+        public List<AuthenticationHeaderValue?> Authorizations { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Authorizations.Add(request.Headers.Authorization);
+            return Task.FromResult(request.Headers.Authorization is null
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json") }
+                : new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        }
+    }
+
+    private sealed class CountingLogger : Microsoft.Extensions.Logging.ILogger<GitHubApi>
+    {
+        public int Warnings { get; private set; }
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == Microsoft.Extensions.Logging.LogLevel.Warning) Warnings++;
+        }
+    }
+
+    private static async Task<InMemorySecretStore> StoreWithToken()
+    {
+        var store = new InMemorySecretStore();
+        await store.SetAsync(GitHubSecretKeys.Token, "ghp_revoked", CancellationToken.None);
+        return store;
+    }
+
+    [Fact]
+    public async Task ARejectedTokenIsDroppedAndTheReleasesAreFetchedAnonymously()
+    {
+        // A stale or revoked token must not break update checks or release downloads.
+        var handler = new RejectsTokensHandler("[]");
+        var api = new GitHubApi(NullLogger<GitHubApi>.Instance, new HttpClient(handler), await StoreWithToken());
+
+        var releases = await api.FetchReleases("o", "r");
+
+        releases.Should().NotBeNull();
+        handler.Authorizations.Should().HaveCount(2);
+        handler.Authorizations[0].Should().Be(new AuthenticationHeaderValue("Bearer", "ghp_revoked"));
+        handler.Authorizations[1].Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ARejectedTokenIsDroppedForASingleRelease()
+    {
+        var handler = new RejectsTokensHandler("""{"id": 1, "tag_name": "v1", "name": "v1", "assets": []}""");
+        var api = new GitHubApi(NullLogger<GitHubApi>.Instance, new HttpClient(handler), await StoreWithToken());
+
+        var release = await api.FetchReleaseByTag("o", "r", "v1");
+
+        release.Should().NotBeNull();
+        handler.Authorizations.Should().HaveCount(2);
+        handler.Authorizations[1].Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AnAnonymousRequestThatIsRefusedIsNotRetried()
+    {
+        var handler = new RejectsTokensHandler("[]");
+        var api = new GitHubApi(NullLogger<GitHubApi>.Instance, new HttpClient(new UnauthorizedHandler(handler)), new InMemorySecretStore());
+
+        (await api.FetchReleases("o", "r")).Should().BeNull();
+
+        handler.Authorizations.Should().ContainSingle();
+    }
+
+    private sealed class UnauthorizedHandler(RejectsTokensHandler recorder) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            recorder.Authorizations.Add(request.Headers.Authorization);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        }
+    }
+
+    [Fact]
+    public async Task ARejectedTokenIsReportedOnceNotOnEveryRequest()
+    {
+        var logger = new CountingLogger();
+        var api = new GitHubApi(logger, new HttpClient(new RejectsTokensHandler("[]")), await StoreWithToken());
+
+        await api.FetchReleases("o", "r");
+        await api.FetchReleases("o", "r");
+
+        logger.Warnings.Should().Be(1);
+    }
 }

@@ -61,6 +61,39 @@ internal class GitHubApi : IGitHubApi
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
+    // Set once a token has been refused, so the warning isn't repeated on every request.
+    private int _reportedRejectedToken;
+
+    /// <summary>
+    /// Sends a GET to <paramref name="uri"/>, authenticated when there's a token. If GitHub refuses the token (401, a
+    /// stale or revoked token), the request is sent again without it: everything this client reads is public, so a dead
+    /// token must not break update checks or release downloads.
+    /// </summary>
+    private async Task<HttpResponseMessage> SendAsync(Uri uri, CancellationToken cancellationToken)
+    {
+        var (response, authenticated) = await SendOnceAsync(uri, authenticate: true, cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode != System.Net.HttpStatusCode.Unauthorized || !authenticated)
+            return response;
+
+        if (Interlocked.Exchange(ref _reportedRejectedToken, 1) == 0)
+            _logger.LogWarning("GitHub refused the GitHub token (GITHUB_TOKEN or the stored github.token), so requests go without it. Replace or remove the token to stop this");
+
+        response.Dispose();
+        var (anonymous, _) = await SendOnceAsync(uri, authenticate: false, cancellationToken).ConfigureAwait(false);
+        return anonymous;
+    }
+
+    // Also says whether the request carried a token: a handler need not fill in the response's RequestMessage.
+    private async Task<(HttpResponseMessage Response, bool Authenticated)> SendOnceAsync(Uri uri, bool authenticate, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        request.Headers.Add(HeaderApiVersion, ApiVersion);
+        if (authenticate) await AuthenticateAsync(request, cancellationToken).ConfigureAwait(false);
+        var authenticated = request.Headers.Authorization is not null;
+        var response = await _httpClient.SendAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return (response, authenticated);
+    }
+
     public async ValueTask<Release[]?> FetchReleases(string organization, string repository, CancellationToken cancellationToken = default)
     {
         var uri = new Uri($"{BaseUrl}/repos/{organization}/{repository}/releases");
@@ -68,12 +101,7 @@ internal class GitHubApi : IGitHubApi
 
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Add(HeaderApiVersion, ApiVersion);
-
-            await AuthenticateAsync(request, cancellationToken).ConfigureAwait(false);
-
-            var response = await _httpClient.SendAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
+            using var response = await SendAsync(uri, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("GitHub Api returned with status code `{Code}`", response.StatusCode);
@@ -142,12 +170,7 @@ internal class GitHubApi : IGitHubApi
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Add(HeaderApiVersion, ApiVersion);
-
-            await AuthenticateAsync(request, cancellationToken).ConfigureAwait(false);
-
-            using var response = await _httpClient.SendAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
+            using var response = await SendAsync(uri, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("GitHub Api returned with status code `{Code}` for `{Uri}`", response.StatusCode, uri);
