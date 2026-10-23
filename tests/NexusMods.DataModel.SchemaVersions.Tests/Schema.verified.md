@@ -3,8 +3,8 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x16D330F8B6077733
-   - Total attributes: 337
+   - Fingerprint: 0x7C4EE50D39BB674A
+   - Total attributes: 338
    - Total namespaces: 97
    
 ## Attributes
@@ -341,6 +341,7 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Wabbajack.ModlistLibraryFile/IsNsfw                                      | UInt8                   | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/Name                                        | Utf8                    | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/Version                                     | Utf8                    | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLoadoutGroup/ExtrasFolder                               | Utf8                    | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLoadoutGroup/InstalledAt                                | Int64                   | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLoadoutGroup/Modlist                                    | Reference               | True    | False | False     | 
 | SilverModManager.Wabbajack.SkippedFile/Group                                              | Reference               | True    | False | False     | 

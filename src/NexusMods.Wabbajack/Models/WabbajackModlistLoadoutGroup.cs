@@ -21,4 +21,10 @@ public partial class WabbajackModlistLoadoutGroup : IModelDefinition
 
     /// <summary>When the install finished ordering the mods. Absent while the install is incomplete.</summary>
     public static readonly TimestampAttribute InstalledAt = new(Namespace, nameof(InstalledAt)) { IsOptional = true };
+
+    /// <summary>
+    /// The folder under the extras root that holds the list's tools. Removing the group deletes it, so it is only ever
+    /// acted on when it lies inside the extras root.
+    /// </summary>
+    public static readonly StringAttribute ExtrasFolder = new(Namespace, nameof(ExtrasFolder)) { IsOptional = true };
 }

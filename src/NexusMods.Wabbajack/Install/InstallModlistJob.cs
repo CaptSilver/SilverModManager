@@ -53,6 +53,12 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     public required ILogger Logger { get; init; }
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 
+    /// <summary>
+    /// The toolbar entries of the list's ModOrganizer.ini that were not registered as tools, each with the reason, once the
+    /// install has run. Entries left out on purpose (Mod Organizer itself, the game and its launcher) are not listed.
+    /// </summary>
+    public IReadOnlyList<string> UnregisteredTools { get; private set; } = [];
+
     /// <summary>How far the install is. Observe <see cref="ModlistInstallProgress.Changes"/> to follow it live.</summary>
     public ModlistInstallProgress Progress { get; } = new();
 
@@ -90,6 +96,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
         var prepared = await Resolve(check, cancellationToken);
         await Write(check, group, prepared, cancellationToken);
+        await RegisterTools(check, cancellationToken);
         await Order(check, group, cancellationToken);
 
         return WabbajackModlistLoadoutGroup.Load(Connection.Db, group.Value);
@@ -312,11 +319,14 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             break;
         }
 
+        // Recorded with the group so that removing it finds the folder even if the install never got as far as writing a tool.
+        var extrasFolder = Paths.ExtrasFor(check.List.Name).ToString();
         using var tx = Connection.BeginTransaction();
         if (existing is { } found)
         {
             foreach (var skipped in WabbajackSkippedFile.FindByGroup(Connection.Db, found.Id))
                 tx.Delete(skipped.Id, recursive: false);
+            tx.Add(found.Id, WabbajackModlistLoadoutGroup.ExtrasFolder, extrasFolder);
             await tx.Commit();
             return found.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId;
         }
@@ -324,6 +334,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var group = new WabbajackModlistLoadoutGroup.New(tx, out var id)
         {
             ModlistId = Modlist,
+            ExtrasFolder = extrasFolder,
             CollectionGroup = new CollectionGroup.New(tx, id)
             {
                 IsReadOnly = false,
@@ -367,7 +378,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     {
         _resolver = NewResolver(check);
         var executable = check.Placements
-            .Where(p => p.Target is Mo2Target.ModFile or Mo2Target.ProfileSetting or Mo2Target.GameRootFile)
+            .Where(p => p.Target is Mo2Target.ModFile or Mo2Target.ProfileSetting or Mo2Target.GameRootFile or Mo2Target.Extra)
             .ToArray();
         Progress.Enter(InstallPhase.Resolve, executable.Length, executable.Sum(p => p.Directive.Size));
 
@@ -536,6 +547,11 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         try
         {
             if (item.Skip is { } skip) throw new DirectiveSkipped(skip.Kind, skip.Reason);
+            if (placement.Target is Mo2Target.Extra extra)
+            {
+                await WriteExtra(check, extras, item, extra, cancellationToken);
+                return;
+            }
             if (placement.Group is not { } groupName || placement.Path is not { } path)
                 throw new InvalidOperationException($"'{placement.To}' reached the write phase without a place in the loadout");
 
@@ -555,6 +571,18 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         {
             AddSkip(tx, modlistGroup, placement, SkipKind.MemberNotFound, notFound.Message, check);
         }
+    }
+
+    /// <summary>A tool file goes to the list's folder on disk as it is: the loadout never deploys it, so the file store is not involved.</summary>
+    private async Task WriteExtra(Checked check, ExtrasFolder extras, Prepared item, Mo2Target.Extra extra, CancellationToken cancellationToken)
+    {
+        if (item.Placement.Directive is MergedPatch or CreateBsa)
+            throw new DirectiveSkipped(SkipKind.Transform, $"'{item.Placement.To}' is built from other files of the list, which a tool folder does not keep");
+
+        var destination = extras.Root.Combine(extra.Path);
+        destination.Parent.CreateDirectory();
+        await using var output = destination.Create();
+        await WriteBytes(check, extras, item.Placement, item.Member, output, cancellationToken);
     }
 
     private void AddSkip(ITransaction tx, LoadoutItemGroupId group, Placement placement, SkipKind kind, string reason, Checked check)
@@ -610,6 +638,62 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Size = size,
         };
         known.Add((path, hash));
+    }
+
+    #endregion
+
+    #region Tools
+
+    /// <summary>
+    /// Registers the executables the list's ModOrganizer.ini names as tools of the installation, once their files are on
+    /// disk. A tool that is already registered is left as it is, so installing again adds nothing.
+    /// </summary>
+    private async Task RegisterTools(Checked check, CancellationToken cancellationToken)
+    {
+        var iniText = await ReadModOrganizerIni(check, cancellationToken);
+        if (iniText is null) return;
+
+        var installation = check.Loadout.InstallationInstance;
+        var extras = new ExtrasFolder(Paths.ExtrasFor(check.List.Name));
+        var gameRoot = installation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty));
+        var primary = installation.Game.GetPrimaryFile(installation);
+
+        var found = ModlistTools.Find(iniText, extras.Root, gameRoot, primary.FileName.ToString());
+        UnregisteredTools = found.Unregistered;
+        foreach (var line in found.Unregistered) Logger.LogWarning("Not registering a tool of '{List}': {Reason}", check.List.Name, line);
+
+        var db = Connection.Db;
+        var known = UserTool.FindByInstallation(db, check.Loadout.InstallationId)
+            .Select(t => (t.Name, t.Exe, t.Arguments)).ToHashSet();
+
+        using var tx = Connection.BeginTransaction();
+        var any = false;
+        foreach (var tool in found.Tools.Where(t => !known.Contains((t.Name, t.Exe, t.Arguments))))
+        {
+            _ = new UserTool.New(tx)
+            {
+                InstallationId = check.Loadout.InstallationId,
+                Name = tool.Name,
+                Exe = tool.Exe,
+                Arguments = tool.Arguments,
+                RunVia = ToolRunVia.Auto,
+            };
+            any = true;
+        }
+        if (any) await tx.Commit();
+    }
+
+    private async Task<string?> ReadModOrganizerIni(Checked check, CancellationToken cancellationToken)
+    {
+        foreach (var placement in check.Placements)
+        {
+            if (placement.Target is not Mo2Target.Seed { Kind: SeedKind.ModOrganizerIni } || placement.Directive is not InlineFile inline) continue;
+
+            await using var stream = await ModlistArchive.ReadBlob(FileStore, check.ListArchive, inline.SourceDataId, cancellationToken);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            return await reader.ReadToEndAsync(cancellationToken);
+        }
+        return null;
     }
 
     #endregion
