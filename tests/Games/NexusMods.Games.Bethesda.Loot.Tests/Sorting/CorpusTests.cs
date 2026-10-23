@@ -22,8 +22,10 @@ public class CorpusTests
         var data = new TheoryData<string>();
         if (!Directory.Exists(CorpusDirectory)) return data;
 
+        // The real load orders have their own test, which also times the sort and explains a mismatch.
         foreach (var file in Directory.EnumerateFiles(CorpusDirectory, "*.json", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
         {
+            if (file.StartsWith(RealCorpusTests.Directory, StringComparison.Ordinal)) continue;
             data.Add(Path.GetRelativePath(CorpusDirectory, file).Replace('\\', '/'));
         }
 

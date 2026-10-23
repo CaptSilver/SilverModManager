@@ -67,6 +67,36 @@ To add a hand-written case, add an `add(...)` call in `tier1_cases()`, regenerat
 JSON before trusting it: the oracle is right by definition, so a case that does not exercise what its
 name says passes silently. A tier-2 failure is a bug in the port; look into it before touching the case.
 
+## Real load orders
+
+`generate_real.py` writes `Corpus/real/*.json`, cases built from real installs instead of seeds.
+`RealCorpusTests` sorts them, logs the C# time next to the one libloot's `sort_plugins` took when the case
+was generated, and on a mismatch names the first index that differs and the edges on both plugins
+(`PluginSorter.Sort(..., recordEdges: true)` fills `SortResult.Edges`).
+
+- `tempus_maledictum`: the `loadorder.txt` of the Tempus Maledictum 8.0.6 Wabbajack list (Skyrim SE, 2174
+  plugins). Only plugin names are kept; the case records the list's machine name, version and the hashes
+  of the `.wabbajack` file. Flags come from the extension, and an `.esp` listed among the masters gets the
+  master flag, because a name cannot say that USSEP is one. Every plugin masters the five base game
+  plugins and the Creation Club `.esm` files; no plugin has records.
+
+      "$LOOT_ORACLE_PYTHON" -I tools/loot-oracle/generate_real.py wabbajack --allow-network \
+          --machine-url tempus_maledictum --profile "Tempus Maledictum - CS Profile" \
+          --download-dir <scratch> --stripped-dir "$LOOT_ORACLE_STRIP_DIR" --name tempus_maledictum
+
+  This is the only step that uses the network (about 1 GB, kept in `--download-dir`, never in the repo)
+  and it refuses to run without `--allow-network`.
+- `oblivion_remastered_instance`: the headers of the plugins a Mod Organizer instance of Oblivion Remastered
+  enables, read with the app's own reader. The files are only read. The C# test exports names, flags and
+  masters, then the generator sorts them with the bundled `oblivion-remastered` masterlist:
+
+      LOOT_ORACLE_OBLIVION_INSTANCE=<instance dir> LOOT_ORACLE_OBLIVION_GAME_DATA=<game's Data dir> \
+      LOOT_ORACLE_HEADERS_OUT=<scratch>/headers.json scripts/test.sh --project tests/Games/NexusMods.Games.Bethesda.Loot.Tests
+      "$LOOT_ORACLE_PYTHON" -I tools/loot-oracle/generate_real.py headers --headers <scratch>/headers.json \
+          --repository oblivion-remastered --stripped-dir "$LOOT_ORACLE_STRIP_DIR" --name oblivion_remastered_instance
+
+Like tier 3, these cases name the bundled masterlist by hash, so refreshing the masterlists means regenerating them.
+
 ## Comparing with a real load order
 
 `sort_real.py` is a user check, not a test. Give it a repository name and a text file with one plugin

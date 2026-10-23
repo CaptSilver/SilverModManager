@@ -48,6 +48,18 @@ public class PluginSorterTests
     }
 
     [Fact]
+    public void ShouldReportTheEdgesBehindTheOrderOnlyWhenAsked()
+    {
+        var fixture = WithPlugins(PluginA, PluginB);
+        IReadOnlyList<PluginSortingData<TestPlugin>> data =
+            [With(fixture, PluginA, masterlistLoadAfter: [PluginB]), fixture.SortingData(PluginB)];
+
+        PluginSorter.Sort(data, fixture.GroupsGraph, [], recordEdges: true).Edges
+            .Should().Equal(new SortEdge(PluginB, PluginA, EdgeType.MasterlistLoadAfter));
+        PluginSorter.Sort(data, fixture.GroupsGraph, []).Edges.Should().BeEmpty();
+    }
+
+    [Fact]
     public void ShouldUseRequirementMetadataWhenDecidingRelativePluginPositions()
     {
         var fixture = WithPlugins(PluginA, PluginB);

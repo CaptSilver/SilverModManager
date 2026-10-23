@@ -1,0 +1,278 @@
+{
+  "libloot_version": "0.29.6",
+  "libloot_revision": "136f398",
+  "generator_version": "1",
+  "seed": null,
+  "game_type": "OblivionRemastered",
+  "format": "Tes4Oblivion",
+  "header_version": 1.0,
+  "name": "oblivion_remastered_instance",
+  "source": {"kind": "mod-organizer-instance", "game": "Oblivion Remastered", "profile": "Default"},
+  "plugins": [
+    {"name": "Oblivion.esm", "flags": 1, "masters": []},
+    {"name": "DLCBattlehornCastle.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "DLCFrostcrag.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "DLCHorseArmor.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "DLCMehrunesRazor.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "DLCOrrery.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "DLCShiveringIsles.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "DLCSpellTomes.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "DLCThievesDen.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "DLCVileLair.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "Knights.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {
+      "name": "AltarESPMain.esp",
+      "flags": 0,
+      "masters": [
+        "Oblivion.esm",
+        "DLCShiveringIsles.esp",
+        "DLCSpellTomes.esp",
+        "DLCThievesDen.esp",
+        "DLCBattlehornCastle.esp",
+        "DLCFrostcrag.esp",
+        "DLCHorseArmor.esp",
+        "DLCMehrunesRazor.esp",
+        "DLCOrrery.esp",
+        "Knights.esp",
+        "DLCVileLair.esp"
+      ]
+    },
+    {
+      "name": "AltarDeluxe.esp",
+      "flags": 0,
+      "masters": [
+        "Oblivion.esm",
+        "DLCBattlehornCastle.esp",
+        "DLCFrostcrag.esp",
+        "DLCMehrunesRazor.esp",
+        "DLCOrrery.esp",
+        "DLCShiveringIsles.esp",
+        "DLCSpellTomes.esp",
+        "DLCThievesDen.esp",
+        "DLCVileLair.esp",
+        "Knights.esp",
+        "DLCHorseArmor.esp",
+        "AltarESPMain.esp"
+      ]
+    },
+    {
+      "name": "Unofficial Oblivion Remastered Patch.esp",
+      "flags": 0,
+      "masters": [
+        "Oblivion.esm",
+        "DLCBattlehornCastle.esp",
+        "DLCFrostcrag.esp",
+        "DLCHorseArmor.esp",
+        "DLCMehrunesRazor.esp",
+        "DLCOrrery.esp",
+        "DLCShiveringIsles.esp",
+        "DLCSpellTomes.esp",
+        "DLCThievesDen.esp",
+        "DLCVileLair.esp",
+        "Knights.esp",
+        "AltarESPMain.esp"
+      ]
+    },
+    {
+      "name": "Unofficial Oblivion Remastered Patch - Deluxe.esp",
+      "flags": 0,
+      "masters": [
+        "Oblivion.esm",
+        "DLCBattlehornCastle.esp",
+        "DLCFrostcrag.esp",
+        "DLCHorseArmor.esp",
+        "DLCMehrunesRazor.esp",
+        "DLCOrrery.esp",
+        "DLCShiveringIsles.esp",
+        "DLCSpellTomes.esp",
+        "DLCThievesDen.esp",
+        "DLCVileLair.esp",
+        "Knights.esp",
+        "AltarESPMain.esp",
+        "AltarDeluxe.esp",
+        "Unofficial Oblivion Remastered Patch.esp"
+      ]
+    },
+    {"name": "TamrielLeveledRegion.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {
+      "name": "AltarGymNavigation.esp",
+      "flags": 0,
+      "masters": [
+        "Oblivion.esm",
+        "DLCBattlehornCastle.esp",
+        "DLCFrostcrag.esp",
+        "DLCHorseArmor.esp",
+        "DLCMehrunesRazor.esp",
+        "DLCOrrery.esp",
+        "DLCShiveringIsles.esp",
+        "DLCSpellTomes.esp",
+        "DLCThievesDen.esp",
+        "DLCVileLair.esp",
+        "Knights.esp",
+        "AltarESPMain.esp"
+      ]
+    },
+    {
+      "name": "UnleveledSpellRewards.esp",
+      "flags": 0,
+      "masters": [
+        "Oblivion.esm",
+        "Knights.esp",
+        "DLCBattlehornCastle.esp",
+        "DLCSpellTomes.esp",
+        "DLCMehrunesRazor.esp",
+        "DLCShiveringIsles.esp",
+        "DLCFrostcrag.esp",
+        "DLCOrrery.esp",
+        "DLCThievesDen.esp",
+        "DLCVileLair.esp",
+        "DLCHorseArmor.esp",
+        "AltarESPMain.esp"
+      ]
+    },
+    {
+      "name": "UnleveledItemRewards.esp",
+      "flags": 0,
+      "masters": [
+        "Oblivion.esm",
+        "Knights.esp",
+        "DLCBattlehornCastle.esp",
+        "DLCSpellTomes.esp",
+        "DLCMehrunesRazor.esp",
+        "DLCShiveringIsles.esp",
+        "DLCFrostcrag.esp",
+        "DLCOrrery.esp",
+        "DLCThievesDen.esp",
+        "DLCVileLair.esp",
+        "DLCHorseArmor.esp",
+        "AltarESPMain.esp"
+      ]
+    },
+    {
+      "name": "UnleveledItemRewardsDeluxeEdition.esp",
+      "flags": 0,
+      "masters": [
+        "Oblivion.esm",
+        "Knights.esp",
+        "DLCBattlehornCastle.esp",
+        "DLCSpellTomes.esp",
+        "DLCMehrunesRazor.esp",
+        "DLCShiveringIsles.esp",
+        "DLCFrostcrag.esp",
+        "DLCOrrery.esp",
+        "DLCThievesDen.esp",
+        "DLCVileLair.esp",
+        "DLCHorseArmor.esp",
+        "AltarESPMain.esp",
+        "AltarDeluxe.esp"
+      ]
+    },
+    {"name": "CarryWeightMod.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "ValuableClutter.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {
+      "name": "RicherVendors.esp",
+      "flags": 0,
+      "masters": ["Oblivion.esm", "AltarESPMain.esp", "DLCFrostcrag.esp"]
+    },
+    {
+      "name": "StrongTrainers.esp",
+      "flags": 0,
+      "masters": [
+        "Oblivion.esm",
+        "DLCBattlehornCastle.esp",
+        "DLCFrostcrag.esp",
+        "DLCHorseArmor.esp",
+        "DLCMehrunesRazor.esp",
+        "DLCOrrery.esp",
+        "DLCSpellTomes.esp",
+        "DLCThievesDen.esp",
+        "DLCVileLair.esp",
+        "Knights.esp",
+        "AltarESPMain.esp"
+      ]
+    },
+    {"name": "StrongerSoulGems.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "Dank_SpellDuration.esp", "flags": 0, "masters": ["Oblivion.esm", "DLCSpellTomes.esp"]},
+    {
+      "name": "Ayleid Wells.esp",
+      "flags": 0,
+      "masters": [
+        "Oblivion.esm",
+        "AltarESPMain.esp",
+        "DLCMehrunesRazor.esp",
+        "DLCBattlehornCastle.esp",
+        "DLCSpellTomes.esp",
+        "Knights.esp",
+        "DLCOrrery.esp",
+        "DLCHorseArmor.esp",
+        "DLCFrostcrag.esp",
+        "DLCThievesDen.esp",
+        "DLCShiveringIsles.esp",
+        "DLCVileLair.esp"
+      ]
+    },
+    {"name": "MysticEmporiumAyleidStonesGuaranteedLvl1.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "LootableMerchantChests.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {"name": "PlayableArmors.esp", "flags": 0, "masters": ["Oblivion.esm"]},
+    {
+      "name": "Frostcrag Battlehollow Den.esp",
+      "flags": 0,
+      "masters": [
+        "Oblivion.esm",
+        "DLCBattlehornCastle.esp",
+        "DLCFrostcrag.esp",
+        "DLCThievesDen.esp",
+        "DLCVileLair.esp"
+      ]
+    },
+    {"name": "PreserveStats.esp", "flags": 0, "masters": ["Oblivion.esm"]}
+  ],
+  "masterlist": null,
+  "userlist": null,
+  "prelude": null,
+  "real_masterlist": {
+    "repository": "oblivion-remastered",
+    "bundled_sha256": "b7242632d68657a269aa99b1a6898840051bc67aa3966aa1f01023a75a25a2de",
+    "stripped_sha256": "e624a0e714424e0f57c14c9f291f15653eee210c785d04884966fd096ab545ed",
+    "prelude_bundled_sha256": "d766b2d98565c2147bfeedf8df8385aae1c32731fc0b14b1bdb1ee54d1729711",
+    "prelude_stripped_sha256": "e4e8c81907defb24d03c7b22c8d9dc68186c6584f67aa75ce83727ff3758da85"
+  },
+  "oracle_sort_ms": 1,
+  "expected": {
+    "order": [
+      "Oblivion.esm",
+      "DLCBattlehornCastle.esp",
+      "DLCFrostcrag.esp",
+      "DLCHorseArmor.esp",
+      "DLCMehrunesRazor.esp",
+      "DLCOrrery.esp",
+      "DLCShiveringIsles.esp",
+      "DLCSpellTomes.esp",
+      "DLCThievesDen.esp",
+      "DLCVileLair.esp",
+      "Knights.esp",
+      "AltarESPMain.esp",
+      "AltarDeluxe.esp",
+      "TamrielLeveledRegion.esp",
+      "AltarGymNavigation.esp",
+      "Unofficial Oblivion Remastered Patch.esp",
+      "Unofficial Oblivion Remastered Patch - Deluxe.esp",
+      "UnleveledSpellRewards.esp",
+      "UnleveledItemRewards.esp",
+      "UnleveledItemRewardsDeluxeEdition.esp",
+      "CarryWeightMod.esp",
+      "ValuableClutter.esp",
+      "RicherVendors.esp",
+      "StrongTrainers.esp",
+      "StrongerSoulGems.esp",
+      "Dank_SpellDuration.esp",
+      "Ayleid Wells.esp",
+      "MysticEmporiumAyleidStonesGuaranteedLvl1.esp",
+      "LootableMerchantChests.esp",
+      "PlayableArmors.esp",
+      "Frostcrag Battlehollow Den.esp",
+      "PreserveStats.esp"
+    ]
+  },
+  "groups_paths": []
+}

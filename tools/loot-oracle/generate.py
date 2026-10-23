@@ -28,6 +28,7 @@ import shutil
 import struct
 import sys
 import tempfile
+import time
 
 import loot
 
@@ -130,6 +131,10 @@ def error_record(error):
     return record
 
 
+# How long the last sort_plugins call took; generate_real.py reads it, the corpus files do not hold it.
+LAST_SORT_SECONDS = 0.0
+
+
 def run_case(case):
     game = GAMES[case["game_type"]]
     root = tempfile.mkdtemp(prefix="loot-oracle-")
@@ -174,10 +179,14 @@ def run_case(case):
         g.load_plugin_headers([os.path.join(data, n) for n in names])
 
         def sort(order):
+            global LAST_SORT_SECONDS
+            started = time.perf_counter()
             try:
                 return {"order": g.sort_plugins(order)}
             except Exception as e:  # the binding raises its own types; the record keeps the type name
                 return {"error": error_record(e)}
+            finally:
+                LAST_SORT_SECONDS = time.perf_counter() - started
 
         expected = sort(names)
         if case.get("resort") and "order" in expected:

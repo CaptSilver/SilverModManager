@@ -9,14 +9,16 @@ public static class PluginSorter
 {
     /// <summary>
     /// Sorts plugins into a load order from their masters, metadata and early-loading plugins. The
-    /// result does not depend on the order the plugins are given in.
+    /// result does not depend on the order the plugins are given in. <paramref name="recordEdges"/> fills
+    /// <see cref="SortResult.Edges"/>.
     /// </summary>
     /// <exception cref="UndefinedGroupException">A plugin is in a group that does not exist.</exception>
     /// <exception cref="PluginGraphValidationException">An edge contradicts master flags.</exception>
     /// <exception cref="CyclicInteractionException">The constraints form a cycle.</exception>
     /// <exception cref="SortingException">The plugins cannot be sorted for another reason.</exception>
     public static SortResult Sort<T>(
-        IReadOnlyList<PluginSortingData<T>> plugins, GroupsGraph groupsGraph, IReadOnlyList<string> earlyLoadingPlugins)
+        IReadOnlyList<PluginSortingData<T>> plugins, GroupsGraph groupsGraph, IReadOnlyList<string> earlyLoadingPlugins,
+        bool recordEdges = false)
         where T : ISortingPlugin
     {
         if (plugins.Count == 0) return new SortResult([], default, false);
@@ -40,9 +42,9 @@ public static class PluginSorter
 
         // Blueprint masters are sorted before non-masters, as libloot does, so that when both
         // partitions fail it is the same error that gets reported.
-        var mastersResult = SortPartition(masters, groupsGraph, earlyLoadingPlugins);
-        var blueprintMastersResult = SortPartition(blueprintMasters, groupsGraph, earlyLoadingPlugins);
-        var nonMastersResult = SortPartition(nonMasters, groupsGraph, earlyLoadingPlugins);
+        var mastersResult = SortPartition(masters, groupsGraph, earlyLoadingPlugins, recordEdges);
+        var blueprintMastersResult = SortPartition(blueprintMasters, groupsGraph, earlyLoadingPlugins, recordEdges);
+        var nonMastersResult = SortPartition(nonMasters, groupsGraph, earlyLoadingPlugins, recordEdges);
 
         var order = new List<string>(byName.Count);
         order.AddRange(mastersResult.Order);
@@ -58,13 +60,15 @@ public static class PluginSorter
             mastersResult.OverlapEdgesAdded || blueprintMastersResult.OverlapEdgesAdded || nonMastersResult.OverlapEdgesAdded)
         {
             UnlinkedNeighbours = unlinked,
+            Edges = [.. mastersResult.Edges, .. nonMastersResult.Edges, .. blueprintMastersResult.Edges],
         };
     }
 
     /// <summary>
     /// Sorts plugins using the masterlist and userlist metadata in <paramref name="database"/>. The
     /// current order is the order of <paramref name="pluginsInCurrentOrder"/>. Conditioned metadata
-    /// is dropped, which the result's divergences count.
+    /// is dropped, which the result's divergences count. <paramref name="recordEdges"/> fills
+    /// <see cref="SortResult.Edges"/>.
     /// </summary>
     /// <exception cref="BuildGroupsGraphException">The database's groups do not form a valid graph.</exception>
     /// <exception cref="UndefinedGroupException">A plugin is in a group that does not exist.</exception>
@@ -72,7 +76,8 @@ public static class PluginSorter
     /// <exception cref="CyclicInteractionException">The constraints form a cycle.</exception>
     /// <exception cref="SortingException">The plugins cannot be sorted for another reason.</exception>
     public static SortResult Sort<T>(
-        IReadOnlyList<T> pluginsInCurrentOrder, LootDatabase database, IReadOnlyList<string> earlyLoadingPlugins)
+        IReadOnlyList<T> pluginsInCurrentOrder, LootDatabase database, IReadOnlyList<string> earlyLoadingPlugins,
+        bool recordEdges = false)
         where T : ISortingPlugin
     {
         var unevaluated = 0;
@@ -86,7 +91,7 @@ public static class PluginSorter
 
         var groupsGraph = GroupsGraph.Build(database.Groups(MergeMode.WithoutUserMetadata), database.UserGroups);
 
-        var result = Sort(data, groupsGraph, earlyLoadingPlugins);
+        var result = Sort(data, groupsGraph, earlyLoadingPlugins, recordEdges);
 
         // Overlap edges come from what the plugins report, so a list where none reports anything
         // was sorted without them.
@@ -123,12 +128,14 @@ public static class PluginSorter
     }
 
     private readonly record struct PartitionResult(
-        IReadOnlyList<string> Order, bool OverlapEdgesAdded, IReadOnlyList<(string First, string Second)> Unlinked);
+        IReadOnlyList<string> Order, bool OverlapEdgesAdded, IReadOnlyList<(string First, string Second)> Unlinked,
+        IReadOnlyList<SortEdge> Edges);
 
     private static PartitionResult SortPartition<T>(
         IReadOnlyList<PluginSortingData<T>> plugins,
         GroupsGraph groupsGraph,
-        IReadOnlyList<string> earlyLoadingPlugins)
+        IReadOnlyList<string> earlyLoadingPlugins,
+        bool recordEdges)
         where T : ISortingPlugin
     {
         var graph = new PluginsGraph<T>();
@@ -155,6 +162,16 @@ public static class PluginSorter
         var unlinked = new List<(string First, string Second)>();
         if (graph.CheckPathIsHamiltonian(sorted) is var (first, second)) unlinked.Add((graph[first].Name, graph[second].Name));
 
-        return new PartitionResult(sorted.Select(node => graph[node].Name).ToList(), overlapEdgesAdded, unlinked);
+        List<SortEdge> edges = [];
+        if (recordEdges)
+        {
+            for (var node = 0; node < graph.NodeCount; node++)
+            {
+                foreach (var edge in graph.Inner.OutEdgesOldestFirst(node))
+                    edges.Add(new SortEdge(graph[edge.Source].Name, graph[edge.Target].Name, edge.Weight));
+            }
+        }
+
+        return new PartitionResult(sorted.Select(node => graph[node].Name).ToList(), overlapEdgesAdded, unlinked, edges);
     }
 }
