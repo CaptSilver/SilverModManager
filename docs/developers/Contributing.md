@@ -96,6 +96,6 @@ icon live next to the project in `src/NexusMods.App`:
 Compile constants go in with `-p:DefineConstants="NAME"` on `dotnet build` or `dotnet publish`.
 The ones the app reads are in [`Directory.Build.props`](../../Directory.Build.props):
 
-- `NEXUSMODS_APP_USE_SYSTEM_EXTRACTOR`: use the `7zz` on `PATH` instead of the bundled build.
+- `SMM_USE_SYSTEM_EXTRACTOR`: use the `7zz` on `PATH` instead of the bundled build.
   Some `7zz` builds cannot read RAR archives, which many mods still use.
 - `INSTALLATION_METHOD_PACKAGE_MANAGER`: stops the app from writing its `.desktop` file at runtime.

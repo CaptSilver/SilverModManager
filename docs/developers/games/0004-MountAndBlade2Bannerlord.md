@@ -327,4 +327,4 @@ That's not well defined in docs outside of https://docs.bannerlordmodding.com/_i
 
 ## Miscallenous
 
-For info on integration with `LauncherManager` library, look at `LauncherManagerNexusModsApp` class which extends from `LauncherManagerHandler`.
+For info on integration with `LauncherManager` library, look at `LauncherManagerSilverModManager` class which extends from `LauncherManagerHandler`.

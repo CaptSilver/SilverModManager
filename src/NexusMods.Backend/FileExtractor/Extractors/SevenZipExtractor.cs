@@ -483,7 +483,7 @@ public class SevenZipExtractor : IExtractor
     /// See https://github.com/Nexus-Mods/NexusMods.App/issues/1306 for details.
     /// </remarks>
     private const bool UseSystemExtractor =
-#if NEXUSMODS_APP_USE_SYSTEM_EXTRACTOR
+#if SMM_USE_SYSTEM_EXTRACTOR
         true;
 #else
         false;

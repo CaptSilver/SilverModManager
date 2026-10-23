@@ -15,7 +15,7 @@
         
             Functionality:
 
-                NEXUSMODS_APP_USE_SYSTEM_EXTRACTOR: Use system `7z` binary for extraction.
+                SMM_USE_SYSTEM_EXTRACTOR: Use system `7z` binary for extraction.
                     - This is intended for Linux package maintainers.
                     - Alternatively, this is available with `-p:UseSystemExtractor=true`
                 

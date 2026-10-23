@@ -14,7 +14,7 @@ namespace NexusMods.Games.MountAndBlade2Bannerlord.LauncherManager;
 /// This class serves as a marshaller, translating between the `LauncherManager` dependency and
 /// SilverModManager's logic.
 /// </summary>
-public sealed partial class LauncherManagerNexusModsApp : LauncherManagerHandler,
+public sealed partial class LauncherManagerSilverModManager : LauncherManagerHandler,
     IGameInfoProvider,
     ILauncherStateProvider,
     ILoadOrderStateProvider
@@ -25,9 +25,9 @@ public sealed partial class LauncherManagerNexusModsApp : LauncherManagerHandler
 
     public string[] ExecutableParameters { get; private set; } = [];
 
-    public LauncherManagerNexusModsApp(IServiceProvider serviceProvider, string installationPath, GameStore store)
+    public LauncherManagerSilverModManager(IServiceProvider serviceProvider, string installationPath, GameStore store)
     {
-        _logger = serviceProvider.GetRequiredService<ILogger<LauncherManagerNexusModsApp>>();
+        _logger = serviceProvider.GetRequiredService<ILogger<LauncherManagerSilverModManager>>();
         
         var settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
         _settings = settingsManager.Get<BannerlordSettings>();

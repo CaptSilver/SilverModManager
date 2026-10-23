@@ -46,7 +46,6 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="NexusMods.UI.Tests" />
-        <InternalsVisibleTo Include="NexusMods.App.UI.Tests" />
     </ItemGroup>
 
     <ItemGroup>

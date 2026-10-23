@@ -137,7 +137,7 @@ src/NexusMods.Games.FOMOD/CoreDelegates/ContextDelegates.cs	2
 src/NexusMods.Games.FileHashes/FileHashesService.cs	1
 src/NexusMods.Games.Generic/Installers/GenericPatternMatchInstaller.cs	2
 src/NexusMods.Games.Generic/Installers/PredicateBasedInstaller.cs	1
-src/NexusMods.Games.MountAndBlade2Bannerlord/LauncherManager/LauncherManagerNexusModsApp.cs	1
+src/NexusMods.Games.MountAndBlade2Bannerlord/LauncherManager/LauncherManagerSilverModManager.cs	1
 src/NexusMods.Games.RedEngine/ModInstallers/RedModInstaller.cs	3
 src/NexusMods.Games.StardewValley/Emitters/DependencyDiagnosticEmitter.cs	1
 src/NexusMods.Games.StardewValley/WebAPI/SMAPIWebApi.cs	1

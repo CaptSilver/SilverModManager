@@ -5,11 +5,11 @@
 
     <_NativeRuntime Condition=" '$(_IsLinux)' == 'true' And ('$(Prefer32Bit)' == 'false' Or '$(PlatformTarget)' == 'x64')">linux-x64</_NativeRuntime>
 
-    <_UseSystemExtractor Condition="$([System.String]::new('$(DefineConstants)').Contains('NEXUSMODS_APP_USE_SYSTEM_EXTRACTOR'))">true</_UseSystemExtractor>
+    <_UseSystemExtractor Condition="$([System.String]::new('$(DefineConstants)').Contains('SMM_USE_SYSTEM_EXTRACTOR'))">true</_UseSystemExtractor>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(UseSystemExtractor) == 'true'">
-    <DefineConstants>$(DefineConstants);NEXUSMODS_APP_USE_SYSTEM_EXTRACTOR</DefineConstants>
+    <DefineConstants>$(DefineConstants);SMM_USE_SYSTEM_EXTRACTOR</DefineConstants>
     <_UseSystemExtractor>true</_UseSystemExtractor>
   </PropertyGroup>
     
