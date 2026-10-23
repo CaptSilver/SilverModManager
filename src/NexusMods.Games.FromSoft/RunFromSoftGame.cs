@@ -33,7 +33,7 @@ public class RunFromSoftGame<TGame>(IServiceProvider provider, TGame game) : Run
         var ids = provider.GetRequiredService<IUserIds>();
         var argv = OverlayCommand.Build(LayoutOf(loadout), ids.Uid, ids.Gid, game.Loader.LaunchCommand(installation));
 
-        return new LaunchSpec(bwrap, argv[1..]) { ReplacesCommand = true, Environment = game.Loader.LaunchEnvironment(installation).ToDictionary() };
+        return new LaunchSpec(bwrap, argv[1..]) { ReplacesCommand = true, FilesOnlyInLaunch = true, Environment = game.Loader.LaunchEnvironment(installation).ToDictionary() };
     }
 
     /// <summary>

@@ -35,6 +35,7 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
         spec.Exe.Should().Be(PrimaryExe);
         spec.ExtraArgs.Should().BeEmpty();
         spec.ReplacesCommand.Should().BeFalse();
+        spec.FilesOnlyInLaunch.Should().BeFalse("the loadout has nothing that only the overlay shows");
     }
 
     [Fact]
@@ -62,6 +63,7 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
         var spec = await Tool.GetLaunchSpec(loadout, CancellationToken.None);
 
         spec.ReplacesCommand.Should().BeTrue();
+        spec.FilesOnlyInLaunch.Should().BeTrue("the mods exist only inside the overlay bwrap sets up");
         spec.Exe.GetFullPath().Should().Be("/fake/bin/bwrap");
         var expected = OverlayCommand.Build(LayoutOf(loadout), 1000, 1001,
         [

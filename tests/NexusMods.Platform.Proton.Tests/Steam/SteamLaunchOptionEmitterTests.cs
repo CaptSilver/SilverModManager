@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using FluentAssertions;
 using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Games;
+using NexusMods.Abstractions.Loadouts.Deployment;
 using NexusMods.Paths;
 using NexusMods.Platform.Proton.Steam;
 using NexusMods.Sdk;
@@ -202,7 +203,7 @@ public class SteamLaunchSkippedDescriptionTests
     [Fact]
     public void AGameThatDeclaresNothingListsOnlyTheLoadoutItself()
     {
-        var text = SteamLaunchOptionEmitter.DescribeSkipped([], [], Plain, GameRoot.Combine("game.exe"));
+        var text = SteamLaunchOptionEmitter.DescribeSkipped([], [], Plain, GameRoot.Combine("game.exe"), loadoutNeedsApp: true);
 
         text.Should().Contain("not applied");
         text.Should().NotContain("DLL");
@@ -215,7 +216,7 @@ public class SteamLaunchSkippedDescriptionTests
     {
         WineDllOverride[] overrides = [new("winmm", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn])];
 
-        var text = SteamLaunchOptionEmitter.DescribeSkipped(overrides, ["--launcher-skip"], new LaunchSpec(GameRoot.Combine("game.exe"), ["-modded"]), GameRoot.Combine("game.exe"));
+        var text = SteamLaunchOptionEmitter.DescribeSkipped(overrides, ["--launcher-skip"], new LaunchSpec(GameRoot.Combine("game.exe"), ["-modded"]), GameRoot.Combine("game.exe"), loadoutNeedsApp: true);
 
         text.Should().Contain("winmm=n,b");
         text.Should().Contain("--launcher-skip");
@@ -223,9 +224,18 @@ public class SteamLaunchSkippedDescriptionTests
     }
 
     [Fact]
+    public void TheLoadoutBulletIsLeftOutWhenTheLoadoutDoesNotNeedTheApp()
+    {
+        var text = SteamLaunchOptionEmitter.DescribeSkipped([], [], new LaunchSpec(GameRoot.Combine("loader.exe"), []), GameRoot.Combine("game.exe"), loadoutNeedsApp: false);
+
+        text.Should().NotContain("not applied");
+        text.Should().Contain("loader.exe");
+    }
+
+    [Fact]
     public void ARunToolThatStartsAnotherExecutableIsListed()
     {
-        var text = SteamLaunchOptionEmitter.DescribeSkipped([], [], new LaunchSpec(GameRoot.Combine("loader.exe"), []), GameRoot.Combine("game.exe"));
+        var text = SteamLaunchOptionEmitter.DescribeSkipped([], [], new LaunchSpec(GameRoot.Combine("loader.exe"), []), GameRoot.Combine("game.exe"), loadoutNeedsApp: true);
 
         text.Should().Contain("loader.exe");
     }
@@ -233,8 +243,136 @@ public class SteamLaunchSkippedDescriptionTests
     [Fact]
     public void AMissingRunToolListsNoExecutableOrArguments()
     {
-        var text = SteamLaunchOptionEmitter.DescribeSkipped([], [], null, GameRoot.Combine("game.exe"));
+        var text = SteamLaunchOptionEmitter.DescribeSkipped([], [], null, GameRoot.Combine("game.exe"), loadoutNeedsApp: true);
 
         text.Should().NotContain("exe");
+    }
+}
+
+/// <summary>
+/// Whether the diagnostic fires at all: only when the loadout's files or the launch need the app.
+/// </summary>
+public class SteamLaunchOptionDecisionTests
+{
+    private static readonly InMemoryFileSystem Fs = new(OSInformation.FakeUnix);
+    private static readonly AbsolutePath GameRoot = Fs.FromUnsanitizedFullPath("/games/Test");
+    private static readonly AbsolutePath Primary = GameRoot.Combine("game.exe");
+
+    private static readonly DeploymentPlan LinkPlan = new([new DeploymentPlanRoot(new GamePath(LocationId.Game, RelativePath.Empty), DeploymentBackendId.Hardlink)]);
+    private static readonly DeploymentPlan FusePlan = new([new DeploymentPlanRoot(new GamePath(LocationId.Game, RelativePath.Empty), DeploymentBackendId.Fuse)]);
+
+    private static readonly SteamLaunchOptionEmitter.Finding NotOurs = new(null);
+    private static readonly SteamLaunchOptionEmitter.Finding Fluorine = new("Fluorine");
+
+    private static GameInstallation Install()
+    {
+        var game = Substitute.For<IGameData>();
+        game.DisplayName.Returns("Test Game");
+        var result = new GameLocatorResult
+        {
+            Game = game,
+            Path = GameRoot,
+            Store = GameStore.Steam,
+            StoreIdentifier = "42",
+            LocatorIds = ImmutableArray<LocatorId>.Empty,
+            Locator = Substitute.For<IGameLocator>(),
+            Platform = OSPlatform.Windows,
+        };
+        return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, GameRoot)));
+    }
+
+    private static Diagnostic? Evaluate(SteamLaunchOptionEmitter.Finding finding, DeploymentPlan plan, LaunchSpec? spec, string[]? launcherSkip = null, WineDllOverride[]? overrides = null)
+        => SteamLaunchOptionEmitter.Evaluate(Install(), "Main", finding, plan, overrides ?? [], launcherSkip ?? [], spec, Primary);
+
+    private static string SkippedOf(Diagnostic diagnostic) => diagnostic switch
+    {
+        Diagnostic<SteamLaunchDiagnostics.SteamSkipsLoadoutLaunchMessageData> d => d.MessageData.Skipped,
+        Diagnostic<SteamLaunchDiagnostics.OtherManagerLaunchesGameMessageData> d => d.MessageData.Skipped,
+        _ => throw new InvalidOperationException("unexpected diagnostic"),
+    };
+
+    [Fact]
+    public void LinkedFilesWithNothingElseSkippedSayNothing()
+    {
+        Evaluate(NotOurs, LinkPlan, new LaunchSpec(Primary, [])).Should().BeNull();
+    }
+
+    [Fact]
+    public void LinkedFilesWithoutARunToolSayNothing()
+    {
+        Evaluate(NotOurs, LinkPlan, null).Should().BeNull();
+    }
+
+    [Fact]
+    public void DllOverridesAloneDoNotFireIt()
+    {
+        Evaluate(NotOurs, LinkPlan, new LaunchSpec(Primary, []), overrides: [new("winmm", [WineDllOverrideType.Native])]).Should().BeNull();
+    }
+
+    [Fact]
+    public void AnExecutableSubstitutionFiresItWithoutTheLoadoutBullet()
+    {
+        var diagnostic = Evaluate(NotOurs, LinkPlan, new LaunchSpec(GameRoot.Combine("loader.exe"), []));
+
+        diagnostic.Should().NotBeNull();
+        diagnostic!.Severity.Should().Be(DiagnosticSeverity.Suggestion);
+        SkippedOf(diagnostic).Should().Contain("loader.exe").And.NotContain("not applied");
+    }
+
+    [Fact]
+    public void ExtraArgumentsFireItAndKeepTheDllOverridesListed()
+    {
+        var diagnostic = Evaluate(NotOurs, LinkPlan, new LaunchSpec(Primary, ["-modded"]), overrides: [new("winmm", [WineDllOverrideType.Native])]);
+
+        diagnostic.Should().NotBeNull();
+        SkippedOf(diagnostic!).Should().Contain("-modded").And.Contain("winmm").And.NotContain("not applied");
+    }
+
+    [Fact]
+    public void LauncherSkipArgumentsFireIt()
+    {
+        var diagnostic = Evaluate(NotOurs, LinkPlan, new LaunchSpec(Primary, []), launcherSkip: ["--skip"]);
+
+        diagnostic.Should().NotBeNull();
+        SkippedOf(diagnostic!).Should().Contain("--skip").And.NotContain("not applied");
+    }
+
+    [Fact]
+    public void AFuseRootFiresItWithTheLoadoutBullet()
+    {
+        var diagnostic = Evaluate(NotOurs, FusePlan, new LaunchSpec(Primary, []));
+
+        diagnostic.Should().NotBeNull();
+        SkippedOf(diagnostic!).Should().Contain("not applied");
+    }
+
+    [Fact]
+    public void AnOverlayOnlyGameFiresItWithTheLoadoutBullet()
+    {
+        var diagnostic = Evaluate(NotOurs, LinkPlan, new LaunchSpec(GameRoot.Combine("bwrap"), []) { ReplacesCommand = true, FilesOnlyInLaunch = true });
+
+        diagnostic.Should().NotBeNull();
+        SkippedOf(diagnostic!).Should().Contain("not applied");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AnotherManagerIsAlwaysAWarning(bool fuse)
+    {
+        var diagnostic = Evaluate(Fluorine, fuse ? FusePlan : LinkPlan, new LaunchSpec(Primary, []));
+
+        diagnostic.Should().BeOfType<Diagnostic<SteamLaunchDiagnostics.OtherManagerLaunchesGameMessageData>>()
+            .Which.Severity.Should().Be(DiagnosticSeverity.Warning);
+        SkippedOf(diagnostic!).Should().NotBeNullOrWhiteSpace();
+        SkippedOf(diagnostic!).Contains("not applied").Should().Be(fuse);
+    }
+
+    [Fact]
+    public void AnotherManagerWithASkippedExecutableLeavesOutTheLoadoutBulletOnLinks()
+    {
+        var diagnostic = Evaluate(Fluorine, LinkPlan, new LaunchSpec(GameRoot.Combine("loader.exe"), []));
+
+        SkippedOf(diagnostic!).Should().Contain("loader.exe").And.NotContain("not applied");
     }
 }

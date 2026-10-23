@@ -25,5 +25,11 @@ public readonly record struct DeploymentBackendId(string Value)
     /// </summary>
     public static readonly DeploymentBackendId Symlink = new("symlink");
 
+    /// <summary>
+    /// Serves the loadout through a FUSE mount that exists only while the app has the game launched, so the game
+    /// folder holds none of the mods otherwise.
+    /// </summary>
+    public static readonly DeploymentBackendId Fuse = new("fuse");
+
     public override string ToString() => Value;
 }

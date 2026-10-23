@@ -42,6 +42,11 @@ public sealed record DeploymentPlan(ImmutableArray<DeploymentPlanRoot> Roots)
     }
 
     /// <summary>
+    /// True when some root is served through a mount, which only exists while the app is running the game.
+    /// </summary>
+    public bool UsesMount => Roots.Any(r => r.Backend == DeploymentBackendId.Fuse);
+
+    /// <summary>
     /// True when every location has a root for its whole tree.
     /// </summary>
     public bool IsComplete(GameLocations locations) => !MissingRoots(locations).Any();

@@ -18,7 +18,7 @@ internal static partial class SteamLaunchDiagnostics
         .WithSummary("Steam doesn't launch {GameName} through SilverModManager")
         .WithDetails("""
 The launch options Steam has stored for {GameName} don't run the loadout '{LoadoutName}'. Steam's own Play
-button, and the app's Play when it hands the game to Steam, start the game without what the loadout sets up:
+button, and the app's Play when it hands the game to Steam, start the game without what the app adds when it launches it:
 
 {Skipped}
 
@@ -43,7 +43,7 @@ for that, because it rewrites its config when it exits.
         .WithDetails("""
 The launch options Steam has stored for {GameName} start {ManagerName}, which runs the game itself. Steam's own
 Play button, and the app's Play when it hands the game to Steam, start the game without what the loadout
-'{LoadoutName}' sets up:
+'{LoadoutName}' relies on:
 
 {Skipped}
 

@@ -17,6 +17,12 @@ public record LaunchSpec(AbsolutePath Exe, string[] ExtraArgs)
     public bool ReplacesCommand { get; init; }
 
     /// <summary>
+    /// True when the loadout's files are visible only to the process this spec starts (an overlay over the game
+    /// folder, say), so a launch that skips the spec leaves the mods out entirely.
+    /// </summary>
+    public bool FilesOnlyInLaunch { get; init; }
+
+    /// <summary>
     /// Variables the started process gets on top of what it inherits. Null leaves the environment as it came.
     /// </summary>
     public IReadOnlyDictionary<string, string>? Environment { get; init; }
