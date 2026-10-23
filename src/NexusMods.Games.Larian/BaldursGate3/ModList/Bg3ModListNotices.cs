@@ -20,6 +20,49 @@ public static class Bg3ModListNotices
     public static IReadOnlyList<string> LastWritten(IDb db, SortOrderId sortOrderId) =>
         Find(db, sortOrderId) is { } notice && notice.LastWrittenPaks.HasValue ? Split(notice.LastWrittenPaks.Value) : [];
 
+    /// <summary>How many times the game threw the mod list away; zero before it did.</summary>
+    public static int ResetCount(IDb db, SortOrderId sortOrderId) =>
+        Find(db, sortOrderId) is { } notice && notice.ResetCount.HasValue ? notice.ResetCount.Value : 0;
+
+    /// <summary>Whether the game has thrown the mod list away often enough that the app leaves the file to it.</summary>
+    public static bool IsHeld(IDb db, SortOrderId sortOrderId) => ResetCount(db, sortOrderId) >= HoldAfterResets;
+
+    /// <summary>The number of resets after which the app stops putting its list back.</summary>
+    public const int HoldAfterResets = 2;
+
+    /// <summary>
+    /// The paks that went into the list most recently: those written last and not the time before, or all of the
+    /// last list when nothing is new, so the likely cause of a reset is always named.
+    /// </summary>
+    public static IReadOnlyList<string> NewlyActive(IDb db, SortOrderId sortOrderId)
+    {
+        if (Find(db, sortOrderId) is not { } notice || !notice.LastWrittenPaks.HasValue) return [];
+        var last = Split(notice.LastWrittenPaks.Value);
+        var previous = notice.PreviousWrittenPaks.HasValue
+            ? Split(notice.PreviousWrittenPaks.Value).ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : [];
+        var added = last.Where(name => !previous.Contains(name)).ToList();
+        return added.Count > 0 ? added : last;
+    }
+
+    /// <summary>
+    /// Counts one more reset and rewrites the note to say what the game did and which paks were new in the list.
+    /// The notice must exist: a reset is only found against a list the app wrote.
+    /// </summary>
+    public static void StageReset(IDb db, SortOrderId sortOrderId, IReadOnlyList<string> newlyActive, DateTimeOffset at, ITransaction tx)
+    {
+        var notice = Find(db, sortOrderId) ?? throw new InvalidOperationException("A reset needs a list the app wrote, so the notice exists.");
+        var count = (notice.ResetCount.HasValue ? notice.ResetCount.Value : 0) + 1;
+        var caused = newlyActive.Count == 0 ? "" : $" The paks that were newly in the list: {string.Join(", ", newlyActive)}.";
+        var summary = count >= HoldAfterResets
+            ? $"The game threw the mod list away {count} times, so the app is leaving the file to it.{caused}"
+            : $"The game threw the mod list away and the app put it back.{caused}";
+
+        tx.Add(notice.Id, Bg3ModListNotice.ResetCount, count);
+        tx.Add(notice.Id, Bg3ModListNotice.Summary, summary);
+        tx.Add(notice.Id, Bg3ModListNotice.ReplacedAt, at);
+    }
+
     /// <summary>
     /// Records that <paramref name="names"/> is what is about to be written, and moves the list that was last
     /// written to the one before it. Creates the notice when the sort order has none.

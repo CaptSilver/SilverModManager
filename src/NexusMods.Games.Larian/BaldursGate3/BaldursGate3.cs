@@ -59,6 +59,8 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequ
             provider.GetRequiredService<DependencyDiagnosticEmitter>(),
             provider.GetRequiredService<ProtonPrefixEmitter>(),
             new DuplicateModuleEmitter(this, provider),
+            new Bg3ModListReplacedEmitter(this),
+            new Bg3ModListResetEmitter(this),
         ];
 
         LibraryItemInstallers =

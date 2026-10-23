@@ -49,4 +49,10 @@ public interface IBg3PakSortOrderVariety : ISortOrderVariety
     /// it also holds the lists of paks the app wrote.
     /// </summary>
     Task ClearReplacedGameEdit(SortOrderId sortOrderId);
+
+    /// <summary>
+    /// Forgets that the game threw the mod list away, so the app writes its own list again. Any change the user
+    /// makes to the order or a switch does this on its own.
+    /// </summary>
+    Task ClearModListReset(SortOrderId sortOrderId);
 }

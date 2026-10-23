@@ -70,8 +70,13 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
             .Select(name => byName.GetValueOrDefault(name.ToLowerInvariant())?.Entry)
             .OfType<ModsettingsDocument.ModuleEntry>();
 
+        // While the game's list is held, the file is written back as it is.
+        IEnumerable<ModsettingsDocument.ModuleEntry> entries = disk is not null && Bg3ModListNotices.IsHeld(loadout.Db, sortOrderId)
+            ? disk.Entries
+            : baseEntries.Concat(pakEntries);
+
         var version = VersionOf(disk);
-        var text = ModsettingsDocument.Render(version, baseEntries.Concat(pakEntries));
+        var text = ModsettingsDocument.Render(version, entries);
         await stream.WriteAsync(new UTF8Encoding(false).GetBytes(text));
     }
 
@@ -83,6 +88,9 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
         var variety = Variety;
         if (variety.GetSortOrderIdFor(loadout.LoadoutId, loadout.Db) is not { HasValue: true } found) return;
         var sortOrderId = found.Value;
+
+        // The file is the game's while the list is held, so there is no app list to compare it with.
+        if (Bg3ModListNotices.IsHeld(loadout.Db, sortOrderId)) return;
 
         ModsettingsDocument document;
         try
@@ -140,6 +148,42 @@ public sealed class ModsettingsFile : IIntrinsicFileWithReset
 
         var text = ModsettingsDocument.Render(VersionOf(disk), disk.Entries.Where(e => !removed.Contains(e.Uuid)));
         return new UTF8Encoding(false).GetBytes(text);
+    }
+
+    /// <summary>
+    /// Whether the game threw away the list the app wrote: the file holds only base modules, with no entry for any
+    /// pak and none from the game's mod downloads, while paks the app wrote last are still on disk. A file that
+    /// still names a pak is the game changing the list, which the notice reports, and a list with nothing on disk
+    /// to name is not one the game could have thrown away.
+    /// </summary>
+    public bool GameThrewTheListAway(Loadout.ReadOnly loadout, IReadOnlyList<Bg3PakCandidate> candidates, IReadOnlyList<string> lastWritten)
+    {
+        var byName = ByName(candidates);
+        var writtenAndOnDisk = lastWritten
+            .Select(name => byName.GetValueOrDefault(name.ToLowerInvariant()))
+            .OfType<Bg3PakCandidate>()
+            .Where(pak => pak.Entry is not null)
+            .Where(pak => loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(Bg3Constants.ModsLocationId, pak.Name)).FileExists)
+            .ToList();
+        if (writtenAndOnDisk.Count == 0) return false;
+
+        if (ReadDocument(loadout) is not { } disk) return false;
+        var pakUuids = UuidsOf(candidates);
+        return !disk.Entries.Any(e => e.IsPublished || pakUuids.Contains(e.Uuid));
+    }
+
+    /// <summary>The paks of the loadout that the file on disk lists, in the file's order.</summary>
+    public IReadOnlyList<string> PaksListedOnDisk(Loadout.ReadOnly loadout, IReadOnlyList<Bg3PakCandidate> candidates)
+    {
+        if (ReadDocument(loadout) is not { } disk) return [];
+
+        var byUuid = ByUuid(candidates);
+        var names = new List<string>();
+        foreach (var entry in disk.Entries)
+        {
+            if (byUuid.TryGetValue(entry.Uuid, out var pak) && !names.Contains(pak.Name)) names.Add(pak.Name);
+        }
+        return names;
     }
 
     /// <summary>What the game changed, in a sentence, or null when the paks and their order are as the app wrote them.</summary>

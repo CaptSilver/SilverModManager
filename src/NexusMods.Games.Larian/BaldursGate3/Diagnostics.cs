@@ -275,4 +275,59 @@ internal static partial class Diagnostics
             .AddValue<string>("IgnoredPaks")
         )
         .Finish();
+
+    /// <summary>
+    /// The game changed the mod list and the app wrote its own list over the change.
+    /// </summary>
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate ModListReplacedTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 12))
+        .WithTitle("The game's changes to the mod list were replaced")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The game changed the mod list, and the app replaced the change on {ReplacedAt}.")
+        .WithDetails("""
+                     {Summary}
+
+
+                     The app keeps the mod list in line with the Mod Load Order, so a change the game makes to it is undone the next time the loadout is applied.
+
+
+                     ## Recommended Actions
+                     #### Change the Mod Load Order instead
+                     Switch paks on and off and move them on the Load Order page, and the game's mod list follows.
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Summary")
+            .AddValue<string>("ReplacedAt")
+        )
+        .Finish();
+
+    /// <summary>
+    /// The game threw the mod list away twice, so the app no longer writes it.
+    /// </summary>
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate ModListResetTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 13))
+        .WithTitle("The game keeps resetting the mod list")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The game threw the mod list away twice, so the app has stopped writing it.")
+        .WithDetails("""
+                     {Summary}
+
+
+                     Each time the game starts with a mod list it cannot use, it replaces the list with its own. The app put its list back once. When it happened again, the app left the file alone so the two do not keep undoing each other. The paks named above are the most likely cause.
+
+
+                     ## Recommended Actions
+                     #### Switch off or remove the paks named above
+                     Changing the Mod Load Order makes the app write its list again.
+                     #### Or take the list back as it is
+                     Restore the mod list on the Load Order page to make the app write its list again.
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Summary")
+        )
+        .Finish();
 }

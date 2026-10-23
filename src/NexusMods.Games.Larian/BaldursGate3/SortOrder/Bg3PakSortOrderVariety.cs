@@ -21,9 +21,12 @@ namespace NexusMods.Games.Larian.BaldursGate3.SortOrder;
 /// and every row has its own on/off switch, except the paks the game installed itself, whose switch is their group's.
 /// </summary>
 public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<string>, Bg3PakReactiveSortItem, Bg3PakLoadoutData, Bg3PakSortData>,
-    IBg3PakSortOrderVariety, IToggleableSortOrderVariety, IReplacedGameEditSource
+    IBg3PakSortOrderVariety, IToggleableSortOrderVariety, IReplacedGameEditSource, IHeldGameEditSource
 {
     private static readonly SortOrderVarietyId StaticVarietyId = SortOrderVarietyId.From(new Guid("A3D1F6B2-5C84-4E0B-9F27-6B1D0C8E2A55"));
+
+    // Reconciling stores an order too, but it is the app tidying up, not the user changing anything.
+    private static readonly AsyncLocal<bool> Reconciling = new();
 
     private readonly IGame _game;
 
@@ -151,6 +154,7 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         using var tx = Connection.BeginTransaction();
         tx.Add(row.StoredRowId, Bg3PakSortOrderItem.IsEnabled, enabled);
         await tx.Commit();
+        await ClearModListReset(sortOrderId);
     }
 
     /// <inheritdoc />
@@ -186,6 +190,9 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         using var tx = Connection.BeginTransaction();
         foreach (var notice in notices)
         {
+            // While the list is held the summary says why, and only releasing the hold ends it.
+            if (notice.ResetCount.HasValue && notice.ResetCount.Value >= Bg3ModListNotices.HoldAfterResets) continue;
+
             // The pak lists the app wrote live on the same entity, so only the note is emptied.
             if (Bg3ModListNotices.HoldsMoreThanTheNote(notice))
             {
@@ -197,6 +204,58 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
             }
         }
         await tx.Commit();
+    }
+
+    /// <inheritdoc />
+    public async Task ClearModListReset(SortOrderId sortOrderId)
+    {
+        var notices = Bg3ModListNotice.FindBySortOrder(Connection.Db, sortOrderId)
+            .Where(notice => notice.ResetCount.HasValue && notice.ResetCount.Value > 0)
+            .ToArray();
+        if (notices.Length == 0) return;
+
+        using var tx = Connection.BeginTransaction();
+        foreach (var notice in notices)
+        {
+            // Below the hold the summary is the ordinary note about a replaced list, which this does not end.
+            if (notice.ResetCount.Value >= Bg3ModListNotices.HoldAfterResets) tx.Add(notice.Id, Bg3ModListNotice.Summary, "");
+            tx.Add(notice.Id, Bg3ModListNotice.ResetCount, 0);
+        }
+        await tx.Commit();
+    }
+
+    /// <inheritdoc />
+    public IObservable<string?> HoldSummary(SortOrderId sortOrderId) =>
+        Connection.Query<(EntityId Id, string Summary)>($"SELECT * FROM bg3.HeldNotices({Connection}, {sortOrderId.Value})")
+            .Observe(row => row.Id)
+            .QueryWhenChanged(items => items.Items.Select(row => row.Summary).FirstOrDefault())
+            .StartWith((string?)null)
+            .DistinctUntilChanged();
+
+    /// <inheritdoc />
+    Task IHeldGameEditSource.Release(SortOrderId sortOrderId) => ClearModListReset(sortOrderId);
+
+    /// <inheritdoc />
+    public override async ValueTask ReconcileSortOrder(SortOrderId sortOrderId, IDb? referenceDb = null, CancellationToken token = default)
+    {
+        var outer = Reconciling.Value;
+        Reconciling.Value = true;
+        try
+        {
+            await base.ReconcileSortOrder(sortOrderId, referenceDb, token);
+        }
+        finally
+        {
+            Reconciling.Value = outer;
+        }
+    }
+
+    /// <summary>An order the user changed puts the app back in charge of the mod list.</summary>
+    protected override async ValueTask<bool> TryPersistSortOrder(SortOrderId sortOrderId, IReadOnlyList<Bg3PakSortData> newOrder, IDb startingDb, CancellationToken token = default)
+    {
+        var persisted = await base.TryPersistSortOrder(sortOrderId, newOrder, startingDb, token);
+        if (persisted && !Reconciling.Value) await ClearModListReset(sortOrderId);
+        return persisted;
     }
 
     /// <inheritdoc />

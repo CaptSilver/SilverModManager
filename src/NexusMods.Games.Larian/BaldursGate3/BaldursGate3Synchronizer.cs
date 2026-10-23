@@ -96,16 +96,30 @@ public class BaldursGate3Synchronizer : ALoadoutSynchronizer
 
         if (!Bg3PakSeeder.IsSeeded(loadout.Db, sortOrderId))
         {
-            var candidates = await _modules.Candidates(loadout, variety, sortOrderId);
-            var notYetInLoadout = _modules.PaksOnDiskNotIn(loadout, candidates.Select(c => c.Name).ToHashSet(StringComparer.OrdinalIgnoreCase));
-            await Bg3PakSeeder.Seed(variety, Connection, sortOrderId, candidates, notYetInLoadout, _modsettings.ReadDocument(loadout));
+            var seedCandidates = await _modules.Candidates(loadout, variety, sortOrderId);
+            var notYetInLoadout = _modules.PaksOnDiskNotIn(loadout, seedCandidates.Select(c => c.Name).ToHashSet(StringComparer.OrdinalIgnoreCase));
+            await Bg3PakSeeder.Seed(variety, Connection, sortOrderId, seedCandidates, notYetInLoadout, _modsettings.ReadDocument(loadout));
             loadout = loadout.Rebase();
         }
 
-        var plan = Bg3ModListPlan.Build(await _modules.Candidates(loadout, variety, sortOrderId));
+        var candidates = await _modules.Candidates(loadout, variety, sortOrderId);
+
+        // Before the plan replaces the list the app last wrote, which is what the file is compared against.
+        if (!Bg3ModListNotices.IsHeld(loadout.Db, sortOrderId) && _modsettings.GameThrewTheListAway(loadout, candidates, Bg3ModListNotices.LastWritten(loadout.Db, sortOrderId)))
+        {
+            using var resetTx = Connection.BeginTransaction();
+            Bg3ModListNotices.StageReset(loadout.Db, sortOrderId, Bg3ModListNotices.NewlyActive(loadout.Db, sortOrderId), DateTimeOffset.UtcNow, resetTx);
+            await resetTx.Commit();
+            loadout = loadout.Rebase();
+        }
+
+        // Once held, the list is whatever the game's file names, so the comparison after the write finds nothing to replace.
+        var names = Bg3ModListNotices.IsHeld(loadout.Db, sortOrderId)
+            ? _modsettings.PaksListedOnDisk(loadout, candidates)
+            : Bg3ModListPlan.Build(candidates).Names;
 
         using var tx = Connection.BeginTransaction();
-        Bg3ModListNotices.StagePlan(loadout.Db, sortOrderId, plan.Names, DateTimeOffset.UtcNow, tx);
+        Bg3ModListNotices.StagePlan(loadout.Db, sortOrderId, names, DateTimeOffset.UtcNow, tx);
         foreach (var row in OverridesRowsForModsettings(loadout))
             tx.Delete(row, recursive: false);
         await tx.Commit();

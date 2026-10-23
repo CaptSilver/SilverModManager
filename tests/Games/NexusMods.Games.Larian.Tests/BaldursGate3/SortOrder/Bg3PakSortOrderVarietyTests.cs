@@ -203,6 +203,20 @@ public class Bg3PakSortOrderVarietyTests(ITestOutputHelper helper)
         ((ISortItemDetails)row).IsLocked.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task LockReason_IsTheGameInstalledGroupForGameInstalledRows_AndNullForLoadoutPaks()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await AddMod(loadout, "Mod", "Mine.pak");
+        await AddGameInstalledPaks(loadout, "FromGame.pak");
+        await variety.ReconcileSortOrder(id);
+
+        var rows = variety.GetSortOrderItems(id, Db).ToDictionary(r => r.DisplayName);
+
+        ((ISortItemDetails)rows["FromGame.pak"]).LockReason.Should().Be(SortItemLockReason.GameInstalledGroup);
+        ((ISortItemDetails)rows["Mine.pak"]).LockReason.Should().BeNull();
+    }
+
     private EntityId StoredRowId(SortOrderId id, string name) =>
         Connection.Query<EntityId>($"SELECT Id FROM bg3.SortOrderItems({Connection}, {id.Value}) WHERE PakName = {name}").Single();
 
