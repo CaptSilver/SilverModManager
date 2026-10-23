@@ -115,6 +115,24 @@
             </controls:ComponentControl.ComponentTemplate>
         </controls:ComponentControl>
         
+        <!-- Open modlist -->
+        <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="local:LibraryComponents+OpenModlistAction"
+                                            ComponentKey="{x:Static local:LibraryColumns+Actions.OpenModlistComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type local:LibraryComponents+OpenModlistAction}">
+                            <MenuItem Header="Open modlist" Command="{CompiledBinding CommandOpenModlist}">
+                                <MenuItem.Icon>
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.OpenInNew}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+        </controls:ComponentControl>
+
         <!-- Delete item -->
         <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
             <controls:ComponentControl.ComponentTemplate>
@@ -315,6 +333,26 @@
                 </controls:ComponentControl.ComponentTemplate>
             </controls:ComponentControl>
            
+            <!-- Open modlist -->
+            <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+                <controls:ComponentControl.ComponentTemplate>
+                    <controls:ComponentTemplate x:TypeArguments="local:LibraryComponents+OpenModlistAction"
+                                                ComponentKey="{x:Static local:LibraryColumns+Actions.OpenModlistComponentKey}">
+                        <controls:ComponentTemplate.DataTemplate>
+                            <DataTemplate DataType="{x:Type local:LibraryComponents+OpenModlistAction}">
+                                <controls:StandardButton Command="{CompiledBinding CommandOpenModlist}"
+                                                         Text="Open modlist"
+                                                         Size="Small"
+                                                         Type="Primary"
+                                                         Fill="StrongAlt"
+                                                         LeftIcon="{x:Static icons:IconValues.OpenInNew}"
+                                                         ShowIcon="Left" />
+                            </DataTemplate>
+                        </controls:ComponentTemplate.DataTemplate>
+                    </controls:ComponentTemplate>
+                </controls:ComponentControl.ComponentTemplate>
+            </controls:ComponentControl>
+
             <!-- more options -->
             <controls:StandardButton
                 ToolTip.Tip="{x:Static resources:Language.Menu_MoreOptions_ToolTip}"

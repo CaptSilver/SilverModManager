@@ -10,6 +10,7 @@ using NexusMods.App.UI.Pages.Downloads;
 using NexusMods.App.UI.Pages.FromSoftMerges;
 using NexusMods.App.UI.Pages.FromSoftSaves;
 using NexusMods.App.UI.Pages.Thunderstore;
+using NexusMods.App.UI.Pages.Wabbajack;
 using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
 using NexusMods.App.UI.Pages.LoadoutPage;
@@ -51,6 +52,7 @@ internal class TypeFinder : ITypeFinder
         typeof(FromSoftMergesPageContext),
         typeof(FromSoftSavesPageContext),
         typeof(ThunderstorePageContext),
+        typeof(WabbajackModlistPageContext),
 
         // workspace context
         typeof(EmptyContext),

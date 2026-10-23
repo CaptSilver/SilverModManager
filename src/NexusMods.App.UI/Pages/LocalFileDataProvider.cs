@@ -13,6 +13,7 @@ using NexusMods.MnemonicDB.Abstractions.ValueSerializers;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Hashes;
 using NexusMods.Sdk.Library;
+using NexusMods.Wabbajack.Models;
 using UIObservableExtensions = NexusMods.App.UI.Extensions.ObservableExtensions;
 
 namespace NexusMods.App.UI.Pages;
@@ -27,6 +28,9 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
         _connection = serviceProvider.GetRequiredService<IConnection>();
     }
 
+    // A Wabbajack modlist is added as a local file too; WabbajackModlistDataProvider shows it.
+    private static bool IsModlist(LocalFile.ReadOnly localFile) => localFile.AsLibraryFile().TryGetAsWabbajackModlistLibraryFile(out _);
+
     // TODO: update once we have game information on Local Files
     public LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null) => [];
 
@@ -34,6 +38,7 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
     {
         return LocalFile
             .ObserveAll(_connection)
+            .FilterImmutable(static localFile => !IsModlist(localFile))
             .Transform(localFile => ToLibraryItemModel(libraryFilter, localFile));
     }
 
@@ -41,6 +46,7 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
     {
         return LocalFile
             .ObserveAll(_connection)
+            .FilterImmutable(static localFile => !IsModlist(localFile))
             .QueryWhenChanged(query => query.Count)
             .Prepend(0);
     }

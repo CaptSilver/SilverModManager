@@ -97,6 +97,7 @@
         <ProjectReference Include="..\NexusMods.Collections\NexusMods.Collections.csproj" />
         <ProjectReference Include="..\NexusMods.Networking.GitHub\NexusMods.Networking.GitHub.csproj" />
         <ProjectReference Include="..\NexusMods.Networking.Thunderstore\NexusMods.Networking.Thunderstore.csproj" />
+        <ProjectReference Include="..\NexusMods.Wabbajack\NexusMods.Wabbajack.csproj" />
         <ProjectReference Include="..\NexusMods.Platform.Proton\NexusMods.Platform.Proton.csproj" />
         <ProjectReference Include="..\NexusMods.Games.FromSoft\NexusMods.Games.FromSoft.csproj" />
         <ProjectReference Include="..\NexusMods.UI.Sdk\NexusMods.UI.Sdk.csproj" />

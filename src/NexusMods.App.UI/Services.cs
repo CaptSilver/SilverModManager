@@ -63,6 +63,7 @@ using NexusMods.App.UI.Pages.Settings;
 using NexusMods.App.UI.Pages.Sorting;
 using NexusMods.App.UI.Pages.SteamLaunchOption;
 using NexusMods.App.UI.Pages.Thunderstore;
+using NexusMods.App.UI.Pages.Wabbajack;
 using NexusMods.App.UI.Pages.TextEdit;
 using NexusMods.App.UI.Pages.Tools;
 using NexusMods.App.UI.Settings;
@@ -196,6 +197,9 @@ public static class Services
             .AddViewModel<ChangelogPageViewModel, IChangelogPageViewModel>()
             .AddView<ThunderstoreView, IThunderstoreViewModel>()
             .AddViewModel<ThunderstoreViewModel, IThunderstoreViewModel>()
+            .AddView<WabbajackModlistView, IWabbajackModlistViewModel>()
+            .AddViewModel<WabbajackModlistViewModel, IWabbajackModlistViewModel>()
+            .AddSingleton<IWabbajackModlistService, WabbajackModlistService>()
             .AddView<FromSoftMergesView, IFromSoftMergesViewModel>()
             .AddViewModel<FromSoftMergesViewModel, IFromSoftMergesViewModel>()
             .AddView<FromSoftSavesView, IFromSoftSavesViewModel>()
@@ -288,6 +292,7 @@ public static class Services
             .AddSingleton<IPageFactory, FromSoftMergesPageFactory>()
             .AddSingleton<IPageFactory, FromSoftSavesPageFactory>()
             .AddSingleton<IPageFactory, ThunderstorePageFactory>()
+            .AddSingleton<IPageFactory, WabbajackModlistPageFactory>()
             .AddSingleton<IPageFactory, ToolsPageFactory>()
             .AddSingleton<IPageFactory, AboutPageFactory>()
             .AddSingleton<IPageFactory, TextEditorPageFactory>()
@@ -335,6 +340,7 @@ public static class Services
             .AddSingleton<ILibraryDataProvider, NexusModsDataProvider>()
             .AddSingleton<ILoadoutDataProvider, NexusModsDataProvider>()
             .AddSingleton<ILibraryDataProvider, ThunderstoreDataProvider>()
+            .AddSingleton<ILibraryDataProvider, WabbajackModlistDataProvider>()
             .AddSingleton<ILoadoutDataProvider, ThunderstoreDataProvider>()
             .AddSingleton<ILoadoutDataProvider, BundledDataProvider>()
             .AddSingleton<ILoadoutDataProvider, GameInstalledDataProvider>()

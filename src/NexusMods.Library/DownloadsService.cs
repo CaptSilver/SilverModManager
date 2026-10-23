@@ -7,7 +7,6 @@ using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Networking.HttpDownloader;
 using NexusMods.Abstractions.NexusModsLibrary;
-using NexusMods.App.UI.Resources;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.NexusModsApi;
@@ -21,6 +20,9 @@ namespace NexusMods.Library;
 /// </summary>
 public sealed class DownloadsService : IDownloadsService, IDisposable
 {
+    // Shown when neither the metadata nor the destination names the download.
+    private const string UnknownDownloadName = "Unknown Download";
+
     private readonly IJobMonitor _jobMonitor;
     private readonly IConnection _connection;
     private readonly System.Reactive.Disposables.CompositeDisposable _disposables = new();
@@ -281,11 +283,11 @@ public sealed class DownloadsService : IDownloadsService, IDisposable
         // Fallback to destination filename if FileMetadata.Name is empty as absolute last resort.
         var httpJob = nexusJob.HttpDownloadJob.JobDefinition;
         if (httpJob.Destination == default(AbsolutePath))
-            return Language.Downloads_UnknownDownload;
+            return UnknownDownloadName;
 
         var destinationFileName = httpJob.Destination.FileName;
         if (string.IsNullOrEmpty(destinationFileName))
-            return Language.Downloads_UnknownDownload;
+            return UnknownDownloadName;
         
         var nameWithoutExt = Path.GetFileNameWithoutExtension(destinationFileName);
         return nameWithoutExt.Replace('_', ' ').Replace('-', ' ');

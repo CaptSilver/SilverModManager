@@ -108,6 +108,10 @@ public static class LibraryColumns
             var aDeleteItem = a.GetOptional<LibraryComponents.DeleteItemAction>(key: DeleteItemComponentKey);
             var bDeleteItem = b.GetOptional<LibraryComponents.DeleteItemAction>(key: DeleteItemComponentKey);
 
+            var aOpenModlist = a.GetOptional<LibraryComponents.OpenModlistAction>(key: OpenModlistComponentKey);
+            var bOpenModlist = b.GetOptional<LibraryComponents.OpenModlistAction>(key: OpenModlistComponentKey);
+            if (aOpenModlist.HasValue != bOpenModlist.HasValue) return aOpenModlist.HasValue ? -1 : 1;
+
             var orderA = GetOrder(aInstall, aUpdate, aViewChangelog, aViewModPage, aHideUpdates, aDeleteItem);
             var orderB = GetOrder(bInstall, bUpdate, bViewChangelog, bViewModPage, bHideUpdates, bDeleteItem);
 
@@ -146,6 +150,7 @@ public static class LibraryColumns
         public static readonly ComponentKey UpdateComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(Actions) + "_" + "Update");
         public static readonly ComponentKey ViewChangelogComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(Actions) + "_" + "ViewChangelog");
         public static readonly ComponentKey ViewModPageComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(Actions) + "_" + "ViewModPage");
+        public static readonly ComponentKey OpenModlistComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(Actions) + "_" + "OpenModlist");
         public static readonly ComponentKey DeleteItemComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(Actions) + "_" + "DeleteItem");
         public static readonly ComponentKey HideUpdatesComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(Actions) + "_" + "HideUpdates");
         public static string GetColumnHeader() => "Actions";
@@ -603,6 +608,26 @@ public static class LibraryComponents
     }
 
     
+    /// <summary>Opens the page of a Wabbajack modlist file.</summary>
+    public sealed class OpenModlistAction : ReactiveR3Object, IItemModelComponent<OpenModlistAction>, IComparable<OpenModlistAction>
+    {
+        public ReactiveCommand<Unit> CommandOpenModlist { get; } = new();
+
+        public int CompareTo(OpenModlistAction? other) => other is null ? 1 : 0;
+
+        private bool _isDisposed;
+        protected override void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                if (disposing) Disposable.Dispose(CommandOpenModlist);
+                _isDisposed = true;
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
     public sealed class DeleteItemAction : ReactiveR3Object, IItemModelComponent<DeleteItemAction>, IComparable<DeleteItemAction>
     {
         public ReactiveCommand<Unit> CommandDeleteItem { get; } = new();

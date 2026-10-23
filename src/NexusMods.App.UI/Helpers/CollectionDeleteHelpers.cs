@@ -15,6 +15,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.UI.Sdk;
 using NexusMods.UI.Sdk.Dialog;
 using NexusMods.UI.Sdk.Dialog.Enums;
+using NexusMods.Wabbajack.Models;
 using R3;
 
 namespace NexusMods.App.UI.Helpers;
@@ -26,15 +27,17 @@ public static class CollectionDeleteHelpers
     /// </summary>
     /// <remarks>
     /// Editable collections can only be deleted if there is more than one editable collection.
-    /// Nexus collections (read-only) can always be deleted.
+    /// Nexus collections (read-only) and imported Wabbajack modlists can always be deleted. A modlist is not
+    /// counted among the editable collections either: it is not where the user's own mods go, so it must not be
+    /// what lets the last user collection be deleted.
     /// </remarks>
     /// <param name="collectionId">The collection group identifier.</param>
     /// <returns>An observable that indicates whether the collection can be deleted.</returns>
     public static IObservable<bool> ObserveCanDeleteCollection(CollectionGroupId collectionId, IConnection connection)
     {
         var group = CollectionGroup.Load(connection.Db, collectionId);
-        // Read-only collections can always be removed
-        if (group.IsReadOnly)
+        // Read-only collections and modlists can always be removed
+        if (group.IsReadOnly || group.TryGetAsWabbajackModlistLoadoutGroup(out _))
             return System.Reactive.Linq.Observable.Return(true);
         
         var loadoutId = group.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId;
@@ -42,7 +45,7 @@ public static class CollectionDeleteHelpers
         // Editable collection can only be deleted if they are not the last one
         return CollectionGroup
             .ObserveAll(connection)
-            .FilterImmutable(g => g.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadoutId && !g.IsReadOnly)
+            .FilterImmutable(g => g.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadoutId && !g.IsReadOnly && !g.TryGetAsWabbajackModlistLoadoutGroup(out _))
             .QueryWhenChanged(query => query.Count)
             .ToObservable()
             .Select(count => count > 1)

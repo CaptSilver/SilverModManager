@@ -49,6 +49,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         "SilverModManager.MountAndBlade2Bannerlord.ModLoadoutItem/ModuleInfo",
         "SilverModManager.StardewValley.SMAPIModLoadoutItem/Manifest",
         "SilverModManager.StardewValley.SMAPILoadoutItem/ModDatabase",
+        "SilverModManager.Wabbajack.SkippedFile/Group",
     ];
 
     /// <summary>

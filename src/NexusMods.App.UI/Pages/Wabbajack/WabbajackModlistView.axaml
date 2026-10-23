@@ -1,0 +1,62 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:IWabbajackModlistViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.Wabbajack"
+    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
+    mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="800"
+    x:Class="NexusMods.App.UI.Pages.Wabbajack.WabbajackModlistView">
+
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="{StaticResource Spacing-4}" x:Name="DropZone">
+            <Image x:Name="BannerImage" MaxHeight="220" Stretch="UniformToFill" HorizontalAlignment="Left" />
+            <TextBlock x:Name="NameText" Theme="{StaticResource HeadingSMSemiTheme}" />
+            <TextBlock x:Name="DetailsText" />
+            <TextBlock x:Name="SummaryText" />
+            <TextBlock x:Name="ErrorText" TextWrapping="Wrap" Foreground="Red" />
+
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                <TextBlock Text="Install into" VerticalAlignment="Center" />
+                <ComboBox x:Name="LoadoutBox" MinWidth="280" />
+            </StackPanel>
+
+            <TextBlock x:Name="FreeSpaceText" TextWrapping="Wrap" />
+
+            <TextBlock x:Name="AcquireText" />
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                <controls:StandardButton x:Name="OpenNextFiveButton" Type="Secondary" Size="Toolbar" Text="Open next five" />
+                <controls:StandardButton x:Name="CheckInboxButton" Type="Secondary" Size="Toolbar" Text="Check inbox" />
+                <controls:StandardButton x:Name="OpenInboxButton" Type="Secondary" Size="Toolbar" Text="Open inbox folder" />
+            </StackPanel>
+            <TextBlock x:Name="InboxText" TextWrapping="Wrap" />
+            <TextBlock Text="Drop downloaded archives anywhere on this page to add them to the inbox." Opacity="0.7" />
+            <StackPanel x:Name="ArchiveRows" Spacing="2" />
+
+            <StackPanel x:Name="GameFilesPanel" Spacing="2">
+                <TextBlock Text="Game files this list replaces" Theme="{StaticResource HeadingSMSemiTheme}" />
+                <TextBlock Text="Tick a file to keep the copy in the game folder." Opacity="0.7" />
+                <StackPanel x:Name="GameFileRows" />
+            </StackPanel>
+
+            <CheckBox x:Name="SkipBox" Content="Skip files from missing archives" />
+
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                <controls:StandardButton x:Name="InstallButton" Type="Primary" Size="Toolbar" Text="Install" />
+                <controls:StandardButton x:Name="ResumeButton" Type="Secondary" Size="Toolbar" Text="Resume" />
+                <controls:StandardButton x:Name="RemoveButton" Type="Secondary" Size="Toolbar" Text="Remove modlist" />
+            </StackPanel>
+            <TextBlock x:Name="ProgressText" />
+            <ProgressBar x:Name="ProgressBar" Minimum="0" Maximum="1" />
+
+            <StackPanel x:Name="SkippedPanel" Spacing="2">
+                <TextBlock Text="Files that were skipped" Theme="{StaticResource HeadingSMSemiTheme}" />
+                <controls:StandardButton x:Name="HealthCheckButton" Type="Secondary" Size="Toolbar" Text="Open Health Check" HorizontalAlignment="Left" />
+                <StackPanel x:Name="SkippedRows" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+
+</reactive:ReactiveUserControl>
