@@ -26,6 +26,9 @@ public class GameInstalledStubbedGame : IGame, IGameData<GameInstalledStubbedGam
     public static string DisplayName => "Stubbed Game With Game-Installed Content";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(uint.MaxValue - 5);
 
+    /// <summary>The recognizer and the other statics are shared, so test classes using this game run one at a time.</summary>
+    public const string CollectionName = "GameInstalledStubbedGame";
+
     public static FakeGameInstalledRecognizer Recognizer { get; private set; } = new();
 
     /// <summary>Paths whose bytes the synchronizer is told not to back up.</summary>

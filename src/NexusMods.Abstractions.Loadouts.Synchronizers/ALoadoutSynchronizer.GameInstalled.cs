@@ -364,7 +364,10 @@ public partial class ALoadoutSynchronizer
         if (entries.Count > 0) await _fileStore.BackupFiles(entries, deduplicate: false);
     }
 
-    private static LoadoutItemGroupId CreateGameInstalledGroup(ITransaction tx, Loadout.ReadOnly loadout)
+    /// <summary>
+    /// Creates the loadout's empty game-installed group. The caller checks there is none yet.
+    /// </summary>
+    public static LoadoutItemGroupId CreateGameInstalledGroup(ITransaction tx, Loadout.ReadOnly loadout)
     {
         _ = new GameInstalledGroup.New(tx, out var id)
         {

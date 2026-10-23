@@ -10,6 +10,7 @@ using NexusMods.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Abstractions.Serialization.ExpressionGenerator;
 using NexusMods.DataModel.CommandLine.Verbs;
 using NexusMods.DataModel.Diagnostics;
+using NexusMods.DataModel.GameInstalled;
 using NexusMods.DataModel.JsonConverters;
 using NexusMods.DataModel.SchemaVersions;
 using NexusMods.DataModel.Sorting;
@@ -118,6 +119,7 @@ public static class Services
         coll.AddSingleton<UndoService>();
 
         coll.AddSingleton<ILoadoutManager, LoadoutManager>();
+        coll.AddSingleton<IGameInstalledContentService, GameInstalledContentService>();
 
         // Verbs
         coll.AddLoadoutManagementVerbs()

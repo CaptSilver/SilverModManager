@@ -321,6 +321,12 @@ internal partial class LoadoutManager : ILoadoutManager
             tx.Delete(priorityEntity, recursive: false);
         }
 
+        // A claim is its own entity rather than a loadout item, so the loop above misses it.
+        foreach (var claim in GameInstalledClaim.FindByLoadout(loadout.Db, loadout))
+        {
+            tx.Delete(claim, recursive: false);
+        }
+
         await tx.Commit();
         
         // Execute the garbage collector

@@ -26,6 +26,7 @@ namespace NexusMods.DataModel.Synchronizer.Tests;
 /// Content the game installed itself is reconciled into the loadout before each sync and shows up in the sync
 /// tree as game files, so the synchronizer never ingests, backs up or deletes it.
 /// </summary>
+[Collection(GameInstalledStubbedGame.CollectionName)]
 public class GameInstalledReconcileTests : AIsolatedGameTest<GameInstalledReconcileTests, GameInstalledStubbedGame>
 {
     private const string Source = "StubSource";
