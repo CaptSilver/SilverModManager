@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <PackageReference Include="NexusMods.Paths.TestingHelpers"/>
-    <PackageReference Include="NexusMods.MnemonicDB"/>
+    <ProjectReference Include="..\..\..\src\NexusMods.MnemonicDB\NexusMods.MnemonicDB.csproj" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\NexusMods.Networking.Thunderstore\NexusMods.Networking.Thunderstore.csproj" />

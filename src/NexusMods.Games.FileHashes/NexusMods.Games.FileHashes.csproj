@@ -3,8 +3,8 @@
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
     
     <ItemGroup>
-      <PackageReference Include="NexusMods.MnemonicDB" />
-      <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" />
+      <ProjectReference Include="..\NexusMods.MnemonicDB\NexusMods.MnemonicDB.csproj" />
+      <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
       <PackageReference Include="NexusMods.Paths" />
       <PackageReference Include="YamlDotNet" />
     </ItemGroup>

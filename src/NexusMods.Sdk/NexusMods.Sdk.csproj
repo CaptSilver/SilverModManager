@@ -8,8 +8,8 @@
         <PackageReference Include="MemoryPack" />
         <PackageReference Include="Microsoft.Extensions.Options" />
         <PackageReference Include="NexusMods.Hashing.xxHash3" />
-        <PackageReference Include="NexusMods.MnemonicDB.Abstractions" />
-        <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\NexusMods.MnemonicDB.Abstractions\NexusMods.MnemonicDB.Abstractions.csproj" />
+        <ProjectReference Include="..\NexusMods.MnemonicDB.SourceGenerator\NexusMods.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <PackageReference Include="NexusMods.Paths" />
         <PackageReference Include="OneOf" />
         <PackageReference Include="Polly.Core" />

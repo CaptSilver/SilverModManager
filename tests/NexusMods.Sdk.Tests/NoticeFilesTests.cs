@@ -30,6 +30,17 @@ public class NoticeFilesTests
     }
 
     [Fact]
+    public void Test_NoticeNamesTheVendoredMnemonicDb()
+    {
+        var notice = ReadRootFile("NOTICE");
+
+        notice.Should().Contain("NexusMods.MnemonicDB");
+        notice.Should().Contain("https://github.com/Nexus-Mods/NexusMods.MnemonicDB");
+        notice.Should().Contain("v0.28.2");
+        File.Exists(Path.Combine(Root, "src", "NexusMods.MnemonicDB", "LICENSE")).Should().BeTrue("the vendored source carries its upstream license");
+    }
+
+    [Fact]
     public void Test_ThirdPartyNoticesCoverTheBundledFontsAndIcons()
     {
         var notices = ReadRootFile("THIRD-PARTY-NOTICES.md");

@@ -12,6 +12,17 @@ internal static class RepoScanGuard
 {
     private static readonly string[] SkippedFolders = ["obj", "bin", "extern"];
 
+    /// <summary>
+    /// Third-party libraries kept as source. They keep upstream's names and style, so the guards
+    /// that police first-party code do not apply to them.
+    /// </summary>
+    private static readonly string[] VendoredFolders =
+    [
+        "src/NexusMods.MnemonicDB/",
+        "src/NexusMods.MnemonicDB.Abstractions/",
+        "src/NexusMods.MnemonicDB.SourceGenerator/",
+    ];
+
     public static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -32,6 +43,7 @@ internal static class RepoScanGuard
             {
                 var relative = ToRelative(root, path);
                 if (relative.Split('/').Any(part => SkippedFolders.Contains(part))) continue;
+                if (VendoredFolders.Any(folder => relative.StartsWith(folder, StringComparison.Ordinal))) continue;
                 yield return relative;
             }
         }

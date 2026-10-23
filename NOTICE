@@ -26,6 +26,10 @@ What carried over and what did not
 * erm, the author's earlier project, is GPL-2.0-or-later. Code brought
   over from it is used here under GPL-3.0-only, which its "or later" clause
   allows.
+* NexusMods.MnemonicDB (https://github.com/Nexus-Mods/NexusMods.MnemonicDB, tag v0.28.2, GPL-3.0-only),
+  the database library the app stores its data in, is vendored as source under
+  src/NexusMods.MnemonicDB*. It was a NuGet package before; the databases it
+  wrote still open unchanged. Its license is in src/NexusMods.MnemonicDB/LICENSE.
 * The docs theme submodule (NexusMods.MkDocsMaterial.Themes.Next, GPL-3.0)
   was dropped along with the documentation site it built. Its license text
   is the GPL, the same as this project's.

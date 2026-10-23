@@ -1,0 +1,8 @@
+<Project>
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <PropertyGroup>
+        <!-- netstandard2.0 defaults to C# 7.3, which rejects the nullable context the repo enables. -->
+        <LangVersion>13</LangVersion>
+    </PropertyGroup>
+</Project>

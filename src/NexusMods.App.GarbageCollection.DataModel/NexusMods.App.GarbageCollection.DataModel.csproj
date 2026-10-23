@@ -2,7 +2,7 @@
     <!-- NuGet Package Shared Details -->
     <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))"/>
     <ItemGroup>
-        <PackageReference Include="NexusMods.MnemonicDB.Abstractions" />
+        <ProjectReference Include="..\NexusMods.MnemonicDB.Abstractions\NexusMods.MnemonicDB.Abstractions.csproj" />
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="NexusMods.App.GarbageCollection.DataModel.Tests"/>
