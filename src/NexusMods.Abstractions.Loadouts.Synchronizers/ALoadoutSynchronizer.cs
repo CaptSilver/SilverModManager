@@ -760,8 +760,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                     break;
                 
                 case Actions.WriteIntrinsic:
-                    if (ApplicationConstants.IsDebug && syncTree.Any(n => n.Value.Actions.HasFlag(Actions.AdaptLoadout)))
-                        throw new InvalidOperationException("Cannot adapt loadout when not in a loadout context");
+                    if (ApplicationConstants.IsDebug && syncTree.Any(n => n.Value.Actions.HasFlag(Actions.WriteIntrinsic)))
+                        throw new InvalidOperationException("Cannot write intrinsic files when not in a loadout context");
                     break;
 
                 case Actions.IngestFromDisk:

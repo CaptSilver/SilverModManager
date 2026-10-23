@@ -126,6 +126,45 @@ public class SortOrderManagerTests(ITestOutputHelper helper) : AStubbedGameIsola
         await dispose.WaitAsync(TimeSpan.FromSeconds(20));
     }
 
+    [Fact]
+    public async Task RegisteringTwice_ReplacesTheFirstSubscriptionInsteadOfAddingToIt()
+    {
+        var once = new RecordingVariety();
+        var replaced = new RecordingVariety();
+        using var control = new SortOrderManager(ServiceProvider);
+        using var twice = new SortOrderManager(ServiceProvider);
+        control.RegisterSortOrderVarieties([once], GameInstallation.GetGame());
+        twice.RegisterSortOrderVarieties([new RecordingVariety()], GameInstallation.GetGame());
+        twice.RegisterSortOrderVarieties([replaced], GameInstallation.GetGame());
+
+        var own = await SeedLoadout(StubbedGame.GameId);
+        await SeedFile(own);
+        await once.WaitForReconcile(own);
+        await replaced.WaitForReconcile(own);
+        await Task.Delay(500);
+
+        // A subscription left over from the first call would run every handler a second time.
+        replaced.Created.Count(l => l == own).Should().Be(once.Created.Count(l => l == own));
+        replaced.Reconciled.Count(l => l == own).Should().Be(once.Reconciled.Count(l => l == own));
+    }
+
+    [Fact]
+    public async Task Dispose_StopsTheLiveSubscription()
+    {
+        var variety = new RecordingVariety();
+        var manager = new SortOrderManager(ServiceProvider);
+        manager.RegisterSortOrderVarieties([variety], GameInstallation.GetGame());
+        manager.RegisterSortOrderVarieties([variety], GameInstallation.GetGame());
+        manager.Dispose();
+
+        var own = await SeedLoadout(StubbedGame.GameId);
+        await SeedFile(own);
+        await Task.Delay(500);
+
+        variety.Created.Should().NotContain(own);
+        variety.Reconciled.Should().NotContain(own);
+    }
+
     private async Task<LoadoutId> SeedLoadout(GameId? game)
     {
         using var tx = Connection.BeginTransaction();

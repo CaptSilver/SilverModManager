@@ -107,6 +107,9 @@ public class SortOrderManager : ISortOrderManager, IDisposable
 
     protected void SubscribeToChanges(GameId gameId)
     {
+        // A second registration replaces the first; the old handlers would otherwise keep running unreachable.
+        _subscription?.Dispose();
+
         var compositeDisposable = new CompositeDisposable();
         var conn = _connection;
  
