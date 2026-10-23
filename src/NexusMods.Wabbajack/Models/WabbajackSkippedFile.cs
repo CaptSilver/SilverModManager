@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using NexusMods.Abstractions.Loadouts;
 using NexusMods.MnemonicDB.Abstractions.Attributes;
 using NexusMods.MnemonicDB.Abstractions.Models;
 
@@ -28,8 +29,11 @@ public enum SkipKind : byte
 
 /// <summary>
 /// A directive the install could not execute. The list is left disabled while any of these exist for its group.
+/// It is a <see cref="LoadoutItem"/> so the loadout owns it: removing the list deletes the row with the group, and
+/// only an owned row comes back when the removal is undone.
 /// </summary>
 [PublicAPI]
+[Include<LoadoutItem>]
 public partial class WabbajackSkippedFile : IModelDefinition
 {
     private const string Namespace = "SilverModManager.Wabbajack.SkippedFile";

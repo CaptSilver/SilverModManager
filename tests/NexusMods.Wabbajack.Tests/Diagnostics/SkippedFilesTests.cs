@@ -5,10 +5,13 @@ using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.DataModel.Undo;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using NexusMods.Paths;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Wabbajack.Diagnostics;
+using NexusMods.Wabbajack.Format;
 using NexusMods.Wabbajack.Install;
 using NexusMods.Wabbajack.Models;
 using NexusMods.Wabbajack.Tests.Install;
@@ -146,6 +149,37 @@ public class SkippedFilesTests(ITestOutputHelper helper) : InstallTestBase<Skipp
         await start.Should().ThrowAsync<InvalidOperationException>();
     }
 
+    [Fact]
+    public async Task UndoingTheRemovalOfAnInstalledListBringsBackItsSkipRows()
+    {
+        var archive = await AddZip("a.zip", new() { ["base.bin"] = [1, 2, 3] });
+        var list = new ListBuilder();
+        list.Archives.Add(archive);
+        list.Directives.Add(new PatchedFromArchive(P("mods/A/patched.bin"), Hash64(new byte[] { 1, 2, 3, 4 }), 4, new ArchiveHashPath(archive.XxHash64, [P("base.bin")]), Hash64(new byte[] { 1, 2, 3 }), list.Blob([4])));
+        var loadout = await CreateLoadout();
+        var (_, group) = await Install(loadout, await AddModlist(list.ToList(), list.Blobs), new InstallOptions(false, new HashSet<RelativePath>()));
+        SkipsOf(group).Should().ContainSingle();
+        await StampRevision(loadout);
+        var restorePoint = UndoService.RevisionsFor(loadout.Id).OrderBy(r => r.Revision.TxEntity).Last().Revision;
+
+        await ServiceProvider.GetRequiredService<ILoadoutManager>().RemoveCollection(CollectionGroupId.From(group.Id));
+        WabbajackModlistLoadoutGroup.Load(Connection.Db, group.Id).IsValid().Should().BeFalse();
+        await UndoService.RevertTo(restorePoint);
+
+        WabbajackModlistLoadoutGroup.Load(Connection.Db, group.Id).IsValid().Should().BeTrue();
+        SkipsOf(group).Should().ContainSingle(s => s.Kind == SkipKind.Transform, "the restored list is still missing the file it skipped");
+        (await Diagnose(Loadout.Load(Connection.Db, loadout.Id))).Should().ContainSingle();
+    }
+
+    private UndoService UndoService => ServiceProvider.GetRequiredService<UndoService>();
+
+    private async Task StampRevision(Loadout.ReadOnly loadout)
+    {
+        using var tx = Connection.BeginTransaction();
+        tx.Add(loadout.Id, Loadout.LastAppliedDateTime, DateTime.UtcNow);
+        await tx.Commit();
+    }
+
     private WabbajackModlistRemovalWatcher Watcher()
         => ServiceProvider.GetServices<IHostedService>().OfType<WabbajackModlistRemovalWatcher>().Single();
 
@@ -198,8 +232,9 @@ public class SkippedFilesTests(ITestOutputHelper helper) : InstallTestBase<Skipp
         using var tx = Connection.BeginTransaction();
         foreach (var path in paths)
         {
-            _ = new WabbajackSkippedFile.New(tx)
+            _ = new WabbajackSkippedFile.New(tx, out var id)
             {
+                LoadoutItem = new LoadoutItem.New(tx, id) { LoadoutId = group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId, Name = path },
                 GroupId = WabbajackModlistLoadoutGroupId.From(group.Id),
                 To = path,
                 Reason = "test",

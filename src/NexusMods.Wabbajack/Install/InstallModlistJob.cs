@@ -605,8 +605,13 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
     private void AddSkip(ITransaction tx, LoadoutItemGroupId group, Placement placement, SkipKind kind, string reason, Checked check)
     {
-        _ = new WabbajackSkippedFile.New(tx)
+        _ = new WabbajackSkippedFile.New(tx, out var id)
         {
+            LoadoutItem = new LoadoutItem.New(tx, id)
+            {
+                LoadoutId = TargetLoadout,
+                Name = placement.To.FileName.ToString(),
+            },
             GroupId = WabbajackModlistLoadoutGroupId.From(group.Value),
             To = placement.To.ToString(),
             Reason = reason,
