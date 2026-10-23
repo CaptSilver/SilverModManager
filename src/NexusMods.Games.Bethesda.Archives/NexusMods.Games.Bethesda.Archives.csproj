@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\NexusMods.Sdk\NexusMods.Sdk.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="K4os.Compression.LZ4" />
+        <PackageReference Include="K4os.Compression.LZ4.Streams" />
+        <PackageReference Include="NexusMods.Paths" />
+        <PackageReference Include="SharpZipLib" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="NexusMods.Games.Bethesda.Archives.Tests" />
+    </ItemGroup>
+</Project>
