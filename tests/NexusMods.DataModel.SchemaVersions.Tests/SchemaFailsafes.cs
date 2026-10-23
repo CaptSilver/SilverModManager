@@ -3,6 +3,7 @@ using FluentAssertions;
 using NexusMods.DataModel.SchemaVersions;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Sdk;
 
 namespace NexusMods.DataModel.SchemaVersions.Tests;
 
@@ -33,7 +34,7 @@ public class SchemaFailsafes(IConnection connection)
         var namespaces = connection.Db.AttributeCache.AllAttributeIds.Select(id => id.Namespace).Distinct().ToArray();
         var allowed = AllowedLegacyNamespaces.Select(a => a.Namespace).ToHashSet();
 
-        namespaces.Where(ns => ns.StartsWith("NexusMods.", StringComparison.Ordinal) && !allowed.Contains(ns))
+        namespaces.Where(ns => ns.StartsWith(FirstPartyNames.UpstreamPersistedPrefix, StringComparison.Ordinal) && !allowed.Contains(ns))
             .Should().BeEmpty("attribute namespaces start with SilverModManager.; add to AllowedLegacyNamespaces with a reason only for data the app does not write itself");
 
         allowed.Except(namespaces).Should().BeEmpty("allowlist entries must name a namespace that still exists");

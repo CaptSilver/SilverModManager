@@ -15,8 +15,8 @@ internal static class RepoScanGuard
     public static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "NexusMods.App.sln"))) dir = dir.Parent;
-        return dir?.FullName ?? throw new InvalidOperationException("Could not find NexusMods.App.sln above the test binaries");
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, FirstPartyNames.SolutionFile))) dir = dir.Parent;
+        return dir?.FullName ?? throw new InvalidOperationException($"Could not find {FirstPartyNames.SolutionFile} above the test binaries");
     }
 
     /// <summary>

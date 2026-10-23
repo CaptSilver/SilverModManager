@@ -6,6 +6,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers.Conflicts;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.Models;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.DataModel.Tests.Undo;
@@ -154,7 +155,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
 
     private static List<Type> ModelDefinitions()
     {
-        return LoadedNexusModsAssemblies()
+        return LoadedFirstPartyAssemblies()
             .SelectMany(LoadableTypes)
             .Where(type => type is { IsClass: true, IsAbstract: false } && type.IsAssignableTo(typeof(IModelDefinition)))
             .Distinct()
@@ -201,23 +202,33 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
     }
 
     /// <summary>
-    /// The NexusMods assemblies next to the test, loaded by name so that models in assemblies nothing else in
-    /// the test touches are seen too.
+    /// Fewest first-party assemblies the scan may find before it is considered to be looking in the wrong
+    /// place; count them with <c>ls tests/NexusMods.DataModel.Tests/bin/Debug/net*/NexusMods.*.dll | wc -l</c>.
     /// </summary>
-    private static IEnumerable<Assembly> LoadedNexusModsAssemblies()
+    private const int MinimumFirstPartyAssemblies = 35;
+
+    private static IEnumerable<Assembly> LoadedFirstPartyAssemblies() =>
+        LoadedFirstPartyAssemblies(FirstPartyNames.AssemblyGlob, FirstPartyNames.AssemblyPrefix, MinimumFirstPartyAssemblies);
+
+    /// <summary>
+    /// The first-party assemblies next to the test, loaded by name so that models in assemblies nothing else in
+    /// the test touches are seen too. Throws when it finds fewer than <paramref name="floor"/>, so a scan that
+    /// matches nothing cannot let the guards pass.
+    /// </summary>
+    private static Assembly[] LoadedFirstPartyAssemblies(string glob, string prefix, int floor)
     {
         string[] required =
         [
-            "NexusMods.Abstractions.Loadouts",
-            "NexusMods.Abstractions.Collections",
-            "NexusMods.Games.RedEngine",
-            "NexusMods.Games.StardewValley",
-            "NexusMods.Games.MountAndBlade2Bannerlord",
+            "Abstractions.Loadouts",
+            "Abstractions.Collections",
+            "Games.RedEngine",
+            "Games.StardewValley",
+            "Games.MountAndBlade2Bannerlord",
         ];
         foreach (var name in required)
-            Assembly.Load(name);
+            Assembly.Load(FirstPartyNames.AssemblyPrefix + name);
 
-        foreach (var path in Directory.EnumerateFiles(AppContext.BaseDirectory, "NexusMods.*.dll"))
+        foreach (var path in Directory.EnumerateFiles(AppContext.BaseDirectory, glob))
         {
             try
             {
@@ -225,11 +236,37 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
             }
             catch (BadImageFormatException)
             {
-                // A native library with a NexusMods name.
+                // A native library with a first-party name.
             }
         }
 
-        return AppDomain.CurrentDomain.GetAssemblies().Where(assembly => assembly.GetName().Name!.StartsWith("NexusMods."));
+        var found = AppDomain.CurrentDomain.GetAssemblies()
+            .Where(assembly => assembly.GetName().Name is { } name
+                && (name.StartsWith(prefix, StringComparison.Ordinal) || name == FirstPartyNames.AppAssemblyName))
+            .ToArray();
+
+        if (found.Length < floor)
+            throw new InvalidOperationException($"The first-party assembly scan found {found.Length} assemblies (prefix '{prefix}', glob '{glob}') in {AppContext.BaseDirectory}, expected at least {floor}");
+
+        return found;
+    }
+
+    [Fact]
+    public void LoadedFirstPartyAssemblies_FindsTheLoadoutAssemblies()
+    {
+        var names = LoadedFirstPartyAssemblies().Select(a => a.GetName().Name).ToArray();
+
+        names.Should().Contain(FirstPartyNames.AssemblyPrefix + "Abstractions.Loadouts");
+        names.Should().Contain(FirstPartyNames.AssemblyPrefix + "DataModel");
+        names.Should().Contain(FirstPartyNames.AssemblyPrefix + "Abstractions.Loadouts.Synchronizers");
+    }
+
+    [Fact]
+    public void LoadedFirstPartyAssemblies_ThrowsWhenItMatchesNothing()
+    {
+        var act = () => LoadedFirstPartyAssemblies("Nothing.Matches.This.*.dll", "Nothing.Matches.This.", MinimumFirstPartyAssemblies);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*first-party assembly scan found*");
     }
 
     private static IEnumerable<Type> LoadableTypes(Assembly assembly)

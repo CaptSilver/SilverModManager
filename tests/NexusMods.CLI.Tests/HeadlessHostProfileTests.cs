@@ -149,11 +149,19 @@ public class HeadlessHostProfileTests
             .Should().Contain(t => IsUiType(t!));
     }
 
+    [Fact]
+    public void IsUiType_RecognisesAKnownUiType()
+    {
+        // Guards the predicate itself: GuiGraphStillHasUiTypes only proves it matched something.
+        IsUiType(typeof(NexusMods.App.UI.Windows.MainWindowViewModel)).Should().BeTrue();
+        IsUiType(typeof(StartupMode)).Should().BeFalse();
+    }
+
     private static bool IsUiType(Type type)
     {
         if (type.IsGenericType && type.GetGenericArguments().Any(IsUiType)) return true;
         var assembly = type.Assembly.GetName().Name ?? "";
-        return assembly == "NexusMods.App.UI" || assembly.StartsWith("NexusMods.App.UI.", StringComparison.Ordinal)
+        return assembly == FirstPartyNames.AssemblyPrefix + "App.UI" || assembly.StartsWith(FirstPartyNames.AssemblyPrefix + "App.UI.", StringComparison.Ordinal)
             || assembly.StartsWith("Avalonia", StringComparison.Ordinal)
             || (type.Namespace ?? "").StartsWith("Avalonia", StringComparison.Ordinal);
     }
