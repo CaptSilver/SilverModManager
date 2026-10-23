@@ -44,16 +44,7 @@ public abstract class AcquireTestBase<TTest>(ITestOutputHelper helper)
                 InboxPath = new ConfigurablePath(KnownPath.EntryDirectory, $"{Startup.SettingsRoot}/Inbox-{Guid.NewGuid()}"),
                 ExtrasRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"{Startup.SettingsRoot}/Extras-{Guid.NewGuid()}"),
             })
-            .AddUniversalGameLocator<SkyrimSe>(new Version(GameVersion), StubGameFiles, locationsFileSystem: IsolatedPrefix);
-    }
-
-    private static IFileSystem IsolatedPrefix(IServiceProvider provider)
-    {
-        var pfx = provider.GetRequiredService<TemporaryFileManager>().CreateFolder("pfx");
-        var overlay = new WinePrefix { ConfigurationDirectory = pfx.Path }.CreateOverlayFileSystem(NexusMods.Paths.FileSystem.Shared);
-        overlay.GetKnownPath(KnownPath.MyDocumentsDirectory).CreateDirectory();
-        overlay.GetKnownPath(KnownPath.LocalApplicationDataDirectory).CreateDirectory();
-        return overlay;
+            .AddUniversalGameLocator<SkyrimSe>(new Version(GameVersion), StubGameFiles, locationsFileSystem: IsolatedPrefixFileSystem.Create);
     }
 
     protected static Hash Hash64(byte[] bytes) => Xx64Hasher.Hash(bytes);
@@ -88,5 +79,18 @@ internal static class Fakes
         var login = Substitute.For<ILoginManager>();
         login.IsPremium.Returns(premium);
         return login;
+    }
+}
+
+/// <summary>A game-folder file system whose Documents and AppData sit in a throwaway Wine prefix.</summary>
+internal static class IsolatedPrefixFileSystem
+{
+    public static IFileSystem Create(IServiceProvider provider)
+    {
+        var pfx = provider.GetRequiredService<TemporaryFileManager>().CreateFolder("pfx");
+        var overlay = new WinePrefix { ConfigurationDirectory = pfx.Path }.CreateOverlayFileSystem(NexusMods.Paths.FileSystem.Shared);
+        overlay.GetKnownPath(KnownPath.MyDocumentsDirectory).CreateDirectory();
+        overlay.GetKnownPath(KnownPath.LocalApplicationDataDirectory).CreateDirectory();
+        return overlay;
     }
 }

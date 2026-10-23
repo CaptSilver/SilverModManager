@@ -47,6 +47,7 @@ public abstract record Mo2Target
 public static class Mo2Layout
 {
     public const string OverwriteGroup = "Overwrite";
+    public const string ProfileSettingsGroup = "Profile settings";
     public const string GameFolderFilesGroup = "Game Folder Files";
 
     private static readonly HashSet<string> ModOrganizerFolders = new(StringComparer.OrdinalIgnoreCase)

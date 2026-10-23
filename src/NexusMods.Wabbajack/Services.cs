@@ -4,6 +4,7 @@ using NexusMods.Abstractions.Library;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Sdk.Settings;
 using NexusMods.Wabbajack.Acquire;
+using NexusMods.Wabbajack.Install;
 using NexusMods.Wabbajack.Library;
 using NexusMods.Wabbajack.Models;
 
@@ -16,10 +17,13 @@ public static class Services
     {
         return services
             .AddWabbajackModlistLibraryFileModel()
+            .AddWabbajackModlistLoadoutGroupModel()
+            .AddWabbajackSkippedFileModel()
             .AddWabbajackSettings()
             .AddSingleton<WabbajackPaths>()
             .AddSingleton<ILibraryArchiveLocator, LibraryArchiveLocator>()
             .AddSingleton<ArchiveInventory>()
+            .AddSingleton<IDirectiveTransforms, UnavailableDirectiveTransforms>()
             .AddSingleton<ExpectedNexusDownloads>()
             .AddSingleton<IExpectedNexusDownloads>(provider => provider.GetRequiredService<ExpectedNexusDownloads>())
             .AddSingleton<IArchiveDownloadJobs, ArchiveDownloadJobs>()

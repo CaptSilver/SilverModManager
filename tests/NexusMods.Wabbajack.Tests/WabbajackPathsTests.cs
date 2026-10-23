@@ -35,4 +35,16 @@ public class WabbajackPathsTests(WabbajackPaths paths, IFileSystem fileSystem)
         defaults.InboxPath.ToPath(fileSystem).Should().Be(dataDirectory.Combine("Wabbajack/Inbox"));
         defaults.ExtrasRoot.ToPath(fileSystem).Should().Be(dataDirectory.Combine("Wabbajack/Extras"));
     }
+
+    [Theory]
+    [InlineData("Test list", "Test list")]
+    [InlineData("a/b\\c:d", "a_b_c_d")]
+    [InlineData("  ", "modlist")]
+    public void AListsExtrasFolderIsNamedAfterItWithoutSeparatorsAndIsCreated(string listName, string folderName)
+    {
+        var folder = paths.ExtrasFor(listName);
+
+        folder.Should().Be(TestRoot.Combine("Extras").Combine(folderName));
+        folder.DirectoryExists().Should().BeTrue();
+    }
 }
