@@ -1,12 +1,12 @@
 using SilverModManager.UI.Sdk;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.CollectionMenuItem;
 
-public class CollectionMenuItemViewModel : AViewModel<ICollectionMenuItemViewModel>, ICollectionMenuItemViewModel
+public partial class CollectionMenuItemViewModel : AViewModel<ICollectionMenuItemViewModel>, ICollectionMenuItemViewModel
 {
-    [Reactive] public string CollectionName { get; set; } = string.Empty;
-    [Reactive] public bool IsReadOnly { get; set; }
-    [Reactive] public string ToolTipText { get; set; } = string.Empty;
-    [Reactive] public bool? IsSelected { get; set; } = null;
+    [Reactive] public partial string CollectionName { get; set; } = string.Empty;
+    [Reactive] public partial bool IsReadOnly { get; set; }
+    [Reactive] public partial string ToolTipText { get; set; } = string.Empty;
+    [Reactive] public partial bool? IsSelected { get; set; } = null;
 }

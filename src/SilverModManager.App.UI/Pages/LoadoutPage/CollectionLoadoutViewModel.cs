@@ -30,12 +30,12 @@ using SilverModManager.UI.Sdk.Dialog.Enums;
 using SilverModManager.UI.Sdk.Icons;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using ReactiveCommand = R3.ReactiveCommand;
 
 namespace SilverModManager.App.UI.Pages.LoadoutPage;
 
-public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewModel>, ICollectionLoadoutViewModel
+public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewModel>, ICollectionLoadoutViewModel
 {
     public LoadoutTreeDataGridAdapter Adapter { get; }
 
@@ -335,15 +335,15 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
 
     public string AuthorName { get; }
 
-    [Reactive] public Bitmap? AuthorAvatar { get; private set; }
+    [Reactive] public partial Bitmap? AuthorAvatar { get; private set; }
 
-    [Reactive] public Bitmap? BackgroundImage { get; private set; }
+    [Reactive] public partial Bitmap? BackgroundImage { get; private set; }
 
-    [Reactive] public Bitmap? TileImage { get; private set; }
+    [Reactive] public partial Bitmap? TileImage { get; private set; }
 
-    [Reactive] public bool IsCollectionEnabled { get; private set; }
+    [Reactive] public partial bool IsCollectionEnabled { get; private set; }
     
-    [Reactive] public int InstalledModsCount { get; private set; }
+    [Reactive] public partial int InstalledModsCount { get; private set; }
     
     public ReactiveCommand<Unit> CommandToggle { get; }
     public ReactiveCommand<Unit> CommandDeleteCollection { get; }

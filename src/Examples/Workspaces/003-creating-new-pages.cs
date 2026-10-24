@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Serialization.Attributes;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 // ReSharper disable All
 
 namespace Examples.Workspaces;
@@ -18,7 +18,7 @@ namespace Examples.Workspaces;
 
 // This is the View Model Interface of the Page. Note that it doesn't extend
 // IViewModelInterface but the special IPageViewModelInterface.
-file interface IMyPageViewModel : IPageViewModelInterface
+internal interface IMyPageViewModel : IPageViewModelInterface
 {
     public string Name { get; set; }
 }
@@ -26,9 +26,11 @@ file interface IMyPageViewModel : IPageViewModelInterface
 // This is the implementation of IMyPageViewModel. Similarly, it doesn't inherit
 // from AViewModel<TVM> but from APageViewModel<TVM>. This special abstract
 // class exposes some helpful properties and methods for Page-specific operations.
-file class MyPageViewModel : APageViewModel<IMyPageViewModel>, IMyPageViewModel
+// It is internal rather than file-scoped because the generator adds the [Reactive]
+// property in a separate generated file, which a file-local type cannot extend.
+internal partial class MyPageViewModel : APageViewModel<IMyPageViewModel>, IMyPageViewModel
 {
-    [Reactive] public string Name { get; set; } = string.Empty;
+    [Reactive] public partial string Name { get; set; } = string.Empty;
 
     public MyPageViewModel(IWindowManager windowManager) : base(windowManager) { }
 }

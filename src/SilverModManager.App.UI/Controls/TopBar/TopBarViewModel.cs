@@ -24,22 +24,22 @@ using SilverModManager.Sdk;
 using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
 using Unit = System.Reactive.Unit;
 
 namespace SilverModManager.App.UI.Controls.TopBar;
 
 [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
-public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
+public partial class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
 {
     private readonly ILoginManager _loginManager;
     private readonly INexusCredentialSummary _credentialSummary;
     private readonly ILogger<TopBarViewModel> _logger;
     private readonly IWindowNotificationService _notificationService;
 
-    [Reactive] public string ActiveWorkspaceTitle { get; [UsedImplicitly] set; } = string.Empty;
-    [Reactive] public string ActiveWorkspaceSubtitle { get; [UsedImplicitly] set; } = string.Empty;
+    [Reactive] public partial string ActiveWorkspaceTitle { get; [UsedImplicitly] set; } = string.Empty;
+    [Reactive] public partial string ActiveWorkspaceSubtitle { get; [UsedImplicitly] set; } = string.Empty;
 
     public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> OpenSettingsCommand { get; }
 
@@ -56,18 +56,18 @@ public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
     public ReactiveUI.ReactiveCommand<Unit, Unit> OpenNexusModsAccountSettingsCommand { get; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> NewTabCommand { get; }
 
-    [Reactive] public bool IsLoggedIn { get; [UsedImplicitly] set; }
-    [Reactive] public UserRole UserRole { get; [UsedImplicitly] set; }
+    [Reactive] public partial bool IsLoggedIn { get; [UsedImplicitly] set; }
+    [Reactive] public partial UserRole UserRole { get; [UsedImplicitly] set; }
 
-    [Reactive] public IImage? Avatar { get; private set; }
+    [Reactive] public partial IImage? Avatar { get; private set; }
 
-    [Reactive] public string? Username { get; set; } = string.Empty;
+    [Reactive] public partial string? Username { get; set; } = string.Empty;
 
-    [Reactive] public string AccountTooltip { get; private set; } = string.Empty;
+    [Reactive] public partial string AccountTooltip { get; private set; } = string.Empty;
 
-    [Reactive] public IAddPanelDropDownViewModel AddPanelDropDownViewModel { get; set; } = null!;
+    [Reactive] public partial IAddPanelDropDownViewModel AddPanelDropDownViewModel { get; set; } = null!;
 
-    [Reactive] public IPanelTabViewModel? SelectedTab { get; set; }
+    [Reactive] public partial IPanelTabViewModel? SelectedTab { get; set; }
 
     public TopBarViewModel(
         IServiceProvider serviceProvider,

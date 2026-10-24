@@ -15,12 +15,12 @@ using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Thunderstore;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Pages.Thunderstore;
 
 [UsedImplicitly]
-public class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, IThunderstoreViewModel
+public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, IThunderstoreViewModel
 {
     private readonly IConnection _connection;
     private readonly IEnumerable<IGameData> _games;
@@ -30,12 +30,12 @@ public class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, ITh
     private readonly ILogger<ThunderstoreViewModel> _logger;
     private ThunderstoreCatalog? _catalog;
 
-    [Reactive] public LoadoutId LoadoutId { get; set; }
-    [Reactive] public string SearchText { get; set; } = "";
-    [Reactive] public bool ShowDeprecated { get; set; }
-    [Reactive] public IReadOnlyList<ThunderstorePackageRow> Packages { get; private set; } = [];
-    [Reactive] public string ErrorText { get; private set; } = "";
-    [Reactive] public bool IsRefreshing { get; private set; }
+    [Reactive] public partial LoadoutId LoadoutId { get; set; }
+    [Reactive] public partial string SearchText { get; set; } = "";
+    [Reactive] public partial bool ShowDeprecated { get; set; }
+    [Reactive] public partial IReadOnlyList<ThunderstorePackageRow> Packages { get; private set; } = [];
+    [Reactive] public partial string ErrorText { get; private set; } = "";
+    [Reactive] public partial bool IsRefreshing { get; private set; }
 
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
     public ReactiveCommand<ThunderstorePackageRow, Unit> OpenPackageCommand { get; }

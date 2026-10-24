@@ -564,10 +564,10 @@ we'll let Reactive take care of it.
 === "Our Code (What we Write)"
 
     ```csharp
-    public class MyViewModel : ReactiveObject
+    public partial class MyViewModel : ReactiveObject
     {
         [Reactive]
-        public string { get; set; } = "Hello World!";
+        public partial string Greeting { get; set; } = "Hello World!";
     }
     ```
 
@@ -611,19 +611,19 @@ we'll let Reactive take care of it.
     ```
 
 We've successfully removed a lot of boilerplate this time around. `ReactiveObject` already implements
-`INotifyPropertyChanged` and adding `[Reactive]` to the property will transform our code to use it.
+`INotifyPropertyChanged` and marking the property `[Reactive]` makes the source generator write that boilerplate for us. The property and its class have to be `partial`.
 
-!!! note "The `[Reactive]` attribute is part of the `ReactiveUI.Fody` package."
+!!! note "The `[Reactive]` attribute is part of the `ReactiveUI.SourceGenerators` package."
 
 #### Conditional Execution
 
 Another cool feature of `ReactiveCommand` is the `canExecute` observable:
 
 ```csharp
-public class MyViewModel : ReactiveObject
+public partial class MyViewModel : ReactiveObject
 {
     [Reactive]
-    public string Greeting { get; set; } = "Hello World!";
+    public partial string Greeting { get; set; } = "Hello World!";
 
     public ReactiveCommand<Unit, Unit> ChangeGreetingCommand { get; }
 
@@ -655,13 +655,13 @@ returns `false`.
 When creating commands and the `canExecute` observable, you might want to check multiple properties at once:
 
 ```csharp
-public class MyViewModel : ReactiveObject, IActivatableViewModel
+public partial class MyViewModel : ReactiveObject, IActivatableViewModel
 {
     public ViewModelActivator Activator { get; } = new();
 
-    [Reactive] public string Text { get; private set; } = string.Empty;
+    [Reactive] public partial string Text { get; private set; } = string.Empty;
 
-    [Reactive] public bool IsChecked { get; set; }
+    [Reactive] public partial bool IsChecked { get; set; }
 
     public ReactiveCommand<Unit, Unit> AddCommand { get; set; }
 
@@ -829,7 +829,7 @@ The user can click on an "Add" button to add a new GUID, they can select an item
 the list and they can click a "Remove" button to remove the selected item from the list:
 
 ```csharp
-public class MyViewModel : ReactiveObject, IActivatableViewModel
+public partial class MyViewModel : ReactiveObject, IActivatableViewModel
 {
     public ViewModelActivator Activator { get; } = new();
 
@@ -840,7 +840,7 @@ public class MyViewModel : ReactiveObject, IActivatableViewModel
     // 👇 we bind to this from the UI
     public ReadOnlyObservableCollection<string> Items => _items;
 
-    [Reactive] public int SelectedIndex { get; set; } = -1;
+    [Reactive] public partial int SelectedIndex { get; set; } = -1;
 
     public ReactiveCommand<Unit, Unit> AddCommand { get; }
     public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
@@ -1133,7 +1133,7 @@ this only works if each property in this chain is a single item and not a collec
 For this example, let's assume the View for the `ChildViewModel` contains a `CheckBox` that is bound to the `IsChecked` property:
 
 ```csharp
-public class ChildViewModel : ReactiveObject, IActivatableViewModel
+public partial class ChildViewModel : ReactiveObject, IActivatableViewModel
 {
     public ViewModelActivator Activator { get; } = new();
 
@@ -1141,7 +1141,7 @@ public class ChildViewModel : ReactiveObject, IActivatableViewModel
     public string Name { get; }
 
     [Reactive]
-    public bool IsChecked { get; set; }
+    public partial bool IsChecked { get; set; }
 
     public ChildViewModel()
     {
@@ -1534,7 +1534,7 @@ You can now implement this interface as such:
 
 ```csharp
 // FullPath: Contains File Path
-public class FileDesignViewModel(GamePath fullPath) // 👈 Constructor
+public partial class FileDesignViewModel(GamePath fullPath) // 👈 Constructor
     : AViewModel<IFileViewModel>, IFileViewModel
 {
     // Name of the file
@@ -1546,7 +1546,7 @@ public class FileDesignViewModel(GamePath fullPath) // 👈 Constructor
     public GamePath Key { get; set; } = fullPath;
 
     // IExpandableViewModel
-    [Reactive] public bool IsExpanded { get; set; }
+    [Reactive] public partial bool IsExpanded { get; set; }
 }
 ```
 
@@ -1929,10 +1929,10 @@ public interface IMyViewModel : IViewModelInterface
 The implementation of this interface `MyViewModel` would look like this:
 
 ```csharp
-public class MyViewModel : AViewModel<IMyViewModel>, IMyViewModel
+public partial class MyViewModel : AViewModel<IMyViewModel>, IMyViewModel
 {
     [Reactive]
-    public string Name { get; set; } = string.Empty;
+    public partial string Name { get; set; } = string.Empty;
 }
 ```
 
@@ -1944,10 +1944,10 @@ The benefit of using an interface for the `TViewModel` type parameter is being a
 You'll usually find two implementations in the project, one for design time and another for runtime:
 
 ```csharp
-public class MyViewModel : AViewModel<IMyViewModel>, IMyViewModel
+public partial class MyViewModel : AViewModel<IMyViewModel>, IMyViewModel
 {
     [Reactive]
-    public string Name { get; set; } = string.Empty;
+    public partial string Name { get; set; } = string.Empty;
 }
 
 public class MyDesignViewModel : AViewModel<IMyViewModel>, IMyViewModel
@@ -2031,10 +2031,10 @@ async or runs on the task pool scheduler. The OAPH is scheduled by default meani
 This is why it's suited for setting the result of asynchronous work or work that ran on another scheduler:
 
 ```csharp
-public class BadExampleViewModel
+public partial class BadExampleViewModel
 {
     [Reactive]
-    public string Text { get; set; } = string.Empty;
+    public partial string Text { get; set; } = string.Empty;
 
     public BadExampleViewModel()
     {
@@ -2083,9 +2083,9 @@ In a ViewModel, **always** use `BindToVM` and a reactive property to expose the 
 that returns immediately and isn't doing anything async:
 
 ```csharp
-public class GoodExampleViewModel
+public partial class GoodExampleViewModel
 {
-    [Reactive] public string Text { get; private set; }
+    [Reactive] public partial string Text { get; private set; }
 
     public GoodExampleViewModel()
     {
@@ -2249,9 +2249,9 @@ this.WhenActivated(disposables =>
 **Always** dispose subscriptions of observables:
 
 ```csharp
-public class FooViewModel : ReactiveObject, IActivatableViewModel
+public partial class FooViewModel : ReactiveObject, IActivatableViewModel
 {
-    [Reactive] public BarViewModel? Other { get; set; }
+    [Reactive] public partial BarViewModel? Other { get; set; }
 
     public FooViewModel()
     {
@@ -2265,9 +2265,9 @@ public class FooViewModel : ReactiveObject, IActivatableViewModel
     }
 }
 
-public class BarViewModel : ReactiveObject, IActivatableViewModel
+public partial class BarViewModel : ReactiveObject, IActivatableViewModel
 {
-    [Reactive] public string Text { get; set; } = string.Empty;
+    [Reactive] public partial string Text { get; set; } = string.Empty;
 
     public BarViewModel()
     {
@@ -2294,10 +2294,10 @@ public class BarViewModel : ReactiveObject, IActivatableViewModel
 For a parent reacting to changes in any of the children, use `WhenValueChanged` when you only need the value and `WhenPropertyChanged` when you also need the sender ([example](#parent-reacting-to-changes-in-one-of-the-children)):
 
 ```csharp
-public class ChildViewModel
+public partial class ChildViewModel
 {
     // child has a reactive property that the parent wants to observe changes on:
-    [Reactive] public bool IsChecked { get; set; }
+    [Reactive] public partial bool IsChecked { get; set; }
 }
 
 public ParentViewModel()

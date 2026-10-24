@@ -8,7 +8,6 @@
 
     <ItemGroup>
         <PackageReference Include="Noggog.CSharpExt" />
-        <PackageReference Include="ReactiveUI.Fody" />
         <PackageReference Include="Avalonia.Headless" />
         <PackageReference Include="Verify.XunitV3" />
         <PackageReference Include="Verify.ImageMagick"/>

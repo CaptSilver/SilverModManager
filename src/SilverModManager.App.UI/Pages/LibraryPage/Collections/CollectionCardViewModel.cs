@@ -16,11 +16,11 @@ using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Pages.LibraryPage.Collections;
 
-public class CollectionCardViewModel : AViewModel<ICollectionCardViewModel>, ICollectionCardViewModel
+public partial class CollectionCardViewModel : AViewModel<ICollectionCardViewModel>, ICollectionCardViewModel
 {
     private readonly CollectionRevisionMetadata.ReadOnly _revision;
     private readonly CollectionMetadata.ReadOnly _collection;
@@ -77,8 +77,8 @@ public class CollectionCardViewModel : AViewModel<ICollectionCardViewModel>, ICo
     }
 
     public string Name => _collection.Name;
-    [Reactive] public Bitmap? Image { get; private set; }
-    [Reactive] public Bitmap? AuthorAvatar { get; private set; }
+    [Reactive] public partial Bitmap? Image { get; private set; }
+    [Reactive] public partial Bitmap? AuthorAvatar { get; private set; }
     public string Summary => _collection.Summary.ValueOr(string.Empty);
     public string Category => _collection.Category.Name;
     public int NumDownloads => _revision.Downloads.Count;
@@ -92,5 +92,5 @@ public class CollectionCardViewModel : AViewModel<ICollectionCardViewModel>, ICo
     public string AuthorName => _collection.Author.Name;
     public ReactiveCommand<NavigationInformation> OpenCollectionDownloadPageCommand { get; }
 
-    [Reactive] public bool IsCollectionInstalled { get; private set; }
+    [Reactive] public partial bool IsCollectionInstalled { get; private set; }
 }

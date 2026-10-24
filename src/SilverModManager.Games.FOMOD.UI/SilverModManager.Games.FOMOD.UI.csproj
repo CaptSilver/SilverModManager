@@ -1,11 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
+        <PackageReference Include="ReactiveUI.SourceGenerators" PrivateAssets="all" />
         <ProjectReference Include="..\SilverModManager.App.UI\SilverModManager.App.UI.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <PackageReference Include="ReactiveUI.Fody" />
     </ItemGroup>
 
     <ItemGroup>

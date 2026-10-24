@@ -7,17 +7,17 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Library.Tests.DownloadsService.Helpers;
 
 /// <summary>
 /// Test implementation of <see cref="IHttpDownloadState"/> for testing
 /// </summary>
-internal sealed class TestHttpDownloadState : ReactiveObject, IHttpDownloadState
+internal sealed partial class TestHttpDownloadState : ReactiveObject, IHttpDownloadState
 {
-    [Reactive] public Optional<Size> ContentLength { get; set; } = Optional<Size>.None;
-    [Reactive] public Size TotalBytesDownloaded { get; set; } = Size.Zero;
+    [Reactive] public partial Optional<Size> ContentLength { get; set; } = Optional<Size>.None;
+    [Reactive] public partial Size TotalBytesDownloaded { get; set; } = Size.Zero;
 }
 
 /// <summary>

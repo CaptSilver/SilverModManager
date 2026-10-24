@@ -3,18 +3,18 @@ using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.LeftMenu.Items;
 
-public class ApplyControlDesignViewModel : AViewModel<IApplyControlViewModel>, IApplyControlViewModel
+public partial class ApplyControlDesignViewModel : AViewModel<IApplyControlViewModel>, IApplyControlViewModel
 {
     public ReactiveCommand<Unit, Unit> ApplyCommand { get; }
     public ReactiveCommand<Unit, Unit> IngestCommand { get; }
 
     public ReactiveCommand<NavigationInformation, Unit> ShowApplyDiffCommand { get; }
-    [Reactive] public bool CanApply { get; private set; } = true;
-    [Reactive] public bool IsApplying { get; private set; } = false;
+    [Reactive] public partial bool CanApply { get; private set; } = true;
+    [Reactive] public partial bool IsApplying { get; private set; } = false;
     public bool IsIngesting { get; private set; }
 
     public ILaunchButtonViewModel LaunchButtonViewModel { get; } = new LaunchButtonDesignViewModel();

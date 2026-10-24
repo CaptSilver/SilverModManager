@@ -10,14 +10,14 @@ using SilverModManager.App.UI.Resources;
 using SilverModManager.Sdk.Games;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.Trees.Files;
 
 [DebuggerDisplay("Key = {Key.ToString()}, ParentKey = {ParentKey.ToString()}")]
-public class FileTreeNodeViewModel : AViewModel<IFileTreeNodeViewModel>, IFileTreeNodeViewModel
+public partial class FileTreeNodeViewModel : AViewModel<IFileTreeNodeViewModel>, IFileTreeNodeViewModel
 {
-    [Reactive] public FileTreeNodeIconType Icon { get; set; }
+    [Reactive] public partial FileTreeNodeIconType Icon { get; set; }
 
     public bool IsFile { get; protected init; }
     
@@ -27,7 +27,7 @@ public class FileTreeNodeViewModel : AViewModel<IFileTreeNodeViewModel>, IFileTr
     public uint FileCount { get; set; }
     public GamePath ParentKey { get; init; }
     public GamePath Key { get; set; }
-    [Reactive] public bool IsExpanded { get; set; }
+    [Reactive] public partial bool IsExpanded { get; set; }
     public ReadOnlyObservableCollection<IFileTreeNodeViewModel>? Children { get; set; }
     public IFileTreeNodeViewModel? Parent { get; set; }
     

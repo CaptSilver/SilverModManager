@@ -11,7 +11,6 @@ using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
 
 namespace SilverModManager.App.UI.WorkspaceSystem;
 

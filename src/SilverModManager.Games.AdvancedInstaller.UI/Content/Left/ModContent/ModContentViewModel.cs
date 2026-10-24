@@ -6,16 +6,16 @@ using NexusMods.Paths.Trees;
 using NexusMods.Paths.Trees.Traits;
 using SilverModManager.Sdk.Library;
 using SilverModManager.UI.Sdk;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.AdvancedInstaller.UI.ModContent;
 
 using TreeDataGridSource = HierarchicalTreeDataGridSource<TreeNodeVM<IModContentTreeEntryViewModel, RelativePath>>;
 using ModContentNode = TreeNodeVM<IModContentTreeEntryViewModel, RelativePath>;
 
-internal class ModContentViewModel : AViewModel<IModContentViewModel>, IModContentViewModel
+internal partial class ModContentViewModel : AViewModel<IModContentViewModel>, IModContentViewModel
 {
-    [Reactive] public bool IsDisabled { get; set; }
+    [Reactive] public partial bool IsDisabled { get; set; }
     public ModContentNode Root => _modContentTreeRoots.First();
 
     public TreeDataGridSource Tree { get; }

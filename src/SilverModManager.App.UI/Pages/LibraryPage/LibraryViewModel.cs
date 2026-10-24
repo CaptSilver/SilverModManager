@@ -45,14 +45,14 @@ using ObservableCollections;
 using OneOf;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Wabbajack.Models;
 using SilverModManager.App.UI.Helpers;
 
 namespace SilverModManager.App.UI.Pages.LibraryPage;
 
-public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewModel
+public partial class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewModel
 {
     private readonly IConnection _connection;
     private readonly ILibraryService _libraryService;
@@ -78,15 +78,15 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
     public ReactiveCommand<Unit> OpenNexusModsCommand { get; }
     public ReactiveCommand<Unit> OpenNexusModsCollectionsCommand { get; }
 
-    [Reactive] public int SelectionCount { get; private set; }
+    [Reactive] public partial int SelectionCount { get; private set; }
     
-    [Reactive] public int UpdatableSelectionCount { get; private set; }
+    [Reactive] public partial int UpdatableSelectionCount { get; private set; }
     
-    [Reactive] public bool HasAnyUpdatesAvailable { get; private set; }
+    [Reactive] public partial bool HasAnyUpdatesAvailable { get; private set; }
 
-    [Reactive] public bool IsUpdatingAll { get; private set; }
+    [Reactive] public partial bool IsUpdatingAll { get; private set; }
 
-    [Reactive] public IStorageProvider? StorageProvider { get; set; }
+    [Reactive] public partial IStorageProvider? StorageProvider { get; set; }
 
     private readonly IServiceProvider _serviceProvider;
     private readonly ILibraryItemInstaller _advancedInstaller;
@@ -106,7 +106,7 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
     private ReadOnlyObservableCollection<InstallationTarget> _installationTargets = new([]);
     public ReadOnlyObservableCollection<InstallationTarget> InstallationTargets => _installationTargets;
 
-    [Reactive] public InstallationTarget? SelectedInstallationTarget { get; set; }
+    [Reactive] public partial InstallationTarget? SelectedInstallationTarget { get; set; }
 
     public LibraryViewModel(
         IWindowManager windowManager,

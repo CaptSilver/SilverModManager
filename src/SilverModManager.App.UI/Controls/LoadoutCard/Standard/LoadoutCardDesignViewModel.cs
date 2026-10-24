@@ -7,11 +7,11 @@ using Avalonia.Platform;
 using SilverModManager.App.UI.Controls.LoadoutBadge;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.LoadoutCard;
 
-public class LoadoutCardDesignViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutCardViewModel
+public partial class LoadoutCardDesignViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutCardViewModel
 {
     public LoadoutCardDesignViewModel()
     {
@@ -37,7 +37,7 @@ public class LoadoutCardDesignViewModel : AViewModel<ILoadoutCardViewModel>, ILo
     public string HumanizedLoadoutLastApplyTime { get; } = "Last applied 2 months ago";
     public string HumanizedLoadoutCreationTime { get; } = "Created 10 months ago";
     public string LoadoutModCount { get; } = "Mods 276";
-    [Reactive] public bool IsDeleting { get; private set; } = false;
+    [Reactive] public partial bool IsDeleting { get; private set; } = false;
     public bool IsSkeleton { get; } = false;
     public bool IsLastLoadout { get; } = false;
     public ReactiveCommand<Unit, Unit> VisitLoadoutCommand { get; } = ReactiveCommand.Create(() => { });

@@ -12,11 +12,11 @@ using SilverModManager.App.UI.Windows;
 using SilverModManager.Sdk;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.WorkspaceSystem;
 
-public class PanelViewModel : AViewModel<IPanelViewModel>, IPanelViewModel
+public partial class PanelViewModel : AViewModel<IPanelViewModel>, IPanelViewModel
 {
     /// <inheritdoc/>
     public PanelId Id { get; } = PanelId.NewId();
@@ -32,21 +32,21 @@ public class PanelViewModel : AViewModel<IPanelViewModel>, IPanelViewModel
     public ReadOnlyObservableCollection<IPanelTabViewModel> Tabs => _tabs;
 
     /// <inheritdoc/>
-    [Reactive] public Rect LogicalBounds { get; set; }
+    [Reactive] public partial Rect LogicalBounds { get; set; }
 
     /// <inheritdoc/>
-    [Reactive] public Rect ActualBounds { get; private set; }
+    [Reactive] public partial Rect ActualBounds { get; private set; }
 
     public ReactiveCommand<Unit, Unit> AddTabCommand { get; }
     public ReactiveCommand<Unit, PanelId> CloseCommand { get; }
     public ReactiveCommand<Unit, Unit> PopoutCommand { get; }
 
-    [Reactive] public bool IsSelected { get; set; } = true;
+    [Reactive] public partial bool IsSelected { get; set; } = true;
 
-    [Reactive] public bool IsAlone { get; set; }
+    [Reactive] public partial bool IsAlone { get; set; }
 
-    [Reactive] public IPanelTabViewModel SelectedTab { get; private set; } = null!;
-    [Reactive] private PanelTabId SelectedTabId { get; set; }
+    [Reactive] public partial IPanelTabViewModel SelectedTab { get; private set; } = null!;
+    [Reactive] private partial PanelTabId SelectedTabId { get; set; }
 
     private readonly ILogger _logger;
     private readonly IWorkspaceController _workspaceController;

@@ -6,11 +6,11 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.AdvancedInstaller.UI.ModContent;
 
-public class ModContentTreeEntryViewModel : AViewModel<IModContentTreeEntryViewModel>, IModContentTreeEntryViewModel
+public partial class ModContentTreeEntryViewModel : AViewModel<IModContentTreeEntryViewModel>, IModContentTreeEntryViewModel
 {
     public RelativePath RelativePath { get; }
     public string FileName { get; }
@@ -20,11 +20,11 @@ public class ModContentTreeEntryViewModel : AViewModel<IModContentTreeEntryViewM
     public bool IsTopLevelChild { get; }
     public string MappingFolderName { get; set; }
     public Optional<GamePath> Mapping { get; set; }
-    [Reactive] public ModContentTreeEntryStatus Status { get; set; }
+    [Reactive] public partial ModContentTreeEntryStatus Status { get; set; }
     public ReactiveCommand<Unit, Unit> BeginSelectCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelSelectCommand { get; }
     public ReactiveCommand<Unit, Unit> RemoveMappingCommand { get; }
-    [Reactive] public bool IsExpanded { get; set; }
+    [Reactive] public partial bool IsExpanded { get; set; }
 
     /// <summary>
     /// Constructs a ModContent tree entry view model.

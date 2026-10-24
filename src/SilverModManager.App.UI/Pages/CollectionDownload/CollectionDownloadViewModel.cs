@@ -33,7 +33,7 @@ using SilverModManager.UI.Sdk.Dialog;
 using OneOf;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using Observable = System.Reactive.Linq.Observable;
 using ReactiveCommand = R3.ReactiveCommand;
 
@@ -41,7 +41,7 @@ namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
 using CollectionDownloadEntity = SilverModManager.Abstractions.NexusModsLibrary.Models.CollectionDownload;
 
-public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDownloadViewModel>, ICollectionDownloadViewModel
+public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollectionDownloadViewModel>, ICollectionDownloadViewModel
 {
     private readonly CollectionRevisionMetadata.ReadOnly _revision;
     private readonly CollectionMetadata.ReadOnly _collection;
@@ -533,21 +533,21 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
     public CollectionSlug Slug => _collection.Slug;
     public RevisionNumber RevisionNumber => _revision.RevisionNumber;
 
-    [Reactive] public IMarkdownRendererViewModel? InstructionsRenderer { get; set; }
-    [Reactive] public ModInstructions[] RequiredModsInstructions { get; set; } = [];
-    [Reactive] public ModInstructions[] OptionalModsInstructions { get; set; } = [];
+    [Reactive] public partial IMarkdownRendererViewModel? InstructionsRenderer { get; set; }
+    [Reactive] public partial ModInstructions[] RequiredModsInstructions { get; set; } = [];
+    [Reactive] public partial ModInstructions[] OptionalModsInstructions { get; set; } = [];
 
     public int RequiredDownloadsCount { get; }
     public int OptionalDownloadsCount { get; }
-    [Reactive] public int CountDownloadedOptionalItems { get; private set; }
-    [Reactive] public int CountDownloadedRequiredItems { get; private set; }
+    [Reactive] public partial int CountDownloadedOptionalItems { get; private set; }
+    [Reactive] public partial int CountDownloadedRequiredItems { get; private set; }
 
-    [Reactive] public Bitmap? TileImage { get; private set; }
-    [Reactive] public Bitmap? BackgroundImage { get; private set; }
-    [Reactive] public Bitmap? AuthorAvatar { get; private set; }
-    [Reactive] public string CollectionStatusText { get; private set; } = "";
+    [Reactive] public partial Bitmap? TileImage { get; private set; }
+    [Reactive] public partial Bitmap? BackgroundImage { get; private set; }
+    [Reactive] public partial Bitmap? AuthorAvatar { get; private set; }
+    [Reactive] public partial string CollectionStatusText { get; private set; } = "";
 
-    [Reactive] public bool CanDownloadAutomatically { get; private set; }
+    [Reactive] public partial bool CanDownloadAutomatically { get; private set; }
 
     public ReactiveCommand<NavigationInformation> CommandViewCollection { get; }
     public ReactiveCommand<Unit> CommandDownloadRequiredItems { get; }

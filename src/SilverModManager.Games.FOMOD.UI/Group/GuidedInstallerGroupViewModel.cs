@@ -8,11 +8,11 @@ using SilverModManager.App.UI;
 using SilverModManager.Games.FOMOD.UI.Resources;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.FOMOD.UI;
 
-public class GuidedInstallerGroupViewModel : AViewModel<IGuidedInstallerGroupViewModel>, IGuidedInstallerGroupViewModel
+public partial class GuidedInstallerGroupViewModel : AViewModel<IGuidedInstallerGroupViewModel>, IGuidedInstallerGroupViewModel
 {
     public IObservable<bool> HasValidSelectionObservable { get; }
 
@@ -22,7 +22,7 @@ public class GuidedInstallerGroupViewModel : AViewModel<IGuidedInstallerGroupVie
     private readonly ReadOnlyObservableCollection<IGuidedInstallerOptionViewModel> _options;
     public ReadOnlyObservableCollection<IGuidedInstallerOptionViewModel> Options => _options;
 
-    [Reactive] public IGuidedInstallerOptionViewModel? HighlightedOption { get; set; }
+    [Reactive] public partial IGuidedInstallerOptionViewModel? HighlightedOption { get; set; }
 
     public GuidedInstallerGroupViewModel(OptionGroup group)
     {

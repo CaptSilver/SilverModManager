@@ -24,6 +24,7 @@
     <None Include="..\SilverModManager.Backend.Tests\FileExtractor\Resources\7z-with-symlinks.7z" Link="Resources\7z-with-symlinks.7z" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="ReactiveUI.SourceGenerators" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <ProjectReference Include="..\..\src\SilverModManager.MnemonicDB\SilverModManager.MnemonicDB.csproj" />
   </ItemGroup>

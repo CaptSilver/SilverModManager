@@ -37,13 +37,13 @@ using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using Disposable = System.Reactive.Disposables.Disposable;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
 
 namespace SilverModManager.App.UI.Windows;
 
-public class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMainWindowViewModel
+public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMainWindowViewModel
 {
     private readonly IWindowManager _windowManager;
     private readonly IConnection _connection;
@@ -362,24 +362,24 @@ public class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMainWindow
     public WindowId WindowId { get; } = WindowId.NewId();
 
     /// <inheritdoc/>
-    [Reactive] public bool IsActive { get; set; }
+    [Reactive] public partial bool IsActive { get; set; }
     
     [Reactive]
-    public IOverlayViewModel? CurrentOverlay { get; set; }
+    public partial IOverlayViewModel? CurrentOverlay { get; set; }
 
     /// <inheritdoc/>
     public IWorkspaceController WorkspaceController { get; }
 
-    [Reactive] public ISpineViewModel Spine { get; set; }
+    [Reactive] public partial ISpineViewModel Spine { get; set; }
 
-    [Reactive] public ILeftMenuViewModel? LeftMenu { get; set; }
-
-    [Reactive]
-    public ITopBarViewModel TopBar { get; set; }
+    [Reactive] public partial ILeftMenuViewModel? LeftMenu { get; set; }
 
     [Reactive]
-    public IDevelopmentBuildBannerViewModel DevelopmentBuildBanner { get; set; }
+    public partial ITopBarViewModel TopBar { get; set; }
 
     [Reactive]
-    public ISecretStoreNoticeViewModel SecretStoreNotice { get; set; }
+    public partial IDevelopmentBuildBannerViewModel DevelopmentBuildBanner { get; set; }
+
+    [Reactive]
+    public partial ISecretStoreNoticeViewModel SecretStoreNotice { get; set; }
 }

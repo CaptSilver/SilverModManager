@@ -3,19 +3,19 @@ using JetBrains.Annotations;
 using SilverModManager.App.UI;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.FOMOD.UI;
 
 [UsedImplicitly]
-public class GuidedInstallerWindowViewModel : AViewModel<IGuidedInstallerWindowViewModel>, IGuidedInstallerWindowViewModel
+public partial class GuidedInstallerWindowViewModel : AViewModel<IGuidedInstallerWindowViewModel>, IGuidedInstallerWindowViewModel
 {
-    [Reactive] public string WindowName { get; set; } = string.Empty;
+    [Reactive] public partial string WindowName { get; set; } = string.Empty;
 
-    [Reactive] public string? Notice { get; set; }
+    [Reactive] public partial string? Notice { get; set; }
 
     [Reactive]
-    public IGuidedInstallerStepViewModel? ActiveStepViewModel { get; set; }
+    public partial IGuidedInstallerStepViewModel? ActiveStepViewModel { get; set; }
 
     public ReactiveCommand<Unit, Unit> CloseCommand => ReactiveCommand.Create(() => { });
 }

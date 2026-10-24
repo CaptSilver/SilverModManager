@@ -11,17 +11,17 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Pages.Diff.ApplyDiff;
 
-public class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, IApplyDiffViewModel
+public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, IApplyDiffViewModel
 {
     private IServiceProvider _serviceProvider;
     private DiffTreeViewModel? _fileTreeViewModel;
     private LoadoutId _loadoutId;
 
-    [Reactive] public IViewModelInterface BodyViewModel { get; set; } = null!;
+    [Reactive] public partial IViewModelInterface BodyViewModel { get; set; } = null!;
 
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
 

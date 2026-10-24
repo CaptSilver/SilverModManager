@@ -3,15 +3,15 @@ using System.Reactive.Disposables;
 using Avalonia;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.WorkspaceSystem;
 
-public class PanelResizerViewModel : AViewModel<IPanelResizerViewModel>, IPanelResizerViewModel
+public partial class PanelResizerViewModel : AViewModel<IPanelResizerViewModel>, IPanelResizerViewModel
 {
-    [Reactive] public Point LogicalStartPoint { get; set; }
-    [Reactive] public Point LogicalEndPoint { get; set; }
-    [Reactive] public (Point ActualStartPoint, Point ActualEndPoint) ActualPoints { get; set; }
+    [Reactive] public partial Point LogicalStartPoint { get; set; }
+    [Reactive] public partial Point LogicalEndPoint { get; set; }
+    [Reactive] public partial (Point ActualStartPoint, Point ActualEndPoint) ActualPoints { get; set; }
 
     public bool IsHorizontal { get; }
 

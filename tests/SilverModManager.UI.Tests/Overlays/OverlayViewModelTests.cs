@@ -1,6 +1,5 @@
 ﻿using FluentAssertions;
 using SilverModManager.App.UI.Overlays;
-using ReactiveUI.Fody.Helpers;
 
 namespace SilverModManager.UI.Tests.Overlays;
 

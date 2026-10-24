@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Overlays;
 
@@ -9,17 +9,10 @@ namespace SilverModManager.App.UI.Overlays;
 /// A view model that represents an overlay.
 /// </summary>
 /// <typeparam name="TInner"></typeparam>
-public abstract class AOverlayViewModel<TInner> : AViewModel<TInner>, IOverlayViewModel
+public abstract partial class AOverlayViewModel<TInner> : AViewModel<TInner>, IOverlayViewModel
 where TInner : class, IViewModelInterface
 {
     private IOverlayController? _controller;
-
-    public AOverlayViewModel()
-    {
-        // Has to be here, because otherwise Fody breaks the codegen and doesn't make a backing
-        // field for Status for some reason :|
-        Status = Status.Hidden;
-    }
 
     /// <inheritdoc/>
     public IOverlayController Controller
@@ -29,7 +22,7 @@ where TInner : class, IViewModelInterface
     }
     
     [Reactive] 
-    public Status Status { get; set; }
+    public partial Status Status { get; set; } = Status.Hidden;
 
     private readonly TaskCompletionSource _taskCompletionSource = new();
     public Task CompletionTask => _taskCompletionSource.Task;

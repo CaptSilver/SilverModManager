@@ -8,7 +8,7 @@ using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Settings;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using ConfigurablePathsContainer = SilverModManager.UI.Sdk.Settings.ConfigurablePathsContainer;
 using Disposable = R3.Disposable;
 using ISettingsManager = SilverModManager.Sdk.Settings.ISettingsManager;
@@ -16,11 +16,11 @@ using ReactiveCommand = R3.ReactiveCommand;
 
 namespace SilverModManager.App.UI.Controls.Settings.SettingEntries.PathsList;
 
-public class SettingPathsViewModel : AViewModel<ISettingPathsViewModel>, ISettingPathsViewModel
+public partial class SettingPathsViewModel : AViewModel<ISettingPathsViewModel>, ISettingPathsViewModel
 {
     public IPropertyValueContainer ValueContainer => ConfigurablePathsContainer;
     public ConfigurablePathsContainer ConfigurablePathsContainer { get; }
-    [Reactive] public bool HasChanged { get; private set; }
+    [Reactive] public partial bool HasChanged { get; private set; }
 
     public IStorageProvider? StorageProvider { get; set; }
     public ReactiveCommand CommandChangeLocation { get; }

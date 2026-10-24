@@ -3,11 +3,11 @@ using System.Reactive;
 using DynamicData.Kernel;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.WorkspaceSystem;
 
-public class PanelTabViewModel : AViewModel<IPanelTabViewModel>, IPanelTabViewModel
+public partial class PanelTabViewModel : AViewModel<IPanelTabViewModel>, IPanelTabViewModel
 {
     /// <inheritdoc/>
     public PanelTabId Id { get; }
@@ -16,10 +16,10 @@ public class PanelTabViewModel : AViewModel<IPanelTabViewModel>, IPanelTabViewMo
     public IPanelTabHeaderViewModel Header { get; }
 
     /// <inheritdoc/>
-    [Reactive] public required Page Contents { get; set; }
+    [Reactive] public required partial Page Contents { get; set; }
 
     /// <inheritdoc/>
-    [Reactive] public bool IsVisible { get; set; } = true;
+    [Reactive] public partial bool IsVisible { get; set; } = true;
 
     /// <inheritdoc/>
     public ReactiveCommand<Unit, Unit> GoBackInHistoryCommand => History.GoBackCommand;

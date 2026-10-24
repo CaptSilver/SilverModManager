@@ -19,14 +19,14 @@ using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using Observable = System.Reactive.Linq.Observable;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
 using Unit = System.Reactive.Unit;
 
 namespace SilverModManager.App.UI.LeftMenu.Items;
 
-public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyControlViewModel
+public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyControlViewModel
 {
     private readonly IConnection _conn;
     private readonly ISynchronizerService _syncService;
@@ -37,19 +37,19 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
     private readonly LoadoutId _loadoutId;
     private readonly IServiceProvider _serviceProvider;
     private readonly GameInstallMetadataId _gameMetadataId;
-    [Reactive] private bool CanApply { get; set; } = true;
-    [Reactive] public bool IsApplying { get; private set; }
+    [Reactive] private partial bool CanApply { get; set; } = true;
+    [Reactive] public partial bool IsApplying { get; private set; }
 
     public ReactiveUI.ReactiveCommand<Unit, Unit> ApplyCommand { get; }
     public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> ShowApplyDiffCommand { get; }
 
-    [Reactive] public bool IsProcessing { get; private set; }
-    [Reactive] public string ApplyButtonText { get; private set; } = Language.ApplyControlViewModel__APPLY;
+    [Reactive] public partial bool IsProcessing { get; private set; }
+    [Reactive] public partial string ApplyButtonText { get; private set; } = Language.ApplyControlViewModel__APPLY;
 
-    [Reactive] public string ProcessingText { get; private set; } = "";
-    [Reactive] public double ProgressFraction { get; private set; }
-    [Reactive] public bool IsProgressIndeterminate { get; private set; } = true;
-    [Reactive] public bool IsLaunchButtonEnabled { get; private set; } = true;
+    [Reactive] public partial string ProcessingText { get; private set; } = "";
+    [Reactive] public partial double ProgressFraction { get; private set; }
+    [Reactive] public partial bool IsProgressIndeterminate { get; private set; } = true;
+    [Reactive] public partial bool IsLaunchButtonEnabled { get; private set; } = true;
 
     public ILaunchButtonViewModel LaunchButtonViewModel { get; }
 

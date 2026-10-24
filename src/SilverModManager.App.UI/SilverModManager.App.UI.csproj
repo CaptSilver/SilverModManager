@@ -77,7 +77,6 @@
         <PackageReference Include="Projektanker.Icons.Avalonia.MaterialDesign" />
         <PackageReference Include="R3" />
         <PackageReference Include="R3Extensions.Avalonia" />
-        <PackageReference Include="ReactiveUI.Fody" />
         <PackageReference Include="ReactiveUI.SourceGenerators" PrivateAssets="all" />
         <PackageReference Include="Splat.Microsoft.Extensions.Logging" />
         <PackageReference Include="System.Reactive" />

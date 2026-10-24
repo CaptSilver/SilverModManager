@@ -58,6 +58,27 @@ internal static class RepoScanGuard
         }
     }
 
+    /// <summary>
+    /// Paths git tracks under <paramref name="root"/> that match one of the
+    /// <paramref name="pathspecs"/>, relative to the root. Use this instead of
+    /// <see cref="EnumerateFiles(string, string, string[])"/> when an untracked build product of
+    /// the same name is harmless: an older checkout keeps one on disk after the tracked copy is
+    /// deleted.
+    /// </summary>
+    public static IReadOnlyList<string> TrackedFiles(string root, params string[] pathspecs)
+    {
+        var startInfo = new System.Diagnostics.ProcessStartInfo("git") { RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = root };
+        foreach (var argument in (string[])["ls-files", "-z", "--", ..pathspecs]) startInfo.ArgumentList.Add(argument);
+
+        using var git = System.Diagnostics.Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start git");
+        var errors = git.StandardError.ReadToEndAsync();
+        var output = git.StandardOutput.ReadToEnd();
+        git.WaitForExit();
+        if (git.ExitCode != 0) throw new InvalidOperationException($"git ls-files failed with exit code {git.ExitCode}: {errors.Result}");
+
+        return output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+    }
+
     public static string ToRelative(string root, string path) => Path.GetRelativePath(root, path).Replace('\\', '/');
 
     /// <summary>

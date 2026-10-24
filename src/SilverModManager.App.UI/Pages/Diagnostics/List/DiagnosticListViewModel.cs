@@ -13,28 +13,28 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using Reloaded.Memory.Extensions;
 using ObservableExtensions = R3.ObservableExtensions;
 
 namespace SilverModManager.App.UI.Pages.Diagnostics;
 
 [UsedImplicitly]
-internal class DiagnosticListViewModel : APageViewModel<IDiagnosticListViewModel>, IDiagnosticListViewModel
+internal partial class DiagnosticListViewModel : APageViewModel<IDiagnosticListViewModel>, IDiagnosticListViewModel
 {
-    [Reactive] private Diagnostic[] Diagnostics { get; set; } = Array.Empty<Diagnostic>();
+    [Reactive] private partial Diagnostic[] Diagnostics { get; set; } = Array.Empty<Diagnostic>();
 
-    [Reactive] public IDiagnosticEntryViewModel[] DiagnosticEntries { get; private set; } = Array.Empty<IDiagnosticEntryViewModel>();
+    [Reactive] public partial IDiagnosticEntryViewModel[] DiagnosticEntries { get; private set; } = Array.Empty<IDiagnosticEntryViewModel>();
 
-    [Reactive] public LoadoutId LoadoutId { get; set; }
+    [Reactive] public partial LoadoutId LoadoutId { get; set; }
 
-    [Reactive] public int NumCritical { get; private set; }
-    [Reactive] public int NumWarnings { get; private set; }
-    [Reactive] public int NumSuggestions { get; private set; }
+    [Reactive] public partial int NumCritical { get; private set; }
+    [Reactive] public partial int NumWarnings { get; private set; }
+    [Reactive] public partial int NumSuggestions { get; private set; }
 
-    [Reactive] public DiagnosticFilter Filter { get; set; }
+    [Reactive] public partial DiagnosticFilter Filter { get; set; }
 
-    [Reactive] public string SupportBundleMessage { get; private set; } = "";
+    [Reactive] public partial string SupportBundleMessage { get; private set; } = "";
 
     public ReactiveCommand<Unit, Unit> CopySupportBundleCommand { get; }
 
@@ -52,7 +52,7 @@ internal class DiagnosticListViewModel : APageViewModel<IDiagnosticListViewModel
 
     private const DiagnosticFilter AllFilter = DiagnosticFilter.Critical | DiagnosticFilter.Warnings | DiagnosticFilter.Suggestions;
 
-    [Reactive] private DiagnosticSettings Settings { get; set; }
+    [Reactive] private partial DiagnosticSettings Settings { get; set; }
 
     public DiagnosticListViewModel(
         IServiceProvider serviceProvider,

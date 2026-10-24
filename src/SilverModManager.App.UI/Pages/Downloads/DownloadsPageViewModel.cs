@@ -10,15 +10,15 @@ using SilverModManager.UI.Sdk.Icons;
 using ObservableCollections;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Pages.Downloads;
 
-public class DownloadsPageViewModel : APageViewModel<IDownloadsPageViewModel>, IDownloadsPageViewModel
+public partial class DownloadsPageViewModel : APageViewModel<IDownloadsPageViewModel>, IDownloadsPageViewModel
 {
-    [Reactive] public int SelectionCount { get; private set; } = 0;
+    [Reactive] public partial int SelectionCount { get; private set; } = 0;
     
-    [Reactive] public bool IsEmptyStateActive { get; set; } = true;
+    [Reactive] public partial bool IsEmptyStateActive { get; set; } = true;
     
     public string HeaderTitle { get; private set; } = string.Empty;
     public string HeaderDescription { get; private set; } = string.Empty;

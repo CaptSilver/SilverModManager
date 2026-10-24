@@ -3,14 +3,13 @@ using System.Diagnostics.CodeAnalysis;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.WorkspaceSystem;
-using ReactiveUI.Fody.Helpers;
 
 namespace SilverModManager.App.UI.Windows;
 
 public class DesignWindowManager : IWindowManager
 {
     public ReadOnlyObservableCollection<WindowId> AllWindowIds { get; } = ReadOnlyObservableCollection<WindowId>.Empty;
-    [Reactive] public IWorkspaceWindow ActiveWindow { get; set; } = null!;
+    public IWorkspaceWindow ActiveWindow { get; set; } = null!;
 
     public bool TryGetWindow(WindowId windowId, [NotNullWhen(true)] out IWorkspaceWindow? window)
     {

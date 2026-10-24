@@ -14,34 +14,34 @@ using SilverModManager.App.UI.Extensions;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.FOMOD.UI;
 
 [UsedImplicitly]
-public class GuidedInstallerStepViewModel : AViewModel<IGuidedInstallerStepViewModel>, IGuidedInstallerStepViewModel
+public partial class GuidedInstallerStepViewModel : AViewModel<IGuidedInstallerStepViewModel>, IGuidedInstallerStepViewModel
 {
-    [Reactive] public string ModName { get; set; } = string.Empty;
+    [Reactive] public partial string ModName { get; set; } = string.Empty;
 
-    [Reactive] public string? Notice { get; set; }
+    [Reactive] public partial string? Notice { get; set; }
 
-    [Reactive] public bool ShowInstallationCompleteScreen { get; private set; }
-    [Reactive] public GuidedInstallationStep? InstallationStep { get; set; }
+    [Reactive] public partial bool ShowInstallationCompleteScreen { get; private set; }
+    [Reactive] public partial GuidedInstallationStep? InstallationStep { get; set; }
 
     private readonly SourceCache<IGuidedInstallerGroupViewModel, GroupId> _groupsSource = new(x => x.Group.Id);
     private readonly ReadOnlyObservableCollection<IGuidedInstallerGroupViewModel> _groups;
     public ReadOnlyObservableCollection<IGuidedInstallerGroupViewModel> Groups => _groups;
 
-    [Reactive] public IGuidedInstallerOptionViewModel? HighlightedOptionViewModel { get; set; }
+    [Reactive] public partial IGuidedInstallerOptionViewModel? HighlightedOptionViewModel { get; set; }
 
-    [Reactive] public IImage? HighlightedOptionImage { get; private set; }
+    [Reactive] public partial IImage? HighlightedOptionImage { get; private set; }
 
-    [Reactive] public Percent Progress { get; set; }
+    [Reactive] public partial Percent Progress { get; set; }
     public IFooterStepperViewModel FooterStepperViewModel { get; } = new FooterStepperViewModel();
 
-    [Reactive] public TaskCompletionSource<UserChoice>? TaskCompletionSource { get; set; }
+    [Reactive] public partial TaskCompletionSource<UserChoice>? TaskCompletionSource { get; set; }
 
-    [Reactive] public bool HasValidSelections { get; set; }
+    [Reactive] public partial bool HasValidSelections { get; set; }
 
     private Percent _previousProgress = Percent.Zero;
 

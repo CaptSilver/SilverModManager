@@ -2,11 +2,11 @@ using System.Reactive.Disposables;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Loadouts.Ids;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.DataModel.Synchronizer;
 
-public class SynchronizerState : ReactiveObject
+public partial class SynchronizerState : ReactiveObject
 {
     private bool _busy = false;
 
@@ -16,7 +16,7 @@ public class SynchronizerState : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref _busy, value);
     }
 
-    [Reactive] public Optional<LoadoutWithTxId> LastApplied { get; set; }
+    [Reactive] public partial Optional<LoadoutWithTxId> LastApplied { get; set; }
 
     /// <summary>
     /// Locks the state for the duration of the returned IDisposable. Will throw if already locked.

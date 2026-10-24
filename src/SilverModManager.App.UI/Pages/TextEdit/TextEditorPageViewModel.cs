@@ -21,7 +21,7 @@ using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Library;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using TextMateSharp.Grammars;
 using Hash = NexusMods.Hashing.xxHash3.Hash;
 using ObservableExtensions = R3.ObservableExtensions;
@@ -29,23 +29,23 @@ using ObservableExtensions = R3.ObservableExtensions;
 namespace SilverModManager.App.UI.Pages.TextEdit;
 
 [UsedImplicitly]
-public class TextEditorPageViewModel : APageViewModel<ITextEditorPageViewModel>, ITextEditorPageViewModel
+public partial class TextEditorPageViewModel : APageViewModel<ITextEditorPageViewModel>, ITextEditorPageViewModel
 {
-    [Reactive] public TextEditorPageContext? Context { get; set; }
+    [Reactive] public partial TextEditorPageContext? Context { get; set; }
 
-    [Reactive] public bool IsReadOnly { get; set; } = true;
+    [Reactive] public partial bool IsReadOnly { get; set; } = true;
 
-    [Reactive] public bool IsModified { get; set; }
+    [Reactive] public partial bool IsModified { get; set; }
 
     private static readonly TextDocument EmptyDocument = new(new StringTextSource("")) { FileName = "empty.txt" };
-    [Reactive] public TextDocument Document { get; set; } = EmptyDocument;
+    [Reactive] public partial TextDocument Document { get; set; } = EmptyDocument;
 
     public ReactiveCommand<Unit, Unit> SaveCommand { get; }
     private readonly ReactiveCommand<TextEditorPageContext, ValueTuple<TextEditorPageContext, string>> _loadFileCommand;
 
-    [Reactive] public ThemeName Theme { get; set; }
+    [Reactive] public partial ThemeName Theme { get; set; }
 
-    [Reactive] public double FontSize { get; set; }
+    [Reactive] public partial double FontSize { get; set; }
 
     public TextEditorPageViewModel(
         ILogger<TextEditorPageViewModel> logger,

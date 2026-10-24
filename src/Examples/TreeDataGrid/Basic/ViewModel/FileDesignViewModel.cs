@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
 using SilverModManager.Sdk.Games;
 using SilverModManager.UI.Sdk;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace Examples.TreeDataGrid.Basic.ViewModel;
 
-public class FileDesignViewModel(GamePath fullPath) : AViewModel<IFileViewModel>, IFileViewModel
+public partial class FileDesignViewModel(GamePath fullPath) : AViewModel<IFileViewModel>, IFileViewModel
 {
     // Name of this node.
     public string Name => Key.Name;
@@ -16,5 +16,5 @@ public class FileDesignViewModel(GamePath fullPath) : AViewModel<IFileViewModel>
     public GamePath Key { get; set; } = fullPath;
 
     // IExpandableViewModel
-    [Reactive] public bool IsExpanded { get; set; }
+    [Reactive] public partial bool IsExpanded { get; set; }
 }

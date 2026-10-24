@@ -12,7 +12,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk;
 using R3;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Pages.CollectionDownload;
 
@@ -54,7 +54,7 @@ public class ManualDownloadRequiredOverlayDesignViewModel : AOverlayViewModel<IM
     public ReactiveCommand CommandReportBug { get; } = new();
 }
 
-public class ManualDownloadRequiredOverlayViewModel : AOverlayViewModel<IManualDownloadRequiredOverlayViewModel>, IManualDownloadRequiredOverlayViewModel
+public partial class ManualDownloadRequiredOverlayViewModel : AOverlayViewModel<IManualDownloadRequiredOverlayViewModel>, IManualDownloadRequiredOverlayViewModel
 {
     public ManualDownloadRequiredOverlayViewModel(IServiceProvider serviceProvider, CollectionDownloadExternal.ReadOnly downloadEntity)
     {
@@ -136,9 +136,9 @@ public class ManualDownloadRequiredOverlayViewModel : AOverlayViewModel<IManualD
     public bool HasInstructions { get; }
     public string Instructions { get; }
 
-    [Reactive] public bool IsCheckingFile { get; private set; }
-    [Reactive] public bool IsIncorrectFile { get; private set; }
-    [Reactive] public string ReceivedHash { get; private set; } = string.Empty;
+    [Reactive] public partial bool IsCheckingFile { get; private set; }
+    [Reactive] public partial bool IsIncorrectFile { get; private set; }
+    [Reactive] public partial string ReceivedHash { get; private set; } = string.Empty;
 
     public ReactiveCommand CommandCancel { get; }
     public ReactiveCommand CommandOpenBrowser { get; }

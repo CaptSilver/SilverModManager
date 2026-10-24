@@ -11,13 +11,13 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.IO;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using Reloaded.Memory.Extensions;
 
 namespace SilverModManager.App.UI.Pages.Changelog;
 
 [UsedImplicitly]
-public class ChangelogPageViewModel : APageViewModel<IChangelogPageViewModel>, IChangelogPageViewModel
+public partial class ChangelogPageViewModel : APageViewModel<IChangelogPageViewModel>, IChangelogPageViewModel
 {
     /// <summary>
     /// The changelog ships inside the app so the page works offline and never reads from upstream's repository.
@@ -26,9 +26,9 @@ public class ChangelogPageViewModel : APageViewModel<IChangelogPageViewModel>, I
 
     public IMarkdownRendererViewModel MarkdownRendererViewModel { get; }
 
-    [Reactive] public Version? TargetVersion { get; set; }
-    [Reactive] public ParsedChangelog? ParsedChangelog { get; set; }
-    [Reactive] public int SelectedIndex { get; set; }
+    [Reactive] public partial Version? TargetVersion { get; set; }
+    [Reactive] public partial ParsedChangelog? ParsedChangelog { get; set; }
+    [Reactive] public partial int SelectedIndex { get; set; }
 
     private string? _fullChangelog;
 

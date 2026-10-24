@@ -1,13 +1,13 @@
 ﻿using System.Reactive;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.AdvancedInstaller.UI;
 
-internal class FooterViewModel : AViewModel<IFooterViewModel>, IFooterViewModel
+internal partial class FooterViewModel : AViewModel<IFooterViewModel>, IFooterViewModel
 {
-    [Reactive] public bool CanInstall { get; set; }
+    [Reactive] public partial bool CanInstall { get; set; }
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
     public ReactiveCommand<Unit, Unit> InstallCommand { get; }
 

@@ -2,14 +2,14 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using SilverModManager.App.UI.WorkspaceSystem;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.LeftMenu.Items;
 
-public class LeftMenuItemWithCountBadgeViewModel : LeftMenuItemViewModel
+public partial class LeftMenuItemWithCountBadgeViewModel : LeftMenuItemViewModel
 {
-    [Reactive] public bool IsBadgeVisible { get; private set; }
-    [Reactive] public int Count { get; private set; }
+    [Reactive] public partial bool IsBadgeVisible { get; private set; }
+    [Reactive] public partial int Count { get; private set; }
     
     public IObservable<int> CountObservable { private get; init; } = Observable.Return(0);
     

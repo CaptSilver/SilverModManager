@@ -34,12 +34,12 @@ using SilverModManager.Sdk.Jobs;
 using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using Observable = System.Reactive.Linq.Observable;
 
 namespace SilverModManager.App.UI.LeftMenu.Loadout;
 
-public class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewModel>, ILoadoutLeftMenuViewModel
+public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewModel>, ILoadoutLeftMenuViewModel
 {
     public WorkspaceId WorkspaceId { get; }
     
@@ -49,15 +49,15 @@ public class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewModel>, I
     public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; }
     public ILeftMenuItemViewModel LeftMenuItemHealthCheck { get; }
     public ILeftMenuItemViewModel LeftMenuItemTools { get; }
-    [Reactive] public ILeftMenuItemViewModel? LeftMenuItemExternalChanges { get; private set; }
+    [Reactive] public partial ILeftMenuItemViewModel? LeftMenuItemExternalChanges { get; private set; }
     
-    [Reactive] public bool HasSingleCollection { get; private set; } = true;
+    [Reactive] public partial bool HasSingleCollection { get; private set; } = true;
     public IApplyControlViewModel ApplyControlViewModel { get; }
 
     private ReadOnlyObservableCollection<ILeftMenuItemViewModel> _leftMenuCollectionItems = new([]);
     public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems => _leftMenuCollectionItems;
     
-    [Reactive] private int NewDownloadModelCount { get; set; }
+    [Reactive] private partial int NewDownloadModelCount { get; set; }
 
     public LoadoutLeftMenuViewModel(
         LoadoutContext loadoutContext,

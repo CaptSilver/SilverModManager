@@ -9,11 +9,11 @@ using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Pages.SteamLaunchOption;
 
-public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionViewModel, Unit>, ISteamLaunchOptionViewModel
+public partial class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionViewModel, Unit>, ISteamLaunchOptionViewModel
 {
     private const string CloseSteamText = "Close Steam completely, including its tray icon, to write the launch option. " +
                                           "Steam rewrites its config when it exits and would discard the change.";
@@ -67,16 +67,16 @@ public class SteamLaunchOptionViewModel : AOverlayViewModel<ISteamLaunchOptionVi
     public string Line { get; }
     public string Warning { get; }
     public string CopyNote => "Copying changes nothing in Steam. Paste the line into the game's Properties > Launch Options yourself.";
-    [Reactive] public bool IsSteamRunning { get; private set; }
-    [Reactive] public bool CanWrite { get; private set; }
-    [Reactive] public bool CanCloseAndWrite { get; private set; }
-    [Reactive] public bool IsWaitingForSteam { get; private set; }
-    [Reactive] public string WriteNote { get; private set; } = "";
-    [Reactive] public string Message { get; private set; } = "";
-    [Reactive] public string OtherManagerName { get; private set; } = "";
-    [Reactive] public string OldLine { get; private set; } = "";
-    [Reactive] public string NewLine { get; private set; } = "";
-    [Reactive] public bool CanReplace { get; private set; }
+    [Reactive] public partial bool IsSteamRunning { get; private set; }
+    [Reactive] public partial bool CanWrite { get; private set; }
+    [Reactive] public partial bool CanCloseAndWrite { get; private set; }
+    [Reactive] public partial bool IsWaitingForSteam { get; private set; }
+    [Reactive] public partial string WriteNote { get; private set; } = "";
+    [Reactive] public partial string Message { get; private set; } = "";
+    [Reactive] public partial string OtherManagerName { get; private set; } = "";
+    [Reactive] public partial string OldLine { get; private set; } = "";
+    [Reactive] public partial string NewLine { get; private set; } = "";
+    [Reactive] public partial bool CanReplace { get; private set; }
     public ReactiveCommand<Unit, Unit> CopyCommand { get; }
     public ReactiveCommand<Unit, Unit> WriteCommand { get; }
     public ReactiveCommand<Unit, Unit> ReplaceCommand { get; }

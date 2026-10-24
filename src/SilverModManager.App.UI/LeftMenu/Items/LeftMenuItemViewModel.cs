@@ -9,17 +9,17 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.LeftMenu.Items;
 
-public class LeftMenuItemViewModel : AViewModel<ILeftMenuItemViewModel>, ILeftMenuItemViewModel
+public partial class LeftMenuItemViewModel : AViewModel<ILeftMenuItemViewModel>, ILeftMenuItemViewModel
 {
     public StringComponent Text { get; init; } = new("");
-    [Reactive] public IconValue Icon { get; set; } = new();
-    [Reactive] public string ToolTipText { get; private set; }
-    [Reactive] public bool IsActive { get; private set; }
-    [Reactive] public bool IsSelected { get; private set; }
+    [Reactive] public partial IconValue Icon { get; set; } = new();
+    [Reactive] public partial string ToolTipText { get; private set; }
+    [Reactive] public partial bool IsActive { get; private set; }
+    [Reactive] public partial bool IsSelected { get; private set; }
     public ReactiveCommand<NavigationInformation, Unit> NavigateCommand { get; protected init; }
     public IReadOnlyList<IContextMenuItem> AdditionalContextMenuItems { get; protected init; } = Array.Empty<IContextMenuItem>();
 

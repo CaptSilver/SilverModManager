@@ -6,13 +6,13 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.GameWidget;
 
-public class GameWidgetDesignViewModel : AViewModel<IGameWidgetViewModel>, IGameWidgetViewModel
+public partial class GameWidgetDesignViewModel : AViewModel<IGameWidgetViewModel>, IGameWidgetViewModel
 {
-    [Reactive] public GameInstallation? Installation { get; set; } = null!;
+    [Reactive] public partial GameInstallation? Installation { get; set; } = null!;
     public string Name { get; } = "Cyberpunk 2077";
     public string Version { get; set; }
     public string Store { get; set; }
@@ -25,7 +25,7 @@ public class GameWidgetDesignViewModel : AViewModel<IGameWidgetViewModel>, IGame
     public IObservable<bool> IsManagedObservable { get; set; } = Observable.Return(false);
 
     [Reactive]
-    public GameWidgetState State { get; set; }
+    public partial GameWidgetState State { get; set; }
  
     public GameWidgetDesignViewModel()
     {

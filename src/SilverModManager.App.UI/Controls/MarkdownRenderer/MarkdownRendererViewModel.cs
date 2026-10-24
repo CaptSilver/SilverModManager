@@ -11,19 +11,19 @@ using SilverModManager.Sdk.Resources;
 using SilverModManager.Sdk;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.MarkdownRenderer;
 
 [UsedImplicitly]
-public class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>, IMarkdownRendererViewModel
+public partial class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>, IMarkdownRendererViewModel
 {
     private readonly ILogger _logger;
     private readonly IResourceLoader<Uri, IImage> _remoteImagePipeline;
 
     [Reactive]
     [LanguageInjection("markdown")]
-    public string Contents { get; set; } = string.Empty;
+    public partial string Contents { get; set; } = string.Empty;
 
     public IMdAvPlugin ImageResolverPlugin { get; }
     public IPathResolver PathResolver { get; }

@@ -8,14 +8,14 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.LoadoutBadge;
 
-public class LoadoutBadgeViewModel : AViewModel<ILoadoutBadgeViewModel>, ILoadoutBadgeViewModel
+public partial class LoadoutBadgeViewModel : AViewModel<ILoadoutBadgeViewModel>, ILoadoutBadgeViewModel
 {
  
-    [Reactive] public Optional<Loadout.ReadOnly> LoadoutValue { get; set; }
+    [Reactive] public partial Optional<Loadout.ReadOnly> LoadoutValue { get; set; }
     
     public LoadoutBadgeViewModel(IConnection conn, ISynchronizerService syncService, bool hideOnSingleLoadout = false)
     {
@@ -57,9 +57,9 @@ public class LoadoutBadgeViewModel : AViewModel<ILoadoutBadgeViewModel>, ILoadou
             }
         });
     }
-    [Reactive] public string LoadoutShortName { get; private set; } = " ";
-    [Reactive] public bool IsLoadoutApplied { get; private set; } = false;
-    [Reactive] public bool IsLoadoutInProgress { get; set; } = false;
-    [Reactive] public bool IsLoadoutSelected { get; set; } = true;
-    [Reactive] public bool IsVisible { get; set; } = true;
+    [Reactive] public partial string LoadoutShortName { get; private set; } = " ";
+    [Reactive] public partial bool IsLoadoutApplied { get; private set; } = false;
+    [Reactive] public partial bool IsLoadoutInProgress { get; set; } = false;
+    [Reactive] public partial bool IsLoadoutSelected { get; set; } = true;
+    [Reactive] public partial bool IsVisible { get; set; } = true;
 }

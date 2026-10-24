@@ -12,11 +12,11 @@ using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.WorkspaceSystem;
 
-public class WorkspaceViewModel : AViewModel<IWorkspaceViewModel>, IWorkspaceViewModel
+public partial class WorkspaceViewModel : AViewModel<IWorkspaceViewModel>, IWorkspaceViewModel
 {
     private const int MaxColumns = 2;
     private const int MaxRows = 2;
@@ -29,22 +29,22 @@ public class WorkspaceViewModel : AViewModel<IWorkspaceViewModel>, IWorkspaceVie
     public WindowId WindowId => _workspaceController.WindowId;
 
     /// <inheritdoc/>
-    [Reactive] public string Title { get; set; } = string.Empty;
+    [Reactive] public partial string Title { get; set; } = string.Empty;
 
-    [Reactive] public string Subtitle { get; set; } = string.Empty;
+    [Reactive] public partial string Subtitle { get; set; } = string.Empty;
 
     /// <inheritdoc/>
     public IWorkspaceContext Context { get; set; } = EmptyContext.Instance;
 
     /// <inheritdoc/>
-    [Reactive] public IPanelViewModel SelectedPanel { get; private set; } = null!;
+    [Reactive] public partial IPanelViewModel SelectedPanel { get; private set; } = null!;
 
     /// <inheritdoc/>
     [Reactive]
-    public IPanelTabViewModel SelectedTab { get; [UsedImplicitly] private set; } = null!;
+    public partial IPanelTabViewModel SelectedTab { get; [UsedImplicitly] private set; } = null!;
 
     /// <inheritdoc/>
-    [Reactive] public bool IsActive { get; set; }
+    [Reactive] public partial bool IsActive { get; set; }
 
     private readonly SourceCache<IPanelViewModel, PanelId> _panelSource = new(x => x.Id);
     private readonly ReadOnlyObservableCollection<IPanelViewModel> _panels;
@@ -280,7 +280,7 @@ public class WorkspaceViewModel : AViewModel<IWorkspaceViewModel>, IWorkspaceVie
     private Size _lastWorkspaceSize;
     private bool _lastIsHorizontal;
 
-    [Reactive] public bool IsHorizontal { get; private set; }
+    [Reactive] public partial bool IsHorizontal { get; private set; }
 
     /// <inheritdoc/>
     public void Arrange(Size workspaceSize)

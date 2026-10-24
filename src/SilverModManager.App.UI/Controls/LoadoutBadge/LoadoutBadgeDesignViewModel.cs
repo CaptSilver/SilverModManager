@@ -6,11 +6,11 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.LoadoutBadge;
 
-public class LoadoutBadgeDesignViewModel : AViewModel<ILoadoutBadgeViewModel>, ILoadoutBadgeViewModel
+public partial class LoadoutBadgeDesignViewModel : AViewModel<ILoadoutBadgeViewModel>, ILoadoutBadgeViewModel
 {
     private enum LoadoutAppliedState
     {
@@ -63,9 +63,9 @@ public class LoadoutBadgeDesignViewModel : AViewModel<ILoadoutBadgeViewModel>, I
     }
 
     public Optional<Loadout.ReadOnly> LoadoutValue { get; set; } = Optional<Loadout.ReadOnly>.None;
-    [Reactive] public string LoadoutShortName { get; set; } = "B";
-    [Reactive] public bool IsLoadoutSelected { get; set; } = false;
-    [Reactive] public bool IsLoadoutApplied { get; set; } = false;
-    [Reactive] public bool IsLoadoutInProgress { get; set; } = false;
+    [Reactive] public partial string LoadoutShortName { get; set; } = "B";
+    [Reactive] public partial bool IsLoadoutSelected { get; set; } = false;
+    [Reactive] public partial bool IsLoadoutApplied { get; set; } = false;
+    [Reactive] public partial bool IsLoadoutInProgress { get; set; } = false;
     public bool IsVisible { get; } = true;
 }

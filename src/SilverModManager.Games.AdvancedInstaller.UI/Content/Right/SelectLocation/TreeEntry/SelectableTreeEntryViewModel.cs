@@ -7,21 +7,21 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.AdvancedInstaller.UI.SelectLocation;
 
-public class SelectableTreeEntryViewModel : AViewModel<ISelectableTreeEntryViewModel>,
+public partial class SelectableTreeEntryViewModel : AViewModel<ISelectableTreeEntryViewModel>,
     ISelectableTreeEntryViewModel
 {
     public GamePath GamePath { get; }
     public string DisplayName { get; }
-    [Reactive] public string InputText { get; set; }
-    [Reactive] private bool CanSave { get; set; }
-    [Reactive] public bool IsExpanded { get; set; }
+    [Reactive] public partial string InputText { get; set; }
+    [Reactive] private partial bool CanSave { get; set; }
+    [Reactive] public partial bool IsExpanded { get; set; }
     public bool IsRoot { get; }
     public GamePath Parent { get; }
-    [Reactive] public SelectableDirectoryNodeStatus Status { get; set; }
+    [Reactive] public partial SelectableDirectoryNodeStatus Status { get; set; }
     public ReactiveCommand<Unit, Unit> CreateMappingCommand { get; }
     public ReactiveCommand<Unit, Unit> EditCreateFolderCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveCreatedFolderCommand { get; }

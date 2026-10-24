@@ -28,11 +28,11 @@ using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Dialog;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.LoadoutCard;
 
-public class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutCardViewModel
+public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutCardViewModel
 {
     private readonly ILogger<LoadoutCardViewModel> _logger;
     private readonly ILoadoutManager _loadoutManager;
@@ -128,13 +128,13 @@ public class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutC
     
     public Loadout.ReadOnly LoadoutVal { get; }
     public ILoadoutBadgeViewModel LoadoutBadgeViewModel { get; private set; }
-    [Reactive] public string LoadoutName { get; private set; }
-    [Reactive] public IImage? LoadoutImage { get; private set; } 
-    [Reactive] public bool IsLoadoutApplied { get; private set; } = false;
-    [Reactive] public string HumanizedLoadoutLastApplyTime { get; private set; } = "";
-    [Reactive] public string HumanizedLoadoutCreationTime { get; private set; } = "";
-    [Reactive] public string LoadoutModCount { get; private set; } = "";
-    [Reactive] public bool IsDeleting { get;  private set; } = false;
+    [Reactive] public partial string LoadoutName { get; private set; }
+    [Reactive] public partial IImage? LoadoutImage { get; private set; } 
+    [Reactive] public partial bool IsLoadoutApplied { get; private set; } = false;
+    [Reactive] public partial string HumanizedLoadoutLastApplyTime { get; private set; } = "";
+    [Reactive] public partial string HumanizedLoadoutCreationTime { get; private set; } = "";
+    [Reactive] public partial string LoadoutModCount { get; private set; } = "";
+    [Reactive] public partial bool IsDeleting { get;  private set; } = false;
     public bool IsSkeleton => false;
     public required ReactiveCommand<Unit, Unit> VisitLoadoutCommand { get; init; }
     public ReactiveCommand<Unit, Unit> CloneLoadoutCommand { get; } 
@@ -143,7 +143,7 @@ public class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, ILoadoutC
     public ReactiveCommand<Unit, Unit> UseFromSteamCommand { get; }
     public bool CanUseFromSteam { get; }
     
-    [Reactive] public bool IsLastLoadout { get; set; } = true;
+    [Reactive] public partial bool IsLastLoadout { get; set; } = true;
     
     
     private static string FormatNumMods(int numMods)

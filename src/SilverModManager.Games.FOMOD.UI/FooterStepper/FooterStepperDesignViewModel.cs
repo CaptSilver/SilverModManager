@@ -3,13 +3,13 @@ using System.Reactive.Linq;
 using SilverModManager.App.UI;
 using SilverModManager.Sdk.Jobs;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.FOMOD.UI;
 
-public class FooterStepperDesignViewModel : FooterStepperViewModel
+public partial class FooterStepperDesignViewModel : FooterStepperViewModel
 {
-    [Reactive] private int CurrentValue { get; set; } = 5;
+    [Reactive] private partial int CurrentValue { get; set; } = 5;
 
     public FooterStepperDesignViewModel()
     {

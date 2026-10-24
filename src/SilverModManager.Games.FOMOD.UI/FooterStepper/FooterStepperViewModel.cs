@@ -5,20 +5,20 @@ using SilverModManager.App.UI;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.FOMOD.UI;
 
-public class FooterStepperViewModel : AViewModel<IFooterStepperViewModel>, IFooterStepperViewModel
+public partial class FooterStepperViewModel : AViewModel<IFooterStepperViewModel>, IFooterStepperViewModel
 {
     [Reactive]
-    public bool IsLastStep { get; private set; }
+    public partial bool IsLastStep { get; private set; }
 
     [Reactive]
-    public Percent Progress { get; set; } = Percent.Zero;
+    public partial Percent Progress { get; set; } = Percent.Zero;
 
-    [Reactive] public bool CanGoNext { get; set; }
-    [Reactive] public bool CanGoPrev { get; set; }
+    [Reactive] public partial bool CanGoNext { get; set; }
+    [Reactive] public partial bool CanGoPrev { get; set; }
     public ReactiveCommand<Unit, Unit> GoToNextCommand { get; protected init; }
     public ReactiveCommand<Unit, Unit> GoToPrevCommand { get; protected init; }
 

@@ -10,11 +10,11 @@ using SilverModManager.Sdk.Settings;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.GameWidget;
 
-public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidgetViewModel
+public partial class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidgetViewModel
 {
     private readonly ILogger<GameWidgetViewModel> _logger;
 
@@ -111,24 +111,24 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
         return IconValues.Help;
     }
 
-    [Reactive] public GameInstallation? Installation { get; set; }
+    [Reactive] public partial GameInstallation? Installation { get; set; }
 
-    [Reactive] public string Name { get; set; } = "";
-    [Reactive] public string Version { get; set; } = "";
-    [Reactive] public string Store { get; set; } = "";
+    [Reactive] public partial string Name { get; set; } = "";
+    [Reactive] public partial string Version { get; set; } = "";
+    [Reactive] public partial string Store { get; set; } = "";
     public IconValue GameStoreIcon { get; set; } = new IconValue();
 
     private readonly ObservableAsPropertyHelper<Bitmap> _image;
     public Bitmap Image => _image.Value;
 
-    [Reactive] public ReactiveCommand<Unit, Unit> AddGameCommand { get; set; }
+    [Reactive] public partial ReactiveCommand<Unit, Unit> AddGameCommand { get; set; }
 
-    [Reactive] public ReactiveCommand<Unit, Unit> ViewGameCommand { get; set; }
+    [Reactive] public partial ReactiveCommand<Unit, Unit> ViewGameCommand { get; set; }
 
-    [Reactive] public ReactiveCommand<Unit, Unit> RemoveAllLoadoutsCommand { get; set; }
+    [Reactive] public partial ReactiveCommand<Unit, Unit> RemoveAllLoadoutsCommand { get; set; }
     
     public IObservable<bool> IsManagedObservable { get; set; } = Observable.Return(false);
 
 
-    [Reactive] public GameWidgetState State { get; set; }
+    [Reactive] public partial GameWidgetState State { get; set; }
 }

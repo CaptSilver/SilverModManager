@@ -7,11 +7,11 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.AdvancedInstaller.UI.Preview;
 
-public class PreviewTreeEntryViewModel : AViewModel<IPreviewTreeEntryViewModel>, IPreviewTreeEntryViewModel
+public partial class PreviewTreeEntryViewModel : AViewModel<IPreviewTreeEntryViewModel>, IPreviewTreeEntryViewModel
 {
     public GamePath GamePath { get; }
     public GamePath Parent { get; }
@@ -23,7 +23,7 @@ public class PreviewTreeEntryViewModel : AViewModel<IPreviewTreeEntryViewModel>,
     public bool IsNew { get; private set; }
     public bool IsFolderMerged { get; set; }
     public bool IsFolderDupe { get; }
-    [Reactive] public bool IsExpanded { get; set; }
+    [Reactive] public partial bool IsExpanded { get; set; }
 
     public Optional<IModContentTreeEntryViewModel> MappedEntry { get; set; }
 

@@ -6,6 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="ReactiveUI.SourceGenerators" PrivateAssets="all" />
         <PackageReference Include="Avalonia"/>
         <PackageReference Include="Avalonia.Themes.Fluent"/>
         <PackageReference Include="Avalonia.Controls.TreeDataGrid" />

@@ -15,18 +15,18 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.AdvancedInstaller.UI;
 
 using PreviewTreeNode = TreeNodeVM<IPreviewTreeEntryViewModel, GamePath>;
 using ModContentTreeNode = TreeNodeVM<IModContentTreeEntryViewModel, RelativePath>;
 
-public class BodyViewModel : AViewModel<IBodyViewModel>, IBodyViewModel
+public partial class BodyViewModel : AViewModel<IBodyViewModel>, IBodyViewModel
 {
     public string ModName { get; set; }
-    [Reactive] public bool CanInstall { get; private set; }
-    [Reactive] public IViewModelInterface CurrentRightContentViewModel { get; private set; }
+    [Reactive] public partial bool CanInstall { get; private set; }
+    [Reactive] public partial IViewModelInterface CurrentRightContentViewModel { get; private set; }
     public IModContentViewModel ModContentViewModel { get; }
     public IEmptyPreviewViewModel EmptyPreviewViewModel { get; }
     public ISelectLocationViewModel SelectLocationViewModel { get; }

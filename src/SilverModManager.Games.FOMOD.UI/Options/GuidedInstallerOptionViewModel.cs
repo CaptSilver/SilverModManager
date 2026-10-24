@@ -1,18 +1,18 @@
 using SilverModManager.Abstractions.GuidedInstallers;
 using SilverModManager.App.UI;
 using SilverModManager.UI.Sdk;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.FOMOD.UI;
 
-public class GuidedInstallerOptionViewModel : AViewModel<IGuidedInstallerOptionViewModel>, IGuidedInstallerOptionViewModel
+public partial class GuidedInstallerOptionViewModel : AViewModel<IGuidedInstallerOptionViewModel>, IGuidedInstallerOptionViewModel
 {
     public Option Option { get; }
     public OptionGroup Group { get; }
 
-    [Reactive] public bool IsEnabled { get; set; }
-    [Reactive] public bool IsChecked { get; set; }
-    [Reactive] public bool IsValid { get; set; } = true;
+    [Reactive] public partial bool IsEnabled { get; set; }
+    [Reactive] public partial bool IsChecked { get; set; }
+    [Reactive] public partial bool IsValid { get; set; } = true;
 
     public GuidedInstallerOptionViewModel(Option option, OptionGroup group)
     {

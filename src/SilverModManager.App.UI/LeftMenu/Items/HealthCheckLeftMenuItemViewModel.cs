@@ -7,15 +7,15 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Loadouts;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.LeftMenu.Items;
 
-public class HealthCheckLeftMenuItemViewModel : LeftMenuItemViewModel
+public partial class HealthCheckLeftMenuItemViewModel : LeftMenuItemViewModel
 {
-    [Reactive] public bool IsSuggestionVisible { get; private set; }
-    [Reactive] public bool IsWarningVisible { get; private set; }
-    [Reactive] public bool IsCriticalVisible { get; private set; }
+    [Reactive] public partial bool IsSuggestionVisible { get; private set; }
+    [Reactive] public partial bool IsWarningVisible { get; private set; }
+    [Reactive] public partial bool IsCriticalVisible { get; private set; }
 
     public HealthCheckLeftMenuItemViewModel(
         IWorkspaceController workspaceController,

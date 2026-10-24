@@ -16,13 +16,13 @@ using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.LeftMenu.Items;
 
-public class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, ILeftMenuItemWithToggleViewModel
+public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, ILeftMenuItemWithToggleViewModel
 {
-    [Reactive] public bool IsEnabled { get; set; }
+    [Reactive] public partial bool IsEnabled { get; set; }
 
     public bool IsCollectionReadOnly { get; init; }
     public bool IsToggleVisible => true;

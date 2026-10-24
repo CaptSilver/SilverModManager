@@ -1,20 +1,22 @@
 using SilverModManager.UI.Sdk;
 using R3;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace Examples.R3;
 
 // Moving from `[Reactive]` to R3:
-file interface IOldViewModel : IViewModelInterface
+// These two are internal rather than file-scoped because the generator adds the
+// properties in a separate generated file, which a file-local type cannot extend.
+internal interface IOldViewModel : IViewModelInterface
 {
     string ReadOnlyText { get; }
     string MutableText { get; set; }
 }
 
-file class OldViewModel : AViewModel<IOldViewModel>, IOldViewModel
+internal partial class OldViewModel : AViewModel<IOldViewModel>, IOldViewModel
 {
-    [Reactive] public string ReadOnlyText { get; private set; } = "Foo";
-    [Reactive] public string MutableText { get; set; } = "Bar";
+    [Reactive] public partial string ReadOnlyText { get; private set; } = "Foo";
+    [Reactive] public partial string MutableText { get; set; } = "Bar";
 }
 
 file interface INewViewModel : IViewModelInterface

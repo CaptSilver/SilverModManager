@@ -22,7 +22,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using OneOf;
 using OneOf.Types;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using System.Reactive;
 using System.Reactive.Linq;
 using DynamicData.Aggregation;
@@ -55,7 +55,7 @@ using GameInstallMetadata = SilverModManager.Sdk.Games.GameInstallMetadata;
 namespace SilverModManager.App.UI.Pages.MyGames;
 
 [UsedImplicitly]
-public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewModel
+public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewModel
 {
     private const string TrelloPublicRoadmapUrl = "https://trello.com/b/gPzMuIr3/nexus-mods-app-roadmap";
 
@@ -76,9 +76,9 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand { get; }
     public ReactiveCommand<Unit, Unit> AddGameFolderCommand { get; }
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames => _installedGames;
-    [Reactive] public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames { get; private set; } = new([]);
+    [Reactive] public partial ReadOnlyObservableCollection<IViewModelInterface> SupportedGames { get; private set; } = new([]);
 
-    [Reactive] public string? LocatorProblemsNotice { get; private set; }
+    [Reactive] public partial string? LocatorProblemsNotice { get; private set; }
 
     public MyGamesViewModel(
         IWindowManager windowManager,

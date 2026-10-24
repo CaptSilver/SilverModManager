@@ -7,7 +7,7 @@ using SilverModManager.Sdk.Settings;
 using SilverModManager.UI.Sdk;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
 using Unit = System.Reactive.Unit;
 
@@ -18,7 +18,7 @@ namespace SilverModManager.App.UI.Controls.SecretStoreNotice;
 /// Every store call runs on the thread pool: the store has its own timeouts, but a locked wallet can still
 /// take seconds to answer and the window must stay responsive meanwhile.
 /// </summary>
-public class SecretStoreNoticeViewModel : AViewModel<ISecretStoreNoticeViewModel>, ISecretStoreNoticeViewModel
+public partial class SecretStoreNoticeViewModel : AViewModel<ISecretStoreNoticeViewModel>, ISecretStoreNoticeViewModel
 {
     internal const string DismissKey = "secrets-unencrypted";
 
@@ -28,9 +28,9 @@ public class SecretStoreNoticeViewModel : AViewModel<ISecretStoreNoticeViewModel
     private readonly ILogger<SecretStoreNoticeViewModel> _logger;
     private readonly AlertSettingsWrapper _alert;
 
-    [Reactive] public SecretStoreNoticeKind Kind { get; private set; }
-    [Reactive] public string Text { get; private set; } = string.Empty;
-    [Reactive] public bool IsVisible { get; private set; }
+    [Reactive] public partial SecretStoreNoticeKind Kind { get; private set; }
+    [Reactive] public partial string Text { get; private set; } = string.Empty;
+    [Reactive] public partial bool IsVisible { get; private set; }
 
     public ReactiveUI.ReactiveCommand<Unit, Unit> UnlockCommand { get; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> DismissCommand { get; }

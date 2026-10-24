@@ -11,12 +11,12 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.Spine.Buttons.Download;
 
 [UsedImplicitly]
-public class SpineDownloadButtonViewModel : AViewModel<ISpineDownloadButtonViewModel>, ISpineDownloadButtonViewModel
+public partial class SpineDownloadButtonViewModel : AViewModel<ISpineDownloadButtonViewModel>, ISpineDownloadButtonViewModel
 {
     public SpineDownloadButtonViewModel(IJobMonitor jobMonitor, ILogger<SpineDownloadButtonViewModel> logger)
     {
@@ -40,17 +40,17 @@ public class SpineDownloadButtonViewModel : AViewModel<ISpineDownloadButtonViewM
         });
     }
 
-    [Reactive] public double Number { get; set; }
+    [Reactive] public partial double Number { get; set; }
 
-    [Reactive] public string Units { get; set; } = "MB/s";
+    [Reactive] public partial string Units { get; set; } = "MB/s";
 
-    [Reactive] public Optional<Percent> Progress { get; set; }
+    [Reactive] public partial Optional<Percent> Progress { get; set; }
 
-    [Reactive] public ReactiveCommand<Unit,Unit> Click { get; set; } = Initializers.EmptyReactiveCommand;
+    [Reactive] public partial ReactiveCommand<Unit,Unit> Click { get; set; } = Initializers.EmptyReactiveCommand;
     
     public IWorkspaceContext? WorkspaceContext { get; set; }
 
-    [Reactive] public bool IsActive { get; set; }
+    [Reactive] public partial bool IsActive { get; set; }
 
-    [Reactive] public string ToolTip { get; set; } = Language.SpineDownloadButton_ToolTip;
+    [Reactive] public partial string ToolTip { get; set; } = Language.SpineDownloadButton_ToolTip;
 }

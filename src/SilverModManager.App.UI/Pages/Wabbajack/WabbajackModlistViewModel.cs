@@ -26,13 +26,13 @@ using SilverModManager.Wabbajack.Acquire;
 using SilverModManager.Wabbajack.Install;
 using SilverModManager.Wabbajack.Models;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
 namespace SilverModManager.App.UI.Pages.Wabbajack;
 
 [UsedImplicitly]
-public class WabbajackModlistViewModel : APageViewModel<IWabbajackModlistViewModel>, IWabbajackModlistViewModel
+public partial class WabbajackModlistViewModel : APageViewModel<IWabbajackModlistViewModel>, IWabbajackModlistViewModel
 {
     private readonly IConnection _connection;
     private readonly IWabbajackModlistService _service;
@@ -49,38 +49,38 @@ public class WabbajackModlistViewModel : APageViewModel<IWabbajackModlistViewMod
     private WabbajackModlistLoadoutGroupId? _groupId;
     private bool _loadStarted;
 
-    [Reactive] public LibraryFileId FileId { get; set; }
+    [Reactive] public partial LibraryFileId FileId { get; set; }
 
-    [Reactive] public string Name { get; private set; } = "";
-    [Reactive] public string Author { get; private set; } = "";
-    [Reactive] public string Version { get; private set; } = "";
-    [Reactive] public string GameName { get; private set; } = "";
-    [Reactive] public string ArchiveSummary { get; private set; } = "";
-    [Reactive] public Bitmap? Banner { get; private set; }
+    [Reactive] public partial string Name { get; private set; } = "";
+    [Reactive] public partial string Author { get; private set; } = "";
+    [Reactive] public partial string Version { get; private set; } = "";
+    [Reactive] public partial string GameName { get; private set; } = "";
+    [Reactive] public partial string ArchiveSummary { get; private set; } = "";
+    [Reactive] public partial Bitmap? Banner { get; private set; }
 
-    [Reactive] public IReadOnlyList<WabbajackLoadoutChoice> LoadoutChoices { get; private set; } = [WabbajackLoadoutChoice.CreateNew];
-    [Reactive] public WabbajackLoadoutChoice? SelectedLoadout { get; private set; }
+    [Reactive] public partial IReadOnlyList<WabbajackLoadoutChoice> LoadoutChoices { get; private set; } = [WabbajackLoadoutChoice.CreateNew];
+    [Reactive] public partial WabbajackLoadoutChoice? SelectedLoadout { get; private set; }
 
-    [Reactive] public IReadOnlyList<WabbajackArchiveRow> Archives { get; private set; } = [];
-    [Reactive] public string AcquireText { get; private set; } = "";
-    [Reactive] public string InboxText { get; private set; } = "";
-    [Reactive] public string ExtractedSizeText { get; private set; } = "";
-    [Reactive] public string FreeSpaceText { get; private set; } = "";
-    [Reactive] public bool IsFreeSpaceWarning { get; private set; }
-    [Reactive] public IReadOnlyList<WabbajackGameFileChoice> GameFilesReplaced { get; private set; } = [];
+    [Reactive] public partial IReadOnlyList<WabbajackArchiveRow> Archives { get; private set; } = [];
+    [Reactive] public partial string AcquireText { get; private set; } = "";
+    [Reactive] public partial string InboxText { get; private set; } = "";
+    [Reactive] public partial string ExtractedSizeText { get; private set; } = "";
+    [Reactive] public partial string FreeSpaceText { get; private set; } = "";
+    [Reactive] public partial bool IsFreeSpaceWarning { get; private set; }
+    [Reactive] public partial IReadOnlyList<WabbajackGameFileChoice> GameFilesReplaced { get; private set; } = [];
 
-    [Reactive] public bool SkipMissingArchives { get; set; }
-    [Reactive] public bool CanInstall { get; private set; }
-    [Reactive] public bool CanDownload { get; private set; }
-    [Reactive] public bool IsDownloading { get; private set; }
-    [Reactive] public bool HasStartedDownloads { get; private set; }
-    [Reactive] public bool IsInstalling { get; private set; }
-    [Reactive] public string ProgressText { get; private set; } = "";
-    [Reactive] public double ProgressFraction { get; private set; }
-    [Reactive] public string ErrorText { get; private set; } = "";
-    [Reactive] public bool CanResume { get; private set; }
-    [Reactive] public bool IsInstalled { get; private set; }
-    [Reactive] public IReadOnlyList<WabbajackSkippedRow> SkippedFiles { get; private set; } = [];
+    [Reactive] public partial bool SkipMissingArchives { get; set; }
+    [Reactive] public partial bool CanInstall { get; private set; }
+    [Reactive] public partial bool CanDownload { get; private set; }
+    [Reactive] public partial bool IsDownloading { get; private set; }
+    [Reactive] public partial bool HasStartedDownloads { get; private set; }
+    [Reactive] public partial bool IsInstalling { get; private set; }
+    [Reactive] public partial string ProgressText { get; private set; } = "";
+    [Reactive] public partial double ProgressFraction { get; private set; }
+    [Reactive] public partial string ErrorText { get; private set; } = "";
+    [Reactive] public partial bool CanResume { get; private set; }
+    [Reactive] public partial bool IsInstalled { get; private set; }
+    [Reactive] public partial IReadOnlyList<WabbajackSkippedRow> SkippedFiles { get; private set; } = [];
 
     public ReactiveCommand<WabbajackLoadoutChoice, Unit> SelectLoadoutCommand { get; }
     public ReactiveCommand<Unit, Unit> InstallCommand { get; }

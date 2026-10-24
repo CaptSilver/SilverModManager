@@ -23,6 +23,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="ReactiveUI.SourceGenerators" PrivateAssets="all" />
         <PackageReference Include="BitFaster.Caching" />
         <PackageReference Include="DynamicData" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />

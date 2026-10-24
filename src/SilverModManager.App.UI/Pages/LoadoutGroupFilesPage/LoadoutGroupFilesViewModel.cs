@@ -23,22 +23,22 @@ using SilverModManager.Sdk.Games;
 using ObservableCollections;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using CompositeDisposable = System.Reactive.Disposables.CompositeDisposable;
 using SerialDisposable = System.Reactive.Disposables.SerialDisposable;
 
 namespace SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
 
 [UsedImplicitly]
-public class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFilesViewModel>, ILoadoutGroupFilesViewModel
+public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFilesViewModel>, ILoadoutGroupFilesViewModel
 {
     // IViewLoadoutGroupFilesViewModel
-    [Reactive] public LoadoutGroupFilesPageContext? Context { get; set; }
-    [Reactive] public ReactiveCommand<NavigationInformation> OpenEditorCommand { get; [UsedImplicitly] set; } = null!;
-    [Reactive] public ReactiveCommand<Unit> RemoveCommand { get; [UsedImplicitly] set; } = null!;
+    [Reactive] public partial LoadoutGroupFilesPageContext? Context { get; set; }
+    [Reactive] public partial ReactiveCommand<NavigationInformation> OpenEditorCommand { get; [UsedImplicitly] set; } = null!;
+    [Reactive] public partial ReactiveCommand<Unit> RemoveCommand { get; [UsedImplicitly] set; } = null!;
     public ReactiveCommand<Unit> UndoTreatAsMineCommand { get; }
-    [Reactive] public CompositeItemModel<GamePath>? SelectedItem { get; set; }
-    [Reactive] public ViewLoadoutGroupFilesTreeDataGridAdapter? FileTreeAdapter { get; set; }
+    [Reactive] public partial CompositeItemModel<GamePath>? SelectedItem { get; set; }
+    [Reactive] public partial ViewLoadoutGroupFilesTreeDataGridAdapter? FileTreeAdapter { get; set; }
     
     public LoadoutGroupFilesViewModel(
         ILogger<LoadoutGroupFilesViewModel> logger,

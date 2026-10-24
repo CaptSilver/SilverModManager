@@ -15,7 +15,7 @@ using System.ComponentModel;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Networking.HttpDownloader;
 
@@ -331,10 +331,10 @@ public interface IHttpDownloadState : IPublicJobStateData, INotifyPropertyChange
 /// <summary>
 /// Internal mutable state that persists across pause/resume cycles
 /// </summary>
-internal sealed class HttpDownloadState : ReactiveObject, IHttpDownloadState
+internal sealed partial class HttpDownloadState : ReactiveObject, IHttpDownloadState
 {
-    [Reactive] public Optional<Size> ContentLength { get; set; }
-    [Reactive] public Size TotalBytesDownloaded { get; set; }
+    [Reactive] public partial Optional<Size> ContentLength { get; set; }
+    [Reactive] public partial Size TotalBytesDownloaded { get; set; }
     public Optional<EntityTagHeaderValue> ETag { get; set; }
     public Optional<bool> AcceptRanges { get; set; }
 }

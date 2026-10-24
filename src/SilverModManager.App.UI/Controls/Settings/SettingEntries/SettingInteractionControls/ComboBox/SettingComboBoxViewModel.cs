@@ -5,18 +5,18 @@ using SilverModManager.Sdk.Settings;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Settings;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.Settings.SettingEntries;
 
-public class SettingComboBoxViewModel : AViewModel<ISettingComboBoxViewModel>, ISettingComboBoxViewModel
+public partial class SettingComboBoxViewModel : AViewModel<ISettingComboBoxViewModel>, ISettingComboBoxViewModel
 {
     public IPropertyValueContainer ValueContainer => SingleValueMultipleChoiceContainer;
     public SingleValueMultipleChoiceContainer SingleValueMultipleChoiceContainer { get; }
 
     public string[] DisplayItems { get; }
 
-    [Reactive] public int SelectedItemIndex { get; set; }
+    [Reactive] public partial int SelectedItemIndex { get; set; }
 
     public SettingComboBoxViewModel(SingleValueMultipleChoiceContainer valueContainer)
     {

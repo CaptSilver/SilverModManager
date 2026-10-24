@@ -3,18 +3,18 @@ using SilverModManager.Abstractions.Loadouts.Exceptions;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Resources;
 using R3;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 
-public class MessageBoxOkViewModel : AOverlayViewModel<IMessageBoxOkViewModel, Unit>, IMessageBoxOkViewModel
+public partial class MessageBoxOkViewModel : AOverlayViewModel<IMessageBoxOkViewModel, Unit>, IMessageBoxOkViewModel
 {
-    [Reactive] public string Title { get; set; } = Language.CancelDownloadOverlayView_Title;
+    [Reactive] public partial string Title { get; set; } = Language.CancelDownloadOverlayView_Title;
 
     [Reactive]
-    public string Description { get; set; } = "This is some very long design only text that spans multiple lines!! This text is super cool!!";
+    public partial string Description { get; set; } = "This is some very long design only text that spans multiple lines!! This text is super cool!!";
 
-    [Reactive] public required IMarkdownRendererViewModel? MarkdownRenderer { get; set; }
+    [Reactive] public required partial IMarkdownRendererViewModel? MarkdownRenderer { get; set; }
     
     /// <summary>
     /// Shows the 'Game is already Running' error when you try to change a game that the app has launched and is still running.

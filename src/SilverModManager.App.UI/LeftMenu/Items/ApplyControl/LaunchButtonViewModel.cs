@@ -13,23 +13,23 @@ using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.LeftMenu.Items;
 
-public class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>, ILaunchButtonViewModel
+public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>, ILaunchButtonViewModel
 {
-    [Reactive] public LoadoutId LoadoutId { get; set; } = Initializers.LoadoutId;
+    [Reactive] public partial LoadoutId LoadoutId { get; set; } = Initializers.LoadoutId;
 
-    [Reactive] public ReactiveCommand<Unit, Unit> Command { get; set; }
+    [Reactive] public partial ReactiveCommand<Unit, Unit> Command { get; set; }
 
     public IObservable<bool> IsRunningObservable => _gameRunningTracker.GetWithCurrentStateAsStarting();
 
-    [Reactive] public string Label { get; set; } = Language.LaunchButtonViewModel_LaunchGame_LAUNCH;
+    [Reactive] public partial string Label { get; set; } = Language.LaunchButtonViewModel_LaunchGame_LAUNCH;
 
-    [Reactive] public Percent? Progress { get; set; }
+    [Reactive] public partial Percent? Progress { get; set; }
 
-    [Reactive] public bool IsWaitingForSteam { get; private set; }
+    [Reactive] public partial bool IsWaitingForSteam { get; private set; }
 
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
 

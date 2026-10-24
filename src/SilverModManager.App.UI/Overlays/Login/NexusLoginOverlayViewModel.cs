@@ -1,11 +1,11 @@
 ﻿using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Sdk.Jobs;
 using R3;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Overlays.Login;
 
-public class NexusLoginOverlayViewModel : AOverlayViewModel<INexusLoginOverlayViewModel>, INexusLoginOverlayViewModel
+public partial class NexusLoginOverlayViewModel : AOverlayViewModel<INexusLoginOverlayViewModel>, INexusLoginOverlayViewModel
 {
     public NexusLoginOverlayViewModel(IJob job, IJobMonitor jobMonitor, ILoginManager loginManager)
     {
@@ -33,5 +33,5 @@ public class NexusLoginOverlayViewModel : AOverlayViewModel<INexusLoginOverlayVi
 
     public ReactiveCommand Cancel { get; }
     public ReactiveCommand<Unit> UseApiKey { get; }
-    [Reactive] public Uri? Uri { get; private set; }
+    [Reactive] public partial Uri? Uri { get; private set; }
 }

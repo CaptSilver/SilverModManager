@@ -8,12 +8,12 @@ using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using R3;
 
 namespace SilverModManager.App.UI.Controls.MiniGameWidget.Standard;
 
-public class MiniGameWidgetViewModel : AViewModel<IMiniGameWidgetViewModel>, IMiniGameWidgetViewModel
+public partial class MiniGameWidgetViewModel : AViewModel<IMiniGameWidgetViewModel>, IMiniGameWidgetViewModel
 {
     private static readonly Uri MissingGamesUri = new("https://github.com/CaptSilver/SilverModManager#readme");
 
@@ -42,9 +42,9 @@ public class MiniGameWidgetViewModel : AViewModel<IMiniGameWidgetViewModel>, IMi
         );
     }
 
-    [Reactive] public IGame? Game { get; set; }
+    [Reactive] public partial IGame? Game { get; set; }
     public GameInstallation[]? GameInstallations { get; set; }
-    [Reactive] public string Name { get; set; } = "";
+    [Reactive] public partial string Name { get; set; } = "";
     public bool IsFound { get; set; }
     public Bitmap Image => _image.Value;
     public ReactiveUI.ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> GiveFeedbackCommand { get; }

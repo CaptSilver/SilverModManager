@@ -5,28 +5,28 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.Spine.Buttons.Download;
 
-public class SpineDownloadButtonDesignerViewModel : AViewModel<ISpineDownloadButtonViewModel>, ISpineDownloadButtonViewModel
+public partial class SpineDownloadButtonDesignerViewModel : AViewModel<ISpineDownloadButtonViewModel>, ISpineDownloadButtonViewModel
 {
     [Reactive]
-    public double Number { get; set; } = 4.2f;
+    public partial double Number { get; set; } = 4.2f;
 
     [Reactive]
-    public string Units { get; set; } = "MB/s";
+    public partial string Units { get; set; } = "MB/s";
 
     [Reactive]
-    public Optional<Percent> Progress { get; set; }
+    public partial Optional<Percent> Progress { get; set; }
 
     [Reactive]
-    public ReactiveCommand<Unit,Unit> Click { get; set; }
+    public partial ReactiveCommand<Unit,Unit> Click { get; set; }
 
     public IWorkspaceContext? WorkspaceContext { get; set; }
 
     [Reactive]
-    public bool IsActive { get; set; }
+    public partial bool IsActive { get; set; }
 
     public string ToolTip { get; set; } = Language.SpineDownloadButton_ToolTip;
 

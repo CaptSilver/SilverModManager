@@ -24,7 +24,7 @@ using SilverModManager.Sdk;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using CompositeDisposable = System.Reactive.Disposables.CompositeDisposable;
 using ReactiveCommand = ReactiveUI.ReactiveCommand;
 using Unit = System.Reactive.Unit;
@@ -32,7 +32,7 @@ using OneOf;
 
 namespace SilverModManager.App.UI.Pages.Sorting;
 
-public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderViewModel
+public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderViewModel
 {
     public ISortOrderVariety SortOrderVariety { get; }
     public string SortOrderName { get; }
@@ -41,12 +41,12 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
     public ReactiveUI.ReactiveCommand<Unit, Unit> ToggleAlertCommand { get; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> LearnMoreAlertCommand { get; }
     public string TrophyToolTip { get; }
-    [Reactive] public ListSortDirection SortDirectionCurrent { get; set; }
+    [Reactive] public partial ListSortDirection SortDirectionCurrent { get; set; }
     
     public ReactiveUI.ReactiveCommand<Unit, Unit> SwitchSortDirectionCommand { get; }
     
-    [Reactive] public bool IsAscending { get; private set; }
-    [Reactive] public bool IsWinnerTop { get; private set; }
+    [Reactive] public partial bool IsAscending { get; private set; }
+    [Reactive] public partial bool IsWinnerTop { get; private set; }
     public string EmptyStateMessageTitle { get; }
     public string EmptyStateMessageContents { get; }
 
@@ -54,18 +54,18 @@ public class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoadOrderVie
 
     public bool SupportsToggle { get; }
     public ReactiveUI.ReactiveCommand<ISortItemKey, Unit> ToggleEnabledCommand { get; }
-    [Reactive] public string? ReplacedEditSummary { get; private set; }
-    [Reactive] public bool HasReplacedEdit { get; private set; }
+    [Reactive] public partial string? ReplacedEditSummary { get; private set; }
+    [Reactive] public partial bool HasReplacedEdit { get; private set; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> DismissReplacedEditCommand { get; }
-    [Reactive] public string? HoldSummary { get; private set; }
-    [Reactive] public bool HasHold { get; private set; }
+    [Reactive] public partial string? HoldSummary { get; private set; }
+    [Reactive] public partial bool HasHold { get; private set; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> ReleaseHoldCommand { get; }
 
     public bool SupportsLootSort { get; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> SortWithLootCommand { get; }
-    [Reactive] public bool HasLootOutcome { get; private set; }
-    [Reactive] public string? LootOutcomeTitle { get; private set; }
-    [Reactive] public string? LootOutcomeSummary { get; private set; }
+    [Reactive] public partial bool HasLootOutcome { get; private set; }
+    [Reactive] public partial string? LootOutcomeTitle { get; private set; }
+    [Reactive] public partial string? LootOutcomeSummary { get; private set; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> DismissLootOutcomeCommand { get; }
 
     public TreeDataGridAdapter<CompositeItemModel<ISortItemKey>, ISortItemKey> Adapter { get; }

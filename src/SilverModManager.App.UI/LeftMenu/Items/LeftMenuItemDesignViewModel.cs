@@ -5,14 +5,14 @@ using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.LeftMenu.Items;
 
-public class LeftMenuItemDesignViewModel : AViewModel<ILeftMenuItemViewModel>, ILeftMenuItemWithToggleViewModel
+public partial class LeftMenuItemDesignViewModel : AViewModel<ILeftMenuItemViewModel>, ILeftMenuItemWithToggleViewModel
 {
     public StringComponent Text { get; init; } = new("Design Item");
-    [Reactive] public IconValue Icon { get; set; } = IconValues.CogOutline;
+    [Reactive] public partial IconValue Icon { get; set; } = IconValues.CogOutline;
     public string ToolTipText { get; } = "This is design time ToolTip";
 
     public ReactiveCommand<NavigationInformation, Unit> NavigateCommand { get; } = 

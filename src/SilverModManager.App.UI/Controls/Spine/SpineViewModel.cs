@@ -33,12 +33,12 @@ using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.Spine;
 
 [UsedImplicitly]
-public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
+public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<SpineViewModel> _logger;
@@ -57,7 +57,7 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
 
     private Dictionary<WorkspaceId, ILeftMenuViewModel> _leftMenus = new([]);
     private readonly IConnection _conn;
-    [Reactive] public ILeftMenuViewModel? LeftMenuViewModel { get; private set; }
+    [Reactive] public partial ILeftMenuViewModel? LeftMenuViewModel { get; private set; }
 
     public SpineViewModel(
         IServiceProvider serviceProvider,

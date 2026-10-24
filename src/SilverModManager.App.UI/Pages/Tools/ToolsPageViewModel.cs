@@ -12,13 +12,13 @@ using SilverModManager.Sdk.Jobs;
 using SilverModManager.UI.Sdk.Icons;
 using R3;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using Unit = R3.Unit;
 
 namespace SilverModManager.App.UI.Pages.Tools;
 
 [UsedImplicitly]
-internal class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>, IToolsPageViewModel
+internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>, IToolsPageViewModel
 {
     private readonly ILogger<ToolsPageViewModel> _logger;
     private readonly IConnection _conn;
@@ -29,14 +29,14 @@ internal class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>, IToolsP
     private readonly IJobMonitor _monitor;
     private readonly BehaviorSubject<bool> _canRunWindowsProgram = new(false);
 
-    [Reactive] public LoadoutId LoadoutId { get; set; }
-    [Reactive] public IReadOnlyList<ITool> Tools { get; private set; } = [];
-    [Reactive] public IReadOnlyList<UserTool.ReadOnly> UserTools { get; private set; } = [];
-    [Reactive] public bool CanRunWindowsProgram { get; private set; }
-    [Reactive] public string? Diagnostic { get; private set; }
-    [Reactive] public string? PrefixPath { get; private set; }
-    [Reactive] public string? Strategy { get; private set; }
-    [Reactive] public string? LastRunMessage { get; private set; }
+    [Reactive] public partial LoadoutId LoadoutId { get; set; }
+    [Reactive] public partial IReadOnlyList<ITool> Tools { get; private set; } = [];
+    [Reactive] public partial IReadOnlyList<UserTool.ReadOnly> UserTools { get; private set; } = [];
+    [Reactive] public partial bool CanRunWindowsProgram { get; private set; }
+    [Reactive] public partial string? Diagnostic { get; private set; }
+    [Reactive] public partial string? PrefixPath { get; private set; }
+    [Reactive] public partial string? Strategy { get; private set; }
+    [Reactive] public partial string? LastRunMessage { get; private set; }
 
     public R3.ReactiveCommand<ITool> RunToolCommand { get; }
     public R3.ReactiveCommand<Unit> RunWindowsProgramCommand { get; }

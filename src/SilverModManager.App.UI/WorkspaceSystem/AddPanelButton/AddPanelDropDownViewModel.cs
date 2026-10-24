@@ -3,18 +3,18 @@ using DynamicData;
 using DynamicData.Binding;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.WorkspaceSystem;
 
-public class AddPanelDropDownViewModel : AViewModel<IAddPanelDropDownViewModel>, IAddPanelDropDownViewModel
+public partial class AddPanelDropDownViewModel : AViewModel<IAddPanelDropDownViewModel>, IAddPanelDropDownViewModel
 {
     private readonly ObservableCollectionExtended<IAddPanelButtonViewModel> _addPanelButtonViewModels = new();
     public IReadOnlyList<IAddPanelButtonViewModel> AddPanelButtonViewModels => _addPanelButtonViewModels;
 
-    [Reactive] public IAddPanelButtonViewModel? SelectedItem { get; set; }
+    [Reactive] public partial IAddPanelButtonViewModel? SelectedItem { get; set; }
 
-    [Reactive] public int SelectedIndex { get; set; } = -1;
+    [Reactive] public partial int SelectedIndex { get; set; } = -1;
 
     public AddPanelDropDownViewModel(IWorkspaceController workspaceController)
     {

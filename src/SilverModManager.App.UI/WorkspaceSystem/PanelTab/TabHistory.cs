@@ -1,14 +1,14 @@
 using System.Reactive;
 using System.Reactive.Linq;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.WorkspaceSystem;
 
 /// <summary>
 /// The tab history is a linear history of non-ephemeral pages implemented using a ring buffer.
 /// </summary>
-internal class TabHistory : ReactiveObject
+internal partial class TabHistory : ReactiveObject
 {
     /// <summary>
     /// Arbitrarily chosen limit.
@@ -28,12 +28,12 @@ internal class TabHistory : ReactiveObject
     /// <summary>
     /// Points to the head, the first position.
     /// </summary>
-    [Reactive] private int Head { get; set; } = -1;
+    [Reactive] private partial int Head { get; set; } = -1;
 
     /// <summary>
     /// Points to the current position in the history.
     /// </summary>
-    [Reactive] private int Position { get; set; } = -1;
+    [Reactive] private partial int Position { get; set; } = -1;
 
     /// <summary>
     /// Intermediate value used when traversing the history to prevent

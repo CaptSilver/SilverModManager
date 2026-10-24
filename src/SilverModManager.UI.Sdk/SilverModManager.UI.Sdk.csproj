@@ -27,7 +27,6 @@
         <PackageReference Include="QoiSharp" />
         <PackageReference Include="R3" />
         <PackageReference Include="R3Extensions.Avalonia" />
-        <PackageReference Include="ReactiveUI.Fody" />
         <PackageReference Include="SkiaSharp" />
         <PackageReference Include="SkiaSharp.HarfBuzz" />
         <PackageReference Include="SkiaSharp.NativeAssets.Linux" />

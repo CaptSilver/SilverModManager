@@ -7,8 +7,8 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="ReactiveUI.SourceGenerators" PrivateAssets="all" />
         <PackageReference Include="Avalonia.Controls.TreeDataGrid"/>
-        <PackageReference Include="ReactiveUI.Fody"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -13,12 +13,12 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Pages.FromSoftMerges;
 
 [UsedImplicitly]
-public class FromSoftMergesViewModel : APageViewModel<IFromSoftMergesViewModel>, IFromSoftMergesViewModel
+public partial class FromSoftMergesViewModel : APageViewModel<IFromSoftMergesViewModel>, IFromSoftMergesViewModel
 {
     public const string EmptyStateText = "No file is provided by more than one enabled mod";
 
@@ -31,15 +31,15 @@ public class FromSoftMergesViewModel : APageViewModel<IFromSoftMergesViewModel>,
     private readonly ILogger<FromSoftMergesViewModel> _logger;
     private int _generation;
 
-    [Reactive] public LoadoutId LoadoutId { get; set; }
-    [Reactive] public IReadOnlyList<MergeReportEntry> Entries { get; private set; } = [];
-    [Reactive] public string Refusal { get; private set; } = "";
-    [Reactive] public string PriorityOrderHint { get; private set; } = "";
-    [Reactive] public string Problem { get; private set; } = "";
-    [Reactive] public string EmptyState { get; private set; } = "";
-    [Reactive] public bool IsLoading { get; private set; }
-    [Reactive] public MergeReportEntry? Selected { get; set; }
-    [Reactive] public IReadOnlyList<string> SelectedNotes { get; private set; } = [];
+    [Reactive] public partial LoadoutId LoadoutId { get; set; }
+    [Reactive] public partial IReadOnlyList<MergeReportEntry> Entries { get; private set; } = [];
+    [Reactive] public partial string Refusal { get; private set; } = "";
+    [Reactive] public partial string PriorityOrderHint { get; private set; } = "";
+    [Reactive] public partial string Problem { get; private set; } = "";
+    [Reactive] public partial string EmptyState { get; private set; } = "";
+    [Reactive] public partial bool IsLoading { get; private set; }
+    [Reactive] public partial MergeReportEntry? Selected { get; set; }
+    [Reactive] public partial IReadOnlyList<string> SelectedNotes { get; private set; } = [];
 
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
 

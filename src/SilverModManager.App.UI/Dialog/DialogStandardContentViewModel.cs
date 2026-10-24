@@ -1,19 +1,19 @@
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 using ReactiveCommand = R3.ReactiveCommand;
 
 namespace SilverModManager.App.UI.Dialog;
 
-public class DialogStandardContentViewModel : AViewModel<IDialogStandardContentViewModel>, IDialogStandardContentViewModel
+public partial class DialogStandardContentViewModel : AViewModel<IDialogStandardContentViewModel>, IDialogStandardContentViewModel
 {
     public string Text { get; }
     public string Heading { get; }
     public IconValue? Icon { get; }
     public IMarkdownRendererViewModel? MarkdownRenderer { get; }
     public bool ShowMarkdownCopyButton { get; }
-    [Reactive] public string InputText { get; set; }
+    [Reactive] public partial string InputText { get; set; }
     public string InputLabel { get; set; }
     public string InputWatermark { get; set; }
     public string BottomText { get; }

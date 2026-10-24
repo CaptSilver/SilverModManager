@@ -5,15 +5,15 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Sdk.Games;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.MiniGameWidget.Standard;
 
-public class MiniGameWidgetDesignViewModel : AViewModel<IMiniGameWidgetViewModel>, IMiniGameWidgetViewModel
+public partial class MiniGameWidgetDesignViewModel : AViewModel<IMiniGameWidgetViewModel>, IMiniGameWidgetViewModel
 {
     public static MiniGameWidgetDesignViewModel Instance { get; } = new();
 
-    [Reactive] public IGame? Game { get; set; }
+    [Reactive] public partial IGame? Game { get; set; }
     public GameInstallation[]? GameInstallations { get; set; }
     public string Name { get; set; } = "Cyberpunk 2077";
     public bool IsFound { get; set; } = true;

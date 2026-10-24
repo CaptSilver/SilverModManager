@@ -8,16 +8,16 @@ using NexusMods.Paths.Trees;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.Games.AdvancedInstaller.UI;
 
-public class AdvancedInstallerWindowViewModel : AViewModel<IAdvancedInstallerWindowViewModel>,
+public partial class AdvancedInstallerWindowViewModel : AViewModel<IAdvancedInstallerWindowViewModel>,
     IAdvancedInstallerWindowViewModel
 {
 
     /// <InheritDoc/>
-    [Reactive] public IViewModelInterface CurrentPageVM { get; protected set; }
+    [Reactive] public partial IViewModelInterface CurrentPageVM { get; protected set; }
 
     /// <InheritDoc/>
     public IUnsupportedModPageViewModel UnsupportedModVM { get; }

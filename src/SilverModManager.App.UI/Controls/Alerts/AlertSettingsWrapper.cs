@@ -1,17 +1,17 @@
 using SilverModManager.Sdk.Settings;
 using SilverModManager.App.UI.Settings;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Controls.Alerts;
 
-public sealed class AlertSettingsWrapper : ReactiveObject
+public sealed partial class AlertSettingsWrapper : ReactiveObject
 {
     private readonly ISettingsManager? _settingsManager;
 
     public string Key { get; }
 
-    [Reactive] public bool IsDismissed { get; private set; }
+    [Reactive] public partial bool IsDismissed { get; private set; }
 
     public AlertSettingsWrapper()
     {
