@@ -194,7 +194,9 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
 
             if (allRequiredItemsInstalled)
             {
-                tx.Retract(collectionGroup.Id, LoadoutItem.Disabled, Null.Instance);
+                // A group enabled by an earlier run no longer has the marker; retracting it again retracts a datom that doesn't exist.
+                var isDisabled = LoadoutItem.Load(Connection.Db, collectionGroup.Id).IsDisabled;
+                if (isDisabled) tx.Retract(collectionGroup.Id, LoadoutItem.Disabled, Null.Instance);
             }
             else
             {

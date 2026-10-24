@@ -357,6 +357,23 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         last.IsFinished.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task InstallingAgain_LeavesTheEnabledGroupEnabled()
+    {
+        var mods = Enumerable.Range(0, 2).Select(i => (Choices(), $"Fomod mod {i}")).ToArray();
+        var (file, revision, items) = await CreateCollection(mods);
+        var loadout = await CreateLoadout();
+
+        var first = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+        LoadoutItem.Load(Connection.Db, first.Id).IsDisabled.Should().BeFalse("a fully installed collection is enabled");
+
+        // The group no longer carries the disabled marker, so the second run has nothing to retract.
+        var second = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+
+        second.Id.Should().Be(first.Id);
+        LoadoutItem.Load(Connection.Db, second.Id).IsDisabled.Should().BeFalse();
+    }
+
     private static string[] InstalledFileNames(NexusCollectionLoadoutGroup.ReadOnly group, LoadoutId loadout) => LoadoutItem.FindByLoadout(group.Db, loadout)
         .OfTypeLoadoutItemWithTargetPath()
         .OfTypeLoadoutFile()
