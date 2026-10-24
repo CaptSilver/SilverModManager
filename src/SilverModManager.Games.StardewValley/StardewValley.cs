@@ -12,6 +12,7 @@ using SilverModManager.Games.StardewValley.Emitters;
 using SilverModManager.Games.StardewValley.Installers;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Games.Versions;
 using SilverModManager.Sdk.IO;
 
 namespace SilverModManager.Games.StardewValley;
@@ -98,18 +99,22 @@ public class StardewValley : IGame, IGameData<StardewValley>
         return Optional<GamePath>.Create(new GamePath(LocationId.Game, Constants.ModsFolder));
     }
 
-    public Optional<Version> GetLocalVersion(GameInstallation installation)
+    public Optional<Version> GetLocalVersion(GameInstallation installation) => ReadLauncherVersion(installation).Version;
+
+    /// <summary>
+    /// The launcher's version and where it came from. <c>Stardew Valley.dll</c> can lack a usable version resource,
+    /// in which case its assembly metadata and finally <c>Stardew Valley.deps.json</c> are consulted.
+    /// </summary>
+    public LauncherVersion ReadLauncherVersion(GameInstallation installation)
     {
         try
         {
-            var fileInfo = installation.Locations[LocationId.Game].Path.Combine("Stardew Valley.dll").FileInfo;
-            return fileInfo.GetFileVersionInfo().FileVersion;
+            var launcher = installation.Locations[LocationId.Game].Path.Combine("Stardew Valley.dll");
+            return new LauncherVersionReader().Read(launcher);
         }
         catch (Exception)
         {
-            return Optional<Version>.None;
+            return LauncherVersion.Unknown;
         }
     }
-
-
 }
