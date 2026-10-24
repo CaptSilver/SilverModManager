@@ -326,6 +326,7 @@ public static class Services
 
             // Overlay Helpers
             .AddHostedService<NexusLoginOverlayService>()
+            .AddHostedService<OpenUriFailureService>()
 
             // Settings
             .AddUISettings()

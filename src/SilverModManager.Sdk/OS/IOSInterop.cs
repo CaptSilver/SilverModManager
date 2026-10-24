@@ -21,6 +21,12 @@ public interface IOSInterop
     void OpenUri(Uri uri);
 
     /// <summary>
+    /// Raised when <see cref="OpenUri"/> could not hand the Uri to any handler, so the user can be given the link
+    /// to open by hand. May be raised from any thread.
+    /// </summary>
+    event Action<Uri>? OpenUriFailed;
+
+    /// <summary>
     /// Opens the file in the default application handler.
     /// </summary>
     void OpenFile(AbsolutePath filePath);

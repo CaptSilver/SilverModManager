@@ -20,8 +20,16 @@ internal partial class LinuxInterop : IOSInterop
     private readonly XdgSettingsDependency _xdgSettingsDependency;
     private readonly UpdateDesktopDatabaseDependency _updateDesktopDatabaseDependency;
 
-    public LinuxInterop(IServiceProvider serviceProvider)
+    private readonly Func<Uri, Task<ResponseStatus>> _portalOpenUri;
+
+    public event Action<Uri>? OpenUriFailed;
+
+    public LinuxInterop(IServiceProvider serviceProvider) : this(serviceProvider, portalOpenUri: null) { }
+
+    /// <param name="portalOpenUri">Replaces the desktop portal call, so tests never reach D-Bus.</param>
+    internal LinuxInterop(IServiceProvider serviceProvider, Func<Uri, Task<ResponseStatus>>? portalOpenUri)
     {
+        _portalOpenUri = portalOpenUri ?? OpenUriWithPortal;
         _logger = serviceProvider.GetRequiredService<ILogger<LinuxInterop>>();
         _processRunner = serviceProvider.GetRequiredService<IProcessRunner>();
         _fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
@@ -56,7 +64,7 @@ internal partial class LinuxInterop : IOSInterop
     public void OpenUri(Uri uri)
     {
         Debug.Assert(!uri.IsFile, $"use {nameof(OpenFile)} for opening file `{uri}`");
-        OpenUriImpl(uri).FireAndForget(_logger);
+        OpenUriAsync(uri).FireAndForget(_logger);
     }
 
     public void OpenFile(AbsolutePath filePath)
@@ -86,10 +94,60 @@ internal partial class LinuxInterop : IOSInterop
         OpenFileInDirectoryImpl(filePath).FireAndForget(_logger);
     }
 
-    private async Task OpenUriImpl(Uri uri)
+    private async Task<ResponseStatus> OpenUriWithPortal(Uri uri)
     {
         var portal = await GetPortal();
-        await portal.OpenUriAsync(uri);
+        var response = await portal.OpenUriAsync(uri);
+        return response.Status;
+    }
+
+    /// <summary>
+    /// Tries the desktop portal, then <c>xdg-open</c>, and raises <see cref="OpenUriFailed"/> when neither opened it.
+    /// </summary>
+    internal async Task OpenUriAsync(Uri uri)
+    {
+        try
+        {
+            var status = await _portalOpenUri(uri);
+            if (status == ResponseStatus.Success) return;
+
+            // Closing the portal's app chooser is the user's answer, not a failure to recover from.
+            if (status == ResponseStatus.UserCancelled)
+            {
+                _logger.LogInformation("Opening `{Uri}` was cancelled in the desktop portal", uri.AbsoluteUri);
+                return;
+            }
+
+            // An aborted request comes back as a normal response, so without this it ended in nothing and no log line.
+            _logger.LogError("The desktop portal answered {Status} for `{Uri}`, trying xdg-open", status, uri.AbsoluteUri);
+        }
+        catch (Exception e)
+        {
+            // Inside an AppImage the session bus variables are the first suspect, so they go in the log.
+            _logger.LogError(e, "The desktop portal failed to open `{Uri}`, trying xdg-open (DBUS_SESSION_BUS_ADDRESS={DBusAddress}, XDG_RUNTIME_DIR={RuntimeDir}, APPIMAGE={AppImage})",
+                uri.AbsoluteUri,
+                Environment.GetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS") ?? "<unset>",
+                Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR") ?? "<unset>",
+                Environment.GetEnvironmentVariable("APPIMAGE") ?? "<unset>");
+        }
+
+        try
+        {
+            var command = Cli.Wrap("xdg-open")
+                .WithArguments([uri.AbsoluteUri])
+                .WithValidation(CommandResultValidation.None);
+
+            var result = await _processRunner.RunAsync(command, logOutput: true);
+            if (result.ExitCode == 0) return;
+
+            _logger.LogError("xdg-open exited with code {ExitCode} for `{Uri}`", result.ExitCode, uri.AbsoluteUri);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "xdg-open could not be run for `{Uri}`", uri.AbsoluteUri);
+        }
+
+        OpenUriFailed?.Invoke(uri);
     }
  
     private async Task OpenFileImpl(AbsolutePath filePath)
@@ -239,16 +297,40 @@ internal partial class LinuxInterop : IOSInterop
 internal sealed class DesktopPortalConnectionManagerWrapper : IAsyncDisposable
 {
     private readonly SemaphoreSlim _semaphoreSlim = new(initialCount: 1, maxCount: 1);
+    private readonly Func<Task<DesktopPortalConnectionManager>> _connect;
+    private readonly TimeSpan _connectTimeout;
     private DesktopPortalConnectionManager? _instance;
+
+    public DesktopPortalConnectionManagerWrapper() : this(connect: null, connectTimeout: TimeSpan.FromSeconds(10)) { }
+
+    /// <param name="connect">Replaces the D-Bus connect, so tests can make it fail.</param>
+    /// <param name="connectTimeout">How long a call waits for another call's connect to finish.</param>
+    internal DesktopPortalConnectionManagerWrapper(Func<Task<DesktopPortalConnectionManager>>? connect, TimeSpan connectTimeout)
+    {
+        _connect = connect ?? (async () => await DesktopPortalConnectionManager.ConnectAsync());
+        _connectTimeout = connectTimeout;
+    }
 
     private async ValueTask<DesktopPortalConnectionManager> InitAsync()
     {
-        await _semaphoreSlim.WaitAsync(timeout: TimeSpan.FromSeconds(10));
+        // Carrying on without the semaphore would release one this call never took, overflowing it for the holder.
+        if (!await _semaphoreSlim.WaitAsync(timeout: _connectTimeout))
+            throw new TimeoutException($"Timed out after {_connectTimeout} waiting for another call to connect to the desktop portal");
 
-        var manager = await DesktopPortalConnectionManager.ConnectAsync();
-        _instance = manager;
+        try
+        {
+            // A call that waited on the semaphore finds the connection its predecessor made.
+            if (_instance is not null) return _instance;
 
-        return manager;
+            var manager = await _connect();
+            _instance = manager;
+            return manager;
+        }
+        finally
+        {
+            // Kept held, a failed connect made every later call wait out the full timeout.
+            _semaphoreSlim.Release();
+        }
     }
 
     public ValueTask<DesktopPortalConnectionManager> GetInstance()
