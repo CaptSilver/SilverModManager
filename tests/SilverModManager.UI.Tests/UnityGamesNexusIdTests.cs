@@ -10,12 +10,12 @@ using SilverModManager.Sdk.NexusModsApi;
 namespace SilverModManager.UI.Tests;
 
 /// <summary>
-/// The Unity games take their mods from Thunderstore and have no Nexus id, so the places that read a game's Nexus id
-/// have to treat them like any other game without one.
+/// R.E.P.O. and PEAK take mods from Thunderstore and from Nexus Mods, so the places that read a game's Nexus id have to
+/// route Nexus links to them like any other game.
 /// </summary>
 public class UnityGamesNexusIdTests(IServiceProvider provider)
 {
-    private static readonly NexusModsGameId SharedNexusId = NexusModsGameId.From(4242);
+    private static readonly NexusModsGameId UnrelatedNexusId = NexusModsGameId.From(4242);
 
     private IGameData[] UnityGames => provider.GetServices<IGameData>()
         .Where(game => game.GameId == GameId.From("Unity.Repo") || game.GameId == GameId.From("Unity.Peak"))
@@ -28,23 +28,32 @@ public class UnityGamesNexusIdTests(IServiceProvider provider)
     }
 
     [Fact]
-    public void NeitherGameIsOnNexusMods()
+    public void BothGamesAreOnNexusMods()
     {
-        UnityGames.Should().OnlyContain(game => !game.IsOnNexusMods());
+        UnityGames.Should().OnlyContain(game => game.IsOnNexusMods());
     }
 
     [Fact]
-    public void NeitherGameOwnsNexusCollections()
+    public void NeitherGameOwnsNexusCollectionsInAnEmptyDatabase()
     {
         var db = provider.GetRequiredService<IConnection>().Db;
 
         foreach (var game in UnityGames) game.CollectionsOf(db).Should().BeEmpty();
     }
 
-    [Fact]
-    public void NxmRoutingNeverPicksEitherGame()
+    [Theory]
+    [InlineData("Unity.Repo", 7398u)]
+    [InlineData("Unity.Peak", 7867u)]
+    public void NxmRoutingPicksEachGameByItsOwnNexusId(string gameId, uint nexusId)
     {
-        NexusModsGameScope.ResolveNxmGame(UnityGames, SharedNexusId, _ => true, NullLogger.Instance)
+        NexusModsGameScope.ResolveNxmGame(UnityGames, NexusModsGameId.From(nexusId), _ => true, NullLogger.Instance)
+            .Value.GameId.Should().Be(GameId.From(gameId));
+    }
+
+    [Fact]
+    public void NxmRoutingForAnotherGamesIdPicksNeither()
+    {
+        NexusModsGameScope.ResolveNxmGame(UnityGames, UnrelatedNexusId, _ => true, NullLogger.Instance)
             .HasValue.Should().BeFalse();
     }
 }
