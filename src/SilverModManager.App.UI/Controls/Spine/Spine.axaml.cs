@@ -18,12 +18,16 @@ public partial class Spine : ReactiveUserControl<ISpineViewModel>
     private const double LiftScale = 1.15;
     private const double LiftedOpacity = 0.92;
     private static readonly TimeSpan DefaultSlideDuration = TimeSpan.FromMilliseconds(150);
+    private const double EdgeScrollBand = 48;
+    private const double EdgeScrollMaxStep = 14;
+    private static readonly TimeSpan EdgeScrollInterval = TimeSpan.FromMilliseconds(16);
     private static readonly TimeSpan DefaultLiftDuration = TimeSpan.FromMilliseconds(120);
 
     private Point? _pressPoint;
     private int _pressedIndex = -1;
     private DragState? _drag;
     private bool _isSettling;
+    private readonly Avalonia.Threading.DispatcherTimer _edgeScrollTimer;
 
     // The scroll viewer and panels around the loadout list clip to their bounds, which cut the lifted tile's scaled
     // edges and shadow off; clipping is switched off on that chain while a tile is lifted and put back afterwards.
@@ -41,11 +45,19 @@ public partial class Spine : ReactiveUserControl<ISpineViewModel>
         public required IPointer Pointer { get; init; }
         public int Target { get; set; }
         public double Offset { get; set; }
+
+        // Pointer Y in the item panel's coordinates (moves with the content when it scrolls) and in the
+        // scroll viewer's (stays put); the timer needs both to scroll and then re-place the tile.
+        public double PointerPanelY { get; set; }
+        public double PointerViewportY { get; set; }
     }
 
     public Spine()
     {
         InitializeComponent();
+
+        _edgeScrollTimer = new Avalonia.Threading.DispatcherTimer { Interval = EdgeScrollInterval };
+        _edgeScrollTimer.Tick += OnEdgeScrollTick;
 
         this.WhenActivated(disposables =>
         {
@@ -92,6 +104,7 @@ public partial class Spine : ReactiveUserControl<ISpineViewModel>
     {
         if (_drag is { } drag)
         {
+            drag.PointerViewportY = e.GetPosition(LoadoutSelectorScroller).Y;
             UpdateDrag(drag, e.GetPosition(Loadouts.ItemsPanelRoot).Y);
             e.Handled = true;
             return;
@@ -104,7 +117,11 @@ public partial class Spine : ReactiveUserControl<ISpineViewModel>
         var from = _pressedIndex;
         _pressPoint = null;
         BeginDrag(from, start.Y, e.Pointer);
-        if (_drag is { } started) UpdateDrag(started, e.GetPosition(panel).Y);
+        if (_drag is { } started)
+        {
+            started.PointerViewportY = e.GetPosition(LoadoutSelectorScroller).Y;
+            UpdateDrag(started, e.GetPosition(panel).Y);
+        }
         e.Handled = true;
     }
 
@@ -163,6 +180,7 @@ public partial class Spine : ReactiveUserControl<ISpineViewModel>
         };
 
         pointer.Capture(Loadouts);
+        _edgeScrollTimer.Start();
         TopLevel.GetTopLevel(this)?.AddHandler(KeyDownEvent, OnTopLevelKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
 
         for (var i = 0; i < icons.Count; i++)
@@ -187,8 +205,27 @@ public partial class Spine : ReactiveUserControl<ISpineViewModel>
         });
     }
 
+    // The tile tops captured in BeginDrag are in the item panel's coordinates, which don't change when the scroll viewer
+    // scrolls, so only the pointer has to be re-expressed: its panel Y moves by exactly the distance scrolled.
+    private void OnEdgeScrollTick(object? sender, EventArgs e)
+    {
+        if (_drag is not { } drag || _isSettling) return;
+
+        var scroller = LoadoutSelectorScroller;
+        var step = SpineDragLayout.EdgeScrollStep(drag.PointerViewportY, scroller.Viewport.Height, EdgeScrollBand, EdgeScrollMaxStep);
+        if (step == 0) return;
+
+        var before = scroller.Offset.Y;
+        scroller.Offset = scroller.Offset.WithY(before + step);
+        var scrolled = scroller.Offset.Y - before;
+        if (scrolled == 0) return;
+
+        UpdateDrag(drag, drag.PointerPanelY + scrolled);
+    }
+
     private void UpdateDrag(DragState drag, double pointerY)
     {
+        drag.PointerPanelY = pointerY;
         drag.Offset = SpineDragLayout.ClampOffset(drag.Tops, drag.Heights, drag.From, pointerY - drag.StartY);
         drag.Tile.RenderTransform = Transform(drag.Offset, LiftScale);
 
@@ -245,6 +282,7 @@ public partial class Spine : ReactiveUserControl<ISpineViewModel>
         var drag = _drag;
         _drag = null;
         _pressPoint = null;
+        _edgeScrollTimer.Stop();
         TopLevel.GetTopLevel(this)?.RemoveHandler(KeyDownEvent, OnTopLevelKeyDown);
 
         foreach (var icon in Icons)

@@ -78,4 +78,25 @@ internal static class SpineDragLayout
         _ = y;
         return x >= -listWidth && x <= 2 * listWidth;
     }
+
+    /// <summary>
+    /// How far to scroll per tick while a lifted tile is held at <paramref name="pointerY"/>, relative to the top of the
+    /// viewport: negative scrolls up, positive down, zero in the middle. The step grows linearly from nothing at the inner
+    /// edge of the <paramref name="band"/> to <paramref name="maxStep"/> at the viewport's edge, and stays there for a
+    /// pointer dragged beyond it.
+    /// </summary>
+    public static double EdgeScrollStep(double pointerY, double viewportHeight, double band, double maxStep)
+    {
+        // A viewport shorter than two bands would have them overlap; each side then only gets half.
+        band = Math.Min(band, viewportHeight / 2);
+        if (band <= 0) return 0;
+
+        var intoTop = band - pointerY;
+        if (intoTop > 0) return -maxStep * Math.Min(intoTop / band, 1);
+
+        var intoBottom = pointerY - (viewportHeight - band);
+        if (intoBottom > 0) return maxStep * Math.Min(intoBottom / band, 1);
+
+        return 0;
+    }
 }

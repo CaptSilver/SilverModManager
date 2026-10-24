@@ -129,4 +129,27 @@ public class SpineDragLayoutTests
         // The tile is clamped to the list, so the slot it shows is the one meant however far up or down the pointer went.
         SpineDragLayout.CommitsOnRelease(listWidth: 60, x, y).Should().Be(commits);
     }
+
+    [Theory]
+    // A 300 px tall viewport with a 40 px edge band that tops out at 12 px per tick.
+    [InlineData(150, 0)]
+    [InlineData(40, 0)]
+    [InlineData(260, 0)]
+    [InlineData(20, -6)]
+    [InlineData(0, -12)]
+    [InlineData(-50, -12)]
+    [InlineData(280, 6)]
+    [InlineData(300, 12)]
+    [InlineData(400, 12)]
+    public void EdgeScrollStep_scrolls_faster_the_closer_the_pointer_is_to_an_edge_and_not_at_all_outside_the_band(double pointerY, double expected)
+    {
+        SpineDragLayout.EdgeScrollStep(pointerY, viewportHeight: 300, band: 40, maxStep: 12).Should().BeApproximately(expected, 1e-9);
+    }
+
+    [Fact]
+    public void EdgeScrollStep_in_a_viewport_shorter_than_two_bands_scrolls_towards_the_nearer_edge()
+    {
+        SpineDragLayout.EdgeScrollStep(pointerY: 10, viewportHeight: 50, band: 40, maxStep: 12).Should().BeLessThan(0);
+        SpineDragLayout.EdgeScrollStep(pointerY: 40, viewportHeight: 50, band: 40, maxStep: 12).Should().BeGreaterThan(0);
+    }
 }
