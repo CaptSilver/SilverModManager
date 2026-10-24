@@ -25,6 +25,10 @@ public partial class Spine : ReactiveUserControl<ISpineViewModel>
     private DragState? _drag;
     private bool _isSettling;
 
+    // The scroll viewer and panels around the loadout list clip to their bounds, which cut the lifted tile's scaled
+    // edges and shadow off; clipping is switched off on that chain while a tile is lifted and put back afterwards.
+    private readonly List<(Visual Visual, bool ClipToBounds)> _unclipped = [];
+
     /// <summary>Layout snapshot and live position of the tile being dragged.</summary>
     private sealed class DragState
     {
@@ -170,6 +174,7 @@ public partial class Spine : ReactiveUserControl<ISpineViewModel>
 
         // The lifted tile eases up to its raised look; once that is done it must track the pointer without lag.
         tile.ZIndex = 100;
+        UnclipAncestors(tile);
         tile.Opacity = LiftedOpacity;
         tile.Effect = new DropShadowEffect { OffsetX = 0, OffsetY = 3, BlurRadius = 10, Color = Colors.Black, Opacity = 0.45 };
         tile.Transitions = SlideTransitions(LiftDuration);
@@ -252,6 +257,24 @@ public partial class Spine : ReactiveUserControl<ISpineViewModel>
         }
 
         if (drag?.Pointer.Captured == Loadouts) drag.Pointer.Capture(null);
+        RestoreClipping();
+    }
+
+    private void UnclipAncestors(Visual tile)
+    {
+        RestoreClipping();
+        for (var visual = tile.GetVisualParent(); visual != null; visual = visual.GetVisualParent())
+        {
+            _unclipped.Add((visual, visual.ClipToBounds));
+            visual.ClipToBounds = false;
+            if (ReferenceEquals(visual, this)) break;
+        }
+    }
+
+    private void RestoreClipping()
+    {
+        foreach (var (visual, clipToBounds) in _unclipped) visual.ClipToBounds = clipToBounds;
+        _unclipped.Clear();
     }
 
     private TimeSpan SlideDuration => ThemeDuration("SpineReorderSlideDuration", DefaultSlideDuration);
