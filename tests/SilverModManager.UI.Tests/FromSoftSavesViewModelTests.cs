@@ -23,7 +23,7 @@ public class FromSoftSavesViewModelTests(IServiceProvider provider) : AUiTest(pr
 {
     private const string Account = "76561198000000001";
 
-    private sealed class Fixture : IDisposable
+    internal sealed class Fixture : IDisposable
     {
         public string Root { get; } = Directory.CreateTempSubdirectory("silvermod-saves-vm-").FullName;
         public IProcessTracker Tracker { get; } = Substitute.For<IProcessTracker>();

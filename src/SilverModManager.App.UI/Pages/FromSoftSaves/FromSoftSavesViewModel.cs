@@ -16,12 +16,12 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+using ReactiveUI.SourceGenerators;
 
 namespace SilverModManager.App.UI.Pages.FromSoftSaves;
 
 [UsedImplicitly]
-public class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewModel>, IFromSoftSavesViewModel
+public partial class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewModel>, IFromSoftSavesViewModel
 {
     private static readonly TimeSpan SteamPollInterval = TimeSpan.FromSeconds(2);
 
@@ -31,23 +31,23 @@ public class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewModel>, I
     private SaveBackup? _pendingRestore;
     private SaveFolder? _pendingRestoreFolder;
 
-    [Reactive] public LoadoutId LoadoutId { get; set; }
-    [Reactive] public GameInstallation? Installation { get; set; }
-    [Reactive] public string Problem { get; private set; } = "";
-    [Reactive] public IReadOnlyList<SaveFolder> Folders { get; private set; } = [];
-    [Reactive] public SaveFolder? SelectedFolder { get; set; }
-    [Reactive] public IReadOnlyList<SaveFileEntry> Files { get; private set; } = [];
-    [Reactive] public SaveFileEntry? SelectedFile { get; set; }
-    [Reactive] public IReadOnlyList<SaveBackup> Backups { get; private set; } = [];
-    [Reactive] public SaveBackup? SelectedBackup { get; set; }
-    [Reactive] public bool IsSteamRunning { get; private set; }
-    [Reactive] public bool CanQuarantine { get; private set; }
-    [Reactive] public string QuarantineDisabledReason { get; private set; } = "";
-    [Reactive] public string RestorePrompt { get; private set; } = "";
-    [Reactive] public string Message { get; private set; } = "";
-    [Reactive] public IReadOnlyList<string> Notes { get; private set; } = [];
-    [Reactive] public bool HasTaintedSave { get; private set; }
-    [Reactive] public string TaintedMessage { get; private set; } = "";
+    [Reactive] public partial LoadoutId LoadoutId { get; set; }
+    [Reactive] public partial GameInstallation? Installation { get; set; }
+    [Reactive] public partial string Problem { get; private set; } = "";
+    [Reactive] public partial IReadOnlyList<SaveFolder> Folders { get; private set; } = [];
+    [Reactive] public partial SaveFolder? SelectedFolder { get; set; }
+    [Reactive] public partial IReadOnlyList<SaveFileEntry> Files { get; private set; } = [];
+    [Reactive] public partial SaveFileEntry? SelectedFile { get; set; }
+    [Reactive] public partial IReadOnlyList<SaveBackup> Backups { get; private set; } = [];
+    [Reactive] public partial SaveBackup? SelectedBackup { get; set; }
+    [Reactive] public partial bool IsSteamRunning { get; private set; }
+    [Reactive] public partial bool CanQuarantine { get; private set; }
+    [Reactive] public partial string QuarantineDisabledReason { get; private set; } = "";
+    [Reactive] public partial string RestorePrompt { get; private set; } = "";
+    [Reactive] public partial string Message { get; private set; } = "";
+    [Reactive] public partial IReadOnlyList<string> Notes { get; private set; } = [];
+    [Reactive] public partial bool HasTaintedSave { get; private set; }
+    [Reactive] public partial string TaintedMessage { get; private set; } = "";
 
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
     public ReactiveCommand<Unit, Unit> BackupCommand { get; }
