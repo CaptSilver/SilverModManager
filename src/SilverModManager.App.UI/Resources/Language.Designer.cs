@@ -3859,6 +3859,60 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Update now.
+        /// </summary>
+        public static string Updater_UpdateNow {
+            get {
+                return ResourceManager.GetString("Updater_UpdateNow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Later.
+        /// </summary>
+        public static string Updater_Later {
+            get {
+                return ResourceManager.GetString("Updater_Later", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Restart now.
+        /// </summary>
+        public static string Updater_RestartNow {
+            get {
+                return ResourceManager.GetString("Updater_RestartNow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Downloading the update....
+        /// </summary>
+        public static string Updater_Downloading {
+            get {
+                return ResourceManager.GetString("Updater_Downloading", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The update is installed. Restart to start using it..
+        /// </summary>
+        public static string Updater_Installed {
+            get {
+                return ResourceManager.GetString("Updater_Installed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The update failed: {0}.
+        /// </summary>
+        public static string Updater_Failed {
+            get {
+                return ResourceManager.GetString("Updater_Failed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to You can update the app using Flatpak..
         /// </summary>
         public static string Updater_UseFlatpak {

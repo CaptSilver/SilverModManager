@@ -51,6 +51,24 @@
     <data name="Updater_UseFlatpak" xml:space="preserve">
         <value>You can update the app using Flatpak.</value>
     </data>
+    <data name="Updater_UpdateNow" xml:space="preserve">
+        <value>Update now</value>
+    </data>
+    <data name="Updater_Later" xml:space="preserve">
+        <value>Later</value>
+    </data>
+    <data name="Updater_RestartNow" xml:space="preserve">
+        <value>Restart now</value>
+    </data>
+    <data name="Updater_Downloading" xml:space="preserve">
+        <value>Downloading the update...</value>
+    </data>
+    <data name="Updater_Installed" xml:space="preserve">
+        <value>The update is installed. Restart to start using it.</value>
+    </data>
+    <data name="Updater_Failed" xml:space="preserve">
+        <value>The update failed: {0}</value>
+    </data>
 
 
     <data name="LoadoutGridView_AddMod_FilePicker_Title" xml:space="preserve">

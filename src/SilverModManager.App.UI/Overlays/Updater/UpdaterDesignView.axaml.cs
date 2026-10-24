@@ -29,7 +29,8 @@ public partial class UpdaterDesignView : UserControl
             currentVersion: new Version("1.0.0"),
             latestVersion: new Version("2.0.0"),
             releaseWebUri: new Uri("https://example.com"),
-            assetDownloadUri: hasAsset ? new Uri("https://example.com") : null
+            assetDownloadUri: hasAsset ? new Uri("https://example.com") : null,
+            inAppUpdate: null
         );
     }
 }

@@ -24,6 +24,8 @@
                 </DockPanel>
                 <TextBlock x:Name="TextGenericBody" TextWrapping="WrapWithOverflow" />
                 <TextBlock x:Name="TextInstructions" TextWrapping="WrapWithOverflow" />
+                <ProgressBar x:Name="DownloadProgress" Minimum="0" Maximum="1" IsVisible="False" />
+                <TextBlock x:Name="TextStatus" TextWrapping="WrapWithOverflow" IsVisible="False" />
             </StackPanel>
         </base:MessageBoxBackground.TopContent>
 
@@ -42,6 +44,16 @@
                                          Fill="Weak"
                                          LeftIcon="{x:Static icons:IconValues.OpenInNew}"
                                          ShowIcon="Left"/>
+                <controls:StandardButton x:Name="ButtonRestartNow"
+                                         Text="Restart now"
+                                         Type="Primary"
+                                         Fill="Strong"
+                                         IsVisible="False"/>
+                <controls:StandardButton x:Name="ButtonUpdateNow"
+                                         Text="Update now"
+                                         Type="Primary"
+                                         Fill="Strong"
+                                         IsVisible="False"/>
                 <controls:StandardButton x:Name="ButtonDownloadReleaseAssetInBrowser"
                                          Text="Download Update"
                                          Type="Primary"
