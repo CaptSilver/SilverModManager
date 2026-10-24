@@ -37,6 +37,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
     [Reactive] public partial string ErrorText { get; private set; } = "";
     [Reactive] public partial bool IsRefreshing { get; private set; }
 
+    public IThunderstoreIconLoader Icons { get; }
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
     public ReactiveCommand<ThunderstorePackageRow, Unit> OpenPackageCommand { get; }
     public ReactiveCommand<ThunderstorePackageRow, Unit> InstallCommand { get; }
@@ -49,6 +50,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         IThunderstoreSource source,
         ILoadoutManager loadoutManager,
         IOSInterop osInterop,
+        IThunderstoreIconLoader icons,
         ILogger<ThunderstoreViewModel> logger) : base(windowManager)
     {
         _connection = connection;
@@ -57,6 +59,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         _source = source;
         _loadoutManager = loadoutManager;
         _logger = logger;
+        Icons = icons;
 
         TabIcon = IconValues.Download;
         TabTitle = "Thunderstore";
@@ -218,6 +221,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
     private static ThunderstorePackageRow ToRow(SilverModManager.Networking.Thunderstore.DTOs.PackageListing package)
     {
         var latest = package.Versions.FirstOrDefault(v => v.IsActive) ?? package.Versions.FirstOrDefault();
+        var displayName = ThunderstoreRowText.DisplayName(package.Name, package.Owner);
         return new ThunderstorePackageRow(
             package.FullName,
             latest?.VersionNumber ?? "",
@@ -225,6 +229,10 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
             package.IsDeprecated,
             latest?.Description ?? "",
             Uri.TryCreate(package.PackageUrl, UriKind.Absolute, out var url) ? url : null,
-            LatestRef(package, latest));
+            LatestRef(package, latest),
+            package.Owner ?? "",
+            displayName != "" ? displayName : package.FullName,
+            Uri.TryCreate(latest?.Icon, UriKind.Absolute, out var icon) ? icon : null,
+            package.Versions.Sum(version => version.Downloads));
     }
 }

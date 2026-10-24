@@ -200,6 +200,10 @@ public static class Services
             .AddViewModel<ChangelogPageViewModel, IChangelogPageViewModel>()
             .AddView<ThunderstoreView, IThunderstoreViewModel>()
             .AddViewModel<ThunderstoreViewModel, IThunderstoreViewModel>()
+            .AddSingleton<IThunderstoreIconLoader>(serviceProvider => new ThunderstoreIconLoader(
+                ImagePipelines.GetThunderstoreIconPipeline(serviceProvider),
+                ImagePipelines.ModPageThumbnailFallback,
+                logger: serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ThunderstoreIconLoader>>()))
             .AddView<WabbajackModlistView, IWabbajackModlistViewModel>()
             .AddViewModel<WabbajackModlistViewModel, IWabbajackModlistViewModel>()
             .AddSingleton<IWabbajackModlistService, WabbajackModlistService>()

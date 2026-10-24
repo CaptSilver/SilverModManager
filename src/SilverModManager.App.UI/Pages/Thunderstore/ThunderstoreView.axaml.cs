@@ -1,6 +1,6 @@
 using System.Reactive.Disposables;
 using Avalonia.Controls;
-using Avalonia.Media;
+using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using ReactiveUI;
@@ -30,38 +30,23 @@ public partial class ThunderstoreView : ReactiveUserControl<IThunderstoreViewMod
                 })
                 .DisposeWith(disposables);
 
-            // Rows are rebuilt as a whole on every filter change; the list is capped by what a person scrolls through.
+            // The template builds a row only when the list realizes it, so the whole catalog can be bound as is.
             viewModel.WhenAnyValue(vm => vm.Packages)
-                .Subscribe(packages => PackageList.ItemsSource = packages.Select(package => Row(viewModel, package)).ToArray())
+                .Subscribe(packages => PackageList.ItemsSource = packages)
                 .DisposeWith(disposables);
         });
     }
 
-    private static Control Row(IThunderstoreViewModel viewModel, ThunderstorePackageRow package)
+    private static ThunderstorePackageRow? RowOf(object? sender) => (sender as Control)?.DataContext as ThunderstorePackageRow;
+
+    // Through ICommand, which honours CanExecute: the command is disabled while it runs, so a double click can't start a second install.
+    private void OnInstallClick(object? sender, RoutedEventArgs e)
     {
-        var title = $"{package.FullName}  {package.LatestVersion}  (rating {package.Rating:0})" + (package.IsDeprecated ? "  [deprecated]" : "");
-        var panel = new StackPanel { Spacing = 2, Margin = new Avalonia.Thickness(0, 4) };
-        panel.Children.Add(new TextBlock { Text = title, FontWeight = FontWeight.SemiBold });
-        if (package.Description != "") panel.Children.Add(new TextBlock { Text = package.Description, TextWrapping = TextWrapping.Wrap });
+        if (ViewModel is { } viewModel && RowOf(sender) is { } row) ((System.Windows.Input.ICommand)viewModel.InstallCommand).Execute(row);
+    }
 
-        var buttons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8 };
-        if (package.Latest is not null)
-        {
-            var install = new Button { Content = "Install" };
-            // Through ICommand, which honours CanExecute: the command is disabled while it runs, so a double click can't start a second install.
-            install.Click += (_, _) => ((System.Windows.Input.ICommand)viewModel.InstallCommand).Execute(package);
-            buttons.Children.Add(install);
-        }
-
-        if (package.PackageUrl is not null)
-        {
-            var link = new Button { Content = "Open on thunderstore.io" };
-            link.Click += (_, _) => viewModel.OpenPackageCommand.Execute(package).Subscribe();
-            buttons.Children.Add(link);
-        }
-
-        if (buttons.Children.Count > 0) panel.Children.Add(buttons);
-
-        return panel;
+    private void OnOpenClick(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel is { } viewModel && RowOf(sender) is { } row) viewModel.OpenPackageCommand.Execute(row).Subscribe();
     }
 }

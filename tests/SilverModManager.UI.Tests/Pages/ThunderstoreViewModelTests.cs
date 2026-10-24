@@ -120,7 +120,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         await tx.Commit();
     }
 
-    private static PackageListing Package(string team, string name, double rating, bool deprecated = false, string version = "1.0.0", string[]? categories = null)
+    private static PackageListing Package(string team, string name, double rating, bool deprecated = false, string version = "1.0.0", string[]? categories = null, string? icon = null, long downloads = 0)
         => new()
         {
             Name = name,
@@ -138,6 +138,8 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
                     FullName = $"{team}-{name}-{version}",
                     VersionNumber = version,
                     Description = $"{name} does things",
+                    Icon = icon,
+                    Downloads = downloads,
                     DownloadUrl = $"https://thunderstore.io/package/download/{team}/{name}/{version}/",
                 },
             ],
@@ -190,6 +192,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
             installs,
             loadoutManager,
             Substitute.For<IOSInterop>(),
+            Substitute.For<IThunderstoreIconLoader>(),
             NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = loadoutId,
@@ -308,7 +311,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
     {
         var vm = new ThunderstoreViewModel(
             Provider.GetRequiredService<IWindowManager>(), Connection, [], new FakeCatalogSource(Catalog()),
-            new FakeInstallSource(), Substitute.For<ILoadoutManager>(), Substitute.For<IOSInterop>(), NullLogger<ThunderstoreViewModel>.Instance)
+            new FakeInstallSource(), Substitute.For<ILoadoutManager>(), Substitute.For<IOSInterop>(), Substitute.For<IThunderstoreIconLoader>(), NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = (await SeedLoadout()).Id,
         };
@@ -380,7 +383,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         var os = Substitute.For<IOSInterop>();
         var (loadoutId, game) = await SeedLoadout();
         var withOs = new ThunderstoreViewModel(Provider.GetRequiredService<IWindowManager>(), Connection,
-            [game], new FakeCatalogSource(Catalog()), new FakeInstallSource(), Substitute.For<ILoadoutManager>(), os, NullLogger<ThunderstoreViewModel>.Instance)
+            [game], new FakeCatalogSource(Catalog()), new FakeInstallSource(), Substitute.For<ILoadoutManager>(), os, Substitute.For<IThunderstoreIconLoader>(), NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = loadoutId,
         };
@@ -389,5 +392,63 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         await withOs.OpenPackageCommand.Execute(withOs.Packages[0]);
 
         os.Received(1).OpenUri(new Uri("https://thunderstore.io/c/repo/p/BepInEx/BepInExPack/"));
+    }
+
+    [Fact]
+    public async Task Rows_CarryOwnerReadableNameIconAndDownloads()
+    {
+        var catalog = new ThunderstoreCatalog("repo",
+        [
+            Package("glarmer", "PEAK_Unlimited", rating: 112, icon: "https://gcdn.thunderstore.io/live/repository/icons/glarmer-PEAK_Unlimited-4.0.2.png", downloads: 1_234_567),
+        ]);
+        var (vm, _) = await Open(new FakeCatalogSource(catalog));
+
+        var row = vm.Packages.Should().ContainSingle().Subject;
+        row.Owner.Should().Be("glarmer");
+        row.DisplayName.Should().Be("PEAK Unlimited");
+        row.FullName.Should().Be("glarmer-PEAK_Unlimited");
+        row.IconUrl.Should().Be(new Uri("https://gcdn.thunderstore.io/live/repository/icons/glarmer-PEAK_Unlimited-4.0.2.png"));
+        row.Downloads.Should().Be(1_234_567);
+    }
+
+    [Fact]
+    public async Task Rows_DownloadsAreSummedOverAllVersions()
+    {
+        var package = Package("Zehs", "REPOLib", rating: 1) with
+        {
+            Versions =
+            [
+                new PackageVersion { Name = "REPOLib", FullName = "Zehs-REPOLib-2.0.0", VersionNumber = "2.0.0", DownloadUrl = "https://example.com/2", Icon = "https://example.com/new.png", Downloads = 40 },
+                new PackageVersion { Name = "REPOLib", FullName = "Zehs-REPOLib-1.0.0", VersionNumber = "1.0.0", DownloadUrl = "https://example.com/1", Icon = "https://example.com/old.png", Downloads = 2 },
+            ],
+        };
+        var (vm, _) = await Open(new FakeCatalogSource(new ThunderstoreCatalog("repo", [package])));
+
+        vm.Packages[0].Downloads.Should().Be(42);
+        vm.Packages[0].IconUrl.Should().Be(new Uri("https://example.com/new.png"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("not a url")]
+    public async Task Rows_WithoutAUsableIcon_HaveNoIconUrl(string? icon)
+    {
+        var (vm, _) = await Open(new FakeCatalogSource(new ThunderstoreCatalog("repo", [Package("Zehs", "REPOLib", rating: 1, icon: icon)])));
+
+        vm.Packages[0].IconUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Search_StillMatchesTheOwnerAndTheRawFullName()
+    {
+        var catalog = new ThunderstoreCatalog("repo", [Package("glarmer", "PEAK_Unlimited", rating: 1), Package("Zehs", "REPOLib", rating: 2)]);
+        var (vm, _) = await Open(new FakeCatalogSource(catalog));
+
+        vm.SearchText = "glarmer";
+        Names(vm).Should().Equal("glarmer-PEAK_Unlimited");
+
+        vm.SearchText = "PEAK_Unlimited";
+        Names(vm).Should().Equal("glarmer-PEAK_Unlimited");
     }
 }

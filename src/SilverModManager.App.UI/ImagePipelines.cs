@@ -24,6 +24,7 @@ public static class ImagePipelines
     private const string GuidedInstallerRemoteImagePipelineKey = nameof(GuidedInstallerRemoteImagePipelineKey);
     private const string GuidedInstallerFileImagePipelineKey = nameof(GuidedInstallerFileImagePipelineKey);
     private const string MarkdownRendererRemoteImagePipelineKey = nameof(MarkdownRendererRemoteImagePipelineKey);
+    private const string ThunderstoreIconPipelineKey = nameof(ThunderstoreIconPipelineKey);
 
     private static readonly Bitmap CollectionTileFallback = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/collection-tile-fallback.png")));
     private static readonly Bitmap CollectionBackgroundFallback = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/collection-background-fallback.png")));
@@ -82,6 +83,12 @@ public static class ImagePipelines
                     fileStore: serviceProvider.GetRequiredService<IFileStore>()
                 )
             )
+            .AddKeyedSingleton<IResourceLoader<Uri, Bitmap>>(
+                serviceKey: ThunderstoreIconPipelineKey,
+                implementationFactory: static (serviceProvider, _) => CreateThunderstoreIconPipeline(
+                    httpClient: serviceProvider.GetRequiredService<HttpClient>()
+                )
+            )
             .AddKeyedSingleton<IResourceLoader<Uri, IImage>>(
                 serviceKey: MarkdownRendererRemoteImagePipelineKey,
                 implementationFactory: static (serviceProvider, _) => CreateMarkdownRendererRemoteImagePipeline(
@@ -122,6 +129,15 @@ public static class ImagePipelines
     public static IResourceLoader<Hash, Bitmap> GetGuidedInstallerFileImagePipeline(IServiceProvider serviceProvider)
     {
         return serviceProvider.GetRequiredKeyedService<IResourceLoader<Hash, Bitmap>>(serviceKey: GuidedInstallerFileImagePipelineKey);
+    }
+
+    /// <summary>
+    /// Input: the icon URL of a Thunderstore package
+    /// Output: a bitmap downsized to what the 64px thumbnail needs; failures throw, the caller decides the placeholder.
+    /// </summary>
+    public static IResourceLoader<Uri, Bitmap> GetThunderstoreIconPipeline(IServiceProvider serviceProvider)
+    {
+        return serviceProvider.GetRequiredKeyedService<IResourceLoader<Uri, Bitmap>>(serviceKey: ThunderstoreIconPipelineKey);
     }
 
     public static IResourceLoader<Uri, IImage> GetMarkdownRendererRemoteImagePipeline(IServiceProvider serviceProvider)
@@ -236,6 +252,18 @@ public static class ImagePipelines
     {
         var pipeline = new HttpLoader(httpClient)
             .Decode(decoderType: DecoderType.Skia)
+            .ToAvaloniaBitmap();
+
+        return pipeline;
+    }
+
+    // Thunderstore serves 256x256 icons; twice the displayed size keeps them sharp on a scaled display and a
+    // decoded bitmap at 128x128 stays small enough to keep hundreds of them in memory.
+    internal static IResourceLoader<Uri, Bitmap> CreateThunderstoreIconPipeline(HttpClient httpClient)
+    {
+        var pipeline = new HttpLoader(httpClient)
+            .Decode(decoderType: DecoderType.Skia)
+            .Resize(newSize: new SKSizeI(128, 128))
             .ToAvaloniaBitmap();
 
         return pipeline;

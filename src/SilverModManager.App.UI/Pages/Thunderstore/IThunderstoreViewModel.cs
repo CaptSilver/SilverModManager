@@ -21,6 +21,9 @@ public interface IThunderstoreViewModel : IPageViewModelInterface
     /// <summary>The packages matching <see cref="SearchText"/>, best rated first.</summary>
     IReadOnlyList<ThunderstorePackageRow> Packages { get; }
 
+    /// <summary>Where the rows get their package icons, each fetched when its row is on screen.</summary>
+    IThunderstoreIconLoader Icons { get; }
+
     /// <summary>Why the catalog is missing or could not be refreshed; empty when nothing went wrong.</summary>
     string ErrorText { get; }
 

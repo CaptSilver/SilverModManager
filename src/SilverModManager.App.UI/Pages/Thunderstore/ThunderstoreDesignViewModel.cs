@@ -14,11 +14,12 @@ public class ThunderstoreDesignViewModel : APageViewModel<IThunderstoreViewModel
 
     public IReadOnlyList<ThunderstorePackageRow> Packages { get; } =
     [
-        new("BepInEx-BepInExPack", "5.4.2305", 1500, false, "Unity mod loader", new Uri("https://thunderstore.io/c/repo/p/BepInEx/BepInExPack/")),
-        new("Zehs-REPOLib", "4.2.0", 900, false, "Library for R.E.P.O. mod developers", new Uri("https://thunderstore.io/c/repo/p/Zehs/REPOLib/")),
-        new("Old-Abandoned", "0.3.1", 12, true, "No longer maintained", null),
+        new("BepInEx-BepInExPack", "5.4.2305", 1500, false, "Unity mod loader", new Uri("https://thunderstore.io/c/repo/p/BepInEx/BepInExPack/"), Owner: "BepInEx", DisplayName: "BepInExPack", Downloads: 4_200_000),
+        new("Zehs-REPOLib", "4.2.0", 900, false, "Library for R.E.P.O. mod developers", new Uri("https://thunderstore.io/c/repo/p/Zehs/REPOLib/"), Owner: "Zehs", DisplayName: "REPOLib", Downloads: 830_000),
+        new("Old-Abandoned", "0.3.1", 12, true, "No longer maintained", null, Owner: "Old", DisplayName: "Abandoned", Downloads: 900),
     ];
 
+    public IThunderstoreIconLoader Icons { get; } = new DesignIconLoader();
     public string ErrorText => "";
     public bool IsRefreshing => false;
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; } = ReactiveCommand.Create(() => { });
@@ -27,4 +28,11 @@ public class ThunderstoreDesignViewModel : APageViewModel<IThunderstoreViewModel
     public ReactiveCommand<ThunderstorePackageRow, Unit> InstallCommand { get; } = ReactiveCommand.Create<ThunderstorePackageRow>(_ => { });
 
     public ThunderstoreDesignViewModel() : base(new DesignWindowManager()) { }
+}
+
+file sealed class DesignIconLoader : IThunderstoreIconLoader
+{
+    public Avalonia.Media.IImage Placeholder => ImagePipelines.ModPageThumbnailFallback;
+    public Avalonia.Media.IImage? TryGetCached(Uri url) => null;
+    public Task<Avalonia.Media.IImage> LoadAsync(Uri url, CancellationToken cancellationToken) => Task.FromResult(Placeholder);
 }
