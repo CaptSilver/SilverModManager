@@ -87,9 +87,21 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
             this.OneWayBind(ViewModel, vm => vm.Downloads, view => view.DownloadsHost.ViewModel)
                 .AddTo(disposables);
 
+            this.OneWayBind(ViewModel, vm => vm.Instructions, view => view.InstructionsTab.IsVisible, static instructions => HasInstructionsTab(instructions))
+                .AddTo(disposables);
+            this.OneWayBind(ViewModel, vm => vm.Instructions, view => view.InstructionsContent.Instructions)
+                .AddTo(disposables);
+
             this.Bind(ViewModel, vm => vm.SelectedTab, view => view.TabControl.SelectedItem,
-                    tab => tab == CollectionPageTab.Downloads ? DownloadsTab : InstalledTab,
-                    item => ReferenceEquals(item, DownloadsTab) ? CollectionPageTab.Downloads : CollectionPageTab.Installed)
+                    tab => tab switch
+                    {
+                        CollectionPageTab.Downloads => DownloadsTab,
+                        CollectionPageTab.Instructions => InstructionsTab,
+                        _ => InstalledTab,
+                    },
+                    item => ReferenceEquals(item, DownloadsTab) ? CollectionPageTab.Downloads
+                        : ReferenceEquals(item, InstructionsTab) ? CollectionPageTab.Instructions
+                        : CollectionPageTab.Installed)
                 .AddTo(disposables);
 
 
@@ -132,6 +144,11 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 .SubscribeWithErrorLogging(image => HeaderBorderBackground.Background = new ImageBrush { Source = image, Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top})
                 .DisposeWith(disposables);
         });
+    }
+
+    private static bool HasInstructionsTab(CollectionInstructions instructions)
+    {
+        return CollectionPageTabs.For(hasDownloadPage: false, hasInstructions: instructions.HasAny).Contains(CollectionPageTab.Instructions);
     }
 
     private static bool HasDownloadsTab(ICollectionDownloadViewModel? downloads)

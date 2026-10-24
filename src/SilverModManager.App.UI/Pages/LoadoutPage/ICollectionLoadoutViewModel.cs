@@ -88,4 +88,9 @@ public interface ICollectionLoadoutViewModel : IPageViewModelInterface
     /// The collection's download page, shown as the Downloads tab. Null for a local collection, or when the collection's archive is no longer in the library.
     /// </summary>
     ICollectionDownloadViewModel? Downloads { get; }
+
+    /// <summary>
+    /// The collection author's instructions, read from the collection's archive. Empty when there are none or the archive is no longer in the library.
+    /// </summary>
+    CollectionInstructions Instructions { get; }
 }

@@ -456,28 +456,11 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                         {
                             var (self, serviceProvider) = state;
 
-                            var collectionInstructionsText = collectionRoot.Info.InstallInstructions;
+                            var instructions = CollectionInstructions.From(collectionRoot, serviceProvider);
 
-                            var modsInstructions = collectionRoot.Mods
-                                .Select(static mod => (mod.Name, mod.Instructions, mod.Optional))
-                                .Where(static tuple => !string.IsNullOrWhiteSpace(tuple.Instructions))
-                                .Select(static tuple =>
-                                    new ModInstructions(tuple.Name, tuple.Instructions, tuple.Optional ? CollectionDownloader.ItemType.Optional : CollectionDownloader.ItemType.Required)
-                                )
-                                .ToArray();
-
-                            var optionalModsInstructions = modsInstructions.Where(static x => x.ItemType == CollectionDownloader.ItemType.Optional).ToArray();
-                            var requiredModsInstructions = modsInstructions.Where(static x => x.ItemType == CollectionDownloader.ItemType.Required).ToArray();
-
-                            if (!string.IsNullOrWhiteSpace(collectionInstructionsText))
-                            {
-                                var markdownRendererViewModel = serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
-                                markdownRendererViewModel.Contents = collectionInstructionsText;
-                                self.InstructionsRenderer = markdownRendererViewModel;
-                            }
-
-                            self.RequiredModsInstructions = requiredModsInstructions;
-                            self.OptionalModsInstructions = optionalModsInstructions;
+                            self.InstructionsRenderer = instructions.Collection;
+                            self.RequiredModsInstructions = instructions.RequiredMods;
+                            self.OptionalModsInstructions = instructions.OptionalMods;
                         }
                     ).AddTo(disposables);
             }

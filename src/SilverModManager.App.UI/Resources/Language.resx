@@ -1378,6 +1378,9 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="CollectionLoadoutView_Installed" xml:space="preserve">
         <value>Installed</value>
     </data>
+    <data name="CollectionLoadoutView_Instructions" xml:space="preserve">
+        <value>Instructions</value>
+    </data>
     <data name="CollectionLoadoutView_Downloads" xml:space="preserve">
         <value>Downloads</value>
     </data>

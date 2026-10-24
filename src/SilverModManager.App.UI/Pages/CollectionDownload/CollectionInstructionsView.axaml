@@ -1,0 +1,69 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:collectionDownload="clr-namespace:SilverModManager.App.UI.Pages.CollectionDownload"
+    x:Class="SilverModManager.App.UI.Pages.CollectionDownload.CollectionInstructionsView">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="InstructionsTemplate" DataType="collectionDownload:ModInstructions">
+            <Border Classes="ModInstructionBorder">
+                <StackPanel Orientation="Vertical">
+                    <TextBlock Text="{CompiledBinding ModName, Mode=OneTime}" />
+                    <TextBlock Text="{CompiledBinding Instructions, Mode=OneTime}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer>
+        <StackPanel Orientation="Vertical">
+
+            <Expander Header="Collection Instructions" x:Name="CollectionInstructionsExpander"
+                      IsVisible="False" IsExpanded="True">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MaxWidth="1024" />
+                    </Grid.ColumnDefinitions>
+                    <reactiveUi:ViewModelViewHost x:Name="CollectionInstructionsRendererHost" />
+                </Grid>
+            </Expander>
+
+            <Expander Header="Mod Instructions" x:Name="RequiredModsInstructionsExpander"
+                      IsVisible="False"
+                      IsExpanded="True">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MaxWidth="1024" />
+                    </Grid.ColumnDefinitions>
+                    <ItemsControl x:Name="RequiredModsInstructions"
+                                  ItemTemplate="{StaticResource InstructionsTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </Grid>
+            </Expander>
+
+            <Expander Header="Optional Mod Instructions" x:Name="OptionalModsInstructionsExpander"
+                      IsVisible="False"
+                      IsExpanded="True">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MaxWidth="1024" />
+                    </Grid.ColumnDefinitions>
+                    <ItemsControl x:Name="OptionalModsInstructions"
+                                  ItemTemplate="{StaticResource InstructionsTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </Grid>
+            </Expander>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

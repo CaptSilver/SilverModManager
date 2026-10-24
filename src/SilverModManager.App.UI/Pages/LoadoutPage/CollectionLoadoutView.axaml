@@ -9,6 +9,7 @@
     xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
     xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
     xmlns:navigation="clr-namespace:SilverModManager.App.UI.Controls.Navigation"
+    xmlns:collectionDownload="clr-namespace:SilverModManager.App.UI.Pages.CollectionDownload"
     xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
     mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="450"
     x:Class="SilverModManager.App.UI.Pages.LoadoutPage.CollectionLoadoutView">
@@ -224,6 +225,15 @@
                             </Border>
                         </StackPanel>
                     </TabItem.Header>
+                </TabItem>
+                <!-- the collection author's instructions -->
+                <TabItem x:Name="InstructionsTab" IsVisible="False">
+                    <TabItem.Header>
+                        <StackPanel Classes="TabItemHeaderStack">
+                            <TextBlock Text="{x:Static resources:Language.CollectionLoadoutView_Instructions}" />
+                        </StackPanel>
+                    </TabItem.Header>
+                    <collectionDownload:CollectionInstructionsView x:Name="InstructionsContent" />
                 </TabItem>
                 <!-- the collection's download page, with its own Required, Optional and instructions tabs -->
                 <TabItem x:Name="DownloadsTab">

@@ -21,6 +21,27 @@ public class CollectionPageTabsTests
     }
 
     [Fact]
+    public void CollectionWithInstructionsShowsThemBesideInstalled()
+    {
+        CollectionPageTabs.For(hasDownloadPage: true, hasInstructions: true)
+            .Should().Equal(CollectionPageTab.Installed, CollectionPageTab.Instructions, CollectionPageTab.Downloads);
+    }
+
+    [Fact]
+    public void CollectionWithoutInstructionsHasNoInstructionsTab()
+    {
+        CollectionPageTabs.For(hasDownloadPage: true, hasInstructions: false)
+            .Should().NotContain(CollectionPageTab.Instructions);
+    }
+
+    [Fact]
+    public void InstructionsTabDoesNotNeedTheDownloadPage()
+    {
+        CollectionPageTabs.For(hasDownloadPage: false, hasInstructions: true)
+            .Should().Equal(CollectionPageTab.Installed, CollectionPageTab.Instructions);
+    }
+
+    [Fact]
     public void NexusModsUriPointsAtTheStoredRevision()
     {
         var uri = CollectionPageTabs.NexusModsUri(GameDomain.From("stardewvalley"), CollectionSlug.From("tckf0m"), RevisionNumber.From(80));

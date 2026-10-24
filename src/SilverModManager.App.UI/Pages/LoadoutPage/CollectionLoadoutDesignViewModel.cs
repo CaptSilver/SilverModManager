@@ -1,7 +1,9 @@
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.Collections;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using NexusMods.Paths;
@@ -37,6 +39,10 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
     public ReactiveCommand<Unit> CommandShowDownloads { get; } = new ReactiveCommand();
     public CollectionPageTab SelectedTab { get; set; } = CollectionPageTab.Installed;
     public ICollectionDownloadViewModel? Downloads { get; } = new CollectionDownloadDesignViewModel();
+    public CollectionInstructions Instructions { get; } = new(
+        new MarkdownRendererViewModel { Contents = "Install the script extender before anything else." },
+        [new ModInstructions("Core mod", "Apply the patch after installing.", CollectionDownloader.ItemType.Required)],
+        []);
     public bool IsLocalCollection { get; } = false;
     public bool IsReadOnly { get; } = true;
 }

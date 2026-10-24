@@ -24,6 +24,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using SilverModManager.MnemonicDB.Abstractions.Query;
+using SilverModManager.Networking.NexusWebApi;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Jobs;
@@ -189,8 +190,10 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
         });
 
         // The download page reads the collection's archive from the library, which can be removed while the collection stays installed.
+        NexusModsCollectionLibraryFile.ReadOnly? collectionLibraryFile = null;
         if (revisionMetadata.HasValue && HasCollectionLibraryFile(connection.Db, revisionMetadata.Value))
         {
+            collectionLibraryFile = serviceProvider.GetRequiredService<CollectionDownloader>().GetLibraryFile(revisionMetadata.Value);
             Downloads = new CollectionDownloadViewModel(
                 windowManager: windowManager,
                 serviceProvider: serviceProvider,
@@ -258,6 +261,19 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
                 downloads.TabId = TabId;
             }
             
+            // Read here rather than from the embedded download page: that page's view model only activates once its tab is shown,
+            // so the instructions tab would stay hidden until someone opened Downloads.
+            if (collectionLibraryFile is { } libraryFile)
+            {
+                var nexusModsLibrary = serviceProvider.GetRequiredService<NexusModsLibrary>();
+                R3.Observable.Return(libraryFile)
+                    .ObserveOnThreadPool()
+                    .SelectAwait((file, cancellationToken) => nexusModsLibrary.ParseCollectionJsonFile(file, cancellationToken))
+                    .ObserveOnUIThreadDispatcher()
+                    .Subscribe(collectionRoot => Instructions = CollectionInstructions.From(collectionRoot, serviceProvider))
+                    .AddTo(disposables);
+            }
+
             connection.ObserveDatoms(LoadoutItem.ParentId, pageContext.GroupId)
                 .QueryWhenChanged(datoms => datoms.Count)
                 .OnUI()
@@ -366,6 +382,8 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
     public ReactiveCommand<Unit> CommandOpenOnNexusMods { get; }
     public ReactiveCommand<Unit> CommandShowDownloads { get; }
     public ICollectionDownloadViewModel? Downloads { get; }
+
+    [Reactive] public partial CollectionInstructions Instructions { get; private set; } = CollectionInstructions.None;
 
     [Reactive] public partial CollectionPageTab SelectedTab { get; set; }
 

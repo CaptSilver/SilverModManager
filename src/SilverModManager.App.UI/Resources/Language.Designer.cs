@@ -601,6 +601,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Instructions.
+        /// </summary>
+        public static string CollectionLoadoutView_Instructions {
+            get {
+                return ResourceManager.GetString("CollectionLoadoutView_Instructions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Downloads.
         /// </summary>
         public static string CollectionLoadoutView_Downloads {

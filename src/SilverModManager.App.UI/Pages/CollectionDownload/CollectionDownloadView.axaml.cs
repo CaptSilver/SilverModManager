@@ -241,17 +241,9 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                     {
                         var (instructionsRenderer, requiredModsInstructions, optionalModsInstructions) = tuple;
                 
-                        var hasInstructions = instructionsRenderer is not null || requiredModsInstructions.Length > 0 || optionalModsInstructions.Length > 0;
-                        InstructionsTab.IsVisible = hasInstructions;
-                
-                        CollectionInstructionsExpander.IsVisible = instructionsRenderer is not null;
-                        CollectionInstructionsRendererHost.ViewModel = instructionsRenderer;
-                
-                        RequiredModsInstructionsExpander.IsVisible = requiredModsInstructions.Length > 0;
-                        RequiredModsInstructions.ItemsSource = requiredModsInstructions;
-                
-                        OptionalModsInstructionsExpander.IsVisible = optionalModsInstructions.Length > 0;
-                        OptionalModsInstructions.ItemsSource = optionalModsInstructions;
+                        var instructions = new CollectionInstructions(instructionsRenderer, requiredModsInstructions, optionalModsInstructions);
+                        InstructionsTab.IsVisible = instructions.HasAny;
+                        InstructionsContent.Instructions = instructions;
                     }).DisposeWith(d);
 
                 this.WhenAnyValue(

@@ -100,15 +100,6 @@
                 <TreeDataGrid x:Name="DownloadsTree" />
             </Border>
         </DockPanel>
-
-        <DataTemplate x:Key="InstructionsTemplate" DataType="collectionDownload:ModInstructions">
-            <Border Classes="ModInstructionBorder">
-                <StackPanel Orientation="Vertical">
-                    <TextBlock Text="{CompiledBinding ModName, Mode=OneTime}" />
-                    <TextBlock Text="{CompiledBinding Instructions, Mode=OneTime}" />
-                </StackPanel>
-            </Border>
-        </DataTemplate>
     </reactiveUi:ReactiveUserControl.Resources>
 
     <Border x:Name="HeaderBorderBackground">
@@ -254,56 +245,7 @@
                         </StackPanel>
                     </TabItem.Header>
 
-                    <ScrollViewer>
-                        <StackPanel Orientation="Vertical">
-
-                            <Expander Header="Collection Instructions" x:Name="CollectionInstructionsExpander"
-                                      IsVisible="False" IsExpanded="True">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" MaxWidth="1024" />
-                                    </Grid.ColumnDefinitions>
-                                    <reactiveUi:ViewModelViewHost x:Name="CollectionInstructionsRendererHost" />
-                                </Grid>
-                            </Expander>
-
-                            <Expander Header="Mod Instructions" x:Name="RequiredModsInstructionsExpander"
-                                      IsVisible="False"
-                                      IsExpanded="True">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" MaxWidth="1024" />
-                                    </Grid.ColumnDefinitions>
-                                    <ItemsControl x:Name="RequiredModsInstructions"
-                                                  ItemTemplate="{StaticResource InstructionsTemplate}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                    </ItemsControl>
-                                </Grid>
-                            </Expander>
-
-                            <Expander Header="Optional Mod Instructions" x:Name="OptionalModsInstructionsExpander"
-                                      IsVisible="False"
-                                      IsExpanded="True">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" MaxWidth="1024" />
-                                    </Grid.ColumnDefinitions>
-                                    <ItemsControl x:Name="OptionalModsInstructions"
-                                                  ItemTemplate="{StaticResource InstructionsTemplate}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                    </ItemsControl>
-                                </Grid>
-                            </Expander>
-                        </StackPanel>
-                    </ScrollViewer>
+                    <collectionDownload:CollectionInstructionsView x:Name="InstructionsContent" />
                 </TabItem>
             </TabControl>
         </Grid>
