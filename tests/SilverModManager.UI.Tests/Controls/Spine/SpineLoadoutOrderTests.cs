@@ -140,6 +140,31 @@ public class SpineLoadoutOrderTests(IServiceProvider provider) : AUiTest(provide
     }
 
     [Fact]
+    public async Task MovingALoadoutMovesItsIconInsteadOfRebuildingTheList()
+    {
+        // A Reset makes the view throw every tile away and recreate it, which shows as the spine blinking after a drop.
+        var a = await SeedLoadoutRow(GameStore.Steam, "a");
+        var b = await SeedLoadoutRow(GameStore.Steam, "b");
+        var c = await SeedLoadoutRow(GameStore.Steam, "c");
+        SaveOrder(a.LoadoutId, b.LoadoutId, c.LoadoutId);
+
+        var (spine, activation) = await CreateSpine();
+        using (activation)
+        {
+            await ItemsOf(spine, a, b, c);
+            var actions = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
+            System.Collections.Specialized.NotifyCollectionChangedEventHandler record = (_, e) => actions.Add(e.Action);
+            await OnUi(() => ((System.Collections.Specialized.INotifyCollectionChanged)spine.LoadoutSpineItems).CollectionChanged += record);
+
+            await OnUi(() => spine.MoveLoadout(0, 2));
+            (await ItemsOf(spine, a, b, c)).Should().Equal(b.LoadoutId, c.LoadoutId, a.LoadoutId);
+            await OnUi(() => ((System.Collections.Specialized.INotifyCollectionChanged)spine.LoadoutSpineItems).CollectionChanged -= record);
+
+            actions.Should().NotBeEmpty().And.NotContain(System.Collections.Specialized.NotifyCollectionChangedAction.Reset);
+        }
+    }
+
+    [Fact]
     public async Task IdsOfDeletedLoadoutsAreIgnoredAndPrunedOnNextSave()
     {
         var a = await SeedLoadoutRow(GameStore.Steam, "a");

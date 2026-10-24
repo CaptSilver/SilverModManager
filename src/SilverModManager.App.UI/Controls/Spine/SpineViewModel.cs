@@ -45,7 +45,11 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
     private readonly IWindowManager _windowManager;
     private readonly ISynchronizerService _syncService;
 
-    private ReadOnlyObservableCollection<IImageButtonViewModel> _loadoutSpineItems = new([]);
+    // The view model owns the bound list so a new saved order can move icons into place; swapping the sort comparer
+    // instead makes DynamicData clear and refill the list, and the view rebuilds every tile (the spine blinks).
+    private readonly ObservableCollectionExtended<IImageButtonViewModel> _loadoutSpineList = new();
+    private readonly LoadoutSpineEntriesComparer _loadoutOrder = new();
+    private readonly ReadOnlyObservableCollection<IImageButtonViewModel> _loadoutSpineItems;
     private readonly ISettingsManager _settingsManager;
     public ReadOnlyObservableCollection<IImageButtonViewModel> LoadoutSpineItems => _loadoutSpineItems;
     public IIconButtonViewModel Home { get; }
@@ -71,6 +75,7 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _loadoutSpineItems = new ReadOnlyObservableCollection<IImageButtonViewModel>(_loadoutSpineList);
         _windowManager = windowManager;
         _conn = conn;
         _syncService = serviceProvider.GetRequiredService<ISynchronizerService>();
@@ -101,11 +106,16 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
                 var loadouts = Loadout.ObserveAll(_conn);
                 var gameRegistry = serviceProvider.GetRequiredService<IGameRegistry>();
 
-                var orderChanges = R3.ObservableExtensions
+                R3.ObservableExtensions
                     .AsSystemObservable(_settingsManager.GetChanges<LoadoutSpineOrderSettings>(prependCurrent: true))
-                    .Select(settings => (IComparer<IImageButtonViewModel>)new LoadoutSpineEntriesComparer(settings.LoadoutIds))
-                    // A new comparer re-sorts the bound collection, which only the UI thread may change.
-                    .OnUI();
+                    // Re-sorting the bound collection is something only the UI thread may do.
+                    .OnUI()
+                    .Subscribe(settings =>
+                    {
+                        _loadoutOrder.SetSavedOrder(settings.LoadoutIds);
+                        MoveIconsIntoOrder();
+                    })
+                    .DisposeWith(disposables);
 
                 loadouts
                     // A loadout whose game can't be found would make the icon transform throw and end
@@ -141,7 +151,8 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
                             if (loadoutSpineItem.WorkspaceContext is LoadoutContext loadoutContext)
                                 workspaceController.UnregisterWorkspaceByContext<LoadoutContext>(context => loadoutContext == context);
                         })
-                .SortAndBind(out _loadoutSpineItems, orderChanges)
+                // A changed order must move icons, not clear and refill the list: a reset makes the view rebuild every tile.
+                .SortAndBind(_loadoutSpineList, _loadoutOrder)
                 .SubscribeWithErrorLogging()
                 .DisposeWith(disposables);
 
@@ -350,9 +361,26 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
     /// <summary>
     /// Loadouts in the saved order come first; the rest follow by installation, then loadout creation time.
     /// </summary>
-    private class LoadoutSpineEntriesComparer(IReadOnlyList<ulong> savedOrder) : IComparer<IImageButtonViewModel>
+    /// <summary>Moves icons whose place changed under a new saved order, one Move each, so no tile is rebuilt.</summary>
+    private void MoveIconsIntoOrder()
     {
-        private readonly Dictionary<ulong, int> _positions = savedOrder
+        var sorted = _loadoutSpineList.OrderBy(item => item, _loadoutOrder).ToList();
+        for (var i = 0; i < sorted.Count; i++)
+        {
+            if (ReferenceEquals(_loadoutSpineList[i], sorted[i])) continue;
+            _loadoutSpineList.Move(_loadoutSpineList.IndexOf(sorted[i]), i);
+        }
+    }
+
+    /// <summary>
+    /// Orders the spine's loadouts. One instance lives as long as the view model; a new saved order updates its
+    /// positions in place (<see cref="SetSavedOrder"/>) rather than replacing it.
+    /// </summary>
+    private class LoadoutSpineEntriesComparer : IComparer<IImageButtonViewModel>
+    {
+        private Dictionary<ulong, int> _positions = new();
+
+        public void SetSavedOrder(IReadOnlyList<ulong> savedOrder) => _positions = savedOrder
             .Select((id, index) => (id, index))
             .DistinctBy(pair => pair.id)
             .ToDictionary(pair => pair.id, pair => pair.index);
