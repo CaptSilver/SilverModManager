@@ -15,7 +15,7 @@ namespace SilverModManager.App.UI.Controls.Spine;
 
 public partial class Spine : ReactiveUserControl<ISpineViewModel>
 {
-    private const double LiftScale = 1.08;
+    private const double LiftScale = 1.15;
     private const double LiftedOpacity = 0.92;
     private static readonly TimeSpan DefaultSlideDuration = TimeSpan.FromMilliseconds(150);
     private static readonly TimeSpan DefaultLiftDuration = TimeSpan.FromMilliseconds(120);

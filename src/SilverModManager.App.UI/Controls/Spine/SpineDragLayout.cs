@@ -52,12 +52,16 @@ internal static class SpineDragLayout
             : tops[target] - tops[from];
     }
 
-    /// <summary>Keeps the dragged tile inside the span of the list.</summary>
+    /// <summary>
+    /// Keeps the dragged tile within the list, overhanging either end by half its height: its centre has to get past the
+    /// first or last tile's midpoint for that slot to open, and a tile stopped flush with the end never would.
+    /// </summary>
     public static double ClampOffset(IReadOnlyList<double> tops, IReadOnlyList<double> heights, int from, double offset)
     {
-        var min = tops[0] - tops[from];
+        var overhang = heights[from] / 2;
+        var min = tops[0] - tops[from] - overhang;
         var last = tops.Count - 1;
-        var max = tops[last] + heights[last] - (tops[from] + heights[from]);
+        var max = tops[last] + heights[last] - (tops[from] + heights[from]) + overhang;
         return Math.Clamp(offset, min, max);
     }
 }

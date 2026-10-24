@@ -77,10 +77,10 @@ public class SpineDragLayoutTests
     }
 
     [Fact]
-    public void The_drag_offset_is_clamped_to_the_list()
+    public void The_drag_offset_is_clamped_to_the_list_with_half_a_tile_of_overhang()
     {
-        SpineDragLayout.ClampOffset(Tops, Heights, 1, -500).Should().Be(-50);
-        SpineDragLayout.ClampOffset(Tops, Heights, 1, 500).Should().Be(150);
+        SpineDragLayout.ClampOffset(Tops, Heights, 1, -500).Should().Be(-50 - Height / 2);
+        SpineDragLayout.ClampOffset(Tops, Heights, 1, 500).Should().Be(150 + Height / 2);
         SpineDragLayout.ClampOffset(Tops, Heights, 1, 20).Should().Be(20);
     }
 
@@ -102,4 +102,17 @@ public class SpineDragLayoutTests
 
     private static double[] Shifts(int from, int target) =>
         Enumerable.Range(0, Tops.Length).Select(i => SpineDragLayout.NeighbourShift(i, from, target, Stride)).ToArray();
+
+    [Theory]
+    [InlineData(1, 10_000, 4)]
+    [InlineData(3, -10_000, 0)]
+    [InlineData(0, 10_000, 4)]
+    [InlineData(4, -10_000, 0)]
+    public void A_drag_held_at_either_end_of_the_list_reaches_the_first_or_last_slot(int from, double pointerOffset, int expected)
+    {
+        // The view clamps the offset before asking for the target, so the ends must still be reachable after clamping.
+        var offset = SpineDragLayout.ClampOffset(Tops, Heights, from, pointerOffset);
+
+        SpineDragLayout.TargetIndex(Tops, Heights, from, Centre(from, offset)).Should().Be(expected);
+    }
 }
