@@ -15,17 +15,18 @@ public class SpineDragLayoutTests
     private static double Centre(int from, double offset) => Tops[from] + offset + Height / 2;
 
     [Theory]
+    // The leading edge reaches the next neighbour's midpoint after 30 px of travel (half a 40 px tile less the 10 px gap).
     [InlineData(1, 0, 1)]
-    [InlineData(1, 49, 1)]
-    [InlineData(1, 51, 2)]
-    [InlineData(1, 101, 3)]
-    [InlineData(1, 151, 4)]
+    [InlineData(1, 29, 1)]
+    [InlineData(1, 31, 2)]
+    [InlineData(1, 81, 3)]
+    [InlineData(1, 131, 4)]
     [InlineData(1, 500, 4)]
-    [InlineData(3, -49, 3)]
-    [InlineData(3, -51, 2)]
-    [InlineData(3, -101, 1)]
+    [InlineData(3, -29, 3)]
+    [InlineData(3, -31, 2)]
+    [InlineData(3, -81, 1)]
     [InlineData(3, -500, 0)]
-    public void TargetIndex_follows_the_tile_centre_past_neighbour_midpoints(int from, double offset, int expected)
+    public void TargetIndex_opens_a_slot_once_the_leading_edge_passes_the_neighbours_midpoint(int from, double offset, int expected)
     {
         SpineDragLayout.TargetIndex(Tops, Heights, from, Centre(from, offset)).Should().Be(expected);
     }

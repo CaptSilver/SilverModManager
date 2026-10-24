@@ -14,18 +14,20 @@ internal static class SpineDragLayout
 
     /// <summary>
     /// The index the dragged tile would take if released with its centre at <paramref name="draggedCentreY"/>.
-    /// A neighbour gives way once the centre passes its midpoint.
+    /// A neighbour gives way once the dragged tile's leading edge (its bottom moving down, its top moving up) passes the
+    /// neighbour's midpoint, which is half the travel of waiting for the centre to get there.
     /// </summary>
     public static int TargetIndex(IReadOnlyList<double> tops, IReadOnlyList<double> heights, int from, double draggedCentreY)
     {
+        var halfHeight = heights[from] / 2;
         var target = from;
         for (var i = from + 1; i < tops.Count; i++)
         {
-            if (draggedCentreY > tops[i] + heights[i] / 2) target = i;
+            if (draggedCentreY + halfHeight > tops[i] + heights[i] / 2) target = i;
         }
         for (var i = from - 1; i >= 0; i--)
         {
-            if (draggedCentreY < tops[i] + heights[i] / 2) target = i;
+            if (draggedCentreY - halfHeight < tops[i] + heights[i] / 2) target = i;
         }
         return target;
     }
