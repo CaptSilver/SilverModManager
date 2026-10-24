@@ -1,5 +1,3 @@
-using SilverModManager.Sdk.Loadouts;
-
 namespace SilverModManager.App.UI.Controls.Spine;
 
 internal static class LoadoutSpineOrder
@@ -8,7 +6,7 @@ internal static class LoadoutSpineOrder
     /// Returns <paramref name="order"/> with the item at <paramref name="fromIndex"/> taken out
     /// and re-inserted so that it ends up at <paramref name="toIndex"/>.
     /// </summary>
-    public static IReadOnlyList<LoadoutId> Move(IReadOnlyList<LoadoutId> order, int fromIndex, int toIndex)
+    public static IReadOnlyList<T> Move<T>(IReadOnlyList<T> order, int fromIndex, int toIndex)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(fromIndex);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(fromIndex, order.Count);

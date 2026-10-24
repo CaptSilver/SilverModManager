@@ -3454,6 +3454,24 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Move earlier.
+        /// </summary>
+        public static string MyGamesTileMenu_MoveEarlier {
+            get {
+                return ResourceManager.GetString("MyGamesTileMenu_MoveEarlier", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Move later.
+        /// </summary>
+        public static string MyGamesTileMenu_MoveLater {
+            get {
+                return ResourceManager.GetString("MyGamesTileMenu_MoveLater", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Move up.
         /// </summary>
         public static string SpineLoadoutMenu_MoveUp {

@@ -14,6 +14,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Controls.GameWidget;
+using SilverModManager.App.UI.Controls.Spine;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
@@ -71,7 +72,10 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
     private readonly IGameRegistry _gameRegistry;
 
     private readonly SourceList<GameInstallation> _installations = new();
-    private ReadOnlyObservableCollection<IGameWidgetViewModel> _installedGames = new([]);
+    private readonly ObservableCollectionExtended<IGameWidgetViewModel> _installedGamesList = new();
+    private readonly ReadOnlyObservableCollection<IGameWidgetViewModel> _installedGames;
+    private readonly MyGamesOrder.Comparer _gameOrder = new();
+    private readonly ISettingsManager _settingsManager;
 
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand { get; }
     public ReactiveCommand<Unit, Unit> AddGameFolderCommand { get; }
@@ -99,6 +103,8 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
         _connection = conn;
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
         _gameRegistry = gameRegistry;
+        _settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
+        _installedGames = new ReadOnlyObservableCollection<IGameWidgetViewModel>(_installedGamesList);
 
         TabTitle = Language.MyGames;
         TabIcon = IconValues.GamepadOutline;
@@ -117,7 +123,22 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
 
         this.WhenActivated(d =>
             {
+                // The list outlives an activation, so tiles of the previous one must not be listed again.
+                _installedGamesList.Clear();
+
+                R3.ObservableExtensions
+                    .AsSystemObservable(_settingsManager.GetChanges<MyGamesOrderSettings>(prependCurrent: true))
+                    // Re-sorting the bound collection is something only the UI thread may do.
+                    .OnUI()
+                    .Subscribe(settings =>
+                    {
+                        _gameOrder.SetSavedOrder(settings.GameKeys);
+                        MoveWidgetsIntoOrder();
+                    })
+                    .DisposeWith(d);
+
                 _installations.Connect()
+                    .AddKey(MyGamesOrder.KeyOf)
                     .Transform(installation =>
                         {
                             var vm = _serviceProvider.GetRequiredService<IGameWidgetViewModel>();
@@ -175,6 +196,9 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                                 vm.State = removed ? GameWidgetState.DetectedGame : stateBeforeRemoving;
                             });
 
+                            vm.MoveEarlier = ReactiveCommand.Create(() => MoveGameBy(installation, -1));
+                            vm.MoveLater = ReactiveCommand.Create(() => MoveGameBy(installation, 1));
+
                             vm.ViewGameCommand = ReactiveCommand.Create(() =>
                             {
                                 NavigateToLoadoutLibrary(conn, installation);
@@ -199,13 +223,47 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                         }
                     )
                     .OnUI()
-                    .Bind(out _installedGames)
+                    // A changed order must move tiles, not clear and refill the list: a reset makes the view rebuild every tile.
+                    .SortAndBind(_installedGamesList, _gameOrder)
                     .SubscribeWithErrorLogging()
                     .DisposeWith(d);
 
                 RefreshInstalledGames();
             }
         );
+    }
+
+    /// <inheritdoc/>
+    public void MoveInstalledGame(int fromIndex, int toIndex)
+    {
+        // Saving the displayed order is also what drops keys of games that are gone from the setting.
+        var displayed = _installedGamesList
+            .Select(widget => MyGamesOrder.KeyOf(widget.Installation ?? throw new InvalidOperationException("An installed game tile has no game installation")))
+            .ToList();
+        var moved = LoadoutSpineOrder.Move(displayed, fromIndex, toIndex);
+        _settingsManager.Update<MyGamesOrderSettings>(settings => settings with
+        {
+            GameKeys = moved.ToImmutableList(),
+        });
+    }
+
+    private void MoveGameBy(GameInstallation installation, int offset)
+    {
+        var index = _installedGamesList.ToList().FindIndex(widget => ReferenceEquals(widget.Installation, installation));
+        var target = index + offset;
+        if (index < 0 || target < 0 || target >= _installedGamesList.Count) return;
+        MoveInstalledGame(index, target);
+    }
+
+    /// <summary>Moves widgets whose place changed under a new saved order, one Move each, so no tile is rebuilt.</summary>
+    private void MoveWidgetsIntoOrder()
+    {
+        var sorted = _installedGamesList.OrderBy(widget => widget, _gameOrder).ToList();
+        for (var i = 0; i < sorted.Count; i++)
+        {
+            if (ReferenceEquals(_installedGamesList[i], sorted[i])) continue;
+            _installedGamesList.Move(_installedGamesList.IndexOf(sorted[i]), i);
+        }
     }
 
     /// <summary>

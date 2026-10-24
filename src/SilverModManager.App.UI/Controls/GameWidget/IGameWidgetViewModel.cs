@@ -18,6 +18,13 @@ public interface IGameWidgetViewModel : IViewModelInterface
     public ReactiveCommand<Unit, Unit> AddGameCommand { get; set; }
     public ReactiveCommand<Unit, Unit> ViewGameCommand { get; set; }
     public ReactiveCommand<Unit, Unit> RemoveAllLoadoutsCommand { get; set; }
+
+    /// <summary>Moves this tile one place earlier on My Games; the keyboard path for drag and drop.</summary>
+    public ReactiveCommand<Unit, Unit>? MoveEarlier { get; set; }
+
+    /// <summary>Moves this tile one place later on My Games.</summary>
+    public ReactiveCommand<Unit, Unit>? MoveLater { get; set; }
+
     public IObservable<bool> IsManagedObservable { get; set; }
     public GameWidgetState State { get; set; }
 }

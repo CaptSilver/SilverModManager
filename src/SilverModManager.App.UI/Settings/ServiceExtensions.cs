@@ -13,6 +13,7 @@ public static class ServiceExtensions
             .AddSettings<TreeDataGridSortingStateSettings>()
             .AddSettings<AlertSettings>()
             .AddSettings<LoadoutSpineOrderSettings>()
+            .AddSettings<MyGamesOrderSettings>()
             .AddSettings<BehaviorSettings>()
             .AddSettings<UpdaterSettings>()
             .AddSettings<WelcomeSettings>();

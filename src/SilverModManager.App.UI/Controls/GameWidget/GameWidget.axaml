@@ -18,6 +18,12 @@
     </Design.DataContext>
 
     <Border Width="140" x:Name="GameWidgetBorder">
+        <Border.ContextMenu>
+            <ContextMenu>
+                <MenuItem x:Name="MoveEarlierItem" />
+                <MenuItem x:Name="MoveLaterItem" />
+            </ContextMenu>
+        </Border.ContextMenu>
         
         <Grid RowDefinitions="Auto,Auto,Auto">
             

@@ -22,7 +22,7 @@
         <myGames:MyGamesDesignViewModel />
     </Design.DataContext>
 
-    <ScrollViewer>
+    <ScrollViewer x:Name="PageScroller">
         <StackPanel Margin="24"
                     Orientation="Vertical"
                     Spacing="24">

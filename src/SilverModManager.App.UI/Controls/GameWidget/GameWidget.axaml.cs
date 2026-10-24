@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Resources;
 using ReactiveUI;
 
 namespace SilverModManager.App.UI.Controls.GameWidget;
@@ -44,6 +45,13 @@ public partial class GameWidget : ReactiveUserControl<IGameWidgetViewModel>
                             ToolTip.SetTip(ImageSectionBorder, name);
                         }
                     )
+                    .DisposeWith(d);
+
+                MoveEarlierItem.Header = Language.MyGamesTileMenu_MoveEarlier;
+                MoveLaterItem.Header = Language.MyGamesTileMenu_MoveLater;
+                this.OneWayBind(ViewModel, vm => vm.MoveEarlier, v => v.MoveEarlierItem.Command)
+                    .DisposeWith(d);
+                this.OneWayBind(ViewModel, vm => vm.MoveLater, v => v.MoveLaterItem.Command)
                     .DisposeWith(d);
 
                 this.OneWayBind(ViewModel, vm => vm.Image, v => v.GameImage.Source)

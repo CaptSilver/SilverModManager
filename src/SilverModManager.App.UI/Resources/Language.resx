@@ -353,6 +353,12 @@
     <data name="SpineLoadoutMenu_MoveDown" xml:space="preserve">
         <value>Move down</value>
     </data>
+    <data name="MyGamesTileMenu_MoveEarlier" xml:space="preserve">
+        <value>Move earlier</value>
+    </data>
+    <data name="MyGamesTileMenu_MoveLater" xml:space="preserve">
+        <value>Move later</value>
+    </data>
     <data name="SpineHomeButton_ToolTip_Home" xml:space="preserve">
         <value>Home</value>
     </data>

@@ -127,6 +127,10 @@ public partial class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGa
 
     [Reactive] public partial ReactiveCommand<Unit, Unit> RemoveAllLoadoutsCommand { get; set; }
     
+    [Reactive] public partial ReactiveCommand<Unit, Unit>? MoveEarlier { get; set; }
+
+    [Reactive] public partial ReactiveCommand<Unit, Unit>? MoveLater { get; set; }
+
     public IObservable<bool> IsManagedObservable { get; set; } = Observable.Return(false);
 
 

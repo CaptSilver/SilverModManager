@@ -25,4 +25,9 @@ public interface IMyGamesViewModel : IPageViewModelInterface
     /// </summary>
     public string? LocatorProblemsNotice { get; }
 
+    /// <summary>
+    /// Moves the installed game tile at <paramref name="fromIndex"/> to <paramref name="toIndex"/> and saves the order.
+    /// </summary>
+    public void MoveInstalledGame(int fromIndex, int toIndex);
+
 }

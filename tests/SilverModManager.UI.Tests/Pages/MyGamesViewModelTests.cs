@@ -35,6 +35,10 @@ public class MyGamesViewModelTests(IServiceProvider provider) : AUiTest(provider
         var settings = JsonSerializer.Deserialize<ExperimentalSettings>("""{"EnableAllGames":false}""", Provider.GetRequiredService<JsonSerializerOptions>())!;
         var settingsManager = Substitute.For<ISettingsManager>();
         settingsManager.Get<ExperimentalSettings>().Returns(settings);
+        // The page also reads and watches the saved tile order, which is not what this test is about.
+        var real = Provider.GetRequiredService<ISettingsManager>();
+        settingsManager.Get<MyGamesOrderSettings>().Returns(real.Get<MyGamesOrderSettings>());
+        settingsManager.GetChanges<MyGamesOrderSettings>(Arg.Any<string?>(), Arg.Any<bool>()).Returns(real.GetChanges<MyGamesOrderSettings>(prependCurrent: true));
 
         // Two registered games the old allowlist hid: one is "installed", the other only listed as supported.
         var outside = Provider.GetServices<IGameData>().OfType<IGame>().Where(g => !OldAllowlist.Contains(g.GameId)).Take(2).ToArray();

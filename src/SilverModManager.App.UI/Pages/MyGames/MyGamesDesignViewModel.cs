@@ -16,9 +16,12 @@ public class MyGamesDesignViewModel : APageViewModel<IMyGamesViewModel>, IMyGame
     public ReactiveCommand<Unit, Unit> GiveFeedbackCommand => Initializers.DisabledReactiveCommand;
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand => Initializers.DisabledReactiveCommand;
     public ReactiveCommand<Unit, Unit> AddGameFolderCommand => Initializers.DisabledReactiveCommand;
+    private readonly ObservableCollection<IGameWidgetViewModel> _installedGames;
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames { get; }
     public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames { get; }
     public string? LocatorProblemsNotice => null;
+
+    public void MoveInstalledGame(int fromIndex, int toIndex) => _installedGames.Move(fromIndex, toIndex);
 
     public MyGamesDesignViewModel() : base(new DesignWindowManager())
     {
@@ -30,7 +33,8 @@ public class MyGamesDesignViewModel : APageViewModel<IMyGamesViewModel>, IMyGame
             .Select(_ => new MiniGameWidgetDesignViewModel())
             .ToList();
 
-        InstalledGames = new ReadOnlyObservableCollection<IGameWidgetViewModel>(new ObservableCollection<IGameWidgetViewModel>(detectedGames));
+        _installedGames = new ObservableCollection<IGameWidgetViewModel>(detectedGames);
+        InstalledGames = new ReadOnlyObservableCollection<IGameWidgetViewModel>(_installedGames);
 
         SupportedGames = new ReadOnlyObservableCollection<IViewModelInterface>(
             [

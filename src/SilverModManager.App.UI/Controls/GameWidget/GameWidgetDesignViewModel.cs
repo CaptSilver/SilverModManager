@@ -22,6 +22,9 @@ public partial class GameWidgetDesignViewModel : AViewModel<IGameWidgetViewModel
     public ReactiveCommand<Unit, Unit> ViewGameCommand { get; set; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> RemoveAllLoadoutsCommand { get; set; } = ReactiveCommand.Create(() => { });
     
+    public ReactiveCommand<Unit, Unit>? MoveEarlier { get; set; } = ReactiveCommand.Create(() => { });
+    public ReactiveCommand<Unit, Unit>? MoveLater { get; set; } = ReactiveCommand.Create(() => { });
+
     public IObservable<bool> IsManagedObservable { get; set; } = Observable.Return(false);
 
     [Reactive]
