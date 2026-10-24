@@ -15,6 +15,12 @@
         <spine:SpineDesignViewModel />
     </Design.DataContext>
 
+    <reactiveUi:ReactiveUserControl.Resources>
+        <!-- Reorder-by-drag timings; a theme can override them -->
+        <x:TimeSpan x:Key="SpineReorderSlideDuration">0:0:0.15</x:TimeSpan>
+        <x:TimeSpan x:Key="SpineReorderLiftDuration">0:0:0.12</x:TimeSpan>
+    </reactiveUi:ReactiveUserControl.Resources>
+
     <panels:FlexPanel x:Name="SpineFlexPanel" >
         <Border x:Name="HomeBorder">
             <reactiveUi:ViewModelViewHost ViewContract="Home" x:Name="Home" />
@@ -24,7 +30,7 @@
             <panels:FlexPanel x:Name="LoadoutSelector" >
                 <ScrollViewer x:Name="LoadoutSelectorScroller" >
                     <Grid x:Name="LoadoutDropGrid">
-                        <!-- A background makes the gaps between icons accept a drop too -->
+                        <!-- A background makes the gaps between icons take the pointer too -->
                         <ItemsControl x:Name="Loadouts" Background="Transparent">
 
                             <ItemsControl.ItemsPanel>
@@ -33,14 +39,6 @@
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
-                        <!-- Shows where a dragged loadout icon would land -->
-                        <Border x:Name="DropIndicator"
-                                Height="3"
-                                CornerRadius="2"
-                                VerticalAlignment="Top"
-                                IsHitTestVisible="False"
-                                IsVisible="False"
-                                Background="{DynamicResource PrimaryModerate}" />
                     </Grid>
                 </ScrollViewer>
             </panels:FlexPanel>
