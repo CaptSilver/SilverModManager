@@ -156,55 +156,12 @@ public static class ProcessStartup
         }
 
         // A launch never takes over from a live main: the window or the other launch keeps the database and the game folder.
-        if (startupMode.IsHeadlessRun && syncInfo.Process is { } holder)
+        if (launch is not null && syncInfo.Process is { } holder)
         {
-            // A dry run starts nothing, and passing through or forwarding would run the command.
-            if (syncInfo.Kind == MainKind.Gui && launch is { DryRun: false })
-            {
-                try
-                {
-                    // The window started this game through Steam and owns the session; the wrapper only reports in.
-                    if (steps.TryPassThrough(services, launch, holder.Id).GetAwaiter().GetResult() is { } exitCode)
-                    {
-                        // The launch needs no Nexus credential, and failing a Steam launch because the window is open would be worse.
-                        WarnSecretsFileIgnored(logger, launch);
-                        return exitCode;
-                    }
+            var handled = HandLaunchToLiveMain(services, logger, steps, launch, syncInfo.Kind, holder);
+            if (handled is { } exitCode) return exitCode;
 
-                    // Steam's own Play: the window runs the launch the way a headless main would, and this process
-                    // stays only to hold Steam's session open and to relay its stop.
-                    var outcome = steps.ForwardLaunch(services, launch).GetAwaiter().GetResult();
-                    if (outcome is ForwardedLaunchOutcome.Exited exited)
-                    {
-                        WarnSecretsFileIgnored(logger, launch);
-
-                        // The window has already told the desktop; Steam's log gets the words too.
-                        if (exited.Message is { } message) steps.WriteError(message);
-                        return exited.ExitCode;
-                    }
-
-                    var windowRefusal = outcome switch
-                    {
-                        ForwardedLaunchOutcome.Declined declined => GuiDeclinedMessage(declined.Reason),
-                        ForwardedLaunchOutcome.Unavailable unavailable => GuiUnavailableMessage(unavailable.Reason),
-                        _ => throw new InvalidOperationException($"Unknown outcome {outcome}"),
-                    };
-                    return Refuse(services, logger, steps, windowRefusal);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Could not hand the launch to the running window");
-                    var failure = $"The launch failed: {ex.Message}";
-                    steps.WriteError(failure);
-                    steps.Notify(services, failure);
-                    return RunFailureExitCode;
-                }
-            }
-
-            var refusal = syncInfo.Kind == MainKind.Gui
-                ? DryRunNeedsHeadlessMessage
-                : steps.DescribeHeadlessMain(services, syncInfo.Kind, holder.Id);
-            return Refuse(services, logger, steps, refusal);
+            // The window closed while this process was deciding what to do with it: nothing holds the database any more.
         }
 
         // NOTE(erri120): has to come before host startup
@@ -305,6 +262,66 @@ public static class ProcessStartup
             if (startupMode.RunAsMain) TearDownMain(services, logger, steps, databaseOpened);
 
             if (!stopped) Environment.Exit(0);
+        }
+    }
+
+    /// <summary>
+    /// Settles a <c>run</c> that finds a live main: joins or forwards to the window, or refuses. Returns the exit code,
+    /// or null when the window closed before the launch could be handed to it, so the caller can run it itself.
+    /// </summary>
+    private static int? HandLaunchToLiveMain(IServiceProvider services, ILogger logger, ProcessStartupSteps steps, LaunchArgs launch, MainKind kind, Process holder)
+    {
+        // A dry run starts nothing, and passing through or forwarding would run the command.
+        if (kind != MainKind.Gui || launch.DryRun)
+        {
+            var refusal = kind == MainKind.Gui
+                ? DryRunNeedsHeadlessMessage
+                : steps.DescribeHeadlessMain(services, kind, holder.Id);
+            return Refuse(services, logger, steps, refusal);
+        }
+
+        try
+        {
+            // The window started this game through Steam and owns the session; the wrapper only reports in.
+            if (steps.TryPassThrough(services, launch, holder.Id).GetAwaiter().GetResult() is { } exitCode)
+            {
+                // The launch needs no Nexus credential, and failing a Steam launch because the window is open would be worse.
+                WarnSecretsFileIgnored(logger, launch);
+                return exitCode;
+            }
+
+            // Steam's own Play: the window runs the launch the way a headless main would, and this process
+            // stays only to hold Steam's session open and to relay its stop.
+            var outcome = steps.ForwardLaunch(services, launch).GetAwaiter().GetResult();
+            if (outcome is ForwardedLaunchOutcome.Exited exited)
+            {
+                WarnSecretsFileIgnored(logger, launch);
+
+                // The window has already told the desktop; Steam's log gets the words too.
+                if (exited.Message is { } message) steps.WriteError(message);
+                return exited.ExitCode;
+            }
+
+            var windowRefusal = outcome switch
+            {
+                ForwardedLaunchOutcome.Declined declined => GuiDeclinedMessage(declined.Reason),
+                ForwardedLaunchOutcome.Unavailable unavailable => GuiUnavailableMessage(unavailable.Reason),
+                _ => throw new InvalidOperationException($"Unknown outcome {outcome}"),
+            };
+            return Refuse(services, logger, steps, windowRefusal);
+        }
+        catch (NoMainProcessStarted)
+        {
+            logger.LogInformation("The window closed before the launch was handed to it, running the launch here instead");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not hand the launch to the running window");
+            var failure = $"The launch failed: {ex.Message}";
+            steps.WriteError(failure);
+            steps.Notify(services, failure);
+            return RunFailureExitCode;
         }
     }
 

@@ -702,6 +702,41 @@ public class ProcessStartupTests
     }
 
     [Fact]
+    public void AWindowThatClosesBeforeTheLaunchIsHandedOver_FallsBackToARunOfItsOwn()
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            ForwardException = new NoMainProcessStarted(),
+            LaunchExitCode = 3,
+        };
+
+        Run(recorder, Command("run")).Should().Be(3);
+
+        recorder.Forwards.Should().ContainSingle();
+        recorder.Calls.Should().ContainInOrder("forward-launch", "claim", "run-launch", "release-main");
+        recorder.Errors.Should().BeEmpty();
+        recorder.Notifications.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AWindowThatClosesBeforeTheLaunchIsHandedOver_AndIsReplacedByAnotherMain_IsRefusedAsOpenedMeanwhile()
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            ForwardException = new NoMainProcessStarted(),
+            Claims = [false],
+            LateSyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 4321),
+        };
+
+        Run(recorder, Command("run")).Should().Be(125);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(ProcessStartup.OpenedMeanwhileMessage);
+        recorder.Calls.Should().NotContain("run-launch");
+    }
+
+    [Fact]
     public void ASecretsFileOnAForwardedLaunchIsIgnoredWithAWarning()
     {
         var recorder = new Recorder
