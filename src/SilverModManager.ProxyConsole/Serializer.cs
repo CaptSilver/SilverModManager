@@ -1,5 +1,5 @@
 ﻿using System.Buffers;
-using System.Text;
+using System.Buffers.Binary;
 using JetBrains.Annotations;
 using MemoryPack;
 using MemoryPack.Formatters;
@@ -16,9 +16,10 @@ namespace SilverModManager.ProxyConsole;
 /// </summary>
 public class Serializer
 {
-    private readonly BinaryWriter _binaryWriter;
+    private const int HeaderSize = sizeof(int);
+
+    private readonly Stream _stream;
     private readonly MemoryPool<byte> _memoryPool;
-    private readonly BinaryReader _binaryReader;
 
     /// <summary>
     /// Primary constructor, takes a duplex capable stream
@@ -27,9 +28,7 @@ public class Serializer
     /// <param name="renderableDefinitions"></param>
     public Serializer(Stream duplexStream, IEnumerable<IRenderableDefinition> renderableDefinitions)
     {
-        var stream = duplexStream;
-        _binaryWriter = new BinaryWriter(stream, Encoding.UTF8, true);
-        _binaryReader = new BinaryReader(stream, Encoding.UTF8, true);
+        _stream = duplexStream;
         _memoryPool = MemoryPool<byte>.Shared;
 
         if (!MemoryPackFormatterProvider.IsRegistered<IRenderable>())
@@ -80,8 +79,13 @@ public class Serializer
     public async Task SendAsync<TMessage>(TMessage msg) where TMessage : IMessage
     {
         var serialized = MemoryPackSerializer.Serialize<IMessage>(msg);
-        _binaryWriter.Write(serialized.Length);
-        await _binaryWriter.BaseStream.WriteAsync(serialized);
+
+        // Length and body go out in one asynchronous write: the old BinaryWriter wrote the length synchronously on the
+        // caller's thread, and with Nagle off that length left as a packet of its own.
+        var frame = new byte[HeaderSize + serialized.Length];
+        BinaryPrimitives.WriteInt32LittleEndian(frame, serialized.Length);
+        serialized.CopyTo(frame, HeaderSize);
+        await _stream.WriteAsync(frame);
     }
 
     /// <summary>
@@ -115,10 +119,15 @@ public class Serializer
     /// <returns></returns>
     public async Task<IMessage?> ReceiveAsync()
     {
-        var size = _binaryReader.ReadUInt32();
+        // The header is read asynchronously too: a blocking read here holds the caller's thread until the peer
+        // speaks, which for a forwarded launch is until the game ends.
+        var header = new byte[HeaderSize];
+        await _stream.ReadExactlyAsync(header);
+        var size = BinaryPrimitives.ReadUInt32LittleEndian(header);
+
         using var buffer = _memoryPool.Rent((int)size);
         var sized = buffer.Memory[..(int)size];
-        await _binaryReader.BaseStream.ReadExactlyAsync(sized);
+        await _stream.ReadExactlyAsync(sized);
         var deserialized = MemoryPackSerializer.Deserialize<IMessage>(sized.Span);
         return deserialized;
     }

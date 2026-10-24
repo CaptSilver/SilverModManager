@@ -19,6 +19,9 @@ namespace SilverModManager.SingleProcess.Tests;
 /// </summary>
 public sealed class ForwardedLaunchTests : IAsyncLifetime
 {
+    // Every test here waits on a peer in the same process; a lost reply must fail the test by name rather than hold the run.
+    private const int TimeoutMs = 120_000;
+
     private readonly string _directory = Directory.CreateTempSubdirectory("forwarded-launch-tests").FullName;
     private readonly FakeHandler _handler = new();
     private SyncFile _syncFile = null!;
@@ -58,7 +61,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         "My Loadout", "1091500", ["proton", "waitforexitandrun", "game.exe"],
         new Dictionary<string, string> { ["SteamAppId"] = "1091500", ["PATH"] = "/usr/bin" }, "/games/peak");
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task AnAcceptedLaunchRunsInTheMainProcess_AndTheGamesExitCodeComesBack()
     {
         _handler.Run = _ => Task.FromResult(new ForwardedLaunchExit(7));
@@ -75,7 +78,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         _handler.Seen.WorkingDirectory.Should().Be("/games/peak");
     }
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task AFailureOfTheLaunchItselfComesBackWithItsMessage()
     {
         _handler.Run = _ => Task.FromResult(new ForwardedLaunchExit(125, "Test Game is already being launched by another SilverModManager process."));
@@ -86,7 +89,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         outcome.Should().Be(new ForwardedLaunchOutcome.Exited(125, "Test Game is already being launched by another SilverModManager process."));
     }
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task AnExceptionFromTheLaunchIsReportedAsAFailedLaunch_NotALostConnection()
     {
         _handler.Run = _ => throw new InvalidOperationException("no such program");
@@ -98,7 +101,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
             e => e.ExitCode == 125 && e.Message!.Contains("no such program"));
     }
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task ADeclinedLaunchComesBackWithTheReason_AndRunsNothing()
     {
         _handler.DeclineReason = "An apply is running for Test Game.";
@@ -110,7 +113,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         _handler.RunCalls.Should().Be(0);
     }
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task AMainProcessWithNoHandlerDeclines()
     {
         var client = await StartMain(withHandler: false);
@@ -121,7 +124,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         _handler.Admissions.Should().Be(0);
     }
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task AskingToStop_ReachesTheLaunch_AndTheStoppedExitCodeComesBack()
     {
         var running = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -144,7 +147,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         outcome.Should().Be(new ForwardedLaunchOutcome.Exited(143, null));
     }
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task AStopAskedForBeforeTheMainProcessHasAnswered_StillReachesTheLaunch()
     {
         _handler.Run = async stop =>
@@ -160,7 +163,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         outcome.Should().Be(new ForwardedLaunchOutcome.Exited(143, null));
     }
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task AClientThatDisappears_StopsTheLaunch()
     {
         var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -185,7 +188,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         await stopped.Task.WaitAsync(TimeSpan.FromSeconds(30));
     }
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task ARequestWithoutTheMainProcessesToken_IsDeclinedWithoutAskingTheHandler()
     {
         await StartMain();
@@ -201,7 +204,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         _handler.Admissions.Should().Be(0);
     }
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task TheTokenFileIsReadableByTheOwnerOnly()
     {
         await StartMain();
@@ -209,7 +212,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         File.GetUnixFileMode(_syncFile.TokenPath.GetFullPath()).Should().Be(UnixFileMode.UserRead | UnixFileMode.UserWrite);
     }
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task AMainProcessThatClosesTheConnectionWithoutAnswering_IsUnavailable_SoTheCallerCanSayItIsTooOld()
     {
         // What a build that does not know the request does: it fails to read it and drops the connection.
@@ -233,7 +236,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         outcome.Should().BeOfType<ForwardedLaunchOutcome.Unavailable>();
     }
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task AMainProcessThatDiesAfterAccepting_IsAFailedLaunch_NotASilentSuccess()
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
@@ -258,7 +261,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
             e => e.ExitCode == 125 && e.Message!.Contains("closed"));
     }
 
-    [Fact]
+    [Fact(Timeout = TimeoutMs)]
     public async Task WithNoTokenFileTheMainProcessIsUnavailable()
     {
         await StartMain();
