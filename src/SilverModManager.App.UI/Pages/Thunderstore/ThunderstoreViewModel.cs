@@ -22,6 +22,15 @@ namespace SilverModManager.App.UI.Pages.Thunderstore;
 [UsedImplicitly]
 public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewModel>, IThunderstoreViewModel
 {
+    // Thunderstore lists standalone mod-manager apps as packages in every community. Installing one into a game
+    // from inside this app makes no sense, so they never get a row. The catalog's category tags don't mark them
+    // reliably (they sit beside real tools like BepInEx packs), so they are matched by full name.
+    private static readonly HashSet<string> OtherModManagers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ebkr-r2modman",
+        "Kesomannen-GaleModManager",
+    };
+
     private readonly IConnection _connection;
     private readonly IEnumerable<IGameData> _games;
     private readonly IThunderstoreCatalogSource _catalogs;
@@ -208,7 +217,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
     {
         Packages = _catalog is null
             ? []
-            : _catalog.Search(SearchText, ShowDeprecated).Select(ToRow).ToArray();
+            : _catalog.Search(SearchText, ShowDeprecated).Where(package => !OtherModManagers.Contains(package.FullName)).Select(ToRow).ToArray();
     }
 
     private static ThunderstoreVersionRef? LatestRef(SilverModManager.Networking.Thunderstore.DTOs.PackageListing package, SilverModManager.Networking.Thunderstore.DTOs.PackageVersion? latest)

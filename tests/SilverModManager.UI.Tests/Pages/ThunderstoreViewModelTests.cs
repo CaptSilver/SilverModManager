@@ -227,6 +227,55 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         Names(vm).Should().Equal("Zehs-REPOLib");
     }
 
+    private static ThunderstoreCatalog CatalogWithModManagers() => new("repo",
+    [
+        Package("Zehs", "REPOLib", rating: 900),
+        Package("ebkr", "r2modman", rating: 5000),
+        Package("Kesomannen", "GaleModManager", rating: 4000),
+        Package("someone", "r2modman_Profile_Sync", rating: 20),
+        Package("OldManager", "Abandoned", rating: 30, deprecated: true),
+    ]);
+
+    [Fact]
+    public async Task OtherModManagers_AreNotListed()
+    {
+        var (vm, _) = await Open(new FakeCatalogSource(CatalogWithModManagers()));
+
+        Names(vm).Should().Equal("Zehs-REPOLib", "someone-r2modman_Profile_Sync");
+    }
+
+    [Fact]
+    public async Task OtherModManagers_StayHiddenWithDeprecatedShown()
+    {
+        var (vm, _) = await Open(new FakeCatalogSource(CatalogWithModManagers()));
+
+        vm.ShowDeprecated = true;
+
+        Names(vm).Should().NotContain(["ebkr-r2modman", "Kesomannen-GaleModManager"]);
+        Names(vm).Should().Contain("someone-r2modman_Profile_Sync");
+    }
+
+    [Fact]
+    public async Task SearchingForAModManager_FindsNoManager()
+    {
+        var (vm, _) = await Open(new FakeCatalogSource(CatalogWithModManagers()));
+
+        vm.SearchText = "r2modman";
+        Names(vm).Should().Equal("someone-r2modman_Profile_Sync");
+
+        vm.SearchText = "gale";
+        Names(vm).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ModManagerNames_MatchRegardlessOfCase()
+    {
+        var catalog = new ThunderstoreCatalog("repo", [Package("EBKR", "R2ModMan", rating: 1)]);
+        var (vm, _) = await Open(new FakeCatalogSource(catalog));
+
+        Names(vm).Should().BeEmpty();
+    }
+
     [Fact]
     public async Task ShowDeprecated_AddsDeprecatedPackagesAndFlagsThem()
     {
