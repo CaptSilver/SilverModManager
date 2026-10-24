@@ -9,7 +9,7 @@ public class Peak(IServiceProvider provider) : AUnityGame<Peak>(provider, Defini
 {
     public static GameId GameId { get; } = GameId.From("Unity.Peak");
     public static string DisplayName => "PEAK";
-    public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Optional<Sdk.NexusModsApi.NexusModsGameId>.None;
+    public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(7867);
 
     /// <remarks><c>new</c> on purpose: the base's instance <see cref="AUnityGame{TSelf}.Definition"/> is this same object.</remarks>
     public new static readonly UnityGameDefinition Definition = new(

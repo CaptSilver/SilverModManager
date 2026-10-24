@@ -11,12 +11,12 @@ namespace SilverModManager.Games.Unity.Tests;
 public class PeakTests(ITestOutputHelper outputHelper) : AUnityGameTests<PeakTests, Unity.Peak.Peak>(outputHelper)
 {
     [Fact]
-    public void TheGameIsIdentifiedByItsSteamAppIdAndHasNoNexusId()
+    public void TheGameIsIdentifiedByItsSteamAppIdAndItsNexusModsId()
     {
         ((IGameData)Game).GameId.Should().Be(GameId.From("Unity.Peak"));
         ((IGameData)Game).DisplayName.Should().Be("PEAK");
         Game.StoreIdentifiers.SteamAppIds.Should().Equal(3527290u);
-        ((IGameData)Game).NexusModsGameId.Should().Be(Optional<Sdk.NexusModsApi.NexusModsGameId>.None);
+        ((IGameData)Game).NexusModsGameId.Should().Be(Optional<Sdk.NexusModsApi.NexusModsGameId>.Create(Sdk.NexusModsApi.NexusModsGameId.From(7867)));
     }
 
     [Fact]

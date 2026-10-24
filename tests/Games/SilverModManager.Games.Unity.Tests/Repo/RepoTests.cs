@@ -11,12 +11,12 @@ namespace SilverModManager.Games.Unity.Tests;
 public class RepoTests(ITestOutputHelper outputHelper) : AUnityGameTests<RepoTests, Unity.Repo.Repo>(outputHelper)
 {
     [Fact]
-    public void TheGameIsIdentifiedByItsSteamAppIdAndHasNoNexusId()
+    public void TheGameIsIdentifiedByItsSteamAppIdAndItsNexusModsId()
     {
         ((IGameData)Game).GameId.Should().Be(GameId.From("Unity.Repo"));
         ((IGameData)Game).DisplayName.Should().Be("R.E.P.O.");
         Game.StoreIdentifiers.SteamAppIds.Should().Equal(3241660u);
-        ((IGameData)Game).NexusModsGameId.Should().Be(Optional<Sdk.NexusModsApi.NexusModsGameId>.None);
+        ((IGameData)Game).NexusModsGameId.Should().Be(Optional<Sdk.NexusModsApi.NexusModsGameId>.Create(Sdk.NexusModsApi.NexusModsGameId.From(7398)));
     }
 
     [Fact]

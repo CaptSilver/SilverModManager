@@ -9,7 +9,7 @@ public class Repo(IServiceProvider provider) : AUnityGame<Repo>(provider, Defini
 {
     public static GameId GameId { get; } = GameId.From("Unity.Repo");
     public static string DisplayName => "R.E.P.O.";
-    public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Optional<Sdk.NexusModsApi.NexusModsGameId>.None;
+    public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(7398);
 
     /// <remarks><c>new</c> on purpose: the base's instance <see cref="AUnityGame{TSelf}.Definition"/> is this same object.</remarks>
     public new static readonly UnityGameDefinition Definition = new(
