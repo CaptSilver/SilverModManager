@@ -1,7 +1,7 @@
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using SilverModManager.Abstractions.NexusWebApi.Types;
-using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using NexusMods.Paths;
@@ -33,8 +33,10 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
     public ReactiveCommand<Unit> CommandMakeLocalEditableCopy { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandReinstallCollection { get; } = new ReactiveCommand();
 
-    public ReactiveUI.ReactiveCommand<NavigationInformation, System.Reactive.Unit> CommandViewCollectionDownloadPage { get; } 
-        = ReactiveUI.ReactiveCommand.Create<NavigationInformation, System.Reactive.Unit>(_ => System.Reactive.Unit.Default);
+    public ReactiveCommand<Unit> CommandOpenOnNexusMods { get; } = new ReactiveCommand();
+    public ReactiveCommand<Unit> CommandShowDownloads { get; } = new ReactiveCommand();
+    public CollectionPageTab SelectedTab { get; set; } = CollectionPageTab.Installed;
+    public ICollectionDownloadViewModel? Downloads { get; } = new CollectionDownloadDesignViewModel();
     public bool IsLocalCollection { get; } = false;
     public bool IsReadOnly { get; } = true;
 }

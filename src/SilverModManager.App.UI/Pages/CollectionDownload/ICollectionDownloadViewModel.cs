@@ -16,6 +16,11 @@ public interface ICollectionDownloadViewModel : IPageViewModelInterface
 {
     CollectionDownloadTreeDataGridAdapter TreeDataGridAdapter { get; }
 
+    /// <summary>
+    /// Whether the page sits inside the collection's own page, which already shows the collection header.
+    /// </summary>
+    bool IsEmbedded { get; }
+
     /// <inheritdoc cref="CollectionMetadata.Name"/>
     string Name { get; }
 

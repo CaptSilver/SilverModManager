@@ -5,6 +5,7 @@ using Avalonia.Media;
 using Avalonia.ReactiveUI;
 using Humanizer;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.MnemonicDB.Abstractions;
 using R3;
 using ReactiveUI;
@@ -27,7 +28,7 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 .AddTo(disposables);
             this.OneWayBind(ViewModel, vm => vm.InstalledModsCount, view => view.NumDownloads.Text, v => $"{v:N0} Mods")
                 .AddTo(disposables);
-            this.OneWayBind(ViewModel, vm => vm.InstalledModsCount, view => view.RequiredDownloadsCount.Text, v => $"{v:N0}")
+            this.OneWayBind(ViewModel, vm => vm.InstalledModsCount, view => view.InstalledModsCountText.Text, v => $"{v:N0}")
                 .AddTo(disposables);
             this.OneWayBind(ViewModel, vm => vm.TileImage, view => view.CollectionImage.Source)
                 .AddTo(disposables);
@@ -72,7 +73,23 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 .AddTo(disposables);
             this.OneWayBind(ViewModel, vm => vm.IsLocalCollection, view => view.ReinstallCollectionMenuItem.IsVisible, static isLocal => !isLocal)
                 .AddTo(disposables);
-            this.BindCommand(ViewModel, vm => vm.CommandViewCollectionDownloadPage, view => view.ViewCollectionDownloadMenuItem)
+            this.BindCommand(ViewModel, vm => vm.CommandShowDownloads, view => view.ViewCollectionDownloadMenuItem)
+                .AddTo(disposables);
+            this.BindCommand(ViewModel, vm => vm.CommandOpenOnNexusMods, view => view.OpenOnNexusModsButton)
+                .AddTo(disposables);
+            this.OneWayBind(ViewModel, vm => vm.IsLocalCollection, view => view.OpenOnNexusModsButton.IsVisible, static isLocal => !isLocal)
+                .AddTo(disposables);
+
+            this.OneWayBind(ViewModel, vm => vm.Downloads, view => view.DownloadsTab.IsVisible, static downloads => HasDownloadsTab(downloads))
+                .AddTo(disposables);
+            this.OneWayBind(ViewModel, vm => vm.Downloads, view => view.ViewCollectionDownloadMenuItem.IsVisible, static downloads => HasDownloadsTab(downloads))
+                .AddTo(disposables);
+            this.OneWayBind(ViewModel, vm => vm.Downloads, view => view.DownloadsHost.ViewModel)
+                .AddTo(disposables);
+
+            this.Bind(ViewModel, vm => vm.SelectedTab, view => view.TabControl.SelectedItem,
+                    tab => tab == CollectionPageTab.Downloads ? DownloadsTab : InstalledTab,
+                    item => ReferenceEquals(item, DownloadsTab) ? CollectionPageTab.Downloads : CollectionPageTab.Installed)
                 .AddTo(disposables);
 
 
@@ -115,5 +132,10 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 .SubscribeWithErrorLogging(image => HeaderBorderBackground.Background = new ImageBrush { Source = image, Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top})
                 .DisposeWith(disposables);
         });
+    }
+
+    private static bool HasDownloadsTab(ICollectionDownloadViewModel? downloads)
+    {
+        return CollectionPageTabs.For(hasDownloadPage: downloads is not null).Contains(CollectionPageTab.Downloads);
     }
 }

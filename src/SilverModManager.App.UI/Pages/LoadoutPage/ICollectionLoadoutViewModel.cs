@@ -1,12 +1,10 @@
-using System.Reactive;
 using Avalonia.Media.Imaging;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Abstractions.NexusWebApi.Types;
-using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.WorkspaceSystem;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Jobs;
-using ReactiveUI;
 
 namespace SilverModManager.App.UI.Pages.LoadoutPage;
 
@@ -71,5 +69,23 @@ public interface ICollectionLoadoutViewModel : IPageViewModelInterface
     /// </summary>
     R3.ReactiveCommand<R3.Unit> CommandReinstallCollection { get; }
     
-    ReactiveCommand<NavigationInformation, Unit> CommandViewCollectionDownloadPage { get; }
+    /// <summary>
+    /// Opens the collection's page on Nexus Mods. Only runs for Nexus collections.
+    /// </summary>
+    R3.ReactiveCommand<R3.Unit> CommandOpenOnNexusMods { get; }
+
+    /// <summary>
+    /// Switches to the download tabs.
+    /// </summary>
+    R3.ReactiveCommand<R3.Unit> CommandShowDownloads { get; }
+
+    /// <summary>
+    /// The tab being shown.
+    /// </summary>
+    CollectionPageTab SelectedTab { get; set; }
+
+    /// <summary>
+    /// The collection's download page, shown as the Downloads tab. Null for a local collection, or when the collection's archive is no longer in the library.
+    /// </summary>
+    ICollectionDownloadViewModel? Downloads { get; }
 }

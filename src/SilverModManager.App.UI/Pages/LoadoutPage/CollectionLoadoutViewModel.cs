@@ -6,7 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
+using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Dialog;
@@ -20,6 +22,7 @@ using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Collections;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
+using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using SilverModManager.MnemonicDB.Abstractions.Query;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
@@ -174,27 +177,28 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
             configureAwait: false
         );
 
-        CommandViewCollectionDownloadPage = ReactiveUI.ReactiveCommand.Create<NavigationInformation, System.Reactive.Unit>
-        (
-            info =>
-            {
-                var pageData = new PageData
-                {
-                    FactoryId = CollectionDownloadPageFactory.StaticId,
-                    Context = new CollectionDownloadPageContext()
-                    {
-                        TargetLoadout = pageContext.LoadoutId,
-                        CollectionRevisionMetadataId = nexusCollectionGroup.RevisionId,
-                    },
-                };
+        CommandShowDownloads = new ReactiveCommand(execute: _ => SelectedTab = CollectionPageTab.Downloads);
 
-                var workspaceController = GetWorkspaceController();
-                var behavior = workspaceController.GetOpenPageBehavior(pageData, info);
-                workspaceController.OpenPage(WorkspaceId, pageData, behavior);
-                
-                return System.Reactive.Unit.Default;
-            }
-        );
+        CommandOpenOnNexusMods = new ReactiveCommand(execute: _ =>
+        {
+            if (!revisionMetadata.HasValue) throw new InvalidOperationException("A local collection has no page on Nexus Mods");
+
+            var collection = revisionMetadata.Value.Collection;
+            var gameDomain = serviceProvider.GetRequiredService<IGameDomainToGameIdMappingCache>()[collection.GameId];
+            serviceProvider.GetRequiredService<IOSInterop>().OpenUri(CollectionPageTabs.NexusModsUri(gameDomain, collection.Slug, revisionMetadata.Value.RevisionNumber));
+        });
+
+        // The download page reads the collection's archive from the library, which can be removed while the collection stays installed.
+        if (revisionMetadata.HasValue && HasCollectionLibraryFile(connection.Db, revisionMetadata.Value))
+        {
+            Downloads = new CollectionDownloadViewModel(
+                windowManager: windowManager,
+                serviceProvider: serviceProvider,
+                revisionMetadata: revisionMetadata.Value,
+                targetLoadout: pageContext.LoadoutId,
+                isEmbedded: true
+            );
+        }
 
         CommandMakeLocalEditableCopy = new ReactiveCommand(
             executeAsync: async (_, _) =>
@@ -244,6 +248,15 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
         this.WhenActivated(disposables =>
         {
             Adapter.Activate().AddTo(disposables);
+
+            // The embedded download page navigates and retitles through the tab it sits in.
+            if (Downloads is CollectionDownloadViewModel downloads)
+            {
+                downloads.WindowId = WindowId;
+                downloads.WorkspaceId = WorkspaceId;
+                downloads.PanelId = PanelId;
+                downloads.TabId = TabId;
+            }
             
             connection.ObserveDatoms(LoadoutItem.ParentId, pageContext.GroupId)
                 .QueryWhenChanged(datoms => datoms.Count)
@@ -350,5 +363,17 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
     
     public ReactiveCommand<Unit> CommandMakeLocalEditableCopy { get; }
     public ReactiveCommand<Unit> CommandReinstallCollection { get; }
-    public ReactiveUI.ReactiveCommand<NavigationInformation, System.Reactive.Unit> CommandViewCollectionDownloadPage { get; }
+    public ReactiveCommand<Unit> CommandOpenOnNexusMods { get; }
+    public ReactiveCommand<Unit> CommandShowDownloads { get; }
+    public ICollectionDownloadViewModel? Downloads { get; }
+
+    [Reactive] public partial CollectionPageTab SelectedTab { get; set; }
+
+    private static bool HasCollectionLibraryFile(IDb db, CollectionRevisionMetadata.ReadOnly revisionMetadata)
+    {
+        return db.Datoms(
+            (NexusModsCollectionLibraryFile.CollectionSlug, revisionMetadata.Collection.Slug),
+            (NexusModsCollectionLibraryFile.CollectionRevisionNumber, revisionMetadata.RevisionNumber)
+        ).Count > 0;
+    }
 }

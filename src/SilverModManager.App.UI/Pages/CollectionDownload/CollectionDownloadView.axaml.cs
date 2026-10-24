@@ -25,6 +25,10 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
 
         this.WhenActivated(d =>
             {
+                // The collection page around an embedded download page already shows the header and the way to the installed mods.
+                var isEmbedded = ViewModel?.IsEmbedded ?? throw new InvalidOperationException("The collection download view was activated without a view model");
+                HeaderBorder.IsVisible = !isEmbedded;
+
                 this.BindCommand(ViewModel, vm => vm.CommandViewOnNexusMods, view => view.MenuItemViewOnNexusMods)
                     .DisposeWith(d);
 
@@ -177,7 +181,7 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                         var hasDownloadedAllRequiredItems = countDownloadedRequiredItems == ViewModel!.RequiredDownloadsCount;
                         var hasDownloadedAllOptionalItems = countDownloadedOptionalItems == ViewModel!.OptionalDownloadsCount;
                 
-                        ButtonViewCollection.IsVisible = isInstalled;
+                        ButtonViewCollection.IsVisible = isInstalled && !isEmbedded;
                 
                         ButtonDownloadRequiredItems.IsVisible = !hasDownloadedAllRequiredItems;
                         ButtonInstallRequiredItems.IsVisible = !isInstalled && hasDownloadedAllRequiredItems;

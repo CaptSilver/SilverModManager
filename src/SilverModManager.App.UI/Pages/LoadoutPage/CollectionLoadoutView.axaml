@@ -39,13 +39,13 @@
                                                        Value="{x:Static icons:IconValues.Copy}" />
                                 </MenuItem.Icon>
                             </navigation:NavigationMenuItem>
-                            <navigation:NavigationMenuItem Header="{x:Static resources:Language.CollectionLoadoutView_ViewCollectionDownloadMenuItem}"
-                                                           x:Name="ViewCollectionDownloadMenuItem">
+                            <MenuItem Header="{x:Static resources:Language.CollectionLoadoutView_ViewCollectionDownloadMenuItem}"
+                                      x:Name="ViewCollectionDownloadMenuItem">
                                 <MenuItem.Icon>
                                     <icons:UnifiedIcon Size="16"
                                                        Value="{x:Static icons:IconValues.Downloading}" />
                                 </MenuItem.Icon>
-                            </navigation:NavigationMenuItem>
+                            </MenuItem>
                             <MenuItem Header="{x:Static resources:Language.CollectionLoadoutView_ReinstallCollection}"
                                       x:Name="ReinstallCollectionMenuItem"
                                       ToolTip.Tip="{x:Static resources:Language.CollectionLoadoutView_ReinstallCollection_ToolTip}">
@@ -65,6 +65,13 @@
                         </MenuFlyout>
                     </controls:StandardButton.Flyout>
                 </controls:StandardButton>
+                <!-- opens the collection's page on Nexus Mods -->
+                <controls:StandardButton x:Name="OpenOnNexusModsButton"
+                                         Text="{x:Static resources:Language.CollectionLoadoutView_OpenOnNexusMods}"
+                                         LeftIcon="{x:Static icons:IconValues.NexusColor}"
+                                         ShowIcon="Left"
+                                         Size="Toolbar"
+                                         Type="Tertiary" />
                 <!-- nexus mods logo -->
                 <StackPanel x:Name="NexusModsLogo"
                             Orientation="Horizontal"
@@ -208,15 +215,24 @@
 
             <!-- second row (tab control) -->
             <TabControl x:Name="TabControl" Grid.Row="1">
-                <TabItem x:Name="RequiredTab" Content="{StaticResource TabItemContent}">
+                <TabItem x:Name="InstalledTab" Content="{StaticResource TabItemContent}">
                     <TabItem.Header>
-                        <StackPanel x:Name="RequiredModsPanel" Classes="TabItemHeaderStack">
-                            <TextBlock Text="{x:Static resources:Language.CollectionLoadoutView_Required}" />
+                        <StackPanel x:Name="InstalledModsPanel" Classes="TabItemHeaderStack">
+                            <TextBlock Text="{x:Static resources:Language.CollectionLoadoutView_Installed}" />
                             <Border>
-                                <TextBlock x:Name="RequiredDownloadsCount" />
+                                <TextBlock x:Name="InstalledModsCountText" />
                             </Border>
                         </StackPanel>
                     </TabItem.Header>
+                </TabItem>
+                <!-- the collection's download page, with its own Required, Optional and instructions tabs -->
+                <TabItem x:Name="DownloadsTab">
+                    <TabItem.Header>
+                        <StackPanel Classes="TabItemHeaderStack">
+                            <TextBlock Text="{x:Static resources:Language.CollectionLoadoutView_Downloads}" />
+                        </StackPanel>
+                    </TabItem.Header>
+                    <reactive:ViewModelViewHost x:Name="DownloadsHost" />
                 </TabItem>
             </TabControl>
         </Grid>

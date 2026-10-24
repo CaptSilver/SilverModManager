@@ -57,8 +57,10 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
         IWindowManager windowManager,
         IServiceProvider serviceProvider,
         CollectionRevisionMetadata.ReadOnly revisionMetadata,
-        LoadoutId targetLoadout) : base(windowManager)
+        LoadoutId targetLoadout,
+        bool isEmbedded = false) : base(windowManager)
     {
+        IsEmbedded = isEmbedded;
         _serviceProvider = serviceProvider;
         _overlayController = serviceProvider.GetRequiredService<IOverlayController>();
         _notificationService = serviceProvider.GetRequiredService<IWindowNotificationService>();
@@ -519,6 +521,8 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
 
     public BindableReactiveProperty<bool> IsUpdateAvailable { get; }
     public BindableReactiveProperty<Optional<RevisionNumber>> NewestRevisionNumber { get; } = new();
+
+    public bool IsEmbedded { get; }
 
     public string Name => _collection.Name;
     public string Summary => _collection.Summary.ValueOr(string.Empty);

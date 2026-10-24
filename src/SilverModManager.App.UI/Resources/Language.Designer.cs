@@ -520,15 +520,6 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Required.
-        /// </summary>
-        public static string CollectionLoadoutView_Required {
-            get {
-                return ResourceManager.GetString("CollectionLoadoutView_Required", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Reinstall Collection.
         /// </summary>
         public static string CollectionLoadoutView_ReinstallCollection {
@@ -601,7 +592,34 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to View collection download page.
+        ///   Looks up a localized string similar to Installed.
+        /// </summary>
+        public static string CollectionLoadoutView_Installed {
+            get {
+                return ResourceManager.GetString("CollectionLoadoutView_Installed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Downloads.
+        /// </summary>
+        public static string CollectionLoadoutView_Downloads {
+            get {
+                return ResourceManager.GetString("CollectionLoadoutView_Downloads", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open on Nexus Mods.
+        /// </summary>
+        public static string CollectionLoadoutView_OpenOnNexusMods {
+            get {
+                return ResourceManager.GetString("CollectionLoadoutView_OpenOnNexusMods", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show downloads.
         /// </summary>
         public static string CollectionLoadoutView_ViewCollectionDownloadMenuItem {
             get {
