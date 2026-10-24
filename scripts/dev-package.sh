@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # Builds an AppImage the way CI does (.github/workflows/build-linux-pupnet.yaml), inside
 # the distrobox (SILVER_BOX, default fedora). The result lands in
-# src/SilverModManager.App/Deploy/OUT, which is gitignored. SILVER_APP_VERSION sets the
-# version (default 0.0.1); extra arguments go to pupnet.
+# src/SilverModManager.App/Deploy/OUT, which is gitignored. The version comes from the
+# nearest v<major>.<minor>.<patch> tag (see lib/app-version.sh); SILVER_APP_VERSION overrides
+# it. Extra arguments go to pupnet.
 set -euo pipefail
 
 # shellcheck source=lib/box.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/box.sh"
+# shellcheck source=lib/app-version.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/app-version.sh"
 box_reexec "${BASH_SOURCE[0]}" "$@"
 
 # Same pinned PupNet as CI.
@@ -37,6 +40,7 @@ fi
 # runtime rather than installing an extra one.
 export DOTNET_ROLL_FORWARD=Major
 
+version="$(app_version "$root")"
 cd "$root/src/SilverModManager.App"
-pupnet -y -v "${SILVER_APP_VERSION:-0.0.1}" -k AppImage -p DefineConstants=INSTALLATION_METHOD_APPIMAGE "$@"
+pupnet -y -v "$version" -k AppImage -p DefineConstants=INSTALLATION_METHOD_APPIMAGE "$@"
 ls -1 Deploy/OUT/*.AppImage

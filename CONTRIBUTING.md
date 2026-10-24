@@ -27,7 +27,7 @@ All of these re-run themselves inside the box, so call them from anywhere on the
 |---|---|
 | `scripts/dev-setup.sh` | `dnf install`s `dotnet-sdk-10.0`, `libicu` and `git` in the box, fetches the submodules and runs `dotnet restore`. Safe to repeat. |
 | `scripts/dev-build.sh` | `dotnet build SilverModManager.App.sln`. Extra arguments go to `dotnet build`, e.g. `scripts/dev-build.sh -c Release`. |
-| `scripts/dev-package.sh` | Builds an AppImage with PupNet. The result lands in `src/SilverModManager.App/Deploy/OUT`. `SILVER_APP_VERSION` sets the version (default `0.0.1`). |
+| `scripts/dev-package.sh` | Builds an AppImage with PupNet. The result lands in `src/SilverModManager.App/Deploy/OUT`. The version comes from the nearest `v<major>.<minor>.<patch>` tag, with a `-dev.<commits since the tag>` suffix past it; `SILVER_APP_VERSION` overrides it. |
 | `scripts/test.sh` | Runs the offline test suite. Extra arguments go to `dotnet test`. |
 
 First time through: `scripts/dev-setup.sh`, then `scripts/dev-build.sh`, then `scripts/test.sh`.
