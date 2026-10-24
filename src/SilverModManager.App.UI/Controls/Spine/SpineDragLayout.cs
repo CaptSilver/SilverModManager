@@ -64,4 +64,16 @@ internal static class SpineDragLayout
         var max = tops[last] + heights[last] - (tops[from] + heights[from]) + overhang;
         return Math.Clamp(offset, min, max);
     }
+
+    /// <summary>
+    /// Whether letting go at (<paramref name="x"/>, <paramref name="y"/>), relative to the list, drops the tile into the slot
+    /// it shows. The tile is clamped to the list, so how far up or down the pointer went doesn't matter: reaching the first
+    /// or last slot needs the pointer past the list's end. Only letting go well off to the side, more than a list's width
+    /// away, cancels, as Escape does.
+    /// </summary>
+    public static bool CommitsOnRelease(double listWidth, double x, double y)
+    {
+        _ = y;
+        return x >= -listWidth && x <= 2 * listWidth;
+    }
 }

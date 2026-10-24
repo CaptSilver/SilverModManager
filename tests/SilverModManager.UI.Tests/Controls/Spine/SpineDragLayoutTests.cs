@@ -115,4 +115,17 @@ public class SpineDragLayoutTests
 
         SpineDragLayout.TargetIndex(Tops, Heights, from, Centre(from, offset)).Should().Be(expected);
     }
+
+    [Theory]
+    // A 60 px wide list, 250 px tall.
+    [InlineData(30, -200, true)]
+    [InlineData(30, 1000, true)]
+    [InlineData(30, 120, true)]
+    [InlineData(-200, 120, false)]
+    [InlineData(400, 120, false)]
+    public void A_release_commits_wherever_it_is_vertically_and_cancels_only_well_off_to_the_side(double x, double y, bool commits)
+    {
+        // The tile is clamped to the list, so the slot it shows is the one meant however far up or down the pointer went.
+        SpineDragLayout.CommitsOnRelease(listWidth: 60, x, y).Should().Be(commits);
+    }
 }

@@ -109,11 +109,9 @@ public partial class Spine : ReactiveUserControl<ISpineViewModel>
         _pressPoint = null;
         if (_drag is not { } drag) return;
 
-        var inside = new Rect(Loadouts.Bounds.Size).Inflate(new Thickness(0, drag.Stride / 2));
         var releaseAt = e.GetPosition(Loadouts);
         e.Handled = true;
-        // Releasing off the list is a cancel, the same as Escape.
-        _ = SettleAsync(drag, commit: inside.Contains(releaseAt));
+        _ = SettleAsync(drag, commit: SpineDragLayout.CommitsOnRelease(Loadouts.Bounds.Width, releaseAt.X, releaseAt.Y));
     }
 
     // Losing the capture (window deactivated, popup opened) must not leave a tile stuck in the air.
