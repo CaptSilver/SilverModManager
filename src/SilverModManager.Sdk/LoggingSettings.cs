@@ -81,9 +81,9 @@ public record LoggingSettings : ISettings
                 x => x.MinimumLevel,
                 new PropertyOptions<LoggingSettings, LogLevel>
                 {
-                    Section = Sections.General,
+                    Section = Sections.DeveloperTools,
                     DisplayName = "Minimum logging level",
-                    DescriptionFactory = _ => "Sets the minimum logging level. Recommended: Debug",
+                    DescriptionFactory = _ => "Sets the minimum logging level. Debug is the default; Trace adds the detailed diagnostics used to investigate a problem.",
                     RequiresRestart = true,
                 },
                 SingleValueMultipleChoiceContainerOptions.Create(

@@ -322,6 +322,8 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
 
         // Saving the displayed order is also what drops ids of deleted loadouts from the setting.
         var moved = LoadoutSpineOrder.Move(displayed, fromIndex, toIndex);
+        _logger.LogTrace("Moving spine loadout from {From} to {To}: {Before} -> {After}", fromIndex, toIndex,
+            string.Join(",", displayed.Select(id => id.Value.Value)), string.Join(",", moved.Select(id => id.Value.Value)));
         _settingsManager.Update<LoadoutSpineOrderSettings>(settings => settings with
         {
             LoadoutIds = moved.Select(id => id.Value.Value).ToImmutableList(),
