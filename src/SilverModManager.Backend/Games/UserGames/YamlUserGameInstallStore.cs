@@ -119,7 +119,7 @@ internal sealed class YamlUserGameInstallStore : IUserGameInstallStore
         }
 
         var gameId = GameId.From(game);
-        var platformName = Scalar(map, "platform")?.Trim().ToLowerInvariant() ?? DefaultPlatformName(gameId);
+        var platformName = Scalar(map, "platform")?.Trim().ToLowerInvariant() ?? DefaultPlatformName(gameId, path);
         var platform = Array.FindIndex(Platforms, entry => entry.Name == platformName);
         if (platform < 0)
         {
@@ -130,10 +130,24 @@ internal sealed class YamlUserGameInstallStore : IUserGameInstallStore
         return new UserGameInstall(gameId, path, Platforms[platform].Platform, Scalar(map, "prefix"), Scalar(map, "wine"));
     }
 
-    // An entry without a platform is the build the game would run as anyway: its native one when it has one,
+    // An entry without a platform is the build in its folder: the native one when the game has one there,
     // otherwise the Windows build under Wine.
-    private string DefaultPlatformName(GameId gameId)
-        => _games.FirstOrDefault(data => data.GameId == gameId)?.HasNativeLinuxBuild == true ? "linux" : "windows";
+    private string DefaultPlatformName(GameId gameId, string path)
+    {
+        if (_games.FirstOrDefault(data => data.GameId == gameId) is not { HasNativeLinuxBuild: true } game) return "windows";
+        if (game.NativeLinuxPrimaryFile is null) return "linux";
+
+        try
+        {
+            return game.IsInstalledAt(_fileSystem.FromUnsanitizedFullPath(path)) ? "linux" : "windows";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            // A hand-typed path we can't look into; the Windows build is the one that can still run from a prefix.
+            _logger.LogWarning(e, "Could not look for {Game}'s native executable in '{Path}'", gameId, path);
+            return "windows";
+        }
+    }
 
     private static string? Scalar(YamlMappingNode map, string key)
         => map.Children.TryGetValue(key, out var node) && node is YamlScalarNode scalar ? scalar.Value : null;

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.InteropServices;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
@@ -44,6 +45,7 @@ public class BG3WineDllOverrideDiagnosticTests(ITestOutputHelper outputHelper) :
             {
                 // GOG locator ids are numeric build ids, which the hashes queries cast; the stub hasher knows this one.
                 LocatorIds = [LocatorId.From("3976631895")],
+                Platform = OSPlatform.Windows,
                 LinuxCompatabilityDataProvider = _provider,
             });
     }
@@ -113,6 +115,7 @@ public class BG3WineDllOverrideSteamDiagnosticTests(ITestOutputHelper outputHelp
             )
             {
                 LocatorIds = [LocatorId.From("3976631895")],
+                Platform = OSPlatform.Windows,
                 LinuxCompatabilityDataProvider = _provider,
             });
     }

@@ -334,9 +334,38 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private Dictionary<GamePath, SyncNode> BuildSyncTreeFromIndex(Loadout.ReadOnly loadout, GameInstallMetadata.ReadOnly metadata)
     {
         var currentItems = GetDiskStateForGame(metadata);
-        var prevItems = ((ILoadoutSynchronizer)this).GetPreviouslyAppliedDiskState(metadata);
+        var prevItems = ForgetRelocatedFiles(((ILoadoutSynchronizer)this).GetPreviouslyAppliedDiskState(metadata), currentItems);
 
         return BuildSyncTree(currentItems, prevItems, loadout);
+    }
+
+    /// <summary>
+    /// Locations whose folder can change under an installation between two syncs, for example when a game that was
+    /// found in a Proton prefix is found as its native build. Nothing the loadout deployed there is on disk any more
+    /// when that happens, which would read as the user deleting every one of those files.
+    /// </summary>
+    protected virtual IReadOnlySet<LocationId> RelocatableLocations => FrozenSet<LocationId>.Empty;
+
+    /// <summary>
+    /// Takes the previously applied files of a <see cref="RelocatableLocations">relocatable</see> location out of the
+    /// previous state when none of them is on disk. The loadout then deploys them again; nothing is deleted.
+    /// A location with even one of its files still on disk is not treated as moved, so a file the user deleted
+    /// stays deleted.
+    /// </summary>
+    private List<PathPartPair> ForgetRelocatedFiles(List<PathPartPair> previous, List<PathPartPair> current)
+    {
+        var relocatable = RelocatableLocations;
+        if (relocatable.Count == 0 || previous.Count == 0) return previous;
+
+        var onDisk = current.Select(pair => pair.Path).ToHashSet();
+        var moved = relocatable
+            .Where(location => previous.Any(pair => pair.Path.LocationId == location)
+                               && !previous.Any(pair => pair.Path.LocationId == location && onDisk.Contains(pair.Path)))
+            .ToHashSet();
+        if (moved.Count == 0) return previous;
+
+        Logger.LogInformation("None of the files last deployed to {Locations} are on disk, so the folder is taken to have moved and they will be deployed again", string.Join(", ", moved));
+        return previous.Where(pair => !moved.Contains(pair.Path.LocationId)).ToList();
     }
 
     /// <summary>

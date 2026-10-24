@@ -37,6 +37,11 @@ public class BaldursGate3Synchronizer : ALoadoutSynchronizer
         _modsettings = new ModsettingsFile(game, _modules, provider.GetRequiredService<ILogger<ModsettingsFile>>());
     }
 
+    // The native build keeps these under XDG_DATA_HOME, the Windows build in its Proton prefix, so a game that was
+    // managed in the prefix finds them in a new folder once it is recognised as native.
+    protected override IReadOnlySet<LocationId> RelocatableLocations { get; } =
+        new HashSet<LocationId> { Bg3Constants.ModsLocationId, Bg3Constants.PlayerProfilesLocationId };
+
     protected override IGamePathFilter GameSpecificPathFilter { get; } = Abstractions.Loadouts.Synchronizers.GamePathFilters.Create(path =>
     {
         // ignore all files inside the public player profiles directory except the modsettings.lsx file

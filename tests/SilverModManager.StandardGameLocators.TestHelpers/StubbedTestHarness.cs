@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using NexusMods.Paths;
@@ -12,7 +13,8 @@ public static class StubbedTestHarnessExtensions
         Version version,
         Dictionary<RelativePath, byte[]>? gameFiles = null,
         GameStore[]? stores = null,
-        Func<IServiceProvider, IFileSystem>? locationsFileSystem = null)
+        Func<IServiceProvider, IFileSystem>? locationsFileSystem = null,
+        OSPlatform? platform = null)
         where TGame : IGame
     {
         services
@@ -23,7 +25,10 @@ public static class StubbedTestHarnessExtensions
                     s.GetRequiredService<TemporaryFileManager>(),
                     gameFiles,
                     stores,
-                    locationsFileSystem?.Invoke(s)));
+                    locationsFileSystem?.Invoke(s))
+                {
+                    Platform = platform ?? OSPlatform.Linux,
+                });
 
         return services;
     }

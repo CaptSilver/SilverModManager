@@ -28,10 +28,15 @@ internal sealed class AddGameByPathService : IAddGameByPath
         var locator = new UserInstallLocator(loggerFactory.CreateLogger<UserInstallLocator>(), store, fileSystem, games);
         var all = games.ToArray();
         _launchers = new Lazy<(IGameData, RelativePath)[]>(() => all
-            .SelectMany(game => PrimaryFileProbe.Find(game, fileSystem, locator, _logger) is { } file
-                ? [(game, file)]
-                : Array.Empty<(IGameData, RelativePath)>())
+            .SelectMany(game => LauncherFiles(game, fileSystem, locator))
             .ToArray());
+    }
+
+    // The probe answers for the Windows build; a folder holding only the native build is found by its own executable.
+    private IEnumerable<(IGameData, RelativePath)> LauncherFiles(IGameData game, IFileSystem fileSystem, IGameLocator locator)
+    {
+        if (PrimaryFileProbe.Find(game, fileSystem, locator, _logger) is { } file) yield return (game, file);
+        if (game is { HasNativeLinuxBuild: true, NativeLinuxPrimaryFile: { } native }) yield return (game, native);
     }
 
     public AddGameResult Add(AbsolutePath folder, GameId? game, AbsolutePath? prefix, AbsolutePath? wine)
@@ -51,6 +56,8 @@ internal sealed class AddGameByPathService : IAddGameByPath
         {
             EnsureListable(folder);
             candidates = launchers.Where(entry => IdentifyingFilesNarrowing.FindIgnoringCase(folder, entry.File) is not null).ToList();
+            // A folder with both builds' executables is still one game.
+            candidates = candidates.DistinctBy(entry => entry.Game.GameId).ToList();
             if (game is { } wanted) candidates = candidates.Where(entry => entry.Game.GameId == wanted).ToList();
             if (candidates.Count > 1) candidates = IdentifyingFilesNarrowing.Narrow(folder, candidates, entry => entry.Game);
             if (candidates.Count > 1) candidates = NarrowByStore(folder, candidates);
@@ -65,9 +72,10 @@ internal sealed class AddGameByPathService : IAddGameByPath
         if (candidates.Count > 1) return new AddGameResult.Ambiguous(candidates.Select(entry => new AddGameResult.AmbiguousCandidate(entry.Game, entry.File)).ToArray());
 
         var chosen = candidates[0].Game;
-        if (!chosen.HasNativeLinuxBuild && prefix is null) return new AddGameResult.NeedsPrefix(chosen);
+        var isNative = chosen.IsNativeBuildIn(folder);
+        if (!isNative && prefix is null) return new AddGameResult.NeedsPrefix(chosen);
 
-        var platform = chosen.HasNativeLinuxBuild ? OSPlatform.Linux : OSPlatform.Windows;
+        var platform = isNative ? OSPlatform.Linux : OSPlatform.Windows;
         try
         {
             _store.Add(new UserGameInstall(chosen.GameId, folder.ToString(), platform, prefix?.ToString(), wine?.ToString()));

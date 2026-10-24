@@ -45,9 +45,18 @@ public interface IGameData
     /// <remarks>
     /// Steam's app manifest doesn't say, so this is a per-game fact. It only matters when no Proton
     /// prefix exists yet: a native game then runs on the host, any other game is assumed to run
-    /// under Proton and resolves into the prefix it will get.
+    /// under Proton and resolves into the prefix it will get. A game that has run under Proton before
+    /// keeps its prefix after switching to the native build, so it also names
+    /// <see cref="NativeLinuxPrimaryFile"/> to tell the two installs apart.
     /// </remarks>
     bool HasNativeLinuxBuild => false;
+
+    /// <summary>
+    /// The native Linux build's executable, relative to the game folder. Its presence in an install
+    /// marks the native build even when a Proton prefix exists; null when the game has no such file
+    /// to look for.
+    /// </summary>
+    RelativePath? NativeLinuxPrimaryFile => null;
 
     ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult);
 

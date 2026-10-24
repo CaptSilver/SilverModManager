@@ -45,6 +45,9 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
     {
         var bg3LoadoutFile = ScriptExtenderFile.Find(loadout);
 
+        if (bg3LoadoutFile.HasValue && BaldursGate3.IsNativeBuild(loadout.InstallationInstance.LocatorResult))
+            yield return Diagnostics.CreateBg3SeOnNativeBuild(GameName: BaldursGate3.DisplayName);
+
         // The script extender's DWrite.dll only loads under Wine when it is overridden; the diagnostic clears once the prefix has it.
         var dllOverrideInstructions = await WineDiagnosticHelper.GetWineDllOverridesUpdateInstructions(
             loadout.InstallationInstance,

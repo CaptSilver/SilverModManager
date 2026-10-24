@@ -61,11 +61,16 @@ internal class SteamLocator : IGameLocator
             var protonDirectory = CompatDataDirectory(gameFinderGame, libraries);
             var prefix = new ProtonWinePrefix { ProtonDirectory = protonDirectory, ConfigurationDirectory = protonDirectory.Combine("pfx") };
             var prefixReady = ProtonPrefix.IsReady(prefix.ConfigurationDirectory);
-            var isWindowsBuild = prefixReady || !game.HasNativeLinuxBuild;
+
+            // A prefix outlives a switch to the native build, so a ready one only means Windows when the
+            // game isn't installed in its native form. Without a prefix, a game with a native build is it.
+            var isNativeBuild = game.HasNativeLinuxBuild && (!prefixReady || IsNativeInstall(game, gameFinderGame));
+            var isWindowsBuild = !isNativeBuild;
+            if (isNativeBuild && prefixReady) LogStalePrefix(gameFinderGame, prefix.ConfigurationDirectory);
 
             var fileSystem = isWindowsBuild ? prefix.CreateOverlayFileSystem(_fileSystem) : _fileSystem;
             var path = fileSystem.FromUnsanitizedFullPath(gameFinderGame.Path.GetFullPath());
-            var linuxCompatibilityDataProvider = prefixReady ? new LinuxCompatibilityDataProvider(gameFinderGame, prefix.ConfigurationDirectory) : null;
+            var linuxCompatibilityDataProvider = prefixReady && isWindowsBuild ? new LinuxCompatibilityDataProvider(gameFinderGame, prefix.ConfigurationDirectory) : null;
 
             yield return new GameLocatorResult
             {
@@ -87,6 +92,32 @@ internal class SteamLocator : IGameLocator
                 StoreLastWrite = LastWriteOf(gameFinderGame.AppManifest),
             };
         }
+    }
+
+    private readonly HashSet<uint> _loggedStalePrefixes = [];
+
+    private bool IsNativeInstall(IGameData game, SteamGame installed)
+    {
+        try
+        {
+            return game.IsInstalledAt(_fileSystem.FromUnsanitizedFullPath(installed.Path.GetFullPath()));
+        }
+        catch (Exception e) when (IsStorageFailure(e))
+        {
+            // Can't tell what is installed; the prefix is the only evidence left.
+            return false;
+        }
+    }
+
+    // The prefix belongs to the user and may hold saves from earlier Proton runs, so it is only mentioned.
+    private void LogStalePrefix(SteamGame game, AbsolutePath prefix)
+    {
+        lock (_loggedStalePrefixes)
+        {
+            if (!_loggedStalePrefixes.Add(game.AppId.Value)) return;
+        }
+
+        _logger.LogWarning("{GameName} is installed as its native Linux build, so the Proton prefix at {Prefix} is not used. Its files are left as they are.", game.Name, prefix);
     }
 
     /// <summary>

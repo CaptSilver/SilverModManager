@@ -113,19 +113,35 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequ
         ];
     }
 
+    // The official Linux build runs on the host, so a Steam install that also has a Proton prefix from earlier
+    // runs is still the native game when bin/bg3 is installed.
+    public bool HasNativeLinuxBuild => true;
+
+    public RelativePath? NativeLinuxPrimaryFile => NativeExecutable;
+
+    private static readonly RelativePath NativeExecutable = RelativePath.FromUnsanitizedInput("bin/bg3");
+
     public ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult)
     {
+        // The Windows build keeps its data in the prefix's AppData\Local, which the Wine file system maps for us.
+        // On the host file system the same known folder is XDG_DATA_HOME, where the native build keeps it.
+        var larian = fileSystem.GetKnownPath(KnownPath.LocalApplicationDataDirectory).Combine("Larian Studios/Baldur's Gate 3");
+
         return new Dictionary<LocationId, AbsolutePath>()
         {
             { LocationId.Game, gameLocatorResult.Path },
-            { Bg3Constants.ModsLocationId, fileSystem.GetKnownPath(KnownPath.LocalApplicationDataDirectory).Combine("Larian Studios/Baldur's Gate 3/Mods") },
-            { Bg3Constants.PlayerProfilesLocationId, fileSystem.GetKnownPath(KnownPath.LocalApplicationDataDirectory).Combine("Larian Studios/Baldur's Gate 3/PlayerProfiles/Public") },
-            { Bg3Constants.ScriptExtenderConfigLocationId, fileSystem.GetKnownPath(KnownPath.LocalApplicationDataDirectory).Combine("Larian Studios/Baldur's Gate 3/ScriptExtender") },
+            { Bg3Constants.ModsLocationId, larian.Combine("Mods") },
+            { Bg3Constants.PlayerProfilesLocationId, larian.Combine("PlayerProfiles/Public") },
+            { Bg3Constants.ScriptExtenderConfigLocationId, larian.Combine("ScriptExtender") },
         }.ToImmutableDictionary();
     }
 
+    internal static bool IsNativeBuild(GameLocatorResult result) => result.TargetOS.IsLinux && result.WinePrefixPath is null;
+
     public GamePath GetPrimaryFile(GameInstallation installation)
     {
+        if (IsNativeBuild(installation.LocatorResult)) return new GamePath(LocationId.Game, NativeExecutable);
+
         // Use launcher to allow choosing between DirectX11 and Vulkan on GOG, Steam already always starts the launcher
         return new GamePath(LocationId.Game, "Launcher/LariLauncher.exe");
     }
@@ -134,6 +150,8 @@ public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IWineDllOverrideRequ
     // It is Wine that needs the override, so it applies to every store.
     public IReadOnlyList<WineDllOverride> RequiredWineDllOverrides(Loadout.ReadOnly loadout)
     {
+        // The native build has no Wine to configure; the script extender can't load there at all.
+        if (IsNativeBuild(loadout.InstallationInstance.LocatorResult)) return [];
         return ScriptExtenderFile.Find(loadout).HasValue ? ScriptExtenderOverrides : [];
     }
 

@@ -11,7 +11,7 @@ namespace SilverModManager.Backend.Tests.Games;
 /// A game that is only an id. A substitute can't carry a <see cref="GameId"/>: it builds the default
 /// value, and the default throws. It answers <see cref="GetPrimaryFile"/> only when given a file name.
 /// </summary>
-internal class FakeGameData(string id, bool hasNativeLinuxBuild = false, string? primaryFile = null) : IGameData
+internal class FakeGameData(string id, bool hasNativeLinuxBuild = false, string? primaryFile = null, string? nativePrimaryFile = null) : IGameData
 {
     public GameId GameId { get; } = GameId.From(id);
     public StoreIdentifiers StoreIdentifiers { get; init; } = new(GameId.From(id));
@@ -20,6 +20,7 @@ internal class FakeGameData(string id, bool hasNativeLinuxBuild = false, string?
     public IStreamFactory IconImage => throw new NotSupportedException();
     public IStreamFactory TileImage => throw new NotSupportedException();
     public bool HasNativeLinuxBuild { get; } = hasNativeLinuxBuild;
+    public RelativePath? NativeLinuxPrimaryFile { get; } = nativePrimaryFile is null ? (RelativePath?)null : RelativePath.FromUnsanitizedInput(nativePrimaryFile);
 
     public ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult)
         => throw new NotSupportedException();

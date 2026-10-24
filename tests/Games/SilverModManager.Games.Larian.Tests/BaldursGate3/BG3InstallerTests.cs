@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Games.Generic.Installers;
 using SilverModManager.Games.Larian.BaldursGate3;
@@ -16,7 +17,7 @@ public class BG3InstallerTests(ITestOutputHelper outputHelper) : ALibraryArchive
     {
         return base.AddServices(services)
             .AddBaldursGate3()
-            .AddUniversalGameLocator<Larian.BaldursGate3.BaldursGate3>(new Version("1.6.1"), locationsFileSystem: IsolatedKnownFolders.Create);
+            .AddUniversalGameLocator<Larian.BaldursGate3.BaldursGate3>(new Version("1.6.1"), locationsFileSystem: IsolatedKnownFolders.Create, platform: OSPlatform.Windows);
     }
 
 

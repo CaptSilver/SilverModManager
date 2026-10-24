@@ -49,9 +49,9 @@ public class AddGameByPathServiceTests
         return folder;
     }
 
-    private IGameData Game(string id, string exe, bool native = false, uint[]? steam = null, long[]? gog = null)
+    private IGameData Game(string id, string exe, bool native = false, uint[]? steam = null, long[]? gog = null, string? nativeExe = null)
     {
-        var game = new FakeGameData(id, native, exe)
+        var game = new FakeGameData(id, native, exe, nativeExe)
         {
             StoreIdentifiers = new StoreIdentifiers(GameId.From(id))
             {
@@ -113,6 +113,40 @@ public class AddGameByPathServiceTests
 
         result.Should().Be(new AddGameResult.Added(game));
         _store.Installs.Should().Equal(new UserGameInstall(game.GameId, "/games/alpha", OSPlatform.Linux));
+    }
+
+    [Fact]
+    public void ANativeOnlyFolderIsFoundByTheNativeExecutable()
+    {
+        var game = Game("alpha", "Launcher/Alpha.exe", native: true, nativeExe: "bin/alpha");
+
+        var result = Service().Add(Folder("/games/alpha", "bin/alpha"), null, null, null);
+
+        result.Should().Be(new AddGameResult.Added(game));
+        _store.Installs.Should().Equal(new UserGameInstall(game.GameId, "/games/alpha", OSPlatform.Linux));
+    }
+
+    [Fact]
+    public void TheWindowsBuildOfAGameWithANativeBuildIsRecordedWithItsPrefix()
+    {
+        var game = Game("alpha", "Launcher/Alpha.exe", native: true, nativeExe: "bin/alpha");
+        var prefix = _fs.FromUnsanitizedFullPath("/prefixes/alpha");
+
+        var result = Service().Add(Folder("/games/alpha", "Launcher/Alpha.exe"), null, prefix, null);
+
+        result.Should().Be(new AddGameResult.Added(game));
+        _store.Installs.Should().Equal(new UserGameInstall(game.GameId, "/games/alpha", OSPlatform.Windows, prefix.ToString()));
+    }
+
+    [Fact]
+    public void TheWindowsBuildOfAGameWithANativeBuildStillNeedsAPrefix()
+    {
+        var game = Game("alpha", "Launcher/Alpha.exe", native: true, nativeExe: "bin/alpha");
+
+        var result = Service().Add(Folder("/games/alpha", "Launcher/Alpha.exe"), null, null, null);
+
+        result.Should().Be(new AddGameResult.NeedsPrefix(game));
+        _store.Installs.Should().BeEmpty();
     }
 
     [Fact]

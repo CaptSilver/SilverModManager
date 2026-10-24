@@ -330,4 +330,26 @@ internal static partial class Diagnostics
             .AddValue<string>("Summary")
         )
         .Finish();
+
+    [DiagnosticTemplate] [UsedImplicitly] internal static IDiagnosticTemplate Bg3SeOnNativeBuildTemplate = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 14))
+        .WithTitle("Script Extender cannot load in the native Linux build")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The BG3 Script Extender does not work with the native Linux build of Baldur's Gate 3.")
+        .WithDetails("""
+                     The BG3 Script Extender (BG3SE) is a Windows `DWrite.dll`. The native Linux build of {GameName} cannot load it, so it does nothing there and mods that need it will not work.
+
+
+                     ## Recommended Actions
+                     #### Run the Windows build under Proton
+                     Set the game to use Proton in Steam, let it install the Windows files, and manage that install instead.
+                     #### Or remove the Script Extender
+                     Disable it in your Loadout, along with the mods that depend on it.
+                     """
+        )
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+        )
+        .Finish();
 }

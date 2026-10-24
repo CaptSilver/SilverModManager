@@ -66,6 +66,33 @@ public class YamlUserGameInstallStoreTests
     }
 
     [Fact]
+    public void OmittedPlatform_IsWindowsWhenTheFolderLacksTheNativeExecutable()
+    {
+        WriteFile("- {game: alpha, path: /games/alpha, prefix: /prefixes/alpha}\n");
+        GameFile("/games/alpha/Launcher/Alpha.exe");
+
+        Store(new FakeGameData("alpha", hasNativeLinuxBuild: true, nativePrimaryFile: "bin/alpha"))
+            .GetAll().Should().ContainSingle().Which.Platform.Should().Be(OSPlatform.Windows);
+    }
+
+    [Fact]
+    public void OmittedPlatform_IsLinuxWhenTheFolderHoldsTheNativeExecutable()
+    {
+        WriteFile("- {game: alpha, path: /games/alpha}\n");
+        GameFile("/games/alpha/bin/alpha");
+
+        Store(new FakeGameData("alpha", hasNativeLinuxBuild: true, nativePrimaryFile: "bin/alpha"))
+            .GetAll().Should().ContainSingle().Which.Platform.Should().Be(OSPlatform.Linux);
+    }
+
+    private void GameFile(string path)
+    {
+        var file = _fs.FromUnsanitizedFullPath(path);
+        file.Parent.CreateDirectory();
+        _fs.WriteAllText(file, "");
+    }
+
+    [Fact]
     public void MalformedEntries_AreSkippedWithAnErrorAndTheRestLoad()
     {
         WriteFile("""

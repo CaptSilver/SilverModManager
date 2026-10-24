@@ -35,6 +35,54 @@ public class ModsettingsFileWriteTests(ITestOutputHelper helper) : ModsettingsFi
     }
 
     [Fact]
+    public async Task TheFileIsWrittenInThePlayerProfilesFolderTheGameReports()
+    {
+        var loadout = await CreateLoadout();
+        await InstallMod(loadout, "Alpha mod", "alpha.pak", AlphaPak());
+        await WriteModsettings(BaseEntries);
+
+        await Apply(loadout);
+
+        var reported = GameInstallation.Game.GetLocations(GameInstallation.LocatorResult.Path.FileSystem, GameInstallation.LocatorResult);
+        reported[Bg3Constants.PlayerProfilesLocationId].Combine("modsettings.lsx").FileExists.Should().BeTrue();
+        DiskNames().Should().Contain("Alpha");
+    }
+
+    [Fact]
+    public async Task APakMissingBecauseTheModsFolderMovedIsDeployedAgain()
+    {
+        var loadout = await CreateLoadout();
+        await InstallMod(loadout, "Alpha mod", "alpha.pak", AlphaPak());
+        await WriteModsettings(BaseEntries);
+        await Apply(loadout);
+        OnDisk(Pak("alpha.pak")).FileExists.Should().BeTrue();
+
+        // What the first Apply after the game moves from its Proton prefix to the native folders sees: the
+        // paks of the last Apply are not where they were left.
+        OnDisk(Pak("alpha.pak")).Delete();
+        await Apply(loadout);
+
+        OnDisk(Pak("alpha.pak")).FileExists.Should().BeTrue();
+        DiskNames().Should().Contain("Alpha");
+    }
+
+    [Fact]
+    public async Task APakTheUserDeletedStaysDeletedWhileOtherPaksAreStillThere()
+    {
+        var loadout = await CreateLoadout();
+        await InstallMod(loadout, "Alpha mod", "alpha.pak", AlphaPak());
+        await InstallMod(loadout, "Beta mod", "beta.pak", BetaPak());
+        await WriteModsettings(BaseEntries);
+        await Apply(loadout);
+
+        OnDisk(Pak("alpha.pak")).Delete();
+        await Apply(loadout);
+
+        OnDisk(Pak("alpha.pak")).FileExists.Should().BeFalse("only the Mods folder as a whole counts as moved");
+        OnDisk(Pak("beta.pak")).FileExists.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task ActivePaksAreWrittenInTheSortOrder()
     {
         var loadout = await CreateLoadout();

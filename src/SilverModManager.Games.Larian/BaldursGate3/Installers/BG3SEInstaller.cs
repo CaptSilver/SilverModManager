@@ -34,6 +34,10 @@ public class BG3SEInstaller : ALibraryArchiveInstaller
         Loadout.ReadOnly loadout,
         CancellationToken cancellationToken)
     {
+        // BG3SE is a Windows DWrite.dll; the native build can't load it, so it would only sit in bin/.
+        if (BaldursGate3.IsNativeBuild(loadout.InstallationInstance.LocatorResult))
+            return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "The BG3 Script Extender is a Windows DLL and cannot load into the native Linux build of Baldur's Gate 3"));
+
         var tree = LibraryArchiveTreeExtensions.GetTree(libraryArchive);
         var nodes = tree.FindSubPathsByKeyUpward([BG3SEFileName]);
         if (!nodes.TryGetFirst(out var dllNode)) return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: $"Found no file named `{BG3SEFileName}`"));

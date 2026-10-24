@@ -201,6 +201,39 @@ public class SteamLocatorTests
     }
 
     [Fact]
+    public void Locate_NativeLinuxGameWithStaleProtonPrefix_IsTheNativeBuild()
+    {
+        var (result, hostFileSystem, _) = LocateSingle(withProtonPrefix: true, hasNativeLinuxBuild: true, nativePrimaryFile: "bin/bg3", nativeFileInstalled: true);
+
+        result.Platform.Should().Be(OSPlatform.Linux, "the native executable is what is installed; the prefix is left over from an earlier Proton run");
+        result.WinePrefixPath.Should().BeNull();
+        result.Compatibility.Should().BeNull();
+        result.LinuxCompatabilityDataProvider.Should().BeNull("there is no prefix the game runs in to read overrides or launch options for");
+        result.Path.FileSystem.GetKnownPath(KnownPath.LocalApplicationDataDirectory)
+            .Should().Be(hostFileSystem.GetKnownPath(KnownPath.LocalApplicationDataDirectory));
+    }
+
+    [Fact]
+    public void Locate_NativeLinuxGameWithProtonPrefixAndOnlyTheWindowsBuildInstalled_IsTheWindowsBuild()
+    {
+        var result = LocateSingle(withProtonPrefix: true, hasNativeLinuxBuild: true, nativePrimaryFile: "bin/bg3", nativeFileInstalled: false).Result;
+
+        result.Platform.Should().Be(OSPlatform.Windows);
+        result.WinePrefixPath.Should().NotBeNull();
+        result.Compatibility.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Locate_StaleProtonPrefixOfANativeGame_IsLoggedOnceAndLeftAlone()
+    {
+        var logger = new CapturingLoggerFactory();
+        var (_, hostFileSystem, libraryDirectory) = LocateSingle(withProtonPrefix: true, hasNativeLinuxBuild: true, nativePrimaryFile: "bin/bg3", nativeFileInstalled: true, loggerFactory: logger, locateTimes: 3);
+
+        logger.Warnings.Should().ContainSingle().Which.Should().Contain($"compatdata/{AppId}");
+        hostFileSystem.FileExists(libraryDirectory.Combine($"compatdata/{AppId}/pfx/system.reg")).Should().BeTrue();
+    }
+
+    [Fact]
     public void Locate_RecordsTheSteamRootAsStoreRoot()
     {
         var (result, hostFileSystem, _) = LocateSingle(withProtonPrefix: false);
@@ -498,7 +531,11 @@ public class SteamLocatorTests
         bool hasNativeLinuxBuild = false,
         string buildId = "1",
         string stateFlags = "4",
-        string? lastUpdated = null)
+        string? lastUpdated = null,
+        string? nativePrimaryFile = null,
+        bool nativeFileInstalled = false,
+        ILoggerFactory? loggerFactory = null,
+        int locateTimes = 1)
     {
         var fileSystem = new InMemoryFileSystem(OSInformation.FakeUnix);
         var steamDirectory = fileSystem.GetKnownPath(KnownPath.HomeDirectory).Combine(".steam/steam");
@@ -509,14 +546,19 @@ public class SteamLocatorTests
         WriteFile(fileSystem, libraryDirectory.Combine("libraryfolders.vdf"), LibraryFolders(steamDirectory));
         WriteFile(fileSystem, libraryDirectory.Combine($"appmanifest_{AppId}.acf"), AppManifest(buildId, stateFlags, lastUpdated));
         WriteFile(fileSystem, libraryDirectory.Combine("common/Game/game.exe"), "");
+        if (nativeFileInstalled) WriteFile(fileSystem, libraryDirectory.Combine($"common/Game/{nativePrimaryFile}"), "");
         if (withProtonPrefix) WriteFile(fileSystem, libraryDirectory.Combine($"compatdata/{AppId}/pfx/system.reg"), "");
         if (emptyCompatdata) fileSystem.CreateDirectory(libraryDirectory.Combine($"compatdata/{AppId}"));
 
         var game = Substitute.For<IGameData>();
         game.StoreIdentifiers.Returns(new StoreIdentifiers(GameId.From(1)) { SteamAppIds = [AppId] });
         game.HasNativeLinuxBuild.Returns(hasNativeLinuxBuild);
+        if (nativePrimaryFile is not null) game.NativeLinuxPrimaryFile.Returns(RelativePath.FromUnsanitizedInput(nativePrimaryFile));
 
-        var locator = new SteamLocator([game], NullLoggerFactory.Instance, fileSystem, registry: null);
+        var locator = new SteamLocator([game], loggerFactory ?? NullLoggerFactory.Instance, fileSystem, registry: null);
+
+        // The registry locates again on every refresh; the last pass is the one returned.
+        for (var i = 1; i < locateTimes; i++) locator.Locate().ToArray();
 
         return (locator.Locate().Should().ContainSingle().Subject, fileSystem, libraryDirectory);
     }
