@@ -25,6 +25,8 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
         AddHandler(PointerPressedEvent, OnResizeGripPointerPressed, RoutingStrategies.Tunnel);
         TopBarBorder.PointerPressed += OnTopBarPointerPressed;
 
+        _ = new MainWindowDropTarget(this, DropOverlay, DropOverlayText, paths => ViewModel?.HandleDroppedFilesAsync(paths) ?? Task.CompletedTask);
+
         #if DEBUG
         this.AttachDevTools();
         #endif

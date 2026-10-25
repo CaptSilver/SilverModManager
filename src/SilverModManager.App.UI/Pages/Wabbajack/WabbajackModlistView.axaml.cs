@@ -122,21 +122,29 @@ public partial class WabbajackModlistView : ReactiveUserControl<IWabbajackModlis
                     SkippedRows.Children.Add(new TextBlock { Text = $"{row.To}: {row.Reason}", TextWrapping = TextWrapping.Wrap });
             }).DisposeWith(disposables);
 
+            AddHandler(DragDrop.DragEnterEvent, OnDragOver);
             AddHandler(DragDrop.DragOverEvent, OnDragOver);
             AddHandler(DragDrop.DropEvent, OnDrop);
             Disposable.Create(() =>
             {
+                RemoveHandler(DragDrop.DragEnterEvent, OnDragOver);
                 RemoveHandler(DragDrop.DragOverEvent, OnDragOver);
                 RemoveHandler(DragDrop.DropEvent, OnDrop);
             }).DisposeWith(disposables);
         });
     }
 
+    // Handled, so the main window's own drop target (which adds to the library) leaves these to the page's inbox.
+    // Enter too: moving onto the page raises DragEnter, not DragOver, and the window would show its overlay for it.
     private static void OnDragOver(object? sender, DragEventArgs e)
-        => e.DragEffects = e.Data.Contains(DataFormats.Files) ? DragDropEffects.Copy : DragDropEffects.None;
+    {
+        e.DragEffects = e.Data.Contains(DataFormats.Files) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
 
     private void OnDrop(object? sender, DragEventArgs e)
     {
+        e.Handled = true;
         if (ViewModel is not { } viewModel) return;
         var paths = e.Data.GetFiles()?.Select(item => item.TryGetLocalPath()).OfType<string>().ToArray() ?? [];
         if (paths.Length == 0) return;

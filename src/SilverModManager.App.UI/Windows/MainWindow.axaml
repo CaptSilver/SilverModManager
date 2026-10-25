@@ -44,6 +44,23 @@
                                           ClipToBounds="False"/>
         </Border>
 
+        <Border x:Name="DropOverlay"
+                Background="{StaticResource BrandTranslucentDark800Brush}"
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Grid.Row="0"
+                Grid.RowSpan="2"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                IsHitTestVisible="False"
+                IsVisible="False"
+                ZIndex="2">
+            <TextBlock x:Name="DropOverlayText"
+                       FontSize="24"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+        </Border>
+
         <!-- Transparent so presses on empty top bar space hit this border and can drag the window -->
         <Border x:Name="TopBarBorder"
                 Background="Transparent"

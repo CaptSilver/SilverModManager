@@ -50,6 +50,9 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
     private readonly IServiceProvider _serviceProvider;
     private readonly IWindowNotificationService _notificationService;
 
+    /// <summary>Runs the files dropped on the window.</summary>
+    public MainWindowDropHandler DropHandler { get; }
+
     public ReactiveUI.ReactiveCommand<System.Reactive.Unit, bool> BringWindowToFront { get; }
     public ReactiveUI.ReactiveCommand<IStorageProvider, System.Reactive.Unit> RegisterStorageProvider { get; }
     public ReactiveUI.ReactiveCommand<IClipboard, System.Reactive.Unit> RegisterClipboard { get; }
@@ -78,6 +81,11 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
             window: this,
             serviceProvider: serviceProvider
         );
+
+        DropHandler = new MainWindowDropHandler(
+            new LibraryDropActions(serviceProvider.GetRequiredService<SilverModManager.Abstractions.Library.ILibraryService>(), _connection, WorkspaceController),
+            notificationService,
+            serviceProvider.GetService<ILogger<MainWindowViewModel>>());
 
         TopBar = serviceProvider.GetRequiredService<ITopBarViewModel>();
         TopBar.AddPanelDropDownViewModel = new AddPanelDropDownViewModel(WorkspaceController);
@@ -275,6 +283,20 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
                 Spine.NavigateToHome();
             }
         });
+    }
+
+    /// <summary>Handles files dropped on the window. Per-file failures are reported by the handler; this catches the rest.</summary>
+    public async Task HandleDroppedFilesAsync(IReadOnlyList<string> paths)
+    {
+        try
+        {
+            await DropHandler.HandleAsync(paths, CancellationToken.None);
+        }
+        catch (Exception e)
+        {
+            _serviceProvider.GetService<ILogger<MainWindowViewModel>>()?.LogError(e, "Handling dropped files failed");
+            _notificationService.ShowToast($"Couldn't handle the dropped files: {e.Message}", ToastNotificationVariant.Failure);
+        }
     }
 
     private Optional<(LoadoutId, WorkspaceId)> GetWorkspaceIdForGame(IWorkspaceController workspaceController, NexusModsGameId nexusModsGameId)
