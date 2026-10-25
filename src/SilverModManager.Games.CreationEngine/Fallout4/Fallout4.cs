@@ -69,4 +69,6 @@ public class Fallout4(IServiceProvider provider) : ACreationEngineGame<Fallout4>
         // Plugin Preloader (old)
         @"IpHlpAPI\.dll",
     ];
+
+    protected override GamePath? NativePluginFolder => DataPath / "F4SE/Plugins";
 }

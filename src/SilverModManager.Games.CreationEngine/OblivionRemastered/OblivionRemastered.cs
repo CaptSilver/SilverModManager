@@ -60,6 +60,7 @@ public class OblivionRemastered(IServiceProvider provider) : ACreationEngineGame
     protected override GamePath EnginePath => new(LocationId.Game, $"{ProjectFolder}/Binaries/Win64");
 
     protected override string[] EngineFiles => [@"obse64_loader\.exe", @"obse64_.*\.dll"];
+    protected override GamePath? NativePluginFolder => EnginePath / "OBSE/Plugins";
     protected override string[] GameAliases => ["Oblivion Remastered", "OblivionRemastered", "TES4R"];
 
     // game_oblivion_remaster.py: the game ignores the Documents redirect and always keeps its saves in

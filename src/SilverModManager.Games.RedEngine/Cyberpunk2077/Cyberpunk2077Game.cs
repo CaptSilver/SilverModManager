@@ -21,7 +21,7 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Games.RedEngine.Cyberpunk2077;
 
 [UsedImplicitly]
-public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements, IGameLauncherSkip, IGameUserDataFolders
+public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements, IGameLauncherSkip, IGameUserDataFolders, IGameNativeCode
 {
     public static GameId GameId { get; } = GameId.From("RedEngine.Cyberpunk2077");
     public static string DisplayName => "Cyberpunk 2077";
@@ -33,6 +33,22 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOv
         GOGProductIds = [2093619782L, 1423049311L],
         EGSCatalogItemId = ["5beededaad9743df90e8f07d92df153f"],
     };
+
+    private static readonly GamePath RedFourExtFolder = new(LocationId.Game, "red4ext");
+    private static readonly GamePath RedFourExtPluginsFolder = new(LocationId.Game, "red4ext/plugins");
+    private static readonly GamePath BinFolder = new(LocationId.Game, "bin/x64");
+    private static readonly GamePath AsiFolder = new(LocationId.Game, "bin/x64/plugins");
+    private static readonly Extension Asi = new(".asi");
+    private static readonly Extension Dll = new(".dll");
+
+    // RED4ext and Cyber Engine Tweaks load through the winmm.dll / version.dll proxies in bin/x64 and hook by the
+    // game's addresses, so each one, its plugins and the .asi plugins are built for one build of the game.
+    public bool HooksGameCode(GamePath path)
+        => NativeCodePaths.IsLibraryBelow(path, RedFourExtPluginsFolder)
+           || NativeCodePaths.IsDirectlyIn(path, RedFourExtFolder, Dll)
+           || NativeCodePaths.IsDirectlyIn(path, AsiFolder, Asi)
+           || (NativeCodePaths.IsDirectlyIn(path, BinFolder, Dll)
+               && (path.FileName.Equals("winmm.dll") || path.FileName.Equals("version.dll")));
 
     public IStreamFactory IconImage { get; }
     public IStreamFactory TileImage { get; }

@@ -70,4 +70,5 @@ public class Starfield(IServiceProvider provider) : ACreationEngineGame<Starfiel
     protected override string[] GameAliases => ["Starfield", "SF"];
     protected override string[] StopPatterns => ["(^|/)sfse(/|$)"];
     protected override string[] EngineFiles => [@"sfse_loader\.exe", @"sfse_.*\.dll"];
+    protected override GamePath? NativePluginFolder => DataPath / "SFSE/Plugins";
 }

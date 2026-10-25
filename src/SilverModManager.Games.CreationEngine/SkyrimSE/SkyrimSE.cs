@@ -52,4 +52,5 @@ public class SkyrimSE(IServiceProvider provider) : ACreationEngineGame<SkyrimSE>
     protected override string[] GameAliases => ["Skyrim Special Edition", "SkyrimSE", "SSE"];
     protected override string[] StopPatterns => ["(^|/)skse(/|$)"];
     protected override string[] EngineFiles => [@"skse64_loader\.exe", @"skse64_.*\.dll"];
+    protected override GamePath? NativePluginFolder => DataPath / "SKSE/Plugins";
 }

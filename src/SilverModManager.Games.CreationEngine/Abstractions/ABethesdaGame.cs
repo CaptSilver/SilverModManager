@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.RegularExpressions;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
@@ -28,7 +29,7 @@ namespace SilverModManager.Games.CreationEngine.Abstractions;
 /// Everything built from a virtual member is lazy: a derived constructor body has not run when this
 /// constructor does, so reading an overridable member here would see unset state.
 /// </remarks>
-public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFiles
+public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFiles, IGameNativeCode
     where TSelf : ABethesdaGame<TSelf>, IGameData<TSelf>
 {
     private readonly Lazy<IStreamFactory> _icon;
@@ -92,6 +93,32 @@ public abstract class ABethesdaGame<TSelf> : IBethesdaGame, IGameIdentifyingFile
     protected abstract string[] GameAliases { get; }
     protected virtual string[] StopPatterns => [];
     protected virtual string[] EngineFiles => [];
+
+    /// <summary>
+    /// Where script extender plugins go (Data/SKSE/Plugins), or null for a game without one. Every DLL below it is
+    /// built for one game version.
+    /// </summary>
+    protected virtual GamePath? NativePluginFolder => null;
+
+    private Regex? _engineFilesRegex;
+
+    // Whole-name match, as the installers do: the pattern "skse64_.*\.dll" must not match "myskse64_x.dll".
+    private Regex EngineFilesRegex => _engineFilesRegex ??= new Regex(
+        $"^(?:{string.Join("|", EngineFiles.Select(p => $"(?:{p})"))})$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Extension[] NativeExtensions = [new(".dll"), new(".exe")];
+
+    /// <summary>
+    /// The script extender's own DLLs and loader (EngineFiles, in the engine folder) and every DLL in its plugin
+    /// folder. The loader's xml and ini files are not code, so the extension check drops them.
+    /// </summary>
+    public bool HooksGameCode(GamePath path)
+    {
+        if (NativePluginFolder is { } plugins && NativeCodePaths.IsLibraryBelow(path, plugins)) return true;
+        if (EngineFiles.Length == 0) return false;
+        return NativeCodePaths.IsDirectlyIn(path, EnginePath, NativeExtensions) && EngineFilesRegex.IsMatch(path.FileName.ToString());
+    }
     protected virtual string[] TopLevelDirs => KnownPaths.CommonTopLevelFolders;
     protected virtual Extension[] PluginLikeExtensions => [KnownCEExtensions.ESM, KnownCEExtensions.ESP, KnownCEExtensions.ESL];
     protected virtual Extension[] ArchiveLikeExtensions => [KnownCEExtensions.BSA, KnownCEExtensions.BA2];

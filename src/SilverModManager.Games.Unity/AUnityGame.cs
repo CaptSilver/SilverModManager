@@ -21,7 +21,7 @@ namespace SilverModManager.Games.Unity;
 /// <see cref="IGameData{TSelf}"/> and owns the three statics, as every game in the app does, and this class reads
 /// them through <typeparamref name="TSelf"/>.
 /// </summary>
-public abstract class AUnityGame<TSelf> : IUnityGame
+public abstract class AUnityGame<TSelf> : IUnityGame, IGameNativeCode
     where TSelf : AUnityGame<TSelf>, IGameData<TSelf>
 {
     protected IServiceProvider Provider { get; }
@@ -49,6 +49,11 @@ public abstract class AUnityGame<TSelf> : IUnityGame
     public string ThunderstoreCommunity => Definition.ThunderstoreCommunity;
     public string ThunderstoreLoaderPackage => Definition.ThunderstoreLoaderPackage;
     public IReadOnlyList<string> ThunderstoreLoaderAliases => Definition.ThunderstoreLoaderAliases;
+
+    private static readonly GamePath PluginsFolder = new(LocationId.Game, $"{BepInExFiles.Root}/{BepInExFiles.Plugins}");
+
+    // The loader pack's own files (winhttp.dll, BepInEx/core) are not listed: they are not a mod the user picked.
+    public bool HooksGameCode(GamePath path) => NativeCodePaths.IsLibraryBelow(path, PluginsFolder);
 
     protected AUnityGame(IServiceProvider provider, UnityGameDefinition definition)
     {
