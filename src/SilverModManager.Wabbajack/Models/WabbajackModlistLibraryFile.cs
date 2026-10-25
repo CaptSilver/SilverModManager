@@ -37,4 +37,10 @@ public partial class WabbajackModlistLibraryFile : IModelDefinition
     public static readonly SizeAttribute InstallSize = new(Namespace, nameof(InstallSize));
 
     public static readonly BooleanAttribute IsNsfw = new(Namespace, nameof(IsNsfw));
+
+    /// <summary>
+    /// The address the list was downloaded from. Only present for a list that came from Wabbajack's gallery, so it
+    /// also tells those apart from a <c>.wabbajack</c> the user added from disk.
+    /// </summary>
+    public static readonly StringAttribute GalleryDownloadUrl = new(Namespace, nameof(GalleryDownloadUrl)) { IsOptional = true };
 }

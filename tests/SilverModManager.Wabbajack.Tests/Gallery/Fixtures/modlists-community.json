@@ -1,0 +1,15 @@
+[
+  {
+    "title": "Community Oblivion List",
+    "description": "From a community repository.",
+    "author": "Community Author",
+    "maintainers": ["Community Author"],
+    "game": "Oblivion",
+    "official": false,
+    "links": { "download": "http://example.invalid/not-https.wabbajack", "readme": "javascript:alert(1)", "image": "https://example.invalid/i.png", "machineURL": "community-oblivion" },
+    "download_metadata": { "Hash": "not base64!", "Size": -5, "NumberOfArchives": "many" },
+    "version": "2.0",
+    "tags": ["Vanilla+", 7, null],
+    "nsfw": false
+  }
+]

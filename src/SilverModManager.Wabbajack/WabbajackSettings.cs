@@ -20,10 +20,16 @@ public record WabbajackSettings : ISettings
     /// </summary>
     public ConfigurablePath ExtrasRoot { get; init; }
 
+    /// <summary>
+    /// Where the downloaded copy of Wabbajack's public gallery is kept. It is a cache: deleting it only costs a
+    /// fetch.
+    /// </summary>
+    public ConfigurablePath GalleryCachePath { get; init; }
+
     /// <inheritdoc/>
     public static string SettingsId => "SilverModManager.Wabbajack.WabbajackSettings";
 
-    // No settings-page entry: both folders are internal working locations, not something to tune.
+    // No settings-page entry: all of these are internal working locations, not something to tune.
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         return settingsBuilder
@@ -37,6 +43,7 @@ public record WabbajackSettings : ISettings
         {
             InboxPath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{FolderName}/Inbox"),
             ExtrasRoot = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{FolderName}/Extras"),
+            GalleryCachePath = new ConfigurablePath(KnownPath.XDG_CACHE_HOME, $"{BaseDirectoryName}/{FolderName}/Gallery"),
         };
     }
 

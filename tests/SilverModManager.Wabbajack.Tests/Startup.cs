@@ -26,6 +26,7 @@ public class Startup
             {
                 InboxPath = new ConfigurablePath(KnownPath.EntryDirectory, $"{SettingsRoot}/Inbox"),
                 ExtrasRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"{SettingsRoot}/Extras"),
+                GalleryCachePath = new ConfigurablePath(KnownPath.EntryDirectory, $"{SettingsRoot}/Gallery"),
             });
     }
 }

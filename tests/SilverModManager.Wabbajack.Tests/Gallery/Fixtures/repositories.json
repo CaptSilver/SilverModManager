@@ -1,0 +1,7 @@
+{
+  "wabbajack-tools/mod-lists": "https://raw.githubusercontent.com/wabbajack-tools/mod-lists/master/reports/modlists.json",
+  "someone/community-lists": "https://raw.githubusercontent.com/someone/community-lists/main/modlists.json",
+  "broken/server-error": "https://raw.githubusercontent.com/broken/server-error/main/modlists.json",
+  "broken/junk": "https://raw.githubusercontent.com/broken/junk/main/modlists.json",
+  "broken/not-https": "file:///etc/passwd"
+}

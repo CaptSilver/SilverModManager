@@ -17,6 +17,9 @@ public sealed class WabbajackPaths(ISettingsManager settingsManager, IFileSystem
     /// <summary>The parent of the per-installation extras folders.</summary>
     public AbsolutePath ExtrasRoot => Ensure(settingsManager.Get<WabbajackSettings>().ExtrasRoot);
 
+    /// <summary>The folder the cached gallery listing is written to.</summary>
+    public AbsolutePath GalleryCache => Ensure(settingsManager.Get<WabbajackSettings>().GalleryCachePath);
+
     /// <summary>
     /// The folder a list's tools, and the Mod Organizer paths its config files point at, live in. Named after the
     /// list with anything that is not valid in a folder name replaced, and ending in the group's id: two lists can

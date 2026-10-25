@@ -1,0 +1,74 @@
+[
+  {
+    "title": "Example Skyrim List",
+    "description": "A small fixture list.",
+    "author": "Some Author",
+    "maintainers": ["Some Author", "A Helper"],
+    "game": "skyrimspecialedition",
+    "official": true,
+    "links": {
+      "image": "https://raw.githubusercontent.com/wabbajack-tools/mod-lists/master/images/example.webp",
+      "readme": "https://example.invalid/readme",
+      "download": "https://authored-files.wabbajack.org/Example_Skyrim_List.wabbajack_0123456789abcdef",
+      "machineURL": "example-skyrim"
+    },
+    "download_metadata": {
+      "Hash": "AQIDBAUGBwg=",
+      "Size": 4096,
+      "NumberOfArchives": 120,
+      "SizeOfArchives": 52428800,
+      "NumberOfInstalledFiles": 900,
+      "SizeOfInstalledFiles": 104857600
+    },
+    "version": "1.2.3",
+    "tags": ["Gameplay", "Quests"],
+    "nsfw": false,
+    "utility_list": false,
+    "force_down": false,
+    "image_contains_title": false,
+    "display_version_only_in_installer_view": false
+  },
+  {
+    "title": "Spicy Fallout List",
+    "description": "Adult content.",
+    "author": "Other Author",
+    "maintainers": [],
+    "game": "fallout4",
+    "official": true,
+    "links": { "image": "", "readme": "", "download": "https://authored-files.wabbajack.org/Spicy.wabbajack_aaaa", "machineURL": "spicy-fallout" },
+    "download_metadata": { "Hash": "AQIDBAUGBwg=", "Size": 10, "NumberOfArchives": 1, "SizeOfArchives": 20, "NumberOfInstalledFiles": 3, "SizeOfInstalledFiles": 30 },
+    "version": "0.1",
+    "tags": [],
+    "nsfw": true,
+    "utility_list": false,
+    "force_down": false
+  },
+  {
+    "title": "Taken Down List",
+    "description": "The author pulled it.",
+    "author": "Gone Author",
+    "game": "falloutnewvegas",
+    "official": false,
+    "links": { "download": "https://authored-files.wabbajack.org/Gone.wabbajack_bbbb", "machineURL": "taken-down" },
+    "download_metadata": { "Hash": "AQIDBAUGBwg=", "Size": 10, "NumberOfArchives": 1, "SizeOfArchives": 20, "NumberOfInstalledFiles": 3, "SizeOfInstalledFiles": 30 },
+    "version": "3.0",
+    "nsfw": false,
+    "utility_list": false,
+    "force_down": true
+  },
+  {
+    "title": "A Utility",
+    "description": "Installs tooling.",
+    "author": "Tool Author",
+    "game": "cyberpunk2077",
+    "links": { "download": "https://authored-files.wabbajack.org/Tool.wabbajack_cccc", "machineURL": "tool" },
+    "download_metadata": { "Hash": "AQIDBAUGBwg=", "Size": 10, "NumberOfArchives": 1, "SizeOfArchives": 20, "NumberOfInstalledFiles": 3, "SizeOfInstalledFiles": 30 },
+    "version": "1.0",
+    "nsfw": false,
+    "utility_list": true
+  },
+  { "title": "Game Nobody Has", "author": "X", "game": "stardewvalley", "links": { "download": "https://example.invalid/x.wabbajack", "machineURL": "sdv" }, "version": "1" },
+  { "author": "No title at all", "game": "skyrim" },
+  "not an object",
+  42
+]

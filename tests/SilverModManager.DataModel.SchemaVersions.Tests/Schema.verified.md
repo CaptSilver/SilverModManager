@@ -3,8 +3,8 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xC0B857A5CAD9840E
-   - Total attributes: 339
+   - Fingerprint: 0x41B1A21B0D513ED4
+   - Total attributes: 340
    - Total namespaces: 97
    
 ## Attributes
@@ -337,6 +337,7 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Wabbajack.ModlistLibraryFile/ArchiveCount                                | Int32                   | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/ArchiveSize                                 | UInt64                  | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/Author                                      | Utf8                    | False   | False | False     | 
+| SilverModManager.Wabbajack.ModlistLibraryFile/GalleryDownloadUrl                          | Utf8                    | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/GameType                                    | Utf8                    | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/InstallSize                                 | UInt64                  | False   | False | False     | 
 | SilverModManager.Wabbajack.ModlistLibraryFile/IsNsfw                                      | UInt8                   | False   | False | False     | 

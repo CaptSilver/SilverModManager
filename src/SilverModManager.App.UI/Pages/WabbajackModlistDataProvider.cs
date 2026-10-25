@@ -15,7 +15,7 @@ namespace SilverModManager.App.UI.Pages;
 
 /// <summary>
 /// Lists the Wabbajack modlists in the library, one row each, named after the list. A modlist is also a local file
-/// (the user added it from disk), so <see cref="LocalFileDataProvider"/> leaves these out. The row opens the
+/// (the user added it from disk, or the gallery download did), so <see cref="LocalFileDataProvider"/> leaves these out. The row opens the
 /// modlist's page instead of installing the file as a mod.
 /// </summary>
 [UsedImplicitly]
@@ -68,7 +68,8 @@ internal class WabbajackModlistDataProvider : ILibraryDataProvider
         var itemModel = new CompositeItemModel<EntityId>(file.Id);
 
         itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: file.Name));
-        SharedColumns.Source.Add(itemModel, ModSources.Wabbajack);
+        // Only a list fetched from the gallery came from Wabbajack; one the user added from disk is a local file.
+        SharedColumns.Source.Add(itemModel, file.Contains(WabbajackModlistLibraryFile.GalleryDownloadUrl) ? ModSources.Wabbajack : ModSources.LocalFile);
         itemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
         itemModel.Add(LibraryColumns.DownloadedDate.ComponentKey, new DateComponent(value: file.GetCreatedAt()));
         itemModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(value: file.Version));
