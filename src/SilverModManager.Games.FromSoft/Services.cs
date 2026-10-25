@@ -109,6 +109,7 @@ public static class Services
 
         // Keeping regulations Steam shipped as the baselines of their builds
         services.AddVerb(() => VanillaVerbs.Import)
+            .AddVerb(() => VanillaVerbs.List)
             .AddModule("fromsoft vanilla", "The vanilla regulations the app keeps");
 
         // Launch gates, in run order

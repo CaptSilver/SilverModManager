@@ -164,4 +164,35 @@ public class HealVerbTests(ITestOutputHelper helper) : ASteamInstalledGameTest<H
         exitCode.Should().NotBe(0);
         output.Should().Contain("row stride 16").And.Contain("Wide");
     }
+
+    [Fact]
+    public async Task DryRunNamesTheVanillaEachModBuildWouldBeComparedAgainstAndWhichHaveNone()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "Current", ("regulation.bin", ParamRegulation(EldenRingInstall.RegulationVersion, stride: 8)));
+        await InstallPackage(loadout, "Older", ("regulation.bin", ParamRegulation("11601000", stride: 8)));
+        await Stamps.Record(loadout.InstallationId, BeforeAPatch());
+        var dataRoot = DataRootListing();
+
+        var (exitCode, output) = await Run("fromsoft", "heal", "-l", loadout.Name, "--dry-run");
+
+        exitCode.Should().Be(0, output);
+        output.Should().MatchRegex($"{EldenRingInstall.RegulationVersion}.*Current.*installed game");
+        output.Should().MatchRegex("11601000.*Older.*no vanilla");
+        DataRootListing().Should().Equal(dataRoot);
+    }
+
+    [Fact]
+    public async Task ARealRunNamesTheBaselineItKeptAsTheVanillaOfTheModsOfThatBuild()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "Current", ("regulation.bin", ParamRegulation(EldenRingInstall.RegulationVersion, stride: 8)));
+        await Stamps.Record(loadout.InstallationId, BeforeAPatch());
+
+        var (exitCode, output) = await Run("fromsoft", "heal", "-l", loadout.Name);
+
+        exitCode.Should().Be(0, output);
+        output.Should().Contain("Builds the mods were made for:");
+        output.Should().Contain($"  {EldenRingInstall.RegulationVersion}  Current.zip: the vanilla regulation vouched by Steam manifest", "the baseline the run just kept serves that build");
+    }
 }

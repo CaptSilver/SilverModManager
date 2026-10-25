@@ -432,6 +432,44 @@ public sealed class RegulationBaselinesTests : IDisposable
     }
 
     [Fact]
+    public void ListNamesEveryKeptFileWithItsBuildTierAndProvenanceInVersionOrder()
+    {
+        var vouchedBlob = Real("11701000");
+        var baselines = Baselines(new FixedVouching((vouchedBlob, 8950790353897081369)));
+        baselines.Import(HealFixtures.Game(GameRoot), Candidate(vouchedBlob), null);
+        KeepValidated("11611000", Real("11611000", fill: 7));
+
+        var kept = baselines.List();
+
+        kept.Select(k => k.Version).Should().Equal("11611000", "11701000");
+        kept[0].Provenance.Tier.Should().Be(BaselineTier.Validated);
+        kept[0].File.FileName.Should().Be("regulation-11611000.bin");
+        kept[1].Provenance.Tier.Should().Be(BaselineTier.Vouched);
+        kept[1].Provenance.ManifestId.Should().Be(8950790353897081369);
+        kept.Should().OnlyContain(k => !k.IsAlternate);
+    }
+
+    [Fact]
+    public void ListMarksASecondVouchedFileOfOneBuildAsAnAlternate()
+    {
+        var first = Real("11701000", fill: 1);
+        var second = Real("11701000", fill: 2);
+        var baselines = Baselines(new FixedVouching((first, 1), (second, 2)));
+        baselines.Import(HealFixtures.Game(GameRoot), Candidate(first, "first.bin"), null);
+        baselines.Import(HealFixtures.Game(GameRoot), Candidate(second, "second.bin"), null);
+
+        var kept = baselines.List();
+
+        kept.Should().HaveCount(2);
+        kept.Select(k => k.Version).Should().OnlyContain(v => v == "11701000");
+        kept.Count(k => k.IsAlternate).Should().Be(1);
+    }
+
+    [Fact]
+    public void ListOfAFolderThatDoesNotExistIsEmpty()
+        => Baselines().List().Should().BeEmpty();
+
+    [Fact]
     public void ImportingAFileASteamManifestCarriesKeepsItVouched()
     {
         var blob = Real("11701000");

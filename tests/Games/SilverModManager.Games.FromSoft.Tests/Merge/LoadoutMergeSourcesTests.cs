@@ -224,6 +224,38 @@ public class LoadoutMergeSourcesTests(ITestOutputHelper helper) : AModdedEldenRi
     }
 
     [Fact]
+    public async Task VanillaGroupsNameEachBuildItsModsAndWhereItsVanillaCameFromWithoutRefusingTheOthers()
+    {
+        KeepBaseline(OlderVersion, Regulation(OlderVersion, 0xB0));
+        var (loadout, providers) = await TwoRegulations(OlderVersion, Regulation(OlderVersion, 1), Regulation(OldestVersion, 2));
+        var rootBefore = DataRootListing();
+        var alpha = providers.Single(p => p.PackageId == "Alpha");
+        var beta = providers.Single(p => p.PackageId == "Beta");
+
+        var groups = Sources.VanillaGroups(loadout);
+
+        groups.Select(g => g.Version).Should().BeEquivalentTo([OlderVersion, OldestVersion]);
+        var older = groups.Single(g => g.Version == OlderVersion);
+        older.Mods.Should().Equal(alpha.ModName);
+        older.Source.Should().NotBeNull().And.Contain("vanilla");
+        older.Tried.Should().BeEmpty();
+        var oldest = groups.Single(g => g.Version == OldestVersion);
+        oldest.Mods.Should().Equal(beta.ModName);
+        oldest.Source.Should().BeNull();
+        oldest.Tried.Should().NotBeEmpty();
+        DataRootListing().Should().Equal(rootBefore, "listing the groups is a read");
+    }
+
+    [Fact]
+    public async Task VanillaGroupsOfALoadoutWithoutRegulationsIsEmpty()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout.LoadoutId, "Weapons", Member("parts/wp_a.dcx"));
+
+        Sources.VanillaGroups(Refresh(loadout)).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ContributorsOfOneVersionShareOneGroupAndNoGroupNote()
     {
         KeepBaseline(OlderVersion, Regulation(OlderVersion, 0xB0));

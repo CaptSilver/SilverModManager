@@ -5,6 +5,7 @@ using SilverModManager.Games.FromSoft;
 using SilverModManager.Games.FromSoft.EldenRing;
 using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Heal;
+using SilverModManager.Games.FromSoft.Installers;
 using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 using SilverModManager.Games.FromSoft.Tests.Heal;
@@ -12,6 +13,7 @@ using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.TestFramework.Helpers;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.SingleProcess;
@@ -129,5 +131,75 @@ public class VanillaVerbTests(ITestOutputHelper helper) : ASteamInstalledGameTes
 
         exitCode.Should().Be(0, output);
         output.Should().Contain("nothing changed");
+    }
+
+    [Fact]
+    public async Task ListNamesEachKeptBuildAndWhatVouchesForIt()
+    {
+        var loadout = await CreateLoadout();
+        var older = Regulation(OlderVersion);
+        SteamShipped(older);
+        await Run("fromsoft", "vanilla", "import", "-l", loadout.Name, "-f", Saved(older).GetFullPath());
+        var game = TreeSnapshot.Take(EldenRingPaths.GameFolder(GameInstallation));
+
+        var (exitCode, output) = await Run("fromsoft", "vanilla", "list", "-l", loadout.Name);
+
+        exitCode.Should().Be(0, output);
+        output.Should().Contain(OlderVersion).And.Contain("vouched").And.Contain($"regulation-{OlderVersion}.bin");
+        TreeSnapshot.Take(EldenRingPaths.GameFolder(GameInstallation)).Should().Equal(game);
+    }
+
+    [Fact]
+    public async Task ListWithNothingKeptSaysSoAndWritesNothing()
+    {
+        var loadout = await CreateLoadout();
+
+        var (exitCode, output) = await Run("fromsoft", "vanilla", "list", "-l", loadout.Name);
+
+        exitCode.Should().Be(0, output);
+        output.Should().Contain("No vanilla regulation is kept");
+        (DataRoot / "baselines").DirectoryExists().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ListShowsAValidatedBuildAsValidatedAndNotVouched()
+    {
+        var loadout = await CreateLoadout();
+        var older = Regulation(OlderVersion);
+        var baselines = ServiceProvider.GetRequiredService<RegulationBaselines>();
+        baselines.KeepValidated(OlderVersion, older, baselines.ValidatedProvenance(older, BaselineSource.LibraryArchive, "Randomizer.zip: regulation.bin", "archive Randomizer.zip, member regulation.bin; 3 mods agree"));
+
+        var (exitCode, output) = await Run("fromsoft", "vanilla", "list", "-l", loadout.Name);
+
+        exitCode.Should().Be(0, output);
+        output.Should().Contain(OlderVersion).And.Contain("validated").And.Contain("Randomizer.zip");
+        output.Should().NotContain("vouched by");
+    }
+
+    [Fact]
+    public async Task ListNamesEachModBuildWithTheVanillaItIsComparedAgainstAndWhichHaveNone()
+    {
+        var loadout = await CreateLoadout();
+        var older = Regulation(OlderVersion);
+        SteamShipped(older);
+        await Run("fromsoft", "vanilla", "import", "-l", loadout.Name, "-f", Saved(older).GetFullPath());
+        await InstallPackage(loadout, "Kept", ("regulation.bin", Regulation(OlderVersion)));
+        await InstallPackage(loadout, "Orphan", ("regulation.bin", Regulation("11601000")));
+
+        var (exitCode, output) = await Run("fromsoft", "vanilla", "list", "-l", loadout.Name);
+
+        exitCode.Should().Be(0, output);
+        output.Should().Contain("Builds the mods were made for:");
+        output.Should().Contain($"  {OlderVersion}  Kept.zip: the vanilla regulation vouched by Steam manifest");
+        output.Should().Contain("  11601000  Orphan.zip: no vanilla regulation is available (kept baselines");
+    }
+
+    private async Task InstallPackage(Loadout.ReadOnly loadout, string name, params (string Path, byte[] Content)[] files)
+    {
+        var path = TemporaryFileManager.CreateFolder().Path / (name + ".zip");
+        await TestArchives.WriteEntries(path, files);
+        var archive = await RegisterLocalArchive(path);
+        var installer = Game.LibraryItemInstallers.OfType<Me3PackageInstaller>().Single();
+        await LoadoutManager.InstallItem(archive.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId, installer: installer);
     }
 }

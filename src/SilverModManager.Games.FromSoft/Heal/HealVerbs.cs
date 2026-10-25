@@ -60,6 +60,8 @@ internal static class HealVerbs
 
         if (dryRun)
         {
+            // The listing is for the reader; a mod regulation it can't read is the layout check's to report, not this one's.
+            await VanillaVerbs.PrintGroups(renderer, sources, loadout, whenNone: null);
             await renderer.TextLine("Dry run: nothing was changed.");
             return 0;
         }
@@ -81,6 +83,8 @@ internal static class HealVerbs
             await renderer.TextLine(exception.Message);
             return 1;
         }
+
+        await VanillaVerbs.PrintGroups(renderer, sources, loadout, whenNone: null);
 
         var problems = CheckLayouts(kept, sources, loadout, game);
         if (problems.Count > 0)

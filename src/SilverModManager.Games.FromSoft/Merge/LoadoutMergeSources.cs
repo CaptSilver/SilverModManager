@@ -214,7 +214,37 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
             // With one build there is one source and the notes above already say it; several need a label per build.
             if (sources.Count > 1) foreach (var source in sources) notes.Add(source);
         }
-        return new VanillaAncestors(groups);
+        return new VanillaAncestors(groups, sources);
+    }
+
+    /// <summary>
+    /// Each build the loadout's regulation mods were made for, with the vanilla it would be compared against. Unlike
+    /// <see cref="Ancestors"/> a build without a vanilla does not hide the others: it is listed with what was tried.
+    /// Reads only, as a report does, so nothing is kept.
+    /// </summary>
+    /// <exception cref="MergeException">A mod's regulation cannot be read.</exception>
+    public IReadOnlyList<VanillaGroupListing> VanillaGroups(Loadout.ReadOnly loadout)
+    {
+        var installation = loadout.InstallationInstance;
+        if (TraitsOf(installation).RegulationFileName is not { } regulationName) return [];
+
+        var contributors = Providers(loadout).Where(p => p.RelPath.Equals(regulationName, StringComparison.OrdinalIgnoreCase)).ToArray();
+        var listing = new List<VanillaGroupListing>();
+        foreach (var members in contributors.GroupBy(c => VersionOf(installation, c), StringComparer.Ordinal))
+        {
+            var mods = members.Select(m => m.ModName).Distinct(StringComparer.Ordinal).ToArray();
+            try
+            {
+                var ancestors = Ancestors(loadout, regulationName, members.ToArray(), MergeSourceMode.Report)
+                                ?? throw new InvalidOperationException($"No vanilla lookup was made for {regulationName}, which is this game's regulation.");
+                listing.Add(new VanillaGroupListing(members.Key, mods, ancestors.Sources.Single().Source, []));
+            }
+            catch (MergeException exception) when (exception.Missing.Count > 0)
+            {
+                listing.Add(new VanillaGroupListing(members.Key, mods, null, exception.Missing.SelectMany(m => m.Tried).ToArray()));
+            }
+        }
+        return listing;
     }
 
     /// <summary>
@@ -505,3 +535,10 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
 
     private static FromSoftFormatTraits TraitsOf(GameInstallation installation) => GameOf(installation).Formats;
 }
+
+/// <summary>One build of a loadout's regulation mods and the vanilla they would be compared against.</summary>
+/// <param name="Version">The build stamp the mods carry.</param>
+/// <param name="Mods">The mods made for it.</param>
+/// <param name="Source">Where the vanilla comes from, as a phrase; null when none is available.</param>
+/// <param name="Tried">Each place a vanilla was looked for when there is none.</param>
+public sealed record VanillaGroupListing(string Version, IReadOnlyList<string> Mods, string? Source, IReadOnlyList<string> Tried);

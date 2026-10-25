@@ -13,6 +13,8 @@ namespace SilverModManager.Games.FromSoft.Heal;
 internal static class VanillaVerbs
 {
     internal const string ImportName = "fromsoft vanilla import";
+    internal const string ListName = "fromsoft vanilla list";
+    internal const string NothingKept = "No vanilla regulation is kept yet.";
 
     [Verb(ImportName, "Keeps a regulation that Steam shipped, such as an older build another tool saved, as the vanilla baseline of the build stamped inside it")]
     internal static async Task<int> Import(
@@ -51,6 +53,73 @@ internal static class VanillaVerbs
             ImportOutcome.KeptAlongside => $"Build {kept.Version} already had a different regulation from Steam. Kept {file} beside it as {kept.File.FileName}: {Describe(kept.Provenance)}.",
             _ => throw new NotSupportedException($"Unhandled import outcome {kept.Outcome}"),
         });
+        return 0;
+    }
+
+    [Verb(ListName, "Lists the vanilla regulations the app keeps, where each came from and how far it is trusted, and which one each build of the loadout's mods would be compared against")]
+    internal static async Task<int> List(
+        [Injected] IRenderer renderer,
+        [Injected] RegulationBaselines baselines,
+        [Injected] LoadoutMergeSources sources,
+        [Option("l", "loadout", "A loadout of the game whose regulations to list")] Loadout.ReadOnly loadout)
+    {
+        if (loadout.InstallationInstance.Game is not IFromSoftGame)
+        {
+            await renderer.TextLine($"{loadout.InstallationInstance.Game.DisplayName} is not a FromSoft game, so it has no regulation to keep.");
+            return 1;
+        }
+
+        IReadOnlyList<KeptBaseline> kept;
+        try
+        {
+            kept = baselines.List();
+        }
+        catch (HealException exception)
+        {
+            await renderer.TextLine(exception.Message);
+            return 1;
+        }
+
+        if (kept.Count == 0) await renderer.TextLine(NothingKept);
+        foreach (var baseline in kept)
+            await renderer.TextLine($"{baseline.Version}  {baseline.Provenance.Describe()}  {baseline.File}{(baseline.IsAlternate ? " (alternate)" : "")}");
+
+        return await PrintGroups(renderer, sources, loadout, "No mod of this loadout ships a regulation.");
+    }
+
+    /// <summary>
+    /// Prints each build the loadout's regulation mods were made for with the vanilla they would be compared against,
+    /// or what was tried when there is none. Reads only.
+    /// </summary>
+    /// <param name="whenNone">What to say when no mod ships a regulation; null says nothing.</param>
+    /// <returns>0, or 1 when a mod's regulation cannot be read.</returns>
+    internal static async Task<int> PrintGroups(IRenderer renderer, LoadoutMergeSources sources, Loadout.ReadOnly loadout, string? whenNone)
+    {
+        IReadOnlyList<VanillaGroupListing> groups;
+        try
+        {
+            groups = sources.VanillaGroups(loadout);
+        }
+        catch (MergeException exception)
+        {
+            await renderer.TextLine(exception.Message);
+            return 1;
+        }
+
+        if (groups.Count == 0)
+        {
+            if (whenNone is not null) await renderer.TextLine(whenNone);
+            return 0;
+        }
+
+        await renderer.TextLine("Builds the mods were made for:");
+        foreach (var group in groups)
+        {
+            var mods = string.Join(", ", group.Mods);
+            await renderer.TextLine(group.Source is { } source
+                ? $"  {group.Version}  {mods}: {source}"
+                : $"  {group.Version}  {mods}: no vanilla regulation is available ({string.Join("; ", group.Tried)})");
+        }
         return 0;
     }
 

@@ -88,6 +88,15 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
     public IReadOnlySet<Hash> VouchedHashes()
         => KeptFiles().Select(k => VouchedHash(k.File)).OfType<Hash>().ToHashSet();
 
+    /// <summary>Every file kept, by build and then file name, with where it came from and how far it is trusted.</summary>
+    /// <exception cref="HealException">A provenance file is there and cannot be read.</exception>
+    public IReadOnlyList<KeptBaseline> List()
+        => KeptFiles()
+            .Select(k => new KeptBaseline(k.Version, FileSystem.Shared.FromUnsanitizedFullPath(k.File), ProvenanceOf(k.File), k.IsAlternate))
+            .OrderBy(k => k.Version, StringComparer.Ordinal)
+            .ThenBy(k => k.File.FileName, StringComparer.Ordinal)
+            .ToArray();
+
     private IEnumerable<(string Version, string File, bool IsAlternate)> KeptFiles()
     {
         var folder = root().GetFullPath();
@@ -429,3 +438,10 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
 
     private static string Short(string hash) => hash.Length > 12 ? hash[..12] : hash;
 }
+
+/// <summary>A regulation the app keeps.</summary>
+/// <param name="Version">The build stamp it carries.</param>
+/// <param name="File">Where it is kept.</param>
+/// <param name="Provenance">Where it came from and how far it is trusted.</param>
+/// <param name="IsAlternate">A second vouched file of a build already kept, which a merge uses only when it is nearer the mods' rows.</param>
+public sealed record KeptBaseline(string Version, AbsolutePath File, RegulationProvenance Provenance, bool IsAlternate);

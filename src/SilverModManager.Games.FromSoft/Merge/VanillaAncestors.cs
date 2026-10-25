@@ -14,12 +14,17 @@ public sealed record AncestorGroup(string? Version, IReadOnlyList<ProviderFile> 
 /// The vanilla file each contributor of one path branched from. Contributors built for the same game build share a
 /// group, so a loadout of mods from several builds has several.
 /// </summary>
-public sealed class VanillaAncestors(IReadOnlyList<AncestorGroup> groups)
+/// <param name="groups">One group per build the contributors were made for.</param>
+/// <param name="sources">Where each group's vanilla came from, when the caller knows; empty for a packed file.</param>
+public sealed class VanillaAncestors(IReadOnlyList<AncestorGroup> groups, IReadOnlyList<VanillaGroupSource>? sources = null)
 {
     private readonly Dictionary<ProviderFile, byte[]> _byContributor =
         groups.SelectMany(g => g.Contributors.Select(c => (Contributor: c, g.Bytes))).ToDictionary(p => p.Contributor, p => p.Bytes);
 
     public IReadOnlyList<AncestorGroup> Groups { get; } = groups;
+
+    /// <summary>Where each build's vanilla came from, one per group of a regulation, whether or not there is more than one.</summary>
+    public IReadOnlyList<VanillaGroupSource> Sources { get; } = sources ?? [];
 
     /// <summary>The vanilla file <paramref name="contributor"/> branched from, or null when it is not one of this path's contributors.</summary>
     public byte[]? Of(ProviderFile contributor) => _byContributor.GetValueOrDefault(contributor);
