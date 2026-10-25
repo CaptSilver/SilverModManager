@@ -138,4 +138,26 @@ Dismiss this note once you have read it.
             .AddValue<string>("Files")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate GameBuildChanged = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 6))
+        .WithTitle("Game updated since mods were applied")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("{Game} has changed since this loadout was last applied")
+        .WithDetails("""
+{Store} changed the files of {Game} after this loadout was last applied. {WhatBreaks}
+
+Mods installed outside the app are not listed here. If a mod stops working, check its page for a release matching the game's version.
+
+Applying the loadout again clears this note.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Game")
+            .AddValue<string>("Store")
+            .AddValue<string>("WhatBreaks")
+        )
+        .Finish();
 }
