@@ -1321,6 +1321,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <inheritdoc />
     public virtual bool IsIgnoredBackupPath(GamePath path) => false;
 
+    /// <inheritdoc />
+    public virtual bool IsGameWrittenPath(GamePath path) => GameWrittenFiles.IsLogOrCrashFile(path);
+
     private IGamePathFilter? _composedFilter;
 
     /// <inheritdoc />

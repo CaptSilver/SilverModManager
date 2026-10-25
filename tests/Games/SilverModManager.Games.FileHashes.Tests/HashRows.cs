@@ -168,6 +168,7 @@ internal static class HashRows
             Store = store,
             Path = gamePath,
             GameId = GameId,
+            Game = OwnGameId,
             Name = "Test game",
         };
         var loadout = new Loadout.New(tx)

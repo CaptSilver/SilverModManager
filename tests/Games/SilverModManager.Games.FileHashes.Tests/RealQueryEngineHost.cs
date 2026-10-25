@@ -28,9 +28,15 @@ internal sealed class RealQueryEngineHost : IDisposable
     private readonly List<IDisposable> _owned = [];
 
     /// <param name="extraSql">Statements run next to the file_hashes macros, for tests that exercise the SQL engine itself.</param>
-    public RealQueryEngineHost(params string[] extraSql)
+    public RealQueryEngineHost(params string[] extraSql) : this(null, extraSql)
+    {
+    }
+
+    /// <param name="configure">Registers further services, such as a game the loadouts can resolve.</param>
+    public RealQueryEngineHost(Action<IServiceCollection>? configure, params string[] extraSql)
     {
         var services = new ServiceCollection();
+        configure?.Invoke(services);
         for (var i = 0; i < extraSql.Length; i++) services.AddSingleton(new AmbientSqlFragment($"test-{i}", extraSql[i]));
         _provider = services
             .AddLogging()

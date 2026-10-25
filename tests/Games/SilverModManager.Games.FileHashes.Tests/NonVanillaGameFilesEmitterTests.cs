@@ -11,6 +11,7 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
 namespace SilverModManager.Games.FileHashes.Tests;
@@ -22,13 +23,18 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
 {
     private const string GamePath = "/games/test";
 
-    private readonly RealQueryEngineHost _host = new();
+    private readonly RealQueryEngineHost _host;
     private readonly IConnection _main;
     private readonly IConnection _local;
     private readonly NonVanillaGameFilesEmitter _emitter;
+    private readonly SubstitutableGame _game = Substitute.For<SubstitutableGame>();
+    private readonly ILoadoutSynchronizer _synchronizer = Substitute.For<ILoadoutSynchronizer>();
 
     public NonVanillaGameFilesEmitterTests()
     {
+        _host = new RealQueryEngineHost(services => services.AddSingleton<IGameData>(_game));
+        _game.Synchronizer.Returns(_synchronizer);
+        _synchronizer.IsGameWrittenPath(Arg.Any<GamePath>()).Returns(call => GameWrittenFiles.IsLogOrCrashFile(call.Arg<GamePath>()));
         _main = _host.OpenInMemory("main");
         _local = _host.OpenInMemory("local_hashes");
         var hashes = Substitute.For<IFileHashesService>();
@@ -197,6 +203,66 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
         var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
         data.FileCount.Should().Be(1);
         data.Files.Should().Contain("a.esm").And.NotContain("ccinvented");
+    }
+
+    [Fact]
+    public async Task FilesTheGameWritesItself_AreLeftOutOfTheListAndTheCount_AndNamedInAClosingLine()
+    {
+        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest), ("bin/game.log", NonVanillaReason.NotInManifest), ("crash.DMP", NonVanillaReason.NotInManifest), ("logs/x.txt", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.FileCount.Should().Be(1);
+        data.Files.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Should().Equal(
+            "* `mod.esp` (not in the store's manifest)",
+            "3 log and crash files the game wrote itself are not listed."
+        );
+    }
+
+    [Fact]
+    public async Task NothingButFilesTheGameWrites_YieldsNothing()
+    {
+        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("bin/game.log", NonVanillaReason.NotInManifest), ("CrashDumps/a.bin", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        (await Diagnose(loadout)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task WhatCountsAsGameWritten_IsTheGamesSynchronizersCall()
+    {
+        _synchronizer.IsGameWrittenPath(Arg.Any<GamePath>()).Returns(call => call.Arg<GamePath>().Path.ToString() == "bin/own.dat");
+        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("bin/own.dat", NonVanillaReason.NotInManifest), ("game.log", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
+
+        var diagnostic = (await Diagnose(loadout)).Should().ContainSingle().Subject;
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<Diagnostics.NonVanillaGameFilesMessageData>>().Subject.MessageData;
+        data.FileCount.Should().Be(1);
+        data.Files.Should().Contain("game.log").And.NotContain("own.dat").And.Contain("1 log or crash file the game wrote itself is not listed.");
+    }
+
+    [Theory]
+    [InlineData("bin/game.log", true)]
+    [InlineData("Launcher/debug.LOG", true)]
+    [InlineData("crash.dmp", true)]
+    [InlineData("logs/output.txt", true)]
+    [InlineData("a/Logs/deep/output.txt", true)]
+    [InlineData("crashes/report.bin", true)]
+    [InlineData("data/CrashDumps/x.bin", true)]
+    [InlineData("mod.esp", false)]
+    [InlineData("bin/NativeMods/Mod.dll", false)]
+    [InlineData("catalog.logic", false)]
+    [InlineData("logs", false)]
+    [InlineData("backlogs/x.txt", false)]
+    public void DefaultRule_CountsLogsAndCrashDumps(string path, bool expected)
+    {
+        GameWrittenFiles.IsLogOrCrashFile(new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(path))).Should().Be(expected);
     }
 
     private async Task AddGameInstalledFile(Loadout.ReadOnly loadout, string path)

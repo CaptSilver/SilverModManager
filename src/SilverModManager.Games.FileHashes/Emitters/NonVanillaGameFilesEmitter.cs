@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.Loadouts;
@@ -20,7 +21,8 @@ namespace SilverModManager.Games.FileHashes.Emitters;
 /// Reports the files in a game folder that are not the files the store installed. The list is the
 /// non-vanilla rows of the installation's local baseline, so it only changes when the baseline is
 /// rebuilt: it is the same after a restart and it goes away once a rebuild finds the files vanilla again.
-/// Paths the loadout itself manages are left out, so what is listed is what nobody here put there.
+/// Paths the loadout itself manages are left out, so what is listed is what nobody here put there. So are
+/// the logs and crash dumps the game writes itself: they are counted in a closing line, not listed as mods.
 /// </summary>
 public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
 {
@@ -55,16 +57,28 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
 
         var gameInstalled = GameInstalledPaths.For(loadout.Db, loadout.LoadoutId);
 
-        var files = NonVanillaFile.FindByBaseline(db, baseline.Value.Id)
+        var isGameWritten = GameWrittenPredicate(loadout);
+        var unmanaged = NonVanillaFile.FindByBaseline(db, baseline.Value.Id)
             .Where(f => !IsManagedByLoadout(loadout.Db, syncTree, overridesGroup, gameInstalled, f.Path))
+            .ToArray();
+        var files = unmanaged
+            .Where(f => !isGameWritten(new GamePath(LocationId.Game, f.Path)))
             .OrderBy(f => f.Path.ToString(), StringComparer.Ordinal)
             .ToArray();
         if (files.Length == 0) yield break;
+        var gameWritten = unmanaged.Length - files.Length;
 
         var list = new StringBuilder();
         foreach (var file in files)
         {
             list.AppendLine($"* `{file.Path}` ({DescribeReason(file.Reason)})");
+        }
+        if (gameWritten > 0)
+        {
+            list.AppendLine();
+            list.AppendLine(gameWritten == 1
+                ? "1 log or crash file the game wrote itself is not listed."
+                : $"{gameWritten} log and crash files the game wrote itself are not listed.");
         }
 
         yield return Diagnostics.CreateNonVanillaGameFiles(
@@ -74,6 +88,12 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
             Files: list.ToString()
         );
     }
+
+    // A game this build doesn't know (an old installation) has no synchronizer to ask, so the shared rule applies.
+    private static Func<GamePath, bool> GameWrittenPredicate(Loadout.ReadOnly loadout)
+        => loadout.TryGetGame(out var game) && game is IGame { Synchronizer: var synchronizer }
+            ? synchronizer.IsGameWrittenPath
+            : GameWrittenFiles.IsLogOrCrashFile;
 
     /// <summary>
     /// Whether the loadout deploys or intends to deploy the file, or the game handles it itself. A file the game

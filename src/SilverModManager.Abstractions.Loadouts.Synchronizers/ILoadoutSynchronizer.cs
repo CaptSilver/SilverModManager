@@ -153,6 +153,14 @@ public interface ILoadoutSynchronizer
     /// up. This method is ignored when the global configuration is set to always back up all game files.
     /// </summary>
     bool IsIgnoredBackupPath(GamePath path);
+
+    /// <summary>
+    /// Returns true if the game writes this file itself while it runs (a log, a crash dump), so it is never a mod
+    /// or an edit. This is not <see cref="IsIgnoredBackupPath"/>: that says what is not worth backing up, which
+    /// for some games is the whole install folder, mods included. By default logs and crash dumps count, see
+    /// <see cref="GameWrittenFiles"/>.
+    /// </summary>
+    bool IsGameWrittenPath(GamePath path);
 }
 
 public record struct FileConflictGroup(GamePath Path, FileConflictItem[] Items);
