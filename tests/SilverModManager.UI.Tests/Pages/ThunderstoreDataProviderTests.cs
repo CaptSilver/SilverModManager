@@ -1,4 +1,9 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using SilverModManager.App.UI;
+using SilverModManager.App.UI.Pages.Thunderstore;
+using Avalonia.Media.Imaging;
+using SilverModManager.Sdk.Resources;
 using System.Security.Cryptography;
 using DynamicData;
 using DynamicData.Kernel;
@@ -58,16 +63,35 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
         public IReadOnlyList<string> ThunderstoreLoaderAliases => [];
     }
 
-    private ThunderstoreDataProvider CreateProvider(params IGameData[] games)
+    private ThunderstoreDataProvider CreateProvider(params IGameData[] games) => CreateProvider(new FakeIconPipeline(), games);
+
+    private ThunderstoreDataProvider CreateProvider(FakeIconPipeline iconPipeline, params IGameData[] games) =>
+        CreateProvider(new ThunderstoreIconLoader(iconPipeline, ImagePipelines.ModPageThumbnailFallback), games);
+
+    private ThunderstoreDataProvider CreateProvider(IThunderstoreIconLoader iconLoader, params IGameData[] games)
     {
         var services = new ServiceCollection()
             .AddSingleton(Connection)
             .AddSingleton(Provider.GetRequiredService<ThunderstoreUpdateChecker>());
         foreach (var game in games) services.AddSingleton(game);
-        return new ThunderstoreDataProvider(services.BuildServiceProvider());
+        return new ThunderstoreDataProvider(services.BuildServiceProvider(), iconLoader);
     }
 
-    private async Task<EntityId> AddFile(string community, string team, string name, string version, bool frozen = false)
+    private sealed class FakeIconPipeline : IResourceLoader<Uri, Bitmap>
+    {
+        public ConcurrentQueue<Uri> Requests { get; } = new();
+        public Func<Uri, Bitmap> Respond { get; set; } = _ => throw new InvalidOperationException("no response set");
+
+        public ValueTask<Resource<Bitmap>> LoadResourceAsync(Uri resourceIdentifier, CancellationToken cancellationToken)
+        {
+            Requests.Enqueue(resourceIdentifier);
+            return new ValueTask<Resource<Bitmap>>(new Resource<Bitmap> { Data = Respond(resourceIdentifier) });
+        }
+    }
+
+    private static Bitmap NewBitmap() => new RenderTargetBitmap(new Avalonia.PixelSize(4, 4));
+
+    private async Task<EntityId> AddFile(string community, string team, string name, string version, bool frozen = false, string? itemName = null)
     {
         var fileName = $"{team}-{name}-{version}.zip";
         var bytes = System.Text.Encoding.UTF8.GetBytes(fileName);
@@ -77,7 +101,7 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
             FileName = fileName,
             Hash = bytes.xxHash3(),
             Size = Size.From((ulong)bytes.Length),
-            LibraryItem = new LibraryItem.New(tx, id) { Name = fileName },
+            LibraryItem = new LibraryItem.New(tx, id) { Name = itemName ?? fileName },
         };
         _ = new ThunderstoreLibraryFile.New(tx, id)
         {
@@ -131,9 +155,9 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
         using var rows = Rows(thunderstore.ObserveLibraryItems(filter));
 
         await Eventually(() => rows.Count.Should().Be(2));
-        rows.Items.Select(NameOf).Should().BeEquivalentTo("Zehs-REPOLib", "nickklmao-REPOConfig");
+        rows.Items.Select(NameOf).Should().BeEquivalentTo("REPOLib", "REPOConfig");
 
-        var repoLib = rows.Items.Single(row => NameOf(row) == "Zehs-REPOLib");
+        var repoLib = rows.Items.Single(row => NameOf(row) == "REPOLib");
         using var versions = ChildrenOf(repoLib);
         await Eventually(() => versions.Count.Should().Be(2));
         versions.Items.Select(row => row.Get<VersionComponent>(LibraryColumns.ItemVersion.CurrentVersionComponentKey).Value.Value)
@@ -161,6 +185,139 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
         {
             parent.Get<VersionComponent>(LibraryColumns.ItemVersion.CurrentVersionComponentKey).Value.Value.Should().Be("4.10.0");
         });
+    }
+
+    [Fact]
+    public async Task ARowShowsTheReadablePackageName_AndWhoPublishedIt()
+    {
+        var community = UniqueCommunity();
+        await AddFile(community, "Zehs", "Unlimited_Orbs", "1.0.0");
+        var game = ThunderstoreGameOf(community);
+        using var rows = Rows(CreateProvider(game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(1));
+
+        var parent = rows.Items.Single();
+        NameOf(parent).Should().Be("Unlimited Orbs");
+        parent.Get<StringComponent>(SharedColumns.Name.SubtitleComponentKey).Value.Value.Should().Be("by Zehs");
+        using var versions = ChildrenOf(parent);
+        await Eventually(() => versions.Count.Should().Be(1));
+        NameOf(versions.Items.Single()).Should().Be("Unlimited Orbs");
+    }
+
+    [Fact]
+    public async Task ARenamedLibraryItem_KeepsTheUsersName()
+    {
+        var community = UniqueCommunity();
+        await AddFile(community, "Zehs", "Unlimited_Orbs", "1.0.0", itemName: "My orbs");
+        var game = ThunderstoreGameOf(community);
+        using var rows = Rows(CreateProvider(game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(1));
+
+        using var versions = ChildrenOf(rows.Items.Single());
+        await Eventually(() => versions.Count.Should().Be(1));
+        NameOf(versions.Items.Single()).Should().Be("My orbs");
+    }
+
+    [Fact]
+    public async Task ARowAsksForTheIconOfItsNewestVersion_OnceShown()
+    {
+        var community = UniqueCommunity();
+        await AddFile(community, "Zehs", "REPOLib", "4.1.0");
+        await AddFile(community, "Zehs", "REPOLib", "4.10.0");
+        await AddFile(community, "Zehs", "REPOLib", "4.2.0");
+        var game = ThunderstoreGameOf(community);
+        var loaded = NewBitmap();
+        var pipeline = new FakeIconPipeline { Respond = _ => loaded };
+        using var rows = Rows(CreateProvider(pipeline, game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(1));
+        var parent = rows.Items.Single();
+        var icon = parent.Get<ImageComponent>(SharedColumns.Name.ImageComponentKey);
+
+        pipeline.Requests.Should().BeEmpty("nothing is fetched before the row is shown");
+        icon.Value.Value.Should().BeSameAs(ImagePipelines.ModPageThumbnailFallback);
+
+        await OnUi(() => parent.Activate());
+
+        await EventuallyOnUi(() => icon.Value.Value.Should().BeSameAs(loaded));
+        pipeline.Requests.Should().Equal(new Uri("https://gcdn.thunderstore.io/live/repository/icons/Zehs-REPOLib-4.10.0.png"));
+    }
+
+    [Fact]
+    public async Task AnIconThatFailsToLoad_ShowsThePlaceholder()
+    {
+        var community = UniqueCommunity();
+        await AddFile(community, "Zehs", "REPOLib", "4.1.0");
+        var game = ThunderstoreGameOf(community);
+        var pipeline = new FakeIconPipeline { Respond = _ => throw new HttpRequestException("offline") };
+        // A placeholder of its own, so the row is seen to switch to it rather than just keep its first image.
+        var placeholder = NewBitmap();
+        var loader = new ThunderstoreIconLoader(pipeline, placeholder);
+        using var rows = Rows(CreateProvider(loader, game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(1));
+        var parent = rows.Items.Single();
+        var icon = parent.Get<ImageComponent>(SharedColumns.Name.ImageComponentKey);
+
+        await OnUi(() => parent.Activate());
+
+        await EventuallyOnUi(() => icon.Value.Value.Should().BeSameAs(placeholder));
+        pipeline.Requests.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task ARowShownAgain_TakesItsIconFromTheCache()
+    {
+        var community = UniqueCommunity();
+        await AddFile(community, "Zehs", "REPOLib", "4.1.0");
+        var game = ThunderstoreGameOf(community);
+        var loaded = NewBitmap();
+        var pipeline = new FakeIconPipeline { Respond = _ => loaded };
+        var thunderstore = CreateProvider(pipeline, game);
+
+        using (var first = Rows(thunderstore.ObserveLibraryItems(new LibraryFilter(NoLoadout, game))))
+        {
+            await Eventually(() => first.Count.Should().Be(1));
+            var icon = first.Items.Single().Get<ImageComponent>(SharedColumns.Name.ImageComponentKey);
+            await OnUi(() => first.Items.Single().Activate());
+            await EventuallyOnUi(() => icon.Value.Value.Should().BeSameAs(loaded));
+        }
+
+        using var again = Rows(thunderstore.ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => again.Count.Should().Be(1));
+        again.Items.Single().Get<ImageComponent>(SharedColumns.Name.ImageComponentKey).Value.Value.Should().BeSameAs(loaded);
+        pipeline.Requests.Should().HaveCount(1);
+    }
+
+    private static string SourceOf(CompositeItemModel<EntityId> row) => row.Get<StringComponent>(SharedColumns.Source.ComponentKey).Value.Value;
+
+    [Fact]
+    public async Task LibraryRows_AreFromThunderstore_ParentAndVersions()
+    {
+        var community = UniqueCommunity();
+        await AddFile(community, "Zehs", "REPOLib", "4.1.0");
+        var game = ThunderstoreGameOf(community);
+        using var rows = Rows(CreateProvider(game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
+        await Eventually(() => rows.Count.Should().Be(1));
+
+        SourceOf(rows.Items.Single()).Should().Be("Thunderstore");
+        using var versions = ChildrenOf(rows.Items.Single());
+        await Eventually(() => versions.Count.Should().Be(1));
+        SourceOf(versions.Items.Single()).Should().Be("Thunderstore");
+    }
+
+    [Fact]
+    public async Task LoadoutRows_AreFromThunderstore_ParentAndItems()
+    {
+        var community = UniqueCommunity();
+        var game = ThunderstoreGameOf(community);
+        var loadout = await AddLoadout(game);
+        await Install(loadout, await AddFile(community, "Zehs", "REPOLib", "4.1.0"), "REPOLib");
+        using var rows = Rows(CreateProvider(game).ObserveLoadoutItems(WholeLoadout(loadout.Loadout)));
+        await Eventually(() => rows.Count.Should().Be(1));
+
+        SourceOf(rows.Items.Single()).Should().Be("Thunderstore");
+        using var items = ChildrenOf(rows.Items.Single());
+        await Eventually(() => items.Count.Should().Be(1));
+        SourceOf(items.Items.Single()).Should().Be("Thunderstore");
     }
 
     [Fact]
@@ -194,7 +351,7 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
         using var _ = thunderstore.CountLibraryItems(filter).Subscribe(value => count = value);
 
         await Eventually(() => rows.Count.Should().Be(1));
-        NameOf(rows.Items.Single()).Should().Be("Zehs-REPOLib");
+        NameOf(rows.Items.Single()).Should().Be("REPOLib");
         await Eventually(() => count.Should().Be(1));
     }
 
@@ -371,10 +528,10 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
         using var _ = thunderstore.CountLoadoutItems(WholeLoadout(loadout.Loadout)).Subscribe(value => count = value);
 
         await Eventually(() => rows.Count.Should().Be(2));
-        rows.Items.Select(NameOf).Should().BeEquivalentTo("Zehs-REPOLib", "nickklmao-REPOConfig");
+        rows.Items.Select(NameOf).Should().BeEquivalentTo("REPOLib", "REPOConfig");
         await Eventually(() => count.Should().Be(2));
 
-        var repoLib = rows.Items.Single(row => NameOf(row) == "Zehs-REPOLib");
+        var repoLib = rows.Items.Single(row => NameOf(row) == "REPOLib");
         using var items = ChildrenOf(repoLib);
         await Eventually(() => items.Keys.Should().BeEquivalentTo([olderItem, newerItem]));
         items.Items.Select(row => row.Get<StringComponent>(LoadoutColumns.Collections.ComponentKey).Value.Value)

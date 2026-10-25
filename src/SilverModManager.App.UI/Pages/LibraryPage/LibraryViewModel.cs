@@ -1248,6 +1248,7 @@ public class LibraryTreeDataGridAdapter :
         [
             viewHierarchical ? ITreeDataGridItemModel<CompositeItemModel<EntityId>, EntityId>.CreateExpanderColumn(nameColumn) : nameColumn,
             ColumnCreator.Create<EntityId, LibraryColumns.ItemVersion>(),
+            ColumnCreator.Create<EntityId, SharedColumns.Source>(),
             ColumnCreator.Create<EntityId, SharedColumns.ItemSize>(),
             ColumnCreator.Create<EntityId, LibraryColumns.DownloadedDate>(sortDirection: ListSortDirection.Descending),
             ColumnCreator.Create<EntityId, SharedColumns.InstalledDate>(),

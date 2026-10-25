@@ -91,6 +91,7 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
         IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedLoadoutItemsObservable)
     {
         itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: localFile.AsLibraryFile().AsLibraryItem().Name));
+        SharedColumns.Source.Add(itemModel, ModSources.LocalFile);
         itemModel.Add(LibraryColumns.DownloadedDate.ComponentKey, new DateComponent(value: localFile.GetCreatedAt()));
         itemModel.Add(SharedColumns.ItemSize.ComponentKey, new SizeComponent(value: localFile.AsLibraryFile().Size));
         itemModel.Add(LibraryColumns.Actions.LibraryItemIdsComponentKey, new LibraryComponents.LibraryItemIds(localFile.AsLibraryFile().AsLibraryItem()));
@@ -164,6 +165,7 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
         };
 
         parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: localFile.AsLibraryFile().AsLibraryItem().Name));
+        SharedColumns.Source.Add(parentItemModel, ModSources.LocalFile);
         parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
 
         LoadoutDataProviderHelper.AddDateComponent(parentItemModel, localFile.GetCreatedAt(), linkedItemsObservable);
@@ -184,6 +186,7 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
     private static CompositeItemModel<EntityId> ToLocalChildLoadoutItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem)
     {
         var childModel = LoadoutDataProviderHelper.ToChildItemModel(connection, loadoutItem);
+        SharedColumns.Source.Add(childModel, ModSources.LocalFile);
         LoadoutDataProviderHelper.AddViewModPageActionComponent(childModel, isEnabled: false);
         return childModel;
     }

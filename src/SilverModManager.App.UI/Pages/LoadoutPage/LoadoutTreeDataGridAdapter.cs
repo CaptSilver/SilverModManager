@@ -158,6 +158,7 @@ public class LoadoutTreeDataGridAdapter :
         return
         [
             viewHierarchical ? ITreeDataGridItemModel<CompositeItemModel<EntityId>, EntityId>.CreateExpanderColumn(nameColumn) : nameColumn,
+            ColumnCreator.Create<EntityId, SharedColumns.Source>(),
             ColumnCreator.Create<EntityId, SharedColumns.InstalledDate>(sortDirection: ListSortDirection.Descending),
             ColumnCreator.Create<EntityId, LoadoutColumns.Collections>(),
             ColumnCreator.Create<EntityId, LoadoutColumns.EnabledState>(),

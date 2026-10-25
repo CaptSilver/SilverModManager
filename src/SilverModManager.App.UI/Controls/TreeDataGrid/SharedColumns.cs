@@ -30,6 +30,31 @@ public static class SharedColumns
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
     }
 
+    /// <summary>
+    /// Where a mod came from: Nexus Mods, Thunderstore, a local file and so on. Plain text, sorted alphabetically.
+    /// </summary>
+    public sealed class Source : ICompositeColumnDefinition<Source>
+    {
+        public static int Compare<TKey>(CompositeItemModel<TKey> a, CompositeItemModel<TKey> b) where TKey : notnull
+        {
+            var aValue = a.GetOptional<StringComponent>(ComponentKey);
+            var bValue = b.GetOptional<StringComponent>(ComponentKey);
+            return aValue.Compare(bValue, (x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.Value.Value, y.Value.Value));
+        }
+
+        public const string ColumnTemplateResourceKey = Prefix + "Source";
+        public static readonly ComponentKey ComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(StringComponent));
+
+        /// <summary>Gives the row its source; one of the <see cref="ModSources"/> names.</summary>
+        public static void Add<TKey>(CompositeItemModel<TKey> itemModel, string source) where TKey : notnull
+        {
+            itemModel.Add(ComponentKey, new StringComponent(value: source));
+        }
+
+        public static string GetColumnHeader() => "Source";
+        public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
+    }
+
     public sealed class InstalledDate : ICompositeColumnDefinition<InstalledDate>
     {
         public static int Compare<TKey>(CompositeItemModel<TKey> a, CompositeItemModel<TKey> b) where TKey : notnull
@@ -125,4 +150,17 @@ public static class SharedColumns
         public static string GetColumnHeader() => "Size";
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
     }
+}
+
+/// <summary>
+/// The values of the <see cref="SharedColumns.Source"/> column.
+/// </summary>
+public static class ModSources
+{
+    public const string Nexus = "Nexus Mods";
+    public const string Thunderstore = "Thunderstore";
+    public const string LocalFile = "Local file";
+    public const string Wabbajack = "Wabbajack";
+    public const string Bundled = "Bundled";
+    public const string Game = "Game";
 }

@@ -90,6 +90,30 @@
         </StackPanel>
     </DataTemplate>
 
+    <!-- Source column -->
+    <DataTemplate x:Key="{x:Static controls:SharedColumns+Source.ColumnTemplateResourceKey}">
+        <DataTemplate.DataType>
+            <x:Type TypeName="controls:CompositeItemModel" x:TypeArguments="abstractions:EntityId" />
+        </DataTemplate.DataType>
+
+        <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="controls:StringComponent"
+                                            ComponentKey="{x:Static controls:SharedColumns+Source.ComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type controls:StringComponent}">
+                            <TextBlock Text="{CompiledBinding Value.Value}" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+
+            <controls:ComponentControl.Fallback>
+                <TextBlock Text="-" />
+            </controls:ComponentControl.Fallback>
+        </controls:ComponentControl>
+    </DataTemplate>
+
     <!-- Installed date column -->
     <DataTemplate x:Key="{x:Static controls:SharedColumns+InstalledDate.ColumnTemplateResourceKey}">
         <DataTemplate.DataType>

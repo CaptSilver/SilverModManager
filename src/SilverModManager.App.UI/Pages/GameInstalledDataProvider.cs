@@ -80,6 +80,7 @@ internal class GameInstalledDataProvider : ILoadoutDataProvider
         };
 
         model.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: Language.GameInstalled_GroupName));
+        SharedColumns.Source.Add(model, ModSources.Game);
         model.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
         // The tooltip text is long, so it rides in the subtitle, which cuts it off and shows all of it on hover.
         model.Add(SharedColumns.Name.SubtitleComponentKey, new StringComponent(value: Language.GameInstalled_GroupToolTip));
@@ -96,6 +97,7 @@ internal class GameInstalledDataProvider : ILoadoutDataProvider
         var model = new CompositeItemModel<EntityId>(item.Id);
 
         model.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: loadoutItem.Name));
+        SharedColumns.Source.Add(model, ModSources.Game);
         model.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
         if (SubtitleFor(item) is { } subtitle)
             model.Add(SharedColumns.Name.SubtitleComponentKey, new StringComponent(value: subtitle));

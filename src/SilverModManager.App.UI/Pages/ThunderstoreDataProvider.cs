@@ -1,4 +1,6 @@
 using System.Reactive.Linq;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using DynamicData;
 using DynamicData.Aggregation;
 using DynamicData.Kernel;
@@ -16,6 +18,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Thunderstore;
+using SilverModManager.App.UI.Pages.Thunderstore;
 
 namespace SilverModManager.App.UI.Pages;
 
@@ -30,15 +33,49 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
     private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
     private readonly ThunderstoreUpdateChecker _updateChecker;
+    private readonly Lazy<IThunderstoreIconLoader> _iconLoader;
 
-    public ThunderstoreDataProvider(IServiceProvider serviceProvider)
+    public ThunderstoreDataProvider(IServiceProvider serviceProvider) : this(serviceProvider, iconLoader: null) { }
+
+    // Tests pass a loader over a fake pipeline, so no row ever reaches the network.
+    internal ThunderstoreDataProvider(IServiceProvider serviceProvider, IThunderstoreIconLoader? iconLoader)
     {
         _serviceProvider = serviceProvider;
+        _iconLoader = new Lazy<IThunderstoreIconLoader>(() => iconLoader ?? serviceProvider.GetRequiredService<IThunderstoreIconLoader>());
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _updateChecker = serviceProvider.GetRequiredService<ThunderstoreUpdateChecker>();
     }
 
     private static string PackageName(ThunderstoreLibraryFile.ReadOnly file) => $"{file.Namespace}-{file.Name}";
+
+    private static string RowName(ThunderstoreLibraryFile.ReadOnly file)
+    {
+        return ThunderstoreRowText.RowName(file.Namespace, file.Name, file.VersionNumber, file.AsLibraryFile().AsLibraryItem().Name);
+    }
+
+    // Name, owner, icon and source of a package's parent row. The grouping key stays "Namespace-Name"; this is
+    // only what the row shows.
+    private void AddPackageIdentity(CompositeItemModel<EntityId> parentItemModel, IEnumerable<ThunderstoreLibraryFile.ReadOnly> files)
+    {
+        var first = files.First();
+        parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: ThunderstoreRowText.RowName(first.Namespace, first.Name, first.VersionNumber, libraryItemName: "")));
+        parentItemModel.Add(SharedColumns.Name.SubtitleComponentKey, new StringComponent(value: $"by {first.Namespace}"));
+        parentItemModel.Add(SharedColumns.Name.ImageComponentKey, IconOf(ThunderstoreIcons.UrlFor(first.Namespace, first.Name, HighestVersion(files))));
+        SharedColumns.Source.Add(parentItemModel, ModSources.Thunderstore);
+    }
+
+    // Through the Thunderstore page's loader rather than the bare pipeline: the pipeline has no cache, and a row
+    // fetches its icon again each time it scrolls into view. The loader also turns a failed fetch into its placeholder.
+    private ImageComponent IconOf(Uri url)
+    {
+        var loader = _iconLoader.Value;
+        return new ImageComponent(
+            initialValue: AsBitmap(loader.TryGetCached(url)),
+            valueObservable: R3.Observable.FromAsync(async cancellationToken => AsBitmap(await loader.LoadAsync(url, cancellationToken)), configureAwait: false)
+        );
+    }
+
+    private static Bitmap AsBitmap(IImage? image) => image as Bitmap ?? ImagePipelines.ModPageThumbnailFallback;
 
     private static string? CommunityOf(IGameData? game) => game is null ? null : ThunderstoreGame.For(game)?.ThunderstoreCommunity;
 
@@ -128,8 +165,7 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
             ChildrenObservable = files.Transform(file => ToLibraryItemModel(file, libraryFilter)),
         };
 
-        parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: package.Key));
-        parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
+        AddPackageIdentity(parentItemModel, package.Cache.Items);
 
         var sizeObservable = files
             .TransformImmutable(static file => file.AsLibraryFile().Size)
@@ -197,7 +233,8 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
 
         var itemModel = new CompositeItemModel<EntityId>(file.Id);
         itemModel.Add(LibraryColumns.Actions.LibraryItemIdsComponentKey, new LibraryComponents.LibraryItemIds(libraryFile.AsLibraryItem()));
-        itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: PackageName(file)));
+        itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: RowName(file)));
+        SharedColumns.Source.Add(itemModel, ModSources.Thunderstore);
         itemModel.Add(LibraryColumns.DownloadedDate.ComponentKey, new DateComponent(value: file.GetCreatedAt()));
         itemModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(value: file.VersionNumber));
         itemModel.Add(SharedColumns.ItemSize.ComponentKey, new SizeComponent(value: libraryFile.Size));
@@ -284,8 +321,7 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
             ChildrenObservable = linkedItemsObservable.Transform(loadoutItem => ToChildLoadoutItemModel(_connection, loadoutItem)),
         };
 
-        parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: package.Key));
-        parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
+        AddPackageIdentity(parentItemModel, package.Cache.Items);
 
         LoadoutDataProviderHelper.AddDateComponent(parentItemModel, package.Cache.Items.Min(static file => file.GetCreatedAt()), linkedItemsObservable);
         LoadoutDataProviderHelper.AddCollections(parentItemModel, linkedItemsObservable);
@@ -305,6 +341,7 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
     private static CompositeItemModel<EntityId> ToChildLoadoutItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem)
     {
         var childModel = LoadoutDataProviderHelper.ToChildItemModel(connection, loadoutItem);
+        SharedColumns.Source.Add(childModel, ModSources.Thunderstore);
         LoadoutDataProviderHelper.AddViewModPageActionComponent(childModel, isEnabled: false);
         return childModel;
     }

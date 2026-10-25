@@ -82,6 +82,7 @@ internal class ManuallyCreatedArchiveDataProvider : ILibraryDataProvider, ILoado
         IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedLoadoutItemsObservable)
     {
         itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: archive.AsLibraryArchive().AsLibraryFile().AsLibraryItem().Name));
+        SharedColumns.Source.Add(itemModel, ModSources.LocalFile);
         itemModel.Add(LibraryColumns.DownloadedDate.ComponentKey, new DateComponent(value: archive.GetCreatedAt()));
         itemModel.Add(LibraryColumns.Actions.LibraryItemIdsComponentKey, new LibraryComponents.LibraryItemIds(archive.AsLibraryArchive().AsLibraryFile().AsLibraryItem()));
 
@@ -124,7 +125,12 @@ internal class ManuallyCreatedArchiveDataProvider : ILibraryDataProvider, ILoado
             .RefCount();
 
         var hasChildrenObservable = linkedItemsObservable.IsNotEmpty();
-        var childrenObservable = linkedItemsObservable.Transform(loadoutItem => LoadoutDataProviderHelper.ToChildItemModel(_connection, loadoutItem));
+        var childrenObservable = linkedItemsObservable.Transform(loadoutItem =>
+        {
+            var childModel = LoadoutDataProviderHelper.ToChildItemModel(_connection, loadoutItem);
+            SharedColumns.Source.Add(childModel, ModSources.LocalFile);
+            return childModel;
+        });
 
         var parentItemModel = new CompositeItemModel<EntityId>(archive.Id)
         {
@@ -133,6 +139,7 @@ internal class ManuallyCreatedArchiveDataProvider : ILibraryDataProvider, ILoado
         };
 
         parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: archive.AsLibraryArchive().AsLibraryFile().AsLibraryItem().Name));
+        SharedColumns.Source.Add(parentItemModel, ModSources.LocalFile);
         parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
 
         LoadoutDataProviderHelper.AddDateComponent(parentItemModel, archive.GetCreatedAt(), linkedItemsObservable);

@@ -135,6 +135,20 @@ public class GameInstalledDataProviderTests(IServiceProvider provider) : AUiTest
         row.TryGet<StringComponent>(SharedColumns.Name.SubtitleComponentKey, out var subtitle) ? subtitle.Value.Value : null;
 
     [Fact]
+    public async Task TheGroupAndItsItems_AreFromTheGame()
+    {
+        var (loadout, group) = await LoadoutWithGroup();
+        await AddItem(loadout, group, "Some content", "Data/content.esm");
+
+        var row = await GroupRow(FilterFor(loadout));
+        var children = await Children(row);
+        await Eventually(() => children.Count.Should().Be(1));
+
+        row.Get<StringComponent>(SharedColumns.Source.ComponentKey).Value.Value.Should().Be("Game");
+        children.Items.Single().Get<StringComponent>(SharedColumns.Source.ComponentKey).Value.Value.Should().Be("Game");
+    }
+
+    [Fact]
     public async Task TheGroupIsOneRowNamedByTheAppWithItsItemsUnderneath()
     {
         var (loadout, group) = await LoadoutWithGroup();

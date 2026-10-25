@@ -31,6 +31,23 @@ public static class ThunderstoreRowText
         return readable;
     }
 
+    /// <summary>
+    /// What a package row on the library and loadout pages is called: the readable package name, or the user's own
+    /// name when they renamed the library item. A name that is still the one the download gave (the archive file
+    /// name, or the older "Namespace-Name") counts as not renamed.
+    /// </summary>
+    public static string RowName(string @namespace, string name, string versionNumber, string libraryItemName)
+    {
+        var downloaded = $"{@namespace}-{name}";
+        var isDefault = string.IsNullOrWhiteSpace(libraryItemName)
+            || libraryItemName.Equals($"{downloaded}-{versionNumber}.zip", StringComparison.OrdinalIgnoreCase)
+            || libraryItemName.Equals(downloaded, StringComparison.OrdinalIgnoreCase);
+        if (!isDefault) return libraryItemName;
+
+        var readable = DisplayName(name, @namespace);
+        return readable == "" ? downloaded : readable;
+    }
+
     /// <summary>1,234,567 as "1.2M"; one decimal below ten of a unit, none above.</summary>
     public static string CompactCount(long count)
     {

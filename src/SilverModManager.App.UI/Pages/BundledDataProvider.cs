@@ -63,6 +63,7 @@ public class BundledDataProvider : ILoadoutDataProvider
         };
 
         parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: item.AsNexusCollectionItemLoadoutGroup().AsLoadoutItemGroup().AsLoadoutItem().Name));
+        SharedColumns.Source.Add(parentItemModel, ModSources.Bundled);
         parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
         parentItemModel.Add(SharedColumns.InstalledDate.ComponentKey, new DateComponent(value: item.GetCreatedAt()));
         parentItemModel.Add(LoadoutColumns.EnabledState.LoadoutItemIdsComponentKey, new LoadoutComponents.LoadoutItemIds(loadoutItem));
@@ -83,6 +84,7 @@ public class BundledDataProvider : ILoadoutDataProvider
     private static CompositeItemModel<EntityId> ToBundledChildLoadoutItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem)
     {
         var childModel = LoadoutDataProviderHelper.ToChildItemModel(connection, loadoutItem);
+        SharedColumns.Source.Add(childModel, ModSources.Bundled);
         LoadoutDataProviderHelper.AddViewModPageActionComponent(childModel, isEnabled: false);
         return childModel;
     }

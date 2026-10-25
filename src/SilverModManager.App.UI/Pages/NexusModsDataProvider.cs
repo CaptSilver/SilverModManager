@@ -111,6 +111,7 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
         };
         
         parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: modPage.Name));
+        SharedColumns.Source.Add(parentItemModel, ModSources.Nexus);
         parentItemModel.Add(SharedColumns.Name.ImageComponentKey, ImageComponent.FromPipeline(_thumbnailLoader.Value, modPage.Id, initialValue: ImagePipelines.ModPageThumbnailFallback));
 
         // Size: sum of library files
@@ -245,6 +246,7 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
 
         itemModel.Add(LibraryColumns.Actions.LibraryItemIdsComponentKey, new LibraryComponents.LibraryItemIds(libraryItem.AsLibraryItem()));
         itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: fileMetadata.Name));
+        SharedColumns.Source.Add(itemModel, ModSources.Nexus);
         itemModel.Add(LibraryColumns.DownloadedDate.ComponentKey, new DateComponent(value: libraryItem.GetCreatedAt()));
         itemModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(value: fileMetadata.Version));
 
@@ -380,6 +382,7 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
             };
 
             parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: modPage.Name));
+            SharedColumns.Source.Add(parentItemModel, ModSources.Nexus);
             parentItemModel.Add(SharedColumns.Name.ImageComponentKey, ImageComponent.FromPipeline(_thumbnailLoader.Value, modPage.Id, initialValue: ImagePipelines.ModPageThumbnailFallback));
 
             LoadoutDataProviderHelper.AddDateComponent(parentItemModel, modPage.GetCreatedAt(), linkedItemsObservable);
@@ -401,6 +404,7 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
     private static CompositeItemModel<EntityId> ToNexusChildLoadoutItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem)
     {
         var childModel = LoadoutDataProviderHelper.ToChildItemModel(connection, loadoutItem);
+        SharedColumns.Source.Add(childModel, ModSources.Nexus);
         LoadoutDataProviderHelper.AddViewModPageActionComponent(childModel, isEnabled: true);
         return childModel;
     }

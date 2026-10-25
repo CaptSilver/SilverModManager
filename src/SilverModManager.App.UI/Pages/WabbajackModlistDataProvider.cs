@@ -68,6 +68,7 @@ internal class WabbajackModlistDataProvider : ILibraryDataProvider
         var itemModel = new CompositeItemModel<EntityId>(file.Id);
 
         itemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: file.Name));
+        SharedColumns.Source.Add(itemModel, ModSources.Wabbajack);
         itemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
         itemModel.Add(LibraryColumns.DownloadedDate.ComponentKey, new DateComponent(value: file.GetCreatedAt()));
         itemModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(value: file.Version));
