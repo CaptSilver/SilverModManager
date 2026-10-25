@@ -196,7 +196,8 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                     .Subscribe(tuple =>
                     {
                         var (optionalDownloadsCount, renderer) = tuple;
-                        var hasSingleTab = optionalDownloadsCount == 0 && renderer is null;
+                        // Embedded, the collection page's own Instructions tab holds them, so this view never has an instructions tab of its own.
+                        var hasSingleTab = optionalDownloadsCount == 0 && (renderer is null || isEmbedded);
                 
                         if (hasSingleTab) TabControl.Classes.Add("SingleTab");
                         else TabControl.Classes.Remove("SingleTab");
@@ -242,7 +243,7 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                         var (instructionsRenderer, requiredModsInstructions, optionalModsInstructions) = tuple;
                 
                         var instructions = new CollectionInstructions(instructionsRenderer, requiredModsInstructions, optionalModsInstructions);
-                        InstructionsTab.IsVisible = instructions.HasAny;
+                        InstructionsTab.IsVisible = instructions.HasAny && !isEmbedded;
                         InstructionsContent.Instructions = instructions;
                     }).DisposeWith(d);
 

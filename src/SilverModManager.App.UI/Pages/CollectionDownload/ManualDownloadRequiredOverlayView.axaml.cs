@@ -38,6 +38,11 @@ public partial class ManualDownloadRequiredOverlayView : ReactiveUserControl<IMa
                     
                 }).AddTo(disposables);
             
+            var isEmbedded = ViewModel?.IsEmbedded ?? throw new InvalidOperationException("The manual download overlay was activated without a view model");
+            ErrorGuidanceTextBlock.Text = isEmbedded
+                ? Language.ManualDownloadRequiredOverlayView_ErrorStep2Embedded
+                : Language.ManualDownloadRequiredOverlayView_ErrorStep2;
+
             this.OneWayBind(ViewModel, vm => vm.Instructions, view => view.InstructionsTextBlock.Text)
                 .AddTo(disposables);
 

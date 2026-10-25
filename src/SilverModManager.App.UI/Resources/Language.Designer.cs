@@ -2860,6 +2860,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to For guidance, check the &apos;Instructions&apos; tab of this collection&apos;s page, which may include further details on the required file and version..
+        /// </summary>
+        public static string ManualDownloadRequiredOverlayView_ErrorStep2Embedded {
+            get {
+                return ResourceManager.GetString("ManualDownloadRequiredOverlayView_ErrorStep2Embedded", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to If you can’t find the correct file, consider reporting the issue to the collection curator as a potential bug..
         /// </summary>
         public static string ManualDownloadRequiredOverlayView_ErrorStep3 {

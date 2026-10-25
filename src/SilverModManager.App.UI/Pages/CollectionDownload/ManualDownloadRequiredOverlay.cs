@@ -25,6 +25,11 @@ public interface IManualDownloadRequiredOverlayViewModel : IOverlayViewModel
     bool HasInstructions { get; }
     string Instructions { get; }
 
+    /// <summary>
+    /// Whether the download page is a tab of a collection page, which keeps the collection's instructions on its own tab.
+    /// </summary>
+    bool IsEmbedded { get; }
+
     bool IsCheckingFile { get; }
     bool IsIncorrectFile { get; }
     string ReceivedHash { get; }
@@ -38,13 +43,23 @@ public interface IManualDownloadRequiredOverlayViewModel : IOverlayViewModel
 
 public class ManualDownloadRequiredOverlayDesignViewModel : AOverlayViewModel<IManualDownloadRequiredOverlayViewModel>, IManualDownloadRequiredOverlayViewModel
 {
+    public ManualDownloadRequiredOverlayDesignViewModel() { }
+
+    public ManualDownloadRequiredOverlayDesignViewModel(bool isEmbedded, bool isIncorrectFile)
+    {
+        IsEmbedded = isEmbedded;
+        IsCheckingFile = false;
+        IsIncorrectFile = isIncorrectFile;
+    }
+
     public string DownloadName => "Mod Name";
     public string ExpectedHash => "123abc";
     public string ExpectedSize => "112 MB";
     public bool HasInstructions => true;
     public string Instructions => "Click the 3rd link down under the heading “Latest downloads”. Ignore the advert above it. Make sure the file size matches 112mb.";
-    public bool IsCheckingFile => true;
-    public bool IsIncorrectFile => false;
+    public bool IsEmbedded { get; }
+    public bool IsCheckingFile { get; } = true;
+    public bool IsIncorrectFile { get; }
 
     public string ReceivedHash => "456def";
     public ReactiveCommand CommandCancel { get; } = new();
@@ -56,8 +71,10 @@ public class ManualDownloadRequiredOverlayDesignViewModel : AOverlayViewModel<IM
 
 public partial class ManualDownloadRequiredOverlayViewModel : AOverlayViewModel<IManualDownloadRequiredOverlayViewModel>, IManualDownloadRequiredOverlayViewModel
 {
-    public ManualDownloadRequiredOverlayViewModel(IServiceProvider serviceProvider, CollectionDownloadExternal.ReadOnly downloadEntity)
+    public ManualDownloadRequiredOverlayViewModel(IServiceProvider serviceProvider, CollectionDownloadExternal.ReadOnly downloadEntity, bool isEmbedded)
     {
+        IsEmbedded = isEmbedded;
+
         var osInterop = serviceProvider.GetRequiredService<IOSInterop>();
         var avaloniaInterop = serviceProvider.GetRequiredService<IAvaloniaInterop>();
         var libraryService = serviceProvider.GetRequiredService<ILibraryService>();
@@ -135,6 +152,7 @@ public partial class ManualDownloadRequiredOverlayViewModel : AOverlayViewModel<
 
     public bool HasInstructions { get; }
     public string Instructions { get; }
+    public bool IsEmbedded { get; }
 
     [Reactive] public partial bool IsCheckingFile { get; private set; }
     [Reactive] public partial bool IsIncorrectFile { get; private set; }

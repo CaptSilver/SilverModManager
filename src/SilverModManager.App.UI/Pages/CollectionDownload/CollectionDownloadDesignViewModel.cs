@@ -17,7 +17,14 @@ public class CollectionDownloadDesignViewModel : APageViewModel<ICollectionDownl
 {
     public CollectionDownloadTreeDataGridAdapter TreeDataGridAdapter { get; } = null!;
 
-    public CollectionDownloadDesignViewModel() : base(new DesignWindowManager()) { }
+    public CollectionDownloadDesignViewModel() : this(isEmbedded: false, adapter: null) { }
+
+    /// <param name="adapter">The tree the view binds to; the view cannot be activated without one.</param>
+    public CollectionDownloadDesignViewModel(bool isEmbedded, CollectionDownloadTreeDataGridAdapter? adapter) : base(new DesignWindowManager())
+    {
+        IsEmbedded = isEmbedded;
+        if (adapter is not null) TreeDataGridAdapter = adapter;
+    }
 
     public string Name => "Vanilla+ [Quality of Life]";
     public CollectionSlug Slug { get; } = CollectionSlug.From("tckf0m");
@@ -28,7 +35,7 @@ public class CollectionDownloadDesignViewModel : APageViewModel<ICollectionDownl
         "1.6.14 The story of Stardew Valley expands outside of Pelican Town with this expanded collection designed to stay true to the original game. Created with co-op in mind, perfect for experienced solo-players. Easy install, includes configuration.";
 
     public string Category => "Themed";
-    public bool IsEmbedded => false;
+    public bool IsEmbedded { get; }
     public bool IsAdult => true;
     public int RequiredDownloadsCount => 9;
     public int OptionalDownloadsCount => 2;

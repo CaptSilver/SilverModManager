@@ -977,6 +977,9 @@ To apply changes or launch the game again, please close the game first.</value>
     <data name="ManualDownloadRequiredOverlayView_ErrorStep2" xml:space="preserve">
         <value>For guidance, check the 'Additional Instructions' tab which may include further details on the required file and version.</value>
     </data>
+    <data name="ManualDownloadRequiredOverlayView_ErrorStep2Embedded" xml:space="preserve">
+        <value>For guidance, check the 'Instructions' tab of this collection's page, which may include further details on the required file and version.</value>
+    </data>
     <data name="ManualDownloadRequiredOverlayView_ErrorStep3" xml:space="preserve">
         <value>If you can’t find the correct file, consider reporting the issue to the collection curator as a potential bug.</value>
     </data>

@@ -99,7 +99,8 @@
                         <TextBlock x:Name="ErrorTitleTextBlock"
                                    Text="{x:Static resources:Language.ManualDownloadRequiredOverlayView_ErrorTitle}" />
                         <TextBlock Text="{x:Static resources:Language.ManualDownloadRequiredOverlayView_ErrorStep1}" />
-                        <TextBlock Text="{x:Static resources:Language.ManualDownloadRequiredOverlayView_ErrorStep2}" />
+                        <TextBlock x:Name="ErrorGuidanceTextBlock"
+                                   Text="{x:Static resources:Language.ManualDownloadRequiredOverlayView_ErrorStep2}" />
                         <TextBlock Text="{x:Static resources:Language.ManualDownloadRequiredOverlayView_ErrorStep3}" />
                         <controls:StandardButton
                             x:Name="ButtonReportBug"

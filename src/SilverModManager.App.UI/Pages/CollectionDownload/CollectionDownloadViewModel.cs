@@ -469,7 +469,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
 
     private ValueTask OpenManualDownloadModal(CollectionDownloadExternal.ReadOnly downloadEntity)
     {
-        _overlayController.Enqueue(new ManualDownloadRequiredOverlayViewModel(_serviceProvider, downloadEntity));
+        _overlayController.Enqueue(new ManualDownloadRequiredOverlayViewModel(_serviceProvider, downloadEntity, IsEmbedded));
         return ValueTask.CompletedTask;
     }
 
