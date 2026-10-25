@@ -66,6 +66,60 @@ public sealed class RegulationBaselinesTests : IDisposable
     }
 
     [Fact]
+    public void AValidatedKeepIsAnAncestorOnlyAndNeverEntersTheVouchedHashes()
+    {
+        var blob = Real("11611000", 7);
+        var baselines = Baselines();
+
+        var kept = baselines.KeepValidated("11611000", blob, baselines.ValidatedProvenance(blob, BaselineSource.LibraryArchive, "Rand.zip: Vanilla/regulation.bin", "layout matches"));
+
+        File.ReadAllBytes(kept.GetFullPath()).Should().Equal(blob);
+        var provenance = baselines.Provenance("11611000")!;
+        provenance.Tier.Should().Be(BaselineTier.Validated);
+        provenance.Source.Should().Be(BaselineSource.LibraryArchive);
+        provenance.Validation.Should().Be("layout matches");
+        baselines.Known().Should().BeEmpty();
+        baselines.VouchedHashes().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AValidatedKeepNeverReplacesACopyAlreadyKept()
+    {
+        var first = Real("11611000", 7);
+        var second = Real("11611000", 8);
+        var baselines = Baselines();
+        baselines.KeepValidated("11611000", first, baselines.ValidatedProvenance(first, BaselineSource.LibraryArchive, "One.zip: regulation.bin", "ok"));
+
+        var kept = baselines.KeepValidated("11611000", second, baselines.ValidatedProvenance(second, BaselineSource.LibraryArchive, "Two.zip: regulation.bin", "ok"));
+
+        File.ReadAllBytes(kept.GetFullPath()).Should().Equal(first);
+        baselines.Provenance("11611000")!.OriginalPath.Should().StartWith("One.zip");
+    }
+
+    [Fact]
+    public void AValidatedKeepDoesNotClaimSteamWasAsked()
+    {
+        // Validation stands in for a manifest search instead of following one, so the sidecar must not read as if Steam
+        // had been asked and said no.
+        var blob = Real("11611000", 7);
+        var baselines = Baselines(new FixedVouching());
+
+        baselines.ValidatedProvenance(blob, BaselineSource.LibraryArchive, "Rand.zip: regulation.bin", "ok").ManifestMatched.Should().BeNull();
+    }
+
+    [Fact]
+    public void AVouchedProvenanceIsNotKeptThroughTheValidatedPath()
+    {
+        var blob = Real("11611000", 7);
+        var baselines = Baselines();
+        var vouched = baselines.ValidatedProvenance(blob, BaselineSource.LibraryArchive, "x", "y") with { Tier = BaselineTier.Vouched };
+
+        var act = () => baselines.KeepValidated("11611000", blob, vouched);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
     public void AdoptingCopiesTheGamesRegulationUnderItsVersion()
     {
         var game = HealFixtures.Game(GameRoot, Current);

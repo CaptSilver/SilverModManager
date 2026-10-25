@@ -49,13 +49,14 @@ public class MergedFileTests(ITestOutputHelper helper) : AVanillaDumpTest<Merged
             provider.GetRequiredService<IFileStore>(),
             provider.GetRequiredService<RegulationBaselines>(),
             provider.GetRequiredService<VanillaDumps>(),
+            provider.GetRequiredService<ArchiveVanillas>(),
             provider.GetRequiredService<InstalledBuilds>(),
             provider.GetRequiredService<ILogger<LoadoutMergeSources>>()));
         return services;
     }
 
-    private sealed class FailingOnceSources(MergedFileTests test, IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, InstalledBuilds builds, ILogger<LoadoutMergeSources> logger)
-        : LoadoutMergeSources(fileStore, baselines, dumps, builds, logger)
+    private sealed class FailingOnceSources(MergedFileTests test, IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, ArchiveVanillas archives, InstalledBuilds builds, ILogger<LoadoutMergeSources> logger)
+        : LoadoutMergeSources(fileStore, baselines, dumps, archives, builds, logger)
     {
         public override MergePathIndex Index(Loadout.ReadOnly loadout)
         {

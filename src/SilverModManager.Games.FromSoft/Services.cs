@@ -94,6 +94,7 @@ public static class Services
             .AddSingleton<VouchedRegulations>()
             .AddSingleton<IVouchedRegulations>(provider => provider.GetRequiredService<VouchedRegulations>())
             .AddSingleton<VanillaDumps>()
+            .AddSingleton<ArchiveVanillas>()
             .AddSingleton<LoadoutMergeSources>()
             .AddSingleton<MergePlanCache>()
             .AddSingleton<IMergeReports, MergeReports>();

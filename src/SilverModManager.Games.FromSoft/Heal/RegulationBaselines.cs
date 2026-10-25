@@ -291,6 +291,43 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
         return new RegulationImport(alternate, version, ImportOutcome.KeptAlongside, provenance);
     }
 
+    /// <summary>A Steam depot manifest of this install lists the file, so <see cref="Import"/> keeps it vouched.</summary>
+    public bool ListedBySteam(GameInstallation installation, byte[] blob)
+        => vouching?.Find(installation, Sha1Value.From(SHA1.HashData(blob))) is not null;
+
+    /// <summary>
+    /// What would be recorded for a regulation that nothing outside the file vouches for but that passed the checks of a
+    /// vanilla (<see cref="VanillaValidation"/>). Validated, so it may be an ancestor but never vouches for an archive.
+    /// </summary>
+    /// <param name="source">Where the file was found: a library archive or a file the user pointed at.</param>
+    /// <param name="origin">Which archive member or path it was read from.</param>
+    /// <param name="validation">What the checks found.</param>
+    public RegulationProvenance ValidatedProvenance(byte[] blob, BaselineSource source, string origin, string validation)
+        => new(BaselineTier.Validated, source,
+            Convert.ToHexStringLower(SHA1.HashData(blob)),
+            Regulation.Sha256Hex(blob),
+            blob.xxHash3().Value.ToString("x16"),
+            _time.GetUtcNow(),
+            OriginalPath: origin,
+            Validation: validation);
+
+    /// <summary>
+    /// Keeps a validated regulation as the baseline of <paramref name="version"/>. Never replaces a copy already kept,
+    /// of either tier: a file the app has served as an ancestor stays the one, and a vouched file takes a validated
+    /// one's place only through <see cref="Import"/> or <see cref="Adopt"/>.
+    /// </summary>
+    /// <returns>The kept file, which is the existing one when the version already had a baseline.</returns>
+    public AbsolutePath KeepValidated(string version, byte[] blob, RegulationProvenance provenance)
+    {
+        if (provenance.Tier != BaselineTier.Validated)
+            throw new ArgumentException("Only a validated regulation is kept through here.", nameof(provenance));
+
+        var dest = PathOf(version);
+        if (dest.FileExists) return dest;
+        Keep(dest, blob, provenance);
+        return dest;
+    }
+
     // A copy out of the install: vouched, and recorded as Steam's when a manifest lists it.
     private RegulationProvenance ProvenanceFor(GameInstallation installation, byte[] blob, string? replaces)
     {

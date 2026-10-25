@@ -1,4 +1,5 @@
 using SilverModManager.Abstractions.Cli;
+using SilverModManager.Games.FromSoft.Merge;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
@@ -17,9 +18,11 @@ internal static class VanillaVerbs
     internal static async Task<int> Import(
         [Injected] IRenderer renderer,
         [Injected] RegulationBaselines baselines,
+        [Injected] LoadoutMergeSources sources,
         [Option("l", "loadout", "A loadout of the game the file is a regulation of")] Loadout.ReadOnly loadout,
         [Option("f", "file", "The regulation file to keep")] AbsolutePath file,
-        [Option("v", "version", "The build stamp the file has to carry; refused when it carries another", true)] string? version)
+        [Option("v", "version", "The build stamp the file has to carry; refused when it carries another", true)] string? version,
+        [Option("c", "check-against-mods", "Keep a file Steam's manifests don't list if it passes the checks of a vanilla against this loadout's mods of that build; it is kept as validated, not vouched", true)] bool checkAgainstMods)
     {
         var installation = loadout.InstallationInstance;
         if (installation.Game is not IFromSoftGame)
@@ -31,7 +34,7 @@ internal static class VanillaVerbs
         RegulationImport kept;
         try
         {
-            kept = baselines.Import(installation, file, version);
+            kept = checkAgainstMods ? sources.KeepUserVanilla(loadout, file, version) : baselines.Import(installation, file, version);
         }
         catch (HealException exception)
         {
@@ -41,6 +44,7 @@ internal static class VanillaVerbs
 
         await renderer.TextLine(kept.Outcome switch
         {
+            ImportOutcome.Kept when kept.Provenance.Tier == BaselineTier.Validated => $"Kept {file} as the validated baseline for build {kept.Version}, usable as a merge ancestor but not vouched for by Steam: {kept.Provenance.Describe()}.",
             ImportOutcome.Kept => $"Kept {file} as the baseline for build {kept.Version}: {Describe(kept.Provenance)}.",
             ImportOutcome.AlreadyKept => $"{kept.File} already holds this file as the baseline for build {kept.Version}; nothing changed.",
             ImportOutcome.ReplacedValidated => $"Kept {file} as the baseline for build {kept.Version} in place of a copy that was only validated: {Describe(kept.Provenance)}.",

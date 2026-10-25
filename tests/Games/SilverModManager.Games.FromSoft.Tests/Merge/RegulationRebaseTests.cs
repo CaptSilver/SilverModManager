@@ -183,13 +183,14 @@ public class RegulationRebaseLoadoutTests(ITestOutputHelper helper) : AVanillaDu
             provider.GetRequiredService<IFileStore>(),
             provider.GetRequiredService<RegulationBaselines>(),
             provider.GetRequiredService<VanillaDumps>(),
+            provider.GetRequiredService<ArchiveVanillas>(),
             provider.GetRequiredService<InstalledBuilds>(),
             provider.GetRequiredService<ILogger<LoadoutMergeSources>>()));
         return services;
     }
 
-    private sealed class CountingSources(Dictionary<Hash, int> reads, IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, InstalledBuilds builds, ILogger<LoadoutMergeSources> logger)
-        : LoadoutMergeSources(fileStore, baselines, dumps, builds, logger)
+    private sealed class CountingSources(Dictionary<Hash, int> reads, IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, ArchiveVanillas archives, InstalledBuilds builds, ILogger<LoadoutMergeSources> logger)
+        : LoadoutMergeSources(fileStore, baselines, dumps, archives, builds, logger)
     {
         public override byte[] ContributorBytes(ProviderFile file)
         {

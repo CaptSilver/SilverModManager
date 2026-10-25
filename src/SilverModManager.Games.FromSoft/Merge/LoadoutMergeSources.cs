@@ -45,7 +45,7 @@ public enum MergeSourceMode
 /// decided here.
 /// </para>
 /// </summary>
-public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, InstalledBuilds builds, ILogger<LoadoutMergeSources> logger)
+public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines baselines, VanillaDumps dumps, ArchiveVanillas archives, InstalledBuilds builds, ILogger<LoadoutMergeSources> logger)
 {
     private readonly ConcurrentDictionary<Hash, string> _versions = new();
     private readonly ConcurrentDictionary<string, byte> _unprioritised = new(StringComparer.Ordinal);
@@ -154,7 +154,8 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
     /// <para>
     /// For the regulation the contributors are grouped by the build stamp they carry and each group gets a vanilla of
     /// its own build: the kept baselines, then the vanilla dumps of the library, then the installed game, but only if
-    /// the game is at that build. A file of another build is never substituted, since every row the patch added would
+    /// the game is at that build, then any regulation of that build inside a library archive that passes the checks of
+    /// a vanilla (<see cref="VanillaValidation"/>). A file of another build is never substituted, since every row the patch added would
     /// read as a mod deletion. A build with no vanilla is refused together with every other such build, so one
     /// message lists what is missing.
     /// </para>
@@ -190,7 +191,8 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
             var tried = new List<string>();
             var served = FromBaselines(version, members.ToArray(), traits, groupNotes, tried)
                          ?? FromDump(loadout, regulationName, version, groupNotes, tried)
-                         ?? FromInstalledGame(installation, regulationName, version, mode, groupNotes, tried);
+                         ?? FromInstalledGame(installation, regulationName, version, mode, groupNotes, tried)
+                         ?? FromArchiveMember(loadout, regulationName, members.ToArray(), mode, groupNotes, tried);
             if (served is null)
             {
                 missing.Add(new VanillaMissing(version, mods, tried, members.Select(m => m.ModId).OfType<LoadoutItemId>().Distinct().ToArray()));
@@ -394,6 +396,106 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
         catch (Exception exception) when (exception is HealException or IOException or UnauthorizedAccessException)
         {
             throw new MergeException($"the installed regulation of version {version} cannot be used as the vanilla one: {exception.Message}");
+        }
+    }
+
+    /// <summary>
+    /// The last resort for a build: a regulation of the contributors' stamp that some library archive holds, which a
+    /// randomizer or a mod pack often bundles as the file it worked from. Nothing outside the file vouches for it, so it
+    /// has to pass the checks of a vanilla against these very mods, and it is kept in the validated tier.
+    /// </summary>
+    private Served? FromArchiveMember(Loadout.ReadOnly loadout, string regulationName, IReadOnlyList<ProviderFile> contributors, MergeSourceMode mode, ICollection<IMergeNote> notes, ICollection<string> tried)
+    {
+        var installation = loadout.InstallationInstance;
+        var traits = TraitsOf(installation);
+        var version = VersionOf(installation, contributors[0]);
+        var candidates = archives.Find(loadout.Db, traits, version, contributors.Select(c => c.Hash).ToHashSet());
+        if (candidates.Count == 0)
+        {
+            tried.Add($"regulations inside library archives (none of version {version} besides the mods' own)");
+            return null;
+        }
+
+        var mods = contributors.Select(c => (c.ModName, ContributorBytes(c))).ToArray();
+        var game = GameBaseOrNull(installation, regulationName);
+        foreach (var candidate in candidates)
+        {
+            var bytes = archives.Read(candidate.Hash);
+            var verdict = VanillaValidation.Check(bytes, game, mods, traits);
+            if (!verdict.Passed)
+            {
+                tried.Add($"{candidate.ArchiveName} ({candidate.Member}) is version {version} but was refused as a vanilla: {verdict.Summary}");
+                continue;
+            }
+
+            var provenance = baselines.ValidatedProvenance(bytes, BaselineSource.LibraryArchive, $"{candidate.ArchiveName}: {candidate.Member}", $"archive {candidate.ArchiveName}, member {candidate.Member}; {verdict.Summary}");
+            if (mode == MergeSourceMode.Apply) baselines.KeepValidated(version, bytes, provenance);
+            else notes.Add(new BaselineWillBeKept(version));
+            return new Served(bytes, provenance.Describe());
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Keeps a regulation the user points at as the validated vanilla of its build, when it passes the same checks as an
+    /// archive member against the loadout's mods of that build. Without such mods there is nothing to check it against
+    /// and it is refused. A file a Steam manifest lists needs no checks and is kept vouched instead.
+    /// </summary>
+    /// <exception cref="HealException">The file can't be read, isn't a regulation of the expected build, no mod of the loadout was built for it, or it failed a check.</exception>
+    public RegulationImport KeepUserVanilla(Loadout.ReadOnly loadout, AbsolutePath file, string? expectedVersion)
+    {
+        var installation = loadout.InstallationInstance;
+        var traits = TraitsOf(installation);
+        byte[] bytes;
+        string version;
+        try
+        {
+            bytes = File.ReadAllBytes(file.GetFullPath());
+            version = Regulation.Version(Regulation.Unpack(bytes, traits));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or RegulationException or AesException or DcxException or KrakenException)
+        {
+            throw new HealException($"{file} is not a regulation this game's key opens: {exception.Message}");
+        }
+        if (expectedVersion is not null && !version.Equals(expectedVersion, StringComparison.Ordinal))
+            throw new HealException($"{file} is regulation build {version}, not {expectedVersion}.");
+        if (baselines.ListedBySteam(installation, bytes)) return baselines.Import(installation, file, expectedVersion);
+
+        var regulationName = traits.RegulationFileName ?? throw new HealException($"{GameOf(installation).DisplayName} has no regulation file.");
+        List<ProviderFile> contributors;
+        try
+        {
+            contributors = Providers(loadout).Where(p => p.RelPath.Equals(regulationName, StringComparison.OrdinalIgnoreCase) && VersionOf(installation, p) == version).ToList();
+        }
+        catch (MergeException exception)
+        {
+            throw new HealException(exception.Message);
+        }
+        if (contributors.Count == 0)
+            throw new HealException($"No mod in this loadout ships a regulation of build {version}, so there is nothing to check {file} against; it can only be kept as a vanilla once it is checked against the mods built from it.");
+
+        var verdict = VanillaValidation.Check(bytes, GameBaseOrNull(installation, regulationName), contributors.Select(c => (c.ModName, ContributorBytes(c))).ToArray(), traits);
+        if (!verdict.Passed) throw new HealException($"{file} was refused as a vanilla regulation of build {version}: {verdict.Summary}");
+
+        var provenance = baselines.ValidatedProvenance(bytes, BaselineSource.UserFile, file.GetFullPath(), verdict.Summary);
+        var before = baselines.Provenance(version);
+        if (before is not null && before.Sha256 != provenance.Sha256)
+            throw new HealException($"Build {version} already has a baseline kept, and a kept baseline is not replaced by a file that is only validated.");
+
+        var kept = baselines.KeepValidated(version, bytes, provenance);
+        return new RegulationImport(kept, version, before is null ? ImportOutcome.Kept : ImportOutcome.AlreadyKept, before ?? provenance);
+    }
+
+    // The layout check is skipped, and says so, when the game's file can't be read: the merge itself refuses that case.
+    private byte[]? GameBaseOrNull(GameInstallation installation, string regulationName)
+    {
+        try
+        {
+            return GameBase(installation, regulationName);
+        }
+        catch (MergeException)
+        {
+            return null;
         }
     }
 
