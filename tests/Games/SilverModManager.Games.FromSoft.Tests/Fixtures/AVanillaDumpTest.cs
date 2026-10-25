@@ -40,10 +40,11 @@ public abstract class AVanillaDumpTest<TTest>(ITestOutputHelper helper) : AModde
         return await RegisterLocalArchive(path);
     }
 
-    protected async Task InstallPackage(LoadoutId loadout, string name, params (string Path, byte[] Content)[] files)
+    protected async Task<LoadoutItemGroup.ReadOnly> InstallPackage(LoadoutId loadout, string name, params (string Path, byte[] Content)[] files)
     {
         var archive = await AddArchive(name, files);
         var installer = Game.LibraryItemInstallers.OfType<Me3PackageInstaller>().Single();
-        await LoadoutManager.InstallItem(archive.AsLibraryFile().AsLibraryItem(), loadout, installer: installer);
+        var result = await LoadoutManager.InstallItem(archive.AsLibraryFile().AsLibraryItem(), loadout, installer: installer);
+        return result.LoadoutItemGroup!.Value;
     }
 }

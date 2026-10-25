@@ -179,7 +179,7 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
             key.Append(candidate.Path).Append('|').Append(candidate.Strategy).Append('|').Append(candidate.Outcome.Reason ?? "merges");
             foreach (var spelling in candidate.Spellings) key.Append("|s:").Append(spelling);
             foreach (var c in candidate.Contributors)
-                key.Append("|c:").Append(c.PackageId).Append('/').Append(c.RelPath).Append('=').Append(c.Hash).Append('@').Append(c.Priority).Append(' ').Append(c.ModName);
+                key.Append("|c:").Append(c.PackageId).Append('/').Append(c.RelPath).Append('=').Append(c.Hash).Append('@').Append(c.Priority).Append(' ').Append(c.ModName).Append('#').Append(c.ModId?.Value.Value);
             if (inputs.GameBaseOf.TryGetValue(candidate.Path, out var gameBase)) key.Append("|g:").Append(gameBase.Fingerprint);
             if (inputs.Stamps.TryGetValue(candidate.Path, out var stamp)) key.Append("|b:").Append(stamp);
             if (inputs.VanillaOf.TryGetValue(candidate.Path, out var vanilla))

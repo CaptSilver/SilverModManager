@@ -309,4 +309,28 @@ app does not take it as the vanilla one.
             .AddValue<string>("Message")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate VanillaMissing = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 15))
+        .WithTitle("The mods were built for a game build the app has no vanilla files for")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("{Message}")
+        .WithDetails("""
+{Message}
+
+Merging {Path} compares each mod with the vanilla file it was made from, and without it the app can't tell what the
+mod changed. Applying the loadout stops before anything is written.
+
+A newer file of the same mod, made for the installed build, usually fixes this, so the first button asks Nexus
+whether any of these mods has one. It can't tell which game build a file was made for, so read the new file's
+description before installing it. Disabling the mods lets the rest of the loadout apply.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Message")
+            .AddValue<string>("Path")
+        )
+        .Finish();
 }

@@ -1,3 +1,5 @@
+using SilverModManager.Abstractions.Loadouts;
+
 namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>
@@ -27,4 +29,8 @@ public sealed class VanillaAncestors(IReadOnlyList<AncestorGroup> groups)
 /// <param name="Version">The build stamp the mods carry.</param>
 /// <param name="Mods">The mods built for it.</param>
 /// <param name="Tried">Each place a vanilla was looked for and why it gave none.</param>
-public sealed record VanillaMissing(string Version, IReadOnlyList<string> Mods, IReadOnlyList<string> Tried);
+/// <param name="ModIds">The loadout items of <paramref name="Mods"/> that are known, for the actions that act on them.</param>
+public sealed record VanillaMissing(string Version, IReadOnlyList<string> Mods, IReadOnlyList<string> Tried, IReadOnlyList<LoadoutItemId>? ModIds = null)
+{
+    public IReadOnlyList<LoadoutItemId> ModIds { get; } = ModIds ?? [];
+}

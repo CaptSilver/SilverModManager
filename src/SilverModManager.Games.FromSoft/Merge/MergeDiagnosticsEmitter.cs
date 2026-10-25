@@ -51,7 +51,15 @@ public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnost
 
         if (plan.Refusal is { } refusal)
         {
-            yield return FromSoftDiagnostics.CreateMergeRefused(new MergeRefusedException(refusal).Message, refusal.Path, MergeStrategies.Name(refusal.Strategy));
+            var message = new MergeRefusedException(refusal).Message;
+            if (refusal.Missing.Count > 0)
+            {
+                // The choices are on the diagnostic rather than in the message, so the apply's dialog and this text stay one sentence.
+                yield return FromSoftDiagnostics.CreateVanillaMissing(message, refusal.Path) with { Actions = [..VanillaMissingActions.For(refusal.Missing)] };
+                yield break;
+            }
+
+            yield return FromSoftDiagnostics.CreateMergeRefused(message, refusal.Path, MergeStrategies.Name(refusal.Strategy));
             yield break;
         }
 

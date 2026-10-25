@@ -98,8 +98,8 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
                     logger.LogWarning("Package {Package} is in no mod with a priority, so it ranks below every other mod when its files are merged", parts[0]);
             }
 
-            var name = (mod ?? (chain.Length > 1 ? chain[1] : chain[0])).Name;
-            providers.Add(new ProviderFile(parts[0], parts[1], file.Hash, (priority ?? ConflictPriority.MinValue).Value, name));
+            var owner = mod ?? (chain.Length > 1 ? chain[1] : chain[0]);
+            providers.Add(new ProviderFile(parts[0], parts[1], file.Hash, (priority ?? ConflictPriority.MinValue).Value, owner.Name, owner.LoadoutItemId));
         }
 
         return providers;
@@ -193,7 +193,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
                          ?? FromInstalledGame(installation, regulationName, version, mode, groupNotes, tried);
             if (served is null)
             {
-                missing.Add(new VanillaMissing(version, mods, tried));
+                missing.Add(new VanillaMissing(version, mods, tried, members.Select(m => m.ModId).OfType<LoadoutItemId>().Distinct().ToArray()));
                 continue;
             }
 

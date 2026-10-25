@@ -7,6 +7,7 @@ using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 using NexusMods.Paths;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
@@ -79,8 +80,8 @@ public class MergeDiagnosticsEmitterTests(ITestOutputHelper helper) : AVanillaDu
     public async Task ARefusedMergeIsACriticalWhoseTextIsTheMessageTheApplyThrows()
     {
         var loadout = await CreateLoadout();
-        await InstallPackage(loadout.LoadoutId, "Alpha", (RegulationPath, Regulation(GameVersion, 0x10)));
-        await InstallPackage(loadout.LoadoutId, "Beta", (RegulationPath, Regulation(OlderVersion, 0x20)));
+        await InstallPackage(loadout.LoadoutId, "Alpha", (RegulationPath, [1, 2, 3]));
+        await InstallPackage(loadout.LoadoutId, "Beta", (RegulationPath, [4, 5, 6]));
         loadout = Refresh(loadout);
 
         var diagnostic = (await Run(loadout)).Should().ContainSingle().Which;
@@ -93,6 +94,63 @@ public class MergeDiagnosticsEmitterTests(ITestOutputHelper helper) : AVanillaDu
         data.Message.Should().Be(thrown.Message);
         data.Path.Should().Be(RegulationPath);
         data.Strategy.Should().Be("param-rows");
+        diagnostic.Actions.Should().BeEmpty("only a refusal for a missing vanilla has something to offer");
+    }
+
+    [Fact]
+    public async Task AMissingVanillaIsACriticalThatOffersToCheckForUpdatesAndToDisableTheModsOfThatBuild()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout.LoadoutId, "Alpha", (RegulationPath, Regulation(GameVersion, 0x10)));
+        var beta = await InstallPackage(loadout.LoadoutId, "Beta", (RegulationPath, Regulation(OlderVersion, 0x20)));
+        loadout = Refresh(loadout);
+
+        var diagnostic = (await Run(loadout)).Should().ContainSingle().Which;
+        var act = async () => await Synchronizer.Synchronize(loadout);
+        var thrown = (await act.Should().ThrowAsync<MergeRefusedException>()).Which;
+
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 15));
+        var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.VanillaMissingMessageData>>().Which.MessageData;
+        data.Message.Should().Be(thrown.Message);
+        data.Path.Should().Be(RegulationPath);
+        var betaId = beta.AsLoadoutItem().LoadoutItemId;
+        diagnostic.Actions.Should().Equal(
+            VanillaMissingActions.CheckModUpdates([betaId]),
+            VanillaMissingActions.DisableMods(OlderVersion, [betaId], onlyBuild: true));
+        diagnostic.Actions[0].Id.Should().Be("fromsoft-check-mod-updates");
+        diagnostic.Actions[1].Id.Should().Be("fromsoft-disable-mods");
+        diagnostic.Actions[1].Label.Should().Be("Disable these mods in this loadout");
+    }
+
+    [Fact]
+    public async Task EveryBuildMissingItsVanillaGetsItsOwnDisableActionAndTheUpdateCheckCoversThemAll()
+    {
+        var loadout = await CreateLoadout();
+        var alpha = await InstallPackage(loadout.LoadoutId, "Alpha", (RegulationPath, Regulation(OlderVersion, 0x10)));
+        var beta = await InstallPackage(loadout.LoadoutId, "Beta", (RegulationPath, Regulation("11602000", 0x20)));
+        loadout = Refresh(loadout);
+        var alphaId = alpha.AsLoadoutItem().LoadoutItemId;
+        var betaId = beta.AsLoadoutItem().LoadoutItemId;
+
+        var diagnostic = (await Run(loadout)).Should().ContainSingle().Which;
+
+        diagnostic.Actions.Select(a => a.Id).Should().Equal("fromsoft-check-mod-updates", "fromsoft-disable-mods", "fromsoft-disable-mods");
+        VanillaMissingActions.ParseIds(diagnostic.Actions[0].Arguments).Should().BeEquivalentTo(new[] { alphaId, betaId });
+        diagnostic.Actions[1].Label.Should().Be($"Disable the mods built for {OlderVersion}");
+        VanillaMissingActions.ParseIds(diagnostic.Actions[1].Arguments).Should().Equal(alphaId);
+        diagnostic.Actions[2].Label.Should().Be("Disable the mods built for 11602000");
+        VanillaMissingActions.ParseIds(diagnostic.Actions[2].Arguments).Should().Equal(betaId);
+    }
+
+    [Fact]
+    public void TheIdsAnActionCarriesRoundTripAndAnythingElseIsRefused()
+    {
+        var ids = new[] { LoadoutItemId.From(EntityId.From(0x0100000000000ABC)), LoadoutItemId.From(EntityId.From(7)) };
+
+        VanillaMissingActions.ParseIds(VanillaMissingActions.CheckModUpdates(ids).Arguments).Should().Equal(ids);
+        var act = () => VanillaMissingActions.ParseIds(["12", "not an id"]);
+        act.Should().Throw<ArgumentException>().WithMessage("*not an id*");
     }
 
     [Fact]
