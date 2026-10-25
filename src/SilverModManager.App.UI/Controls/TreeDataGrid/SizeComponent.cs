@@ -17,7 +17,7 @@ public sealed class SizeComponent : AFormattedValueComponent<Size>, IItemModelCo
     /// <inheritdoc/>
     public int CompareTo(SizeComponent? other) => Value.Value.CompareTo(other?.Value.Value ?? Size.Zero);
 
-    private static string _FormatValue(Size value)
+    internal static string _FormatValue(Size value)
     {
         var byteSize = ByteSize.FromBytes(value.Value);
         return byteSize.Gigabytes < 1 ? byteSize.Humanize("0") : byteSize.Humanize("0.0");

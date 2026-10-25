@@ -42,6 +42,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     private readonly IGameDomainToGameIdMappingCache _domains;
     private readonly IEnumerable<IGameData> _games;
     private readonly ILogger<NexusModsViewModel> _logger;
+    private readonly NexusCollectionsViewModel _collections;
 
     // Bumped by every new search so a slow answer to an old one is dropped instead of overwriting the newer rows.
     private int _generation;
@@ -56,6 +57,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     [Reactive] public partial string InstallButtonText { get; private set; } = "Download on Nexus Mods";
 
     public IThumbnailLoader Thumbnails { get; }
+    public INexusCollectionsViewModel Collections => _collections;
     public ReactiveUI.ReactiveCommand<Unit, Unit> LoadMoreCommand { get; }
     public ReactiveUI.ReactiveCommand<NexusModsModRow, Unit> InstallCommand { get; }
     public ReactiveUI.ReactiveCommand<NexusModsModRow, Unit> OpenCommand { get; }
@@ -71,6 +73,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         IGameDomainToGameIdMappingCache domains,
         IEnumerable<IGameData> games,
         IThumbnailLoader thumbnails,
+        NexusCollectionsViewModel collections,
         ILogger<NexusModsViewModel> logger) : base(windowManager)
     {
         _connection = connection;
@@ -83,6 +86,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         _domains = domains;
         Thumbnails = thumbnails;
         _logger = logger;
+        _collections = collections;
 
         TabIcon = IconValues.Download;
         TabTitle = "Nexus Mods";
@@ -91,8 +95,17 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         InstallCommand = ReactiveCommand.CreateFromTask<NexusModsModRow>(async (row, ct) => await InstallAsync(row, ct));
         OpenCommand = ReactiveCommand.Create<NexusModsModRow>(Open);
 
+        this.WhenAnyValue(vm => vm.LoadoutId).Subscribe(loadoutId => _collections.LoadoutId = loadoutId);
+
         this.WhenActivated(d =>
         {
+            _collections.OpenPage = pageData =>
+            {
+                var workspaceController = GetWorkspaceController();
+                workspaceController.OpenPage(WorkspaceId, pageData, workspaceController.GetDefaultOpenPageBehavior(pageData, NavigationInput.Default));
+            };
+            _collections.Start().DisposeWith(d);
+
             var cts = new CancellationTokenSource();
             Disposable.Create(() =>
             {
@@ -185,9 +198,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     // The same rule as the left menu entry, so the entry and the page can't disagree.
     private NexusModsGameId? GameOfLoadout()
     {
-        if (LoadoutId == default) return null;
-        var loadout = Loadout.Load(_connection.Db, LoadoutId);
-        return loadout.Installation.NexusIdOf(_games);
+        return _connection.Db.NexusIdOfLoadout(LoadoutId, _games);
     }
 
     private Uri ModUri(NexusModsGameId game, NexusModsModRow row) => NexusModsUrlBuilder.GetModUri(_domains.GetDomain(game), row.Hit.ModId);

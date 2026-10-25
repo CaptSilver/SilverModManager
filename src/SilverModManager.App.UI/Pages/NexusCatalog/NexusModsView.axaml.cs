@@ -11,6 +11,7 @@ namespace SilverModManager.App.UI.Pages.NexusCatalog;
 [UsedImplicitly]
 public partial class NexusModsView : ReactiveUserControl<INexusModsViewModel>
 {
+    private static readonly NexusCollectionsSort[] CollectionSortChoices = [NexusCollectionsSort.Endorsements, NexusCollectionsSort.Downloads, NexusCollectionsSort.Updated];
     private static readonly NexusModsSort[] SortChoices = [NexusModsSort.Endorsements, NexusModsSort.Downloads, NexusModsSort.Updated, NexusModsSort.Name];
 
     public NexusModsView()
@@ -39,7 +40,71 @@ public partial class NexusModsView : ReactiveUserControl<INexusModsViewModel>
             viewModel.WhenAnyValue(vm => vm.Mods)
                 .Subscribe(mods => ModGrid.Items = mods)
                 .DisposeWith(disposables);
+
+            BindCollections(viewModel.Collections, disposables);
         });
+    }
+
+    private void BindCollections(INexusCollectionsViewModel collections, CompositeDisposable disposables)
+    {
+        this.Bind(ViewModel, vm => vm.Collections.SearchText, view => view.CollectionSearchBox.Text).DisposeWith(disposables);
+
+        CollectionSortBox.SelectedIndex = Array.IndexOf(CollectionSortChoices, collections.Sort);
+        CollectionSortBox.SelectionChanged += OnCollectionSortChanged;
+        Disposable.Create(() => CollectionSortBox.SelectionChanged -= OnCollectionSortChanged).DisposeWith(disposables);
+
+        collections.WhenAnyValue(vm => vm.ErrorText)
+            .Subscribe(text =>
+            {
+                CollectionErrorText.Text = text;
+                CollectionErrorText.IsVisible = text != "";
+            })
+            .DisposeWith(disposables);
+
+        CollectionGrid.Thumbnails = collections.Thumbnails;
+        collections.WhenAnyValue(vm => vm.Collections)
+            .Subscribe(rows => CollectionGrid.Items = rows)
+            .DisposeWith(disposables);
+
+        // Only the selected tab is on screen, so this is what tells the view model when to start searching.
+        Tabs.SelectionChanged += OnTabChanged;
+        Disposable.Create(() => Tabs.SelectionChanged -= OnTabChanged).DisposeWith(disposables);
+        collections.IsVisible = ReferenceEquals(Tabs.SelectedItem, CollectionsTab);
+    }
+
+    private void OnTabChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        // The ComboBoxes inside a tab raise SelectionChanged too, and it bubbles up to here.
+        if (e.Source != Tabs || ViewModel is not { } viewModel) return;
+        viewModel.Collections.IsVisible = ReferenceEquals(Tabs.SelectedItem, CollectionsTab);
+    }
+
+    private void OnCollectionSortChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel is { } viewModel && CollectionSortBox.SelectedIndex is >= 0 and var index && index < CollectionSortChoices.Length)
+            viewModel.Collections.Sort = CollectionSortChoices[index];
+    }
+
+    private void OnCollectionsEndReached(object? sender, EventArgs e)
+    {
+        if (ViewModel is not { Collections.HasMore: true } viewModel) return;
+        var command = (System.Windows.Input.ICommand)viewModel.Collections.LoadMoreCommand;
+        if (command.CanExecute(null)) command.Execute(null);
+    }
+
+    private static NexusCollectionRow? CollectionOf(object? sender) => (sender as Control)?.DataContext as NexusCollectionRow;
+
+    // Same reason as OnInstallClick: ICommand.Execute alone would let a double click run the install twice.
+    private void OnCollectionPrimaryClick(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel is not { } viewModel || CollectionOf(sender) is not { } row) return;
+        var command = (System.Windows.Input.ICommand)viewModel.Collections.PrimaryCommand;
+        if (command.CanExecute(row)) command.Execute(row);
+    }
+
+    private void OnCollectionOpenClick(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel is { } viewModel && CollectionOf(sender) is { } row) viewModel.Collections.OpenOnNexusCommand.Execute(row).Subscribe();
     }
 
     private void OnSortChanged(object? sender, SelectionChangedEventArgs e)

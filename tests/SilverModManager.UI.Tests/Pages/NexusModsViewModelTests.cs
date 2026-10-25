@@ -98,6 +98,8 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
             domains,
             Provider.GetServices<IGameData>(),
             Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(),
+            new NexusCollectionsViewModel(Connection, Substitute.For<INexusCollectionsBrowser>(), fixture.OsInterop, Provider.GetServices<IGameData>(), [],
+                Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(), NullLogger<NexusCollectionsViewModel>.Instance),
             NullLogger<NexusModsViewModel>.Instance)
         {
             LoadoutId = row.LoadoutId,

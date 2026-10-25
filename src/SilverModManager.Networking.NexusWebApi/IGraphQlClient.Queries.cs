@@ -82,6 +82,16 @@ public partial interface IGraphQlClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Queries one page of a game's collections.
+    /// </summary>
+    ValueTask<GraphQlResult<IQueryCollections_CollectionsV2>> QueryCollections(
+        CollectionsSearchFilter filter,
+        IReadOnlyList<CollectionsSearchSort> sort,
+        int offset,
+        int count,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Queries the id and category of every file of a mod.
     /// </summary>
     ValueTask<GraphQlResult<IQueryModFileCategories_ModFiles[], NotFound>> QueryModFileCategories(

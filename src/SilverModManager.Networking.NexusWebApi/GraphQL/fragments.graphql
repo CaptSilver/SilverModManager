@@ -52,6 +52,34 @@ fragment ModCard on Mod {
     adultContent
 }
 
+fragment CollectionCard on Collection {
+    id
+    slug
+    name
+    summary
+    endorsements
+    totalDownloads
+    updatedAt
+    tileImage {
+        thumbnailUrl(size: med)
+    }
+    headerImage {
+        url
+    }
+    user {
+        name
+    }
+    game {
+        domainName
+    }
+    latestPublishedRevision {
+        revisionNumber
+        modCount
+        totalSize
+        adultContent
+    }
+}
+
 fragment ModFile on ModFile {
     name
     modId

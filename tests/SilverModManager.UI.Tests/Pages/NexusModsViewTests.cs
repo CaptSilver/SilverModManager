@@ -39,6 +39,7 @@ public class NexusModsViewTests(IServiceProvider provider) : AUiTest(provider)
         public string ErrorText => "";
         public string InstallButtonText => "Install";
         public IThumbnailLoader Thumbnails { get; } = thumbnails;
+        public INexusCollectionsViewModel Collections { get; } = new NexusCollectionsDesignViewModel();
         public int LoadMoreRequests;
         public ReactiveCommand<Unit, Unit> LoadMoreCommand { get; set; } = ReactiveCommand.Create(() => { });
         public ReactiveCommand<NexusModsModRow, Unit> InstallCommandOverride { get; set; } = ReactiveCommand.Create<NexusModsModRow>(_ => { });

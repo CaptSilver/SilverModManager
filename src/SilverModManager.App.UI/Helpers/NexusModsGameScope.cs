@@ -31,6 +31,10 @@ internal static class NexusModsGameScope
         return GameInstallMetadata.GameId.TryGetValue(row, out var stored) ? stored : null;
     }
 
+    /// <summary>The Nexus id of the loadout's game, or null when there is no loadout yet or its game is not on Nexus Mods.</summary>
+    public static NexusModsGameId? NexusIdOfLoadout(this IDb db, LoadoutId loadoutId, IEnumerable<IGameData> games)
+        => loadoutId == default ? null : Loadout.Load(db, loadoutId).Installation.NexusIdOf(games);
+
     public static bool IsOnNexusMods(this GameInstallMetadata.ReadOnly row, IEnumerable<IGameData> games) => row.NexusIdOf(games).HasValue;
 
     /// <summary>

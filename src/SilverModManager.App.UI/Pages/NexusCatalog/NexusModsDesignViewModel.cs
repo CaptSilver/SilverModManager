@@ -22,6 +22,7 @@ public class NexusModsDesignViewModel : APageViewModel<INexusModsViewModel>, INe
     ];
 
     public IThumbnailLoader Thumbnails { get; } = new DesignThumbnailLoader();
+    public INexusCollectionsViewModel Collections { get; } = new NexusCollectionsDesignViewModel();
     public bool HasMore => false;
     public bool IsLoading => false;
     public string ErrorText => "";

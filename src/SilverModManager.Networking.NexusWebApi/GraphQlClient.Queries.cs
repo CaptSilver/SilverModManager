@@ -131,6 +131,19 @@ internal partial class GraphQlClient : IGraphQlClient
         return operationResult.Transform(static result => result.Mods, static mods => mods);
     }
 
+    public async ValueTask<GraphQlResult<IQueryCollections_CollectionsV2>> QueryCollections(CollectionsSearchFilter filter, IReadOnlyList<CollectionsSearchSort> sort, int offset, int count, CancellationToken cancellationToken)
+    {
+        var operationResult = await _client.QueryCollections.ExecuteAsync(
+            filter: filter,
+            sort: sort,
+            offset: offset,
+            count: count,
+            cancellationToken: cancellationToken
+        );
+
+        return operationResult.Transform(static result => result.CollectionsV2, static collections => collections);
+    }
+
     public async ValueTask<GraphQlResult<IQueryModFileCategories_ModFiles[], NotFound>> QueryModFileCategories(ModId modId, NexusModsGameId nexusModsGameId, CancellationToken cancellationToken)
     {
         var operationResult = await _client.QueryModFileCategories.ExecuteAsync(

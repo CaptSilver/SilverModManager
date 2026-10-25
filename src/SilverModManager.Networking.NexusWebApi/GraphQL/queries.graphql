@@ -68,6 +68,15 @@ query QueryMods($filter: ModsFilter!, $sort: [ModsSort!]!, $offset: Int!, $count
     }
 }
 
+query QueryCollections($filter: CollectionsSearchFilter!, $sort: [CollectionsSearchSort!]!, $offset: Int!, $count: Int!) {
+    collectionsV2(filter: $filter, sort: $sort, offset: $offset, count: $count) {
+        totalCount
+        nodes {
+            ...CollectionCard
+        }
+    }
+}
+
 query QueryModFileCategories($modId: ID!, $gameId: ID!) {
     modFiles(modId: $modId, gameId: $gameId) {
         fileId

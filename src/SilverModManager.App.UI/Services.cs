@@ -202,6 +202,7 @@ public static class Services
             .AddViewModel<ChangelogPageViewModel, IChangelogPageViewModel>()
             .AddView<NexusModsView, INexusModsViewModel>()
             .AddViewModel<NexusModsViewModel, INexusModsViewModel>()
+            .AddTransient<NexusCollectionsViewModel>()
             .AddView<ThunderstoreView, IThunderstoreViewModel>()
             .AddViewModel<ThunderstoreViewModel, IThunderstoreViewModel>()
             .AddSingleton<IThumbnailLoader>(serviceProvider => new ThumbnailLoader(

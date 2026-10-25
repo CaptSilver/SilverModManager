@@ -11,53 +11,122 @@
     x:Class="SilverModManager.App.UI.Pages.NexusCatalog.NexusModsView">
 
     <DockPanel Margin="24">
-        <StackPanel DockPanel.Dock="Top" Spacing="{StaticResource Spacing-4}" Margin="0 0 0 16">
-            <TextBlock Text="Nexus Mods" Theme="{StaticResource HeadingSMSemiTheme}" />
-            <TextBlock x:Name="ErrorText" TextWrapping="Wrap" />
-            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
-                <TextBox x:Name="SearchBox" Width="320" Watermark="Search mods by name" />
-                <ComboBox x:Name="SortBox" SelectedIndex="0">
-                    <ComboBoxItem>Most endorsed</ComboBoxItem>
-                    <ComboBoxItem>Most downloaded</ComboBoxItem>
-                    <ComboBoxItem>Recently updated</ComboBoxItem>
-                    <ComboBoxItem>Name</ComboBoxItem>
-                </ComboBox>
-            </StackPanel>
-        </StackPanel>
+        <TextBlock DockPanel.Dock="Top" Text="Nexus Mods" Theme="{StaticResource HeadingSMSemiTheme}" Margin="0 0 0 16" />
 
-        <cards:CardGrid x:Name="ModGrid" EndReached="OnEndReached">
-            <cards:CardGrid.CardTemplate>
-                <DataTemplate x:DataType="local:NexusModsModRow">
-                    <Border Classes="GridCard" Height="400">
-                        <DockPanel LastChildFill="True">
-                            <!-- Stacked: side by side the two buttons are wider than the card. -->
-                            <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0 8 0 0">
-                                <Button Content="{ReflectionBinding $parent[UserControl].DataContext.InstallButtonText}" Click="OnInstallClick"
-                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-                                <Button Content="Open on Nexus Mods" Click="OnOpenClick"
-                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-                            </StackPanel>
-                            <!-- Clipped so a card with every line at its longest cuts the text off rather than drawing it under the buttons. -->
-                            <StackPanel Spacing="4" ClipToBounds="True">
-                                <!-- Nexus pictures are wide: a 16:9 frame at the card's width, cropped to fill. -->
-                                <cards:CardThumbnail Width="214" Height="120" Stretch="UniformToFill"
-                                                     RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                     ImageUrl="{Binding ThumbnailUrl}" />
-                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"
-                                           MaxLines="2" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{Binding AuthorLine}" Opacity="0.7" TextTrimming="CharacterEllipsis"
-                                           IsVisible="{Binding AuthorLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                <TextBlock Text="{Binding Details}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"
-                                           MaxLines="2" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
-                                           ToolTip.Tip="{Binding Summary}"
-                                           IsVisible="{Binding Summary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            </StackPanel>
-                        </DockPanel>
-                    </Border>
-                </DataTemplate>
-            </cards:CardGrid.CardTemplate>
-        </cards:CardGrid>
+        <TabControl x:Name="Tabs">
+            <TabItem x:Name="ModsTab">
+                <TabItem.Header>
+                    <StackPanel Classes="TabItemHeaderStack">
+                        <TextBlock Text="Mods" />
+                    </StackPanel>
+                </TabItem.Header>
+                <DockPanel Margin="0 16 0 0">
+                    <StackPanel DockPanel.Dock="Top" Spacing="{StaticResource Spacing-4}" Margin="0 0 0 16">
+                        <TextBlock x:Name="ErrorText" TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                            <TextBox x:Name="SearchBox" Width="320" Watermark="Search mods by name" />
+                            <ComboBox x:Name="SortBox" SelectedIndex="0">
+                                <ComboBoxItem>Most endorsed</ComboBoxItem>
+                                <ComboBoxItem>Most downloaded</ComboBoxItem>
+                                <ComboBoxItem>Recently updated</ComboBoxItem>
+                                <ComboBoxItem>Name</ComboBoxItem>
+                            </ComboBox>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <cards:CardGrid x:Name="ModGrid" EndReached="OnEndReached">
+                        <cards:CardGrid.CardTemplate>
+                            <DataTemplate x:DataType="local:NexusModsModRow">
+                                <Border Classes="GridCard" Height="400">
+                                    <DockPanel LastChildFill="True">
+                                        <!-- Stacked: side by side the two buttons are wider than the card. -->
+                                        <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0 8 0 0">
+                                            <Button Content="{ReflectionBinding $parent[UserControl].DataContext.InstallButtonText}" Click="OnInstallClick"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                                            <Button Content="Open on Nexus Mods" Click="OnOpenClick"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                                        </StackPanel>
+                                        <!-- Clipped so a card with every line at its longest cuts the text off rather than drawing it under the buttons. -->
+                                        <StackPanel Spacing="4" ClipToBounds="True">
+                                            <!-- Nexus pictures are wide: a 16:9 frame at the card's width, cropped to fill. -->
+                                            <cards:CardThumbnail Width="214" Height="120" Stretch="UniformToFill"
+                                                                 RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                 ImageUrl="{Binding ThumbnailUrl}" />
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"
+                                                       MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding AuthorLine}" Opacity="0.7" TextTrimming="CharacterEllipsis"
+                                                       IsVisible="{Binding AuthorLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            <TextBlock Text="{Binding Details}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                                                       MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
+                                                       ToolTip.Tip="{Binding Summary}"
+                                                       IsVisible="{Binding Summary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </cards:CardGrid.CardTemplate>
+                    </cards:CardGrid>
+                </DockPanel>
+            </TabItem>
+
+            <TabItem x:Name="CollectionsTab">
+                <TabItem.Header>
+                    <StackPanel Classes="TabItemHeaderStack">
+                        <TextBlock Text="Collections" />
+                    </StackPanel>
+                </TabItem.Header>
+                <DockPanel Margin="0 16 0 0">
+                    <StackPanel DockPanel.Dock="Top" Spacing="{StaticResource Spacing-4}" Margin="0 0 0 16">
+                        <TextBlock x:Name="CollectionErrorText" TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                            <TextBox x:Name="CollectionSearchBox" Width="320" Watermark="Search collections by name" />
+                            <ComboBox x:Name="CollectionSortBox" SelectedIndex="0">
+                                <ComboBoxItem>Most endorsed</ComboBoxItem>
+                                <ComboBoxItem>Most downloaded</ComboBoxItem>
+                                <ComboBoxItem>Recently updated</ComboBoxItem>
+                            </ComboBox>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <cards:CardGrid x:Name="CollectionGrid" EndReached="OnCollectionsEndReached">
+                        <cards:CardGrid.CardTemplate>
+                            <DataTemplate x:DataType="local:NexusCollectionRow">
+                                <Border Classes="GridCard" Height="400">
+                                    <DockPanel LastChildFill="True">
+                                        <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0 8 0 0">
+                                            <Button Content="{Binding PrimaryButtonText}" Click="OnCollectionPrimaryClick"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                                            <Button Content="Open on Nexus Mods" Click="OnCollectionOpenClick"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                                        </StackPanel>
+                                        <StackPanel Spacing="4" ClipToBounds="True">
+                                            <cards:CardThumbnail Width="214" Height="120" Stretch="UniformToFill"
+                                                                 RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                 ImageUrl="{Binding ImageUrl}" />
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"
+                                                       MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding AuthorLine}" Opacity="0.7" TextTrimming="CharacterEllipsis" MaxWidth="150"
+                                                           IsVisible="{Binding AuthorLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                <Border Background="#C0392B" CornerRadius="3" Padding="4 0" IsVisible="{Binding IsAdult}">
+                                                    <TextBlock Text="Adult" FontSize="11" Foreground="White" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Details}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                                                       MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
+                                                       ToolTip.Tip="{Binding Summary}"
+                                                       IsVisible="{Binding Summary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </cards:CardGrid.CardTemplate>
+                    </cards:CardGrid>
+                </DockPanel>
+            </TabItem>
+        </TabControl>
     </DockPanel>
 
 </reactive:ReactiveUserControl>

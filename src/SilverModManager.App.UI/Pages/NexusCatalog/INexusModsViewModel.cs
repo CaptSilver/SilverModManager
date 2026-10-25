@@ -37,6 +37,9 @@ public interface INexusModsViewModel : IPageViewModelInterface
     /// <summary>Supplies the thumbnails of the mod cards.</summary>
     IThumbnailLoader Thumbnails { get; }
 
+    /// <summary>The Collections tab, with its own search and sort.</summary>
+    INexusCollectionsViewModel Collections { get; }
+
     /// <summary>Appends the next page of mods; the page asks for it as the user scrolls near the end of the grid.</summary>
     ReactiveCommand<Unit, Unit> LoadMoreCommand { get; }
 
