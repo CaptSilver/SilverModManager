@@ -8,6 +8,7 @@ using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Dialog.Enums;
+using SilverModManager.UI.Tests.Framework;
 
 namespace SilverModManager.UI.Tests.Windows;
 
@@ -15,6 +16,7 @@ namespace SilverModManager.UI.Tests.Windows;
 /// Dialogs draw their own title and close button. On X11 the window manager adds a second title bar
 /// unless the window opts out of system decorations, so the dialog has to move and close itself.
 /// </summary>
+[Collection(HeadlessUi.Collection)]
 public class DialogWindowChromeTests(IServiceProvider provider) : AUiTest(provider)
 {
     private static DialogViewModel ViewModel(params DialogButtonDefinition[] buttons) => new(
@@ -24,10 +26,10 @@ public class DialogWindowChromeTests(IServiceProvider provider) : AUiTest(provid
         DialogWindowSize.Medium,
         showChrome: true);
 
-    private static DialogWindow ShowDialog(DialogViewModel viewModel)
+    private DialogWindow ShowDialog(DialogViewModel viewModel)
     {
-        var window = new DialogWindow { DataContext = viewModel, Width = 480 };
-        window.Show();
+        var window = Track(new DialogWindow { DataContext = viewModel, Width = 480 });
+        ShowRendered(window);
         return window;
     }
 

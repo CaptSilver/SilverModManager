@@ -10,13 +10,17 @@ using SilverModManager.Sdk;
 
 namespace SilverModManager.UI.Tests;
 
-public class UpdaterViewTests(IServiceProvider provider) : AUiTest(provider), IDisposable
+public class UpdaterViewTests(IServiceProvider provider) : AUiTest(provider)
 {
     private static readonly byte[] NewBytes = "new appimage"u8.ToArray();
 
     private readonly string _directory = Directory.CreateTempSubdirectory("updater-view-").FullName;
 
-    public void Dispose() => Directory.Delete(_directory, recursive: true);
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        Directory.Delete(_directory, recursive: true);
+    }
 
     private sealed class NoRestart : IAppRestarter
     {
@@ -47,7 +51,7 @@ public class UpdaterViewTests(IServiceProvider provider) : AUiTest(provider), ID
         var view = await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var view = new UpdaterView { ViewModel = viewModel };
-            new Window { Width = 800, Height = 600, Content = view }.Show();
+            Track(new Window { Width = 800, Height = 600, Content = view }).Show();
             return view;
         });
 

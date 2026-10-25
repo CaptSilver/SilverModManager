@@ -58,7 +58,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
         return await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var view = new ThunderstoreView { ViewModel = viewModel };
-            var window = new Window { Width = 900, Height = 700, Content = view };
+            var window = Track(new Window { Width = 900, Height = 700, Content = view });
             window.Show();
             return (window, view);
         });

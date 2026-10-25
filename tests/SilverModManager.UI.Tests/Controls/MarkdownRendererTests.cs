@@ -28,7 +28,7 @@ public class MarkdownRendererTests(IServiceProvider provider) : AUiTest(provider
                 interop
             ) { Contents = markdown };
 
-            var window = new Window { Width = 800, Height = 600, Content = new MarkdownRendererView { DataContext = viewModel } };
+            var window = Track(new Window { Width = 800, Height = 600, Content = new MarkdownRendererView { DataContext = viewModel } });
             window.Show();
 
             var viewer = window.GetVisualDescendants().OfType<MarkdownScrollViewer>().Single();

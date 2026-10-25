@@ -10,15 +10,21 @@ using Avalonia.Threading;
 using FluentAssertions;
 using NSubstitute;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Tests.Framework;
 
 namespace SilverModManager.UI.Tests.Windows;
 
 /// <summary>Drag events over a window with a drop target: when the overlay shows, and which drops reach the window.</summary>
-public class MainWindowDropTargetTests(IServiceProvider provider) : AUiTest(provider), IDisposable
+[Collection(HeadlessUi.Collection)]
+public class MainWindowDropTargetTests(IServiceProvider provider) : AUiTest(provider)
 {
     private readonly string _root = Directory.CreateTempSubdirectory("window-drop-target-").FullName;
 
-    public void Dispose() => Directory.Delete(_root, recursive: true);
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        Directory.Delete(_root, recursive: true);
+    }
 
     private sealed record Harness(Window Window, Border First, Border Second, Border Inbox, Border Overlay, TextBlock OverlayText, List<IReadOnlyList<string>> Drops);
 
@@ -44,7 +50,7 @@ public class MainWindowDropTargetTests(IServiceProvider provider) : AUiTest(prov
             var overlayText = new TextBlock();
             var overlay = new Border { Child = overlayText, IsHitTestVisible = false, IsVisible = false };
             var row = new StackPanel { Orientation = Orientation.Horizontal, Children = { first, second, inbox } };
-            var window = new Window { Width = 400, Height = 200, Content = new Grid { Children = { row, overlay } } };
+            var window = Track(new Window { Width = 400, Height = 200, Content = new Grid { Children = { row, overlay } } });
 
             var drops = new List<IReadOnlyList<string>>();
             _ = new MainWindowDropTarget(window, overlay, overlayText, paths =>
@@ -53,11 +59,7 @@ public class MainWindowDropTargetTests(IServiceProvider provider) : AUiTest(prov
                 return Task.CompletedTask;
             });
 
-            window.Show();
-            window.UpdateLayout();
-            // Drag events find their target by hit testing the rendered scene, which headless only updates on a render tick.
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
+            ShowRendered(window);
             return Task.FromResult(new Harness(window, first, second, inbox, overlay, overlayText, drops));
         });
     }

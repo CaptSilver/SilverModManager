@@ -80,7 +80,7 @@ public class WabbajackGalleryViewTests(IServiceProvider provider) : AUiTest(prov
         return await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var view = new WabbajackGalleryView { ViewModel = viewModel };
-            var window = new Window { Width = 1000, Height = 800, Content = view };
+            var window = Track(new Window { Width = 1000, Height = 800, Content = view });
             window.Show();
             return (window, view);
         });

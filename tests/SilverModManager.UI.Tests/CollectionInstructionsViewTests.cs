@@ -30,7 +30,7 @@ public class CollectionInstructionsViewTests(IServiceProvider provider) : AUiTes
         return await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var view = new CollectionInstructionsView { Instructions = create() };
-            new Window { Width = 800, Height = 600, Content = view }.Show();
+            Track(new Window { Width = 800, Height = 600, Content = view }).Show();
             return view;
         });
     }

@@ -14,10 +14,12 @@ using SilverModManager.App.UI.LeftMenu.Loadout;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
+using SilverModManager.UI.Tests.Framework;
 
 namespace SilverModManager.UI.Tests.LeftMenu;
 
 /// <summary>Dragging a collection entry in the left menu: which move it reports, and that a plain click still navigates.</summary>
+[Collection(HeadlessUi.Collection)]
 public class LoadoutLeftMenuDragTests(IServiceProvider provider) : AUiTest(provider)
 {
     private sealed class MenuStub : AViewModel<ILoadoutLeftMenuViewModel>, ILoadoutLeftMenuViewModel
@@ -74,11 +76,11 @@ public class LoadoutLeftMenuDragTests(IServiceProvider provider) : AUiTest(provi
         return await OnUi(async () =>
         {
             var view = new LoadoutLeftMenuView { ViewModel = menu };
-            var window = new Window { Width = 300, Height = 900, Content = view };
-            window.Show();
-            Dispatcher.UIThread.RunJobs();
+            var window = Track(new Window { Width = 300, Height = 900, Content = view });
+            ShowRendered(window);
             await Task.Yield();
             Dispatcher.UIThread.RunJobs();
+            Render(window);
             return (window, view, menu);
         });
     }

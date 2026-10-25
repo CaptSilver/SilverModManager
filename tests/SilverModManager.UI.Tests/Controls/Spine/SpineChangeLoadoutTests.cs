@@ -29,7 +29,7 @@ public class SpineChangeLoadoutTests(IServiceProvider provider) : AUiTest(provid
         var view = await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var view = new ImageButton { ViewModel = button };
-            new Window { Width = 200, Height = 200, Content = view }.Show();
+            Track(new Window { Width = 200, Height = 200, Content = view }).Show();
             return view;
         });
 

@@ -121,7 +121,7 @@ public class StoreSectionTests(IServiceProvider provider) : AUiTest(provider)
         return await OnUi(async () =>
         {
             var view = new LoadoutLeftMenuView { ViewModel = new MenuStub(stores) };
-            new Window { Width = 300, Height = 900, Content = view }.Show();
+            Track(new Window { Width = 300, Height = 900, Content = view }).Show();
             Dispatcher.UIThread.RunJobs();
             await Task.Yield();
             Dispatcher.UIThread.RunJobs();

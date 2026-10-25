@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
@@ -18,8 +19,10 @@ using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
 namespace SilverModManager.UI.Tests;
 
-public class AUiTest
+public class AUiTest : IAsyncDisposable
 {
+    private readonly List<Window> _windows = [];
+
     protected IServiceProvider Provider;
 
     protected IConnection Connection { get; }
@@ -32,6 +35,54 @@ public class AUiTest
         // Do this to trigger the AvaloniaApp constructor/initialization
         App = provider.GetRequiredService<AvaloniaApp>();
         Connection = provider.GetRequiredService<IConnection>();
+    }
+
+    /// <summary>
+    /// Registers a window the test is about to show, so it is closed when the test ends. Windows left open keep
+    /// the headless platform's keyboard focus and active window, which the next test's input would then reach.
+    /// </summary>
+    protected TWindow Track<TWindow>(TWindow window) where TWindow : Window
+    {
+        lock (_windows) _windows.Add(window);
+        return window;
+    }
+
+    /// <summary>
+    /// Shows a window and renders it. Pointer events find their target by hit testing the rendered scene, which
+    /// headless only builds on a render tick, so input sent to a window that has not had one lands on nothing.
+    /// Must run on the UI thread.
+    /// </summary>
+    protected static void ShowRendered(Window window)
+    {
+        window.Show();
+        Render(window);
+    }
+
+    /// <summary>
+    /// Lays the window out again and runs a render tick, for content that appears after the first pass (items
+    /// controls realise their rows on a later job). Must run on the UI thread.
+    /// </summary>
+    protected static void Render(Window window)
+    {
+        window.UpdateLayout();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    public virtual async ValueTask DisposeAsync()
+    {
+        Window[] windows;
+        lock (_windows)
+        {
+            windows = _windows.ToArray();
+            _windows.Clear();
+        }
+        if (windows.Length == 0) return;
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            foreach (var window in windows) window.Close();
+        });
     }
 
     /// <summary>

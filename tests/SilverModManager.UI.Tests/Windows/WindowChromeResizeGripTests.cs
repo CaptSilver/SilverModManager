@@ -3,16 +3,18 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using FluentAssertions;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.UI.Tests.Framework;
 
 namespace SilverModManager.UI.Tests.Windows;
 
+[Collection(HeadlessUi.Collection)]
 public class WindowChromeResizeGripTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private static Window Shown(bool canResize)
+    private Window Shown(bool canResize)
     {
-        var window = new Window { Width = 300, Height = 200, CanResize = canResize, SystemDecorations = SystemDecorations.None, Content = new Border() };
+        var window = Track(new Window { Width = 300, Height = 200, CanResize = canResize, SystemDecorations = SystemDecorations.None, Content = new Border() });
         WindowChrome.AttachResizeGrips(window);
-        window.Show();
+        ShowRendered(window);
         return window;
     }
 

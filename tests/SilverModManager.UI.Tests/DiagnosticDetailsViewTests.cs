@@ -40,13 +40,13 @@ public class DiagnosticDetailsViewTests(IServiceProvider provider) : AUiTest(pro
         return builder.ToString();
     }
 
-    private static async Task<(Window Window, DiagnosticDetailsView View)> ShowAsync(string markdown, string? moreDetails = null, string? note = null)
+    private async Task<(Window Window, DiagnosticDetailsView View)> ShowAsync(string markdown, string? moreDetails = null, string? note = null)
     {
         var action = new DiagnosticActionButton("Fix it", ReactiveCommand.Create(() => { }), note);
         return await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var view = new DiagnosticDetailsView { ViewModel = new StubViewModel(markdown, [action], moreDetails) };
-            var window = new Window { Width = 800, Height = 300, Content = view };
+            var window = Track(new Window { Width = 800, Height = 300, Content = view });
             window.Show();
             Dispatcher.UIThread.RunJobs();
             return (window, view);
@@ -215,7 +215,7 @@ public class DiagnosticDetailsViewTests(IServiceProvider provider) : AUiTest(pro
         Window? window = null;
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            window = new Window { Width = 800, Height = 600 };
+            window = Track(new Window { Width = 800, Height = 600 });
             window.Content = new DiagnosticDetailsView { ViewModel = vm };
             window.Show();
             Dispatcher.UIThread.RunJobs();

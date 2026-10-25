@@ -26,7 +26,7 @@ public class CollectionDownloadEmbeddedTests(IServiceProvider provider) : AUiTes
         {
             // The design view model has collection instructions, so the tab would show if nothing hid it.
             var view = new CollectionDownloadView { ViewModel = new CollectionDownloadDesignViewModel(isEmbedded, new NoRowsAdapter(Provider)) };
-            new Window { Width = 1000, Height = 800, Content = view }.Show();
+            Track(new Window { Width = 1000, Height = 800, Content = view }).Show();
             return view;
         });
     }
@@ -70,7 +70,7 @@ public class CollectionDownloadEmbeddedTests(IServiceProvider provider) : AUiTes
         var view = await Dispatcher.UIThread.InvokeAsync(() =>
         {
             var view = new ManualDownloadRequiredOverlayView { ViewModel = new ManualDownloadRequiredOverlayDesignViewModel(isEmbedded, isIncorrectFile: true) };
-            new Window { Width = 800, Height = 600, Content = view }.Show();
+            Track(new Window { Width = 800, Height = 600, Content = view }).Show();
             return view;
         });
 
