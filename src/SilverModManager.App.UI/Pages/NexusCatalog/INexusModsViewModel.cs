@@ -1,5 +1,6 @@
 using System.Reactive;
 using ReactiveUI;
+using SilverModManager.App.UI.Controls.Cards;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Networking.NexusWebApi;
 using SilverModManager.Sdk.Loadouts;
@@ -7,8 +8,8 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.App.UI.Pages.NexusCatalog;
 
 /// <summary>
-/// Browses the Nexus Mods catalog of the loadout's game: a searchable, sortable list that loads further pages on
-/// request and installs from its rows.
+/// Browses the Nexus Mods catalog of the loadout's game: a searchable, sortable grid of cards that loads further pages as
+/// it is scrolled and installs from its rows.
 /// </summary>
 public interface INexusModsViewModel : IPageViewModelInterface
 {
@@ -33,6 +34,10 @@ public interface INexusModsViewModel : IPageViewModelInterface
     /// <summary>"Install" for a premium member; "Download on Nexus Mods" for anyone else, whose Install opens the site.</summary>
     string InstallButtonText { get; }
 
+    /// <summary>Supplies the thumbnails of the mod cards.</summary>
+    IThumbnailLoader Thumbnails { get; }
+
+    /// <summary>Appends the next page of mods; the page asks for it as the user scrolls near the end of the grid.</summary>
     ReactiveCommand<Unit, Unit> LoadMoreCommand { get; }
 
     /// <summary>

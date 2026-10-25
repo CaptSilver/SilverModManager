@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Controls.Cards;
 using System.Reactive.Linq;
 using System.Collections.Immutable;
 using System.Net.Http;
@@ -192,7 +193,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
             installs,
             loadoutManager,
             Substitute.For<IOSInterop>(),
-            Substitute.For<IThunderstoreIconLoader>(),
+            Substitute.For<IThumbnailLoader>(),
             NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = loadoutId,
@@ -360,7 +361,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
     {
         var vm = new ThunderstoreViewModel(
             Provider.GetRequiredService<IWindowManager>(), Connection, [], new FakeCatalogSource(Catalog()),
-            new FakeInstallSource(), Substitute.For<ILoadoutManager>(), Substitute.For<IOSInterop>(), Substitute.For<IThunderstoreIconLoader>(), NullLogger<ThunderstoreViewModel>.Instance)
+            new FakeInstallSource(), Substitute.For<ILoadoutManager>(), Substitute.For<IOSInterop>(), Substitute.For<IThumbnailLoader>(), NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = (await SeedLoadout()).Id,
         };
@@ -432,7 +433,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         var os = Substitute.For<IOSInterop>();
         var (loadoutId, game) = await SeedLoadout();
         var withOs = new ThunderstoreViewModel(Provider.GetRequiredService<IWindowManager>(), Connection,
-            [game], new FakeCatalogSource(Catalog()), new FakeInstallSource(), Substitute.For<ILoadoutManager>(), os, Substitute.For<IThunderstoreIconLoader>(), NullLogger<ThunderstoreViewModel>.Instance)
+            [game], new FakeCatalogSource(Catalog()), new FakeInstallSource(), Substitute.For<ILoadoutManager>(), os, Substitute.For<IThumbnailLoader>(), NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = loadoutId,
         };

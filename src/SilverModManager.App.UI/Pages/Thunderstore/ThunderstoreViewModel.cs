@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Controls.Cards;
 using System.Reactive;
 using System.Reactive.Disposables;
 using JetBrains.Annotations;
@@ -46,7 +47,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
     [Reactive] public partial string ErrorText { get; private set; } = "";
     [Reactive] public partial bool IsRefreshing { get; private set; }
 
-    public IThunderstoreIconLoader Icons { get; }
+    public IThumbnailLoader Icons { get; }
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
     public ReactiveCommand<ThunderstorePackageRow, Unit> OpenPackageCommand { get; }
     public ReactiveCommand<ThunderstorePackageRow, Unit> InstallCommand { get; }
@@ -59,7 +60,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         IThunderstoreSource source,
         ILoadoutManager loadoutManager,
         IOSInterop osInterop,
-        IThunderstoreIconLoader icons,
+        IThumbnailLoader icons,
         ILogger<ThunderstoreViewModel> logger) : base(windowManager)
     {
         _connection = connection;

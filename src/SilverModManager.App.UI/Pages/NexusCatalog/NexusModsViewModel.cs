@@ -8,6 +8,7 @@ using ReactiveUI;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.App.UI.Controls.Cards;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
@@ -54,6 +55,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     [Reactive] public partial string ErrorText { get; private set; } = "";
     [Reactive] public partial string InstallButtonText { get; private set; } = "Download on Nexus Mods";
 
+    public IThumbnailLoader Thumbnails { get; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> LoadMoreCommand { get; }
     public ReactiveUI.ReactiveCommand<NexusModsModRow, Unit> InstallCommand { get; }
     public ReactiveUI.ReactiveCommand<NexusModsModRow, Unit> OpenCommand { get; }
@@ -68,6 +70,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         IOSInterop osInterop,
         IGameDomainToGameIdMappingCache domains,
         IEnumerable<IGameData> games,
+        IThumbnailLoader thumbnails,
         ILogger<NexusModsViewModel> logger) : base(windowManager)
     {
         _connection = connection;
@@ -78,6 +81,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         _osInterop = osInterop;
         _games = games;
         _domains = domains;
+        Thumbnails = thumbnails;
         _logger = logger;
 
         TabIcon = IconValues.Download;

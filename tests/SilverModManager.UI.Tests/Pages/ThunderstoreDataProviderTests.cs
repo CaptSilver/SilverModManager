@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Controls.Cards;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using SilverModManager.App.UI;
@@ -66,9 +67,9 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
     private ThunderstoreDataProvider CreateProvider(params IGameData[] games) => CreateProvider(new FakeIconPipeline(), games);
 
     private ThunderstoreDataProvider CreateProvider(FakeIconPipeline iconPipeline, params IGameData[] games) =>
-        CreateProvider(new ThunderstoreIconLoader(iconPipeline, ImagePipelines.ModPageThumbnailFallback), games);
+        CreateProvider(new ThumbnailLoader(iconPipeline, ImagePipelines.ModPageThumbnailFallback), games);
 
-    private ThunderstoreDataProvider CreateProvider(IThunderstoreIconLoader iconLoader, params IGameData[] games)
+    private ThunderstoreDataProvider CreateProvider(IThumbnailLoader iconLoader, params IGameData[] games)
     {
         var services = new ServiceCollection()
             .AddSingleton(Connection)
@@ -251,7 +252,7 @@ public class ThunderstoreDataProviderTests(IServiceProvider provider) : AUiTest(
         var pipeline = new FakeIconPipeline { Respond = _ => throw new HttpRequestException("offline") };
         // A placeholder of its own, so the row is seen to switch to it rather than just keep its first image.
         var placeholder = NewBitmap();
-        var loader = new ThunderstoreIconLoader(pipeline, placeholder);
+        var loader = new ThumbnailLoader(pipeline, placeholder);
         using var rows = Rows(CreateProvider(loader, game).ObserveLibraryItems(new LibraryFilter(NoLoadout, game)));
         await Eventually(() => rows.Count.Should().Be(1));
         var parent = rows.Items.Single();

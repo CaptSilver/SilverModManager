@@ -4,21 +4,21 @@ using BitFaster.Caching.Lru;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Sdk.Resources;
 
-namespace SilverModManager.App.UI.Pages.Thunderstore;
+namespace SilverModManager.App.UI.Controls.Cards;
 
 /// <summary>
-/// <see cref="IThunderstoreIconLoader"/> over an image pipeline, with a bounded in-memory cache of decoded icons.
+/// <see cref="IThumbnailLoader"/> over an image pipeline, with a bounded in-memory cache of decoded images keyed by URL.
 /// </summary>
-public sealed class ThunderstoreIconLoader : IThunderstoreIconLoader
+public sealed class ThumbnailLoader : IThumbnailLoader
 {
-    /// <summary>Roughly two screens of a long scroll back and forth, at about 64 KB an icon.</summary>
-    public const int DefaultCapacity = 512;
+    /// <summary>Roughly two screens of a long scroll back and forth, at up to about 330 KB an image.</summary>
+    public const int DefaultCapacity = 256;
 
     private readonly IResourceLoader<Uri, Bitmap> _pipeline;
     private readonly ConcurrentLru<Uri, IImage> _cache;
     private readonly ILogger? _logger;
 
-    public ThunderstoreIconLoader(IResourceLoader<Uri, Bitmap> pipeline, IImage placeholder, int capacity = DefaultCapacity, ILogger? logger = null)
+    public ThumbnailLoader(IResourceLoader<Uri, Bitmap> pipeline, IImage placeholder, int capacity = DefaultCapacity, ILogger? logger = null)
     {
         _pipeline = pipeline;
         _cache = new ConcurrentLru<Uri, IImage>(capacity);
@@ -45,7 +45,7 @@ public sealed class ThunderstoreIconLoader : IThunderstoreIconLoader
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            _logger?.LogDebug(e, "Could not load the Thunderstore icon {Url}", url);
+            _logger?.LogDebug(e, "Could not load the thumbnail {Url}", url);
             return Placeholder;
         }
     }

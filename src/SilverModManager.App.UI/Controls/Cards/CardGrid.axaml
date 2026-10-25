@@ -1,0 +1,47 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Controls.Cards"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+    x:Class="SilverModManager.App.UI.Controls.Cards.CardGrid">
+
+    <!-- A virtualized list of lines, each line holding the cards that fit the width, so only the lines on screen
+         exist and only their cards load a thumbnail. Wide cards in a ListBox beat a WrapPanel, which realizes all of them.
+         No horizontal scrolling: the last card's trailing gap may stick past the edge and must be clipped, not scrolled to. -->
+    <ListBox x:Name="Lines" SizeChanged="OnListSizeChanged" Background="Transparent"
+             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox.Styles>
+            <Style Selector="ListBoxItem">
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Background" Value="Transparent" />
+                <Style Selector="^:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
+                <Style Selector="^:selected /template/ ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
+            </Style>
+            <!-- The card template's root Border takes this class and sets its own Height. -->
+            <Style Selector="Border.GridCard">
+                <Setter Property="Width" Value="{x:Static local:CardGridLayout.CardWidth}" />
+                <Setter Property="Margin" Value="0 0 16 16" />
+                <Setter Property="Padding" Value="12" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Style Selector="^:pointerover"><Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" /></Style>
+            </Style>
+        </ListBox.Styles>
+        <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="local:CardLine">
+                <ItemsControl ItemsSource="{Binding Cards}"
+                              ItemTemplate="{Binding $parent[local:CardGrid].CardTemplate}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </DataTemplate>
+        </ListBox.ItemTemplate>
+    </ListBox>
+
+</UserControl>

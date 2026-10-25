@@ -1,5 +1,6 @@
 using System.Reactive;
 using ReactiveUI;
+using SilverModManager.App.UI.Controls.Cards;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Networking.NexusWebApi;
@@ -20,6 +21,7 @@ public class NexusModsDesignViewModel : APageViewModel<INexusModsViewModel>, INe
             new DateTimeOffset(2026, 5, 1, 0, 0, 0, TimeSpan.Zero), null, null, false)),
     ];
 
+    public IThumbnailLoader Thumbnails { get; } = new DesignThumbnailLoader();
     public bool HasMore => false;
     public bool IsLoading => false;
     public string ErrorText => "";

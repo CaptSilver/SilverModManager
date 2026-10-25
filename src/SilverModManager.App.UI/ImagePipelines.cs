@@ -24,7 +24,7 @@ public static class ImagePipelines
     private const string GuidedInstallerRemoteImagePipelineKey = nameof(GuidedInstallerRemoteImagePipelineKey);
     private const string GuidedInstallerFileImagePipelineKey = nameof(GuidedInstallerFileImagePipelineKey);
     private const string MarkdownRendererRemoteImagePipelineKey = nameof(MarkdownRendererRemoteImagePipelineKey);
-    private const string ThunderstoreIconPipelineKey = nameof(ThunderstoreIconPipelineKey);
+    private const string ThumbnailPipelineKey = nameof(ThumbnailPipelineKey);
 
     private static readonly Bitmap CollectionTileFallback = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/collection-tile-fallback.png")));
     private static readonly Bitmap CollectionBackgroundFallback = new(AssetLoader.Open(new Uri("avares://SilverModManager.App.UI/Assets/collection-background-fallback.png")));
@@ -84,8 +84,8 @@ public static class ImagePipelines
                 )
             )
             .AddKeyedSingleton<IResourceLoader<Uri, Bitmap>>(
-                serviceKey: ThunderstoreIconPipelineKey,
-                implementationFactory: static (serviceProvider, _) => CreateThunderstoreIconPipeline(
+                serviceKey: ThumbnailPipelineKey,
+                implementationFactory: static (serviceProvider, _) => CreateThumbnailPipeline(
                     httpClient: serviceProvider.GetRequiredService<HttpClient>()
                 )
             )
@@ -132,12 +132,12 @@ public static class ImagePipelines
     }
 
     /// <summary>
-    /// Input: the icon URL of a Thunderstore package
-    /// Output: a bitmap downsized to what the 64px thumbnail needs; failures throw, the caller decides the placeholder.
+    /// Input: the image URL of a Thunderstore package or a Nexus Mods mod
+    /// Output: a bitmap downsized to what a grid card needs; failures throw, the caller decides the placeholder.
     /// </summary>
-    public static IResourceLoader<Uri, Bitmap> GetThunderstoreIconPipeline(IServiceProvider serviceProvider)
+    public static IResourceLoader<Uri, Bitmap> GetThumbnailPipeline(IServiceProvider serviceProvider)
     {
-        return serviceProvider.GetRequiredKeyedService<IResourceLoader<Uri, Bitmap>>(serviceKey: ThunderstoreIconPipelineKey);
+        return serviceProvider.GetRequiredKeyedService<IResourceLoader<Uri, Bitmap>>(serviceKey: ThumbnailPipelineKey);
     }
 
     public static IResourceLoader<Uri, IImage> GetMarkdownRendererRemoteImagePipeline(IServiceProvider serviceProvider)
@@ -257,13 +257,14 @@ public static class ImagePipelines
         return pipeline;
     }
 
-    // Thunderstore serves 256x256 icons; twice the displayed size keeps them sharp on a scaled display and a
-    // decoded bitmap at 128x128 stays small enough to keep hundreds of them in memory.
-    internal static IResourceLoader<Uri, Bitmap> CreateThunderstoreIconPipeline(HttpClient httpClient)
+    // Card thumbnails: Thunderstore serves 256x256 icons and Nexus Mods wide ones, shown about 214px across. The box
+    // keeps each one's aspect ratio (a square icon ends up 216x216, a 16:9 picture 384x216), which is sharp enough on
+    // a scaled display while a decoded bitmap stays small enough to keep hundreds of them in memory.
+    internal static IResourceLoader<Uri, Bitmap> CreateThumbnailPipeline(HttpClient httpClient)
     {
         var pipeline = new HttpLoader(httpClient)
             .Decode(decoderType: DecoderType.Skia)
-            .Resize(newSize: new SKSizeI(128, 128))
+            .Resize(newSize: new SKSizeI(384, 216))
             .ToAvaloniaBitmap();
 
         return pipeline;

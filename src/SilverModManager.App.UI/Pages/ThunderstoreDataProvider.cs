@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Controls.Cards;
 using System.Reactive.Linq;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -33,15 +34,15 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
     private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
     private readonly ThunderstoreUpdateChecker _updateChecker;
-    private readonly Lazy<IThunderstoreIconLoader> _iconLoader;
+    private readonly Lazy<IThumbnailLoader> _iconLoader;
 
     public ThunderstoreDataProvider(IServiceProvider serviceProvider) : this(serviceProvider, iconLoader: null) { }
 
     // Tests pass a loader over a fake pipeline, so no row ever reaches the network.
-    internal ThunderstoreDataProvider(IServiceProvider serviceProvider, IThunderstoreIconLoader? iconLoader)
+    internal ThunderstoreDataProvider(IServiceProvider serviceProvider, IThumbnailLoader? iconLoader)
     {
         _serviceProvider = serviceProvider;
-        _iconLoader = new Lazy<IThunderstoreIconLoader>(() => iconLoader ?? serviceProvider.GetRequiredService<IThunderstoreIconLoader>());
+        _iconLoader = new Lazy<IThumbnailLoader>(() => iconLoader ?? serviceProvider.GetRequiredService<IThumbnailLoader>());
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _updateChecker = serviceProvider.GetRequiredService<ThunderstoreUpdateChecker>();
     }

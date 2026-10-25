@@ -3,29 +3,29 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 
-namespace SilverModManager.App.UI.Pages.Thunderstore;
+namespace SilverModManager.App.UI.Controls.Cards;
 
 /// <summary>
-/// A package icon that loads itself while it is on screen. A virtualized list attaches only the rows it shows, so
+/// A card thumbnail that loads itself while it is on screen. A virtualized list attaches only the rows it shows, so
 /// attaching is the moment to fetch and detaching is the moment to give up.
 /// </summary>
-public sealed class ThunderstoreIcon : Image
+public sealed class CardThumbnail : Image
 {
-    public static readonly StyledProperty<Uri?> IconUrlProperty = AvaloniaProperty.Register<ThunderstoreIcon, Uri?>(nameof(IconUrl));
+    public static readonly StyledProperty<Uri?> ImageUrlProperty = AvaloniaProperty.Register<CardThumbnail, Uri?>(nameof(ImageUrl));
 
     private CancellationTokenSource? _loading;
 
-    public Uri? IconUrl
+    public Uri? ImageUrl
     {
-        get => GetValue(IconUrlProperty);
-        set => SetValue(IconUrlProperty, value);
+        get => GetValue(ImageUrlProperty);
+        set => SetValue(ImageUrlProperty, value);
     }
 
     protected override Type StyleKeyOverride => typeof(Image);
 
-    static ThunderstoreIcon()
+    static CardThumbnail()
     {
-        IconUrlProperty.Changed.AddClassHandler<ThunderstoreIcon>((icon, _) =>
+        ImageUrlProperty.Changed.AddClassHandler<CardThumbnail>((icon, _) =>
         {
             if (icon.IsAttachedToVisualTree()) icon.Load();
         });
@@ -54,10 +54,10 @@ public sealed class ThunderstoreIcon : Image
     {
         Cancel();
 
-        var loader = this.FindAncestorOfType<ThunderstoreView>()?.ViewModel?.Icons;
+        var loader = this.FindAncestorOfType<CardGrid>()?.Thumbnails;
         if (loader is null) return;
 
-        var url = IconUrl;
+        var url = ImageUrl;
         if (url is null)
         {
             Source = loader.Placeholder;
@@ -72,7 +72,7 @@ public sealed class ThunderstoreIcon : Image
         try
         {
             var image = await loader.LoadAsync(url, cts.Token);
-            // A recycled row may have been given another package while this one was in flight.
+            // A recycled row may have been given another entry while this one was in flight.
             if (!cts.IsCancellationRequested) Source = image;
         }
         catch (OperationCanceledException)

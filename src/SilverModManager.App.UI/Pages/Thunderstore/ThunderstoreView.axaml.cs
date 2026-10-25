@@ -30,32 +30,11 @@ public partial class ThunderstoreView : ReactiveUserControl<IThunderstoreViewMod
                 })
                 .DisposeWith(disposables);
 
-            // The template builds a line only when the list realizes it, so the whole catalog can be chunked as is.
+            PackageGrid.Thumbnails = viewModel.Icons;
             viewModel.WhenAnyValue(vm => vm.Packages)
-                .Subscribe(packages =>
-                {
-                    _packages = packages;
-                    Rebuild();
-                })
+                .Subscribe(packages => PackageGrid.Items = packages)
                 .DisposeWith(disposables);
         });
-    }
-
-    private IReadOnlyList<ThunderstorePackageRow> _packages = [];
-    private int _columns;
-
-    private void OnListSizeChanged(object? sender, SizeChangedEventArgs e)
-    {
-        if (ThunderstoreCardLayout.ColumnsFor(ListWidth()) != _columns) Rebuild();
-    }
-
-    // The scrollbar takes its share of the list's width.
-    private double ListWidth() => PackageList.Bounds.Width - 24;
-
-    private void Rebuild()
-    {
-        _columns = ThunderstoreCardLayout.ColumnsFor(ListWidth());
-        PackageList.ItemsSource = ThunderstoreCardLayout.Chunk(_packages, _columns);
     }
 
     private static ThunderstorePackageRow? RowOf(object? sender) => (sender as Control)?.DataContext as ThunderstorePackageRow;

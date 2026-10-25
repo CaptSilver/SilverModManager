@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Controls.Cards;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
@@ -203,10 +204,10 @@ public static class Services
             .AddViewModel<NexusModsViewModel, INexusModsViewModel>()
             .AddView<ThunderstoreView, IThunderstoreViewModel>()
             .AddViewModel<ThunderstoreViewModel, IThunderstoreViewModel>()
-            .AddSingleton<IThunderstoreIconLoader>(serviceProvider => new ThunderstoreIconLoader(
-                ImagePipelines.GetThunderstoreIconPipeline(serviceProvider),
+            .AddSingleton<IThumbnailLoader>(serviceProvider => new ThumbnailLoader(
+                ImagePipelines.GetThumbnailPipeline(serviceProvider),
                 ImagePipelines.ModPageThumbnailFallback,
-                logger: serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ThunderstoreIconLoader>>()))
+                logger: serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ThumbnailLoader>>()))
             .AddView<WabbajackModlistView, IWabbajackModlistViewModel>()
             .AddViewModel<WabbajackModlistViewModel, IWabbajackModlistViewModel>()
             .AddSingleton<IWabbajackModlistService, WabbajackModlistService>()

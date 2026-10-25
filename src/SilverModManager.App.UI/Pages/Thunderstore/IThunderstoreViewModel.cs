@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Controls.Cards;
 using System.Reactive;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Loadouts;
@@ -22,7 +23,7 @@ public interface IThunderstoreViewModel : IPageViewModelInterface
     IReadOnlyList<ThunderstorePackageRow> Packages { get; }
 
     /// <summary>Where the rows get their package icons, each fetched when its row is on screen.</summary>
-    IThunderstoreIconLoader Icons { get; }
+    IThumbnailLoader Icons { get; }
 
     /// <summary>Why the catalog is missing or could not be refreshed; empty when nothing went wrong.</summary>
     string ErrorText { get; }

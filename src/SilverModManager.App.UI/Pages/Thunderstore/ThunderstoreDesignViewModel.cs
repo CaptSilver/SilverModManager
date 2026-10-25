@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Controls.Cards;
 using System.Reactive;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
@@ -19,7 +20,7 @@ public class ThunderstoreDesignViewModel : APageViewModel<IThunderstoreViewModel
         new("Old-Abandoned", "0.3.1", 12, true, "No longer maintained", null, Owner: "Old", DisplayName: "Abandoned", Downloads: 900),
     ];
 
-    public IThunderstoreIconLoader Icons { get; } = new DesignIconLoader();
+    public IThumbnailLoader Icons { get; } = new DesignThumbnailLoader();
     public string ErrorText => "";
     public bool IsRefreshing => false;
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; } = ReactiveCommand.Create(() => { });
@@ -28,11 +29,4 @@ public class ThunderstoreDesignViewModel : APageViewModel<IThunderstoreViewModel
     public ReactiveCommand<ThunderstorePackageRow, Unit> InstallCommand { get; } = ReactiveCommand.Create<ThunderstorePackageRow>(_ => { });
 
     public ThunderstoreDesignViewModel() : base(new DesignWindowManager()) { }
-}
-
-file sealed class DesignIconLoader : IThunderstoreIconLoader
-{
-    public Avalonia.Media.IImage Placeholder => ImagePipelines.ModPageThumbnailFallback;
-    public Avalonia.Media.IImage? TryGetCached(Uri url) => null;
-    public Task<Avalonia.Media.IImage> LoadAsync(Uri url, CancellationToken cancellationToken) => Task.FromResult(Placeholder);
 }

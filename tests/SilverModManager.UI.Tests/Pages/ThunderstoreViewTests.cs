@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Controls.Cards;
 using System.Reactive;
 using Avalonia;
 using Avalonia.Controls;
@@ -16,14 +17,14 @@ namespace SilverModManager.UI.Tests.Pages;
 
 public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private sealed class StubViewModel(IReadOnlyList<ThunderstorePackageRow> packages, IThunderstoreIconLoader icons)
+    private sealed class StubViewModel(IReadOnlyList<ThunderstorePackageRow> packages, IThumbnailLoader icons)
         : APageViewModel<IThunderstoreViewModel>(new DesignWindowManager()), IThunderstoreViewModel
     {
         public LoadoutId LoadoutId { get; set; }
         public string SearchText { get; set; } = "";
         public bool ShowDeprecated { get; set; }
         public IReadOnlyList<ThunderstorePackageRow> Packages { get; } = packages;
-        public IThunderstoreIconLoader Icons { get; } = icons;
+        public IThumbnailLoader Icons { get; } = icons;
         public string ErrorText => "";
         public bool IsRefreshing => false;
         public ReactiveCommand<Unit, Unit> RefreshCommand { get; } = ReactiveCommand.Create(() => { });
@@ -32,7 +33,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
         public ReactiveCommand<ThunderstorePackageRow, Unit> InstallCommand => InstallCommandOverride;
     }
 
-    private sealed class FakeIcons : IThunderstoreIconLoader
+    private sealed class FakeIcons : IThumbnailLoader
     {
         public IImage Placeholder { get; } = new RenderTargetBitmap(new PixelSize(2, 2));
         public Bitmap Loaded { get; } = new RenderTargetBitmap(new PixelSize(4, 4));
@@ -79,7 +80,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
             texts.Should().NotContain(t => t.Contains("glarmer-PEAK_Unlimited"));
             texts.Should().Contain(t => t.Contains("4.0.2") && t.Contains("1.2M"));
 
-            var icon = view.GetVisualDescendants().OfType<ThunderstoreIcon>().Should().ContainSingle().Subject;
+            var icon = view.GetVisualDescendants().OfType<CardThumbnail>().Should().ContainSingle().Subject;
             icon.Source.Should().BeSameAs(icons.Loaded);
             icon.Width.Should().BeGreaterThan(150);
             icon.Width.Should().Be(icon.Height);
@@ -97,7 +98,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
         await EventuallyOnUi(() =>
         {
             Dispatcher.UIThread.RunJobs();
-            view.GetVisualDescendants().OfType<ThunderstoreIcon>().Should().ContainSingle().Which.Source.Should().BeSameAs(icons.Placeholder);
+            view.GetVisualDescendants().OfType<CardThumbnail>().Should().ContainSingle().Which.Source.Should().BeSameAs(icons.Placeholder);
         });
         icons.Requests.Should().BeEmpty();
 
@@ -131,7 +132,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
     private static int Columns(Control root)
     {
         Dispatcher.UIThread.RunJobs();
-        return root.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("PackageCard"))
+        return root.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("GridCard"))
             .Select(b => Math.Round(b.TranslatePoint(default, root)!.Value.X)).Distinct().Count();
     }
 
@@ -171,9 +172,9 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
             icons.Requests.Should().NotBeEmpty();
         });
 
-        var cards = view.GetVisualDescendants().OfType<Border>().Count(b => b.Classes.Contains("PackageCard"));
+        var cards = view.GetVisualDescendants().OfType<Border>().Count(b => b.Classes.Contains("GridCard"));
         cards.Should().BeInRange(1, 60);
-        view.GetVisualDescendants().OfType<ThunderstoreIcon>().Count().Should().Be(cards);
+        view.GetVisualDescendants().OfType<CardThumbnail>().Count().Should().Be(cards);
         await OnUi(window.Close);
     }
 
@@ -187,7 +188,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
         await EventuallyOnUi(() =>
         {
             Dispatcher.UIThread.RunJobs();
-            var card = view.GetVisualDescendants().OfType<Border>().Should().ContainSingle(b => b.Classes.Contains("PackageCard")).Subject;
+            var card = view.GetVisualDescendants().OfType<Border>().Should().ContainSingle(b => b.Classes.Contains("GridCard")).Subject;
             var texts = Texts(card);
             texts.Should().Contain("PEAK Unlimited");
             texts.Should().Contain("by glarmer");
@@ -210,10 +211,10 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
         await EventuallyOnUi(() =>
         {
             Dispatcher.UIThread.RunJobs();
-            var card = view.GetVisualDescendants().OfType<Border>().Should().ContainSingle(b => b.Classes.Contains("PackageCard")).Subject;
+            var card = view.GetVisualDescendants().OfType<Border>().Should().ContainSingle(b => b.Classes.Contains("GridCard")).Subject;
             card.GetVisualDescendants().OfType<Button>().Should().HaveCount(2);
             var inside = new Rect(card.Bounds.Size).Deflate(card.Padding);
-            foreach (var control in card.GetVisualDescendants().OfType<Control>().Where(c => c.IsEffectivelyVisible && c is TextBlock or Button or ThunderstoreIcon))
+            foreach (var control in card.GetVisualDescendants().OfType<Control>().Where(c => c.IsEffectivelyVisible && c is TextBlock or Button or CardThumbnail))
             {
                 var bounds = new Rect(control.TranslatePoint(default, card)!.Value, control.Bounds.Size);
                 inside.Contains(bounds).Should().BeTrue($"{control.GetType().Name} at {bounds} should sit inside {inside}");
@@ -262,7 +263,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
         await OnUi(window.Close);
     }
 
-    private sealed class PendingIcons : IThunderstoreIconLoader
+    private sealed class PendingIcons : IThumbnailLoader
     {
         public IImage Placeholder { get; } = new RenderTargetBitmap(new PixelSize(2, 2));
         public List<CancellationToken> Tokens { get; } = [];

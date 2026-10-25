@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactive="http://reactiveui.net"
+    xmlns:cards="clr-namespace:SilverModManager.App.UI.Controls.Cards"
     xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.NexusCatalog"
     mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
     x:Class="SilverModManager.App.UI.Pages.NexusCatalog.NexusModsView">
@@ -24,24 +25,39 @@
             </StackPanel>
         </StackPanel>
 
-        <Button DockPanel.Dock="Bottom" x:Name="LoadMoreButton" Content="Load more" Margin="0 8 0 0" />
-
-        <ListBox x:Name="ModList">
-            <ListBox.ItemTemplate>
+        <cards:CardGrid x:Name="ModGrid" EndReached="OnEndReached">
+            <cards:CardGrid.CardTemplate>
                 <DataTemplate x:DataType="local:NexusModsModRow">
-                    <StackPanel Spacing="2" Margin="0 6">
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding AuthorLine}" Opacity="0.7" />
-                        <TextBlock Text="{Binding Details}" FontSize="12" Opacity="0.7" />
-                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
-                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0 4 0 0">
-                            <Button Content="{ReflectionBinding $parent[UserControl].DataContext.InstallButtonText}" Click="OnInstallClick" />
-                            <Button Content="Open on Nexus Mods" Click="OnOpenClick" />
-                        </StackPanel>
-                    </StackPanel>
+                    <Border Classes="GridCard" Height="400">
+                        <DockPanel LastChildFill="True">
+                            <!-- Stacked: side by side the two buttons are wider than the card. -->
+                            <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0 8 0 0">
+                                <Button Content="{ReflectionBinding $parent[UserControl].DataContext.InstallButtonText}" Click="OnInstallClick"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                                <Button Content="Open on Nexus Mods" Click="OnOpenClick"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                            </StackPanel>
+                            <!-- Clipped so a card with every line at its longest cuts the text off rather than drawing it under the buttons. -->
+                            <StackPanel Spacing="4" ClipToBounds="True">
+                                <!-- Nexus pictures are wide: a 16:9 frame at the card's width, cropped to fill. -->
+                                <cards:CardThumbnail Width="214" Height="120" Stretch="UniformToFill"
+                                                     RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                     ImageUrl="{Binding ThumbnailUrl}" />
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"
+                                           MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding AuthorLine}" Opacity="0.7" TextTrimming="CharacterEllipsis"
+                                           IsVisible="{Binding AuthorLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                <TextBlock Text="{Binding Details}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                                           MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
+                                           ToolTip.Tip="{Binding Summary}"
+                                           IsVisible="{Binding Summary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
                 </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+            </cards:CardGrid.CardTemplate>
+        </cards:CardGrid>
     </DockPanel>
 
 </reactive:ReactiveUserControl>

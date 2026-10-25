@@ -21,7 +21,6 @@ public partial class NexusModsView : ReactiveUserControl<INexusModsViewModel>
         {
             if (ViewModel is not { } viewModel) return;
 
-            this.BindCommand(ViewModel, vm => vm.LoadMoreCommand, view => view.LoadMoreButton).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SearchText, view => view.SearchBox.Text).DisposeWith(disposables);
 
             SortBox.SelectedIndex = Array.IndexOf(SortChoices, viewModel.Sort);
@@ -36,12 +35,9 @@ public partial class NexusModsView : ReactiveUserControl<INexusModsViewModel>
                 })
                 .DisposeWith(disposables);
 
-            viewModel.WhenAnyValue(vm => vm.HasMore)
-                .Subscribe(hasMore => LoadMoreButton.IsVisible = hasMore)
-                .DisposeWith(disposables);
-
+            ModGrid.Thumbnails = viewModel.Thumbnails;
             viewModel.WhenAnyValue(vm => vm.Mods)
-                .Subscribe(mods => ModList.ItemsSource = mods)
+                .Subscribe(mods => ModGrid.Items = mods)
                 .DisposeWith(disposables);
         });
     }
@@ -50,6 +46,15 @@ public partial class NexusModsView : ReactiveUserControl<INexusModsViewModel>
     {
         if (ViewModel is { } viewModel && SortBox.SelectedIndex is >= 0 and var index && index < SortChoices.Length)
             viewModel.Sort = SortChoices[index];
+    }
+
+    // The grid reports the end on every scroll step near it, and again when a page leaves the view unfilled; the
+    // command is disabled while a page loads, and the view model ignores the call once the catalog is exhausted.
+    private void OnEndReached(object? sender, EventArgs e)
+    {
+        if (ViewModel is not { HasMore: true } viewModel) return;
+        var command = (System.Windows.Input.ICommand)viewModel.LoadMoreCommand;
+        if (command.CanExecute(null)) command.Execute(null);
     }
 
     private static NexusModsModRow? RowOf(object? sender) => (sender as Control)?.DataContext as NexusModsModRow;

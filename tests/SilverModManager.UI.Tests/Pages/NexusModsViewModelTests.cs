@@ -97,6 +97,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
             fixture.OsInterop,
             domains,
             Provider.GetServices<IGameData>(),
+            Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(),
             NullLogger<NexusModsViewModel>.Instance)
         {
             LoadoutId = row.LoadoutId,
@@ -146,7 +147,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
         row.Name.Should().Be("Some mod");
         row.Summary.Should().Be("Some mod summary");
         row.AuthorLine.Should().Be("by author");
-        row.Details.Should().Be("1.0  ·  1.2K endorsements  ·  1.5M downloads");
+        row.Details.Should().Be("1.0  ·  1.2K endorsements  ·  1.5M downloads  ·  updated 2 Jan 2026");
         row.ThumbnailUrl.Should().Be(new Uri("https://img.example/7-t.png"));
     }
 
