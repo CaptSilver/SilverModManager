@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Serialization.Attributes;
+using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
@@ -39,9 +40,9 @@ public class NexusModsPageFactory : APageFactory<INexusModsViewModel, NexusModsP
     {
         if (workspaceContext is not LoadoutContext loadoutContext) yield break;
 
-        // By the recorded Nexus id, so the page doesn't depend on the game still being located.
+        // The same rule as the left menu entry; it doesn't depend on the game still being located.
         var loadout = Loadout.Load(_connection.Db, loadoutContext.LoadoutId);
-        if (!GameInstallMetadata.GameId.TryGetValue(loadout.Installation, out _)) yield break;
+        if (!loadout.Installation.IsOnNexusMods(ServiceProvider.GetServices<IGameData>())) yield break;
 
         yield return new PageDiscoveryDetails
         {

@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
@@ -121,6 +122,7 @@ public static class Services
         coll.AddSingleton<UndoService>();
 
         coll.AddSingleton<ILoadoutManager, LoadoutManager>();
+        coll.AddSingleton<IHostedService, InstallNexusIdBackfill>();
         coll.AddSingleton<IGameInstalledContentService, GameInstalledContentService>();
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, GameInstalledGroupDisabledEmitter>());
 

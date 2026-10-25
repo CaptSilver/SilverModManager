@@ -46,11 +46,19 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
     private static NexusModsSearchPage Page(int offset, int total, params uint[] modIds)
         => new(modIds.Select(id => Hit(id)).ToArray(), offset, total);
 
-    private async Task<Fixture> Open(bool premium, Func<NexusModsSearchQuery, NexusModsSearchPage>? pages = null)
+    private async Task<Fixture> Open(bool premium, Func<NexusModsSearchQuery, NexusModsSearchPage>? pages = null, bool storedNexusId = true)
     {
         var row = await SeedLoadoutRow(GameStore.Steam, "Nexus Mods loadout");
         var fixture = new Fixture();
         fixture.Game = GameInstallMetadata.GameId.Get(Loadout.Load(Connection.Db, row.LoadoutId).Installation);
+
+        if (!storedNexusId)
+        {
+            // A row written before the game had a Nexus id.
+            using var tx = Connection.BeginTransaction();
+            tx.Retract(Loadout.Load(Connection.Db, row.LoadoutId).Installation.Id, GameInstallMetadata.GameId, fixture.Game);
+            await tx.Commit();
+        }
 
         fixture.Browser = Substitute.For<INexusModsBrowser>();
         fixture.Browser.Search(default!, default).ReturnsForAnyArgs(call =>
@@ -88,6 +96,7 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
             Provider.GetRequiredService<TemporaryFileManager>(),
             fixture.OsInterop,
             domains,
+            Provider.GetServices<IGameData>(),
             NullLogger<NexusModsViewModel>.Instance)
         {
             LoadoutId = row.LoadoutId,
@@ -113,6 +122,18 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
         query.IncludeAdult.Should().BeFalse();
         f.Vm.Mods.Select(m => m.Hit.ModId).Should().Equal(ModId.From(7), ModId.From(8));
         f.Vm.ErrorText.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Search_RowWithoutAStoredNexusId_UsesTheIdOfTheGameClass()
+    {
+        var f = await Open(premium: false, storedNexusId: false);
+
+        await f.Vm.SearchAsync(CancellationToken.None);
+
+        f.Vm.ErrorText.Should().BeEmpty();
+        f.Queries.Should().ContainSingle().Which.Game.Should().Be(f.Game);
+        f.Vm.Mods.Should().NotBeEmpty();
     }
 
     [Fact]

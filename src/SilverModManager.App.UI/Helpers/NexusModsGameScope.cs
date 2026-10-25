@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Collections;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.App.UI.Helpers;
@@ -15,6 +16,22 @@ namespace SilverModManager.App.UI.Helpers;
 internal static class NexusModsGameScope
 {
     public static bool IsOnNexusMods(this IGameData game) => game.NexusModsGameId.HasValue;
+
+    /// <summary>
+    /// The Nexus id of the game an install row belongs to. A game this build knows decides by its class, the same
+    /// as for the left menu entry, whether or not it is located right now. The id stored on the row is only used
+    /// for a game this build does not know.
+    /// </summary>
+    public static NexusModsGameId? NexusIdOf(this GameInstallMetadata.ReadOnly row, IEnumerable<IGameData> games)
+    {
+        if (GameInstallMetadata.Game.TryGetValue(row, out var gameId)
+            && games.FirstOrDefault(game => game.GameId == gameId) is { } known)
+            return known.NexusModsGameId.HasValue ? known.NexusModsGameId.Value : null;
+
+        return GameInstallMetadata.GameId.TryGetValue(row, out var stored) ? stored : null;
+    }
+
+    public static bool IsOnNexusMods(this GameInstallMetadata.ReadOnly row, IEnumerable<IGameData> games) => row.NexusIdOf(games).HasValue;
 
     /// <summary>
     /// Whether this id is <paramref name="candidate"/>. A missing id is no one's.

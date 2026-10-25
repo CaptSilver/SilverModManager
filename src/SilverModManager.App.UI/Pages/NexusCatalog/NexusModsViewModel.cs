@@ -8,6 +8,7 @@ using ReactiveUI;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -38,6 +39,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     private readonly TemporaryFileManager _temporaryFiles;
     private readonly IOSInterop _osInterop;
     private readonly IGameDomainToGameIdMappingCache _domains;
+    private readonly IEnumerable<IGameData> _games;
     private readonly ILogger<NexusModsViewModel> _logger;
 
     // Bumped by every new search so a slow answer to an old one is dropped instead of overwriting the newer rows.
@@ -65,6 +67,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         TemporaryFileManager temporaryFiles,
         IOSInterop osInterop,
         IGameDomainToGameIdMappingCache domains,
+        IEnumerable<IGameData> games,
         ILogger<NexusModsViewModel> logger) : base(windowManager)
     {
         _connection = connection;
@@ -73,6 +76,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         _libraryService = libraryService;
         _temporaryFiles = temporaryFiles;
         _osInterop = osInterop;
+        _games = games;
         _domains = domains;
         _logger = logger;
 
@@ -174,12 +178,12 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         }
     }
 
-    // The Nexus id recorded on the installation, so the page works while the game itself is not located.
+    // The same rule as the left menu entry, so the entry and the page can't disagree.
     private NexusModsGameId? GameOfLoadout()
     {
         if (LoadoutId == default) return null;
         var loadout = Loadout.Load(_connection.Db, LoadoutId);
-        return GameInstallMetadata.GameId.TryGetValue(loadout.Installation, out var id) ? id : null;
+        return loadout.Installation.NexusIdOf(_games);
     }
 
     private Uri ModUri(NexusModsGameId game, NexusModsModRow row) => NexusModsUrlBuilder.GetModUri(_domains.GetDomain(game), row.Hit.ModId);
