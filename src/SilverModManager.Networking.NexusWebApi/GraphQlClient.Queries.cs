@@ -118,6 +118,30 @@ internal partial class GraphQlClient : IGraphQlClient
         return operationResult.Transform(out GraphQlResult<IModFile[], NotFound> _, static result => result.ModFiles, static fileList => fileList.ToArray<IModFile>());
     }
 
+    public async ValueTask<GraphQlResult<IQueryMods_Mods>> QueryMods(ModsFilter filter, IReadOnlyList<ModsSort> sort, int offset, int count, CancellationToken cancellationToken)
+    {
+        var operationResult = await _client.QueryMods.ExecuteAsync(
+            filter: filter,
+            sort: sort,
+            offset: offset,
+            count: count,
+            cancellationToken: cancellationToken
+        );
+
+        return operationResult.Transform(static result => result.Mods, static mods => mods);
+    }
+
+    public async ValueTask<GraphQlResult<IQueryModFileCategories_ModFiles[], NotFound>> QueryModFileCategories(ModId modId, NexusModsGameId nexusModsGameId, CancellationToken cancellationToken)
+    {
+        var operationResult = await _client.QueryModFileCategories.ExecuteAsync(
+            modId: modId.ToString(),
+            gameId: nexusModsGameId.ToString(),
+            cancellationToken: cancellationToken
+        );
+
+        return operationResult.Transform(out GraphQlResult<IQueryModFileCategories_ModFiles[], NotFound> _, static result => result.ModFiles, static fileList => fileList.ToArray());
+    }
+
     public async ValueTask<GraphQlResult<CollectionId, NotFound>> QueryCollectionId(CollectionSlug slug, CancellationToken cancellationToken)
     {
         var operationResult = await _client.QueryCollectionId.ExecuteAsync(

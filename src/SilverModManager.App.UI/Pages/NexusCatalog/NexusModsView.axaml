@@ -1,0 +1,47 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:INexusModsViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.NexusCatalog"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+    x:Class="SilverModManager.App.UI.Pages.NexusCatalog.NexusModsView">
+
+    <DockPanel Margin="24">
+        <StackPanel DockPanel.Dock="Top" Spacing="{StaticResource Spacing-4}" Margin="0 0 0 16">
+            <TextBlock Text="Nexus Mods" Theme="{StaticResource HeadingSMSemiTheme}" />
+            <TextBlock x:Name="ErrorText" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                <TextBox x:Name="SearchBox" Width="320" Watermark="Search mods by name" />
+                <ComboBox x:Name="SortBox" SelectedIndex="0">
+                    <ComboBoxItem>Most endorsed</ComboBoxItem>
+                    <ComboBoxItem>Most downloaded</ComboBoxItem>
+                    <ComboBoxItem>Recently updated</ComboBoxItem>
+                    <ComboBoxItem>Name</ComboBoxItem>
+                </ComboBox>
+            </StackPanel>
+        </StackPanel>
+
+        <Button DockPanel.Dock="Bottom" x:Name="LoadMoreButton" Content="Load more" Margin="0 8 0 0" />
+
+        <ListBox x:Name="ModList">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="local:NexusModsModRow">
+                    <StackPanel Spacing="2" Margin="0 6">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding AuthorLine}" Opacity="0.7" />
+                        <TextBlock Text="{Binding Details}" FontSize="12" Opacity="0.7" />
+                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0 4 0 0">
+                            <Button Content="{ReflectionBinding $parent[UserControl].DataContext.InstallButtonText}" Click="OnInstallClick" />
+                            <Button Content="Open on Nexus Mods" Click="OnOpenClick" />
+                        </StackPanel>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+
+</reactive:ReactiveUserControl>

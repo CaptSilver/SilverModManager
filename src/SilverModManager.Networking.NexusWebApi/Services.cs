@@ -79,6 +79,7 @@ public static class Services
             .AddNexusModsLibraryModels()
             .AddSingleton<IGraphQlClient, GraphQlClient>()
             .AddSingleton<NexusModsLibrary>()
+            .AddSingleton<INexusModsBrowser, NexusModsBrowser>()
             .AddAllSingleton<ILoginManager, LoginManager>()
             .AddAllSingleton<INexusApiClient, NexusApiClient>()
             .AddSingleton<IModUpdateFilterService, ModUpdateFilterService>()

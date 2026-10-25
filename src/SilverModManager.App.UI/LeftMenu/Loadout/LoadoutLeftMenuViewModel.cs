@@ -46,6 +46,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
     public ILeftMenuItemViewModel LeftMenuItemLibrary { get; }
     public ILeftMenuItemViewModel LeftMenuItemLoadout { get; }
     public ILeftMenuItemViewModel? LeftMenuItemThunderstore { get; }
+    public ILeftMenuItemViewModel? LeftMenuItemNexusMods { get; }
     public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; }
     public ILeftMenuItemViewModel LeftMenuItemHealthCheck { get; }
     public ILeftMenuItemViewModel LeftMenuItemTools { get; }
@@ -126,6 +127,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
         };
 
         LeftMenuItemThunderstore = ThunderstoreLeftMenuItem.For(game, loadoutContext.LoadoutId, workspaceController, WorkspaceId);
+        LeftMenuItemNexusMods = NexusModsLeftMenuItem.For(game, loadoutContext.LoadoutId, workspaceController, WorkspaceId);
 
         LeftMenuItemNewCollection = new NewCollectionViewModel(serviceProvider, loadout, workspaceController, workspaceId);
 

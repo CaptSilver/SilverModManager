@@ -63,6 +63,7 @@ using SilverModManager.App.UI.Pages.ObservableInfo;
 using SilverModManager.App.UI.Pages.Settings;
 using SilverModManager.App.UI.Pages.Sorting;
 using SilverModManager.App.UI.Pages.SteamLaunchOption;
+using SilverModManager.App.UI.Pages.NexusCatalog;
 using SilverModManager.App.UI.Pages.Thunderstore;
 using SilverModManager.App.UI.Pages.Wabbajack;
 using SilverModManager.App.UI.Pages.TextEdit;
@@ -198,6 +199,8 @@ public static class Services
             .AddViewModel<MarkdownRendererViewModel, IMarkdownRendererViewModel>()
             .AddView<ChangelogPageView, IChangelogPageViewModel>()
             .AddViewModel<ChangelogPageViewModel, IChangelogPageViewModel>()
+            .AddView<NexusModsView, INexusModsViewModel>()
+            .AddViewModel<NexusModsViewModel, INexusModsViewModel>()
             .AddView<ThunderstoreView, IThunderstoreViewModel>()
             .AddViewModel<ThunderstoreViewModel, IThunderstoreViewModel>()
             .AddSingleton<IThunderstoreIconLoader>(serviceProvider => new ThunderstoreIconLoader(
@@ -299,6 +302,7 @@ public static class Services
             .AddSingleton<IPageFactory, FromSoftMergesPageFactory>()
             .AddSingleton<IPageFactory, FromSoftSavesPageFactory>()
             .AddSingleton<IPageFactory, ThunderstorePageFactory>()
+            .AddSingleton<IPageFactory, NexusModsPageFactory>()
             .AddSingleton<IPageFactory, WabbajackModlistPageFactory>()
             .AddSingleton<IPageFactory, ToolsPageFactory>()
             .AddSingleton<IPageFactory, AboutPageFactory>()

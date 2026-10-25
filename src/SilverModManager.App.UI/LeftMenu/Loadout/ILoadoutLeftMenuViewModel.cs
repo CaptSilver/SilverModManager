@@ -17,6 +17,9 @@ public interface ILoadoutLeftMenuViewModel : ILeftMenuViewModel
 
     /// <summary>Null for a game whose mods do not come from Thunderstore.</summary>
     public ILeftMenuItemViewModel? LeftMenuItemThunderstore { get; }
+
+    /// <summary>Null for a game that is not on Nexus Mods.</summary>
+    public ILeftMenuItemViewModel? LeftMenuItemNexusMods { get; }
     public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; }
 
     public ILeftMenuItemViewModel LeftMenuItemHealthCheck { get; }

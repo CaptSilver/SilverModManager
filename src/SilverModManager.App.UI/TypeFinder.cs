@@ -16,6 +16,7 @@ using SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
 using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.Pages.MyGames;
 using SilverModManager.App.UI.Pages.MyLoadouts;
+using SilverModManager.App.UI.Pages.NexusCatalog;
 using SilverModManager.App.UI.Pages.ObservableInfo;
 using SilverModManager.App.UI.Pages.Settings;
 using SilverModManager.App.UI.Pages.TextEdit;
@@ -52,6 +53,7 @@ internal class TypeFinder : ITypeFinder
         typeof(FromSoftMergesPageContext),
         typeof(FromSoftSavesPageContext),
         typeof(ThunderstorePageContext),
+        typeof(NexusModsPageContext),
         typeof(WabbajackModlistPageContext),
 
         // workspace context

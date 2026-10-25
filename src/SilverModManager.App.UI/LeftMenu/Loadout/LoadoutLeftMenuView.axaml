@@ -38,6 +38,7 @@
                             </ItemsControl>
                             <items:LeftMenuItemView x:Name="NewCollection" />
                             <items:LeftMenuItemView x:Name="ThunderstoreItem" />
+                            <items:LeftMenuItemView x:Name="NexusModsItem" />
                         </StackPanel>
                     </Expander>
                 </StackPanel>

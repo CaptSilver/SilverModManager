@@ -34,6 +34,24 @@ fragment Mod on Mod {
     author
 }
 
+fragment ModCard on Mod {
+    modId
+    uid
+    name
+    summary
+    author
+    uploader {
+        name
+    }
+    version
+    endorsements
+    downloads
+    updatedAt
+    pictureUrl
+    thumbnailUrl
+    adultContent
+}
+
 fragment ModFile on ModFile {
     name
     modId

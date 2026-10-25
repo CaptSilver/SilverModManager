@@ -28,6 +28,7 @@ public class LoadoutLeftMenuDesignViewModel : AViewModel<ILoadoutLeftMenuViewMod
     };
 
     public ILeftMenuItemViewModel? LeftMenuItemThunderstore { get; } = null;
+    public ILeftMenuItemViewModel? LeftMenuItemNexusMods { get; } = null;
 
     public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; } = null!;
 
