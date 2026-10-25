@@ -1,4 +1,6 @@
 using DynamicData.Kernel;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Bethesda.LoadOrder;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
@@ -10,11 +12,15 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.CreationEngine.Fallout4;
 
-public class Fallout4(IServiceProvider provider) : ACreationEngineGame<Fallout4>(provider), IGameData<Fallout4>
+public class Fallout4(IServiceProvider provider) : ACreationEngineGame<Fallout4>(provider), IGameData<Fallout4>, IGameUpdateSensitivity
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.Fallout4");
     public static string DisplayName => "Fallout 4";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(1151);
+
+    public TimeSpan? DateWindow => TimeSpan.FromDays(30);
+    public string WhatBreaks => "F4SE and mods with a DLL in Data/F4SE/Plugins are built for one game version, so they may need a new release after an update. ESP/ESM plugins, archives and textures are unaffected.";
+    public NamedLink? ExtenderPage => new Uri("https://f4se.silverlock.org/").WithName("F4SE");
 
     public override StoreIdentifiers StoreIdentifiers { get; } = new(GameId)
     {

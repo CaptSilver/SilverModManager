@@ -260,6 +260,18 @@ public class SteamLocatorTests
         result.StoreUpdatePending.Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("0", true)]
+    [InlineData("1", false)]
+    [InlineData("2", true)]
+    public void Locate_ReadsWhetherSteamUpdatesTheGameWheneverAnUpdateIsOut(string? autoUpdateBehavior, bool expected)
+    {
+        var result = LocateSingle(withProtonPrefix: false, autoUpdateBehavior: autoUpdateBehavior).Result;
+
+        result.StoreUpdatesInBackground.Should().Be(expected);
+    }
+
     [Fact]
     public void Locate_UsesTheAppManifestsLastUpdatedAsStoreLastWrite()
     {
@@ -532,6 +544,7 @@ public class SteamLocatorTests
         string buildId = "1",
         string stateFlags = "4",
         string? lastUpdated = null,
+        string? autoUpdateBehavior = null,
         string? nativePrimaryFile = null,
         bool nativeFileInstalled = false,
         ILoggerFactory? loggerFactory = null,
@@ -544,7 +557,7 @@ public class SteamLocatorTests
         WriteFile(fileSystem, steamDirectory.Combine("steam.sh"), "");
         WriteFile(fileSystem, steamDirectory.Combine("config/libraryfolders.vdf"), LibraryFolders(steamDirectory));
         WriteFile(fileSystem, libraryDirectory.Combine("libraryfolders.vdf"), LibraryFolders(steamDirectory));
-        WriteFile(fileSystem, libraryDirectory.Combine($"appmanifest_{AppId}.acf"), AppManifest(buildId, stateFlags, lastUpdated));
+        WriteFile(fileSystem, libraryDirectory.Combine($"appmanifest_{AppId}.acf"), AppManifest(buildId, stateFlags, lastUpdated, autoUpdateBehavior: autoUpdateBehavior));
         WriteFile(fileSystem, libraryDirectory.Combine("common/Game/game.exe"), "");
         if (nativeFileInstalled) WriteFile(fileSystem, libraryDirectory.Combine($"common/Game/{nativePrimaryFile}"), "");
         if (withProtonPrefix) WriteFile(fileSystem, libraryDirectory.Combine($"compatdata/{AppId}/pfx/system.reg"), "");
@@ -621,7 +634,7 @@ public class SteamLocatorTests
         }
         """)) + "\n}\n";
 
-    private static string AppManifest(string buildId, string stateFlags, string? lastUpdated = null, uint appId = AppId) => $$"""
+    private static string AppManifest(string buildId, string stateFlags, string? lastUpdated = null, uint appId = AppId, string? autoUpdateBehavior = null) => $$"""
         "AppState"
         {
             "appid" "{{appId}}"
@@ -632,6 +645,7 @@ public class SteamLocatorTests
             "LastOwner" "76561198000000000"
             "BuildID" "{{buildId}}"
             {{(lastUpdated is null ? "" : $"\"lastupdated\" \"{lastUpdated}\"")}}
+            {{(autoUpdateBehavior is null ? "" : $"\"AutoUpdateBehavior\" \"{autoUpdateBehavior}\"")}}
             "InstalledDepots"
             {
                 "1091501"

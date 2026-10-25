@@ -1,4 +1,6 @@
 using DynamicData.Kernel;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Bethesda.LoadOrder;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
@@ -15,11 +17,15 @@ namespace SilverModManager.Games.CreationEngine.Starfield;
 /// flag bits (light, medium, update, blueprint). Loose files also need StarfieldCustom.ini to be loaded;
 /// writing that is not done yet.
 /// </summary>
-public class Starfield(IServiceProvider provider) : ACreationEngineGame<Starfield>(provider), IGameData<Starfield>
+public class Starfield(IServiceProvider provider) : ACreationEngineGame<Starfield>(provider), IGameData<Starfield>, IGameUpdateSensitivity
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.Starfield");
     public static string DisplayName => "Starfield";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(4187);
+
+    public TimeSpan? DateWindow => null;
+    public string WhatBreaks => "SFSE and mods with a DLL in Data/SFSE/Plugins are built for one game version, so they may need a new release after an update. ESM plugins, archives and textures are unaffected.";
+    public NamedLink? ExtenderPage => new Uri("https://sfse.silverlock.org/").WithName("SFSE");
 
     public override StoreIdentifiers StoreIdentifiers { get; } = new(GameId)
     {

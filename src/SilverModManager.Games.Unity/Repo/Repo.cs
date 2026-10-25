@@ -11,6 +11,9 @@ public class Repo(IServiceProvider provider) : AUnityGame<Repo>(provider, Defini
     public static string DisplayName => "R.E.P.O.";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(7398);
 
+    // Patches come in bursts a few days apart and then stop for months, so a shorter window fits.
+    public override TimeSpan? DateWindow => TimeSpan.FromDays(14);
+
     /// <remarks><c>new</c> on purpose: the base's instance <see cref="AUnityGame{TSelf}.Definition"/> is this same object.</remarks>
     public new static readonly UnityGameDefinition Definition = new(
         Executable: "REPO.exe",

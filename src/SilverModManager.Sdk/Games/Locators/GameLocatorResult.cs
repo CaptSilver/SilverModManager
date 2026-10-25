@@ -105,4 +105,10 @@ public class GameLocatorResult
     /// has no such bound. For Steam, the appmanifest's update time.
     /// </summary>
     public DateTimeOffset? StoreLastWrite { get; init; }
+
+    /// <summary>
+    /// True when the store installs an update as soon as one is out, which is Steam's default. False when
+    /// the user chose to update only on launch, or the store has no such setting.
+    /// </summary>
+    public bool StoreUpdatesInBackground { get; init; }
 }

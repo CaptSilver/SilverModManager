@@ -1,4 +1,6 @@
 using DynamicData.Kernel;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Bethesda.LoadOrder;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
@@ -10,11 +12,15 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.CreationEngine.SkyrimSE;
 
-public class SkyrimSE(IServiceProvider provider) : ACreationEngineGame<SkyrimSE>(provider), IGameData<SkyrimSE>
+public class SkyrimSE(IServiceProvider provider) : ACreationEngineGame<SkyrimSE>(provider), IGameData<SkyrimSE>, IGameUpdateSensitivity
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.SkyrimSE");
     public static string DisplayName => "Skyrim Special Edition";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(1704);
+
+    public TimeSpan? DateWindow => TimeSpan.FromDays(30);
+    public string WhatBreaks => "SKSE and mods with a DLL in Data/SKSE/Plugins are built for one game version. Address Library mods work again once a matching library ships; others may need an update from their author. ESP/ESM plugins, archives and textures are unaffected.";
+    public NamedLink? ExtenderPage => new Uri("https://skse.silverlock.org/").WithName("SKSE");
 
     public override StoreIdentifiers StoreIdentifiers { get; } = new(GameId)
     {

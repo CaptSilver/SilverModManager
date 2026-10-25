@@ -20,6 +20,8 @@ public static class Services
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, GameMovedEmitter>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, GameUpdateEmitter>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IGameUpdateCheck, GameBuildChangedCheck>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IGameUpdateCheck, GameRecentlyUpdatedCheck>());
+        services.TryAddSingleton(TimeProvider.System);
 
         return services.AddFileHashesVerbs()
             .AddPathHashRelationModel()

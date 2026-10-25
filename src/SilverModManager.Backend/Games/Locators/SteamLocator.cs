@@ -90,6 +90,7 @@ internal class SteamLocator : IGameLocator
                 // running, paused, files missing) means the files may not match the listed build.
                 StoreUpdatePending = gameFinderGame.AppManifest.StateFlags != StateFlags.FullyInstalled,
                 StoreLastWrite = LastWriteOf(gameFinderGame.AppManifest),
+                StoreUpdatesInBackground = gameFinderGame.AppManifest.AutoUpdateBehavior != AutoUpdateBehavior.UpdateOnLaunch,
             };
         }
     }

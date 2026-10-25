@@ -160,4 +160,61 @@ Applying the loadout again clears this note.
             .AddValue<string>("WhatBreaks")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate GameBuildChangedWithMods = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 7))
+        .WithTitle("Game updated since mods were applied")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{Game} has changed since this loadout was last applied. Installed mods that hook the game's code ({ModCount}) may be broken")
+        .WithDetails("""
+{Store} changed the files of {Game} after this loadout was last applied. {WhatBreaks}
+
+These installed mods hook the game's code:
+
+{Mods}
+
+Mods installed outside the app are not listed here. If a mod stops working, check its page for a release matching the game's version.
+
+Applying the loadout again clears this note.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Game")
+            .AddValue<string>("Store")
+            .AddValue<string>("WhatBreaks")
+            .AddValue<int>("ModCount")
+            .AddValue<string>("Mods")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate GameRecentlyUpdated = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 8))
+        .WithTitle("Game updated recently")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("{Store} updated this install of {Game} on {Date}. Mods that hook the game's code may need updates")
+        .WithDetails("""
+{Store} finished writing this update on {Date}. {WhatBreaks}
+
+These installed mods hook the game's code:
+
+{Mods}
+
+Mods installed outside the app are not listed here. If a mod stops working, check its page for a release matching the game's version.
+
+{UpdateAdvice}
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Game")
+            .AddValue<string>("Store")
+            .AddValue<string>("Date")
+            .AddValue<string>("WhatBreaks")
+            .AddValue<string>("Mods")
+            .AddValue<string>("UpdateAdvice")
+        )
+        .Finish();
 }

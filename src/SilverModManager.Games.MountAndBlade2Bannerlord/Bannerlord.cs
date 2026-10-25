@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -20,7 +21,7 @@ namespace SilverModManager.Games.MountAndBlade2Bannerlord;
 /// Maintained by the BUTR Team
 /// https://github.com/BUTR
 /// </summary>
-public sealed class Bannerlord : IGame, IGameData<Bannerlord>
+public sealed class Bannerlord : IGame, IGameData<Bannerlord>, IGameUpdateSensitivity
 {
     public static GameId GameId { get; } = GameId.From("Bannerlord");
     public static string DisplayName => "Mount & Blade II: Bannerlord";
@@ -32,6 +33,13 @@ public sealed class Bannerlord : IGame, IGameData<Bannerlord>
         GOGProductIds = [1802539526L, 1564781494L],
         EGSCatalogItemId = ["Chickadee"],
     };
+
+    // A patch lands every three to four weeks, so a date would nearly always show; only a build change since the last apply is reported.
+    public TimeSpan? DateWindow => null;
+
+    public string WhatBreaks => "Modules are built for one game version and the game checks them on launch, so a module may need an update from its author.";
+
+    public NamedLink? ExtenderPage => null;
 
     public IStreamFactory IconImage { get; }
     public IStreamFactory TileImage { get; }

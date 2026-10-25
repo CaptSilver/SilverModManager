@@ -1,4 +1,6 @@
 using DynamicData.Kernel;
+using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Games.CreationEngine.Abstractions;
 using SilverModManager.Games.Bethesda.LoadOrder;
@@ -23,13 +25,17 @@ namespace SilverModManager.Games.CreationEngine.OblivionRemastered;
 /// (https://github.com/ModOrganizer2/modorganizer-basic_games/blob/master/games/game_oblivion_remaster.py)
 /// and its script extender helper (games/oblivion_remaster/script_extender.py).
 /// </remarks>
-public class OblivionRemastered(IServiceProvider provider) : ACreationEngineGame<OblivionRemastered>(provider), IGameData<OblivionRemastered>
+public class OblivionRemastered(IServiceProvider provider) : ACreationEngineGame<OblivionRemastered>(provider), IGameData<OblivionRemastered>, IGameUpdateSensitivity
 {
     private const string ProjectFolder = "OblivionRemastered";
 
     public static GameId GameId { get; } = GameId.From("CreationEngine.OblivionRemastered");
     public static string DisplayName => "Oblivion Remastered";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(7587);
+
+    public TimeSpan? DateWindow => TimeSpan.FromDays(30);
+    public string WhatBreaks => "OBSE64 and mods with a DLL in its OBSE/Plugins folder are built for one game version, so they may need a new release after an update. Paks and other data files are unaffected.";
+    public NamedLink? ExtenderPage => null;
 
     public override StoreIdentifiers StoreIdentifiers { get; } = new(GameId)
     {

@@ -55,6 +55,8 @@ internal sealed class RealQueryEngineHost : IDisposable
             .AddLoadoutItemModel()
             .AddLoadoutItemGroupModel()
             .AddLoadoutOverridesGroupModel()
+            .AddLoadoutItemWithTargetPathModel()
+            .AddLoadoutFileModel()
             .AddBindingConverter<LoadoutId, ulong>(l => l.Value.Value)
             .AddBindingConverter<LocationId, ushort>(l => l.Value)
             .AddValueAdaptor<ushort, LocationId>(LocationId.From)

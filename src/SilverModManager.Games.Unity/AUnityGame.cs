@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -21,7 +22,7 @@ namespace SilverModManager.Games.Unity;
 /// <see cref="IGameData{TSelf}"/> and owns the three statics, as every game in the app does, and this class reads
 /// them through <typeparamref name="TSelf"/>.
 /// </summary>
-public abstract class AUnityGame<TSelf> : IUnityGame, IGameNativeCode
+public abstract class AUnityGame<TSelf> : IUnityGame, IGameNativeCode, IGameUpdateSensitivity
     where TSelf : AUnityGame<TSelf>, IGameData<TSelf>
 {
     protected IServiceProvider Provider { get; }
@@ -54,6 +55,16 @@ public abstract class AUnityGame<TSelf> : IUnityGame, IGameNativeCode
 
     // The loader pack's own files (winhttp.dll, BepInEx/core) are not listed: they are not a mod the user picked.
     public bool HooksGameCode(GamePath path) => NativeCodePaths.IsLibraryBelow(path, PluginsFolder);
+
+    /// <summary>
+    /// How long after an update the date note shows. Null by default: these games patch too often for a date to
+    /// mean anything, so a game that doesn't override it only gets the note for a build change since the last apply.
+    /// </summary>
+    public virtual TimeSpan? DateWindow => null;
+
+    public string WhatBreaks => "BepInEx plugins are built against one version of the game and may stop loading after an update; they may need a new release from their author.";
+
+    public NamedLink? ExtenderPage => null;
 
     protected AUnityGame(IServiceProvider provider, UnityGameDefinition definition)
     {
