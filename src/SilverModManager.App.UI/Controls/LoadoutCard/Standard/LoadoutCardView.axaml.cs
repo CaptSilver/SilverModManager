@@ -129,6 +129,18 @@ public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel
                         view => view.SteamButton)
                     .DisposeWith(d);
 
+                // Switching is offered on every loadout except the applied one
+                this.OneWayBind(ViewModel,
+                        vm => vm.ShowSwitchButton,
+                        view => view.SwitchButton.IsVisible)
+                    .DisposeWith(d);
+
+                // Switch to loadout command
+                this.BindCommand(ViewModel,
+                        vm => vm.SwitchToLoadoutCommand,
+                        view => view.SwitchButton)
+                    .DisposeWith(d);
+
                 // Visit loadout command
                 this.BindCommand(ViewModel,
                         vm => vm.VisitLoadoutCommand,

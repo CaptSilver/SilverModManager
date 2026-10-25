@@ -39,6 +39,16 @@ public interface ILoadoutCardViewModel : IViewModelInterface
     ReactiveCommand<Unit, Unit> UseFromSteamCommand { get; }
 
     /// <summary>
+    /// Applies this loadout to its game, then opens it. Not available while a synchronize runs on the same installation.
+    /// </summary>
+    ReactiveCommand<Unit, Unit> SwitchToLoadoutCommand { get; }
+
+    /// <summary>
+    /// Whether to offer <see cref="SwitchToLoadoutCommand"/>: the loadout that is already applied has nothing to switch to.
+    /// </summary>
+    bool ShowSwitchButton { get; }
+
+    /// <summary>
     /// Whether the loadout's game was installed through Steam; only then can Steam launch with it.
     /// </summary>
     bool CanUseFromSteam { get; }

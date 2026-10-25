@@ -3076,6 +3076,33 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Showing loadouts for {0}.
+        /// </summary>
+        public static string MyLoadoutsFilteredHeading {
+            get {
+                return ResourceManager.GetString("MyLoadoutsFilteredHeading", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show all games.
+        /// </summary>
+        public static string MyLoadoutsShowAllGames {
+            get {
+                return ResourceManager.GetString("MyLoadoutsShowAllGames", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Switch to this loadout.
+        /// </summary>
+        public static string LoadoutCardSwitchButton {
+            get {
+                return ResourceManager.GetString("LoadoutCardSwitchButton", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to {0} Loadouts.
         /// </summary>
         public static string MyLoadoutsGameSectionHeading {
@@ -3495,6 +3522,15 @@ namespace SilverModManager.App.UI.Resources {
         public static string MyGamesTileMenu_MoveLater {
             get {
                 return ResourceManager.GetString("MyGamesTileMenu_MoveLater", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Change loadout….
+        /// </summary>
+        public static string SpineLoadoutMenu_ChangeLoadout {
+            get {
+                return ResourceManager.GetString("SpineLoadoutMenu_ChangeLoadout", resourceCulture);
             }
         }
         

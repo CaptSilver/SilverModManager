@@ -21,6 +21,8 @@
             HorizontalAlignment="Stretch">
         <Button.ContextMenu>
             <ContextMenu>
+                <MenuItem x:Name="ChangeLoadoutItem" />
+                <Separator />
                 <MenuItem x:Name="MoveUpItem" />
                 <MenuItem x:Name="MoveDownItem" />
             </ContextMenu>

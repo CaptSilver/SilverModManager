@@ -82,6 +82,10 @@
                                 <TextBlock x:Name="NumberOfModsTextBlock" />
                             </StackPanel>
                         </StackPanel>
+
+                        <controls:StandardButton x:Name="SwitchButton"
+                                                 Text="{x:Static resources:Language.LoadoutCardSwitchButton}"
+                                                 HorizontalAlignment="Stretch" />
                     </StackPanel>
                 </DockPanel>
             </Button>

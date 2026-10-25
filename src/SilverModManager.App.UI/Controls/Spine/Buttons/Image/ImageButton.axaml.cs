@@ -29,6 +29,10 @@ public partial class ImageButton : ReactiveUserControl<IImageButtonViewModel>
             this.OneWayBind(ViewModel, vm => vm.Name, v => v.ToolTipTextBlock.Text)
                 .DisposeWith(d);
             
+            ChangeLoadoutItem.Header = Language.SpineLoadoutMenu_ChangeLoadout;
+            this.OneWayBind(ViewModel, vm => vm.ChangeLoadout, v => v.ChangeLoadoutItem.Command)
+                .DisposeWith(d);
+
             MoveUpItem.Header = Language.SpineLoadoutMenu_MoveUp;
             MoveDownItem.Header = Language.SpineLoadoutMenu_MoveDown;
             this.OneWayBind(ViewModel, vm => vm.MoveUp, v => v.MoveUpItem.Command)

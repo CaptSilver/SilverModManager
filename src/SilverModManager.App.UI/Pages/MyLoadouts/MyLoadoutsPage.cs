@@ -2,13 +2,23 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Serialization.Attributes;
 using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 using SilverModManager.UI.Sdk.Icons;
 
 namespace SilverModManager.App.UI.Pages.MyLoadouts;
 
 [JsonName("SilverModManager.App.UI.Pages.MyLoadoutsPageContext")]
-public record MyLoadoutsPageContext : IPageFactoryContext;
+public record MyLoadoutsPageContext : IPageFactoryContext
+{
+    /// <summary>
+    /// When set, the page lists only this game installation's loadouts. Layouts saved before the filter existed
+    /// have no value here and show every game.
+    /// </summary>
+    public GameInstallMetadataId? InstallationId { get; init; }
+}
 
 [UsedImplicitly]
 public class MyLoadoutsPageFactory : APageFactory<IMyLoadoutsViewModel, MyLoadoutsPageContext>
@@ -22,7 +32,12 @@ public class MyLoadoutsPageFactory : APageFactory<IMyLoadoutsViewModel, MyLoadou
 
     public override IMyLoadoutsViewModel CreateViewModel(MyLoadoutsPageContext context)
     {
-        return ServiceProvider.GetRequiredService<IMyLoadoutsViewModel>();
+        return new MyLoadoutsViewModel(
+            ServiceProvider.GetRequiredService<IWindowManager>(),
+            ServiceProvider.GetRequiredService<IConnection>(),
+            ServiceProvider,
+            context.InstallationId
+        );
     }
 
     public override IEnumerable<PageDiscoveryDetails?> GetDiscoveryDetails(IWorkspaceContext workspaceContext)

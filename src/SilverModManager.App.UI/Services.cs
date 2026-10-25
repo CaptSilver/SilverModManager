@@ -169,7 +169,6 @@ public static class Services
             
             
             .AddView<MyLoadoutsView, IMyLoadoutsViewModel>()
-            .AddViewModel<MyLoadoutsViewModel, IMyLoadoutsViewModel>()
             .AddView<LoadoutCardView, ILoadoutCardViewModel>()
             .AddView<CreateNewLoadoutCardView, ICreateNewLoadoutCardViewModel>()
             .AddViewModel<LoadoutBadgeViewModel, ILoadoutBadgeViewModel>()

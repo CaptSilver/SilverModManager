@@ -14,6 +14,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Controls.LoadoutBadge;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.LeftMenu.Items;
 using SilverModManager.App.UI.Overlays;
 using SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 using SilverModManager.App.UI.Pages;
@@ -24,6 +25,7 @@ using SilverModManager.App.UI.Resources;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Dialog;
@@ -65,6 +67,12 @@ public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
         
         RenameLoadoutCommand = ReactiveCommand.CreateFromTask(() => RenameLoadout(loadout));
 
+        var jobMonitor = serviceProvider.GetRequiredService<IJobMonitor>();
+        SwitchToLoadoutCommand = ReactiveCommand.CreateFromTask(
+            () => SwitchToLoadout(loadout),
+            canExecute: this.WhenAnyValue(vm => vm.IsSynchronizingInstallation).Select(isSynchronizing => !isSynchronizing)
+        );
+
         UseFromSteamCommand = ReactiveCommand.CreateFromTask(() => ShowSteamLaunchOption(loadout));
         CanUseFromSteam = loadout.Installation.Store == GameStore.Steam;
 
@@ -85,6 +93,18 @@ public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
                 .Select(rev => rev.Id == loadout.LoadoutId)
                 .OnUI()
                 .BindToVM(this, x => x.IsLoadoutApplied)
+                .DisposeWith(d);
+
+            this.WhenAnyValue(vm => vm.IsLoadoutApplied)
+                .Select(isApplied => !isApplied)
+                .BindToVM(this, x => x.ShowSwitchButton)
+                .DisposeWith(d);
+
+            // Any synchronize on this loadout's installation, not only this loadout's, since they all rewrite the same game folder.
+            jobMonitor.HasActiveJob<SynchronizeLoadoutJob>(job => IsOnSameInstallation(conn, loadout, job.LoadoutId))
+                .Prepend(jobMonitor.Jobs.Any(job => job.Definition is SynchronizeLoadoutJob sJob && IsOnSameInstallation(conn, loadout, sJob.LoadoutId)))
+                .OnUI()
+                .BindToVM(this, x => x.IsSynchronizingInstallation)
                 .DisposeWith(d);
 
             var interval = Observable.Interval(TimeSpan.FromMinutes(1)).Prepend(0);
@@ -134,6 +154,8 @@ public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
     [Reactive] public partial string HumanizedLoadoutLastApplyTime { get; private set; } = "";
     [Reactive] public partial string HumanizedLoadoutCreationTime { get; private set; } = "";
     [Reactive] public partial string LoadoutModCount { get; private set; } = "";
+    [Reactive] public partial bool ShowSwitchButton { get; private set; } = true;
+    [Reactive] public partial bool IsSynchronizingInstallation { get; set; }
     [Reactive] public partial bool IsDeleting { get;  private set; } = false;
     public bool IsSkeleton => false;
     public required ReactiveCommand<Unit, Unit> VisitLoadoutCommand { get; init; }
@@ -141,6 +163,7 @@ public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
     public ReactiveCommand<Unit, Unit> DeleteLoadoutCommand { get; }
     public ReactiveCommand<Unit, Unit> RenameLoadoutCommand { get; }
     public ReactiveCommand<Unit, Unit> UseFromSteamCommand { get; }
+    public ReactiveCommand<Unit, Unit> SwitchToLoadoutCommand { get; }
     public bool CanUseFromSteam { get; }
     
     [Reactive] public partial bool IsLastLoadout { get; set; } = true;
@@ -204,6 +227,19 @@ public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
 
         // Uniqueness within the installation is the manager's call, so the stored name can differ from the input.
         await Task.Run(() => _loadoutManager.RenameLoadout(loadout.LoadoutId, result.InputText).AsTask());
+    }
+
+    private static bool IsOnSameInstallation(IConnection conn, Loadout.ReadOnly loadout, LoadoutId otherId)
+    {
+        var other = Loadout.Load(conn.Db, otherId);
+        return other.IsValid() && other.InstallationId == loadout.InstallationId;
+    }
+
+    private async Task SwitchToLoadout(Loadout.ReadOnly loadout)
+    {
+        // Only open the loadout once it is the applied one; a refused apply has already told the user why.
+        if (!await LoadoutApplier.Apply(_serviceProvider, loadout.LoadoutId)) return;
+        await VisitLoadoutCommand.Execute();
     }
 
     private Task ShowSteamLaunchOption(Loadout.ReadOnly loadout) => SteamLaunchOptionDialog.ShowAsync(_serviceProvider, loadout);

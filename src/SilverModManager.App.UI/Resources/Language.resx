@@ -347,6 +347,9 @@
     <data name="SpineDownloadButton_ToolTip" xml:space="preserve">
         <value>Downloads</value>
     </data>
+    <data name="SpineLoadoutMenu_ChangeLoadout" xml:space="preserve">
+        <value>Change loadout…</value>
+    </data>
     <data name="SpineLoadoutMenu_MoveUp" xml:space="preserve">
         <value>Move up</value>
     </data>
@@ -758,6 +761,16 @@
     <data name="MyLoadoutsGameSectionHeading" xml:space="preserve">
         <value>{0} Loadouts</value>
         <comment>Where {0} is the name of the game</comment>
+    </data>
+    <data name="MyLoadoutsFilteredHeading" xml:space="preserve">
+        <value>Showing loadouts for {0}</value>
+        <comment>Where {0} is the name of the game</comment>
+    </data>
+    <data name="MyLoadoutsShowAllGames" xml:space="preserve">
+        <value>Show all games</value>
+    </data>
+    <data name="LoadoutCardSwitchButton" xml:space="preserve">
+        <value>Switch to this loadout</value>
     </data>
     <data name="CreateNewLoadoutCarViewTexBlock" xml:space="preserve">
         <value>Create new</value>

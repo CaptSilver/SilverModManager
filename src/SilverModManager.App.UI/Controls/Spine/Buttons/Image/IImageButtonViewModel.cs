@@ -24,6 +24,11 @@ public interface IImageButtonViewModel : ISpineItemViewModel
     public ILoadoutBadgeViewModel? LoadoutBadgeViewModel { get; set; }
 
     /// <summary>
+    /// Opens the My Loadouts page filtered to this button's game, to switch to or create a loadout for it.
+    /// </summary>
+    public ReactiveCommand<Unit, Unit>? ChangeLoadout { get; set; }
+
+    /// <summary>
     /// Moves this button one place up the spine; the keyboard path for drag and drop.
     /// </summary>
     public ReactiveCommand<Unit, Unit>? MoveUp { get; set; }

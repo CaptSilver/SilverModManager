@@ -24,6 +24,8 @@ public partial class ImageButtonViewModel : AViewModel<IImageButtonViewModel>, I
     
     public ILoadoutBadgeViewModel? LoadoutBadgeViewModel { get; set; }
 
+    [Reactive] public partial ReactiveCommand<Unit, Unit>? ChangeLoadout { get; set; }
+
     [Reactive] public partial ReactiveCommand<Unit, Unit>? MoveUp { get; set; }
 
     [Reactive] public partial ReactiveCommand<Unit, Unit>? MoveDown { get; set; }

@@ -21,6 +21,7 @@ using SilverModManager.App.UI.LeftMenu;
 using SilverModManager.App.UI.Pages.Downloads;
 using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.Pages.MyGames;
+using SilverModManager.App.UI.Pages.MyLoadouts;
 using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
@@ -132,6 +133,7 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
                             vm.LoadoutBadgeViewModel.LoadoutValue = loadout;
                             vm.WorkspaceContext = new LoadoutContext { LoadoutId = loadout.LoadoutId };
                             vm.Click = ReactiveCommand.Create(() => ChangeToLoadoutWorkspace(loadout.LoadoutId));
+                            vm.ChangeLoadout = ReactiveCommand.Create(() => NavigateToLoadoutsOf(loadout.InstallationId));
                             vm.MoveUp = ReactiveCommand.Create(() => MoveLoadoutBy(loadout.LoadoutId, -1));
                             vm.MoveDown = ReactiveCommand.Create(() => MoveLoadoutBy(loadout.LoadoutId, 1));
                             vm.IsActive = false;
@@ -305,6 +307,24 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
         {
             FactoryId = MyGamesPageFactory.StaticId,
             Context = new MyGamesPageContext(),
+        };
+
+        var ws = workspaceController.ChangeOrCreateWorkspaceByContext<HomeContext>(() => pageData);
+        var behavior = workspaceController.GetOpenPageBehavior(pageData, NavigationInformation.From(NavigationInput.Default));
+        workspaceController.OpenPage(ws.Id, pageData, behavior);
+    }
+
+    /// <summary>
+    /// Opens My Loadouts for one game in the Home workspace, the same place the Home menu opens it.
+    /// </summary>
+    private void NavigateToLoadoutsOf(GameInstallMetadataId installationId)
+    {
+        var workspaceController = _windowManager.ActiveWorkspaceController;
+
+        var pageData = new PageData
+        {
+            FactoryId = MyLoadoutsPageFactory.StaticId,
+            Context = new MyLoadoutsPageContext { InstallationId = installationId },
         };
 
         var ws = workspaceController.ChangeOrCreateWorkspaceByContext<HomeContext>(() => pageData);

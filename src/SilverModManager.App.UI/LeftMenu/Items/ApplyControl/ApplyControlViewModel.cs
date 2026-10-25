@@ -3,11 +3,9 @@ using System.Reactive.Linq;
 using DynamicData;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
-using SilverModManager.Abstractions.Loadouts.Exceptions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Overlays;
-using SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 using SilverModManager.App.UI.Pages.Diff.ApplyDiff;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
@@ -31,7 +29,6 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
     private readonly IConnection _conn;
     private readonly ISynchronizerService _syncService;
     private readonly IJobMonitor _jobMonitor;
-    private readonly IWindowNotificationService _notificationService;
     private readonly IGameRegistry _gameRegistry;
 
     private readonly LoadoutId _loadoutId;
@@ -60,7 +57,6 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
         _syncService = serviceProvider.GetRequiredService<ISynchronizerService>();
         _conn = serviceProvider.GetRequiredService<IConnection>();
         _jobMonitor = serviceProvider.GetRequiredService<IJobMonitor>();
-        _notificationService = serviceProvider.GetRequiredService<IWindowNotificationService>();
         var windowManager = serviceProvider.GetRequiredService<IWindowManager>();
         _gameRegistry = serviceProvider.GetRequiredService<IGameRegistry>();
 
@@ -166,21 +162,5 @@ public partial class ApplyControlViewModel : AViewModel<IApplyControlViewModel>,
         );
     }
 
-    private async Task Apply()
-    {
-        var loadout = Sdk.Loadouts.Loadout.Load(_conn.Db, _loadoutId);
-        try
-        {
-            await Task.Run(async () =>
-            {
-                await _syncService.Synchronize(_loadoutId);
-            });
-            
-            _notificationService.ShowToast(Language.ToastNotification_Applied__0__successfully, ToastNotificationVariant.Success);
-        }
-        catch (ExecutableInUseException)
-        {
-            await MessageBoxOkViewModel.ShowGameAlreadyRunningError(_serviceProvider, loadout.Installation.Name);
-        }
-    }
+    private Task Apply() => LoadoutApplier.Apply(_serviceProvider, _loadoutId);
 }

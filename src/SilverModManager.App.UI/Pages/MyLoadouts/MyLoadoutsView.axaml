@@ -31,6 +31,16 @@
                     Description="{x:Static resources:Language.MyLoadoutsPageDescriptionText}"
                     Icon="{x:Static icons:IconValues.PictogramBox2}"/> 
                 
+                <StackPanel x:Name="FilterBannerStack"
+                            Orientation="Horizontal"
+                            Spacing="16"
+                            IsVisible="False">
+                    <TextBlock x:Name="FilterHeadingTextBlock"
+                               VerticalAlignment="Center" />
+                    <controls:StandardButton x:Name="ShowAllGamesButton"
+                                             Text="{x:Static resources:Language.MyLoadoutsShowAllGames}" />
+                </StackPanel>
+
                 <controls:EmptyState x:Name="MyLoadoutsEmptyState"
                                      Header="{x:Static resources:Language.MyLoadoutsEmptyState_Header}"
                                      Subtitle="{x:Static resources:Language.MyLoadoutsEmptyState_Subtitle}">

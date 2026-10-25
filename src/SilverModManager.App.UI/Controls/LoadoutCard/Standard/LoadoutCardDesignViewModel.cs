@@ -45,5 +45,7 @@ public partial class LoadoutCardDesignViewModel : AViewModel<ILoadoutCardViewMod
     public ReactiveCommand<Unit, Unit> DeleteLoadoutCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> RenameLoadoutCommand { get; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> UseFromSteamCommand { get; } = ReactiveCommand.Create(() => { });
+    public ReactiveCommand<Unit, Unit> SwitchToLoadoutCommand { get; } = ReactiveCommand.Create(() => { });
+    public bool ShowSwitchButton { get; } = false;
     public bool CanUseFromSteam { get; } = true;
 }
