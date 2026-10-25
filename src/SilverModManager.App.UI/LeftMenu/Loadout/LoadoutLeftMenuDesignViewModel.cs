@@ -60,9 +60,20 @@ public class LoadoutLeftMenuDesignViewModel : AViewModel<ILoadoutLeftMenuViewMod
         Icon = IconValues.Cog,
     };
 
+    private readonly ObservableCollection<ILeftMenuItemViewModel> _collectionItems;
+
+    public void MoveCollection(int fromIndex, int toIndex)
+    {
+        if (!IsCollectionMovable(fromIndex)) throw new ArgumentOutOfRangeException(nameof(fromIndex));
+        if (!IsCollectionMovable(toIndex)) throw new ArgumentOutOfRangeException(nameof(toIndex));
+        _collectionItems.Move(fromIndex, toIndex);
+    }
+
+    public bool IsCollectionMovable(int index) => index > 0 && index < _collectionItems.Count;
+
     public LoadoutLeftMenuDesignViewModel()
     {
-        LeftMenuCollectionItems = new ReadOnlyObservableCollection<ILeftMenuItemViewModel>([
+        _collectionItems = new ObservableCollection<ILeftMenuItemViewModel>([
                 
                 new LeftMenuItemDesignViewModel()
                 {
@@ -79,5 +90,6 @@ public class LoadoutLeftMenuDesignViewModel : AViewModel<ILoadoutLeftMenuViewMod
                 },
             ]
         );
+        LeftMenuCollectionItems = new ReadOnlyObservableCollection<ILeftMenuItemViewModel>(_collectionItems);
     }
 }

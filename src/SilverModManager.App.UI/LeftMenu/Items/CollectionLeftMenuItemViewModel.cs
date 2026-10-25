@@ -25,6 +25,12 @@ public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, IL
     [Reactive] public partial bool IsEnabled { get; set; }
 
     public bool IsCollectionReadOnly { get; init; }
+
+    /// <summary>
+    /// The loadout's own "My Mods" collection: it stays first in the menu and has no Move up / Move down entries.
+    /// See <see cref="LeftMenu.Loadout.LoadoutCollectionOrder.DefaultCollectionOf"/>.
+    /// </summary>
+    public bool IsDefaultCollection { get; init; }
     public bool IsToggleVisible => true;
 
     public ReactiveCommand<Unit, Unit> ToggleIsEnabledCommand { get; }
@@ -43,7 +49,9 @@ public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, IL
         WorkspaceId workspaceId,
         PageData pageData,
         IServiceProvider serviceProvider,
-        CollectionGroupId collectionGroupId) : base(workspaceController, workspaceId, pageData)
+        CollectionGroupId collectionGroupId,
+        bool isDefaultCollection = false,
+        Action<CollectionGroupId, int>? moveBy = null) : base(workspaceController, workspaceId, pageData)
     {
         _serviceProvider = serviceProvider;
         _connection = serviceProvider.GetRequiredService<IConnection>();
@@ -52,6 +60,7 @@ public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, IL
         _workspaceController = workspaceController;
 
         CollectionGroupId = collectionGroupId;
+        IsDefaultCollection = isDefaultCollection;
 
         // Detect collection type and create delete context menu item
         var collectionGroup = CollectionGroup.Load(_connection.Db, CollectionGroupId);
@@ -77,7 +86,11 @@ public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, IL
         });
         
         // Set additional context menu items
-        AdditionalContextMenuItems = [deleteContextMenuItem];
+        AdditionalContextMenuItems = isDefaultCollection || moveBy is null
+            ? [deleteContextMenuItem]
+            : [CreateMoveContextMenuItem(Language.SpineLoadoutMenu_MoveUp, IconValues.ArrowUp, () => moveBy(collectionGroupId, -1)),
+               CreateMoveContextMenuItem(Language.SpineLoadoutMenu_MoveDown, IconValues.ArrowDown, () => moveBy(collectionGroupId, 1)),
+               deleteContextMenuItem];
         
         this.WhenActivated(d =>
         {
@@ -89,6 +102,13 @@ public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, IL
 
     }
     
+    private static IContextMenuItem CreateMoveContextMenuItem(string header, IconValue icon, Action move) => new ContextMenuItem
+    {
+        Header = header,
+        Icon = icon,
+        Command = ReactiveCommand.Create(move),
+    };
+
     private IContextMenuItem CreateDeleteContextMenuItem()
     {
         var deleteCommand = CreateDeleteCommand();

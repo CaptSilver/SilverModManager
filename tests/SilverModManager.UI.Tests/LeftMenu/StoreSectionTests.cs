@@ -110,6 +110,8 @@ public class StoreSectionTests(IServiceProvider provider) : AUiTest(provider)
         public ILeftMenuItemViewModel LeftMenuItemHealthCheck { get; } = Item("Health item");
         public ILeftMenuItemViewModel LeftMenuItemTools { get; } = Item("Tools item");
         public ILeftMenuItemViewModel? LeftMenuItemExternalChanges => null;
+        public void MoveCollection(int fromIndex, int toIndex) { }
+        public bool IsCollectionMovable(int index) => false;
     }
 
     private static ILeftMenuItemViewModel StoreItem(string text) => new LeftMenuItemDesignViewModel { Text = new StringComponent(text), Icon = IconValues.Download };

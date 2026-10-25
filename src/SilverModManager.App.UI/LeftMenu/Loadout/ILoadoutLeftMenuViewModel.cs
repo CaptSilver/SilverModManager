@@ -7,6 +7,15 @@ public interface ILoadoutLeftMenuViewModel : ILeftMenuViewModel
 {
     public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems { get; }
     
+    /// <summary>
+    /// Moves the collection at <paramref name="fromIndex"/> of <see cref="LeftMenuCollectionItems"/> to
+    /// <paramref name="toIndex"/> and saves the order. Both must be <see cref="IsCollectionMovable"/>.
+    /// </summary>
+    public void MoveCollection(int fromIndex, int toIndex);
+
+    /// <summary>Whether the entry at <paramref name="index"/> of <see cref="LeftMenuCollectionItems"/> is a collection that can be dragged.</summary>
+    public bool IsCollectionMovable(int index);
+
     public bool HasSingleCollection { get; }
     
     public IApplyControlViewModel ApplyControlViewModel { get; }

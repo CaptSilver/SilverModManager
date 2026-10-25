@@ -14,6 +14,7 @@ public static class ServiceExtensions
             .AddSettings<AlertSettings>()
             .AddSettings<LoadoutSpineOrderSettings>()
             .AddSettings<MyGamesOrderSettings>()
+            .AddSettings<LoadoutCollectionOrderSettings>()
             .AddSettings<StoreSortSettings>()
             .AddSettings<BehaviorSettings>()
             .AddSettings<UpdaterSettings>()

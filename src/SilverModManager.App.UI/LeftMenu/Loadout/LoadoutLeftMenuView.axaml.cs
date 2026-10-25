@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
+using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.Collections;
 using ReactiveUI;
@@ -54,6 +55,13 @@ public partial class LoadoutLeftMenuView : ReactiveUserControl<ILoadoutLeftMenuV
                 .BindTo(this, x => x.CollectionItems.ItemsSource)
                 .DisposeWith(disposables);
             
+            // Dragging an installed collection reorders the list the menu is bound to; the view model decides what may move.
+            var reorderDrag = new SerialDisposable().DisposeWith(disposables);
+            this.WhenAnyValue(x => x.ViewModel)
+                .WhereNotNull()
+                .Subscribe(vm => reorderDrag.Disposable = new VerticalReorderDrag(CollectionItems, LeftMenuScroller, vm.IsCollectionMovable, vm.MoveCollection))
+                .DisposeWith(disposables);
+
             this.OneWayBind(ViewModel, vm => vm.HasSingleCollection, view => view.LoadoutItem.IsVisible, input => !input)
                 .DisposeWith(disposables);
             

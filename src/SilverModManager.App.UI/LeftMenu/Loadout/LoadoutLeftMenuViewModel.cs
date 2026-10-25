@@ -54,8 +54,8 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
     [Reactive] public partial bool HasSingleCollection { get; private set; } = true;
     public IApplyControlViewModel ApplyControlViewModel { get; }
 
-    private ReadOnlyObservableCollection<ILeftMenuItemViewModel> _leftMenuCollectionItems = new([]);
-    public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems => _leftMenuCollectionItems;
+    private readonly LoadoutCollectionList _collectionList;
+    public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems => _collectionList.Items;
     
     [Reactive] private partial int NewDownloadModelCount { get; set; }
 
@@ -75,7 +75,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
         var gameRunningTracker = serviceProvider.GetRequiredService<GameRunningTracker>();
         var logger = serviceProvider.GetRequiredService<ILogger<LoadoutLeftMenuViewModel>>();
 
-        var collectionItemComparer = new LeftMenuCollectionItemComparer();
+        _collectionList = new LoadoutCollectionList(settingsManager, loadoutContext.LoadoutId);
         var collectionDownloader = serviceProvider.GetRequiredService<CollectionDownloader>();
 
         var loadout = Sdk.Loadouts.Loadout.Load(conn.Db, loadoutContext.LoadoutId.Value);
@@ -165,7 +165,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
             });
 
         // Collections
-        var collectionItemsObservable = ObserveCollectionItems(conn, collectionDownloader, loadout, workspaceController, WorkspaceId, serviceProvider);
+        var collectionItemsObservable = ObserveCollectionItems(conn, collectionDownloader, loadout, workspaceController, WorkspaceId, serviceProvider, _collectionList.MoveBy);
         
         // Health Check
         LeftMenuItemHealthCheck = new HealthCheckLeftMenuItemViewModel(
@@ -258,11 +258,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
                     .SubscribeWithErrorLogging(item => LeftMenuItemExternalChanges = item)
                     .DisposeWith(disposable);
 
-                collectionItemsObservable
-                    .MergeChangeSets(collectionRevisionsObservable)
-                    .OnUI()
-                    .SortAndBind(out _leftMenuCollectionItems, collectionItemComparer)
-                    .Subscribe()
+                _collectionList.Bind(collectionItemsObservable.MergeChangeSets(collectionRevisionsObservable))
                     .DisposeWith(disposable);
 
                 var previousCount = 0;
@@ -304,6 +300,12 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
         );
     }
 
+    /// <inheritdoc/>
+    public void MoveCollection(int fromIndex, int toIndex) => _collectionList.Move(fromIndex, toIndex);
+
+    /// <inheritdoc/>
+    public bool IsCollectionMovable(int index) => _collectionList.IsMovable(index);
+
     /// <summary>The loadout's collections as menu items: each opens its own page, or the loadout page scoped to it.</summary>
     internal static IObservable<IChangeSet<ILeftMenuItemViewModel, EntityId>> ObserveCollectionItems(
         IConnection conn,
@@ -311,8 +313,10 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
         Sdk.Loadouts.Loadout.ReadOnly loadout,
         IWorkspaceController workspaceController,
         WorkspaceId workspaceId,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        Action<CollectionGroupId, int>? moveBy = null)
     {
+        var defaultCollection = LoadoutCollectionOrder.DefaultCollectionOf(conn.Db, loadout.LoadoutId);
         return CollectionGroup.ObserveAll(conn)
             .FilterImmutable(f => f.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadout.LoadoutId)
             .FilterOnObservable(group =>
@@ -353,7 +357,9 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
                     workspaceId,
                     pageData,
                     serviceProvider,
-                    collection.CollectionGroupId
+                    collection.CollectionGroupId,
+                    collection.CollectionGroupId == defaultCollection,
+                    moveBy
                 )
                 {
                     Text = new StringComponent(initialValue: collection.AsLoadoutItemGroup().AsLoadoutItem().Name, LoadoutItem.Observe(conn, collection).Select(x => x.Name)),
@@ -364,30 +370,4 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
             .Transform(ILeftMenuItemViewModel (item) => item);
     }
 
-}
-
-file class LeftMenuCollectionItemComparer : IComparer<ILeftMenuItemViewModel>
-{
-    public int Compare(ILeftMenuItemViewModel? x, ILeftMenuItemViewModel? y)
-    {
-        if (x is null && y is null) return 0;
-        if (x is null) return -1;
-        if (y is null) return 1;
-
-        return (x, y) switch
-        {
-            (CollectionLeftMenuItemViewModel a, CollectionLeftMenuItemViewModel b) => Compare(a, b),
-            (CollectionLeftMenuItemViewModel, _) => -1,
-            (_, CollectionLeftMenuItemViewModel) => 1,
-            ({ } a, { } b) => string.Compare(a.Text.Value.Value, b.Text.Value.Value, StringComparison.Ordinal),
-            _ => 0,
-        };
-    }
-
-    private static int Compare(CollectionLeftMenuItemViewModel a, CollectionLeftMenuItemViewModel b)
-    {
-        var res = a.IsCollectionReadOnly.CompareTo(b.IsCollectionReadOnly);
-        if (res != 0) return res;
-        return a.CollectionGroupId.Value.CompareTo(b.CollectionGroupId.Value);
-    }
 }
