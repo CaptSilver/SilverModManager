@@ -8,5 +8,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/box.sh"
 box_reexec "${BASH_SOURCE[0]}" "$@"
 
 cd "$root"
+run_low_priority
 export_dotnet_env
 dotnet build SilverModManager.App.sln "$@"

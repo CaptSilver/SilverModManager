@@ -33,6 +33,20 @@ box_reexec() {
     exec distrobox enter "$box" -- bash -lc "cd $(printf %q "$root") && $(printf %q "$script") $args"
 }
 
+# Builds and test runs share the machine with someone using it. Lowest IO priority and a high
+# nice level keep the desktop and games responsive; the run just takes longer while something
+# else is busy. Children inherit both, so dotnet, MSBuild and every test host run the same way.
+# SILVER_NICE sets the nice level (default 15); 0 leaves priority alone.
+run_low_priority() {
+    local level="${SILVER_NICE:-15}"
+    (( level > 0 )) || return 0
+    # A machine that refuses either still builds, just at normal priority, so warn and go on.
+    renice -n "$level" -p $$ >/dev/null || echo "warning: could not lower the CPU priority of this run" >&2
+    if command -v ionice >/dev/null; then
+        ionice -c 2 -n 7 -p $$ || echo "warning: could not lower the IO priority of this run" >&2
+    fi
+}
+
 # Nothing MSBuild starts should outlive the run. Directory.Build.rsp already turns off
 # node reuse; the variable keeps it off under -noAutoResponse, and the MSBuild server is
 # a separate resident process the response file doesn't cover.

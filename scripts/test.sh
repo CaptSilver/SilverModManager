@@ -14,6 +14,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/box.sh"
 box_reexec "${BASH_SOURCE[0]}" "$@"
 
 cd "$root"
+run_low_priority
 export_dotnet_env
 export QT_QPA_PLATFORM=offscreen
 
@@ -44,6 +45,9 @@ for arg in "$@"; do
     esac
 done
 
+# Left alone, the whole suite starts one test host per project at once, on top of the build.
+# SILVER_TEST_MODULES caps how many run together (default 8).
 dotnet test "${target[@]}" --ignore-exit-code 8 \
+    --max-parallel-test-modules "${SILVER_TEST_MODULES:-8}" \
     -p:XunitArgs="--filter-not-trait RequiresNetworking=True --filter-not-trait RequiresApiKey=True --filter-not-trait RequiresProton=True --filter-not-trait RequiresSecretService=True --filter-not-trait FlakeyTest=True" \
     "$@"
