@@ -19,6 +19,24 @@
             <StackPanel x:Name="LeftMenuStack">
                 <items:LeftMenuItemView x:Name="LibraryItem" />
 
+                <!-- stores section -->
+                <StackPanel x:Name="StoresSection">
+                    <Separator />
+                    <Expander HorizontalAlignment="Stretch" IsExpanded="True">
+                        <Expander.Header>
+                            <TextBlock x:Name="StoresSectionText"
+                                       Theme="{StaticResource BodySMSemiTheme}" />
+                        </Expander.Header>
+                        <ItemsControl x:Name="StoreItems">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="{StaticResource Spacing-0.5}" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </Expander>
+                </StackPanel>
+
                 <!-- installed mods section -->
                 <StackPanel>
                     <Separator />
@@ -37,8 +55,6 @@
                                 </ItemsControl.ItemsPanel>
                             </ItemsControl>
                             <items:LeftMenuItemView x:Name="NewCollection" />
-                            <items:LeftMenuItemView x:Name="ThunderstoreItem" />
-                            <items:LeftMenuItemView x:Name="NexusModsItem" />
                         </StackPanel>
                     </Expander>
                 </StackPanel>

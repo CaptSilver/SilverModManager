@@ -27,8 +27,18 @@ public class LoadoutLeftMenuDesignViewModel : AViewModel<ILoadoutLeftMenuViewMod
         Icon = IconValues.FormatAlignJustify,
     };
 
-    public ILeftMenuItemViewModel? LeftMenuItemThunderstore { get; } = null;
-    public ILeftMenuItemViewModel? LeftMenuItemNexusMods { get; } = null;
+    public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuStoreItems { get; } = new([
+        new LeftMenuItemDesignViewModel
+        {
+            Text = new StringComponent("Nexus Mods"),
+            Icon = IconValues.Download,
+        },
+        new LeftMenuItemDesignViewModel
+        {
+            Text = new StringComponent("Thunderstore"),
+            Icon = IconValues.Download,
+        },
+    ]);
 
     public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; } = null!;
 

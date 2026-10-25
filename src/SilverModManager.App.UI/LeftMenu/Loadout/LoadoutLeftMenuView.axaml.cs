@@ -26,16 +26,11 @@ public partial class LoadoutLeftMenuView : ReactiveUserControl<ILoadoutLeftMenuV
             this.OneWayBind(ViewModel, vm => vm.LeftMenuItemLoadout, view => view.LoadoutItem.ViewModel)
                 .DisposeWith(disposables);
 
-            this.OneWayBind(ViewModel, vm => vm.LeftMenuItemThunderstore, view => view.ThunderstoreItem.ViewModel)
-                .DisposeWith(disposables);
-
-            this.OneWayBind(ViewModel, vm => vm.LeftMenuItemThunderstore, view => view.ThunderstoreItem.IsVisible, item => item is not null)
-                .DisposeWith(disposables);
-
-            this.OneWayBind(ViewModel, vm => vm.LeftMenuItemNexusMods, view => view.NexusModsItem.ViewModel)
-                .DisposeWith(disposables);
-
-            this.OneWayBind(ViewModel, vm => vm.LeftMenuItemNexusMods, view => view.NexusModsItem.IsVisible, item => item is not null)
+            this.WhenAnyValue(x => x.ViewModel)
+                .WhereNotNull()
+                .Select(vm => vm.LeftMenuStoreItems)
+                .Do(items => StoresSection.IsVisible = items.Count > 0)
+                .BindTo(this, x => x.StoreItems.ItemsSource)
                 .DisposeWith(disposables);
 
             this.OneWayBind(ViewModel, vm => vm.LeftMenuItemNewCollection, view => view.NewCollection.ViewModel)
@@ -62,6 +57,7 @@ public partial class LoadoutLeftMenuView : ReactiveUserControl<ILoadoutLeftMenuV
             this.OneWayBind(ViewModel, vm => vm.HasSingleCollection, view => view.LoadoutItem.IsVisible, input => !input)
                 .DisposeWith(disposables);
             
+            StoresSectionText.Text = Language.LeftMenu_Label_Stores;
             InstalledModsSectionText.Text = Language.LeftMenu_Label_Installed_Mods;
             UtilitiesSectionText.Text = Language.LeftMenu_Label_Utilities;
         });

@@ -2008,6 +2008,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Stores.
+        /// </summary>
+        public static string LeftMenu_Label_Stores {
+            get {
+                return ResourceManager.GetString("LeftMenu_Label_Stores", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Utilities.
         /// </summary>
         public static string LeftMenu_Label_Utilities {

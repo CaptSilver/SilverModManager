@@ -872,6 +872,9 @@ To apply changes or launch the game again, please close the game first.</value>
     <data name="LeftMenu_Label_Installed_Mods" xml:space="preserve">
         <value>Installed</value>
     </data>
+    <data name="LeftMenu_Label_Stores" xml:space="preserve">
+        <value>Stores</value>
+    </data>
     <data name="LeftMenu_Label_Utilities" xml:space="preserve">
         <value>Utilities</value>
     </data>
