@@ -47,7 +47,7 @@ public static class FromSoftPaths
         => InstallationRoot(layout, settings, fileSystem, installationFolder) / "cleanup";
 
     /// <summary>
-    /// Whether the path is inside the game's subfolder, which the app never writes to. Compared without regard
+    /// Whether the path is inside the game's subfolder, which only the confirmed cleanup writes to. Compared without regard
     /// to case, as Windows would.
     /// </summary>
     public static bool IsInGameFolder(FromSoftGameLayout layout, GamePath path)

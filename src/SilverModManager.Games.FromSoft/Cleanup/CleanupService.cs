@@ -22,7 +22,8 @@ namespace SilverModManager.Games.FromSoft.Cleanup;
 
 /// <param name="Done">The steps that ran, in order.</param>
 /// <param name="Failure">Why the cleanup stopped, or null when every step ran.</param>
-public sealed record CleanupResult(ImmutableArray<CleanupStep> Done, string? Failure)
+/// <param name="RestoreRecordFolder">The folder holding the record of the links that were removed, or null when none were.</param>
+public sealed record CleanupResult(ImmutableArray<CleanupStep> Done, string? Failure, string? RestoreRecordFolder = null)
 {
     public bool Succeeded => Failure is null;
 }
@@ -36,11 +37,12 @@ public sealed class CleanupService(
     IFileSystem fileSystem,
     IFileHashesService fileHashes,
     IImmutableFlagProbe immutableProbe,
+    ElevatedCommandRunner elevated,
     ISteamLaunchOptionWriter launchOptions,
     IFileStore fileStore,
     IConnection connection,
     IGameLaunchSession launchSession,
-    ILogger<CleanupService> logger)
+    ILogger<CleanupService> logger) : ICleanupFixService
 {
     private const string LinksRecord = "links.json";
 
@@ -89,19 +91,20 @@ public sealed class CleanupService(
         if (!current.SameSteps(confirmed))
             return Refused("The game folder has changed since the steps were shown. Plan again and confirm the new steps.");
 
-        if (current.Steps.FirstOrDefault(s => s.Kind == CleanupStepKind.UserCommand) is { } command)
-            return Refused($"{GameOf(loadout.InstallationInstance).Cleanup.Launcher} is still immutable, so nothing was changed. {command.Description}");
+        if (current.Steps.FirstOrDefault(s => s.Kind == CleanupStepKind.Privileged) is { } command)
+            return Refused($"{command.Source} is still immutable, so nothing was changed. {command.Description}");
 
         if (current.Steps.FirstOrDefault(s => s.IsBlocked) is { } blocked)
             return Refused($"Nothing was changed: {blocked.BlockedReason}.");
 
         var gameFolder = GameFolderOf(loadout);
+        string? recordFolder;
         try
         {
             // Both come before the first removal: the files are only in the game folder until they are in the
             // loadout, and the link targets are only known while the links exist.
             await AddConfigFiles(loadout, gameFolder, current.Steps.Where(s => s.Kind == CleanupStepKind.Copy), cancellationToken);
-            await RecordLinks(installation, gameFolder, current.Steps.Where(s => s.Kind == CleanupStepKind.Delete));
+            recordFolder = await RecordLinks(installation, gameFolder, current.Steps.Where(s => s.Kind == CleanupStepKind.Delete));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -114,13 +117,70 @@ public sealed class CleanupService(
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (step.Kind != CleanupStepKind.Copy && Run(installation, loadout, gameFolder, step) is { } failure)
-                return new CleanupResult(done.ToImmutable(), failure);
+                return new CleanupResult(done.ToImmutable(), failure, recordFolder);
 
             logger.LogInformation("Cleanup step done: {Step}", step.Description);
             done.Add(step);
         }
 
-        return new CleanupResult(done.ToImmutable(), null);
+        return new CleanupResult(done.ToImmutable(), null, recordFolder);
+    }
+
+    /// <summary>
+    /// The Fix button: runs the privileged step of <paramref name="confirmed"/> (the user's password prompt, or
+    /// <paramref name="askUserToRun"/> when the app cannot ask for it), plans again, and applies the result only
+    /// when it is exactly the confirmed steps without the privileged one. A different plan is handed back instead
+    /// of applied, so the user never confirms one list and gets another.
+    /// </summary>
+    public async Task<CleanupFixOutcome> FixAsync(Loadout.ReadOnly loadout, CleanupPlan confirmed, ManualCommandPrompt askUserToRun, CancellationToken cancellationToken = default)
+    {
+        var installation = loadout.InstallationInstance;
+        if (launchSession.IsRunning(installation))
+            return new CleanupFixOutcome(CleanupFixStatus.Cancelled, Message: $"{installation.Game.DisplayName} is running or being launched, so its launch lock is held. Close it and try again.");
+
+        var gameFolder = GameFolderOf(loadout);
+        var cleared = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var step in confirmed.Steps.Where(s => s.Kind == CleanupStepKind.Privileged))
+        {
+            if (await ClearImmutableAsync(gameFolder, step, askUserToRun, cancellationToken) is { } stopped) return stopped;
+            cleared.Add(step.RequiredSource);
+        }
+
+        // A step that only waited for a file to lose its attribute loses its blocked mark; any other blocked step
+        // must still be blocked in the new plan.
+        var expected = confirmed.Steps
+            .Where(s => s.Kind != CleanupStepKind.Privileged)
+            .Select(s => s.Target is { } target && cleared.Contains(target) ? s with { BlockedReason = null } : s);
+        var rebuilt = Plan(loadout);
+        if (!rebuilt.Steps.SequenceEqual(expected)) return new CleanupFixOutcome(CleanupFixStatus.PlanChanged, NewPlan: rebuilt);
+
+        return new CleanupFixOutcome(CleanupFixStatus.Applied, await ApplyAsync(loadout, rebuilt, cancellationToken));
+    }
+
+    /// <summary>Returns why the step did not clear the attribute, or null once the file is no longer immutable.</summary>
+    private async Task<CleanupFixOutcome?> ClearImmutableAsync(AbsolutePath gameFolder, CleanupStep step, ManualCommandPrompt askUserToRun, CancellationToken cancellationToken)
+    {
+        var command = step.RequiredCommand;
+        var file = fileSystem.FromUnsanitizedFullPath(command.TargetPath);
+        if (!immutableProbe.IsImmutable(file)) return null;
+
+        var result = await elevated.RunAsync(gameFolder.GetFullPath(), command, cancellationToken);
+        if (result.Outcome == ElevatedOutcome.Cancelled)
+            return new CleanupFixOutcome(CleanupFixStatus.Cancelled, Message: "The password dialog was dismissed, so nothing was changed.");
+
+        string? why = result.Detail;
+        if (result.Outcome == ElevatedOutcome.Succeeded)
+        {
+            if (!immutableProbe.IsImmutable(file)) return null;
+            why = "The command ran but the file is still immutable";
+        }
+
+        logger.LogWarning("Could not clear the immutable attribute of {File} from the app: {Why}", file, why);
+        var shell = $"sudo chattr -i {SteamLaunchOptionLine.ShellQuote(command.TargetPath)}";
+        var proceed = await askUserToRun(shell, why, () => !immutableProbe.IsImmutable(file), cancellationToken);
+        return proceed && !immutableProbe.IsImmutable(file)
+            ? null
+            : new CleanupFixOutcome(CleanupFixStatus.Cancelled, Message: $"{step.Source} is still immutable, so nothing was changed.");
     }
 
     private static CleanupResult Refused(string reason) => new([], reason);
@@ -196,9 +256,10 @@ public sealed class CleanupService(
 
     /// <summary>
     /// Writes the name and target of every link a step is about to remove, merged with what earlier runs recorded,
-    /// so the graphics hook can be set up again through the overlay once it is known how.
+    /// so the graphics hook can be set up again through the overlay once it is known how. Returns the folder the
+    /// record is in, or null when no link is removed.
     /// </summary>
-    private async Task RecordLinks(GameInstallation installation, AbsolutePath gameFolder, IEnumerable<CleanupStep> deletes)
+    private async Task<string?> RecordLinks(GameInstallation installation, AbsolutePath gameFolder, IEnumerable<CleanupStep> deletes)
     {
         var inventory = GameFolderInventory.Take(gameFolder).ToDictionary(e => e.Path, StringComparer.Ordinal);
         var links = deletes
@@ -207,7 +268,7 @@ public sealed class CleanupService(
             .Where(e => e.Kind == InventoryKind.Link)
             .Select(e => new RemovedLink(e.Path, e.LinkTarget ?? throw new InvalidOperationException($"The link {e.Path} was listed without its target.")))
             .ToArray();
-        if (links.Length == 0) return;
+        if (links.Length == 0) return null;
 
         var layout = GameOf(installation).Layout;
         var folder = FromSoftPaths.CleanupFolder(layout, settings.Get<FromSoftSettings>(), fileSystem, FromSoftPaths.InstallationFolderName(layout, installation.LocatorResult));
@@ -220,6 +281,7 @@ public sealed class CleanupService(
 
         folder.CreateDirectory();
         await File.WriteAllTextAsync(record.GetFullPath(), JsonSerializer.Serialize(all.OrderBy(l => l.Name, StringComparer.Ordinal), RecordOptions));
+        return folder.GetFullPath();
     }
 
     /// <summary>Runs one step that changes the folder or Steam's config. Returns why it failed, or null.</summary>

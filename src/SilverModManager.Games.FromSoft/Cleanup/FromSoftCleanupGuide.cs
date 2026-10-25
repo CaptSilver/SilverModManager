@@ -21,7 +21,7 @@ public sealed class FromSoftCleanupGuide(CleanupService service) : IGameCleanupG
         if (plan.Steps.Any(s => s.Acts))
         {
             lines.Add("");
-            lines.Add("Nothing is changed from this window. To list the folder and run the steps, use:");
+            lines.Add("Nothing is changed from this window; the Fix button on the Health Check entry runs these steps after you confirm them. To list the folder and run them from a terminal, use:");
             lines.Add($"silvermod {verb} --apply --loadout {SteamLaunchOptionLine.ShellQuote(loadout.Name)}");
             lines.Add("It prints everything first and applies it once you run it again with --yes.");
             if (plan.Steps.Any(s => s.Kind == CleanupStepKind.ReplaceLaunchOption))

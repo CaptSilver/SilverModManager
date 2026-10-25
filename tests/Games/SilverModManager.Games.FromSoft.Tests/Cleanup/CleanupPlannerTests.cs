@@ -90,23 +90,52 @@ public class CleanupPlannerTests
     }
 
     [Fact]
-    public void AnImmutableLauncherComesFirstAsACommandForTheUserAndBlocksTheRestore()
+    public void AnImmutableLauncherComesFirstAsAPrivilegedStepAndBlocksTheRestore()
     {
         var plan = Build(Input(ErmInstall(), immutable: true));
 
-        plan.Steps[0].Kind.Should().Be(CleanupStepKind.UserCommand);
-        plan.Steps[0].Description.Should().Contain($"sudo chattr -i '{Folder}/start_protected_game.exe'");
+        plan.Steps[0].Kind.Should().Be(CleanupStepKind.Privileged);
+        plan.Steps[0].Command.Should().Be(PrivilegedCommand.ClearImmutable($"{Folder}/start_protected_game.exe"));
+        plan.Steps[0].RequiredCommand.Argv.Should().Equal("chattr", "-i", $"{Folder}/start_protected_game.exe");
+        plan.Steps[0].Description.Should().Contain("asks for your password").And.Contain($"sudo chattr -i '{Folder}/start_protected_game.exe'");
         plan.Steps[1].Kind.Should().Be(CleanupStepKind.Move);
         plan.Steps[1].IsBlocked.Should().BeTrue();
         plan.IsBlocked.Should().BeTrue();
+        plan.Steps[0].Acts.Should().BeFalse();
     }
 
     [Fact]
-    public void ThePathInTheCommandIsQuotedAgainstQuotes()
+    public void TheShownCommandIsQuotedAgainstQuotesButTheArgvHoldsThePathAsIs()
     {
         var input = Input(ErmInstall(), immutable: true) with { GameFolder = "/steam/it's here/Game" };
 
-        Build(input).Steps[0].Description.Should().Contain(@"sudo chattr -i '/steam/it'\''s here/Game/start_protected_game.exe'");
+        var step = Build(input).Steps[0];
+
+        step.Description.Should().Contain(@"sudo chattr -i '/steam/it'\''s here/Game/start_protected_game.exe'");
+        step.RequiredCommand.Argv.Should().Equal("chattr", "-i", "/steam/it's here/Game/start_protected_game.exe");
+    }
+
+    [Fact]
+    public void NoPrivilegedStepIsPlannedForALauncherThatIsNotImmutable()
+    {
+        Build(Input(ErmInstall(), immutable: false)).Steps.Should().NotContain(s => s.Kind == CleanupStepKind.Privileged);
+    }
+
+    [Fact]
+    public void NoPrivilegedStepIsPlannedWhenTheLauncherIsNotInTheFolder()
+    {
+        var inventory = ErmInstall().Where(e => e.Path != "start_protected_game.exe").ToList();
+
+        Build(Input(inventory, immutable: true)).Steps.Should().NotContain(s => s.Kind == CleanupStepKind.Privileged);
+    }
+
+    [Fact]
+    public void TwoPlansOfTheSameFolderAreEqualWithAPrivilegedStep()
+    {
+        var first = Build(Input(ErmInstall(), immutable: true));
+        var second = Build(Input(ErmInstall(), immutable: true));
+
+        first.SameSteps(second).Should().BeTrue();
     }
 
     [Fact]

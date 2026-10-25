@@ -24,8 +24,8 @@ public class GameFolderArtifactsEmitter : AFromSoftCheckEmitter
 
         return artifacts.Level switch
         {
-            CheckLevel.Fail => [FromSoftDiagnostics.CreateGameFolderArtifacts(artifacts.Message, game.DisplayName) with { Actions = [GameCleanupActions.ShowSteps()] }],
-            CheckLevel.Warn => [FromSoftDiagnostics.CreateGameFolderArtifacts(artifacts.Message, game.DisplayName) with { Severity = DiagnosticSeverity.Warning, Actions = [GameCleanupActions.ShowSteps()] }],
+            CheckLevel.Fail => [FromSoftDiagnostics.CreateGameFolderArtifacts(artifacts.Message, game.DisplayName) with { Actions = [GameCleanupActions.Fix(), GameCleanupActions.ShowSteps()] }],
+            CheckLevel.Warn => [FromSoftDiagnostics.CreateGameFolderArtifacts(artifacts.Message, game.DisplayName) with { Severity = DiagnosticSeverity.Warning, Actions = [GameCleanupActions.Fix(), GameCleanupActions.ShowSteps()] }],
             _ => [],
         };
     }

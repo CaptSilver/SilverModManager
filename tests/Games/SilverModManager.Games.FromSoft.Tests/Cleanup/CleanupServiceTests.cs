@@ -98,8 +98,9 @@ public class CleanupServiceTests(ITestOutputHelper helper) : AEldenRingTest<Clea
         var plan = Service.Plan(loadout);
         var result = await Service.ApplyAsync(loadout, plan);
 
-        plan.Steps[0].Kind.Should().Be(CleanupStepKind.UserCommand);
+        plan.Steps[0].Kind.Should().Be(CleanupStepKind.Privileged);
         plan.Steps[0].Description.Should().Contain("sudo chattr -i").And.Contain((Game / "start_protected_game.exe").ToString());
+        plan.Steps[0].RequiredCommand.Argv.Should().Equal("chattr", "-i", (Game / "start_protected_game.exe").ToString());
         plan.Steps[1].IsBlocked.Should().BeTrue();
         result.Succeeded.Should().BeFalse();
         result.Failure.Should().Contain("immutable");

@@ -3,7 +3,7 @@ using NexusMods.Paths;
 
 namespace SilverModManager.Games.FromSoft.Cleanup;
 
-/// <summary>Reads the immutable attribute of a file. Reading is all the app does with it: clearing it needs root.</summary>
+/// <summary>Reads the immutable attribute of a file. Clearing it needs root and goes through <see cref="ElevatedCommandRunner"/>.</summary>
 public interface IImmutableFlagProbe
 {
     bool IsImmutable(AbsolutePath file);

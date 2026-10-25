@@ -13,8 +13,8 @@ using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 namespace SilverModManager.App.UI.Pages.Diagnostics;
 
 /// <summary>
-/// Shows the steps of a game's guided cleanup as a list. It runs nothing: the steps change the game folder, so they
-/// are run from the command line after reading them.
+/// Shows the steps of a game's guided cleanup as a list. It runs nothing; <see cref="FixCleanupActionHandler"/> runs
+/// them after the user confirms, and the command line runs them with --apply.
 /// </summary>
 [UsedImplicitly]
 public sealed class ShowCleanupStepsActionHandler(IServiceProvider serviceProvider, IWindowManager windowManager) : IDiagnosticActionHandler

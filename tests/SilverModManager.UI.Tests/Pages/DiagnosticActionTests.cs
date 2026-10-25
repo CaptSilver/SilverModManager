@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Reactive.Linq;
+using Avalonia.Threading;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,6 +17,7 @@ using SilverModManager.App.UI.Pages.Diagnostics;
 using SilverModManager.App.UI.Pages.SteamLaunchOption;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Games.FromSoft.Cleanup;
 using SilverModManager.Platform.Proton.Doctor;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -323,4 +325,186 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*no cleanup steps*");
         await windows.DidNotReceive().ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
     }
+
+    #region Fix cleanup
+
+    private static CleanupPlan PlanOf(params string[] deletes)
+        => new([..deletes.Select(d => new CleanupStep(CleanupStepKind.Delete, $"Delete {d}", d))]);
+
+    private static CleanupFixOutcome Applied(params string[] deletes)
+        => new(CleanupFixStatus.Applied, new CleanupResult([..PlanOf(deletes).Steps], null));
+
+    private FixCleanupActionHandler FixHandler(IWindowManager windows, IDiagnosticManager manager, ICleanupFixService fixer)
+    {
+        var services = new ServicesWith(Provider, (typeof(ICleanupFixService), fixer), (typeof(IOverlayController), Substitute.For<IOverlayController>()));
+        return new FixCleanupActionHandler(services, windows, manager);
+    }
+
+    private static ICleanupFixService FixerPlanning(CleanupPlan plan)
+    {
+        var fixer = Substitute.For<ICleanupFixService>();
+        fixer.Plan(Arg.Any<Loadout.ReadOnly>()).Returns(plan);
+        return fixer;
+    }
+
+    [Fact]
+    public async Task Test_FixShowsTheStepsFirst_ThenRunsThemAsAJobAndRefreshesHealthCheck()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var plan = PlanOf("a", "b");
+        var fixer = FixerPlanning(plan);
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>()).Returns(Applied("a", "b"));
+        var manager = Substitute.For<IDiagnosticManager>();
+        var windows = Answering(ButtonDefinitionId.Accept);
+        var handler = FixHandler(windows, manager, fixer);
+
+        handler.ActionId.Should().Be(GameCleanupActions.FixId);
+        await handler.ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await windows.Received(1).ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
+        await fixer.Received(1).FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Is<CleanupPlan>(p => p.SameSteps(plan)), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>());
+        await manager.Received(1).RefreshAsync(seeded.LoadoutId);
+    }
+
+    [Fact]
+    public async Task Test_FixDoesNothingWhenTheConfirmationIsCancelled()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("a"));
+        var manager = Substitute.For<IDiagnosticManager>();
+
+        await FixHandler(Answering(ButtonDefinitionId.Cancel), manager, fixer).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await fixer.DidNotReceive().FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>());
+        await manager.DidNotReceive().RefreshAsync(Arg.Any<LoadoutId>());
+    }
+
+    [Fact]
+    public async Task Test_FixShowsANewPlanForConfirmationInsteadOfApplyingIt()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var confirmed = PlanOf("a");
+        var changed = PlanOf("a", "b");
+        var fixer = FixerPlanning(confirmed);
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Is<CleanupPlan>(p => p.SameSteps(confirmed)), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>())
+            .Returns(new CleanupFixOutcome(CleanupFixStatus.PlanChanged, NewPlan: changed));
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Is<CleanupPlan>(p => p.SameSteps(changed)), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>())
+            .Returns(Applied("a", "b"));
+        var manager = Substitute.For<IDiagnosticManager>();
+        var windows = Answering(ButtonDefinitionId.Accept);
+
+        await FixHandler(windows, manager, fixer).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await windows.Received(2).ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
+        await fixer.Received(2).FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>());
+        await manager.Received(2).RefreshAsync(seeded.LoadoutId);
+    }
+
+    [Fact]
+    public async Task Test_FixStopsWhenTheNewPlanIsNotConfirmed()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("a"));
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>())
+            .Returns(new CleanupFixOutcome(CleanupFixStatus.PlanChanged, NewPlan: PlanOf("a", "b")));
+        var windows = Substitute.For<IWindowManager>();
+        windows.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>()).Returns(
+            new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept },
+            new StandardDialogResult { ButtonId = ButtonDefinitionId.Cancel });
+
+        await FixHandler(windows, Substitute.For<IDiagnosticManager>(), fixer).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await fixer.Received(1).FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Test_FixStillRefreshesWhenThePasswordDialogWasDismissed()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("a"));
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>())
+            .Returns(new CleanupFixOutcome(CleanupFixStatus.Cancelled, Message: "dismissed"));
+        var manager = Substitute.For<IDiagnosticManager>();
+
+        await FixHandler(Answering(ButtonDefinitionId.Accept), manager, fixer).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await manager.Received(1).RefreshAsync(seeded.LoadoutId);
+    }
+
+    [Fact]
+    public async Task Test_FixHasNothingToConfirmForAFolderWithNothingToDo()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf());
+        var windows = Answering(ButtonDefinitionId.Accept);
+
+        await FixHandler(windows, Substitute.For<IDiagnosticManager>(), fixer).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await windows.DidNotReceive().ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
+        await fixer.DidNotReceive().FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Test_FixPassesAPromptThatReturnsTrueOnceTheFlagIsGone()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("a"));
+        ManualCommandPrompt? prompt = null;
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Do<ManualCommandPrompt>(p => prompt = p), Arg.Any<CancellationToken>()).Returns(Applied("a"));
+        var windows = Answering(ButtonDefinitionId.Accept);
+        await FixHandler(windows, Substitute.For<IDiagnosticManager>(), fixer).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        (await prompt!("sudo chattr -i '/x'", null, () => true, CancellationToken.None)).Should().BeTrue();
+        windows.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(IWindowManager.ShowDialog)).Should().Be(1, "a cleared flag needs no dialog");
+
+        var cleared = false;
+        windows.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>()).Returns(_ =>
+        {
+            cleared = true;
+            return new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept };
+        });
+        (await prompt("sudo chattr -i '/x'", null, () => cleared, CancellationToken.None)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Test_FixPromptReturnsFalseWhenTheUserCancels()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("a"));
+        ManualCommandPrompt? prompt = null;
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Do<ManualCommandPrompt>(p => prompt = p), Arg.Any<CancellationToken>()).Returns(Applied("a"));
+        var windows = Substitute.For<IWindowManager>();
+        windows.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>()).Returns(
+            new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept },
+            new StandardDialogResult { ButtonId = ButtonDefinitionId.Cancel });
+        await FixHandler(windows, Substitute.For<IDiagnosticManager>(), fixer).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        (await prompt!("sudo chattr -i '/x'", "pkexec is not installed", () => false, CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(30))).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Test_FixPromptShowsItsDialogOnTheUiThreadWhenCalledFromTheJob()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("a"));
+        ManualCommandPrompt? prompt = null;
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Do<ManualCommandPrompt>(p => prompt = p), Arg.Any<CancellationToken>()).Returns(Applied("a"));
+        var windows = Answering(ButtonDefinitionId.Accept);
+        await FixHandler(windows, Substitute.For<IDiagnosticManager>(), fixer).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        bool? onUiThread = null;
+        var cleared = false;
+        windows.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>()).Returns(_ =>
+        {
+            onUiThread = Dispatcher.UIThread.CheckAccess();
+            cleared = true;
+            return new StandardDialogResult { ButtonId = ButtonDefinitionId.Accept };
+        });
+
+        // The job body runs on the thread pool, and Avalonia only builds windows on the UI thread.
+        (await Task.Run(() => prompt!("sudo chattr -i '/x'", "pkexec is not installed", () => cleared, CancellationToken.None)).WaitAsync(TimeSpan.FromSeconds(30))).Should().BeTrue();
+        onUiThread.Should().BeTrue();
+    }
+
+    #endregion
 }

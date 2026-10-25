@@ -46,7 +46,7 @@ public class EldenRingCheckEmittersTests(ITestOutputHelper helper) : AModdedElde
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
         diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 6));
         diagnostic.FormatDetails(ServiceProvider.GetRequiredService<IDiagnosticWriter>()).Should().Contain("dinput8.dll");
-        diagnostic.Actions.Should().Equal(GameCleanupActions.ShowSteps());
+        diagnostic.Actions.Should().Equal(GameCleanupActions.Fix(), GameCleanupActions.ShowSteps());
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class EldenRingCheckEmittersTests(ITestOutputHelper helper) : AModdedElde
         var diagnostic = (await Diagnose<GameFolderArtifactsEmitter>(loadout)).Should().ContainSingle().Subject;
 
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
-        diagnostic.Actions.Should().Equal(GameCleanupActions.ShowSteps());
+        diagnostic.Actions.Should().Equal(GameCleanupActions.Fix(), GameCleanupActions.ShowSteps());
     }
 
     [Fact]

@@ -7,11 +7,13 @@ public static class CleanupPlanText
     {
         if (plan.IsEmpty) return ["Nothing to clean up: the game folder is as Steam installed it."];
 
-        var lines = plan.Steps
-            .Select((step, index) => $"{index + 1}. {step.Description}{(step.BlockedReason is { } reason ? $" (blocked: {reason})" : "")}")
-            .ToList();
+        var lines = StepLines(plan).ToList();
 
-        if (plan.IsBlocked) lines.Add("Nothing is applied while a step is blocked. Do what the command step says, then plan again.");
+        if (plan.IsBlocked) lines.Add("Nothing is applied while a step is blocked. Clear the attribute first (the Fix button asks for your password, or run the command shown), then plan again.");
         return lines;
     }
+
+    /// <summary>The numbered steps alone, for a list the user confirms.</summary>
+    public static IEnumerable<string> StepLines(CleanupPlan plan)
+        => plan.Steps.Select((step, index) => $"{index + 1}. {step.Description}{(step.BlockedReason is { } reason ? $" (blocked: {reason})" : "")}");
 }

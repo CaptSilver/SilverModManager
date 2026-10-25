@@ -8,6 +8,8 @@ internal static class CleanupVerbs
     internal static IServiceCollection AddCleanupVerbs(this IServiceCollection services)
     {
         services.AddSingleton<CleanupService>();
+        services.AddSingleton<ICleanupFixService>(sp => sp.GetRequiredService<CleanupService>());
+        services.AddSingleton<ElevatedCommandRunner>();
         services.AddSingleton<CleanupCommand>();
         services.AddSingleton<IGameCleanupGuide, FromSoftCleanupGuide>();
         services.AddSingleton<IImmutableFlagProbe, IoctlImmutableFlagProbe>();

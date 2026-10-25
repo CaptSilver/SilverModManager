@@ -63,7 +63,7 @@ public static class EldenRingPaths
     public static AbsolutePath CleanupFolder(FromSoftSettings settings, IFileSystem fileSystem, string storeIdentifier)
         => FromSoftPaths.CleanupFolder(Layout, settings, fileSystem, storeIdentifier);
 
-    /// <summary>Whether the path is inside the <c>Game</c> folder, which the app never writes to.</summary>
+    /// <summary>Whether the path is inside the <c>Game</c> folder, which only the confirmed cleanup writes to.</summary>
     public static bool IsInGameFolder(GamePath path) => FromSoftPaths.IsInGameFolder(Layout, path);
 
     /// <summary>Whether indexing skips the path; see <see cref="FromSoftPaths.IsArchiveOrMedia"/>.</summary>

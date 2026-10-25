@@ -126,11 +126,13 @@ known. Discarding this only records that you have looked at it.
         .WithDetails("""
 {Finding}
 
-The app never writes to the game folder: mods are loaded from their own folder, and a modded session runs on an
-overlay. Files in the game folder come from an earlier mod manager or a manual install. While the game's anti-cheat
-launcher is there, starting the game online from Steam can load them.
+Mods are loaded from their own folder, and a modded session runs on an overlay, so the app does not put files in the
+game folder. These come from an earlier mod manager or a manual install. While the game's anti-cheat launcher is
+there, starting the game online from Steam can load them.
 
-Remove the mod files, or verify the game's files in Steam to restore them.
+**Fix** lists what it would restore and remove, and changes the folder only after you confirm. If the earlier manager
+marked the launcher immutable, the app asks for your password once to clear that one attribute with `chattr -i`.
+Nothing else needs root. You can also verify the game's files in Steam to restore them.
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Finding")

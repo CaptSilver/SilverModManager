@@ -68,11 +68,12 @@ public static class CleanupPlanner
         var launcher = folder.Find(launcherName);
         if (launcher is not null && input.LauncherImmutable)
         {
-            // The app never asks for root; the user runs this and the plan is built again.
+            var path = $"{input.GameFolder}/{launcher.Path}";
             yield return new CleanupStep(
-                CleanupStepKind.UserCommand,
-                $"Run this yourself, the app never uses sudo: sudo chattr -i {SteamLaunchOptionLine.ShellQuote($"{input.GameFolder}/{launcher.Path}")}",
-                launcher.Path);
+                CleanupStepKind.Privileged,
+                $"Clear the immutable attribute of {launcher.Path} (asks for your password; from a terminal: sudo chattr -i {SteamLaunchOptionLine.ShellQuote(path)})",
+                launcher.Path,
+                Command: PrivilegedCommand.ClearImmutable(path));
         }
 
         // Whatever the app's file list says of it, the launcher is the game's own, and a restored one must not be
