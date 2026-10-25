@@ -39,6 +39,12 @@ public sealed record GalleryEntry
     public Uri? Readme { get; init; }
     public Uri? Download { get; init; }
 
+    /// <summary>The author's own page for the list, when they gave one.</summary>
+    public Uri? Website { get; init; }
+
+    public DateTimeOffset? DateCreated { get; init; }
+    public DateTimeOffset? DateUpdated { get; init; }
+
     /// <summary>The xxHash64 of the <c>.wabbajack</c> file.</summary>
     public Hash? DownloadHash { get; init; }
 

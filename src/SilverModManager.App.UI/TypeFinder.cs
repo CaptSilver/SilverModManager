@@ -11,6 +11,7 @@ using SilverModManager.App.UI.Pages.FromSoftMerges;
 using SilverModManager.App.UI.Pages.FromSoftSaves;
 using SilverModManager.App.UI.Pages.Thunderstore;
 using SilverModManager.App.UI.Pages.Wabbajack;
+using SilverModManager.App.UI.Pages.WabbajackGallery;
 using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
 using SilverModManager.App.UI.Pages.LoadoutPage;
@@ -55,6 +56,7 @@ internal class TypeFinder : ITypeFinder
         typeof(ThunderstorePageContext),
         typeof(NexusModsPageContext),
         typeof(WabbajackModlistPageContext),
+        typeof(WabbajackGalleryPageContext),
 
         // workspace context
         typeof(EmptyContext),

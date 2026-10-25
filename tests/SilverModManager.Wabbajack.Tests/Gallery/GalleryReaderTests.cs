@@ -86,6 +86,40 @@ public class GalleryReaderTests
         entry.IsDownloadable.Should().BeFalse();
     }
 
+    private static GalleryEntry ReadOne(string fields)
+        => GalleryReader.ReadModlists($$"""[{ "title": "T", "game": "skyrim", "author": "A", {{fields}} }]""", "x/y").Single();
+
+    [Fact]
+    public void ReadsTheDatesAndTheWebsite()
+    {
+        var entry = ReadOne("""
+            "dateCreated": "2024-03-05T10:20:30Z",
+            "dateUpdated": "2025-07-01T00:00:00.5+02:00",
+            "links": { "websiteURL": "https://example.invalid/site", "machineURL": "m" }
+            """);
+
+        entry.DateCreated.Should().Be(new DateTimeOffset(2024, 3, 5, 10, 20, 30, TimeSpan.Zero));
+        entry.DateUpdated.Should().Be(new DateTimeOffset(2025, 7, 1, 0, 0, 0, 500, TimeSpan.FromHours(2)));
+        entry.Website.Should().Be(new Uri("https://example.invalid/site"));
+    }
+
+    [Fact]
+    public void DatesAndWebsiteThatAreMissingOrMalformedAreAbsent()
+    {
+        var missing = ReadOne("\"version\": \"1\"");
+        missing.DateCreated.Should().BeNull();
+        missing.DateUpdated.Should().BeNull();
+        missing.Website.Should().BeNull();
+
+        var junk = ReadOne("""
+            "dateCreated": "last tuesday", "dateUpdated": 12,
+            "links": { "websiteURL": "http://example.invalid/plain", "machineURL": "m" }
+            """);
+        junk.DateCreated.Should().BeNull();
+        junk.DateUpdated.Should().BeNull();
+        junk.Website.Should().BeNull();
+    }
+
     [Theory]
     [InlineData("{ \"this\": \"is an object\" }")]
     [InlineData("not json at all")]

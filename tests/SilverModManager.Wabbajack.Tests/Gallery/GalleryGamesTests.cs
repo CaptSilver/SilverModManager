@@ -33,4 +33,15 @@ public class GalleryGamesTests
     {
         GalleryGames.GameIdFor(galleryGame).Should().BeNull();
     }
+
+    [Theory]
+    [InlineData("CreationEngine.SkyrimSE", true)]
+    [InlineData("CreationEngine.Starfield", true)]
+    [InlineData("RedEngine.Cyberpunk2077", true)]
+    [InlineData("Larian.BaldursGate3", true)]
+    [InlineData("Valve.Portal", false)]
+    public void OnlyGamesTheGalleryKnowsHaveListsToBrowse(string gameId, bool expected)
+    {
+        GalleryGames.HasLists(GameId.From(gameId)).Should().Be(expected);
+    }
 }

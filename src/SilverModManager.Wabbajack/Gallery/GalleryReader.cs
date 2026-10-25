@@ -90,6 +90,9 @@ public static class GalleryReader
             Image = links is { } a ? HttpsUri(String(a, "image")) : null,
             Readme = links is { } b ? HttpsUri(String(b, "readme")) : null,
             Download = links is { } c ? HttpsUri(String(c, "download")) : null,
+            Website = links is { } w ? HttpsUri(String(w, "websiteURL")) : null,
+            DateCreated = Date(element, "dateCreated"),
+            DateUpdated = Date(element, "dateUpdated"),
             DownloadHash = metadata is { } m ? ParseHash(String(m, "Hash")) : null,
             DownloadSize = metadata is { } m1 ? ULong(m1, "Size") : null,
             ArchiveCount = metadata is { } m2 ? Int(m2, "NumberOfArchives") : null,
@@ -118,6 +121,9 @@ public static class GalleryReader
 
     private static string? String(JsonElement parent, string name)
         => Find(parent, name) is { ValueKind: JsonValueKind.String } value ? value.GetString() : null;
+
+    private static DateTimeOffset? Date(JsonElement parent, string name)
+        => DateTimeOffset.TryParse(String(parent, name), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var date) ? date : null;
 
     private static bool Bool(JsonElement parent, string name)
         => Find(parent, name) is { ValueKind: JsonValueKind.True };

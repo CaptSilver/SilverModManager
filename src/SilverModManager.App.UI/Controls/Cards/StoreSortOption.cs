@@ -18,4 +18,6 @@ public static class StoreSortLabels
     public const string RecentlyUpdated = "Recently updated";
     public const string Newest = "Newest";
     public const string Name = "Name";
+    public const string LargestDownload = "Largest download";
+    public const string SmallestDownload = "Smallest download";
 }

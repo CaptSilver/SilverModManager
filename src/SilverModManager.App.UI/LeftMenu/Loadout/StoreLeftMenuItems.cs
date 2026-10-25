@@ -15,6 +15,7 @@ internal static class StoreLeftMenuItems
             {
                 NexusModsLeftMenuItem.For(game, loadoutId, workspaceController, workspaceId),
                 ThunderstoreLeftMenuItem.For(game, loadoutId, workspaceController, workspaceId),
+                WabbajackGalleryLeftMenuItem.For(game, loadoutId, workspaceController, workspaceId),
             }
             .OfType<ILeftMenuItemViewModel>()
             .ToArray();

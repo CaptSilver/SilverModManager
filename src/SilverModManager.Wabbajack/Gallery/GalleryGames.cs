@@ -18,4 +18,7 @@ public static class GalleryGames
     /// <summary>The game of this app a gallery list is for, or null for a game it has no title for.</summary>
     public static GameId? GameIdFor(string galleryGame)
         => WabbajackGames.GameIdFor(galleryGame) ?? (BrowseOnly.TryGetValue(galleryGame, out var id) ? id : null);
+
+    /// <summary>Whether the gallery can have lists for the game, so a page for them is worth offering.</summary>
+    public static bool HasLists(GameId game) => WabbajackGames.Handles(game) || BrowseOnly.ContainsValue(game);
 }

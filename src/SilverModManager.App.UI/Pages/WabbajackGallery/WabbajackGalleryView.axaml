@@ -1,0 +1,88 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:IWabbajackGalleryViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.WabbajackGallery"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    xmlns:cards="clr-namespace:SilverModManager.App.UI.Controls.Cards"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+    x:Class="SilverModManager.App.UI.Pages.WabbajackGallery.WabbajackGalleryView">
+
+    <DockPanel Margin="24">
+        <StackPanel DockPanel.Dock="Top" Spacing="{StaticResource Spacing-4}" Margin="0 0 0 16">
+            <TextBlock Text="Wabbajack" Theme="{StaticResource HeadingSMSemiTheme}" />
+            <TextBlock x:Name="ErrorText" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                <TextBox x:Name="SearchBox" Width="320" Watermark="Search lists, authors or tags" />
+                <cards:StoreSortBox x:Name="SortBox" />
+                <controls:StandardButton x:Name="RefreshButton" Type="Secondary" Size="Toolbar" Text="Refresh" />
+                <TextBlock x:Name="RefreshedText" VerticalAlignment="Center" Opacity="0.7" />
+            </StackPanel>
+        </StackPanel>
+
+        <cards:CardGrid x:Name="ListGrid">
+            <cards:CardGrid.CardTemplate>
+                <DataTemplate x:DataType="local:WabbajackGalleryRow">
+                    <Border Classes="GridCard" Height="470">
+                        <DockPanel LastChildFill="True">
+                            <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0 8 0 0">
+                                <Button Content="{Binding InstallButtonText}" Click="OnInstallClick" HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center" IsVisible="{Binding CanInstall}" />
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+                                    <Button Grid.Column="0" Content="Readme" Click="OnReadmeClick" HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            IsVisible="{Binding ReadmeUrl, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                    <Button Grid.Column="1" Content="Website" Click="OnWebsiteClick" HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            IsVisible="{Binding WebsiteUrl, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                </Grid>
+                            </StackPanel>
+                            <!-- Clipped so a card with every line at its longest cuts the text off rather than drawing it under the buttons. -->
+                            <StackPanel Spacing="4" ClipToBounds="True">
+                                <!-- Gallery pictures are wide: a 16:9 frame at the card's width, cropped to fill. -->
+                                <cards:CardThumbnail Width="214" Height="120" Stretch="UniformToFill"
+                                                     RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                     ImageUrl="{Binding ImageUrl}" />
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"
+                                           MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding AuthorLine}" Opacity="0.7" TextTrimming="CharacterEllipsis"
+                                           IsVisible="{Binding AuthorLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding VersionLine}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"
+                                               IsVisible="{Binding VersionLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    <Border Padding="6 1" CornerRadius="8" Background="#33808080" IsVisible="{Binding IsOfficial}">
+                                        <TextBlock Text="Official" FontSize="11" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Text="{Binding SizesLine}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                                           MaxLines="2" TextTrimming="CharacterEllipsis"
+                                           IsVisible="{Binding SizesLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                <ItemsControl ItemsSource="{Binding ShownTags}" Height="22" ClipToBounds="True">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="4" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <Border Padding="6 1" CornerRadius="8" Background="#33808080">
+                                                <TextBlock Text="{Binding}" FontSize="11" MaxWidth="90" TextTrimming="CharacterEllipsis" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="{Binding Description}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
+                                           ToolTip.Tip="{Binding Description}"
+                                           IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                </DataTemplate>
+            </cards:CardGrid.CardTemplate>
+        </cards:CardGrid>
+    </DockPanel>
+
+</reactive:ReactiveUserControl>

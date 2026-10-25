@@ -31,6 +31,9 @@ public static class WabbajackGames
     /// <summary>The game of this app a modlist's <c>GameType</c> names, or null for a game it has no title for.</summary>
     public static GameId? GameIdFor(string gameType) => Games.TryGetValue(gameType, out var game) ? game.Id : null;
 
+    /// <summary>Whether a modlist can be built for the game.</summary>
+    public static bool Handles(GameId game) => Games.Values.Any(g => g.Id == game);
+
     /// <summary>The Nexus Mods domain the modlist's archives for <paramref name="gameType"/> are listed under.</summary>
     public static GameDomain? NexusDomainFor(string gameType) => Games.TryGetValue(gameType, out var game) ? game.Domain : null;
 }

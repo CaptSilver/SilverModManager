@@ -67,6 +67,7 @@ using SilverModManager.App.UI.Pages.SteamLaunchOption;
 using SilverModManager.App.UI.Pages.NexusCatalog;
 using SilverModManager.App.UI.Pages.Thunderstore;
 using SilverModManager.App.UI.Pages.Wabbajack;
+using SilverModManager.App.UI.Pages.WabbajackGallery;
 using SilverModManager.App.UI.Pages.TextEdit;
 using SilverModManager.App.UI.Pages.Tools;
 using SilverModManager.App.UI.Settings;
@@ -211,6 +212,9 @@ public static class Services
             .AddView<WabbajackModlistView, IWabbajackModlistViewModel>()
             .AddViewModel<WabbajackModlistViewModel, IWabbajackModlistViewModel>()
             .AddSingleton<IWabbajackModlistService, WabbajackModlistService>()
+            .AddView<WabbajackGalleryView, IWabbajackGalleryViewModel>()
+            .AddViewModel<WabbajackGalleryViewModel, IWabbajackGalleryViewModel>()
+            .AddSingleton<IWabbajackGalleryService, WabbajackGalleryService>()
             .AddView<FromSoftMergesView, IFromSoftMergesViewModel>()
             .AddViewModel<FromSoftMergesViewModel, IFromSoftMergesViewModel>()
             .AddView<FromSoftSavesView, IFromSoftSavesViewModel>()
@@ -307,6 +311,7 @@ public static class Services
             .AddSingleton<IPageFactory, ThunderstorePageFactory>()
             .AddSingleton<IPageFactory, NexusModsPageFactory>()
             .AddSingleton<IPageFactory, WabbajackModlistPageFactory>()
+            .AddSingleton<IPageFactory, WabbajackGalleryPageFactory>()
             .AddSingleton<IPageFactory, ToolsPageFactory>()
             .AddSingleton<IPageFactory, AboutPageFactory>()
             .AddSingleton<IPageFactory, TextEditorPageFactory>()
