@@ -55,36 +55,41 @@
                 </StackPanel>
             </DockPanel>
 
-            <StackPanel VerticalAlignment="Top">
-                <Border
-                    x:Name="MarkdownWrapperBorder"
-                    Margin="0,12,0,0"
-                    CornerRadius="4"
-                    BorderThickness="2"
-                    Padding="24"
-                    Background="#0D93C5FD"
-                    BorderBrush="#6693C5FD">
+            <!-- the body scrolls under the fixed header; the fix buttons are the end of the scrolled content -->
+            <ScrollViewer x:Name="BodyScrollViewer"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel VerticalAlignment="Top">
+                    <Border
+                        x:Name="MarkdownWrapperBorder"
+                        Margin="0,12,0,0"
+                        CornerRadius="4"
+                        BorderThickness="2"
+                        Padding="24"
+                        Background="#0D93C5FD"
+                        BorderBrush="#6693C5FD">
 
-                    <reactiveUi:ViewModelViewHost x:Name="MarkdownRendererViewModelViewHost" />
-                </Border>
+                        <reactiveUi:ViewModelViewHost x:Name="MarkdownRendererViewModelViewHost" />
+                    </Border>
 
-                <!-- the fixes the diagnostic offers; only actions that have a handler are listed -->
-                <ItemsControl x:Name="ActionsItemsControl" Margin="0,12,0,0">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="8" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="diagnostics:DiagnosticActionButton">
-                            <controls:StandardButton Text="{Binding Label}"
-                                                     Command="{Binding Command}"
-                                                     Type="Primary"
-                                                     Fill="Strong" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
+                    <!-- the fixes the diagnostic offers; only actions that have a handler are listed -->
+                    <ItemsControl x:Name="ActionsItemsControl" Margin="0,12,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="diagnostics:DiagnosticActionButton">
+                                <controls:StandardButton Text="{Binding Label}"
+                                                         Command="{Binding Command}"
+                                                         Type="Primary"
+                                                         Fill="Strong" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
 
         </DockPanel>
     </Grid>
