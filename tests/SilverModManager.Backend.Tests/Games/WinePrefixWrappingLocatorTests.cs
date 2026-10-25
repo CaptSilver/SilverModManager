@@ -56,7 +56,7 @@ public class WinePrefixWrappingLocatorTests
             .AddSingleton<IFileSystem>(fileSystem)
             .BuildServiceProvider();
 
-        var wrapped = new StubLocator(Substitute.For<IGameData>(), storeRoot, "42", storeUpdatePending: true, storeLastWrite: DateTimeOffset.UnixEpoch.AddDays(5), storeUpdatesInBackground: true);
+        var wrapped = new StubLocator(Substitute.For<IGameData>(), storeRoot, "42", storeUpdatePending: true, storeLastWrite: DateTimeOffset.UnixEpoch.AddDays(5), storeUpdatesInBackground: true, storeTargetBuildId: "43");
         var locator = new WinePrefixWrappingLocator(services, [(_, _, _, _) => wrapped]);
 
         var result = locator.Locate().Should().ContainSingle().Subject;
@@ -66,6 +66,7 @@ public class WinePrefixWrappingLocatorTests
         result.StoreUpdatePending.Should().BeTrue();
         result.StoreLastWrite.Should().Be(DateTimeOffset.UnixEpoch.AddDays(5));
         result.StoreUpdatesInBackground.Should().BeTrue();
+        result.StoreTargetBuildId.Should().Be("43");
     }
 
     [Fact]
@@ -206,7 +207,7 @@ public class WinePrefixWrappingLocatorTests
         public IEnumerable<GameLocatorResult> Locate() => throw new IOException("No such device");
     }
 
-    private sealed class StubLocator(IGameData game, AbsolutePath? storeRoot = null, string? storeBuildId = null, bool storeUpdatePending = false, DateTimeOffset? storeLastWrite = null, bool storeUpdatesInBackground = false) : IGameLocator
+    private sealed class StubLocator(IGameData game, AbsolutePath? storeRoot = null, string? storeBuildId = null, bool storeUpdatePending = false, DateTimeOffset? storeLastWrite = null, bool storeUpdatesInBackground = false, string? storeTargetBuildId = null) : IGameLocator
     {
         public IEnumerable<GameLocatorResult> Locate()
         {
@@ -223,6 +224,7 @@ public class WinePrefixWrappingLocatorTests
                 StoreUpdatePending = storeUpdatePending,
                 StoreLastWrite = storeLastWrite,
                 StoreUpdatesInBackground = storeUpdatesInBackground,
+                StoreTargetBuildId = storeTargetBuildId,
             };
         }
     }

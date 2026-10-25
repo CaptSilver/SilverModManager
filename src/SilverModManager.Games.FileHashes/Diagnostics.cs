@@ -217,4 +217,26 @@ Mods installed outside the app are not listed here. If a mod stops working, chec
             .AddValue<string>("UpdateAdvice")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate GameUpdateWaiting = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 9))
+        .WithTitle("Update waiting in Steam")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("{Store} has an update for {Game} that hasn't installed yet. Once it does, mods that hook the game's code may stop working until they're updated")
+        .WithDetails("""
+{WhenItInstalls}
+
+The app won't rebuild its file index while the update is pending.
+
+This note clears on its own once the update is installed.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Game")
+            .AddValue<string>("Store")
+            .AddValue<string>("WhenItInstalls")
+        )
+        .Finish();
 }

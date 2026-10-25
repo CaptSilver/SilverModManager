@@ -272,6 +272,26 @@ public class SteamLocatorTests
         result.StoreUpdatesInBackground.Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData("26161058", "26161058")]
+    [InlineData("25080141", "25827938")]
+    public void Locate_RecordsTheAppManifestTargetBuildAsStoreTargetBuildId(string buildId, string targetBuildId)
+    {
+        var result = LocateSingle(withProtonPrefix: false, buildId: buildId, targetBuildId: targetBuildId).Result;
+
+        result.StoreTargetBuildId.Should().Be(targetBuildId);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("0")]
+    public void Locate_LeavesStoreTargetBuildUnknownWhenSteamHasNoUpdateTarget(string? targetBuildId)
+    {
+        var result = LocateSingle(withProtonPrefix: false, targetBuildId: targetBuildId).Result;
+
+        result.StoreTargetBuildId.Should().BeNull();
+    }
+
     [Fact]
     public void Locate_UsesTheAppManifestsLastUpdatedAsStoreLastWrite()
     {
@@ -545,6 +565,7 @@ public class SteamLocatorTests
         string stateFlags = "4",
         string? lastUpdated = null,
         string? autoUpdateBehavior = null,
+        string? targetBuildId = null,
         string? nativePrimaryFile = null,
         bool nativeFileInstalled = false,
         ILoggerFactory? loggerFactory = null,
@@ -557,7 +578,7 @@ public class SteamLocatorTests
         WriteFile(fileSystem, steamDirectory.Combine("steam.sh"), "");
         WriteFile(fileSystem, steamDirectory.Combine("config/libraryfolders.vdf"), LibraryFolders(steamDirectory));
         WriteFile(fileSystem, libraryDirectory.Combine("libraryfolders.vdf"), LibraryFolders(steamDirectory));
-        WriteFile(fileSystem, libraryDirectory.Combine($"appmanifest_{AppId}.acf"), AppManifest(buildId, stateFlags, lastUpdated, autoUpdateBehavior: autoUpdateBehavior));
+        WriteFile(fileSystem, libraryDirectory.Combine($"appmanifest_{AppId}.acf"), AppManifest(buildId, stateFlags, lastUpdated, autoUpdateBehavior: autoUpdateBehavior, targetBuildId: targetBuildId));
         WriteFile(fileSystem, libraryDirectory.Combine("common/Game/game.exe"), "");
         if (nativeFileInstalled) WriteFile(fileSystem, libraryDirectory.Combine($"common/Game/{nativePrimaryFile}"), "");
         if (withProtonPrefix) WriteFile(fileSystem, libraryDirectory.Combine($"compatdata/{AppId}/pfx/system.reg"), "");
@@ -634,7 +655,7 @@ public class SteamLocatorTests
         }
         """)) + "\n}\n";
 
-    private static string AppManifest(string buildId, string stateFlags, string? lastUpdated = null, uint appId = AppId, string? autoUpdateBehavior = null) => $$"""
+    private static string AppManifest(string buildId, string stateFlags, string? lastUpdated = null, uint appId = AppId, string? autoUpdateBehavior = null, string? targetBuildId = null) => $$"""
         "AppState"
         {
             "appid" "{{appId}}"
@@ -646,6 +667,7 @@ public class SteamLocatorTests
             "BuildID" "{{buildId}}"
             {{(lastUpdated is null ? "" : $"\"lastupdated\" \"{lastUpdated}\"")}}
             {{(autoUpdateBehavior is null ? "" : $"\"AutoUpdateBehavior\" \"{autoUpdateBehavior}\"")}}
+            {{(targetBuildId is null ? "" : $"\"TargetBuildID\" \"{targetBuildId}\"")}}
             "InstalledDepots"
             {
                 "1091501"

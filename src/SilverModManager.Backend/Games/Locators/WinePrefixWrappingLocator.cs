@@ -105,6 +105,7 @@ internal class WinePrefixWrappingLocator : IGameLocator
             LinuxCompatabilityDataProvider = result.LinuxCompatabilityDataProvider,
             StoreRoot = result.StoreRoot,
             StoreBuildId = result.StoreBuildId,
+            StoreTargetBuildId = result.StoreTargetBuildId,
             StoreUpdatePending = result.StoreUpdatePending,
             StoreLastWrite = result.StoreLastWrite,
             StoreUpdatesInBackground = result.StoreUpdatesInBackground,

@@ -86,6 +86,7 @@ internal class SteamLocator : IGameLocator
                 Compatibility = isWindowsBuild ? new CompatibilityLayer(CompatibilityLayerKind.SteamProton, prefix.ConfigurationDirectory) : null,
                 StoreRoot = gameFinderGame.SteamPath,
                 StoreBuildId = gameFinderGame.AppManifest.BuildId.Value.ToString(),
+                StoreTargetBuildId = TargetBuildOf(gameFinderGame.AppManifest),
                 // A settled install's manifest holds FullyInstalled alone; any other flag (update required,
                 // running, paused, files missing) means the files may not match the listed build.
                 StoreUpdatePending = gameFinderGame.AppManifest.StateFlags != StateFlags.FullyInstalled,
@@ -235,6 +236,12 @@ internal class SteamLocator : IGameLocator
     /// </summary>
     internal static DateTimeOffset? LastWriteOf(AppManifest manifest)
         => manifest.LastUpdated > DateTimeOffset.UnixEpoch ? manifest.LastUpdated : null;
+
+    /// <summary>
+    /// The build Steam is updating to, or null when the manifest names none (<c>TargetBuildID</c> 0).
+    /// </summary>
+    internal static string? TargetBuildOf(AppManifest manifest)
+        => manifest.TargetBuildId.Value == 0 ? null : manifest.TargetBuildId.Value.ToString();
 
     private class LinuxCompatibilityDataProvider : ILinuxCompatabilityDataProvider
     {

@@ -95,6 +95,14 @@ public class GameLocatorResult
     public string? StoreBuildId { get; init; }
 
     /// <summary>
+    /// The build the store is moving the game to (Steam's appmanifest <c>TargetBuildID</c>), or null when
+    /// it has no update target. Equal to <see cref="StoreBuildId"/> when the game is current, which Steam
+    /// also reports for installs it left flagged as updating, so compare the two rather than testing this
+    /// alone.
+    /// </summary>
+    public string? StoreTargetBuildId { get; init; }
+
+    /// <summary>
     /// The store reports the installed files are being updated or need an update, so they may not match
     /// the build the store lists.
     /// </summary>

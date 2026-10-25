@@ -21,6 +21,7 @@ public static class Services
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, GameUpdateEmitter>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IGameUpdateCheck, GameBuildChangedCheck>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IGameUpdateCheck, GameRecentlyUpdatedCheck>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IGameUpdateCheck, GameUpdateWaitingCheck>());
         services.TryAddSingleton(TimeProvider.System);
 
         return services.AddFileHashesVerbs()
