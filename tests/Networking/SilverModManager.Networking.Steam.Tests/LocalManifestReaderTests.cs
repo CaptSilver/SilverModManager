@@ -137,4 +137,43 @@ public sealed class LocalManifestReaderTests : IDisposable
         _reader.ReadHashes(ManifestPath).Should().BeNull();
         _reader.ReadHashes(_dir / "missing.manifest").Should().BeNull();
     }
+
+    [Fact]
+    public void ReadFileList_PlainManifest_YieldsPathSizeAndHashPerFile()
+    {
+        byte[] a = [1, 2, 3];
+        byte[] b = [4, 5];
+        DepotManifestFixture.Write(ManifestPath, Depot, Manifest, [("a.bin", a), ("sub/b.bin", b)]);
+
+        var result = _reader.ReadFileList(ManifestPath)!;
+
+        result.DepotId.Should().Be(Depot);
+        result.ManifestId.Should().Be(Manifest);
+        result.Files.Select(f => (f.Path?.Replace('\\', '/'), f.Size, f.Hash)).Should().BeEquivalentTo(
+        [
+            ("a.bin", 3UL, Sha1Value.From(SHA1.HashData(a))),
+            ("sub/b.bin", 2UL, Sha1Value.From(SHA1.HashData(b))),
+        ]);
+    }
+
+    [Fact]
+    public void ReadFileList_EncryptedFilenames_YieldsHashesAndSizesWithoutPaths()
+    {
+        byte[] a = [1, 2, 3];
+        DepotManifestFixture.Write(ManifestPath, Depot, Manifest, [("a.bin", a)], encryptFilenames: true);
+
+        var file = _reader.ReadFileList(ManifestPath)!.Files.Should().ContainSingle().Subject;
+
+        file.Path.Should().BeNull();
+        file.Size.Should().Be(3);
+        file.Hash.Should().Be(Sha1Value.From(SHA1.HashData(a)));
+    }
+
+    [Fact]
+    public void ReadFileList_AFileThatIsNotAManifestIsNull()
+    {
+        File.WriteAllBytes(ManifestPath.ToString(), [0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0, 1, 2, 3, 4]);
+
+        _reader.ReadFileList(ManifestPath).Should().BeNull();
+    }
 }

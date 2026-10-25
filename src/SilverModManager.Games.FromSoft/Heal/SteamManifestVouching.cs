@@ -22,15 +22,27 @@ public interface IManifestVouching
 /// every other manifest Steam kept for the same depots: a build that is no longer installed is only listed in the
 /// manifest of its day. A manifest is matched by file hash alone, so it does not matter whether its file names are
 /// encrypted. Anything that cannot be read is skipped; not being able to vouch is an answer, not a failure.
+/// Every manifest read is also saved to <paramref name="saved"/>, and what the live manifests do not list is looked up
+/// there, so a build still vouches after Steam has deleted its manifest.
 /// </summary>
-/// <param name="source">Null when the app has no Steam manifest support, in which case nothing is ever vouched for.</param>
-public sealed class SteamManifestVouching(IDepotManifestSource? source, ILogger<SteamManifestVouching> logger) : IManifestVouching
+/// <param name="source">Null when the app has no Steam manifest support, in which case only saved manifests vouch.</param>
+/// <param name="saved">The manifests kept from earlier reads. Null keeps none.</param>
+public sealed class SteamManifestVouching(IDepotManifestSource? source, ILogger<SteamManifestVouching> logger, SavedManifestHashes? saved = null) : IManifestVouching
 {
     /// <inheritdoc />
     public ManifestMatch? Find(GameInstallation installation, Sha1Value hash)
     {
         var locator = installation.LocatorResult;
-        if (source is null || locator.Store != GameStore.Steam || locator.StoreRoot is not { } storeRoot) return null;
+        if (locator.Store != GameStore.Steam) return null;
+
+        saved?.Capture(source, installation);
+        return FindLive(installation, hash) ?? saved?.Find(locator.StoreIdentifier, hash);
+    }
+
+    private ManifestMatch? FindLive(GameInstallation installation, Sha1Value hash)
+    {
+        var locator = installation.LocatorResult;
+        if (source is null || locator.StoreRoot is not { } storeRoot) return null;
 
         var read = new HashSet<string>(StringComparer.Ordinal);
         var depots = new List<DepotId>();

@@ -66,6 +66,28 @@ internal sealed class LocalManifestReader
         }
     }
 
+    /// <summary>
+    /// Every file of a manifest with its size and hash. The names are included only when they are not encrypted.
+    /// </summary>
+    public ManifestFileList? ReadFileList(AbsolutePath manifestPath)
+    {
+        try
+        {
+            if (DepotManifest.LoadFromFile(manifestPath.ToString()) is not { } manifest) return null;
+
+            var named = !manifest.FilenamesEncrypted;
+            var files = (manifest.Files ?? [])
+                .Where(f => !IsDirectoryOrSymlink(f) && f.FileHash is { Length: 20 })
+                .Select(f => new ManifestFile(named ? f.FileName : null, f.TotalSize, Sha1Value.From(f.FileHash)))
+                .ToList();
+            return new ManifestFileList(DepotId.From(manifest.DepotID), ManifestId.From(manifest.ManifestGID), files);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or NotSupportedException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
     private static bool IsDirectoryOrSymlink(DepotManifest.FileData file) =>
         file.Flags.HasFlag(EDepotFileFlag.Directory)
         || file.Flags.HasFlag(EDepotFileFlag.Symlink)

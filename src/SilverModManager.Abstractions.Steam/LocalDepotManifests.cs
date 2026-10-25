@@ -43,10 +43,22 @@ public interface IDepotManifestCatalog : IDepotManifestSource
     /// Null when the file is missing, truncated or not a manifest.
     /// </summary>
     ManifestFileHashes? ReadFileHashes(AbsolutePath manifestPath);
+
+    /// <summary>
+    /// Every file of the manifest with its size and SHA-1, and its path where the names are readable. Like
+    /// <see cref="ReadFileHashes"/> it works without the depot key. Null when the file is missing, truncated or not a manifest.
+    /// </summary>
+    ManifestFileList? ReadFileList(AbsolutePath manifestPath);
 }
 
 /// <summary>The file hashes of one cached manifest, without the file names.</summary>
 public sealed record ManifestFileHashes(DepotId DepotId, ManifestId ManifestId, IReadOnlySet<Sha1Value> Hashes);
+
+/// <summary>One file of a manifest. <paramref name="Path"/> is null when the manifest's file names are encrypted.</summary>
+public sealed record ManifestFile(string? Path, ulong Size, Sha1Value Hash);
+
+/// <summary>The files of one cached manifest, directories and symlinks left out.</summary>
+public sealed record ManifestFileList(DepotId DepotId, ManifestId ManifestId, IReadOnlyList<ManifestFile> Files);
 
 /// <summary>
 /// The outcome of reading a manifest file from disk.

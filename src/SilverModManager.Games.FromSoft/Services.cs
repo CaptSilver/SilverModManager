@@ -19,6 +19,7 @@ using SilverModManager.Games.FromSoft.Saves;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Doctor;
 using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.ProxyConsole;
 using SilverModManager.Sdk.Settings;
 
@@ -85,9 +86,19 @@ public static class Services
                 provider.GetService<TimeProvider>(),
                 provider.GetRequiredService<ILogger<RegulationBaselines>>());
         });
+        services.AddSingleton(provider =>
+        {
+            var settings = provider.GetRequiredService<ISettingsManager>();
+            var fileSystem = provider.GetRequiredService<IFileSystem>();
+            return new SavedManifestHashes(
+                () => settings.Get<FromSoftSettings>().DataRoot.ToPath(fileSystem) / "manifest-hashes",
+                provider.GetService<TimeProvider>(),
+                provider.GetRequiredService<ILogger<SavedManifestHashes>>());
+        });
         services.AddSingleton<IManifestVouching>(provider => new SteamManifestVouching(
             provider.GetService<IDepotManifestSource>(),
-            provider.GetRequiredService<ILogger<SteamManifestVouching>>()));
+            provider.GetRequiredService<ILogger<SteamManifestVouching>>(),
+            provider.GetRequiredService<SavedManifestHashes>()));
 
         // What the merge index and planner read from a loadout
         services.AddSingleton<InstalledBuilds>()
@@ -127,5 +138,18 @@ public static class Services
         services.AddFromSoftBuild();
 
         return services;
+    }
+
+    /// <summary>
+    /// Saves the Steam manifests of managed games in the background after startup. Left out of
+    /// <see cref="AddFromSoftGames"/> so that only the process showing the window runs it.
+    /// </summary>
+    public static IServiceCollection AddSavedManifestsStartupPass(this IServiceCollection services)
+    {
+        return services.AddSingleton<IHostedService>(provider => new SavedManifestsStartupPass(
+            provider.GetRequiredService<IGameRegistry>(),
+            provider.GetService<IDepotManifestSource>(),
+            provider.GetRequiredService<SavedManifestHashes>(),
+            provider.GetRequiredService<ILogger<SavedManifestsStartupPass>>()));
     }
 }

@@ -31,4 +31,6 @@ public sealed class LocalDepotManifests : IDepotManifestCatalog
         _cache.CachedManifests(steamRoot, installPath, depot);
 
     public ManifestFileHashes? ReadFileHashes(AbsolutePath manifestPath) => _reader.ReadHashes(manifestPath);
+
+    public ManifestFileList? ReadFileList(AbsolutePath manifestPath) => _reader.ReadFileList(manifestPath);
 }

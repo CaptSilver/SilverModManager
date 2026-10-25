@@ -13,7 +13,7 @@ namespace SilverModManager.Games.FromSoft.Tests.Heal;
 /// </summary>
 public class FakeManifestSource : IDepotManifestSource
 {
-    protected sealed record Entry(DepotId Depot, ManifestId Id, byte[][] Files, bool EncryptedNames);
+    protected sealed record Entry(DepotId Depot, ManifestId Id, byte[][] Files, bool EncryptedNames, bool Garbage = false);
 
     protected readonly Dictionary<string, Entry> ByPath = [];
 
@@ -27,6 +27,16 @@ public class FakeManifestSource : IDepotManifestSource
         ByPath[path] = new Entry(DepotId.From(depot), ManifestId.From(id), files, encryptedNames);
     }
 
+    /// <summary>A file Steam cached that is not a manifest: it can be found but not read.</summary>
+    public void AddGarbage(uint depot, ulong id)
+    {
+        var path = $"/fake-depotcache/{depot}_{id}.manifest";
+        ByPath[path] = new Entry(DepotId.From(depot), ManifestId.From(id), [], false, Garbage: true);
+    }
+
+    /// <summary>Steam pruning a manifest from its cache.</summary>
+    public void Remove(uint depot, ulong id) => ByPath.Remove($"/fake-depotcache/{depot}_{id}.manifest");
+
     public bool TryGetManifestPath(AbsolutePath steamRoot, ManifestId manifestId, AbsolutePath? installPath, out AbsolutePath manifestPath)
     {
         var hit = ByPath.FirstOrDefault(e => e.Value.Id == manifestId);
@@ -38,6 +48,7 @@ public class FakeManifestSource : IDepotManifestSource
     {
         var entry = ByPath[manifestPath.ToString()];
         Reads.Add(entry.Id);
+        if (entry.Garbage) return new LocalManifestResult.Unreadable("not a manifest");
         if (entry.EncryptedNames) return new LocalManifestResult.NeedsDepotKey(entry.Depot, entry.Id);
         return new LocalManifestResult.Parsed(new Manifest
         {
@@ -66,8 +77,16 @@ public sealed class FakeManifestCatalog : FakeManifestSource, IDepotManifestCata
 
     public ManifestFileHashes? ReadFileHashes(AbsolutePath manifestPath)
     {
-        if (!ByPath.TryGetValue(manifestPath.ToString(), out var entry)) return null;
+        if (!ByPath.TryGetValue(manifestPath.ToString(), out var entry) || entry.Garbage) return null;
         Reads.Add(entry.Id);
         return new ManifestFileHashes(entry.Depot, entry.Id, entry.Files.Select(Sha1).ToHashSet());
+    }
+
+    public ManifestFileList? ReadFileList(AbsolutePath manifestPath)
+    {
+        if (!ByPath.TryGetValue(manifestPath.ToString(), out var entry) || entry.Garbage) return null;
+        Reads.Add(entry.Id);
+        return new ManifestFileList(entry.Depot, entry.Id, entry.Files
+            .Select((content, i) => new ManifestFile(entry.EncryptedNames ? null : $"file{i}.bin", (ulong)content.Length, Sha1(content))).ToArray());
     }
 }
