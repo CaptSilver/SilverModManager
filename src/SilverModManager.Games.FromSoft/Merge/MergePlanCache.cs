@@ -19,7 +19,7 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// Re-entrancy: the index is built from model accessors only, see <see cref="LoadoutMergeSources"/>.
 /// </para>
 /// </summary>
-public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore stamps)
+public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore stamps, RegulationBaselines baselines)
 {
     // A plan made in Report mode that would have kept a baseline is not what an apply needs: the apply keeps it.
     private sealed record Entry(string Key, MergePlan Plan, bool ApplyWouldKeepSomething);
@@ -33,7 +33,8 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
 
     /// <summary>
     /// The plan for the loadout as it is now. <see cref="MergeSourceMode.Apply"/> may keep a vanilla regulation under
-    /// the data root; <see cref="MergeSourceMode.Report"/> writes nothing and says what the next apply would keep.
+    /// the data root; <see cref="MergeSourceMode.Report"/> writes no vanilla and says what the next apply would keep.
+    /// Either one keeps a copy of the installed build's regulation when the install is stamped and unmodified.
     /// </summary>
     /// <exception cref="Exception">The index could not be built or a file could not be read for a reason that is not about the merge itself; a merge that can't be made is a <see cref="MergePlan.Refusal"/>.</exception>
     public MergePlan Current(Loadout.ReadOnly loadout, MergeSourceMode mode)
@@ -113,9 +114,13 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
         {
             return exception.Message;
         }
-        return BuildIdentity.Classify(stamped, identity) == BuildChangeKind.Tampered
-            ? HealPlan.TamperedRefusal(identity, traits)
-            : null;
+        if (BuildIdentity.Classify(stamped, identity) == BuildChangeKind.Tampered)
+            return HealPlan.TamperedRefusal(identity, traits);
+
+        // Planning is where an update can first be seen between a Health Check and the Apply after it, and the copy is
+        // made here even for a report: a 2 MB file costs less than losing the only copy of the build.
+        baselines.KeepBuild(loadout.InstallationInstance, stamped, identity);
+        return null;
     }
 
     private BuildIdentity Identify(Loadout.ReadOnly loadout, string gameFingerprint)

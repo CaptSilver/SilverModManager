@@ -35,7 +35,7 @@ public sealed class VouchedRegulations(IFileHashesService fileHashes, Regulation
     /// <inheritdoc />
     public IReadOnlySet<Hash> Hashes(GameInstallation installation)
     {
-        var all = new HashSet<Hash>(baselines.Known().Values);
+        var all = new HashSet<Hash>(baselines.VouchedHashes());
         all.UnionWith(FromDatabase(installation));
         if (Live(installation) is { } live) all.Add(live);
         return all;

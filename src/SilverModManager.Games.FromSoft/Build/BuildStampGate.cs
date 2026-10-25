@@ -1,3 +1,4 @@
+using SilverModManager.Games.FromSoft.Heal;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk.Loadouts;
@@ -8,9 +9,9 @@ namespace SilverModManager.Games.FromSoft.Build;
 /// Stamps the installed build the first time the game is launched through the app, so a later change to it can be
 /// told from the first one. Never refuses a launch; a build that cannot be read fails the prepare step instead of
 /// being stamped half known. A stamp that predates the regulation fields gets them from the live build once, if the
-/// install has not moved. Does nothing for another game.
+/// install has not moved. Keeps a copy of the regulation of the build it sees. Does nothing for another game.
 /// </summary>
-public sealed class BuildStampGate(IConnection connection, BuildStampStore stamps) : ILaunchGate
+public sealed class BuildStampGate(IConnection connection, BuildStampStore stamps, RegulationBaselines baselines) : ILaunchGate
 {
     /// <inheritdoc/>
     public Veto? Check(LaunchContext context) => null;
@@ -34,6 +35,9 @@ public sealed class BuildStampGate(IConnection connection, BuildStampStore stamp
         {
             await stamps.Backfill(installation, live);
         }
+
+        // Launching is where a build is seen first after a patch, so this is where its regulation is kept.
+        baselines.KeepBuild(context.Installation, stamped, live);
     }
 
     /// <inheritdoc/>

@@ -1,3 +1,4 @@
+using SilverModManager.Games.FromSoft.Heal;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Games;
@@ -6,7 +7,7 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Games.FromSoft.Build;
 
 /// <summary>Reads and writes the <see cref="FromSoftBuildStamp"/> of an installation.</summary>
-public sealed class BuildStampStore(IConnection connection, TimeProvider time)
+public sealed class BuildStampStore(IConnection connection, TimeProvider time, RegulationBaselines baselines)
 {
     /// <summary>The stamped build of the installation, or null when it was never stamped.</summary>
     public BuildIdentity? Find(GameInstallMetadataId installation)
@@ -65,12 +66,16 @@ public sealed class BuildStampStore(IConnection connection, TimeProvider time)
         if (hash is not null) tx.Add(stamp, FromSoftBuildStamp.RegulationHash, hash);
     }
 
-    /// <summary>Replaces the stamp of the loadout's installation with the build that is installed now.</summary>
-    public Task Restamp(LoadoutId loadoutId)
+    /// <summary>Replaces the stamp of the loadout's installation with the build that is installed now, and keeps a copy of its regulation.</summary>
+    public async Task Restamp(LoadoutId loadoutId)
     {
         var loadout = Loadout.Load(connection.Db, loadoutId);
         if (!loadout.IsValid()) throw new InvalidOperationException($"The loadout {loadoutId} no longer exists.");
 
-        return Record(loadout.InstallationId, BuildIdentity.Identify(loadout.InstallationInstance));
+        // Re-stamp is offered for a tampered install too, so the old stamp decides whether the file is kept.
+        var previous = Find(loadout.InstallationId);
+        var live = BuildIdentity.Identify(loadout.InstallationInstance);
+        await Record(loadout.InstallationId, live);
+        baselines.KeepBuild(loadout.InstallationInstance, previous, live);
     }
 }

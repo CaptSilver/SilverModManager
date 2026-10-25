@@ -29,6 +29,7 @@
         <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Fixtures\EldenRingInstall.cs" Link="Fixtures\FromSoft\EldenRingInstall.cs" />
         <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Fixtures\FakePe.cs" Link="Fixtures\FromSoft\FakePe.cs" />
         <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Fixtures\TreeSnapshot.cs" Link="Fixtures\FromSoft\TreeSnapshot.cs" />
+        <Compile Include="..\Games\SilverModManager.Games.FromSoft.Tests\Heal\FakeManifests.cs" Link="Fixtures\FromSoft\FakeManifests.cs" />
     </ItemGroup>
 
     <ItemGroup>

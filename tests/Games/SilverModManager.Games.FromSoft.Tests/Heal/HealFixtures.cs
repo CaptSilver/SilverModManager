@@ -18,7 +18,7 @@ public static class HealFixtures
         => BuildIds.Make(regulationVersion: version, regulationHash: Sha(blob));
 
     /// <summary>An Elden Ring installation under <paramref name="root"/>; the regulation is written only when given.</summary>
-    public static GameInstallation Game(string root, byte[]? regulation = null)
+    public static GameInstallation Game(string root, byte[]? regulation = null, AbsolutePath? storeRoot = null, params ulong[] manifestIds)
     {
         var folder = Path.Combine(root, EldenRingPaths.GameSubfolder);
         Directory.CreateDirectory(folder);
@@ -38,7 +38,8 @@ public static class HealFixtures
             Path = path,
             Store = GameStore.Steam,
             StoreIdentifier = "1245620",
-            LocatorIds = ImmutableArray<LocatorId>.Empty,
+            LocatorIds = manifestIds.Select(id => LocatorId.From(id.ToString())).ToImmutableArray(),
+            StoreRoot = storeRoot,
             Locator = Substitute.For<IGameLocator>(),
             StoreBuildId = "23850278",
         };

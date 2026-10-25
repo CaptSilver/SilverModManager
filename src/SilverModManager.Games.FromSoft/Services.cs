@@ -1,8 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Secrets;
+using SilverModManager.Abstractions.Steam;
 using SilverModManager.Games.FromSoft.Build;
 using SilverModManager.Games.FromSoft.Cleanup;
 using SilverModManager.Games.FromSoft.Diagnostics;
@@ -77,8 +79,15 @@ public static class Services
         {
             var settings = provider.GetRequiredService<ISettingsManager>();
             var fileSystem = provider.GetRequiredService<IFileSystem>();
-            return new RegulationBaselines(() => settings.Get<FromSoftSettings>().DataRoot.ToPath(fileSystem) / "baselines");
+            return new RegulationBaselines(
+                () => settings.Get<FromSoftSettings>().DataRoot.ToPath(fileSystem) / "baselines",
+                provider.GetRequiredService<IManifestVouching>(),
+                provider.GetService<TimeProvider>(),
+                provider.GetRequiredService<ILogger<RegulationBaselines>>());
         });
+        services.AddSingleton<IManifestVouching>(provider => new SteamManifestVouching(
+            provider.GetService<IDepotManifestSource>(),
+            provider.GetRequiredService<ILogger<SteamManifestVouching>>()));
 
         // What the merge index and planner read from a loadout
         services.AddSingleton<InstalledBuilds>()
@@ -96,6 +105,10 @@ public static class Services
 
         // Planning a game update's rebase and keeping the new baseline
         services.AddVerb(() => HealVerbs.Heal);
+
+        // Keeping regulations Steam shipped as the baselines of their builds
+        services.AddVerb(() => VanillaVerbs.Import)
+            .AddModule("fromsoft vanilla", "The vanilla regulations the app keeps");
 
         // Launch gates, in run order
         services.AddSingleton<IExecutableLocator, PathExecutableLocator>()
