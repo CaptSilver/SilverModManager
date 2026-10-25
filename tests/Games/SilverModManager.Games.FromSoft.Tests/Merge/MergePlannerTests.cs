@@ -38,7 +38,7 @@ public class MergePlannerTests
 
     /// <summary>A fold that concatenates its two sides and records what it was given.</summary>
     private static MergeFold Recording(List<Call> calls, Action<ICollection<IMergeNote>?>? withNotes = null) =>
-        (acc, next, vanilla, hasVanilla, baseIsGame, accName, nextName, notes, _) =>
+        (acc, next, vanilla, hasVanilla, baseIsGame, accName, nextName, notes, _, _) =>
         {
             calls.Add(new Call(S(acc), S(next), hasVanilla ? S(vanilla) : null, baseIsGame, accName, nextName, notes is not null));
             withNotes?.Invoke(notes);
@@ -49,12 +49,12 @@ public class MergePlannerTests
 
     private static Func<ProviderFile, byte[]> ByPackage => f => B(f.PackageId);
 
-    private static Func<string, IReadOnlyList<ProviderFile>, byte[]?> Vanilla(string text) => (_, _) => B(text);
+    private static Func<string, ProviderFile, byte[]?> Vanilla(string text) => (_, _) => B(text);
 
     private static readonly Func<string, byte[]> NoBase = path => throw new InvalidOperationException($"asked for the game's {path}");
 
     private static MergePlan Plan(MergePathIndex index, MergeFold fold, Func<ProviderFile, byte[]>? bytes = null,
-        Func<string, IReadOnlyList<ProviderFile>, byte[]?>? vanilla = null, Func<string, byte[]>? gameBase = null)
+        Func<string, ProviderFile, byte[]?>? vanilla = null, Func<string, byte[]>? gameBase = null)
         => MergePlanner.Plan(index, bytes ?? ByPackage, vanilla ?? Vanilla("van"), gameBase ?? NoBase, Traits, _ => fold);
 
     [Fact]
@@ -64,7 +64,7 @@ public class MergePlannerTests
             File("a", "a.tpf.dcx", 2), File("b", "a.tpf.dcx", 1),
             File("a", "b.tpf.dcx", 2), File("b", "b.tpf.dcx", 1));
         var calls = 0;
-        MergeFold fold = (_, _, _, _, _, _, _, _, _) =>
+        MergeFold fold = (_, _, _, _, _, _, _, _, _, _) =>
             calls++ == 0 ? B("ok") : throw new MergeException("cannot join");
 
         var plan = Plan(index, fold);
@@ -161,7 +161,7 @@ public class MergePlannerTests
         Plan(index, Recording(recorded), vanilla: (_, _) => { asked++; return B("van"); });
 
         recorded.Select(c => c.Vanilla).Should().Equal("van", "van");
-        asked.Should().Be(1, "the ancestor is resolved once per path");
+        asked.Should().Be(2, "the ancestor is resolved once for each contributor folded onto the leader");
     }
 
     [Fact]
@@ -173,7 +173,7 @@ public class MergePlannerTests
 
         plan.Merged.Should().BeEmpty();
         plan.Refusal.Should().Be(new MergeRefusal("t.msgbnd.dcx", MergeStrategy.FmgThreeWay,
-            "compares both mods against the vanilla file they branched from, and none is available"));
+            "b compares against the vanilla file it branched from, and none is available"));
     }
 
     [Fact]
@@ -239,7 +239,7 @@ public class MergePlannerTests
     {
         foreach (var strategy in Enum.GetValues<MergeStrategy>().Where(MergeStrategies.NeedsVanilla))
         {
-            var act = () => MergeStrategyBindings.For(strategy)([], [], [], false, false, "a", "b", null, Traits);
+            var act = () => MergeStrategyBindings.For(strategy)([], [], [], false, false, "a", "b", null, Traits, null);
             act.Should().Throw<MergeException>(strategy.ToString()).WithMessage("*needs the vanilla*");
         }
     }

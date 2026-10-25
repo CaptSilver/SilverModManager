@@ -14,12 +14,12 @@ public static class MergePlanner
     /// claims the installed build and a mod that ships a whole regulation contributes only what it authored.
     /// </summary>
     /// <param name="bytes">A contributor's file.</param>
-    /// <param name="vanilla">The file the contributors branched from, resolved once per path and only for strategies that compare against it; null when none is available.</param>
+    /// <param name="vanilla">The file a contributor branched from, asked per contributor and only for strategies that compare against it; null when none is available. Contributors built for different game builds have different answers.</param>
     /// <param name="gameBase">The installed game's own file for a path.</param>
     public static MergePlan Plan(
         MergePathIndex index,
         Func<ProviderFile, byte[]> bytes,
-        Func<string, IReadOnlyList<ProviderFile>, byte[]?> vanilla,
+        Func<string, ProviderFile, byte[]?> vanilla,
         Func<string, byte[]> gameBase,
         FromSoftFormatTraits traits)
         => Plan(index, bytes, vanilla, gameBase, traits, MergeStrategyBindings.For);
@@ -28,7 +28,7 @@ public static class MergePlanner
     internal static MergePlan Plan(
         MergePathIndex index,
         Func<ProviderFile, byte[]> bytes,
-        Func<string, IReadOnlyList<ProviderFile>, byte[]?> vanilla,
+        Func<string, ProviderFile, byte[]?> vanilla,
         Func<string, byte[]> gameBase,
         FromSoftFormatTraits traits,
         Func<MergeStrategy, MergeFold> bindings,
@@ -56,18 +56,26 @@ public static class MergePlanner
 
     private static MergedPath Merge(
         MergeCandidate candidate, MergeStrategy strategy, Func<ProviderFile, byte[]> bytes,
-        Func<string, IReadOnlyList<ProviderFile>, byte[]?> vanilla, Func<string, byte[]> gameBase,
+        Func<string, ProviderFile, byte[]?> vanilla, Func<string, byte[]> gameBase,
         FromSoftFormatTraits traits, MergeFold fold, RegulationRebase? rebase)
     {
         var path = candidate.Path;
         var takesGameBase = MergeStrategies.TakesGameBase(strategy);
         var needsVanilla = MergeStrategies.NeedsVanilla(strategy);
 
-        byte[]? ancestor = null;
+        // One ancestor per contributor that is folded onto the accumulated side. Without the game's file the leader is the
+        // accumulated side from the start and is never compared with anything.
+        var firstFolded = takesGameBase ? 0 : 1;
+        var ancestors = new byte[candidate.Contributors.Count][];
+        Array.Fill(ancestors, Array.Empty<byte>());
         if (needsVanilla)
         {
-            ancestor = vanilla(path, candidate.Contributors)
-                       ?? throw new MergeException("compares both mods against the vanilla file they branched from, and none is available");
+            for (var i = firstFolded; i < ancestors.Length; i++)
+            {
+                var contributor = candidate.Contributors[i];
+                ancestors[i] = vanilla(path, contributor)
+                               ?? throw new MergeException($"{contributor.ModName} compares against the vanilla file it branched from, and none is available");
+            }
         }
 
         var blobs = new List<byte[]>();
@@ -100,19 +108,35 @@ public static class MergePlanner
         var leader = candidate.Contributors[0].ModName;
         var notes = new List<IMergeNote>();
         var result = blobs[0];
+        // The accumulated side only starts as the game's file, so each step is told which of its rows still are.
+        var game = takesGameBase ? new GameOrigin(blobs[0], traits) : null;
+        var removedEdits = new List<(string Mod, RemovedRowEdit Row)>();
         for (var step = 0; step < blobs.Count - 1; step++)
         {
             var baseIsGame = step == 0 && takesGameBase;
-            result = fold(
-                result, blobs[step + 1], ancestor ?? [], ancestor is not null, baseIsGame,
-                baseIsGame ? MergeNames.Game : leader, owners[step + 1], notes, traits);
+            var ancestor = ancestors[step + 1 - (takesGameBase ? 1 : 0)];
+            try
+            {
+                result = fold(
+                    result, blobs[step + 1], ancestor, needsVanilla, baseIsGame,
+                    baseIsGame ? MergeNames.Game : leader, owners[step + 1], notes, traits, game);
+            }
+            catch (RemovedRowEditsException removed)
+            {
+                // The accumulated side is left as it was so the later mods are still looked at and one refusal names them all.
+                removedEdits.AddRange(removed.Rows.Select(r => (owners[step + 1], r)));
+            }
         }
+        if (removedEdits.Count > 0)
+            throw new MergeException("these rows were removed by the installed game build and mods still edit them; those mods need an update built for it:\n  "
+                                     + string.Join("\n  ", removedEdits.Select(e => $"{e.Mod}: {e.Row.EntryName} row {e.Row.RowId}")));
 
         if (rebasing is not null)
         {
             // By now the merged file is the only copy of every contributor's rows, and both ways a rebase goes wrong
             // (a merge still on the mods' old build, a dropped row) are invisible until the game is running.
-            var problems = rebasing.Verify(result, blobs[0], candidate.Contributors.Select((c, i) => (c.ModName, blobs[i + 1])).ToArray());
+            var problems = rebasing.Verify(result, blobs[0], candidate.Contributors.Select((c, i) => (c.ModName, blobs[i + 1], ancestors[i])).ToArray(),
+                notes.OfType<RowConflict>().Where(c => c.KeptIsGame).ToArray());
             if (problems.Count > 0)
                 throw new MergeException($"the merged {path} is not a faithful rebase onto the installed build:\n  "
                                          + string.Join("\n  ", problems)

@@ -52,8 +52,9 @@ public class RebaseVerifierTests
     [Fact]
     public void IgnoresRowsAModDidNotAuthor()
     {
+        // The merged copy differs from what the mod ships: the mod inherited the row, so its bytes are not owed.
         var problems = Check(
-            Rows(("A.param", [])),
+            Rows(("A.param", [(1, "w")])),
             Rows(("A.param", [(1, "v")])),
             mods: ("m", Rows(("A.param", [(1, "v")]))));
 
@@ -82,28 +83,124 @@ public class RebaseVerifierTests
     }
 
     [Fact]
-    public void KeepsRowsTheNewBaselineAdded()
+    public void ARowTheModShipsUnchangedStillCannotBeDroppedFromTheMergedFile()
     {
-        // A patch added rows to a table. They come from the baseline and must still be there after a rebase.
-        var problems = Check(
-            Rows(("A.param", [(1, "MOD")])),
-            Rows(("A.param", [(1, "v"), (99, "new-in-1.17")])),
-            mods: ("m", Rows(("A.param", [(1, "MOD")]))));
-
-        problems.Should().ContainSingle().Which.Should().Contain("99");
-    }
-
-    [Fact]
-    public void ARowTheModShipsUnchangedIsNotACommitmentOfTheBaseline()
-    {
-        // The mod ships the whole table, so it mentions every row; one it did not change is its silence, not a row the
-        // baseline contributed.
+        // The mod's silence about a row it inherited does not license dropping it: only a mod that changed or removed
+        // the row can.
         var problems = Check(
             Rows(("A.param", [])),
             Rows(("A.param", [(1, "v"), (2, "v")])),
             mods: ("m", Rows(("A.param", [(1, "v"), (2, "v")]))));
 
+        problems.Should().BeEquivalentTo(["baseline A.param row 1 was dropped by the rebase", "baseline A.param row 2 was dropped by the rebase"]);
+    }
+
+    [Fact]
+    public void ARowAModRemovedMayBeDroppedFromTheMergedFile()
+    {
+        var problems = Check(
+            Rows(("A.param", [(2, "v")])),
+            Rows(("A.param", [(1, "v"), (2, "v")])),
+            mods: ("m", Rows(("A.param", [(2, "v")]))));
+
         problems.Should().BeEmpty();
+    }
+
+    private static IReadOnlyList<string> CheckWithAncestors(
+        IReadOnlyDictionary<string, IReadOnlyDictionary<int, byte[]>> merged,
+        IReadOnlyDictionary<string, IReadOnlyDictionary<int, byte[]>> baseline,
+        IReadOnlySet<(string Table, int Id, string ModId)>? clashes = null,
+        params (string Mod, IReadOnlyDictionary<string, IReadOnlyDictionary<int, byte[]>> Rows, IReadOnlyDictionary<string, IReadOnlyDictionary<int, byte[]>> Ancestor)[] mods)
+        => RebaseVerifier.CheckAgainstAncestors(Installed, merged, baseline, mods, Installed, clashes: clashes);
+
+    [Fact]
+    public void KeepsRowsTheNewBaselineAdded()
+    {
+        // A patch added rows to a table. They come from the baseline and must still be there after a rebase.
+        var problems = CheckWithAncestors(
+            Rows(("A.param", [(1, "MOD")])),
+            Rows(("A.param", [(1, "v"), (99, "new-in-1.17")])),
+            mods: ("m", Rows(("A.param", [(1, "MOD")])), Rows(("A.param", [(1, "v")]))));
+
+        problems.Should().ContainSingle().Which.Should().Contain("99");
+    }
+
+    [Fact]
+    public void ARowThePatchChangedAndTheOlderModShipsUnchangedIsNotAuthoredByIt()
+    {
+        var problems = CheckWithAncestors(
+            Rows(("A.param", [(1, "new")])),
+            Rows(("A.param", [(1, "new")])),
+            mods: ("old", Rows(("A.param", [(1, "old")])), Rows(("A.param", [(1, "old")]))));
+
+        problems.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RowsWiderInTheBaselineThanInTheModAreComparedOnTheirCommonPrefix()
+    {
+        // Ten one-row tables are eight bytes wider in the game and in the mod's own vanilla than in the mod; the extra
+        // bytes are not an edit, so the mod neither owes the row nor licenses dropping it.
+        var baseline = Rows(("A.param", [(1, "ROW!padding")]));
+        var mod = ("m", Rows(("A.param", [(1, "ROW!")])), Rows(("A.param", [(1, "ROW!padding")])));
+
+        CheckWithAncestors(Rows(("A.param", [(1, "ROW!padding")])), baseline, mods: mod).Should().BeEmpty();
+        CheckWithAncestors(Rows(("A.param", [])), baseline, mods: mod)
+            .Should().ContainSingle().Which.Should().Contain("row 1").And.Contain("dropped");
+    }
+
+    [Fact]
+    public void AnEditOnBytesThePatchLeftAloneSurvivesAnOverlapWithAPatchEditOnOtherBytes()
+    {
+        // ancestor "ab", patch made it "Xb", mod made it "aB"; the merge carries both.
+        var problems = CheckWithAncestors(
+            Rows(("A.param", [(1, "XB")])),
+            Rows(("A.param", [(1, "Xb")])),
+            mods: ("m", Rows(("A.param", [(1, "aB")])), Rows(("A.param", [(1, "ab")]))));
+
+        problems.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AnEditThatLostItsByteInAClashIsReportedNamingTheRow()
+    {
+        // ancestor "ab", patch "Xb", mod "Zb": same byte, different value; the merge kept the game's row whole.
+        var merged = Rows(("A.param", [(1, "Xb")]));
+        var baseline = Rows(("A.param", [(1, "Xb")]));
+
+        var problems = CheckWithAncestors(merged, baseline,
+            mods: ("m", Rows(("A.param", [(1, "Zb")])), Rows(("A.param", [(1, "ab")]))));
+
+        problems.Should().ContainSingle().Which.Should().Contain("m").And.Contain("A.param").And.Contain("row 1");
+    }
+
+    [Fact]
+    public void AClashTheMergeAlreadyReportedIsNotAFailure()
+    {
+        var merged = Rows(("A.param", [(1, "Xb")]));
+        var baseline = Rows(("A.param", [(1, "Xb")]));
+
+        var problems = CheckWithAncestors(merged, baseline,
+            clashes: new HashSet<(string, int, string)> { ("A.param", 1, "m") },
+            mods: ("m", Rows(("A.param", [(1, "Zb")])), Rows(("A.param", [(1, "ab")]))));
+
+        problems.Should().BeEmpty("a mod-against-patch clash keeps the game's bytes and is reported as a warning");
+    }
+
+    [Fact]
+    public void ACurrentModDoesNotMakeADroppedPatchRowPass()
+    {
+        // The older mod's ancestor lacks row 5, so its silence is no claim; the current mod inherited row 5 and left it alone.
+        var problems = CheckWithAncestors(
+            Rows(("A.param", [(1, "v")])),
+            Rows(("A.param", [(1, "v"), (5, "patch")])),
+            mods:
+            [
+                ("old", Rows(("A.param", [(1, "v")])), Rows(("A.param", [(1, "v")]))),
+                ("current", Rows(("A.param", [(1, "v"), (5, "patch")])), Rows(("A.param", [(1, "v"), (5, "patch")]))),
+            ]);
+
+        problems.Should().ContainSingle().Which.Should().Contain("row 5").And.Contain("dropped");
     }
 
     [Fact]
@@ -137,13 +234,21 @@ public class RebaseVerifierTests
         rows["A.param"][9].Should().Equal(9, 9, 0, 0);
     }
 
+    // The golden mod is the older build's vanilla with row 1 edited; the patch added row 99 after it.
+    private static readonly byte[] GoldenAncestor = RegulationFixture.Build(
+        new Dictionary<int, (string, IReadOnlyDictionary<int, byte[]>, int)>
+        {
+            [1] = ("SP_EFFECT_PARAM_ST", new Dictionary<int, byte[]> { [1] = Enumerable.Repeat((byte)'v', 8).ToArray(), [2] = Enumerable.Repeat((byte)'v', 8).ToArray() }, 8),
+        }, "11601000", T);
+
     private static IReadOnlyList<string> Golden(string merged)
         => RebaseVerifier.Verify(
             GoldenFilesTests.Read(merged),
             GoldenFilesTests.Read("rebase_baseline.bin"),
-            [("alpha", GoldenFilesTests.Read("rebase_mod.bin"))],
+            [("alpha", GoldenFilesTests.Read("rebase_mod.bin"), GoldenAncestor)],
             BuildIds.Make(),
-            T);
+            T,
+            []);
 
     [Fact]
     public void ARebaseThatKeptEverythingPassesOverGoldenRegulations()

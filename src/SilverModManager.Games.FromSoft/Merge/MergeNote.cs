@@ -41,6 +41,16 @@ public sealed record RowConflict(int EntryId, int RowId, string KeptMod, string 
         : $"entry {EntryId} row {RowId}: both mods changed it differently; kept {KeptMod}'s row and dropped {DroppedMod}'s edits to it";
 }
 
+/// <summary>
+/// The game's patch and a mod built for an older build both changed one row, and the two were merged byte by byte. If
+/// the patch reused the row id for something else, the result mixes two meanings of it.
+/// </summary>
+public sealed record CrossBuildRow(int EntryId, int RowId, string ModVersion, string GameVersion) : IMergeNote
+{
+    public string Describe() =>
+        $"entry {EntryId} row {RowId}: the game ({GameVersion}) and a mod built for {ModVersion} both changed it, and their edits were merged byte by byte; if the patch reused this row id for something else, the row is a mix of the two";
+}
+
 /// <summary>Both mods ship a message under one id with different text; the winner's text was kept.</summary>
 /// <param name="KeptMod">Whose text stayed: the higher-priority mod.</param>
 /// <param name="DroppedMod">Whose text was dropped.</param>

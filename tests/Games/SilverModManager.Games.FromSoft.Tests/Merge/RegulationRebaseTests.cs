@@ -68,7 +68,7 @@ public class RegulationRebaseTests
         var rebase = real with
         {
             Gate = (baseline, mods) => { counted.Gates++; return real.Gate(baseline, mods); },
-            Verify = (merged, baseline, mods) => { counted.Verifies++; return real.Verify(merged, baseline, mods); },
+            Verify = (merged, baseline, mods, conflicts) => { counted.Verifies++; return real.Verify(merged, baseline, mods, conflicts); },
         };
         return MergePlanner.Plan(
             MergePathIndex.Build(files, ER, new HashSet<string>()), f => contents[f.PackageId], (_, _) => ancestor, _ => game, ER,
@@ -110,13 +110,28 @@ public class RegulationRebaseTests
     }
 
     [Fact]
+    public void AnyContributorOnAnotherBuildThanTheGamesMakesTheFoldARebase()
+    {
+        var ancestor = Regulation(Older, (1, 0), (2, 0), (3, 0));
+        var game = Regulation(Installed, (1, 0), (2, 0), (3, 0), (4, 0x44));
+        var counted = new Counted();
+
+        // The leading mod was built for the installed build, the other one for the older build.
+        var plan = Plan(counted, game, ancestor, Regulation(Installed, (1, 0xaa), (2, 0), (3, 0), (4, 0x44)), Regulation(Older, (1, 0), (2, 0xcc), (3, 0)));
+
+        plan.Refusal.Should().BeNull();
+        counted.Gates.Should().Be(1);
+        counted.Verifies.Should().Be(1);
+    }
+
+    [Fact]
     public void AGameRegulationWhoseStrideMovedRefusesWithTheGatesSentenceBeforeAnythingIsFolded()
     {
         var ancestor = Regulation(Older, (1, 0), (2, 0), (3, 0));
         var game = Regulation(Installed, 12, (1, 0), (2, 0), (3, 0));
         var counted = new Counted();
         var folded = 0;
-        MergeFold fold = (_, _, _, _, _, _, _, _, _) => { folded++; return []; };
+        MergeFold fold = (_, _, _, _, _, _, _, _, _, _) => { folded++; return []; };
 
         var plan = Plan(counted, game, ancestor, Regulation(Older, (1, 0xaa), (2, 0), (3, 0)), Regulation(Older, (1, 0), (2, 0xcc), (3, 0)), _ => fold);
 
@@ -137,7 +152,7 @@ public class RegulationRebaseTests
         var game = Regulation(Installed, (1, 0), (2, 0), (3, 0));
         var counted = new Counted();
         // Keeps the game's file as it was handed in, so every row a mod authored is lost.
-        MergeFold dropsEverything = (acc, _, _, _, _, _, _, _, _) => acc.ToArray();
+        MergeFold dropsEverything = (acc, _, _, _, _, _, _, _, _, _) => acc.ToArray();
 
         var plan = Plan(counted, game, ancestor, Regulation(Older, (1, 0xaa), (2, 0), (3, 0)), Regulation(Older, (1, 0), (2, 0xcc), (3, 0)), _ => dropsEverything);
 

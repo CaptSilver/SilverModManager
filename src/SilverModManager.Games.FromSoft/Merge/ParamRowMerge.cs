@@ -31,22 +31,28 @@ public static class ParamRowMerge
     /// </param>
     /// <param name="baseName">Who owns the base, for the notes; a generic name when null.</param>
     /// <param name="otherName">Who owns the other regulation, for the notes; a generic name when null.</param>
+    /// <param name="game">
+    /// The installed game's regulation, when the base is a fold that started from it. It tells a row the game owns from
+    /// one an earlier mod changed, whichever step this is, and lets a mod's row edit be set against the patch's.
+    /// </param>
     /// <exception cref="MergeException">The three regulations cannot be reconciled without guessing.</exception>
+    /// <exception cref="RemovedRowEditsException">The other side edits rows the game removed, so there is nothing to carry them onto.</exception>
     public static byte[] Merge(
         ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, ReadOnlySpan<byte> vanilla, FromSoftFormatTraits traits,
-        ICollection<IMergeNote>? notes, bool baseIsGame, string? baseName = null, string? otherName = null)
-        => Merge(@base, other, vanilla, traits, notes, baseIsGame, baseName, otherName, Regulation.Unpack);
+        ICollection<IMergeNote>? notes, bool baseIsGame, string? baseName = null, string? otherName = null, GameOrigin? game = null)
+        => Merge(@base, other, vanilla, traits, notes, baseIsGame, baseName, otherName, Regulation.Unpack, game);
 
     // The unpack seam exists so a test can count how often a regulation is decrypted.
     internal static byte[] Merge(
         ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, ReadOnlySpan<byte> vanilla, FromSoftFormatTraits traits,
         ICollection<IMergeNote>? notes, bool baseIsGame, string? baseName, string? otherName,
-        Func<ReadOnlySpan<byte>, FromSoftFormatTraits, byte[]> unpack)
+        Func<ReadOnlySpan<byte>, FromSoftFormatTraits, byte[]> unpack, GameOrigin? game = null)
     {
         var basePayload = unpack(@base, traits);
+        if (baseIsGame) game?.Adopt(basePayload);
         var otherPayload = unpack(other, traits);
         var vanillaPayload = unpack(vanilla, traits);
-        return Merge(basePayload, otherPayload, vanillaPayload, @base[..Regulation.IvSize].ToArray(), traits, notes, baseIsGame, baseName, otherName);
+        return Merge(basePayload, otherPayload, vanillaPayload, @base[..Regulation.IvSize].ToArray(), traits, notes, baseIsGame, baseName, otherName, game);
     }
 
     /// <summary>
@@ -55,10 +61,12 @@ public static class ParamRowMerge
     /// </summary>
     internal static byte[] Merge(
         byte[] basePayload, byte[] otherPayload, byte[] vanillaPayload, byte[] iv, FromSoftFormatTraits traits,
-        ICollection<IMergeNote>? notes, bool baseIsGame, string? baseName, string? otherName)
+        ICollection<IMergeNote>? notes, bool baseIsGame, string? baseName, string? otherName, GameOrigin? game = null)
     {
         var binder = Binders.For(traits);
-        var baseEntries = binder.Read(basePayload).ToDictionary(e => e.Id, e => e.Data);
+        var baseRead = binder.Read(basePayload).ToList();
+        var baseEntries = baseRead.ToDictionary(e => e.Id, e => e.Data);
+        var entryNames = baseRead.ToDictionary(e => e.Id, e => e.Name[(e.Name.LastIndexOf('\\') + 1)..]);
         var otherEntries = binder.Read(otherPayload).ToDictionary(e => e.Id, e => e.Data);
         var vanillaEntries = binder.Read(vanillaPayload).ToDictionary(e => e.Id, e => e.Data);
         BinderEntrySets.RequireSameEntries(baseEntries.Keys, otherEntries.Keys, vanillaEntries.Keys, "regulations");
@@ -67,6 +75,9 @@ public static class ParamRowMerge
             baseName ?? (baseIsGame ? MergeNames.Game : MergeNames.PreferredMod),
             otherName ?? MergeNames.OtherMod);
 
+        // Read lazily and only when a both-sides edit needs it: the stamp is not otherwise looked at.
+        var ancestorVersion = new Lazy<string>(() => Regulation.Version(vanillaPayload));
+        var removed = new List<RemovedRowEdit>();
         var replacements = new Dictionary<int, byte[]>();
         foreach (var (entryId, baseBlob) in baseEntries)
         {
@@ -80,7 +91,7 @@ public static class ParamRowMerge
             var entryNotes = new List<IMergeNote>();
             try
             {
-                var merged = MergeParam(entryId, baseBlob, otherBlob, vanillaBlob, entryNotes, baseIsGame, names);
+                var merged = MergeParam(new ParamContext(entryId, entryNames[entryId], baseIsGame, names, game, ancestorVersion, removed), baseBlob, otherBlob, vanillaBlob, entryNotes);
                 if (merged is not null) replacements[entryId] = merged;
             }
             catch (ParamException)
@@ -95,15 +106,29 @@ public static class ParamRowMerge
             }
             foreach (var note in entryNotes) notes?.Add(note);
         }
+        if (removed.Count > 0) throw new RemovedRowEditsException(names.Dropped, removed);
         return Regulation.Pack(binder.Rebuild(basePayload, replacements), iv, traits);
     }
 
     private sealed record Owners(string Kept, string Dropped);
 
-    /// <summary>Three-way row merge of one param. Null when the result would be the base as it is.</summary>
-    private static byte[]? MergeParam(
-        int entryId, byte[] baseBlob, byte[] otherBlob, byte[] vanillaBlob, List<IMergeNote> notes, bool baseIsGame, Owners owners)
+    /// <summary>What one param's merge needs to know beyond its three blobs.</summary>
+    private sealed record ParamContext(
+        int EntryId, string EntryName, bool BaseIsGame, Owners Owners, GameOrigin? Game, Lazy<string> AncestorVersion, List<RemovedRowEdit> Removed)
     {
+        /// <summary>The base's copy of the row is still the game's own: the base is the game, or no earlier mod touched it.</summary>
+        public bool BaseRowIsGames(int rowId, byte[] baseRow)
+            => BaseIsGame || (Game?.Row(EntryId, rowId) is { } gameRow && ContentEqual(gameRow, baseRow));
+
+        /// <summary>The game has no such row, so a base without it lost it in the patch rather than to an earlier mod.</summary>
+        public bool GameLacksRow(int rowId)
+            => BaseIsGame || (Game?.Rows(EntryId) is { } rows && !rows.ContainsKey(rowId));
+    }
+
+    /// <summary>Three-way row merge of one param. Null when the result would be the base as it is.</summary>
+    private static byte[]? MergeParam(ParamContext context, byte[] baseBlob, byte[] otherBlob, byte[] vanillaBlob, List<IMergeNote> notes)
+    {
+        var entryId = context.EntryId;
         var b = Param.Read(baseBlob);
         var o = Param.Read(otherBlob);
         var v = Param.Read(vanillaBlob);
@@ -149,10 +174,10 @@ public static class ParamRowMerge
                     // Neither side inherited this row, so there is no ancestor to locate either edit against, and
                     // renumbering the loser would keep its bytes but lose its behaviour (a shop row is reached by id
                     // range). Someone has to win, and the loss is named.
-                    if (baseIsGame)
+                    if (context.BaseRowIsGames(rowId, bd))
                     {
                         // The game added one in a patch and a mod added a different one under the same id; the point of
-                        // the stack is the mod's content.
+                        // the stack is the mod's content. An earlier mod that left the game's row alone does not change that.
                         notes.Add(new RowCollision(entryId, rowId));
                         overwrite[rowId] = od;
                     }
@@ -164,14 +189,25 @@ public static class ParamRowMerge
                     continue;
                 }
 
+                if (bd is null && vd is not null && od is not null && context.GameLacksRow(rowId))
+                {
+                    // The patch removed a row this side still edits. Collected rather than thrown so one refusal lists them all.
+                    context.Removed.Add(new RemovedRowEdit(entryId, context.EntryName, rowId));
+                    continue;
+                }
+
                 var merged = MergeRow(bd, od, vd, entryId, rowId);
                 if (merged is null)
                 {
-                    notes.Add(new RowConflict(entryId, rowId, owners.Kept, owners.Dropped, baseIsGame));
+                    var gameKept = bd is not null && context.BaseRowIsGames(rowId, bd);
+                    var keptName = gameKept && !context.BaseIsGame ? MergeNames.Game : context.Owners.Kept;
+                    notes.Add(new RowConflict(entryId, rowId, keptName, context.Owners.Dropped, gameKept));
                     continue;
                 }
                 if (bd is not null && merged.AsSpan().SequenceEqual(bd)) continue;   // the base already had everything the other side did
                 overwrite[rowId] = merged;
+                if (vd is not null && PatchChangedRowSinceAncestor(context, rowId, vd, out var gameVersion))
+                    notes.Add(new CrossBuildRow(entryId, rowId, context.AncestorVersion.Value, gameVersion));
                 continue;
             }
 
@@ -200,6 +236,19 @@ public static class ParamRowMerge
         var patched = Param.PatchRows(b, overwrite, insert);
         if (delete.Count > 0) patched = Param.ReplaceRows(patched, patched.Rows.Where(r => !delete.Contains(r.Id)));
         return Param.Write(patched);
+    }
+
+    /// <summary>
+    /// Whether the installed game changed this row after the build the other side was made for. Then the byte-level merge
+    /// joins edits from two builds, and a patch that reused the id for something else would be spliced into the mod's
+    /// meaning of it. Needs the game's regulation, so it is false where the base is a plain fold of mods.
+    /// </summary>
+    private static bool PatchChangedRowSinceAncestor(ParamContext context, int rowId, byte[] ancestorRow, out string gameVersion)
+    {
+        gameVersion = "";
+        if (context.Game?.Row(context.EntryId, rowId) is not { } gameRow || ContentEqual(gameRow, ancestorRow)) return false;
+        gameVersion = context.Game.Version;
+        return !context.AncestorVersion.Value.Equals(gameVersion, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -264,7 +313,7 @@ public static class ParamRowMerge
     /// don't, only the overlap is the row's content and the excess belongs to whichever file it came from. The
     /// tolerance is confined to the mismatched case, because applying it everywhere would hide a real edit in the tail.
     /// </summary>
-    private static bool ContentEqual(byte[] a, byte[] b)
+    internal static bool ContentEqual(byte[] a, byte[] b)
     {
         var shared = Math.Min(a.Length, b.Length);
         return a.AsSpan(0, shared).SequenceEqual(b.AsSpan(0, shared));
