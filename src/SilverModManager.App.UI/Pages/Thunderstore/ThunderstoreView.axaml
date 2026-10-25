@@ -21,30 +21,70 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- The default items panel virtualizes, so only the rows on screen exist and only they load an icon. -->
-        <ListBox x:Name="PackageList">
+        <!-- A virtualized list of lines, each line holding the cards that fit the width, so only the lines on screen
+             exist and only their cards load an icon. Wide cards in a ListBox beat a WrapPanel, which realizes all of them.
+             No horizontal scrolling: the last card's trailing gap may stick past the edge and must be clipped, not scrolled to. -->
+        <ListBox x:Name="PackageList" SizeChanged="OnListSizeChanged" Background="Transparent"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Focusable" Value="False" />
+                    <Setter Property="Background" Value="Transparent" />
+                    <Style Selector="^:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
+                    <Style Selector="^:selected /template/ ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
+                </Style>
+                <Style Selector="Border.PackageCard">
+                    <Setter Property="Width" Value="{x:Static local:ThunderstoreCardLayout.CardWidth}" />
+                    <Setter Property="Height" Value="470" />
+                    <Setter Property="Margin" Value="0 0 16 16" />
+                    <Setter Property="Padding" Value="12" />
+                    <Setter Property="CornerRadius" Value="8" />
+                    <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
+                    <Style Selector="^:pointerover"><Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" /></Style>
+                </Style>
+            </ListBox.Styles>
             <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="local:ThunderstorePackageRow">
-                    <Grid ColumnDefinitions="Auto,*" Margin="0 6">
-                        <local:ThunderstoreIcon Grid.Column="0" Width="64" Height="64" Margin="0 0 12 0"
-                                                VerticalAlignment="Top" IconUrl="{Binding IconUrl}" />
-                        <StackPanel Grid.Column="1" Spacing="2">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
-                                <TextBlock Text="[deprecated]" IsVisible="{Binding IsDeprecated}" />
-                            </StackPanel>
-                            <TextBlock Text="{Binding OwnerLine}" IsVisible="{Binding Owner, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Opacity="0.7" />
-                            <TextBlock Text="{Binding Details}" FontSize="12" Opacity="0.7" />
-                            <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
-                                       IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0 4 0 0">
-                                <Button Content="Install" Click="OnInstallClick"
-                                        IsVisible="{Binding Latest, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                <Button Content="Open on thunderstore.io" Click="OnOpenClick"
-                                        IsVisible="{Binding PackageUrl, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                            </StackPanel>
-                        </StackPanel>
-                    </Grid>
+                <DataTemplate x:DataType="local:ThunderstoreCardLine">
+                    <ItemsControl ItemsSource="{Binding Cards}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:ThunderstorePackageRow">
+                                <Border Classes="PackageCard">
+                                    <DockPanel LastChildFill="True">
+                                        <!-- Stacked: side by side the two buttons are wider than the card. -->
+                                        <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0 8 0 0">
+                                            <Button Content="Install" Click="OnInstallClick" HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Center"
+                                                    IsVisible="{Binding Latest, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                            <Button Content="Open on thunderstore.io" Click="OnOpenClick" HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Center"
+                                                    IsVisible="{Binding PackageUrl, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        </StackPanel>
+                                        <!-- Clipped so a card with every line at its longest cuts the text off rather than drawing it under the buttons. -->
+                                        <StackPanel Spacing="4" ClipToBounds="True">
+                                            <local:ThunderstoreIcon Width="214" Height="214" Stretch="UniformToFill"
+                                                                    RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                    IconUrl="{Binding IconUrl}" />
+                                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextWrapping="Wrap"
+                                                       MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="[deprecated]" IsVisible="{Binding IsDeprecated}" />
+                                            <TextBlock Text="{Binding OwnerLine}" Opacity="0.7" TextTrimming="CharacterEllipsis"
+                                                       IsVisible="{Binding Owner, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            <TextBlock Text="{Binding Details}" FontSize="12" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Description}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
+                                                       ToolTip.Tip="{Binding Description}"
+                                                       IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
