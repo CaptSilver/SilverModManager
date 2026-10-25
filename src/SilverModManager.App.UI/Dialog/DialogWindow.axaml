@@ -69,54 +69,57 @@
         </Style>
     </Window.Styles>
 
-    <Grid RowDefinitions="Auto,*">
+    <!-- The window has no system decorations, so the border is what sets it apart from the window behind -->
+    <Border BorderBrush="{StaticResource StrokeTranslucentModerateBrush}" BorderThickness="1">
+        <Grid RowDefinitions="Auto,*">
 
-        <!-- titlebar -->
-        <Grid x:Name="Titlebar" Grid.Row="0"
-              ColumnDefinitions="*,Auto"
-              Margin="16,16,16,0">
+            <!-- titlebar. Transparent so presses on empty title space hit it and can drag the window -->
+            <Grid x:Name="Titlebar" Grid.Row="0"
+                  Background="Transparent"
+                  ColumnDefinitions="*,Auto"
+                  Margin="16,16,16,0">
 
-            <!-- has to have IsHitTestVisible="False" so the mouse events are passed through to the OS for 
-                custom titlebar dragging -->
-            <TextBlock Grid.Column="0" x:Name="TitleTextBlock"
-                       Foreground="{StaticResource NeutralStrongBrush}"
-                       Theme="{StaticResource BodyMDSemiTheme}"
-                       VerticalAlignment="Center"
-                       ToolTip.Tip="Close"
-                       IsHitTestVisible="False"
-                       TextWrapping="NoWrap"
-                       TextTrimming="CharacterEllipsis" />
+                <!-- IsHitTestVisible="False" so presses on the title text fall through to the titlebar and drag the window -->
+                <TextBlock Grid.Column="0" x:Name="TitleTextBlock"
+                           Foreground="{StaticResource NeutralStrongBrush}"
+                           Theme="{StaticResource BodyMDSemiTheme}"
+                           VerticalAlignment="Center"
+                           ToolTip.Tip="Close"
+                           IsHitTestVisible="False"
+                           TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis" />
 
-            <controls:StandardButton Grid.Column="1" x:Name="CloseButton"
-                                     DockPanel.Dock="Right"
-                                     LeftIcon="{x:Static icons:IconValues.Close}"
-                                     ShowIcon="IconOnly"
-                                     ShowLabel="False"
-                                     Size="Medium"
-                                     Fill="None"
-                                     Type="Tertiary"
-                                     VerticalAlignment="Center"
-                                     Margin="16 0 0 0" />
-        </Grid>
-
-        <!-- content -->
-        <Border x:Name="ContentBorder" Grid.Row="1">
-
-            <!-- content, buttons -->
-            <Grid RowDefinitions="*, Auto" Margin="16,16,16,16">
-
-                <ScrollViewer>
-                    <Border Grid.Row="0" x:Name="ContentContainer">
-                        <reactiveUi:ViewModelViewHost x:Name="ContentViewModelHost" />
-                    </Border>
-                </ScrollViewer>
-
-                <!-- buttons -->
-                <panels:FlexPanel x:Name="ButtonsFlexPanel" Grid.Row="1"
-                                  ColumnSpacing="8" Margin="0 16 0 0" />
+                <controls:StandardButton Grid.Column="1" x:Name="CloseButton"
+                                         DockPanel.Dock="Right"
+                                         LeftIcon="{x:Static icons:IconValues.Close}"
+                                         ShowIcon="IconOnly"
+                                         ShowLabel="False"
+                                         Size="Medium"
+                                         Fill="None"
+                                         Type="Tertiary"
+                                         VerticalAlignment="Center"
+                                         Margin="16 0 0 0" />
             </Grid>
 
-        </Border>
-    </Grid>
+            <!-- content -->
+            <Border x:Name="ContentBorder" Grid.Row="1">
+
+                <!-- content, buttons -->
+                <Grid RowDefinitions="*, Auto" Margin="16,16,16,16">
+
+                    <ScrollViewer>
+                        <Border Grid.Row="0" x:Name="ContentContainer">
+                            <reactiveUi:ViewModelViewHost x:Name="ContentViewModelHost" />
+                        </Border>
+                    </ScrollViewer>
+
+                    <!-- buttons -->
+                    <panels:FlexPanel x:Name="ButtonsFlexPanel" Grid.Row="1"
+                                      ColumnSpacing="8" Margin="0 16 0 0" />
+                </Grid>
+
+            </Border>
+        </Grid>
+    </Border>
 
 </reactiveUi:ReactiveWindow>

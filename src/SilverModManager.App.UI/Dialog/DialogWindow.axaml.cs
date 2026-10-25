@@ -1,9 +1,12 @@
 using System.Reactive.Disposables;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Labs.Panels;
 using Avalonia.Platform;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Controls;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Dialog.Enums;
 using R3;
@@ -18,14 +21,22 @@ public partial class DialogWindow : ReactiveWindow<IDialogViewModel>, IDisposabl
     private readonly ButtonDefinitionId _closeButtonResult = ButtonDefinitionId.CloseWindow;
     
     private SerialDisposable _serialDisposable;
+
+    // Tests swap this out: a headless window can't be moved.
+    internal Action<PointerPressedEventArgs> BeginMove;
         
     public DialogWindow()
     {
-        ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.NoChrome;
-        ExtendClientAreaToDecorationsHint = true;
-        ExtendClientAreaTitleBarHeightHint = 33;
+        // On X11/XWayland the extend-client-area hints do nothing, so the window manager keeps
+        // drawing its own title bar above the dialog's. Drop the decorations entirely and supply
+        // move and resize ourselves (see WindowChrome).
+        SystemDecorations = SystemDecorations.None;
+        BeginMove = BeginMoveDrag;
 
         InitializeComponent();
+
+        Titlebar.PointerPressed += OnTitlebarPointerPressed;
+        WindowChrome.AttachResizeGrips(this);
         
         this.WhenActivated(disposables =>
             {
@@ -80,6 +91,26 @@ public partial class DialogWindow : ReactiveWindow<IDialogViewModel>, IDisposabl
         };
     }
     
+    private void OnTitlebarPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (e.Handled || !WindowChrome.IsEmptyDragSurface(e.Source as Visual, Titlebar)) return;
+
+        BeginMove(e);
+        e.Handled = true;
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.Handled || e.Key != Key.Escape || ViewModel is null) return;
+
+        // Escape answers as the dialog's Cancel button when it has one, otherwise as the close button.
+        var reject = ViewModel.ButtonDefinitions.FirstOrDefault(button => button.ButtonAction == ButtonAction.Reject);
+        ViewModel.ButtonPressCommand.Execute(reject?.Id ?? _closeButtonResult);
+        e.Handled = true;
+    }
+
     private void GenerateButtons()
     {
         if (ViewModel is null) return;

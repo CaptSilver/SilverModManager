@@ -21,8 +21,7 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
 
         InitializeComponent();
 
-        AddHandler(PointerMovedEvent, OnResizeGripPointerMoved, RoutingStrategies.Tunnel);
-        AddHandler(PointerPressedEvent, OnResizeGripPointerPressed, RoutingStrategies.Tunnel);
+        WindowChrome.AttachResizeGrips(this);
         TopBarBorder.PointerPressed += OnTopBarPointerPressed;
 
         _ = new MainWindowDropTarget(this, DropOverlay, DropOverlayText, paths => ViewModel?.HandleDroppedFilesAsync(paths) ?? Task.CompletedTask);
@@ -100,36 +99,6 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
                     Activate();
                 }).DisposeWith(disposables);
         });
-    }
-
-    private WindowEdge? GetResizeEdge(PointerEventArgs e) =>
-        WindowChrome.GetResizeEdge(e.GetPosition(this), Bounds.Size, WindowState);
-
-    // Pointer moves fire constantly; reuse the cursors instead of creating a platform cursor per move.
-    private static readonly Cursor NorthSouthCursor = new(StandardCursorType.SizeNorthSouth);
-    private static readonly Cursor WestEastCursor = new(StandardCursorType.SizeWestEast);
-    private static readonly Cursor TopLeftCursor = new(StandardCursorType.TopLeftCorner);
-    private static readonly Cursor TopRightCursor = new(StandardCursorType.TopRightCorner);
-
-    private void OnResizeGripPointerMoved(object? sender, PointerEventArgs e)
-    {
-        Cursor = GetResizeEdge(e) switch
-        {
-            WindowEdge.North or WindowEdge.South => NorthSouthCursor,
-            WindowEdge.West or WindowEdge.East => WestEastCursor,
-            WindowEdge.NorthWest or WindowEdge.SouthEast => TopLeftCursor,
-            WindowEdge.NorthEast or WindowEdge.SouthWest => TopRightCursor,
-            _ => null,
-        };
-    }
-
-    private void OnResizeGripPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
-        if (GetResizeEdge(e) is not { } edge) return;
-
-        BeginResizeDrag(edge, e);
-        e.Handled = true;
     }
 
     private void OnTopBarPointerPressed(object? sender, PointerPressedEventArgs e)

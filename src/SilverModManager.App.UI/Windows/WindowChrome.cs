@@ -1,17 +1,55 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 
 namespace SilverModManager.App.UI.Windows;
 
 /// <summary>
-/// Hit testing for the undecorated main window. Without a window manager title bar and border,
+/// Hit testing for undecorated windows (the main window and dialogs). Without a window manager title bar and border,
 /// the app has to tell its own chrome clicks apart: which press starts a move, and which
 /// border position starts a resize.
 /// </summary>
 internal static class WindowChrome
 {
+    // Pointer moves fire constantly; reuse the cursors instead of creating a platform cursor per move.
+    private static readonly Cursor NorthSouthCursor = new(StandardCursorType.SizeNorthSouth);
+    private static readonly Cursor WestEastCursor = new(StandardCursorType.SizeWestEast);
+    private static readonly Cursor TopLeftCursor = new(StandardCursorType.TopLeftCorner);
+    private static readonly Cursor TopRightCursor = new(StandardCursorType.TopRightCorner);
+
+    /// <summary>
+    /// Gives an undecorated window resize grips along its border: the matching resize cursor on hover
+    /// and a resize drag on a left press. Does nothing for a window that is not resizable.
+    /// </summary>
+    public static void AttachResizeGrips(Window window)
+    {
+        WindowEdge? EdgeAt(PointerEventArgs e) =>
+            window.CanResize ? GetResizeEdge(e.GetPosition(window), window.Bounds.Size, window.WindowState) : null;
+
+        window.AddHandler(InputElement.PointerMovedEvent, (_, e) =>
+        {
+            window.Cursor = EdgeAt(e) switch
+            {
+                WindowEdge.North or WindowEdge.South => NorthSouthCursor,
+                WindowEdge.West or WindowEdge.East => WestEastCursor,
+                WindowEdge.NorthWest or WindowEdge.SouthEast => TopLeftCursor,
+                WindowEdge.NorthEast or WindowEdge.SouthWest => TopRightCursor,
+                _ => null,
+            };
+        }, RoutingStrategies.Tunnel);
+
+        window.AddHandler(InputElement.PointerPressedEvent, (_, e) =>
+        {
+            if (!e.GetCurrentPoint(window).Properties.IsLeftButtonPressed) return;
+            if (EdgeAt(e) is not { } edge) return;
+
+            window.BeginResizeDrag(edge, e);
+            e.Handled = true;
+        }, RoutingStrategies.Tunnel);
+    }
+
     /// <summary>Width of the invisible resize band along each window edge.</summary>
     public const double GripThickness = 5;
 
