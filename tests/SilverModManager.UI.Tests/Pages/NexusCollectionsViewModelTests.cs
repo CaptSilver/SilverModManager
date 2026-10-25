@@ -41,7 +41,7 @@ public class NexusCollectionsViewModelTests(IServiceProvider provider) : AUiTest
     private static NexusCollectionsSearchPage Page(int offset, int total, params string[] slugs)
         => new(slugs.Select(slug => Hit(slug)).ToArray(), offset, total);
 
-    private async Task<Fixture> Open(Func<NexusCollectionsSearchQuery, NexusCollectionsSearchPage>? pages = null, IStoreSortMemory? sortMemory = null)
+    private async Task<Fixture> Open(Func<NexusCollectionsSearchQuery, NexusCollectionsSearchPage>? pages = null, IStoreSortMemory? sortMemory = null, IAdultContentSetting? adultContent = null)
     {
         sortMemory ??= new InMemoryStoreSortMemory();
         var row = await SeedLoadoutRow(GameStore.Steam, "Nexus collections loadout");
@@ -69,6 +69,7 @@ public class NexusCollectionsViewModelTests(IServiceProvider provider) : AUiTest
             [Substitute.For<IIpcProtocolHandler>(), fixture.Nxm],
             Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(),
             sortMemory,
+            adultContent ?? new FakeAdultContentSetting(),
             NullLogger<NexusCollectionsViewModel>.Instance)
         {
             LoadoutId = row.LoadoutId,
@@ -305,5 +306,40 @@ public class NexusCollectionsViewModelTests(IServiceProvider provider) : AUiTest
         var second = await Open(sortMemory: memory);
 
         second.Vm.Sort.Should().Be(NexusCollectionsSort.Updated);
+    }
+
+    [Fact]
+    public async Task Search_LeavesAdultCollectionsOutByDefault()
+    {
+        var f = await Open();
+
+        await f.Vm.SearchAsync(CancellationToken.None);
+
+        f.Queries.Should().ContainSingle().Which.IncludeAdult.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Search_IncludesAdultCollectionsWhenTheSettingIsOn()
+    {
+        var f = await Open(adultContent: new FakeAdultContentSetting(true));
+
+        await f.Vm.SearchAsync(CancellationToken.None);
+
+        f.Queries.Should().ContainSingle().Which.IncludeAdult.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task FlippingTheSetting_SearchesAgainWhileTheTabIsShown()
+    {
+        var setting = new FakeAdultContentSetting();
+        var f = await Open(adultContent: setting);
+        using var started = f.Vm.Start();
+        f.Vm.IsVisible = true;
+        await EventuallyOnUi(() => f.Queries.Should().NotBeEmpty());
+        f.Queries.Last().IncludeAdult.Should().BeFalse();
+
+        setting.ShowAdultContent = true;
+
+        await EventuallyOnUi(() => f.Queries.Last().IncludeAdult.Should().BeTrue());
     }
 }

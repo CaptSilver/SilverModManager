@@ -45,6 +45,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     private readonly ILogger<NexusModsViewModel> _logger;
     private readonly NexusCollectionsViewModel _collections;
     private readonly IStoreSortMemory _sortMemory;
+    private readonly IAdultContentSetting _adultContent;
 
     // Bumped by every new search so a slow answer to an old one is dropped instead of overwriting the newer rows.
     private int _generation;
@@ -77,6 +78,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         IThumbnailLoader thumbnails,
         NexusCollectionsViewModel collections,
         IStoreSortMemory sortMemory,
+        IAdultContentSetting adultContent,
         ILogger<NexusModsViewModel> logger) : base(windowManager)
     {
         _connection = connection;
@@ -91,6 +93,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         _logger = logger;
         _collections = collections;
         _sortMemory = sortMemory;
+        _adultContent = adultContent;
 
         TabIcon = IconValues.Download;
         TabTitle = "Nexus Mods";
@@ -131,7 +134,9 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
                 .Subscribe(text => InstallButtonText = text)
                 .DisposeWith(d);
 
+            // The adult setting joins the trigger: flipping it lists the page again, and replays its value on subscribing.
             this.WhenAnyValue(vm => vm.SearchText, vm => vm.Sort)
+                .CombineLatest(_adultContent.Changes, static (search, adult) => (search, adult))
                 .Throttle(SearchPause, RxApp.MainThreadScheduler)
                 .Subscribe(change => { var _ = SearchSafely(cts.Token); })
                 .DisposeWith(d);
@@ -177,7 +182,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         IsLoading = true;
         try
         {
-            var query = new NexusModsSearchQuery(game, SearchText.Trim(), Sort, offset, PageSize);
+            var query = new NexusModsSearchQuery(game, SearchText.Trim(), Sort, offset, PageSize, _adultContent.ShowAdultContent);
             var page = await _browser.Search(query, cancellationToken);
             if (generation != _generation) return;
 

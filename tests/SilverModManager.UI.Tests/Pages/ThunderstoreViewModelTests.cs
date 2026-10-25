@@ -122,7 +122,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         await tx.Commit();
     }
 
-    private static PackageListing Package(string team, string name, double rating, bool deprecated = false, string version = "1.0.0", string[]? categories = null, string? icon = null, long downloads = 0, bool pinned = false, DateTimeOffset? created = null, DateTimeOffset? updated = null)
+    private static PackageListing Package(string team, string name, double rating, bool deprecated = false, string version = "1.0.0", string[]? categories = null, string? icon = null, long downloads = 0, bool pinned = false, DateTimeOffset? created = null, DateTimeOffset? updated = null, bool nsfw = false)
         => new()
         {
             Name = name,
@@ -132,6 +132,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
             RatingScore = rating,
             IsDeprecated = deprecated,
             IsPinned = pinned,
+            HasNsfwContent = nsfw,
             DateCreated = created,
             DateUpdated = updated,
             Categories = categories ?? [],
@@ -184,7 +185,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         return (row.LoadoutId, new ThunderstoreGameOfLoadout((IGameData)installation.Game, stub));
     }
 
-    private async Task<(ThunderstoreViewModel Vm, FakeCatalogSource Source)> Open(FakeCatalogSource source, FakeInstallSource? installs = null, ILoadoutManager? loadoutManager = null, IStoreSortMemory? sortMemory = null)
+    private async Task<(ThunderstoreViewModel Vm, FakeCatalogSource Source)> Open(FakeCatalogSource source, FakeInstallSource? installs = null, ILoadoutManager? loadoutManager = null, IStoreSortMemory? sortMemory = null, IAdultContentSetting? adultContent = null)
     {
         installs ??= new FakeInstallSource();
         loadoutManager ??= Substitute.For<ILoadoutManager>();
@@ -199,6 +200,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
             Substitute.For<IOSInterop>(),
             Substitute.For<IThumbnailLoader>(),
             sortMemory ?? new InMemoryStoreSortMemory(),
+            adultContent ?? new FakeAdultContentSetting(),
             NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = loadoutId,
@@ -366,7 +368,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
     {
         var vm = new ThunderstoreViewModel(
             Provider.GetRequiredService<IWindowManager>(), Connection, [], new FakeCatalogSource(Catalog()),
-            new FakeInstallSource(), Substitute.For<ILoadoutManager>(), Substitute.For<IOSInterop>(), Substitute.For<IThumbnailLoader>(), new InMemoryStoreSortMemory(), NullLogger<ThunderstoreViewModel>.Instance)
+            new FakeInstallSource(), Substitute.For<ILoadoutManager>(), Substitute.For<IOSInterop>(), Substitute.For<IThumbnailLoader>(), new InMemoryStoreSortMemory(), new FakeAdultContentSetting(), NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = (await SeedLoadout()).Id,
         };
@@ -438,7 +440,7 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
         var os = Substitute.For<IOSInterop>();
         var (loadoutId, game) = await SeedLoadout();
         var withOs = new ThunderstoreViewModel(Provider.GetRequiredService<IWindowManager>(), Connection,
-            [game], new FakeCatalogSource(Catalog()), new FakeInstallSource(), Substitute.For<ILoadoutManager>(), os, Substitute.For<IThumbnailLoader>(), new InMemoryStoreSortMemory(), NullLogger<ThunderstoreViewModel>.Instance)
+            [game], new FakeCatalogSource(Catalog()), new FakeInstallSource(), Substitute.For<ILoadoutManager>(), os, Substitute.For<IThumbnailLoader>(), new InMemoryStoreSortMemory(), new FakeAdultContentSetting(), NullLogger<ThunderstoreViewModel>.Instance)
         {
             LoadoutId = loadoutId,
         };
@@ -621,5 +623,53 @@ public class ThunderstoreViewModelTests(IServiceProvider provider) : AUiTest(pro
     {
         ThunderstoreSorting.Choices.Select(c => c.Label).Should().Equal("Top rated", "Most downloaded", "Recently updated", "Newest", "Name");
         ThunderstoreSorting.Choices.Select(c => c.Key).Should().Equal(Enum.GetNames<ThunderstoreSort>());
+    }
+
+    private static ThunderstoreCatalog AdultCatalog() => new("repo",
+    [
+        Package("Safe", "Plain", rating: 100),
+        Package("Spicy", "Lewd", rating: 200, nsfw: true),
+        Package("Spicy", "LewdOld", rating: 50, nsfw: true, deprecated: true),
+    ]);
+
+    [Fact]
+    public async Task AdultPackages_AreHiddenByDefault()
+    {
+        var (vm, _) = await Open(new FakeCatalogSource(AdultCatalog()));
+
+        Names(vm).Should().Equal("Safe-Plain");
+    }
+
+    [Fact]
+    public async Task AdultPackages_AreListedWhenTheSettingIsOn()
+    {
+        var (vm, _) = await Open(new FakeCatalogSource(AdultCatalog()), adultContent: new FakeAdultContentSetting(true));
+
+        Names(vm).Should().Equal("Spicy-Lewd", "Safe-Plain");
+    }
+
+    [Fact]
+    public async Task AdultPackages_StayHiddenWhateverTheSearchAndDeprecatedFilterSay()
+    {
+        var (vm, _) = await Open(new FakeCatalogSource(AdultCatalog()));
+
+        vm.ShowDeprecated = true;
+        vm.SearchText = "Lewd";
+
+        Names(vm).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FlippingTheSetting_UpdatesTheOpenPage()
+    {
+        var setting = new FakeAdultContentSetting();
+        var (vm, _) = await Open(new FakeCatalogSource(AdultCatalog()), adultContent: setting);
+        using var active = await OnUi(() => Task.FromResult(vm.Activator.Activate()));
+
+        setting.ShowAdultContent = true;
+        await EventuallyOnUi(() => Names(vm).Should().Equal("Spicy-Lewd", "Safe-Plain"));
+
+        setting.ShowAdultContent = false;
+        await EventuallyOnUi(() => Names(vm).Should().Equal("Safe-Plain"));
     }
 }

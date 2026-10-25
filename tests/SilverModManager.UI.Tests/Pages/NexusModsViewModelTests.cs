@@ -47,8 +47,9 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
     private static NexusModsSearchPage Page(int offset, int total, params uint[] modIds)
         => new(modIds.Select(id => Hit(id)).ToArray(), offset, total);
 
-    private async Task<Fixture> Open(bool premium, Func<NexusModsSearchQuery, NexusModsSearchPage>? pages = null, bool storedNexusId = true, IStoreSortMemory? sortMemory = null)
+    private async Task<Fixture> Open(bool premium, Func<NexusModsSearchQuery, NexusModsSearchPage>? pages = null, bool storedNexusId = true, IStoreSortMemory? sortMemory = null, IAdultContentSetting? adultContent = null)
     {
+        adultContent ??= new FakeAdultContentSetting();
         sortMemory ??= new InMemoryStoreSortMemory();
         var row = await SeedLoadoutRow(GameStore.Steam, "Nexus Mods loadout");
         var fixture = new Fixture();
@@ -101,8 +102,9 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
             Provider.GetServices<IGameData>(),
             Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(),
             new NexusCollectionsViewModel(Connection, Substitute.For<INexusCollectionsBrowser>(), fixture.OsInterop, Provider.GetServices<IGameData>(), [],
-                Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(), sortMemory, NullLogger<NexusCollectionsViewModel>.Instance),
+                Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(), sortMemory, adultContent, NullLogger<NexusCollectionsViewModel>.Instance),
             sortMemory,
+            adultContent,
             NullLogger<NexusModsViewModel>.Instance)
         {
             LoadoutId = row.LoadoutId,
@@ -372,5 +374,39 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
 
         second.Vm.Sort.Should().Be(NexusModsSort.Endorsements);
         second.Vm.Collections.Sort.Should().Be(NexusCollectionsSort.Downloads);
+    }
+
+    [Fact]
+    public async Task Search_LeavesAdultModsOutByDefault()
+    {
+        var f = await Open(premium: false);
+
+        await f.Vm.SearchAsync(CancellationToken.None);
+
+        f.Queries.Should().ContainSingle().Which.IncludeAdult.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Search_IncludesAdultModsWhenTheSettingIsOn()
+    {
+        var f = await Open(premium: false, adultContent: new FakeAdultContentSetting(true));
+
+        await f.Vm.SearchAsync(CancellationToken.None);
+
+        f.Queries.Should().ContainSingle().Which.IncludeAdult.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task FlippingTheSetting_SearchesAgainOnTheOpenPage()
+    {
+        var setting = new FakeAdultContentSetting();
+        var f = await Open(premium: false, adultContent: setting);
+        using var active = await OnUi(() => Task.FromResult(f.Vm.Activator.Activate()));
+        await EventuallyOnUi(() => f.Queries.Should().NotBeEmpty());
+        f.Queries.Last().IncludeAdult.Should().BeFalse();
+
+        setting.ShowAdultContent = true;
+
+        await EventuallyOnUi(() => f.Queries.Last().IncludeAdult.Should().BeTrue());
     }
 }

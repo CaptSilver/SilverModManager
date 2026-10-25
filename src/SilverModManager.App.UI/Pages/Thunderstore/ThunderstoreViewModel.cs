@@ -41,6 +41,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
     private readonly ILoadoutManager _loadoutManager;
     private readonly ILogger<ThunderstoreViewModel> _logger;
     private readonly IStoreSortMemory _sortMemory;
+    private readonly IAdultContentSetting _adultContent;
     private ThunderstoreCatalog? _catalog;
     private string? _community;
 
@@ -67,6 +68,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         IOSInterop osInterop,
         IThumbnailLoader icons,
         IStoreSortMemory sortMemory,
+        IAdultContentSetting adultContent,
         ILogger<ThunderstoreViewModel> logger) : base(windowManager)
     {
         _connection = connection;
@@ -77,6 +79,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         _logger = logger;
         Icons = icons;
         _sortMemory = sortMemory;
+        _adultContent = adultContent;
 
         TabIcon = IconValues.Download;
         TabTitle = "Thunderstore";
@@ -101,6 +104,9 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
                 cts.Dispose();
             }).DisposeWith(d);
             _ = LoadOnActivation(cts.Token);
+
+            // The first value is the current one, which the load above already applied.
+            _adultContent.Changes.Skip(1).OnUI().Subscribe(_ => ApplyFilter()).DisposeWith(d);
         });
     }
 
@@ -243,9 +249,12 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
     {
         Packages = _catalog is null
             ? []
-            : ThunderstoreSorting.Order(_catalog.Search(SearchText, ShowDeprecated).Where(package => !OtherModManagers.Contains(package.FullName)), Sort)
+            : ThunderstoreSorting.Order(_catalog.Search(SearchText, ShowDeprecated).Where(IsListed), Sort)
                 .Select(ToRow).ToArray();
     }
+
+    private bool IsListed(SilverModManager.Networking.Thunderstore.DTOs.PackageListing package)
+        => !OtherModManagers.Contains(package.FullName) && (_adultContent.ShowAdultContent || !package.HasNsfwContent);
 
     private static ThunderstoreVersionRef? LatestRef(SilverModManager.Networking.Thunderstore.DTOs.PackageListing package, SilverModManager.Networking.Thunderstore.DTOs.PackageVersion? latest)
     {

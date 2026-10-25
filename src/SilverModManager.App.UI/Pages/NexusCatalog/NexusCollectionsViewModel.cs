@@ -36,6 +36,7 @@ public partial class NexusCollectionsViewModel : ReactiveObject, INexusCollectio
     private readonly IOSInterop _osInterop;
     private readonly IEnumerable<IGameData> _games;
     private readonly IStoreSortMemory _sortMemory;
+    private readonly IAdultContentSetting _adultContent;
     private readonly IEnumerable<IIpcProtocolHandler> _protocolHandlers;
     private readonly ILogger<NexusCollectionsViewModel> _logger;
 
@@ -81,6 +82,7 @@ public partial class NexusCollectionsViewModel : ReactiveObject, INexusCollectio
         IEnumerable<IIpcProtocolHandler> protocolHandlers,
         IThumbnailLoader thumbnails,
         IStoreSortMemory sortMemory,
+        IAdultContentSetting adultContent,
         ILogger<NexusCollectionsViewModel> logger)
     {
         _connection = connection;
@@ -90,6 +92,7 @@ public partial class NexusCollectionsViewModel : ReactiveObject, INexusCollectio
         _protocolHandlers = protocolHandlers;
         Thumbnails = thumbnails;
         _sortMemory = sortMemory;
+        _adultContent = adultContent;
         _logger = logger;
 
         this.WhenAnyValue(vm => vm.Sort).Skip(1).Subscribe(RememberSort);
@@ -114,9 +117,10 @@ public partial class NexusCollectionsViewModel : ReactiveObject, INexusCollectio
         }).DisposeWith(disposables);
 
         this.WhenAnyValue(vm => vm.SearchText, vm => vm.Sort, vm => vm.IsVisible, (text, sort, visible) => (text, sort, visible))
+            .CombineLatest(_adultContent.Changes, static (state, adult) => (state.text, state.sort, state.visible, adult))
             .Where(static state => state.visible)
             .Throttle(SearchPause, RxApp.MainThreadScheduler)
-            .DistinctUntilChanged(static state => (state.text, state.sort))
+            .DistinctUntilChanged(static state => (state.text, state.sort, state.adult))
             .Subscribe(_ => { var __ = SearchSafely(cts.Token); })
             .DisposeWith(disposables);
 
@@ -167,7 +171,7 @@ public partial class NexusCollectionsViewModel : ReactiveObject, INexusCollectio
         IsLoading = true;
         try
         {
-            var query = new NexusCollectionsSearchQuery(game, SearchText.Trim(), Sort, offset, PageSize);
+            var query = new NexusCollectionsSearchQuery(game, SearchText.Trim(), Sort, offset, PageSize, _adultContent.ShowAdultContent);
             var page = await _browser.Search(query, cancellationToken);
             if (generation != _generation) return;
 
