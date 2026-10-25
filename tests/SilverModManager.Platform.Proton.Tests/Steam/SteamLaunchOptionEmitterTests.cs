@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Deployment;
 using NexusMods.Paths;
+using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Platform.Proton.Steam;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -157,29 +158,68 @@ public class SteamLaunchOptionEmitterTests
         SteamLaunchOptionEmitter.Classify(Install(GameStore.Steam), Loadout).Should().BeNull();
     }
 
+    private const string WrittenLine = "'/home/u/.local/share/silvermod/bin/silvermod' run 'Main' -- %command%";
+
     [Fact]
-    public void TheSuggestionOffersTheFixAndListsWhatSteamSkips()
+    public void TheSuggestionOffersTheFixAndSaysWhatTheConsequenceIs()
     {
-        var diagnostic = SteamLaunchOptionEmitter.Create(Install(GameStore.Steam), Loadout, new SteamLaunchOptionEmitter.Finding(null), "* no DLL overrides");
+        var diagnostic = SteamLaunchOptionEmitter.Create(Install(GameStore.Steam), Loadout, new SteamLaunchOptionEmitter.Finding(null), "* no DLL overrides", WrittenLine);
 
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Suggestion);
         diagnostic.Actions.Should().Equal(DiagnosticActions.UseLoadoutFromSteam());
-        diagnostic.Summary.Value.Should().Contain("{GameName}");
+        diagnostic.Summary.Value.Should().Contain("Play button").And.Contain("{GameName}");
+        diagnostic.Details.Value.Should().Contain("Steam starts {GameName} directly").And.Contain("isn't applied").And.Contain("Play from SilverModManager");
         var data = diagnostic.Should().BeOfType<Diagnostic<SteamLaunchDiagnostics.SteamSkipsLoadoutLaunchMessageData>>().Subject.MessageData;
         data.GameName.Should().Be("Test Game");
         data.LoadoutName.Should().Be(Loadout);
-        data.Skipped.Should().Contain("no DLL overrides");
+    }
+
+    [Fact]
+    public void TheTechnicalFactsAndTheTwoShortLinesAreInTheMoreDetailsNotInTheText()
+    {
+        var finding = new SteamLaunchOptionEmitter.Finding(null, "PROTON_LOG=1 %command%");
+
+        var diagnostic = SteamLaunchOptionEmitter.Create(Install(GameStore.Steam), Loadout, finding, "* The loadout is not applied before the game starts.", WrittenLine);
+
+        diagnostic.Details.Value.Should().NotContain("not applied before").And.NotContain(WrittenLine);
+        diagnostic.MoreDetails.Should().Contain("The loadout is not applied before the game starts.")
+            .And.Contain("PROTON_LOG=1 %command%")
+            .And.Contain(WrittenLine);
+    }
+
+    [Fact]
+    public void EmptyLaunchOptionsAreCalledEmptyInTheMoreDetails()
+    {
+        var diagnostic = SteamLaunchOptionEmitter.Create(Install(GameStore.Steam), Loadout, new SteamLaunchOptionEmitter.Finding(null, null), "* x", WrittenLine);
+
+        diagnostic.MoreDetails.Should().Contain("empty");
     }
 
     [Fact]
     public void AnotherManagersLineIsAWarningNamingTheManager()
     {
-        var diagnostic = SteamLaunchOptionEmitter.Create(Install(GameStore.Steam), Loadout, new SteamLaunchOptionEmitter.Finding("Fluorine"), "* no DLL overrides");
+        var diagnostic = SteamLaunchOptionEmitter.Create(Install(GameStore.Steam), Loadout, new SteamLaunchOptionEmitter.Finding("Fluorine", "fluorine-manager %command%"), "* no DLL overrides", WrittenLine);
 
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
         diagnostic.Actions.Should().Equal(DiagnosticActions.UseLoadoutFromSteam());
+        diagnostic.Details.Value.Should().Contain("{ManagerName}").And.Contain("isn't applied").And.Contain("Play from SilverModManager");
         diagnostic.Should().BeOfType<Diagnostic<SteamLaunchDiagnostics.OtherManagerLaunchesGameMessageData>>()
             .Which.MessageData.ManagerName.Should().Be("Fluorine");
+        diagnostic.MoreDetails.Should().Contain("fluorine-manager %command%").And.Contain(WrittenLine);
+    }
+
+    [Fact]
+    public void TheFixNotesThatSteamIsClosedAndReopened()
+    {
+        DiagnosticActions.UseLoadoutFromSteam().Note.Should().Contain("closed").And.Contain("reopened");
+    }
+
+    [Fact]
+    public void TheCurrentLineIsKeptOnTheFinding()
+    {
+        WriteLocalConfig("PROTON_LOG=1 %command% -windowed");
+
+        SteamLaunchOptionEmitter.Classify(Install(GameStore.Steam), Loadout)!.CurrentLine.Should().Be("PROTON_LOG=1 %command% -windowed");
     }
 
     [Fact]
@@ -220,7 +260,7 @@ public class SteamLaunchSkippedDescriptionTests
 
         text.Should().Contain("winmm=n,b");
         text.Should().Contain("--launcher-skip");
-        text.Should().Contain("-modded");
+        text.Should().Contain("arguments").And.NotContain("-modded");
     }
 
     [Fact]
@@ -282,14 +322,10 @@ public class SteamLaunchOptionDecisionTests
     }
 
     private static Diagnostic? Evaluate(SteamLaunchOptionEmitter.Finding finding, DeploymentPlan plan, LaunchSpec? spec, string[]? launcherSkip = null, WineDllOverride[]? overrides = null)
-        => SteamLaunchOptionEmitter.Evaluate(Install(), "Main", finding, plan, overrides ?? [], launcherSkip ?? [], spec, Primary);
+        => SteamLaunchOptionEmitter.Evaluate(Install(), "Main", finding, plan, overrides ?? [], launcherSkip ?? [], spec, Primary, "'/shim' run 'Main' -- %command%");
 
-    private static string SkippedOf(Diagnostic diagnostic) => diagnostic switch
-    {
-        Diagnostic<SteamLaunchDiagnostics.SteamSkipsLoadoutLaunchMessageData> d => d.MessageData.Skipped,
-        Diagnostic<SteamLaunchDiagnostics.OtherManagerLaunchesGameMessageData> d => d.MessageData.Skipped,
-        _ => throw new InvalidOperationException("unexpected diagnostic"),
-    };
+    // The technical facts live in the collapsed section.
+    private static string SkippedOf(Diagnostic diagnostic) => diagnostic.MoreDetails ?? throw new InvalidOperationException("the diagnostic has no more-details section");
 
     [Fact]
     public void LinkedFilesWithNothingElseSkippedSayNothing()
@@ -325,7 +361,7 @@ public class SteamLaunchOptionDecisionTests
         var diagnostic = Evaluate(NotOurs, LinkPlan, new LaunchSpec(Primary, ["-modded"]), overrides: [new("winmm", [WineDllOverrideType.Native])]);
 
         diagnostic.Should().NotBeNull();
-        SkippedOf(diagnostic!).Should().Contain("-modded").And.Contain("winmm").And.NotContain("not applied");
+        SkippedOf(diagnostic!).Should().Contain("arguments").And.Contain("winmm").And.NotContain("not applied").And.NotContain("-modded");
     }
 
     [Fact]
@@ -374,5 +410,66 @@ public class SteamLaunchOptionDecisionTests
         var diagnostic = Evaluate(Fluorine, LinkPlan, new LaunchSpec(GameRoot.Combine("loader.exe"), []));
 
         SkippedOf(diagnostic!).Should().Contain("loader.exe").And.NotContain("not applied");
+    }
+}
+
+/// <summary>
+/// A run tool that can't say what it would start (me3 not installed, bwrap missing) is a state the diagnostic
+/// expects, not a fault.
+/// </summary>
+public class SteamLaunchSpecResolutionTests
+{
+    private sealed class RecordingLogger : Microsoft.Extensions.Logging.ILogger<SteamLaunchOptionEmitter>
+    {
+        public List<(Microsoft.Extensions.Logging.LogLevel Level, Exception? Exception, string Message)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Entries.Add((logLevel, exception, formatter(state, exception)));
+    }
+
+    private static IRunGameTool ToolThatThrows(Exception exception)
+    {
+        var tool = Substitute.For<IRunGameTool>();
+        tool.GetLaunchSpec(default, default).ReturnsForAnyArgs(_ => ValueTask.FromException<LaunchSpec>(exception));
+        return tool;
+    }
+
+    [Fact]
+    public async Task AnExpectedRefusalGivesNoSpecAndIsNotAWarning()
+    {
+        var logger = new RecordingLogger();
+        var tool = ToolThatThrows(new InvalidOperationException("me3 is not installed"));
+
+        var spec = await SteamLaunchOptionEmitter.ResolveLaunchSpec(tool, default, "Loadout A", logger, CancellationToken.None);
+
+        spec.Should().BeNull();
+        logger.Entries.Should().ContainSingle().Which.Should().Match<(Microsoft.Extensions.Logging.LogLevel Level, Exception? Exception, string Message)>(
+            e => e.Level == Microsoft.Extensions.Logging.LogLevel.Information && e.Exception == null && e.Message.Contains("me3 is not installed") && e.Message.Contains("Loadout A"));
+    }
+
+    [Fact]
+    public async Task AnUnexpectedFailureStillGivesNoSpecButIsAWarningWithTheException()
+    {
+        var logger = new RecordingLogger();
+        var tool = ToolThatThrows(new IOException("disk fell off"));
+
+        var spec = await SteamLaunchOptionEmitter.ResolveLaunchSpec(tool, default, "Loadout A", logger, CancellationToken.None);
+
+        spec.Should().BeNull();
+        logger.Entries.Should().ContainSingle().Which.Should().Match<(Microsoft.Extensions.Logging.LogLevel Level, Exception? Exception, string Message)>(
+            e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning && e.Exception is IOException);
+    }
+
+    [Fact]
+    public async Task CancellationIsNotSwallowed()
+    {
+        var tool = ToolThatThrows(new OperationCanceledException());
+
+        var act = async () => await SteamLaunchOptionEmitter.ResolveLaunchSpec(tool, default, "Loadout A", new RecordingLogger(), CancellationToken.None);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 }

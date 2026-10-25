@@ -11,6 +11,11 @@ public interface IDiagnosticDetailsViewModel : IPageViewModelInterface
     IMarkdownRendererViewModel MarkdownRendererViewModel { get; }
 
     /// <summary>
+    /// The technical details the page keeps behind a "Show details" toggle, or null when the diagnostic has none.
+    /// </summary>
+    IMarkdownRendererViewModel? MoreDetailsRendererViewModel => null;
+
+    /// <summary>
     /// The diagnostic's fixes that have a handler, shown as buttons.
     /// </summary>
     IReadOnlyList<DiagnosticActionButton> Actions { get; }

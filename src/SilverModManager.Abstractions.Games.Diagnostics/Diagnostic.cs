@@ -60,6 +60,13 @@ public record Diagnostic
     public ImmutableArray<DiagnosticAction> Actions { get; init; } = [];
 
     /// <summary>
+    /// Gets markdown the details page keeps behind a "Show details" toggle: the technical facts behind
+    /// <see cref="Details"/> that most people never need. Emitters set it with <c>with { MoreDetails = ... }</c>;
+    /// it is already formatted, so it takes no message data.
+    /// </summary>
+    public string? MoreDetails { get; init; }
+
+    /// <summary>
     /// Gets the creation time of this diagnostics.
     /// </summary>
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;

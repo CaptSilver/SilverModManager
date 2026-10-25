@@ -50,7 +50,8 @@ public class DiagnosticDetailsPageFactory : APageFactory<IDiagnosticDetailsViewM
             context.Diagnostic,
             context.LoadoutId,
             ServiceProvider.GetServices<IDiagnosticActionHandler>(),
-            ServiceProvider.GetRequiredService<ILogger<DiagnosticDetailsViewModel>>()
+            ServiceProvider.GetRequiredService<ILogger<DiagnosticDetailsViewModel>>(),
+            ServiceProvider.GetRequiredService<IMarkdownRendererViewModel>()
         );
     }
 }

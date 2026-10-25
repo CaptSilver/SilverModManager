@@ -16,6 +16,8 @@ public partial class DiagnosticDetailsView : ReactiveUserControl<IDiagnosticDeta
     {
         InitializeComponent();
 
+        MoreDetailsToggle.Click += (_, _) => SetMoreDetailsShown(!MoreDetailsHost.IsVisible);
+
         this.WhenActivated(d =>
             {
                 this.WhenAnyValue(view => view.ViewModel)
@@ -31,6 +33,11 @@ public partial class DiagnosticDetailsView : ReactiveUserControl<IDiagnosticDeta
     {
         MarkdownRendererViewModelViewHost.ViewModel = vm.MarkdownRendererViewModel;
         ActionsItemsControl.ItemsSource = vm.Actions;
+
+        var hasMoreDetails = vm.MoreDetailsRendererViewModel is not null;
+        MoreDetailsViewModelViewHost.ViewModel = vm.MoreDetailsRendererViewModel;
+        MoreDetailsToggle.IsVisible = hasMoreDetails;
+        SetMoreDetailsShown(false);
 
         switch (vm.Severity)
         {
@@ -63,5 +70,11 @@ public partial class DiagnosticDetailsView : ReactiveUserControl<IDiagnosticDeta
                 SeverityTitleTextBlock.Text = Language.DiagnosticDetailsView_SeverityTitle_HIDDEN;
                 break;
         }
+    }
+
+    private void SetMoreDetailsShown(bool shown)
+    {
+        MoreDetailsHost.IsVisible = shown;
+        MoreDetailsToggle.Content = shown ? "Hide details" : "Show details";
     }
 }

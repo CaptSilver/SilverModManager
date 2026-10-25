@@ -13,13 +13,15 @@ namespace SilverModManager.App.UI.Pages.Diagnostics;
 /// <summary>
 /// A button on the details page that runs one of the diagnostic's fix actions.
 /// </summary>
-public sealed record DiagnosticActionButton(string Label, ReactiveCommand<Unit, Unit> Command);
+public sealed record DiagnosticActionButton(string Label, ReactiveCommand<Unit, Unit> Command, string? Note = null);
 
 public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewModel>, IDiagnosticDetailsViewModel
 {
     public DiagnosticSeverity Severity { get; }
 
     public IMarkdownRendererViewModel MarkdownRendererViewModel { get; }
+
+    public IMarkdownRendererViewModel? MoreDetailsRendererViewModel { get; }
 
     public IReadOnlyList<DiagnosticActionButton> Actions { get; }
 
@@ -30,7 +32,8 @@ public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewM
         Diagnostic diagnostic,
         LoadoutId loadoutId,
         IEnumerable<IDiagnosticActionHandler> actionHandlers,
-        ILogger<DiagnosticDetailsViewModel> logger) : base(windowManager)
+        ILogger<DiagnosticDetailsViewModel> logger,
+        IMarkdownRendererViewModel? moreDetailsRendererViewModel = null) : base(windowManager)
     {
         TabIcon = IconValues.Cardiology;
         TabTitle = diagnostic.Title;
@@ -42,6 +45,13 @@ public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewM
 
         MarkdownRendererViewModel = markdownRendererViewModel;
         MarkdownRendererViewModel.Contents = details;
+
+        if (!string.IsNullOrWhiteSpace(diagnostic.MoreDetails))
+        {
+            MoreDetailsRendererViewModel = moreDetailsRendererViewModel
+                ?? throw new ArgumentNullException(nameof(moreDetailsRendererViewModel), "The diagnostic has more details, so the page needs a renderer for them.");
+            MoreDetailsRendererViewModel.Contents = diagnostic.MoreDetails;
+        }
 
         Actions = CreateButtons(diagnostic, loadoutId, actionHandlers.ToArray(), logger);
     }
@@ -71,7 +81,7 @@ public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewM
                     logger.LogError(e, "The diagnostic action {ActionId} failed for loadout {LoadoutId}", action.Id, loadoutId);
                 }
             });
-            buttons.Add(new DiagnosticActionButton(action.Label, command));
+            buttons.Add(new DiagnosticActionButton(action.Label, command, action.Note));
         }
 
         return buttons;

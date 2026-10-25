@@ -41,6 +41,8 @@ public static class Services
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
         services.TryAddSingleton<LocalConfigVdfWriter>();
+        // The Steam launch options suggestion shows the line the fix would write.
+        services.TryAddSingleton<ISteamLaunchOptionWriter, SteamLaunchOptionWriter>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, SteamLaunchOptionEmitter>());
         services.AddSingleton<IManagedInstallations, LoadoutManagedInstallations>();
         services.AddSingleton<ISupportBundleWriter, SupportBundleWriter>();

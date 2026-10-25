@@ -10,15 +10,16 @@ namespace SilverModManager.Abstractions.Diagnostics;
 /// <param name="Id">Stable identifier of the action, see <see cref="DiagnosticActions"/>.</param>
 /// <param name="Label">The text of the button.</param>
 /// <param name="Arguments">Extra strings for the handler; most actions need none.</param>
+/// <param name="Note">A short line shown next to the button for what pressing it does beyond its label, or null.</param>
 [PublicAPI]
-public sealed record DiagnosticAction(string Id, string Label, ImmutableArray<string> Arguments)
+public sealed record DiagnosticAction(string Id, string Label, ImmutableArray<string> Arguments, string? Note = null)
 {
     /// <inheritdoc/>
     public bool Equals(DiagnosticAction? other)
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;
-        return Id == other.Id && Label == other.Label && Arguments.AsSpan().SequenceEqual(other.Arguments.AsSpan());
+        return Id == other.Id && Label == other.Label && Note == other.Note && Arguments.AsSpan().SequenceEqual(other.Arguments.AsSpan());
     }
 
     /// <inheritdoc/>
@@ -27,6 +28,7 @@ public sealed record DiagnosticAction(string Id, string Label, ImmutableArray<st
         var hash = new HashCode();
         hash.Add(Id);
         hash.Add(Label);
+        hash.Add(Note);
         foreach (var argument in Arguments) hash.Add(argument);
         return hash.ToHashCode();
     }
@@ -46,7 +48,7 @@ public static class DiagnosticActions
     /// <summary>
     /// Opens the dialog that writes the loadout's launch line into Steam's launch options.
     /// </summary>
-    public static DiagnosticAction UseLoadoutFromSteam() => new(UseLoadoutFromSteamId, "Use this loadout from Steam", []);
+    public static DiagnosticAction UseLoadoutFromSteam() => new(UseLoadoutFromSteamId, "Use this loadout from Steam", [], "Steam is closed and reopened if it is running.");
 
     /// <summary>
     /// Id of the action that dismisses the note about a game that changed folders.

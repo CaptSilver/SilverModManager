@@ -28,10 +28,11 @@ namespace SilverModManager.Platform.Proton.Steam;
 /// skip that Steam's own start leaves out. Another manager's line is always reported, since it may rewrite the
 /// game folder.
 /// </remarks>
-public sealed class SteamLaunchOptionEmitter(IToolManager tools, IConnection connection, IDeploymentPlanStore plans, ILogger<SteamLaunchOptionEmitter> logger) : ILoadoutDiagnosticEmitter
+public sealed class SteamLaunchOptionEmitter(IToolManager tools, IConnection connection, IDeploymentPlanStore plans, ISteamLaunchOptionWriter launchOptions, ILogger<SteamLaunchOptionEmitter> logger) : ILoadoutDiagnosticEmitter
 {
     /// <param name="OtherManager">The launcher the line starts instead of the app, or null when the line is simply not ours.</param>
-    internal sealed record Finding(string? OtherManager);
+    /// <param name="CurrentLine">The launch options Steam has stored for the game, or null when there are none.</param>
+    internal sealed record Finding(string? OtherManager, string? CurrentLine = null);
 
     /// <inheritdoc />
     public IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
@@ -49,24 +50,33 @@ public sealed class SteamLaunchOptionEmitter(IToolManager tools, IConnection con
             installation, loadout.Name, finding, plan,
             WineDllOverrideRequirements.For(installation.Game, loadout),
             GameLauncherSkip.For(installation.Game),
-            await ResolveLaunchSpec(loadout, cancellationToken),
-            installation.Locations.ToAbsolutePath(installation.Game.GetPrimaryFile(installation)));
+            await ResolveLaunchSpec(tools.GetTools(loadout).OfType<IRunGameTool>().FirstOrDefault(), loadout, loadout.Name, logger, cancellationToken),
+            installation.Locations.ToAbsolutePath(installation.Game.GetPrimaryFile(installation)),
+            launchOptions.ComposeLine(loadout));
         if (diagnostic is not null) yield return diagnostic;
     }
 
-    private async ValueTask<LaunchSpec?> ResolveLaunchSpec(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
+    /// <summary>
+    /// What the run tool would start, or null when it can't say. A tool refuses (<see cref="InvalidOperationException"/>)
+    /// while something it needs is missing, such as the mod loader or bwrap; that is a state the user sees in its
+    /// own diagnostic, so here it is only noted. The suggestion still lists what the game declares.
+    /// </summary>
+    internal static async ValueTask<LaunchSpec?> ResolveLaunchSpec(IRunGameTool? runTool, Loadout.ReadOnly loadout, string loadoutName, ILogger logger, CancellationToken cancellationToken)
     {
-        var runTool = tools.GetTools(loadout).OfType<IRunGameTool>().FirstOrDefault();
         if (runTool is null) return null;
 
         try
         {
             return await runTool.GetLaunchSpec(loadout, cancellationToken);
         }
+        catch (InvalidOperationException e)
+        {
+            logger.LogInformation("The launch of {Loadout} can't be resolved yet, so the Steam launch options suggestion leaves out the run tool's executable and arguments: {Reason}", loadoutName, e.Message);
+            return null;
+        }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            // The list still says what the game declares; only the run tool's exe and arguments are left out.
-            logger.LogWarning(e, "Could not resolve the launch of {Loadout} for the Steam launch options diagnostic", loadout.Name);
+            logger.LogWarning(e, "Could not resolve the launch of {Loadout} for the Steam launch options diagnostic", loadoutName);
             return null;
         }
     }
@@ -86,7 +96,7 @@ public sealed class SteamLaunchOptionEmitter(IToolManager tools, IConnection con
         if (parsed.HasSpan && parsed.LoadoutName == loadoutName) return null;
 
         var manager = SteamLaunchOptionLine.FindOtherManager(read.Line);
-        return new Finding(manager is null ? null : manager.Name ?? manager.Command);
+        return new Finding(manager is null ? null : manager.Name ?? manager.Command, read.Line);
     }
 
     /// <summary>
@@ -95,7 +105,7 @@ public sealed class SteamLaunchOptionEmitter(IToolManager tools, IConnection con
     /// or launcher skip of its own.
     /// </summary>
     internal static Diagnostic? Evaluate(GameInstallation installation, string loadoutName, Finding finding, DeploymentPlan plan,
-        IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments, LaunchSpec? spec, AbsolutePath primaryExe)
+        IReadOnlyList<WineDllOverride> overrides, IReadOnlyList<string> launcherSkipArguments, LaunchSpec? spec, AbsolutePath primaryExe, string lineToWrite)
     {
         var needsApp = LoadoutLaunchNeeds.NeedsApp(plan, spec);
         var gameNeedsLaunch = launcherSkipArguments.Count > 0 || spec is not null && (!spec.Exe.Equals(primaryExe) || spec.ExtraArgs.Length > 0);
@@ -105,7 +115,7 @@ public sealed class SteamLaunchOptionEmitter(IToolManager tools, IConnection con
         // With nothing else to list, the other manager is the whole reason for the warning.
         if (skipped.Length == 0 && finding.OtherManager is { } manager)
             skipped = $"* {manager} may change the game folder on its own.{Environment.NewLine}";
-        return Create(installation, loadoutName, finding, skipped);
+        return Create(installation, loadoutName, finding, skipped, lineToWrite);
     }
 
     /// <summary>
@@ -124,7 +134,7 @@ public sealed class SteamLaunchOptionEmitter(IToolManager tools, IConnection con
             sb.AppendLine($"* The game's own executable runs instead of `{spec.Exe.FileName}`.");
 
         if (spec is { ExtraArgs.Length: > 0 })
-            sb.AppendLine($"* The arguments the game needs (`{string.Join(' ', spec.ExtraArgs)}`) are not passed.");
+            sb.AppendLine("* The arguments the game needs are not passed.");
 
         if (launcherSkipArguments.Count > 0)
             sb.AppendLine($"* The game's launcher is not told to skip itself (`{string.Join(' ', launcherSkipArguments)}`).");
@@ -132,12 +142,29 @@ public sealed class SteamLaunchOptionEmitter(IToolManager tools, IConnection con
         return sb.ToString();
     }
 
-    internal static Diagnostic Create(GameInstallation installation, string loadoutName, Finding finding, string skipped)
+    internal static Diagnostic Create(GameInstallation installation, string loadoutName, Finding finding, string skipped, string lineToWrite)
     {
         var gameName = installation.Game.DisplayName;
-        System.Collections.Immutable.ImmutableArray<DiagnosticAction> actions = [DiagnosticActions.UseLoadoutFromSteam()];
-        return finding.OtherManager is { } manager
-            ? SteamLaunchDiagnostics.CreateOtherManagerLaunchesGame(gameName, loadoutName, manager, skipped) with { Actions = actions }
-            : SteamLaunchDiagnostics.CreateSteamSkipsLoadoutLaunch(gameName, loadoutName, skipped) with { Actions = actions };
+        var moreDetails = DescribeLaunchOptions(skipped, finding.CurrentLine, lineToWrite);
+        Diagnostic diagnostic = finding.OtherManager is { } manager
+            ? SteamLaunchDiagnostics.CreateOtherManagerLaunchesGame(gameName, loadoutName, manager)
+            : SteamLaunchDiagnostics.CreateSteamSkipsLoadoutLaunch(gameName, loadoutName);
+        return diagnostic with { Actions = [DiagnosticActions.UseLoadoutFromSteam()], MoreDetails = moreDetails };
     }
+
+    /// <summary>
+    /// The collapsed section: what the Steam start leaves out, then the two short lines the fix is about.
+    /// The line to write is the short <c>run</c> line; the app builds the full command when the game starts,
+    /// so that command never appears here.
+    /// </summary>
+    private static string DescribeLaunchOptions(string skipped, string? currentLine, string lineToWrite)
+        => $"""
+            What Steam's own start leaves out:
+
+            {skipped}
+
+            Steam's launch options now: {(string.IsNullOrWhiteSpace(currentLine) ? "empty" : $"`{currentLine}`")}
+
+            "Use this loadout from Steam" writes: `{lineToWrite}`
+            """;
 }

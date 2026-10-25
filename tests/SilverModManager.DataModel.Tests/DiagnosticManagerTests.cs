@@ -155,6 +155,17 @@ public class DiagnosticManagerTests(IServiceProvider provider) : AGameTest<Cyber
     }
 
     [Fact]
+    public void DiagnosticActions_DifferWhenOnlyTheirNoteDoes()
+    {
+        var a = new DiagnosticAction("id", "Label", ["x"], "Steam is restarted.");
+
+        a.Should().Be(new DiagnosticAction("id", "Label", ["x"], "Steam is restarted."));
+        a.GetHashCode().Should().Be(new DiagnosticAction("id", "Label", ["x"], "Steam is restarted.").GetHashCode());
+        a.Should().NotBe(new DiagnosticAction("id", "Label", ["x"]));
+        a.Should().NotBe(new DiagnosticAction("id", "Label", ["x"], "Something else."));
+    }
+
+    [Fact]
     public void TheSteamLaunchOptionAction_HasAStableId()
     {
         var action = DiagnosticActions.UseLoadoutFromSteam();

@@ -19,11 +19,14 @@ public class DiagnosticDetailsViewTests(IServiceProvider provider) : AUiTest(pro
 {
     private sealed class StubViewModel : APageViewModel<IDiagnosticDetailsViewModel>, IDiagnosticDetailsViewModel
     {
-        public StubViewModel(string markdown, IReadOnlyList<DiagnosticActionButton> actions) : base(new DesignWindowManager())
+        public StubViewModel(string markdown, IReadOnlyList<DiagnosticActionButton> actions, string? moreDetails = null) : base(new DesignWindowManager())
         {
             MarkdownRendererViewModel = new MarkdownRendererViewModel { Contents = markdown };
             Actions = actions;
+            if (moreDetails is not null) MoreDetailsRendererViewModel = new MarkdownRendererViewModel { Contents = moreDetails };
         }
+
+        public IMarkdownRendererViewModel? MoreDetailsRendererViewModel { get; }
 
         public DiagnosticSeverity Severity => DiagnosticSeverity.Warning;
         public IMarkdownRendererViewModel MarkdownRendererViewModel { get; }
@@ -37,12 +40,12 @@ public class DiagnosticDetailsViewTests(IServiceProvider provider) : AUiTest(pro
         return builder.ToString();
     }
 
-    private static async Task<(Window Window, DiagnosticDetailsView View)> ShowAsync(string markdown)
+    private static async Task<(Window Window, DiagnosticDetailsView View)> ShowAsync(string markdown, string? moreDetails = null, string? note = null)
     {
-        var action = new DiagnosticActionButton("Fix it", ReactiveCommand.Create(() => { }));
+        var action = new DiagnosticActionButton("Fix it", ReactiveCommand.Create(() => { }), note);
         return await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var view = new DiagnosticDetailsView { ViewModel = new StubViewModel(markdown, [action]) };
+            var view = new DiagnosticDetailsView { ViewModel = new StubViewModel(markdown, [action], moreDetails) };
             var window = new Window { Width = 800, Height = 300, Content = view };
             window.Show();
             Dispatcher.UIThread.RunJobs();
@@ -96,5 +99,135 @@ public class DiagnosticDetailsViewTests(IServiceProvider provider) : AUiTest(pro
             ActionsVisible().Should().BeTrue();
         });
         await Dispatcher.UIThread.InvokeAsync(window.Close);
+    }
+
+    [Fact]
+    public async Task Test_ActionButtons_ArePressablePrimaryButtons()
+    {
+        var (window, view) = await ShowAsync("Some details");
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var button = view.GetVisualDescendants().OfType<StandardButton>().Single();
+            button.IsEnabled.Should().BeTrue("a disabled button is drawn greyed out");
+            button.IsEffectivelyEnabled.Should().BeTrue();
+            button.GetValue(StandardButton.TypeProperty).Should().Be(StandardButton.Types.Primary);
+            button.GetValue(StandardButton.FillProperty).Should().Be(StandardButton.Fills.Strong);
+            button.Opacity.Should().Be(1);
+            button.Background.Should().BeAssignableTo<Avalonia.Media.ISolidColorBrush>()
+                .Which.Opacity.Should().Be(1);
+        });
+        await Dispatcher.UIThread.InvokeAsync(window.Close);
+    }
+
+    [Fact]
+    public async Task Test_MoreDetails_AreHiddenUntilTheToggleIsPressed()
+    {
+        var (window, view) = await ShowAsync("Plain text", moreDetails: "THE COMMAND LINE");
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var host = view.FindControl<Control>("MoreDetailsHost")!;
+            var toggle = view.FindControl<Button>("MoreDetailsToggle")!;
+            toggle.IsVisible.Should().BeTrue();
+            toggle.IsEffectivelyVisible.Should().BeTrue();
+            host.IsVisible.Should().BeFalse("the technical details start collapsed");
+
+            toggle.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+            host.IsVisible.Should().BeTrue();
+            ((IDiagnosticDetailsViewModel)view.ViewModel!).MoreDetailsRendererViewModel!.Contents.Should().Contain("THE COMMAND LINE");
+
+            toggle.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+            host.IsVisible.Should().BeFalse();
+        });
+        await Dispatcher.UIThread.InvokeAsync(window.Close);
+    }
+
+    [Fact]
+    public async Task Test_WithoutMoreDetails_ThereIsNoToggle()
+    {
+        var (window, view) = await ShowAsync("Plain text");
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            view.FindControl<Button>("MoreDetailsToggle")!.IsVisible.Should().BeFalse();
+            view.FindControl<Control>("MoreDetailsHost")!.IsVisible.Should().BeFalse();
+        });
+        await Dispatcher.UIThread.InvokeAsync(window.Close);
+    }
+
+    [Fact]
+    public async Task Test_AnActionNote_SitsNextToTheButton()
+    {
+        var (window, view) = await ShowAsync("Plain text", note: "Steam is closed and reopened if it is running.");
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            view.GetVisualDescendants().OfType<TextBlock>()
+                .Should().Contain(t => t.Text == "Steam is closed and reopened if it is running." && t.IsEffectivelyVisible);
+        });
+        await Dispatcher.UIThread.InvokeAsync(window.Close);
+    }
+
+    [Fact]
+    public async Task Test_AnActionWithoutANote_ShowsNoNoteText()
+    {
+        var (window, view) = await ShowAsync("Plain text");
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            view.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Name == "ActionNoteTextBlock")
+                .Should().OnlyContain(t => !t.IsVisible);
+        });
+        await Dispatcher.UIThread.InvokeAsync(window.Close);
+    }
+
+    private sealed class NoopHandler(string actionId) : IDiagnosticActionHandler
+    {
+        public string ActionId { get; } = actionId;
+        public Task ExecuteAsync(SilverModManager.Sdk.Loadouts.LoadoutId loadoutId, System.Collections.Immutable.ImmutableArray<string> arguments) => Task.CompletedTask;
+    }
+
+    private DispatcherOperation<DiagnosticDetailsViewModel> RealViewModel(Diagnostic diagnostic)
+        => Dispatcher.UIThread.InvokeAsync(() => new DiagnosticDetailsViewModel(
+            new DesignWindowManager(),
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IDiagnosticWriter>(Provider),
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IMarkdownRendererViewModel>(Provider),
+            diagnostic,
+            default,
+            [new NoopHandler(DiagnosticActions.UseLoadoutFromSteamId)],
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<DiagnosticDetailsViewModel>.Instance,
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IMarkdownRendererViewModel>(Provider)));
+
+    [Fact]
+    public async Task Test_TheViewModel_ShowsAnEnabledButtonWithTheActionsNote_AndKeepsMoreDetailsSeparate()
+    {
+        var diagnostic = new Diagnostic
+        {
+            Id = new DiagnosticId("SilverModManager.UI.Tests", 2),
+            Title = "Title",
+            Severity = DiagnosticSeverity.Suggestion,
+            Summary = DiagnosticMessage.From("Summary"),
+            Details = DiagnosticMessage.From("Plain consequence"),
+            DataReferences = new Dictionary<SilverModManager.Abstractions.Diagnostics.References.DataReferenceDescription, SilverModManager.Abstractions.Diagnostics.References.IDataReference>(),
+            Actions = [DiagnosticActions.UseLoadoutFromSteam()],
+            MoreDetails = "`'/shim' run 'Main' -- %command%`",
+        };
+
+        var vm = await RealViewModel(diagnostic);
+        Window? window = null;
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            window = new Window { Width = 800, Height = 600 };
+            window.Content = new DiagnosticDetailsView { ViewModel = vm };
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            vm.MarkdownRendererViewModel.Contents.Should().Contain("Plain consequence").And.NotContain("%command%");
+            vm.MoreDetailsRendererViewModel!.Contents.Should().Contain("%command%");
+            vm.Actions.Single().Note.Should().Contain("reopened");
+
+            var button = ((Control)window.Content).GetVisualDescendants().OfType<StandardButton>().Single();
+            button.IsEffectivelyEnabled.Should().BeTrue();
+            button.Command!.CanExecute(null).Should().BeTrue();
+        });
+        await Dispatcher.UIThread.InvokeAsync(window!.Close);
     }
 }

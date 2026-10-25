@@ -72,6 +72,23 @@
                         <reactiveUi:ViewModelViewHost x:Name="MarkdownRendererViewModelViewHost" />
                     </Border>
 
+                    <!-- technical details, collapsed until asked for -->
+                    <Button x:Name="MoreDetailsToggle"
+                            Margin="0,8,0,0"
+                            Padding="0"
+                            Background="Transparent"
+                            IsVisible="False"
+                            Content="Show details" />
+                    <Border x:Name="MoreDetailsHost"
+                            Margin="0,8,0,0"
+                            CornerRadius="4"
+                            BorderThickness="1"
+                            Padding="16"
+                            BorderBrush="{StaticResource StrokeTranslucentModerateBrush}"
+                            IsVisible="False">
+                        <reactiveUi:ViewModelViewHost x:Name="MoreDetailsViewModelViewHost" />
+                    </Border>
+
                     <!-- the fixes the diagnostic offers; only actions that have a handler are listed -->
                     <ItemsControl x:Name="ActionsItemsControl" Margin="0,12,0,0">
                         <ItemsControl.ItemsPanel>
@@ -81,10 +98,18 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="diagnostics:DiagnosticActionButton">
-                                <controls:StandardButton Text="{Binding Label}"
-                                                         Command="{Binding Command}"
-                                                         Type="Primary"
-                                                         Fill="Strong" />
+                                <StackPanel Spacing="4" MaxWidth="320">
+                                    <controls:StandardButton Text="{Binding Label}"
+                                                             Command="{Binding Command}"
+                                                             Type="Primary"
+                                                             Fill="Strong" />
+                                    <TextBlock x:Name="ActionNoteTextBlock"
+                                               Text="{Binding Note}"
+                                               IsVisible="{Binding Note, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               Theme="{StaticResource BodySMNormalTheme}"
+                                               Foreground="{StaticResource NeutralSubduedBrush}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
