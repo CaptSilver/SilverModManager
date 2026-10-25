@@ -140,9 +140,12 @@ public class SteamInstalledGameTests(ITestOutputHelper helper) : ASteamInstalled
             "SilverModManager.Games.RedEngine.Cyberpunk2077: 1",
             "SilverModManager.Games.RedEngine.Cyberpunk2077: 5",
             "SilverModManager.Games.RedEngine.Cyberpunk2077: 6");
+        // CET's log is a file the game setup writes itself, so it is counted out and mentioned instead of listed.
         var differ = Describe(diagnostics[0]);
-        differ.Should().Contain("3 file(s) in the Cyberpunk 2077 folder");
-        foreach (var file in PlayerFiles) differ.Should().Contain(file);
+        differ.Should().Contain("2 file(s) in the Cyberpunk 2077 folder");
+        foreach (var file in PlayerFiles.Where(f => !f.EndsWith(".log", StringComparison.Ordinal))) differ.Should().Contain(file);
+        differ.Should().NotContain("cyber_engine_tweaks.log");
+        differ.Should().Contain("1 log or crash file the game wrote itself is not listed.");
     }
 
     [Fact]
