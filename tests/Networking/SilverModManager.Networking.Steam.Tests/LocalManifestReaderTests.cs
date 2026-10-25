@@ -101,4 +101,40 @@ public sealed class LocalManifestReaderTests : IDisposable
 
         result.Manifest.Files.Single().Path.ToString().Should().Be("Data/Skyrim.esm");
     }
+
+    [Fact]
+    public void ReadHashes_EncryptedFilenames_StillYieldsTheFileHashes()
+    {
+        byte[] a = [1, 2, 3];
+        byte[] b = [4, 5];
+        DepotManifestFixture.Write(ManifestPath, Depot, Manifest, [("a.bin", a), ("b.bin", b)], encryptFilenames: true);
+
+        var result = _reader.ReadHashes(ManifestPath).Should().NotBeNull().And.Subject as ManifestFileHashes;
+
+        result!.DepotId.Should().Be(Depot);
+        result.ManifestId.Should().Be(Manifest);
+        result.Hashes.Should().BeEquivalentTo([Sha1Value.From(SHA1.HashData(a)), Sha1Value.From(SHA1.HashData(b))]);
+    }
+
+    [Fact]
+    public void ReadHashes_LeavesOutDirectoriesAndSymlinks()
+    {
+        DepotManifestFixture.Write(ManifestPath, Depot, Manifest,
+        [
+            new DepotManifestFixture.Entry("real.bin", [1, 2]),
+            new DepotManifestFixture.Entry("Data", [], EDepotFileFlag.Directory),
+            new DepotManifestFixture.Entry("link.so", [], EDepotFileFlag.Symlink, "real.bin"),
+        ]);
+
+        _reader.ReadHashes(ManifestPath)!.Hashes.Should().BeEquivalentTo([Sha1Value.From(SHA1.HashData([1, 2]))]);
+    }
+
+    [Fact]
+    public void ReadHashes_AFileThatIsNotAManifestIsNull()
+    {
+        File.WriteAllBytes(ManifestPath.ToString(), [0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0, 1, 2, 3, 4]);
+
+        _reader.ReadHashes(ManifestPath).Should().BeNull();
+        _reader.ReadHashes(_dir / "missing.manifest").Should().BeNull();
+    }
 }

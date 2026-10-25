@@ -1,6 +1,7 @@
 using SilverModManager.Abstractions.Steam.DTOs;
 using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 
 namespace SilverModManager.Abstractions.Steam;
 
@@ -22,6 +23,30 @@ public interface IDepotManifestSource
     /// </summary>
     LocalManifestResult Read(AbsolutePath manifestPath);
 }
+
+/// <summary>
+/// A manifest source that can also list the manifests Steam kept for a depot and read their file hashes without the
+/// depot key. Steam leaves the manifests of older builds in the cache beside the current one, which is the only place
+/// the hashes of a build that is no longer installed can come from.
+/// </summary>
+public interface IDepotManifestCatalog : IDepotManifestSource
+{
+    /// <summary>
+    /// Every manifest of <paramref name="depot"/> in the client root's depotcache, then in the install's library
+    /// depotcache (see <see cref="IDepotManifestSource.TryGetManifestPath"/>), each folder in file name order.
+    /// </summary>
+    IReadOnlyList<AbsolutePath> CachedManifests(AbsolutePath steamRoot, AbsolutePath? installPath, DepotId depot);
+
+    /// <summary>
+    /// The SHA-1 of every file in the manifest. The hashes sit in the part of a manifest that is not encrypted, so
+    /// this works where <see cref="IDepotManifestSource.Read"/> answers <see cref="LocalManifestResult.NeedsDepotKey"/>.
+    /// Null when the file is missing, truncated or not a manifest.
+    /// </summary>
+    ManifestFileHashes? ReadFileHashes(AbsolutePath manifestPath);
+}
+
+/// <summary>The file hashes of one cached manifest, without the file names.</summary>
+public sealed record ManifestFileHashes(DepotId DepotId, ManifestId ManifestId, IReadOnlySet<Sha1Value> Hashes);
 
 /// <summary>
 /// The outcome of reading a manifest file from disk.

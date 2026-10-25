@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Abstractions.Steam;
 using SilverModManager.Abstractions.Steam.Values;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Hashes;
 using Xunit;
 
 namespace SilverModManager.Networking.Steam.Tests;
@@ -131,5 +132,68 @@ public sealed class DepotCacheTests : IDisposable
         using var provider = services.BuildServiceProvider();
 
         provider.GetServices<IDepotManifestSource>().Should().ContainSingle().Which.Should().BeOfType<LocalDepotManifests>();
+    }
+
+    [Fact]
+    public void CachedManifests_ListsEveryManifestOfTheDepotAndNoOtherDepot()
+    {
+        var older = Touch(Root / "depotcache" / ManifestFileName(Depot, ManifestId.From(111)));
+        var newer = Touch(Root / "depotcache" / ManifestFileName(Depot, ManifestId.From(222)));
+        Touch(Root / "depotcache" / ManifestFileName(DepotId.From(5), ManifestId.From(333)));
+        Touch(Root / "depotcache" / "readme.txt");
+
+        _cache.CachedManifests(Root, null, Depot).Should().Equal(older, newer);
+    }
+
+    [Fact]
+    public void CachedManifests_DoesNotMatchADepotThatOnlyStartsTheSame()
+    {
+        Touch(Root / "depotcache" / ManifestFileName(DepotId.From(4898311), ManifestId.From(1)));
+
+        _cache.CachedManifests(Root, null, Depot).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CachedManifests_AddsTheInstallsLibraryDepotcacheAfterTheClientRoot()
+    {
+        var inRoot = Touch(Root / "depotcache" / ManifestFileName(Depot, ManifestId.From(1)));
+        var library = _dir / "library";
+        var inLibrary = Touch(library / "steamapps" / "depotcache" / ManifestFileName(Depot, ManifestId.From(2)));
+
+        _cache.CachedManifests(Root, library / "steamapps" / "common" / "Game", Depot).Should().Equal(inRoot, inLibrary);
+    }
+
+    [Fact]
+    public void CachedManifests_NoDepotcacheIsEmpty()
+    {
+        Root.CreateDirectory();
+
+        _cache.CachedManifests(Root, null, Depot).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void LocalDepotManifests_ListsAndReadsHashesOfAnOlderManifestOfTheDepot()
+    {
+        var older = ManifestId.From(10);
+        byte[] content = [9, 9, 9];
+        DepotManifestFixture.Write(Root / "depotcache" / ManifestFileName(Depot, older), Depot, older, [("a.bin", content)], encryptFilenames: true);
+        var source = new LocalDepotManifests(_cache, new LocalManifestReader());
+
+        var listed = source.CachedManifests(Root, null, Depot).Should().ContainSingle().Subject;
+        var hashes = source.ReadFileHashes(listed);
+
+        hashes!.ManifestId.Should().Be(older);
+        hashes.Hashes.Should().ContainSingle().Which.Should().Be(Sha1Value.From(System.Security.Cryptography.SHA1.HashData(content)));
+    }
+
+    [Fact]
+    public void AddSteam_RegistersTheManifestSourceAsACatalogToo()
+    {
+        var services = new ServiceCollection().AddLogging();
+        services.AddSteam();
+
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IDepotManifestSource>().Should().BeAssignableTo<IDepotManifestCatalog>();
     }
 }

@@ -1,5 +1,6 @@
 using SilverModManager.Abstractions.Steam;
 using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.Sdk.Hashes;
 using NexusMods.Paths;
 using SteamKit2;
 
@@ -41,6 +42,27 @@ internal sealed class LocalManifestReader
         catch (Exception e)
         {
             return new LocalManifestResult.Unreadable(e.Message);
+        }
+    }
+
+    /// <summary>
+    /// The file hashes of a manifest whether or not its file names are encrypted: the hashes are not.
+    /// </summary>
+    public ManifestFileHashes? ReadHashes(AbsolutePath manifestPath)
+    {
+        try
+        {
+            if (DepotManifest.LoadFromFile(manifestPath.ToString()) is not { } manifest) return null;
+
+            var hashes = (manifest.Files ?? [])
+                .Where(f => !IsDirectoryOrSymlink(f) && f.FileHash is { Length: 20 })
+                .Select(f => Sha1Value.From(f.FileHash))
+                .ToHashSet();
+            return new ManifestFileHashes(DepotId.From(manifest.DepotID), ManifestId.From(manifest.ManifestGID), hashes);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or NotSupportedException or InvalidOperationException)
+        {
+            return null;
         }
     }
 

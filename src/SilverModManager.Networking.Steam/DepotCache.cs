@@ -36,6 +36,25 @@ internal sealed class DepotCache
         return false;
     }
 
+    /// <summary>
+    /// Every manifest of one depot, client root first, each folder in file name order. The depot id is part of the
+    /// file name, so only that depot's files are named and nothing else is opened.
+    /// </summary>
+    public IReadOnlyList<AbsolutePath> CachedManifests(AbsolutePath steamRoot, AbsolutePath? installPath, DepotId depot)
+    {
+        var found = new List<AbsolutePath>();
+        AddFrom(steamRoot / DirectoryName, depot, found);
+        if (installPath is { } install && TryGetSteamApps(install, out var steamApps)) AddFrom(steamApps / DirectoryName, depot, found);
+        return found;
+    }
+
+    private static void AddFrom(AbsolutePath directory, DepotId depot, List<AbsolutePath> found)
+    {
+        if (!directory.DirectoryExists()) return;
+        found.AddRange(directory.EnumerateFiles($"{depot.Value}_*.manifest", recursive: false)
+            .OrderBy(p => p.FileName, StringComparer.Ordinal));
+    }
+
     private static bool TryGetSteamApps(AbsolutePath install, out AbsolutePath steamApps)
     {
         steamApps = default;

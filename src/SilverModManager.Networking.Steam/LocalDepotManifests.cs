@@ -8,7 +8,7 @@ namespace SilverModManager.Networking.Steam;
 /// <summary>
 /// Reads the manifests the Steam client has already saved to disk.
 /// </summary>
-public sealed class LocalDepotManifests : IDepotManifestSource
+public sealed class LocalDepotManifests : IDepotManifestCatalog
 {
     private readonly DepotCache _cache;
     private readonly LocalManifestReader _reader;
@@ -26,4 +26,9 @@ public sealed class LocalDepotManifests : IDepotManifestSource
         _cache.TryGetManifestPath(steamRoot, manifestId, installPath, out manifestPath);
 
     public LocalManifestResult Read(AbsolutePath manifestPath) => _reader.Read(manifestPath);
+
+    public IReadOnlyList<AbsolutePath> CachedManifests(AbsolutePath steamRoot, AbsolutePath? installPath, DepotId depot) =>
+        _cache.CachedManifests(steamRoot, installPath, depot);
+
+    public ManifestFileHashes? ReadFileHashes(AbsolutePath manifestPath) => _reader.ReadHashes(manifestPath);
 }
