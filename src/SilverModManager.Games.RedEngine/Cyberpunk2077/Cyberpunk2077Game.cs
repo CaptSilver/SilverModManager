@@ -3,6 +3,7 @@ using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Diagnostics.Values;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -21,7 +22,7 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Games.RedEngine.Cyberpunk2077;
 
 [UsedImplicitly]
-public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements, IGameLauncherSkip, IGameUserDataFolders, IGameNativeCode
+public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements, IGameLauncherSkip, IGameUserDataFolders, IGameNativeCode, IGameUpdateSensitivity
 {
     public static GameId GameId { get; } = GameId.From("RedEngine.Cyberpunk2077");
     public static string DisplayName => "Cyberpunk 2077";
@@ -49,6 +50,13 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOv
            || NativeCodePaths.IsDirectlyIn(path, AsiFolder, Asi)
            || (NativeCodePaths.IsDirectlyIn(path, BinFolder, Dll)
                && (path.FileName.Equals("winmm.dll") || path.FileName.Equals("version.dll")));
+
+    public TimeSpan? DateWindow => TimeSpan.FromDays(30);
+
+    public string WhatBreaks =>
+        "Cyber Engine Tweaks only runs on the exact game version it was built for; RED4ext, ArchiveXL, TweakXL and Codeware need a matching release. Plain .archive mods are usually unaffected.";
+
+    public NamedLink? ExtenderPage => GameUpdatedSinceExtenderRanCheck.Red4ExtReleases;
 
     public IStreamFactory IconImage { get; }
     public IStreamFactory TileImage { get; }

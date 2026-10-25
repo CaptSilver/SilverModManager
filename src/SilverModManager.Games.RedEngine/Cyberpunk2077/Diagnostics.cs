@@ -283,4 +283,31 @@ The current WINE prefix does not have the required packages installed for moddin
             .AddValue<string>("Instructions")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate GameUpdatedSinceExtenderRan = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 7))
+        .WithTitle("Game updated since its mod loaders last ran")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{Game} is now version {GameVersion}, but {Extender} last ran on {LoggedVersion}")
+        .WithDetails("""
+{Game} is now version {GameVersion}. The last time {Extender} ran, the game was {LoggedVersion}. {Extender} and the mods that hook the game through it probably need updates before you launch.
+
+{Plugins}
+Look for releases built for {GameVersion} on {Red4ExtReleases}, {CetReleases} and the pages of the mods that load through them. Plain `.archive` mods are usually unaffected.
+
+This clears itself once the game has been started with a matching release.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Game")
+            .AddValue<string>("Extender")
+            .AddValue<string>("GameVersion")
+            .AddValue<string>("LoggedVersion")
+            .AddValue<string>("Plugins")
+            .AddValue<NamedLink>("Red4ExtReleases")
+            .AddValue<NamedLink>("CetReleases")
+        )
+        .Finish();
 }
