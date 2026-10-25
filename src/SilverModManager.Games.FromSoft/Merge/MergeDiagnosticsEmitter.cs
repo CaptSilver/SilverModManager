@@ -61,7 +61,7 @@ public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnost
             foreach (var note in merged.Notes)
             {
                 // What an apply would keep and where the ancestor came from are information; the user has nothing to decide about them.
-                if (note is BaselineWillBeKept or VanillaServedFromDump) continue;
+                if (note is IVanillaSourceNote) continue;
                 yield return FromSoftDiagnostics.CreateMergeNote(merged.Path, mods, note.Describe());
             }
         }

@@ -41,6 +41,59 @@ public class MergePlanCacheTests(ITestOutputHelper helper) : AVanillaDumpTest<Me
         return (Refresh(loadout), alpha, beta);
     }
 
+    private const string OtherOlderVersion = "11602000";
+
+    private async Task<Loadout.ReadOnly> TwoRegulationsOfDifferentBuilds()
+    {
+        var loadout = await CreateLoadout();
+        await InstallMod(loadout.LoadoutId, "Alpha", ("regulation.bin", Regulation(OlderVersion, 0x10)));
+        await InstallMod(loadout.LoadoutId, "Beta", ("regulation.bin", Regulation(OtherOlderVersion, 0x20)));
+        return Refresh(loadout);
+    }
+
+    [Fact]
+    public async Task AMissingVanillaOfEachBuildReachesThePlansRefusalAsData()
+    {
+        var loadout = await TwoRegulationsOfDifferentBuilds();
+
+        var refusal = Plans.Current(loadout, MergeSourceMode.Report).Refusal.Should().NotBeNull().And.Subject.As<MergeRefusal>();
+
+        refusal.Missing.Select(m => m.Version).Should().BeEquivalentTo([OlderVersion, OtherOlderVersion]);
+        refusal.Missing.Single(m => m.Version == OlderVersion).Mods.Should().ContainSingle().Which.Should().Contain("Alpha");
+        refusal.Describe().Should().Contain(OlderVersion).And.Contain(OtherOlderVersion);
+    }
+
+    [Fact]
+    public async Task OtherRefusalsCarryNoMissingVanilla()
+    {
+        var (loadout, _, _) = await TwoMsgbndMods();
+
+        Plans.Current(loadout, MergeSourceMode.Report).Refusal.Should().BeNull();
+        new MergeRefusal("x", MergeStrategy.ParamRows, "why").Missing.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task KeepingAVanillaOfEitherBuildInvalidatesTheCachedRefusal()
+    {
+        var loadout = await TwoRegulationsOfDifferentBuilds();
+        var first = Plans.Current(loadout, MergeSourceMode.Report);
+        Plans.Current(loadout, MergeSourceMode.Report).Should().BeSameAs(first, "nothing changed");
+
+        KeepBaseline(OlderVersion, Regulation(OlderVersion, 0xB0));
+        var second = Plans.Current(loadout, MergeSourceMode.Report);
+
+        second.Should().NotBeSameAs(first);
+        second.Refusal!.Missing.Should().ContainSingle().Which.Version.Should().Be(OtherOlderVersion, "the build that is still missing one is all that is left");
+
+        KeepBaseline(OtherOlderVersion, Regulation(OtherOlderVersion, 0xB1));
+        var third = Plans.Current(loadout, MergeSourceMode.Report);
+        third.Should().NotBeSameAs(second);
+        third.Refusal?.Missing.Should().BeNullOrEmpty();
+
+        KeepBaseline(OtherOlderVersion, Regulation(OtherOlderVersion, 0xB2));
+        Plans.Current(loadout, MergeSourceMode.Report).Should().NotBeSameAs(third, "the second group's vanilla changed and the first's did not");
+    }
+
     [Fact]
     public async Task AnUnchangedLoadoutGetsTheSamePlanBack()
     {

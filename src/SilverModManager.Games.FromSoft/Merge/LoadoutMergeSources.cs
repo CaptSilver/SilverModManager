@@ -8,6 +8,7 @@ using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Heal;
 using SilverModManager.Games.FromSoft.Me3;
 using NexusMods.Hashing.xxHash3;
+using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -148,53 +149,70 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
     }
 
     /// <summary>
-    /// The vanilla file the contributors branched from, or null when nothing here can supply one for
+    /// The vanilla file each contributor branched from, or null when nothing here can supply one for
     /// <paramref name="relPath"/>.
     /// <para>
-    /// For the regulation the result always has the contributors' version: the merge folds from one ancestor, so the
-    /// contributors have to agree on it, and it is looked for in the kept baselines, then in the vanilla dumps of the
-    /// library, then in the installed game, but only if the game is at that version. Anything else is refused, never
-    /// substituted.
+    /// For the regulation the contributors are grouped by the build stamp they carry and each group gets a vanilla of
+    /// its own build: the kept baselines, then the vanilla dumps of the library, then the installed game, but only if
+    /// the game is at that build. A file of another build is never substituted, since every row the patch added would
+    /// read as a mod deletion. A build with no vanilla is refused together with every other such build, so one
+    /// message lists what is missing.
     /// </para>
     /// <para>
-    /// A packed file's vanilla copy is the member of a vanilla dump. With several dumps on offer the one of the
-    /// contributors' regulation version wins when they ship one, otherwise the newest not newer than the installed
-    /// build, otherwise the newest. Each copy served is named in <paramref name="notes"/> with its archive.
+    /// A packed file's vanilla copy is the member of a vanilla dump, the same for every contributor. With several dumps
+    /// on offer the one of the contributors' regulation version wins when they ship one, otherwise the newest not newer
+    /// than the installed build, otherwise the newest. Each copy served is named in <paramref name="notes"/> with its archive.
     /// </para>
     /// </summary>
-    /// <param name="notes">Receives what a read-only call would have kept had it been an apply, and which dump served the file.</param>
-    /// <exception cref="MergeException">The contributors disagree on a version, or no vanilla regulation of theirs is available.</exception>
-    public byte[]? Vanilla(Loadout.ReadOnly loadout, string relPath, IReadOnlyList<ProviderFile> contributors, MergeSourceMode mode, ICollection<IMergeNote>? notes = null)
+    /// <param name="notes">Receives what a read-only call would have kept had it been an apply, and which source served each build's vanilla.</param>
+    /// <exception cref="MergeException">A contributor's build has no vanilla regulation available; <see cref="MergeException.Missing"/> lists each.</exception>
+    public VanillaAncestors? Ancestors(Loadout.ReadOnly loadout, string relPath, IReadOnlyList<ProviderFile> contributors, MergeSourceMode mode, ICollection<IMergeNote>? notes = null)
     {
         var installation = loadout.InstallationInstance;
         var traits = TraitsOf(installation);
         if (traits.RegulationFileName is not { } regulationName || !relPath.Equals(regulationName, StringComparison.OrdinalIgnoreCase))
-            return PackedVanilla(loadout, relPath, contributors, notes);
+        {
+            return PackedVanilla(loadout, relPath, contributors, notes) is { } packed
+                ? new VanillaAncestors([new AncestorGroup(null, contributors, packed)])
+                : null;
+        }
         if (contributors.Count == 0) throw new ArgumentException("A vanilla regulation is looked up for the files that provide it.", nameof(contributors));
 
-        var versions = contributors.Select(c => (File: c, Version: VersionOf(installation, c))).ToArray();
-        if (versions.Select(v => v.Version).Distinct(StringComparer.Ordinal).Count() > 1)
+        var byVersion = contributors.GroupBy(c => VersionOf(installation, c), StringComparer.Ordinal).ToArray();
+        var groups = new List<AncestorGroup>();
+        var sources = new List<VanillaGroupSource>();
+        var groupNotes = new List<IMergeNote>();
+        var missing = new List<VanillaMissing>();
+        foreach (var members in byVersion)
         {
-            var named = string.Join(", ", versions.Select(v => $"{v.File.PackageId} is version {v.Version}"));
-            throw new MergeException($"the mods ship regulations of different versions and a merge has one vanilla file to compare against: {named}");
+            var version = members.Key;
+            var mods = members.Select(m => m.ModName).Distinct(StringComparer.Ordinal).ToArray();
+            var tried = new List<string>();
+            var served = FromBaselines(version, members.ToArray(), traits, groupNotes, tried)
+                         ?? FromDump(loadout, regulationName, version, groupNotes, tried)
+                         ?? FromInstalledGame(installation, regulationName, version, mode, groupNotes, tried);
+            if (served is null)
+            {
+                missing.Add(new VanillaMissing(version, mods, tried));
+                continue;
+            }
+
+            CheckStamp(served.Bytes, version, traits);
+            groups.Add(new AncestorGroup(version, members.ToArray(), served.Bytes));
+            sources.Add(new VanillaGroupSource(version, mods, served.Source));
         }
 
-        var version = versions[0].Version;
-        var vanilla = FindBaseline(version) ?? FromDump(loadout, regulationName, version, notes) ?? FromInstalledGame(installation, regulationName, version, mode, notes);
+        if (missing.Count > 0)
+            throw new MergeException(string.Join("\n", missing.Select(m =>
+                $"no vanilla regulation of version {m.Version} is available; {string.Join(", ", m.Mods)} {(m.Mods.Count == 1 ? "was" : "were")} built for it ({string.Join("; ", m.Tried)})")), missing);
 
-        // A hand-placed or damaged baseline must not slip an off-version file into the ancestor slot.
-        string got;
-        try
+        if (notes is not null)
         {
-            got = Regulation.Version(Regulation.Unpack(vanilla, traits));
+            foreach (var note in groupNotes) notes.Add(note);
+            // With one build there is one source and the notes above already say it; several need a label per build.
+            if (sources.Count > 1) foreach (var source in sources) notes.Add(source);
         }
-        catch (Exception exception) when (exception is RegulationException or AesException or DcxException or KrakenException)
-        {
-            throw new MergeException($"the vanilla regulation kept for version {version} is not a regulation this game's key opens: {exception.Message}");
-        }
-        if (!got.Equals(version, StringComparison.Ordinal))
-            throw new MergeException($"the vanilla regulation kept for version {version} is version {got}");
-        return vanilla;
+        return new VanillaAncestors(groups);
     }
 
     /// <summary>
@@ -219,13 +237,17 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
         }
     }
 
-    private byte[]? FromDump(Loadout.ReadOnly loadout, string regulationName, string version, ICollection<IMergeNote>? notes)
+    private Served? FromDump(Loadout.ReadOnly loadout, string regulationName, string version, ICollection<IMergeNote> notes, ICollection<string> tried)
     {
         var dump = dumps.Find(loadout.Db, loadout.InstallationInstance).FirstOrDefault(d => d.Version.Equals(version, StringComparison.Ordinal));
-        if (dump is null) return null;
+        if (dump is null)
+        {
+            tried.Add($"vanilla dumps in the library (none of version {version})");
+            return null;
+        }
 
-        notes?.Add(new VanillaServedFromDump(regulationName, dump.ArchiveName, dump.Version));
-        return dumps.Member(dump, regulationName);
+        notes.Add(new VanillaServedFromDump(regulationName, dump.ArchiveName, dump.Version));
+        return new Served(dumps.Member(dump, regulationName), $"the vanilla copy in the library archive {dump.ArchiveName}");
     }
 
     private byte[]? PackedVanilla(Loadout.ReadOnly loadout, string relPath, IReadOnlyList<ProviderFile> contributors, ICollection<IMergeNote>? notes)
@@ -270,19 +292,75 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
     private static int CompareVersions(string a, string b)
         => long.TryParse(a, out var x) && long.TryParse(b, out var y) ? x.CompareTo(y) : string.CompareOrdinal(a, b);
 
-    private byte[]? FindBaseline(string version)
+    private Served? FromBaselines(string version, IReadOnlyList<ProviderFile> contributors, FromSoftFormatTraits traits, ICollection<IMergeNote> notes, ICollection<string> tried)
     {
+        IReadOnlyList<AbsolutePath> kept;
         try
         {
-            return baselines.Find(version) is { } kept ? File.ReadAllBytes(kept.GetFullPath()) : null;
+            kept = baselines.FindAll(version);
         }
         catch (ArgumentException exception)
         {
             throw new MergeException($"version {version} cannot be looked up: {exception.Message}");
         }
+        if (kept.Count == 0)
+        {
+            tried.Add($"kept baselines (none of version {version})");
+            return null;
+        }
+
+        var files = kept.Select(k => (Name: Path.GetFileName(k.GetFullPath()), Bytes: File.ReadAllBytes(k.GetFullPath()))).ToArray();
+        var chosen = files[0];
+        if (files.Length > 1)
+        {
+            // A hotfix that did not bump the stamp leaves two vouched files under one version; the mods were made from one.
+            var mods = contributors.Select(ContributorBytes).ToArray();
+            try
+            {
+                chosen = files.MinBy(f => VanillaCloseness.Distance(f.Bytes, mods, traits));
+            }
+            catch (Exception exception) when (exception is RegulationException or AesException or DcxException or KrakenException or Bnd4Exception)
+            {
+                // The stamp read but the binder behind it did not; the merge would refuse this mod anyway, so refuse here rather than crash the plan.
+                throw new MergeException($"a mod's regulation of version {version} cannot be read to choose between the {files.Length} vanilla regulations kept for it: {exception.Message}");
+            }
+            notes.Add(new VanillaAlternateChosen(version, chosen.Name, files.Length));
+        }
+
+        return new Served(chosen.Bytes, chosen.Name == files[0].Name ? ProvenanceText(version) : $"the vanilla regulation {chosen.Name}, one of {files.Length} kept for this build");
     }
 
-    private byte[] FromInstalledGame(GameInstallation installation, string regulationName, string version, MergeSourceMode mode, ICollection<IMergeNote>? notes)
+    private string ProvenanceText(string version)
+    {
+        try
+        {
+            return baselines.Provenance(version)?.Describe() ?? "a kept vanilla regulation";
+        }
+        catch (HealException exception)
+        {
+            throw new MergeException($"the vanilla regulation kept for version {version} has unreadable provenance: {exception.Message}");
+        }
+    }
+
+    // A hand-placed or damaged baseline must not slip an off-version file into the ancestor slot.
+    private static void CheckStamp(byte[] vanilla, string version, FromSoftFormatTraits traits)
+    {
+        string got;
+        try
+        {
+            got = Regulation.Version(Regulation.Unpack(vanilla, traits));
+        }
+        catch (Exception exception) when (exception is RegulationException or AesException or DcxException or KrakenException)
+        {
+            throw new MergeException($"the vanilla regulation kept for version {version} is not a regulation this game's key opens: {exception.Message}");
+        }
+        if (!got.Equals(version, StringComparison.Ordinal))
+            throw new MergeException($"the vanilla regulation kept for version {version} is version {got}");
+    }
+
+    private sealed record Served(byte[] Bytes, string Source);
+
+    private Served? FromInstalledGame(GameInstallation installation, string regulationName, string version, MergeSourceMode mode, ICollection<IMergeNote> notes, ICollection<string> tried)
     {
         var game = GameOf(installation);
         BuildIdentity live;
@@ -292,22 +370,26 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
         }
         catch (InvalidOperationException exception)
         {
-            throw new MergeException($"no vanilla regulation of version {version} is available, and the installed game could not be identified: {exception.Message}");
+            tried.Add($"the installed game, which could not be identified: {exception.Message}");
+            return null;
         }
 
         if (live.RegulationVersion != version || live.RegulationHash is not { } identified)
-            throw new MergeException($"no vanilla regulation of version {version} is available; the mods were built for it and the game is at {live.RegulationVersion ?? "no known regulation version"}");
+        {
+            tried.Add($"the installed game is at {live.RegulationVersion ?? "no known regulation version"}");
+            return null;
+        }
 
         try
         {
             if (mode == MergeSourceMode.Apply)
-                return File.ReadAllBytes(baselines.Adopt(installation, live).GetFullPath());
+                return new Served(File.ReadAllBytes(baselines.Adopt(installation, live).GetFullPath()), "the installed game's regulation, kept as this build's baseline");
 
             var bytes = File.ReadAllBytes((FromSoftPaths.GameFolder(game.Layout, installation) / regulationName).GetFullPath());
             if (!Regulation.Sha256Hex(bytes).Equals(identified, StringComparison.OrdinalIgnoreCase))
                 throw new MergeException("the game's regulation changed while it was being read; run again");
-            notes?.Add(new BaselineWillBeKept(version));
-            return bytes;
+            notes.Add(new BaselineWillBeKept(version));
+            return new Served(bytes, "the installed game's regulation, which the next apply keeps as this build's baseline");
         }
         catch (Exception exception) when (exception is HealException or IOException or UnauthorizedAccessException)
         {

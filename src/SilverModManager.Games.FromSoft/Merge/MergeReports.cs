@@ -80,10 +80,14 @@ public sealed class MergeReports(
         if (plan?.Merged.FirstOrDefault(m => m.Path.Equals(candidate.Path, StringComparison.OrdinalIgnoreCase)) is { } merged)
         {
             // Where the ancestor came from has its own field, so its notes are not repeated among the choices the merge made.
-            var source = merged.Notes.OfType<BaselineWillBeKept>().Select(n => n.Describe())
-                .Concat(merged.Notes.OfType<VanillaServedFromDump>().Select(n => n.Describe()))
-                .FirstOrDefault() ?? merged.VanillaSource;
-            var notes = merged.Notes.Where(n => n is not (BaselineWillBeKept or VanillaServedFromDump)).Select(n => n.Describe()).ToArray();
+            // Mods of several builds each have a source of their own; with one build the first note says it all.
+            var groups = merged.Notes.OfType<VanillaGroupSource>().Select(n => n.Describe()).ToArray();
+            var source = groups.Length > 0
+                ? string.Join("; ", groups)
+                : merged.Notes.OfType<BaselineWillBeKept>().Select(n => n.Describe())
+                    .Concat(merged.Notes.OfType<VanillaServedFromDump>().Select(n => n.Describe()))
+                    .FirstOrDefault() ?? merged.VanillaSource;
+            var notes = merged.Notes.Where(n => n is not IVanillaSourceNote).Select(n => n.Describe()).ToArray();
             return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.Merged, notes, source, string.Empty);
         }
 

@@ -66,6 +66,11 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
             RegulationFixture.GoldenEntries.Select(e => e.Id == id ? (e.Id, e.Name, System.Text.Encoding.ASCII.GetBytes(content)) : e).ToArray(),
             GameVersion, Formats);
 
+    private static byte[] RegulationEditingAt(string version, int id, string content)
+        => RegulationFixture.BuildFromEntries(
+            RegulationFixture.GoldenEntries.Select(e => e.Id == id ? (e.Id, e.Name, System.Text.Encoding.ASCII.GetBytes(content)) : e).ToArray(),
+            version, Formats);
+
     private async Task<LoadoutItemGroup.ReadOnly> InstallMod(LoadoutId loadout, Optional<LoadoutItemGroupId> parent, string name, params (string Path, byte[] Content)[] files)
     {
         var archive = await AddArchive(name, files);
@@ -184,6 +189,24 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
         entry.VanillaSource.Should().Be(new BaselineWillBeKept(GameVersion).Describe());
         DataRootAndModsListing().Should().Equal(before);
         (DataRoot / "baselines").DirectoryExists().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ModsOfTwoOlderBuildsEachNameTheirOwnVanillaInTheSourceColumn()
+    {
+        const string other = "11602000";
+        KeepBaseline(OlderVersion, RegulationFixture.BuildFromEntries(RegulationFixture.GoldenEntries, OlderVersion, Formats));
+        KeepBaseline(other, RegulationFixture.BuildFromEntries(RegulationFixture.GoldenEntries, other, Formats));
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout.LoadoutId, "Alpha", (RegulationPath, RegulationEditingAt(OlderVersion, 1, "BBBB")));
+        await InstallPackage(loadout.LoadoutId, "Beta", (RegulationPath, RegulationEditingAt(other, 3, "CCCC")));
+
+        var report = await Reports.ForLoadout(loadout.LoadoutId, CancellationToken.None);
+
+        var entry = report.Entries.Should().ContainSingle().Which;
+        entry.Outcome.Should().Be(MergeReportOutcome.Merged, entry.Reason);
+        entry.VanillaSource.Should().Contain("Alpha").And.Contain(OlderVersion).And.Contain("Beta").And.Contain(other);
+        entry.Notes.Should().NotContain(n => n.Contains("compared against"), "where an ancestor came from has its own column");
     }
 
     [Fact]

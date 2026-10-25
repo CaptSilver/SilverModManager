@@ -67,16 +67,41 @@ public sealed record TextureKept(string Name, string KeptMod, string DroppedMod)
         $"texture {Name}: both mods ship it and differ; kept {KeptMod}'s";
 }
 
+/// <summary>A note about where a merge's ancestor came from. Reports show it in the source column, not among the choices the merge made.</summary>
+public interface IVanillaSourceNote : IMergeNote;
+
 /// <summary>A read-only look at the merge used the installed game's regulation as the vanilla one; applying keeps a copy of it.</summary>
-public sealed record BaselineWillBeKept(string Version) : IMergeNote
+public sealed record BaselineWillBeKept(string Version) : IVanillaSourceNote
 {
     public string Describe() =>
         $"the next apply keeps this regulation as the version {Version} baseline";
 }
 
 /// <summary>The vanilla copy of a file came from a vanilla dump in the library.</summary>
-public sealed record VanillaServedFromDump(string Path, string ArchiveName, string Version) : IMergeNote
+public sealed record VanillaServedFromDump(string Path, string ArchiveName, string Version) : IVanillaSourceNote
 {
     public string Describe() =>
         $"{Path}: compared against the vanilla copy in archive {ArchiveName} (version {Version})";
+}
+
+/// <summary>
+/// Which vanilla regulation the mods of one build were compared against. Said only when the mods of a path came from
+/// more than one build, since with one the single source needs no label to say whose it is.
+/// </summary>
+/// <param name="Version">The build the mods were made for.</param>
+/// <param name="Mods">The mods made for it.</param>
+/// <param name="Source">Where the vanilla regulation came from, as a phrase.</param>
+public sealed record VanillaGroupSource(string Version, IReadOnlyList<string> Mods, string Source) : IVanillaSourceNote
+{
+    public string Describe() => $"{(Mods.Count == 1 ? "mod" : "mods")} {string.Join(", ", Mods)} (version {Version}): {Source}";
+}
+
+/// <summary>Several vouched regulations are kept for one build, and the one nearest the mods' own rows was used as their ancestor.</summary>
+/// <param name="Version">The build.</param>
+/// <param name="FileName">The kept file that was used.</param>
+/// <param name="Of">How many were kept.</param>
+public sealed record VanillaAlternateChosen(string Version, string FileName, int Of) : IMergeNote
+{
+    public string Describe() =>
+        $"{Of} vanilla regulations are kept for version {Version}; compared the mods against {FileName}, the one nearest to their rows";
 }

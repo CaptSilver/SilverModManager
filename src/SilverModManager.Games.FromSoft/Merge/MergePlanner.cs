@@ -48,7 +48,7 @@ public static class MergePlanner
             }
             catch (Exception exception) when (IsFormatFailure(exception))
             {
-                return new MergePlan([], new MergeRefusal(candidate.Path, strategy, exception.Message), notMergeable);
+                return new MergePlan([], new MergeRefusal(candidate.Path, strategy, exception.Message, (exception as MergeException)?.Missing ?? []), notMergeable);
             }
         }
         return new MergePlan(merged, null, notMergeable);

@@ -1,0 +1,30 @@
+namespace SilverModManager.Games.FromSoft.Merge;
+
+/// <summary>
+/// Mods built for one game build that share one vanilla file.
+/// </summary>
+/// <param name="Version">The build stamp the mods carry; null for a packed file, which has no stamp.</param>
+/// <param name="Contributors">The mods' files that branched from <paramref name="Bytes"/>.</param>
+/// <param name="Bytes">The vanilla file they branched from.</param>
+public sealed record AncestorGroup(string? Version, IReadOnlyList<ProviderFile> Contributors, byte[] Bytes);
+
+/// <summary>
+/// The vanilla file each contributor of one path branched from. Contributors built for the same game build share a
+/// group, so a loadout of mods from several builds has several.
+/// </summary>
+public sealed class VanillaAncestors(IReadOnlyList<AncestorGroup> groups)
+{
+    private readonly Dictionary<ProviderFile, byte[]> _byContributor =
+        groups.SelectMany(g => g.Contributors.Select(c => (Contributor: c, g.Bytes))).ToDictionary(p => p.Contributor, p => p.Bytes);
+
+    public IReadOnlyList<AncestorGroup> Groups { get; } = groups;
+
+    /// <summary>The vanilla file <paramref name="contributor"/> branched from, or null when it is not one of this path's contributors.</summary>
+    public byte[]? Of(ProviderFile contributor) => _byContributor.GetValueOrDefault(contributor);
+}
+
+/// <summary>A build whose mods have no vanilla regulation to be compared against.</summary>
+/// <param name="Version">The build stamp the mods carry.</param>
+/// <param name="Mods">The mods built for it.</param>
+/// <param name="Tried">Each place a vanilla was looked for and why it gave none.</param>
+public sealed record VanillaMissing(string Version, IReadOnlyList<string> Mods, IReadOnlyList<string> Tried);

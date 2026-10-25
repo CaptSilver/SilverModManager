@@ -82,7 +82,7 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
         with.Strategy.Should().Be(MergeStrategy.EsdThreeWay);
         with.Outcome.Merges.Should().BeTrue();
         var notes = new List<IMergeNote>();
-        Sources.Vanilla(loadout, TalkPath, with.Contributors, MergeSourceMode.Report, notes).Should().Equal(Bytes("talk vanilla"));
+        Sources.SingleVanilla(loadout, TalkPath, with.Contributors, MergeSourceMode.Report, notes).Should().Equal(Bytes("talk vanilla"));
         notes.Should().ContainSingle().Which.Should().Be(new VanillaServedFromDump(TalkPath, "Dump.zip", OlderVersion));
     }
 
@@ -110,7 +110,7 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
         var contributors = Sources.Index(loadout).Lookup(MsgPath)!.Contributors;
 
         var notes = new List<IMergeNote>();
-        Sources.Vanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply, notes).Should().Equal(Bytes("old"));
+        Sources.SingleVanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply, notes).Should().Equal(Bytes("old"));
         notes.Should().ContainSingle().Which.Should().Be(new VanillaServedFromDump(MsgPath, "Old.zip", OlderVersion));
     }
 
@@ -131,14 +131,14 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
         ServiceProvider.GetRequiredService<VouchedRegulations>().Hashes(loadout.InstallationInstance);
         _builds.Reads.Should().Be(1, "vouching reads the installed build through the shared cache");
 
-        Sources.Vanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("current"));
+        Sources.SingleVanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("current"));
         _builds.Reads.Should().Be(1, "the vouched check and the dump choice share one reading of the installed regulation");
 
-        Sources.Vanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("current"));
+        Sources.SingleVanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("current"));
         _builds.Reads.Should().Be(1, "the regulation did not change");
 
         File.WriteAllBytes(file.GetFullPath(), Regulation(NewerVersion, 0xC0));
-        Sources.Vanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply);
+        Sources.SingleVanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply);
         _builds.Reads.Should().Be(2, "a regulation of another size or write time is a different build");
     }
 
@@ -155,7 +155,7 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
         _builds.ReportedVersion = OlderVersion;
         File.SetLastWriteTimeUtc((RealGameFolder / "regulation.bin").GetFullPath(), DateTime.UtcNow.AddMinutes(1));
 
-        Sources.Vanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("old"));
+        Sources.SingleVanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("old"));
     }
 
     [Fact]
@@ -169,7 +169,7 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
         loadout = Refresh(loadout);
         var contributors = Sources.Index(loadout).Lookup(MsgPath)!.Contributors;
 
-        Sources.Vanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("current"), "neither contributor branched from Gamma's build");
+        Sources.SingleVanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("current"), "neither contributor branched from Gamma's build");
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
         loadout = Refresh(loadout);
         var contributors = Sources.Index(loadout).Lookup(MsgPath)!.Contributors;
 
-        Sources.Vanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("current"));
+        Sources.SingleVanilla(loadout, MsgPath, contributors, MergeSourceMode.Apply).Should().Equal(Bytes("current"));
     }
 
     [Fact]
@@ -198,7 +198,7 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
         var providers = Sources.Providers(loadout);
 
         var notes = new List<IMergeNote>();
-        Sources.Vanilla(loadout, "regulation.bin", providers, MergeSourceMode.Apply, notes).Should().Equal(older);
+        Sources.SingleVanilla(loadout, "regulation.bin", providers, MergeSourceMode.Apply, notes).Should().Equal(older);
 
         notes.Should().ContainSingle().Which.Should().Be(new VanillaServedFromDump("regulation.bin", "Dump.zip", OlderVersion));
         Directory.Exists((DataRoot / "baselines").GetFullPath()).Should().BeFalse("a dump is read, never kept");
@@ -215,7 +215,7 @@ public class LoadoutMergeSourcesDumpTests(ITestOutputHelper helper) : AVanillaDu
         await AddDump("Dump", dumped, "vanilla");
         loadout = Refresh(loadout);
 
-        Sources.Vanilla(loadout, "regulation.bin", Sources.Providers(loadout), MergeSourceMode.Apply).Should().Equal(kept);
+        Sources.SingleVanilla(loadout, "regulation.bin", Sources.Providers(loadout), MergeSourceMode.Apply).Should().Equal(kept);
     }
 
     [Fact]

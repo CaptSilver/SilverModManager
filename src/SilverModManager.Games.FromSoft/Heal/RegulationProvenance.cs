@@ -66,6 +66,19 @@ public sealed record RegulationProvenance(
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower) },
     };
 
+    /// <summary>A phrase for where the file came from, for the merges page: a validated file is never described as if the game produced it.</summary>
+    public string Describe() => (Tier, Source) switch
+    {
+        (BaselineTier.Vouched, BaselineSource.SteamManifest) => $"the vanilla regulation vouched by Steam manifest {ManifestId}",
+        (BaselineTier.Vouched, BaselineSource.InstalledGame) => "the vanilla regulation kept from the installed game",
+        (BaselineTier.Validated, BaselineSource.LibraryArchive) => $"a vanilla regulation validated from a library archive{Detail()}",
+        (BaselineTier.Validated, BaselineSource.UserFile) => $"a vanilla regulation validated from {OriginalPath ?? "a file you pointed at"}{Detail()}",
+        (BaselineTier.Vouched, _) => "a vouched vanilla regulation",
+        _ => $"a validated vanilla regulation{Detail()}",
+    };
+
+    private string Detail() => string.IsNullOrEmpty(Validation) ? "" : $" ({Validation})";
+
     /// <summary>The sidecar's text.</summary>
     public string ToJson() => JsonSerializer.Serialize(this, Options);
 

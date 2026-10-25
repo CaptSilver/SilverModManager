@@ -268,7 +268,7 @@ public class MergedFileTests(ITestOutputHelper helper) : AVanillaDumpTest<Merged
         var act = async () => await Synchronizer.Synchronize(Refresh(loadout));
 
         var thrown = await act.Should().ThrowAsync<MergeRefusedException>();
-        thrown.Which.Message.Should().Contain(RegulationPath).And.Contain("different versions");
+        thrown.Which.Message.Should().Contain(RegulationPath).And.Contain($"no vanilla regulation of version {OlderVersion}").And.Contain("Beta");
         thrown.Which.Should().BeAssignableTo<SynchronizerPreflightException>();
         TreeSnapshot.Take(Mods).Should().Equal(disk);
         Connection.Db.BasisTxId.Should().Be(tx, "nothing was written to the loadout either");

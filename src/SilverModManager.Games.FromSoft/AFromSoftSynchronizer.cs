@@ -119,7 +119,7 @@ public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
 
     /// <summary>
     /// Plans the merges without writing, so a merge that can't be made refuses the apply before a switch deactivates
-    /// the loadout it replaces. A byte-level refusal such as two regulations of different versions surfaces here too.
+    /// the loadout it replaces. A byte-level refusal such as a regulation whose build has no vanilla to compare against surfaces here too.
     /// </summary>
     protected override Task PreflightLoadout(Loadout.ReadOnly loadout)
     {

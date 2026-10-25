@@ -19,6 +19,7 @@ public class LoadoutMergeSourcesTests(ITestOutputHelper helper) : AModdedEldenRi
 {
     private const string GameVersion = EldenRingInstall.RegulationVersion;
     private const string OlderVersion = "11601000";
+    private const string OldestVersion = "11602000";
 
     private static FromSoftFormatTraits Formats => EldenRingGame.Definition.Formats;
 
@@ -30,6 +31,13 @@ public class LoadoutMergeSourcesTests(ITestOutputHelper helper) : AModdedEldenRi
 
     private static byte[] Regulation(string version, byte fill)
         => RegulationFixture.BuildFromEntries([(1, "a.param", Enumerable.Repeat(fill, 16).ToArray())], version, Formats);
+
+    // A regulation with one real param table of rows 'ids', each filled with its own id, so rows can be told apart.
+    private static byte[] RealRegulation(string version, int[] ids, int? edited = null, int? alsoEdited = null)
+        => RegulationFixture.Build(new Dictionary<int, (string, IReadOnlyDictionary<int, byte[]>, int)>
+        {
+            [1] = ("SP_EFFECT_PARAM_ST", ids.ToDictionary(id => id, id => Enumerable.Repeat((byte)(id == edited || id == alsoEdited ? 0xEE : id), 8).ToArray()), 8),
+        }, version, Formats);
 
     private async Task<LoadoutItemGroup.ReadOnly> InstallPackage(LoadoutId loadout, string name, params (string Path, byte[] Content)[] files)
         => await InstallPackage(loadout, default, name, files);
@@ -146,7 +154,7 @@ public class LoadoutMergeSourcesTests(ITestOutputHelper helper) : AModdedEldenRi
         KeepBaseline(OlderVersion, baseline);
         var (loadout, providers) = await TwoRegulations(OlderVersion, Regulation(OlderVersion, 1), Regulation(OlderVersion, 2));
 
-        var vanilla = Sources.Vanilla(loadout, "regulation.bin", providers, MergeSourceMode.Apply);
+        var vanilla = Sources.SingleVanilla(loadout, "regulation.bin", providers, MergeSourceMode.Apply);
 
         vanilla.Should().Equal(baseline);
         FromSoft.Formats.Regulation.Version(FromSoft.Formats.Regulation.Unpack(vanilla!, Formats)).Should().Be(OlderVersion);
@@ -158,7 +166,7 @@ public class LoadoutMergeSourcesTests(ITestOutputHelper helper) : AModdedEldenRi
         KeepBaseline(OlderVersion, Regulation(GameVersion, 0xB0));
         var (loadout, providers) = await TwoRegulations(OlderVersion, Regulation(OlderVersion, 1), Regulation(OlderVersion, 2));
 
-        var act = () => Sources.Vanilla(loadout, "regulation.bin", providers, MergeSourceMode.Apply);
+        var act = () => Sources.SingleVanilla(loadout, "regulation.bin", providers, MergeSourceMode.Apply);
 
         act.Should().Throw<MergeException>().Which.Message
             .Should().Contain($"kept for version {OlderVersion} is version {GameVersion}");
@@ -172,7 +180,7 @@ public class LoadoutMergeSourcesTests(ITestOutputHelper helper) : AModdedEldenRi
         var gameBefore = SnapshotOfGameFolder();
         var notes = new List<IMergeNote>();
 
-        var vanilla = Sources.Vanilla(loadout, "regulation.bin", providers, MergeSourceMode.Report, notes);
+        var vanilla = Sources.SingleVanilla(loadout, "regulation.bin", providers, MergeSourceMode.Report, notes);
 
         vanilla.Should().Equal(EldenRingInstall.RegulationFile);
         notes.Should().ContainSingle().Which.Describe().Should().Contain("next apply keeps").And.Contain(GameVersion);
@@ -186,7 +194,7 @@ public class LoadoutMergeSourcesTests(ITestOutputHelper helper) : AModdedEldenRi
         var (loadout, providers) = await TwoRegulations(GameVersion, Regulation(GameVersion, 1), Regulation(GameVersion, 2));
         var gameBefore = SnapshotOfGameFolder();
 
-        var vanilla = Sources.Vanilla(loadout, "regulation.bin", providers, MergeSourceMode.Apply);
+        var vanilla = Sources.SingleVanilla(loadout, "regulation.bin", providers, MergeSourceMode.Apply);
 
         vanilla.Should().Equal(EldenRingInstall.RegulationFile);
         File.ReadAllBytes((DataRoot / "baselines" / $"regulation-{GameVersion}.bin").GetFullPath()).Should().Equal(EldenRingInstall.RegulationFile);
@@ -194,14 +202,114 @@ public class LoadoutMergeSourcesTests(ITestOutputHelper helper) : AModdedEldenRi
     }
 
     [Fact]
-    public async Task ContributorsOfDifferentVersionsAreRefusedNamingBoth()
+    public async Task ContributorsOfDifferentVersionsEachGetTheVanillaOfTheirVersion()
     {
+        var olderBaseline = Regulation(OlderVersion, 0xB0);
+        var oldestBaseline = Regulation(OldestVersion, 0xB1);
+        KeepBaseline(OlderVersion, olderBaseline);
+        KeepBaseline(OldestVersion, oldestBaseline);
+        var (loadout, providers) = await TwoRegulations(OlderVersion, Regulation(OlderVersion, 1), Regulation(OldestVersion, 2));
+        var notes = new List<IMergeNote>();
+
+        var ancestors = Sources.Ancestors(loadout, "regulation.bin", providers, MergeSourceMode.Apply, notes)!;
+
+        var alpha = providers.Single(p => p.PackageId == "Alpha");
+        var beta = providers.Single(p => p.PackageId == "Beta");
+        ancestors.Of(alpha).Should().Equal(olderBaseline);
+        ancestors.Of(beta).Should().Equal(oldestBaseline);
+        ancestors.Groups.Select(g => g.Version).Should().BeEquivalentTo([OlderVersion, OldestVersion]);
+        notes.OfType<VanillaGroupSource>().Should().HaveCount(2)
+            .And.Contain(n => n.Version == OlderVersion && n.Mods.Contains(alpha.ModName))
+            .And.Contain(n => n.Version == OldestVersion && n.Mods.Contains(beta.ModName));
+    }
+
+    [Fact]
+    public async Task ContributorsOfOneVersionShareOneGroupAndNoGroupNote()
+    {
+        KeepBaseline(OlderVersion, Regulation(OlderVersion, 0xB0));
+        var (loadout, providers) = await TwoRegulations(OlderVersion, Regulation(OlderVersion, 1), Regulation(OlderVersion, 2));
+        var notes = new List<IMergeNote>();
+
+        var ancestors = Sources.Ancestors(loadout, "regulation.bin", providers, MergeSourceMode.Apply, notes)!;
+
+        ancestors.Groups.Should().ContainSingle().Which.Contributors.Should().BeEquivalentTo(providers);
+        notes.OfType<VanillaGroupSource>().Should().BeEmpty("one group needs no label to say whose it is");
+    }
+
+    [Fact]
+    public async Task AModAtTheGamesBuildIsComparedAgainstTheInstalledFileWhileAnOlderOneUsesItsBaseline()
+    {
+        var olderBaseline = Regulation(OlderVersion, 0xB0);
+        KeepBaseline(OlderVersion, olderBaseline);
         var (loadout, providers) = await TwoRegulations(GameVersion, Regulation(GameVersion, 1), Regulation(OlderVersion, 2));
 
-        var act = () => Sources.Vanilla(loadout, "regulation.bin", providers, MergeSourceMode.Apply);
+        var ancestors = Sources.Ancestors(loadout, "regulation.bin", providers, MergeSourceMode.Apply)!;
 
-        act.Should().Throw<MergeException>().Which.Message
-            .Should().Contain("Alpha").And.Contain(GameVersion).And.Contain("Beta").And.Contain(OlderVersion);
+        ancestors.Of(providers.Single(p => p.PackageId == "Alpha")).Should().Equal(EldenRingInstall.RegulationFile);
+        ancestors.Of(providers.Single(p => p.PackageId == "Beta")).Should().Equal(olderBaseline);
+    }
+
+    [Fact]
+    public async Task AGroupWithNoVanillaIsRefusedNamingItsModsItsVersionAndWhatWasTried()
+    {
+        var (loadout, providers) = await TwoRegulations(GameVersion, Regulation(GameVersion, 1), Regulation(OlderVersion, 2));
+        var beta = providers.Single(p => p.PackageId == "Beta");
+
+        var act = () => Sources.Ancestors(loadout, "regulation.bin", providers, MergeSourceMode.Apply);
+
+        var missing = act.Should().Throw<MergeException>().Which.Missing.Should().ContainSingle("the game's own group is covered by the installed file").Which;
+        missing.Version.Should().Be(OlderVersion);
+        missing.Mods.Should().Equal(beta.ModName);
+        missing.Tried.Should().NotBeEmpty().And.Contain(t => t.Contains("installed game") && t.Contains(GameVersion));
+    }
+
+    [Fact]
+    public async Task EveryGroupWithNoVanillaIsListedInOneRefusal()
+    {
+        var (loadout, providers) = await TwoRegulations(OlderVersion, Regulation(OlderVersion, 1), Regulation(OldestVersion, 2));
+
+        var act = () => Sources.Ancestors(loadout, "regulation.bin", providers, MergeSourceMode.Apply);
+
+        var thrown = act.Should().Throw<MergeException>().Which;
+        thrown.Missing.Select(m => m.Version).Should().BeEquivalentTo([OlderVersion, OldestVersion]);
+        thrown.Message.Should().Contain("Alpha").And.Contain(OlderVersion).And.Contain("Beta").And.Contain(OldestVersion);
+    }
+
+    [Fact]
+    public async Task OfTwoVouchedFilesOfOneBuildTheOneNearestTheModsIsUsedAndSaid()
+    {
+        var mod = RealRegulation(OlderVersion, [1, 2, 3, 4], edited: 4);
+        var far = RealRegulation(OlderVersion, [1, 2, 3, 4], edited: 1, alsoEdited: 2);
+        var near = RealRegulation(OlderVersion, [1, 2, 3, 4]);
+        var folder = DataRoot / "baselines";
+        folder.CreateDirectory();
+        // The primary name is the far one, so picking the first file found would be wrong.
+        File.WriteAllBytes((folder / $"regulation-{OlderVersion}.bin").GetFullPath(), far);
+        File.WriteAllBytes((folder / $"regulation-{OlderVersion}@near.bin").GetFullPath(), near);
+        var (loadout, providers) = await TwoRegulations(OlderVersion, mod, mod);
+        var notes = new List<IMergeNote>();
+
+        var ancestors = Sources.Ancestors(loadout, "regulation.bin", providers, MergeSourceMode.Apply, notes)!;
+
+        ancestors.Groups.Single().Bytes.Should().Equal(near);
+        notes.OfType<VanillaAlternateChosen>().Should().ContainSingle().Which.Should().Match<VanillaAlternateChosen>(n => n.Version == OlderVersion && n.Of == 2);
+    }
+
+    [Fact]
+    public async Task AModWhoseRegulationCarriesAStampButNoReadableBinderIsRefusedWhenChoosingBetweenVouchedFiles()
+    {
+        var folder = DataRoot / "baselines";
+        folder.CreateDirectory();
+        File.WriteAllBytes((folder / $"regulation-{OlderVersion}.bin").GetFullPath(), RealRegulation(OlderVersion, [1, 2]));
+        File.WriteAllBytes((folder / $"regulation-{OlderVersion}@other.bin").GetFullPath(), RealRegulation(OlderVersion, [1, 2], edited: 1));
+        // The header up to the stamp survives, so the version reads, but the binder after it is cut off.
+        var payload = FromSoft.Formats.Regulation.Unpack(RealRegulation(OlderVersion, [1, 2]), Formats);
+        var broken = FromSoft.Formats.Regulation.Pack(payload.AsSpan(0, 0x40), new byte[FromSoft.Formats.Regulation.IvSize], Formats);
+        var (loadout, providers) = await TwoRegulations(OlderVersion, broken, RealRegulation(OlderVersion, [1, 2]));
+
+        var act = () => Sources.Ancestors(loadout, "regulation.bin", providers, MergeSourceMode.Apply);
+
+        act.Should().Throw<MergeException>().Which.Message.Should().Contain(OlderVersion);
     }
 
     [Fact]
@@ -212,7 +320,7 @@ public class LoadoutMergeSourcesTests(ITestOutputHelper helper) : AModdedEldenRi
         var (loadout, providers) = await TwoRegulations(OlderVersion, Regulation(OlderVersion, 1), Regulation(OlderVersion, 2));
         var gameBefore = SnapshotOfGameFolder();
 
-        var act = () => Sources.Vanilla(loadout, "regulation.bin", providers, MergeSourceMode.Apply);
+        var act = () => Sources.SingleVanilla(loadout, "regulation.bin", providers, MergeSourceMode.Apply);
 
         act.Should().Throw<MergeException>().Which.Message
             .Should().Contain($"no vanilla regulation of version {OlderVersion} is available").And.Contain(GameVersion);
@@ -227,7 +335,7 @@ public class LoadoutMergeSourcesTests(ITestOutputHelper helper) : AModdedEldenRi
         await InstallPackage(loadout.LoadoutId, "Armor", Member("msg/engus/item.msgbnd.dcx"));
         var providers = Sources.Providers(Refresh(loadout));
 
-        Sources.Vanilla(Refresh(loadout), "msg/engus/item.msgbnd.dcx", providers, MergeSourceMode.Apply).Should().BeNull();
+        Sources.SingleVanilla(Refresh(loadout), "msg/engus/item.msgbnd.dcx", providers, MergeSourceMode.Apply).Should().BeNull();
     }
 
     [Fact]

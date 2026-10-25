@@ -19,8 +19,11 @@ public sealed record MergedPath(
     string VanillaSource);
 
 /// <summary>Why the plan has no merged files: one path could not be merged, so none was written.</summary>
-public sealed record MergeRefusal(string Path, MergeStrategy Strategy, string Reason)
+/// <param name="Missing">The builds with no vanilla regulation, when that is the reason; empty otherwise, so a caller can offer to find one.</param>
+public sealed record MergeRefusal(string Path, MergeStrategy Strategy, string Reason, IReadOnlyList<VanillaMissing> Missing)
 {
+    public MergeRefusal(string path, MergeStrategy strategy, string reason) : this(path, strategy, reason, []) { }
+
     public string Describe() => $"{Path} ({MergeStrategies.Name(Strategy)}): {Reason}";
 }
 

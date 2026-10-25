@@ -54,7 +54,7 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
                 return known.Plan;
 
             var rebase = RegulationRebase.For(c => sources.VersionOf(installation, c), () => inputs.Live(), traits);
-            var plan = MergePlanner.Plan(index, sources.ContributorBytes, (path, _) => inputs.Vanilla(path), inputs.GameBase, traits, MergeStrategyBindings.For, rebase);
+            var plan = MergePlanner.Plan(index, sources.ContributorBytes, inputs.Vanilla, inputs.GameBase, traits, MergeStrategyBindings.For, rebase);
             plan = inputs.WithSourceNotes(plan);
             _latest[loadout.LoadoutId] = new Entry(key, plan, inputs.Notes.Values.Any(notes => notes.OfType<BaselineWillBeKept>().Any()));
             return plan;
@@ -89,8 +89,8 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
                 var notes = new List<IMergeNote>();
                 inputs.Notes[candidate.Path] = notes;
                 inputs.VanillaOf[candidate.Path] = refusal is not null
-                    ? new Fetched(null, "refused: " + refusal, new MergeException(refusal))
-                    : Read(() => sources.Vanilla(loadout, candidate.Path, candidate.Contributors, mode, notes));
+                    ? new FetchedAncestors(null, ["refused: " + refusal], new MergeException(refusal))
+                    : ReadAncestors(() => sources.Ancestors(loadout, candidate.Path, candidate.Contributors, mode, notes));
             }
         }
         return inputs;
@@ -154,6 +154,23 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
         }
     }
 
+    private static FetchedAncestors ReadAncestors(Func<VanillaAncestors?> read)
+    {
+        try
+        {
+            var ancestors = read();
+            // One fingerprint per build, so a new vanilla of either invalidates a cached plan.
+            return new FetchedAncestors(
+                ancestors,
+                ancestors is null ? ["none"] : [.. ancestors.Groups.Select(g => $"{g.Version ?? "-"}={g.Bytes.xxHash3()}")],
+                null);
+        }
+        catch (MergeException exception)
+        {
+            return new FetchedAncestors(null, ["refused: " + exception.Message], exception);
+        }
+    }
+
     private static string KeyOf(MergePathIndex index, Inputs inputs)
     {
         var key = new StringBuilder();
@@ -165,7 +182,8 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
                 key.Append("|c:").Append(c.PackageId).Append('/').Append(c.RelPath).Append('=').Append(c.Hash).Append('@').Append(c.Priority).Append(' ').Append(c.ModName);
             if (inputs.GameBaseOf.TryGetValue(candidate.Path, out var gameBase)) key.Append("|g:").Append(gameBase.Fingerprint);
             if (inputs.Stamps.TryGetValue(candidate.Path, out var stamp)) key.Append("|b:").Append(stamp);
-            if (inputs.VanillaOf.TryGetValue(candidate.Path, out var vanilla)) key.Append("|v:").Append(vanilla.Fingerprint);
+            if (inputs.VanillaOf.TryGetValue(candidate.Path, out var vanilla))
+                foreach (var fingerprint in vanilla.Fingerprints) key.Append("|v:").Append(fingerprint);
             key.Append('\n');
         }
         return key.ToString();
@@ -173,9 +191,11 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
 
     private readonly record struct Fetched(byte[]? Bytes, string Fingerprint, MergeException? Failure);
 
+    private readonly record struct FetchedAncestors(VanillaAncestors? Ancestors, IReadOnlyList<string> Fingerprints, MergeException? Failure);
+
     private sealed class Inputs
     {
-        public Dictionary<string, Fetched> VanillaOf { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, FetchedAncestors> VanillaOf { get; } = new(StringComparer.Ordinal);
         public Dictionary<string, Fetched> GameBaseOf { get; } = new(StringComparer.Ordinal);
         public Dictionary<string, string> Stamps { get; } = new(StringComparer.Ordinal);
 
@@ -184,7 +204,12 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
 
         public Dictionary<string, List<IMergeNote>> Notes { get; } = new(StringComparer.Ordinal);
 
-        public byte[]? Vanilla(string path) => Take(VanillaOf[path]);
+        public byte[]? Vanilla(string path, ProviderFile contributor)
+        {
+            var fetched = VanillaOf[path];
+            if (fetched.Failure is { } failure) ExceptionDispatchInfo.Capture(failure).Throw();
+            return fetched.Ancestors?.Of(contributor);
+        }
 
         public byte[] GameBase(string path) => Take(GameBaseOf[path]) ?? throw new InvalidOperationException($"No game file was read for {path}");
 
