@@ -10,6 +10,7 @@ using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Controls.Cards;
 using SilverModManager.App.UI.Helpers;
+using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -43,6 +44,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
     private readonly IEnumerable<IGameData> _games;
     private readonly ILogger<NexusModsViewModel> _logger;
     private readonly NexusCollectionsViewModel _collections;
+    private readonly IStoreSortMemory _sortMemory;
 
     // Bumped by every new search so a slow answer to an old one is dropped instead of overwriting the newer rows.
     private int _generation;
@@ -74,6 +76,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         IEnumerable<IGameData> games,
         IThumbnailLoader thumbnails,
         NexusCollectionsViewModel collections,
+        IStoreSortMemory sortMemory,
         ILogger<NexusModsViewModel> logger) : base(windowManager)
     {
         _connection = connection;
@@ -87,6 +90,7 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         Thumbnails = thumbnails;
         _logger = logger;
         _collections = collections;
+        _sortMemory = sortMemory;
 
         TabIcon = IconValues.Download;
         TabTitle = "Nexus Mods";
@@ -95,7 +99,12 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         InstallCommand = ReactiveCommand.CreateFromTask<NexusModsModRow>(async (row, ct) => await InstallAsync(row, ct));
         OpenCommand = ReactiveCommand.Create<NexusModsModRow>(Open);
 
-        this.WhenAnyValue(vm => vm.LoadoutId).Subscribe(loadoutId => _collections.LoadoutId = loadoutId);
+        this.WhenAnyValue(vm => vm.LoadoutId).Subscribe(loadoutId =>
+        {
+            _collections.LoadoutId = loadoutId;
+            RestoreSort();
+        });
+        this.WhenAnyValue(vm => vm.Sort).Skip(1).Subscribe(RememberSort);
 
         this.WhenActivated(d =>
         {
@@ -193,6 +202,20 @@ public partial class NexusModsViewModel : APageViewModel<INexusModsViewModel>, I
         {
             if (generation == _generation) IsLoading = false;
         }
+    }
+
+    private const string SortPage = "nexus-mods";
+
+    // Remembered per Nexus game, so a loadout of the same game shows the same order.
+    private void RestoreSort()
+    {
+        if (GameOfLoadout() is not { } game || _sortMemory.Recall(SortPage, game.ToString()) is not { } key) return;
+        if (Enum.TryParse<NexusModsSort>(key, out var sort) && Enum.IsDefined(sort)) Sort = sort;
+    }
+
+    private void RememberSort(NexusModsSort sort)
+    {
+        if (GameOfLoadout() is { } game) _sortMemory.Remember(SortPage, game.ToString(), sort.ToString());
     }
 
     // The same rule as the left menu entry, so the entry and the page can't disagree.

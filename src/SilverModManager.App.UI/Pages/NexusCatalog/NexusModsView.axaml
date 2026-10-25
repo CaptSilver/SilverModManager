@@ -25,12 +25,7 @@
                         <TextBlock x:Name="ErrorText" TextWrapping="Wrap" />
                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
                             <TextBox x:Name="SearchBox" Width="320" Watermark="Search mods by name" />
-                            <ComboBox x:Name="SortBox" SelectedIndex="0">
-                                <ComboBoxItem>Most endorsed</ComboBoxItem>
-                                <ComboBoxItem>Most downloaded</ComboBoxItem>
-                                <ComboBoxItem>Recently updated</ComboBoxItem>
-                                <ComboBoxItem>Name</ComboBoxItem>
-                            </ComboBox>
+                            <cards:StoreSortBox x:Name="SortBox" />
                         </StackPanel>
                     </StackPanel>
 
@@ -81,11 +76,7 @@
                         <TextBlock x:Name="CollectionErrorText" TextWrapping="Wrap" />
                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
                             <TextBox x:Name="CollectionSearchBox" Width="320" Watermark="Search collections by name" />
-                            <ComboBox x:Name="CollectionSortBox" SelectedIndex="0">
-                                <ComboBoxItem>Most endorsed</ComboBoxItem>
-                                <ComboBoxItem>Most downloaded</ComboBoxItem>
-                                <ComboBoxItem>Recently updated</ComboBoxItem>
-                            </ComboBox>
+                            <cards:StoreSortBox x:Name="CollectionSortBox" />
                         </StackPanel>
                     </StackPanel>
 

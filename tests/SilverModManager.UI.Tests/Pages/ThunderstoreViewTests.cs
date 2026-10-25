@@ -23,6 +23,7 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
         public LoadoutId LoadoutId { get; set; }
         public string SearchText { get; set; } = "";
         public bool ShowDeprecated { get; set; }
+        public ThunderstoreSort Sort { get; set; }
         public IReadOnlyList<ThunderstorePackageRow> Packages { get; } = packages;
         public IThumbnailLoader Icons { get; } = icons;
         public string ErrorText => "";
@@ -295,6 +296,40 @@ public class ThunderstoreViewTests(IServiceProvider provider) : AUiTest(provider
         await OnUi(() => window.Content = null);
 
         icons.Tokens[0].IsCancellationRequested.Should().BeTrue();
+        await OnUi(window.Close);
+    }
+
+    [Fact]
+    public async Task TheSortBox_ListsTheSharedWordingAndShowsTheViewModelsSort()
+    {
+        var (window, view) = await Show(new StubViewModel([Row("a", "B")], new FakeIcons()) { Sort = ThunderstoreSort.Newest });
+
+        await EventuallyOnUi(() =>
+        {
+            Dispatcher.UIThread.RunJobs();
+            var box = view.GetVisualDescendants().OfType<StoreSortBox>().Should().ContainSingle().Subject;
+            box.Items.OfType<StoreSortOption>().Select(o => o.Label).Should().Equal("Top rated", "Most downloaded", "Recently updated", "Newest", "Name");
+            box.SelectedKey.Should().Be("Newest");
+            (box.SelectedItem as StoreSortOption)?.Label.Should().Be("Newest");
+        });
+
+        await OnUi(window.Close);
+    }
+
+    [Fact]
+    public async Task PickingAnEntryOfTheSortBox_SetsTheViewModelsSort()
+    {
+        var viewModel = new StubViewModel([Row("a", "B")], new FakeIcons());
+        var (window, view) = await Show(viewModel);
+
+        await EventuallyOnUi(() =>
+        {
+            Dispatcher.UIThread.RunJobs();
+            var box = view.GetVisualDescendants().OfType<StoreSortBox>().Should().ContainSingle().Subject;
+            box.SelectedItem = box.Items.OfType<StoreSortOption>().Single(o => o.Label == "Name");
+            viewModel.Sort.Should().Be(ThunderstoreSort.Name);
+        });
+
         await OnUi(window.Close);
     }
 }

@@ -302,6 +302,7 @@ public static class Services
             .AddSingleton<IPageFactory, ChangelogPageFactory>()
             .AddSingleton<IPageFactory, FromSoftMergesPageFactory>()
             .AddSingleton<IPageFactory, FromSoftSavesPageFactory>()
+            .AddSingleton<IStoreSortMemory, SettingsStoreSortMemory>()
             .AddSingleton<IPageFactory, ThunderstorePageFactory>()
             .AddSingleton<IPageFactory, NexusModsPageFactory>()
             .AddSingleton<IPageFactory, WabbajackModlistPageFactory>()

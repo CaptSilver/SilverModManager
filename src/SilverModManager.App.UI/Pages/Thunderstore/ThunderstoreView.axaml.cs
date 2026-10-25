@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using ReactiveUI;
+using SilverModManager.App.UI.Controls.Cards;
 
 namespace SilverModManager.App.UI.Pages.Thunderstore;
 
@@ -21,6 +22,9 @@ public partial class ThunderstoreView : ReactiveUserControl<IThunderstoreViewMod
             this.BindCommand(ViewModel, vm => vm.RefreshCommand, view => view.RefreshButton).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SearchText, view => view.SearchBox.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.ShowDeprecated, view => view.DeprecatedBox.IsChecked).DisposeWith(disposables);
+
+            SortBox.Options = ThunderstoreSorting.Choices;
+            SortBox.BindSort(viewModel.WhenAnyValue(vm => vm.Sort), sort => viewModel.Sort = sort).DisposeWith(disposables);
 
             viewModel.WhenAnyValue(vm => vm.ErrorText)
                 .Subscribe(text =>

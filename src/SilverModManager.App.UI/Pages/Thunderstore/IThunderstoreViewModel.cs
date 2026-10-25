@@ -19,7 +19,10 @@ public interface IThunderstoreViewModel : IPageViewModelInterface
     /// <summary>Whether deprecated packages are listed; they are hidden by default.</summary>
     bool ShowDeprecated { get; set; }
 
-    /// <summary>The packages matching <see cref="SearchText"/>, best rated first.</summary>
+    /// <summary>How <see cref="Packages"/> is ordered; remembered per community.</summary>
+    ThunderstoreSort Sort { get; set; }
+
+    /// <summary>The packages matching <see cref="SearchText"/>, in the order of <see cref="Sort"/>.</summary>
     IReadOnlyList<ThunderstorePackageRow> Packages { get; }
 
     /// <summary>Where the rows get their package icons, each fetched when its row is on screen.</summary>

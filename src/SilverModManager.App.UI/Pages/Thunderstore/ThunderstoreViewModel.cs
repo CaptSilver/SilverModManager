@@ -1,10 +1,12 @@
 using SilverModManager.App.UI.Controls.Cards;
 using System.Reactive;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -38,11 +40,14 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
     private readonly IThunderstoreSource _source;
     private readonly ILoadoutManager _loadoutManager;
     private readonly ILogger<ThunderstoreViewModel> _logger;
+    private readonly IStoreSortMemory _sortMemory;
     private ThunderstoreCatalog? _catalog;
+    private string? _community;
 
     [Reactive] public partial LoadoutId LoadoutId { get; set; }
     [Reactive] public partial string SearchText { get; set; } = "";
     [Reactive] public partial bool ShowDeprecated { get; set; }
+    [Reactive] public partial ThunderstoreSort Sort { get; set; } = ThunderstoreSort.TopRated;
     [Reactive] public partial IReadOnlyList<ThunderstorePackageRow> Packages { get; private set; } = [];
     [Reactive] public partial string ErrorText { get; private set; } = "";
     [Reactive] public partial bool IsRefreshing { get; private set; }
@@ -61,6 +66,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         ILoadoutManager loadoutManager,
         IOSInterop osInterop,
         IThumbnailLoader icons,
+        IStoreSortMemory sortMemory,
         ILogger<ThunderstoreViewModel> logger) : base(windowManager)
     {
         _connection = connection;
@@ -70,11 +76,13 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         _loadoutManager = loadoutManager;
         _logger = logger;
         Icons = icons;
+        _sortMemory = sortMemory;
 
         TabIcon = IconValues.Download;
         TabTitle = "Thunderstore";
 
-        this.WhenAnyValue(vm => vm.SearchText, vm => vm.ShowDeprecated).Subscribe(_ => ApplyFilter());
+        this.WhenAnyValue(vm => vm.SearchText, vm => vm.ShowDeprecated, vm => vm.Sort).Subscribe(_ => ApplyFilter());
+        this.WhenAnyValue(vm => vm.Sort).Skip(1).Subscribe(RememberSort);
 
         RefreshCommand = ReactiveCommand.CreateFromTask(async ct => await LoadAsync(ct, forceRefresh: true));
         OpenPackageCommand = ReactiveCommand.Create<ThunderstorePackageRow>(row =>
@@ -116,6 +124,7 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
     private async Task LoadAsync(CancellationToken cancellationToken, bool forceRefresh)
     {
         var community = CommunityOfLoadout();
+        RestoreSort(community);
         if (community is null)
         {
             _catalog = null;
@@ -214,11 +223,28 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
         }
     }
 
+    private const string SortPage = "thunderstore";
+
+    // Remembered per community: that is what the page lists, and two games can share one.
+    private void RestoreSort(string? community)
+    {
+        _community = community;
+        if (community is null || _sortMemory.Recall(SortPage, community) is not { } key) return;
+        // A key from a build with different sorts is ignored rather than guessed at.
+        if (Enum.TryParse<ThunderstoreSort>(key, out var sort) && Enum.IsDefined(sort)) Sort = sort;
+    }
+
+    private void RememberSort(ThunderstoreSort sort)
+    {
+        if (_community is not null) _sortMemory.Remember(SortPage, _community, sort.ToString());
+    }
+
     private void ApplyFilter()
     {
         Packages = _catalog is null
             ? []
-            : _catalog.Search(SearchText, ShowDeprecated).Where(package => !OtherModManagers.Contains(package.FullName)).Select(ToRow).ToArray();
+            : ThunderstoreSorting.Order(_catalog.Search(SearchText, ShowDeprecated).Where(package => !OtherModManagers.Contains(package.FullName)), Sort)
+                .Select(ToRow).ToArray();
     }
 
     private static ThunderstoreVersionRef? LatestRef(SilverModManager.Networking.Thunderstore.DTOs.PackageListing package, SilverModManager.Networking.Thunderstore.DTOs.PackageVersion? latest)
@@ -243,6 +269,6 @@ public partial class ThunderstoreViewModel : APageViewModel<IThunderstoreViewMod
             package.Owner ?? "",
             displayName != "" ? displayName : package.FullName,
             Uri.TryCreate(latest?.Icon, UriKind.Absolute, out var icon) ? icon : null,
-            package.Versions.Sum(version => version.Downloads));
+            ThunderstoreSorting.Downloads(package));
     }
 }

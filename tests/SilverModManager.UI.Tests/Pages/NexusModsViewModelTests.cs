@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.App.UI.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
@@ -46,8 +47,9 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
     private static NexusModsSearchPage Page(int offset, int total, params uint[] modIds)
         => new(modIds.Select(id => Hit(id)).ToArray(), offset, total);
 
-    private async Task<Fixture> Open(bool premium, Func<NexusModsSearchQuery, NexusModsSearchPage>? pages = null, bool storedNexusId = true)
+    private async Task<Fixture> Open(bool premium, Func<NexusModsSearchQuery, NexusModsSearchPage>? pages = null, bool storedNexusId = true, IStoreSortMemory? sortMemory = null)
     {
+        sortMemory ??= new InMemoryStoreSortMemory();
         var row = await SeedLoadoutRow(GameStore.Steam, "Nexus Mods loadout");
         var fixture = new Fixture();
         fixture.Game = GameInstallMetadata.GameId.Get(Loadout.Load(Connection.Db, row.LoadoutId).Installation);
@@ -99,7 +101,8 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
             Provider.GetServices<IGameData>(),
             Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(),
             new NexusCollectionsViewModel(Connection, Substitute.For<INexusCollectionsBrowser>(), fixture.OsInterop, Provider.GetServices<IGameData>(), [],
-                Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(), NullLogger<NexusCollectionsViewModel>.Instance),
+                Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(), sortMemory, NullLogger<NexusCollectionsViewModel>.Instance),
+            sortMemory,
             NullLogger<NexusModsViewModel>.Instance)
         {
             LoadoutId = row.LoadoutId,
@@ -342,5 +345,32 @@ public class NexusModsViewModelTests(IServiceProvider provider) : AUiTest(provid
 
         premium.OsInterop.Received(1).OpenUri(new Uri("https://www.nexusmods.com/cyberpunk2077/mods/7"));
         free.OsInterop.Received(1).OpenUri(new Uri("https://www.nexusmods.com/cyberpunk2077/mods/7"));
+    }
+
+    [Fact]
+    public async Task TheChosenSort_IsRestoredWhenAnotherLoadoutOfTheGameOpensThePage()
+    {
+        var memory = new InMemoryStoreSortMemory();
+        var first = await Open(premium: false, sortMemory: memory);
+        first.Vm.Sort = NexusModsSort.Name;
+
+        var second = await Open(premium: false, sortMemory: memory);
+
+        second.Vm.Sort.Should().Be(NexusModsSort.Name);
+        await second.Vm.SearchAsync(CancellationToken.None);
+        second.Queries.Last().Sort.Should().Be(NexusModsSort.Name);
+    }
+
+    [Fact]
+    public async Task TheModsSort_IsRememberedApartFromTheCollectionsSort()
+    {
+        var memory = new InMemoryStoreSortMemory();
+        var first = await Open(premium: false, sortMemory: memory);
+        first.Vm.Collections.Sort = NexusCollectionsSort.Downloads;
+
+        var second = await Open(premium: false, sortMemory: memory);
+
+        second.Vm.Sort.Should().Be(NexusModsSort.Endorsements);
+        second.Vm.Collections.Sort.Should().Be(NexusCollectionsSort.Downloads);
     }
 }

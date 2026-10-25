@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.App.UI.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -40,8 +41,9 @@ public class NexusCollectionsViewModelTests(IServiceProvider provider) : AUiTest
     private static NexusCollectionsSearchPage Page(int offset, int total, params string[] slugs)
         => new(slugs.Select(slug => Hit(slug)).ToArray(), offset, total);
 
-    private async Task<Fixture> Open(Func<NexusCollectionsSearchQuery, NexusCollectionsSearchPage>? pages = null)
+    private async Task<Fixture> Open(Func<NexusCollectionsSearchQuery, NexusCollectionsSearchPage>? pages = null, IStoreSortMemory? sortMemory = null)
     {
+        sortMemory ??= new InMemoryStoreSortMemory();
         var row = await SeedLoadoutRow(GameStore.Steam, "Nexus collections loadout");
         var fixture = new Fixture { LoadoutId = row.LoadoutId };
         fixture.Game = GameInstallMetadata.GameId.Get(Loadout.Load(Connection.Db, row.LoadoutId).Installation);
@@ -66,6 +68,7 @@ public class NexusCollectionsViewModelTests(IServiceProvider provider) : AUiTest
             Provider.GetServices<IGameData>(),
             [Substitute.For<IIpcProtocolHandler>(), fixture.Nxm],
             Substitute.For<SilverModManager.App.UI.Controls.Cards.IThumbnailLoader>(),
+            sortMemory,
             NullLogger<NexusCollectionsViewModel>.Instance)
         {
             LoadoutId = row.LoadoutId,
@@ -290,5 +293,17 @@ public class NexusCollectionsViewModelTests(IServiceProvider provider) : AUiTest
         f.Vm.SearchText = "plus";
         await Eventually(() => f.Queries.Should().HaveCount(2));
         f.Queries[1].SearchText.Should().Be("plus");
+    }
+
+    [Fact]
+    public async Task TheChosenSort_IsRestoredWhenAnotherLoadoutOfTheGameOpensTheTab()
+    {
+        var memory = new InMemoryStoreSortMemory();
+        var first = await Open(sortMemory: memory);
+        first.Vm.Sort = NexusCollectionsSort.Updated;
+
+        var second = await Open(sortMemory: memory);
+
+        second.Vm.Sort.Should().Be(NexusCollectionsSort.Updated);
     }
 }

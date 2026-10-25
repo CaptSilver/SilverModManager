@@ -12,6 +12,7 @@ public class ThunderstoreDesignViewModel : APageViewModel<IThunderstoreViewModel
     public LoadoutId LoadoutId { get; set; }
     public string SearchText { get; set; } = "";
     public bool ShowDeprecated { get; set; }
+    public ThunderstoreSort Sort { get; set; }
 
     public IReadOnlyList<ThunderstorePackageRow> Packages { get; } =
     [

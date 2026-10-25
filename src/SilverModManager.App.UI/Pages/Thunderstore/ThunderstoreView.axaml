@@ -17,6 +17,7 @@
             <TextBlock x:Name="ErrorText" TextWrapping="Wrap" />
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
                 <TextBox x:Name="SearchBox" Width="320" Watermark="Search packages or authors" />
+                <cards:StoreSortBox x:Name="SortBox" />
                 <CheckBox x:Name="DeprecatedBox" Content="Show deprecated" />
                 <controls:StandardButton x:Name="RefreshButton" Type="Secondary" Size="Toolbar" Text="Refresh" />
             </StackPanel>

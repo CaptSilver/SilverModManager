@@ -4,16 +4,13 @@ using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using ReactiveUI;
-using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.App.UI.Controls.Cards;
 
 namespace SilverModManager.App.UI.Pages.NexusCatalog;
 
 [UsedImplicitly]
 public partial class NexusModsView : ReactiveUserControl<INexusModsViewModel>
 {
-    private static readonly NexusCollectionsSort[] CollectionSortChoices = [NexusCollectionsSort.Endorsements, NexusCollectionsSort.Downloads, NexusCollectionsSort.Updated];
-    private static readonly NexusModsSort[] SortChoices = [NexusModsSort.Endorsements, NexusModsSort.Downloads, NexusModsSort.Updated, NexusModsSort.Name];
-
     public NexusModsView()
     {
         InitializeComponent();
@@ -24,9 +21,8 @@ public partial class NexusModsView : ReactiveUserControl<INexusModsViewModel>
 
             this.Bind(ViewModel, vm => vm.SearchText, view => view.SearchBox.Text).DisposeWith(disposables);
 
-            SortBox.SelectedIndex = Array.IndexOf(SortChoices, viewModel.Sort);
-            SortBox.SelectionChanged += OnSortChanged;
-            Disposable.Create(() => SortBox.SelectionChanged -= OnSortChanged).DisposeWith(disposables);
+            SortBox.Options = NexusSortChoices.Mods;
+            SortBox.BindSort(viewModel.WhenAnyValue(vm => vm.Sort), sort => viewModel.Sort = sort).DisposeWith(disposables);
 
             viewModel.WhenAnyValue(vm => vm.ErrorText)
                 .Subscribe(text =>
@@ -49,9 +45,8 @@ public partial class NexusModsView : ReactiveUserControl<INexusModsViewModel>
     {
         this.Bind(ViewModel, vm => vm.Collections.SearchText, view => view.CollectionSearchBox.Text).DisposeWith(disposables);
 
-        CollectionSortBox.SelectedIndex = Array.IndexOf(CollectionSortChoices, collections.Sort);
-        CollectionSortBox.SelectionChanged += OnCollectionSortChanged;
-        Disposable.Create(() => CollectionSortBox.SelectionChanged -= OnCollectionSortChanged).DisposeWith(disposables);
+        CollectionSortBox.Options = NexusSortChoices.Collections;
+        CollectionSortBox.BindSort(collections.WhenAnyValue(vm => vm.Sort), sort => collections.Sort = sort).DisposeWith(disposables);
 
         collections.WhenAnyValue(vm => vm.ErrorText)
             .Subscribe(text =>
@@ -74,15 +69,9 @@ public partial class NexusModsView : ReactiveUserControl<INexusModsViewModel>
 
     private void OnTabChanged(object? sender, SelectionChangedEventArgs e)
     {
-        // The ComboBoxes inside a tab raise SelectionChanged too, and it bubbles up to here.
+        // The sort boxes inside a tab raise SelectionChanged too, and it bubbles up to here.
         if (e.Source != Tabs || ViewModel is not { } viewModel) return;
         viewModel.Collections.IsVisible = ReferenceEquals(Tabs.SelectedItem, CollectionsTab);
-    }
-
-    private void OnCollectionSortChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (ViewModel is { } viewModel && CollectionSortBox.SelectedIndex is >= 0 and var index && index < CollectionSortChoices.Length)
-            viewModel.Collections.Sort = CollectionSortChoices[index];
     }
 
     private void OnCollectionsEndReached(object? sender, EventArgs e)
@@ -105,12 +94,6 @@ public partial class NexusModsView : ReactiveUserControl<INexusModsViewModel>
     private void OnCollectionOpenClick(object? sender, RoutedEventArgs e)
     {
         if (ViewModel is { } viewModel && CollectionOf(sender) is { } row) viewModel.Collections.OpenOnNexusCommand.Execute(row).Subscribe();
-    }
-
-    private void OnSortChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (ViewModel is { } viewModel && SortBox.SelectedIndex is >= 0 and var index && index < SortChoices.Length)
-            viewModel.Sort = SortChoices[index];
     }
 
     // The grid reports the end on every scroll step near it, and again when a page leaves the view unfilled; the

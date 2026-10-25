@@ -11,6 +11,7 @@ using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.App.UI.Controls.Cards;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Pages.CollectionDownload;
+using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.CLI.Types;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -34,6 +35,7 @@ public partial class NexusCollectionsViewModel : ReactiveObject, INexusCollectio
     private readonly INexusCollectionsBrowser _browser;
     private readonly IOSInterop _osInterop;
     private readonly IEnumerable<IGameData> _games;
+    private readonly IStoreSortMemory _sortMemory;
     private readonly IEnumerable<IIpcProtocolHandler> _protocolHandlers;
     private readonly ILogger<NexusCollectionsViewModel> _logger;
 
@@ -49,7 +51,17 @@ public partial class NexusCollectionsViewModel : ReactiveObject, INexusCollectio
     [Reactive] public partial bool IsVisible { get; set; }
 
     /// <summary>The loadout whose game's collections are listed, and which an opened collection page installs into.</summary>
-    public LoadoutId LoadoutId { get; set; }
+    public LoadoutId LoadoutId
+    {
+        get => _loadoutId;
+        set
+        {
+            _loadoutId = value;
+            RestoreSort();
+        }
+    }
+
+    private LoadoutId _loadoutId;
 
     /// <summary>
     /// Opens a page in the workspace this tab lives in. The Nexus Mods page sets it, because only a page knows its workspace.
@@ -68,6 +80,7 @@ public partial class NexusCollectionsViewModel : ReactiveObject, INexusCollectio
         IEnumerable<IGameData> games,
         IEnumerable<IIpcProtocolHandler> protocolHandlers,
         IThumbnailLoader thumbnails,
+        IStoreSortMemory sortMemory,
         ILogger<NexusCollectionsViewModel> logger)
     {
         _connection = connection;
@@ -76,7 +89,10 @@ public partial class NexusCollectionsViewModel : ReactiveObject, INexusCollectio
         _games = games;
         _protocolHandlers = protocolHandlers;
         Thumbnails = thumbnails;
+        _sortMemory = sortMemory;
         _logger = logger;
+
+        this.WhenAnyValue(vm => vm.Sort).Skip(1).Subscribe(RememberSort);
 
         LoadMoreCommand = ReactiveCommand.CreateFromTask(async ct => await LoadMoreAsync(ct));
         PrimaryCommand = ReactiveCommand.CreateFromTask<NexusCollectionRow>(async (row, ct) => await InstallAsync(row, ct));
@@ -177,6 +193,20 @@ public partial class NexusCollectionsViewModel : ReactiveObject, INexusCollectio
         {
             if (generation == _generation) IsLoading = false;
         }
+    }
+
+    private const string SortPage = "nexus-collections";
+
+    // Remembered per Nexus game, apart from the Mods tab's choice.
+    private void RestoreSort()
+    {
+        if (GameOfLoadout() is not { } game || _sortMemory.Recall(SortPage, game.ToString()) is not { } key) return;
+        if (Enum.TryParse<NexusCollectionsSort>(key, out var sort) && Enum.IsDefined(sort)) Sort = sort;
+    }
+
+    private void RememberSort(NexusCollectionsSort sort)
+    {
+        if (GameOfLoadout() is { } game) _sortMemory.Remember(SortPage, game.ToString(), sort.ToString());
     }
 
     private NexusModsGameId? GameOfLoadout() => _connection.Db.NexusIdOfLoadout(LoadoutId, _games);

@@ -381,4 +381,30 @@ public class NexusModsViewTests(IServiceProvider provider) : AUiTest(provider)
         thumbnails.Tokens[0].IsCancellationRequested.Should().BeTrue();
         await OnUi(window.Close);
     }
+
+    [Fact]
+    public async Task EachTab_ShowsTheSharedSortBoxWithItsOwnSorts()
+    {
+        var (window, view) = await Show(new StubViewModel([], new FakeThumbnails()));
+
+        await EventuallyOnUi(() =>
+        {
+            Dispatcher.UIThread.RunJobs();
+            var box = view.GetVisualDescendants().OfType<StoreSortBox>().Should().ContainSingle().Subject;
+            box.Items.OfType<StoreSortOption>().Select(o => o.Label).Should().Equal("Most endorsed", "Most downloaded", "Recently updated", "Name");
+            box.SelectedKey.Should().Be("Endorsements");
+        });
+
+        // A tab that isn't selected has no controls yet, so the Collections tab is opened to see its box.
+        await OnUi(() => view.GetVisualDescendants().OfType<TabControl>().First().SelectedIndex = 1);
+
+        await EventuallyOnUi(() =>
+        {
+            Dispatcher.UIThread.RunJobs();
+            var box = view.GetVisualDescendants().OfType<StoreSortBox>().Should().ContainSingle().Subject;
+            box.Items.OfType<StoreSortOption>().Select(o => o.Label).Should().Equal("Most endorsed", "Most downloaded", "Recently updated");
+        });
+
+        await OnUi(window.Close);
+    }
 }
