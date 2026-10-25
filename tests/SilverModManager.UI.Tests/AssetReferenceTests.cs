@@ -35,7 +35,9 @@ public partial class AssetReferenceTests
         var dangling = new List<string>();
         foreach (var file in sources)
         {
-            var references = FindDanglingReferences(File.ReadAllText(file), OwningProjectDirectory(file), projects, out var found);
+            // Sources shared by every test project (tests/TestScratch.cs) belong to no project and hold no references.
+            if (OwningProjectDirectory(file) is not { } owner) continue;
+            var references = FindDanglingReferences(File.ReadAllText(file), owner, projects, out var found);
             checkedCount += found;
             dangling.AddRange(references.Select(reference => $"{Path.GetRelativePath(root, file)} -> {reference}"));
         }
@@ -114,11 +116,11 @@ public partial class AssetReferenceTests
         return projects;
     }
 
-    private static string OwningProjectDirectory(string file)
+    private static string? OwningProjectDirectory(string file)
     {
         var dir = new DirectoryInfo(Path.GetDirectoryName(file)!);
         while (dir is not null && dir.GetFiles("*.csproj").Length == 0) dir = dir.Parent;
-        return dir?.FullName ?? throw new InvalidOperationException($"No project file above {file}");
+        return dir?.FullName;
     }
 
     private static string FindRepoRoot()

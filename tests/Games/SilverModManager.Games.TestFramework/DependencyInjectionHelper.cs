@@ -48,17 +48,15 @@ public static class DependencyInjectionHelper
     /// </list>
     /// </summary>
     /// <param name="serviceCollection"></param>
-    /// <param name="prefix">Where the temporary file manager, and with it the stubbed game folders, live. Defaults to a fresh folder beside the test binaries.</param>
+    /// <param name="prefix">Where the temporary file manager, and with it the stubbed game folders, live. Defaults to a fresh folder under the test scratch root.</param>
     /// <param name="stubbedFileHashService"></param>
     /// <param name="stagingStore">Where the loose staging store lives. Defaults to a folder under <paramref name="prefix"/>.</param>
     /// <returns></returns>
     public static IServiceCollection AddDefaultServicesForTesting(this IServiceCollection serviceCollection, AbsolutePath prefix = default(AbsolutePath), bool stubbedFileHashService = true, AbsolutePath stagingStore = default(AbsolutePath))
     {
-        const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"DataModel.{Guid.NewGuid()}";
         prefix = prefix == default(AbsolutePath) ? FileSystem.Shared
-            .GetKnownPath(KnownPath.EntryDirectory)
-            .Combine($"SilverModManager.Games.TestFramework-{Guid.NewGuid()}") : prefix;
+            .FromUnsanitizedFullPath(TestScratch.Combine($"SilverModManager.Games.TestFramework-{Guid.NewGuid()}")) : prefix;
 
         // One store per test graph. A shared location would let one graph's garbage collection sweep another's
         // installation directory (the metadata ids repeat across in-memory databases). It sits beside the stubbed
@@ -92,9 +90,9 @@ public static class DependencyInjectionHelper
             .OverrideSettingsForTests<DataModelSettings>(settings => settings with
             {
                 UseInMemoryDataModel = true,
-                MnemonicDBPath = new ConfigurablePath(baseKnownPath, $"{baseDirectory}/MnemonicDB.rocksdb"),
+                MnemonicDBPath = new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/MnemonicDB.rocksdb")),
                 ArchiveLocations = [
-                    new ConfigurablePath(baseKnownPath, $"{baseDirectory}/Archives"),
+                    new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/Archives")),
                 ],
             })
             .OverrideSettingsForTests<LooseStagingStoreSettings>(settings => settings with
@@ -105,7 +103,7 @@ public static class DependencyInjectionHelper
             })
             .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with
             {
-                HashDatabaseLocation = new ConfigurablePath(baseKnownPath, $"{baseDirectory}/FileHashes"),
+                HashDatabaseLocation = new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/FileHashes")),
                 UseInMemoryLocalBaseline = true,
             })
             .AddSettingsManager()

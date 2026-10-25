@@ -24,7 +24,7 @@ internal sealed class OnDiskDataFolder : IDisposable
     /// </summary>
     public AbsolutePath DatabaseFolder => DatabasePath.ToPath(FileSystem.Shared);
 
-    private ConfigurablePath DatabasePath => new(KnownPath.EntryDirectory, $"{_name}/MnemonicDB.rocksdb");
+    private ConfigurablePath DatabasePath => new(null, TestScratch.Combine($"{_name}/MnemonicDB.rocksdb"));
 
     public static StartupMode Gui => new() { RunAsMain = true, ShowUI = true, SecretBackend = SecretBackendChoice.Memory };
     public static StartupMode Headless => new() { RunAsMain = true, ShowUI = false, SecretBackend = SecretBackendChoice.Memory };
@@ -37,13 +37,13 @@ internal sealed class OnDiskDataFolder : IDisposable
             .AddApp(addStandardGameLocators: false, startupMode: mode)
             .OverrideSettingsForTests<FileHashesServiceSettings>(settings => settings with
             {
-                LocalBaselineLocation = new ConfigurablePath(KnownPath.EntryDirectory, $"{_name}/LocalVanillaBaseline"),
+                LocalBaselineLocation = new ConfigurablePath(null, TestScratch.Combine($"{_name}/LocalVanillaBaseline")),
             })
             .OverrideSettingsForTests<DataModelSettings>(settings => settings with
             {
                 UseInMemoryDataModel = false,
                 MnemonicDBPath = DatabasePath,
-                ArchiveLocations = [new ConfigurablePath(KnownPath.EntryDirectory, $"{_name}/Archives")],
+                ArchiveLocations = [new ConfigurablePath(null, TestScratch.Combine($"{_name}/Archives"))],
             });
 
         services.RemoveRuntimeDependencyChecker();
@@ -55,7 +55,7 @@ internal sealed class OnDiskDataFolder : IDisposable
 
     public void Dispose()
     {
-        var root = FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine(_name);
+        var root = FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine(_name));
         if (root.DirectoryExists()) root.DeleteDirectory(recursive: true);
     }
 }

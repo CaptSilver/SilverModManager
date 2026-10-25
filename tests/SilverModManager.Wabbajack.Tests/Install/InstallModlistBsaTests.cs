@@ -191,7 +191,7 @@ public class InstallModlistGameBsaTests(ITestOutputHelper helper) : InstallTestB
     {
         using var temporary = new TemporaryFileManager(
             NexusMods.Paths.FileSystem.Shared,
-            NexusMods.Paths.FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine($"Wabbajack.Tests-{Guid.NewGuid()}"));
+            NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine($"Wabbajack.Tests-{Guid.NewGuid()}")));
         return TestArchives.Tes5Archive(temporary).GetAwaiter().GetResult();
     }
 

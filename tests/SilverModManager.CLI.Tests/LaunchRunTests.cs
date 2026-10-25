@@ -18,7 +18,6 @@ public class LaunchRunTests
 {
     internal static IHost BuildRunHost()
     {
-        const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"LaunchRunTests-{Guid.NewGuid()}";
         var mode = StartupMode.Parse(["run", "x", "--", "y"]);
         mode.SecretBackend = SecretBackendChoice.Memory;
@@ -31,8 +30,8 @@ public class LaunchRunTests
                 .OverrideSettingsForTests<DataModelSettings>(settings => settings with
                 {
                     UseInMemoryDataModel = true,
-                    MnemonicDBPath = new ConfigurablePath(baseKnownPath, $"{baseDirectory}/MnemonicDB.rocksdb"),
-                    ArchiveLocations = [new ConfigurablePath(baseKnownPath, $"{baseDirectory}/Archives")],
+                    MnemonicDBPath = new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/MnemonicDB.rocksdb")),
+                    ArchiveLocations = [new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/Archives"))],
                 })
                 .RemoveRuntimeDependencyChecker()
                 .ReplaceDesktopNotifier())

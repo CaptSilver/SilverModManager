@@ -30,14 +30,14 @@ public sealed class LinkFixtures : IDisposable
     }
 
     /// <summary>
-    /// A fresh directory inside the test assembly's output, which is on the checkout's filesystem
-    /// (btrfs on the dev box, where FICLONE works). Skips when that filesystem cannot reflink.
+    /// A fresh directory under the reflink scratch root (the test assembly's output when none is configured,
+    /// which is btrfs on the dev box, where FICLONE works). Skips when that filesystem cannot reflink.
     /// </summary>
     public AbsolutePath ReflinkRoot()
     {
-        var parent = FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).ToString();
+        var parent = TestScratch.ReflinkRoot;
         var root = Create(parent);
-        Assert.SkipUnless(CanReflink(root.ToString()), $"FICLONE is not supported on the filesystem holding the test output ({parent})");
+        Assert.SkipUnless(CanReflink(root.ToString()), $"FICLONE is not supported on the reflink scratch filesystem ({parent})");
         return root;
     }
 
@@ -50,7 +50,9 @@ public sealed class LinkFixtures : IDisposable
         }
     }
 
-    private static AbsolutePath TempDirectory() => FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory);
+    // Not KnownPath.TempDirectory: test.sh moves TMPDIR onto the same tmpfs as /dev/shm, and these tests need
+    // a device that differs from it.
+    private static AbsolutePath TempDirectory() => FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.HostTemp);
 
     private AbsolutePath Create(string parent)
     {

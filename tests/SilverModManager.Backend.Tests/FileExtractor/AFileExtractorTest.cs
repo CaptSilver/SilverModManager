@@ -17,9 +17,8 @@ public class AFileExtractorTest : IAsyncLifetime
         _host = new HostBuilder()
             .ConfigureServices(services =>
                 {
-                    const KnownPath baseKnownPath = KnownPath.EntryDirectory;
                     var baseDirectory = $"SilverModManager.Examples.Tests-{Guid.NewGuid()}";
-                    var prefix = NexusMods.Paths.FileSystem.Shared.GetKnownPath(baseKnownPath).Combine(baseDirectory);
+                    var prefix = NexusMods.Paths.FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine(baseDirectory));
 
                     services
                         .AddJobMonitor()

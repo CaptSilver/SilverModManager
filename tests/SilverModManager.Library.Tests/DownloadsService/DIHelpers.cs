@@ -14,9 +14,8 @@ public static class DIHelpers
     public static void ConfigureServices(IServiceCollection services)
     {
         // Setup base path for test files
-        const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"SilverModManager.Library.Tests-{Guid.NewGuid()}";
-        var prefix = FileSystem.Shared.GetKnownPath(baseKnownPath).Combine(baseDirectory);
+        var prefix = FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine(baseDirectory));
         
         services
             // Add logging

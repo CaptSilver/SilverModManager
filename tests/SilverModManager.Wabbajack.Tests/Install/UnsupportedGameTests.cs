@@ -22,8 +22,8 @@ public class UnsupportedGameTests(ITestOutputHelper helper) : AIsolatedGameTest<
         .AddWabbajack()
         .OverrideSettingsForTests<WabbajackSettings>(settings => settings with
         {
-            InboxPath = new ConfigurablePath(KnownPath.EntryDirectory, $"{Startup.SettingsRoot}/Inbox-{Guid.NewGuid()}"),
-            ExtrasRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"{Startup.SettingsRoot}/Extras-{Guid.NewGuid()}"),
+            InboxPath = new ConfigurablePath(null, TestScratch.Combine($"{Startup.SettingsRoot}/Inbox-{Guid.NewGuid()}")),
+            ExtrasRoot = new ConfigurablePath(null, TestScratch.Combine($"{Startup.SettingsRoot}/Extras-{Guid.NewGuid()}")),
         })
         .AddFakeToolRunner()
         .AddUniversalGameLocator<OblivionRemastered>(new Version("1.0.0"), locationsFileSystem: IsolatedPrefixFileSystem.Create);

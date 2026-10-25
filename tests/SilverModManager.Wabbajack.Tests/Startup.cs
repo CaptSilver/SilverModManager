@@ -24,9 +24,9 @@ public class Startup
             .AddWabbajack()
             .OverrideSettingsForTests<WabbajackSettings>(settings => settings with
             {
-                InboxPath = new ConfigurablePath(KnownPath.EntryDirectory, $"{SettingsRoot}/Inbox"),
-                ExtrasRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"{SettingsRoot}/Extras"),
-                GalleryCachePath = new ConfigurablePath(KnownPath.EntryDirectory, $"{SettingsRoot}/Gallery"),
+                InboxPath = new ConfigurablePath(null, TestScratch.Combine($"{SettingsRoot}/Inbox")),
+                ExtrasRoot = new ConfigurablePath(null, TestScratch.Combine($"{SettingsRoot}/Extras")),
+                GalleryCachePath = new ConfigurablePath(null, TestScratch.Combine($"{SettingsRoot}/Gallery")),
             });
     }
 }

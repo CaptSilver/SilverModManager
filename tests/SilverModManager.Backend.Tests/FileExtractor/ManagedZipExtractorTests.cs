@@ -15,7 +15,7 @@ public class ManagedZipExtractorTests
     // disposing a manager deletes its folder, so each test here gets its own.
     private static TemporaryFileManager CreateTemporaryFileManager()
     {
-        var prefix = FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine($"SilverModManager.Backend.Tests-{Guid.NewGuid()}");
+        var prefix = FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine($"SilverModManager.Backend.Tests-{Guid.NewGuid()}"));
         return new TemporaryFileManager(FileSystem.Shared, prefix);
     }
 

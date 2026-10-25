@@ -41,7 +41,7 @@ public class FromSoftSavesViewModelTests(IServiceProvider provider) : AUiTest(pr
             prefixes.Resolve(Arg.Any<GameInstallation>()).Returns(PrefixResolution.Resolved(
                 new ResolvedPrefix(fileSystem.FromUnsanitizedFullPath(Path.Combine(Root, "prefix")), CompatibilityLayerKind.SteamProton)));
             var settings = Substitute.For<ISettingsManager>();
-            settings.Get<FromSoftSettings>().Returns(new FromSoftSettings { DataRoot = new ConfigurablePath(KnownPath.EntryDirectory, Path.GetRelativePath(AppContext.BaseDirectory, DataRoot)) });
+            settings.Get<FromSoftSettings>().Returns(new FromSoftSettings { DataRoot = new ConfigurablePath(null, DataRoot) });
 
             var saves = new FromSoftSavesService(settings, fileSystem, prefixes, Tracker, TimeProvider.System, NullLogger<FromSoftSavesService>.Instance);
             Vm = new FromSoftSavesViewModel(Substitute.For<IWindowManager>(), provider.GetRequiredService<SilverModManager.MnemonicDB.Abstractions.IConnection>(), saves, NullLogger<FromSoftSavesViewModel>.Instance)

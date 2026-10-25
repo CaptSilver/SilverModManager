@@ -37,7 +37,7 @@ public class EldenRingDryRunTests(ITestOutputHelper helper) : AIsolatedGameTest<
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
-        var dataRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"EldenRingDryRun.{Guid.NewGuid():N}");
+        var dataRoot = new ConfigurablePath(null, TestScratch.Combine($"EldenRingDryRun.{Guid.NewGuid():N}"));
         base.AddServices(services)
             .AddFromSoftGames()
             .OverrideSettingsForTests<FromSoftSettings>(settings => settings with { DataRoot = dataRoot })

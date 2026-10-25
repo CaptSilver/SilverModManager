@@ -40,8 +40,8 @@ public static class TestHostGameStoreGuard
     }
 
     /// <summary>
-    /// Fails when the registry yields an installation whose folder is not under the temp folder or the
-    /// test binaries' folder.
+    /// Fails when the registry yields an installation whose folder is not under the temp folder, the
+    /// test binaries' folder or a test scratch folder.
     /// </summary>
     public static void AssertInstallationsAreInTestFolders(IServiceProvider serviceProvider)
     {
@@ -50,6 +50,9 @@ public static class TestHostGameStoreGuard
         {
             fileSystem.FromUnsanitizedFullPath(Path.GetTempPath()),
             fileSystem.GetKnownPath(KnownPath.EntryDirectory),
+            fileSystem.FromUnsanitizedFullPath(TestScratch.HostTemp),
+            fileSystem.FromUnsanitizedFullPath(TestScratch.Root),
+            fileSystem.FromUnsanitizedFullPath(TestScratch.ReflinkRoot),
         };
 
         var outside = serviceProvider.GetRequiredService<IGameRegistry>()

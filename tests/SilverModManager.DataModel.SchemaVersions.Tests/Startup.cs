@@ -21,10 +21,9 @@ public class Startup
         // The GUI graph: the schema under test is everything a real app start registers, the UI's models included.
         var mode = new StartupMode { RunAsMain = true, ShowUI = true, SecretBackend = SecretBackendChoice.Memory };
         
-        const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"SilverModManager.UI.Tests.Tests-{Guid.NewGuid()}";
         
-        var path = FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine("temp").Combine(Guid.NewGuid().ToString());
+        var path = FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine("temp", Guid.NewGuid().ToString()));
         path.CreateDirectory();
 
         container
@@ -33,10 +32,10 @@ public class Startup
             .OverrideSettingsForTests<DataModelSettings>(settings => settings with
                 {
                     UseInMemoryDataModel = true,
-                    MnemonicDBPath = new ConfigurablePath(baseKnownPath, $"{baseDirectory}/MnemonicDB.rocksdb"),
+                    MnemonicDBPath = new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/MnemonicDB.rocksdb")),
                     ArchiveLocations =
                     [
-                        new ConfigurablePath(baseKnownPath, $"{baseDirectory}/Archives"),
+                        new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/Archives")),
                     ],
                 }
             )

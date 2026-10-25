@@ -39,7 +39,7 @@ public class MergeVerbsTests(ITestOutputHelper helper) : AIsolatedGameTest<Merge
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
-        var dataRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"MergeVerbs.{Guid.NewGuid():N}");
+        var dataRoot = new ConfigurablePath(null, TestScratch.Combine($"MergeVerbs.{Guid.NewGuid():N}"));
         base.AddServices(services)
             .AddFromSoftGames()
             .OverrideSettingsForTests<FromSoftSettings>(settings => settings with { DataRoot = dataRoot })

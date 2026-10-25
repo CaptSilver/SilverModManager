@@ -19,7 +19,7 @@ public class ThunderstoreIndexCacheTests
 
     public ThunderstoreIndexCacheTests()
     {
-        _settings = new ThunderstoreSettings { CacheRoot = new ConfigurablePath(KnownPath.EntryDirectory, "thunderstore-cache") };
+        _settings = new ThunderstoreSettings { CacheRoot = new ConfigurablePath(null, TestScratch.Combine("thunderstore-cache")) };
         _cache = new ThunderstoreIndexCache(new ThunderstoreApi(new HttpClient(_handler)), _fileSystem, () => _settings, _clock);
     }
 

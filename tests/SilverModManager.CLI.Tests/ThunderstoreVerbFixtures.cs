@@ -76,7 +76,7 @@ internal static class ThunderstoreVerbFixtures
 
     public static IServiceCollection AddVerbHost(this IServiceCollection services, RoutingHandler routes)
     {
-        var cacheRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"ThunderstoreVerbs.{Guid.NewGuid():N}");
+        var cacheRoot = new ConfigurablePath(null, TestScratch.Combine($"ThunderstoreVerbs.{Guid.NewGuid():N}"));
         services
             .AddThunderstore()
             .OverrideSettingsForTests<ThunderstoreSettings>(settings => settings with { CacheRoot = cacheRoot })

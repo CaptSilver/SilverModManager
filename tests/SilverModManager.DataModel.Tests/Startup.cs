@@ -30,12 +30,10 @@ public static class Startup
     
     public static IServiceCollection AddServices(IServiceCollection container)
     {
-        const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"SilverModManager.DataModel.Tests-{Guid.NewGuid()}";
 
         var prefix = FileSystem.Shared
-            .GetKnownPath(baseKnownPath)
-            .Combine(baseDirectory);
+            .FromUnsanitizedFullPath(TestScratch.Combine(baseDirectory));
 
         container.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, RecordingLoadoutEmitter>());
         container.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, ScriptedLoadoutEmitter>());

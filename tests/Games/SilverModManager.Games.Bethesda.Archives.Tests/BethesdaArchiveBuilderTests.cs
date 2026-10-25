@@ -11,7 +11,7 @@ public class BethesdaArchiveBuilderTests : IDisposable
 
     private readonly TemporaryFileManager _temp = new(
         FileSystem.Shared,
-        FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine($"Bethesda.Archives.Tests-{Guid.NewGuid()}"));
+        FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine($"Bethesda.Archives.Tests-{Guid.NewGuid()}")));
 
     public void Dispose() => _temp.Dispose();
 

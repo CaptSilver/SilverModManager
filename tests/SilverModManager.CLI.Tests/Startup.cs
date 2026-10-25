@@ -30,7 +30,6 @@ public class Startup
 {
     public void ConfigureServices(IServiceCollection services)
     {
-        const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"SilverModManager.UI.Tests.Tests-{Guid.NewGuid()}";
 
         services
@@ -45,9 +44,9 @@ public class Startup
                 .OverrideSettingsForTests<DataModelSettings>(settings => settings with
                 {
                     UseInMemoryDataModel = true,
-                    MnemonicDBPath = new ConfigurablePath(baseKnownPath, $"{baseDirectory}/MnemonicDB.rocksdb"),
+                    MnemonicDBPath = new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/MnemonicDB.rocksdb")),
                     ArchiveLocations = [
-                        new ConfigurablePath(baseKnownPath, $"{baseDirectory}/Archives"),
+                        new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/Archives")),
                     ],
                 })
                 .AddFileExtractors()

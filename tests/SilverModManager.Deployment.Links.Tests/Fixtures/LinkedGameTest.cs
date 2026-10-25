@@ -25,10 +25,10 @@ namespace SilverModManager.Deployment.Links.Tests.Fixtures;
 /// </summary>
 public enum Placement
 {
-    /// <summary>The temp directory, tmpfs on the dev box: hard links work, FICLONE does not.</summary>
+    /// <summary>The temp directory as it was before test.sh moved TMPDIR, tmpfs on the dev box: hard links work, FICLONE does not.</summary>
     TempDirectory,
 
-    /// <summary>Beside the test binaries, on the checkout's filesystem (btrfs on the dev box, where FICLONE works).</summary>
+    /// <summary>The reflink scratch root, or beside the test binaries without one (btrfs on the dev box, where FICLONE works).</summary>
     EntryDirectory,
 
     /// <summary>/dev/shm, a different device than the temp directory.</summary>
@@ -77,9 +77,9 @@ public abstract class LinkedGameTest<TTest>(ITestOutputHelper helper, Placement 
 
     protected T Backend<T>() where T : IDeploymentBackend => ServiceProvider.GetServices<IDeploymentBackend>().OfType<T>().Single();
 
-    protected override AbsolutePath TemporaryFilesPrefix => game == Placement.EntryDirectory ? default : PlacementDirectory(game);
+    protected override AbsolutePath TemporaryFilesPrefix => PlacementDirectory(game);
 
-    protected override AbsolutePath StagingStoreLocation => store == Placement.EntryDirectory ? default : PlacementDirectory(store);
+    protected override AbsolutePath StagingStoreLocation => PlacementDirectory(store);
 
     /// <summary>
     /// Switches the staging store's per-filesystem stores on. Off by default: a store at the root of a real
@@ -110,9 +110,9 @@ public abstract class LinkedGameTest<TTest>(ITestOutputHelper helper, Placement 
     {
         var parent = placement switch
         {
-            Placement.TempDirectory => NexusMods.Paths.FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).ToString(),
+            Placement.TempDirectory => TestScratch.HostTemp,
             Placement.SharedMemory => "/dev/shm",
-            _ => NexusMods.Paths.FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).ToString(),
+            _ => TestScratch.ReflinkRoot,
         };
 
         var path = Path.Combine(parent, $"links-tests-{Guid.NewGuid():N}");
@@ -134,11 +134,11 @@ public abstract class LinkedGameTest<TTest>(ITestOutputHelper helper, Placement 
                 case Placement.SharedMemory:
                     Assert.SkipUnless(Directory.Exists("/dev/shm"), "/dev/shm does not exist");
                     Assert.Equal(0, LibcStat.TryStat("/dev/shm", out var shm));
-                    Assert.Equal(0, LibcStat.TryStat(NexusMods.Paths.FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).ToString(), out var temp));
+                    Assert.Equal(0, LibcStat.TryStat(TestScratch.HostTemp, out var temp));
                     Assert.SkipWhen(shm.Device == temp.Device, "/dev/shm is on the same device as the temp directory");
                     break;
                 case Placement.EntryDirectory:
-                    Assert.SkipUnless(CanReflink(NexusMods.Paths.FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).ToString()), "FICLONE is not supported where the test binaries are");
+                    Assert.SkipUnless(CanReflink(TestScratch.ReflinkRoot), $"FICLONE is not supported on the reflink scratch filesystem ({TestScratch.ReflinkRoot})");
                     break;
             }
         }

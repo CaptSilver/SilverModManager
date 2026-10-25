@@ -14,7 +14,7 @@ public class DirectiveTransformsTests : IDisposable
 {
     private readonly TemporaryFileManager _temp = new(
         FileSystem.Shared,
-        FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine($"Wabbajack.Tests-{Guid.NewGuid()}"));
+        FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine($"Wabbajack.Tests-{Guid.NewGuid()}")));
 
     private readonly IDirectiveTransforms _transforms;
 

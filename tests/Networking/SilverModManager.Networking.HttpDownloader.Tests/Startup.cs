@@ -11,8 +11,7 @@ public class Startup
     public void ConfigureServices(IServiceCollection container)
     {
         var prefix = FileSystem.Shared
-            .GetKnownPath(KnownPath.EntryDirectory)
-            .Combine($"SilverModManager.Networking.HttpDownloader.Tests-{Guid.NewGuid()}");
+            .FromUnsanitizedFullPath(TestScratch.Combine($"SilverModManager.Networking.HttpDownloader.Tests-{Guid.NewGuid()}"));
 
         container
             .AddDefaultServicesForTesting(prefix)

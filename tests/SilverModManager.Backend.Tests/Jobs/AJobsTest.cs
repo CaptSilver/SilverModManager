@@ -16,9 +16,8 @@ public class AJobsTest : IAsyncLifetime
         _host = new HostBuilder()
             .ConfigureServices(services =>
                 {
-                    const KnownPath baseKnownPath = KnownPath.EntryDirectory;
                     var baseDirectory = $"SilverModManager.Examples.Tests-{Guid.NewGuid()}";
-                    var prefix = FileSystem.Shared.GetKnownPath(baseKnownPath).Combine(baseDirectory);
+                    var prefix = FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine(baseDirectory));
 
                     services
                         .AddFileSystem()

@@ -7,7 +7,7 @@ namespace SilverModManager.Wabbajack.Tests;
 
 public class WabbajackPathsTests(WabbajackPaths paths, IFileSystem fileSystem)
 {
-    private AbsolutePath TestRoot => fileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine(Startup.SettingsRoot);
+    private AbsolutePath TestRoot => fileSystem.FromUnsanitizedFullPath(TestScratch.Combine(Startup.SettingsRoot));
 
     [Fact]
     public void BothFoldersResolveUnderTheTestRootAndAreCreated()

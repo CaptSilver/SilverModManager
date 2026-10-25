@@ -23,8 +23,7 @@ public class OnDiskRestorePointTests(ITestOutputHelper helper) : ANexusCollectio
 {
     // Field initializers run before the base constructor, which builds the host and calls AddServices.
     private readonly AbsolutePath _dbPath = NexusMods.Paths.FileSystem.Shared
-        .GetKnownPath(KnownPath.EntryDirectory)
-        .Combine($"RestorePointTests-{Guid.NewGuid()}/MnemonicDB.rocksdb");
+        .FromUnsanitizedFullPath(TestScratch.Combine($"RestorePointTests-{Guid.NewGuid()}", "MnemonicDB.rocksdb"));
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {

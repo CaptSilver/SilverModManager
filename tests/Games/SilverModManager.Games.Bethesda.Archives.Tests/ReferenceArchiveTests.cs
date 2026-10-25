@@ -13,7 +13,7 @@ public class ReferenceArchiveTests : IDisposable
 
     private readonly TemporaryFileManager _temp = new(
         FileSystem.Shared,
-        FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine($"Bethesda.Archives.Reference.Tests-{Guid.NewGuid()}"));
+        FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine($"Bethesda.Archives.Reference.Tests-{Guid.NewGuid()}")));
 
     public void Dispose() => _temp.Dispose();
 

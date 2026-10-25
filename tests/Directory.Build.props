@@ -20,6 +20,11 @@
         <TestingPlatformCommandLineArguments>$(XunitArgs)</TestingPlatformCommandLineArguments>
     </PropertyGroup>
 
+    <!-- Scratch folders for test data; scripts/test.sh points them at tmpfs. -->
+    <ItemGroup>
+        <Compile Include="$(MSBuildThisFileDirectory)TestScratch.cs" Link="TestScratch.cs" />
+    </ItemGroup>
+
     <ItemGroup>
         <PackageReference Include="NSubstitute" />
         <PackageReference Include="NSubstitute.Analyzers.CSharp"/>

@@ -20,10 +20,9 @@ public class Startup
 {
     public void ConfigureServices(IServiceCollection services)
     {
-        const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"SilverModManager.UI.Tests.Tests-{Guid.NewGuid()}";
         
-        var path = FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory).Combine("temp").Combine(Guid.NewGuid().ToString());
+        var path = FileSystem.Shared.FromUnsanitizedFullPath(TestScratch.Combine("temp", Guid.NewGuid().ToString()));
         path.CreateDirectory();
 
         // Steam as well, so loadouts seeded as installed from Steam land on the stub's folder. The app's own
@@ -41,9 +40,9 @@ public class Startup
                 .OverrideSettingsForTests<DataModelSettings>(settings => settings with
                 {
                     UseInMemoryDataModel = true,
-                    MnemonicDBPath = new ConfigurablePath(baseKnownPath, $"{baseDirectory}/MnemonicDB.rocksdb"),
+                    MnemonicDBPath = new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/MnemonicDB.rocksdb")),
                     ArchiveLocations = [
-                        new ConfigurablePath(baseKnownPath, $"{baseDirectory}/Archives"),
+                        new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/Archives")),
                     ],
                 })
                 .AddSingleton<AvaloniaApp>()

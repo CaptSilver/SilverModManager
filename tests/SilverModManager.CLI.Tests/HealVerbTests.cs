@@ -34,7 +34,7 @@ public class HealVerbTests(ITestOutputHelper helper) : ASteamInstalledGameTest<H
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
-        var dataRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"HealVerbs.{Guid.NewGuid():N}");
+        var dataRoot = new ConfigurablePath(null, TestScratch.Combine($"HealVerbs.{Guid.NewGuid():N}"));
         return base.AddServices(services)
             .AddFromSoftGames()
             .OverrideSettingsForTests<FromSoftSettings>(settings => settings with { DataRoot = dataRoot })

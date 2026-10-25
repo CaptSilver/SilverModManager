@@ -32,7 +32,6 @@ public class HeadlessHostProfileTests
 
     private static IHost BuildHost(StartupMode mode, IFileSystem? fileSystem = null)
     {
-        const KnownPath baseKnownPath = KnownPath.EntryDirectory;
         var baseDirectory = $"HeadlessHostProfileTests-{Guid.NewGuid()}";
 
         return new HostBuilder()
@@ -44,8 +43,8 @@ public class HeadlessHostProfileTests
                 .OverrideSettingsForTests<DataModelSettings>(settings => settings with
                 {
                     UseInMemoryDataModel = true,
-                    MnemonicDBPath = new ConfigurablePath(baseKnownPath, $"{baseDirectory}/MnemonicDB.rocksdb"),
-                    ArchiveLocations = [new ConfigurablePath(baseKnownPath, $"{baseDirectory}/Archives")],
+                    MnemonicDBPath = new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/MnemonicDB.rocksdb")),
+                    ArchiveLocations = [new ConfigurablePath(null, TestScratch.Combine($"{baseDirectory}/Archives"))],
                 })
                 .ReplaceDesktopNotifier())
             .Build();

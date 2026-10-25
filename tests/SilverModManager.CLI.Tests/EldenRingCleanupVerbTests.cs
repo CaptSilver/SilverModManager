@@ -29,7 +29,7 @@ public class EldenRingCleanupVerbTests(ITestOutputHelper helper) : AIsolatedGame
 
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
-        var dataRoot = new ConfigurablePath(KnownPath.EntryDirectory, $"EldenRingCleanup.{Guid.NewGuid():N}");
+        var dataRoot = new ConfigurablePath(null, TestScratch.Combine($"EldenRingCleanup.{Guid.NewGuid():N}"));
         base.AddServices(services)
             .AddFromSoftGames()
             .OverrideSettingsForTests<FromSoftSettings>(settings => settings with { DataRoot = dataRoot })
