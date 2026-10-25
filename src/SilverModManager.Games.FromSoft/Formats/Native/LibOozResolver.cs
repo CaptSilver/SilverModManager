@@ -12,7 +12,7 @@ internal static class LibOozResolver
     internal const string RelativePath = "runtimes/linux-x64/native/libooz.so";
 
     internal const string NotFoundMessage =
-        "libooz.so was not found next to the FromSoft assembly (runtimes/linux-x64/native) or on the library path. " +
+        "libooz.so was not found under runtimes/linux-x64/native next to the FromSoft assembly or the app, or on the library path. " +
         "It is built from extern/ooz by scripts/build-ooz.sh and committed under src/SilverModManager.Games.FromSoft/runtimes/linux-x64/native.";
 
     private static readonly Lazy<bool> Installed = new(() =>
@@ -27,13 +27,32 @@ internal static class LibOozResolver
     {
         if (libraryName != LibOoz.LibraryName) return IntPtr.Zero;
 
-        var directory = Path.GetDirectoryName(assembly.Location);
-        if (!string.IsNullOrEmpty(directory) && NativeLibrary.TryLoad(Path.Combine(directory, RelativePath), out var bundled))
-            return bundled;
+        foreach (var candidate in CandidatePaths(assembly.Location, AppContext.BaseDirectory))
+        {
+            if (NativeLibrary.TryLoad(candidate, out var bundled)) return bundled;
+        }
 
         if (NativeLibrary.TryLoad("libooz.so", assembly, searchPath, out var system))
             return system;
 
         throw new DllNotFoundException(NotFoundMessage);
+    }
+
+    /// <summary>
+    /// Where the bundled library may sit: beside the assembly, then beside the app. A single-file publish (the
+    /// AppImage) reports an empty <see cref="Assembly.Location"/> and unpacks native libraries beside the executable,
+    /// which <see cref="AppContext.BaseDirectory"/> names.
+    /// </summary>
+    internal static IReadOnlyList<string> CandidatePaths(string assemblyLocation, string baseDirectory)
+    {
+        var folders = new List<string>();
+        var assemblyFolder = Path.GetDirectoryName(assemblyLocation);
+        if (!string.IsNullOrEmpty(assemblyFolder)) folders.Add(assemblyFolder);
+        if (!string.IsNullOrEmpty(baseDirectory)) folders.Add(baseDirectory);
+
+        return folders
+            .Select(folder => Path.Combine(folder, RelativePath))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
     }
 }
