@@ -17,7 +17,10 @@ using SilverModManager.App.UI.Pages.Diagnostics;
 using SilverModManager.App.UI.Pages.SteamLaunchOption;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
+using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Platform.Proton.Doctor;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -334,10 +337,37 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
     private static CleanupFixOutcome Applied(params string[] deletes)
         => new(CleanupFixStatus.Applied, new CleanupResult([..PlanOf(deletes).Steps], null));
 
-    private FixCleanupActionHandler FixHandler(IWindowManager windows, IDiagnosticManager manager, ICleanupFixService fixer)
+    private FixCleanupActionHandler FixHandler(IWindowManager windows, IDiagnosticManager manager, ICleanupFixService fixer, ILibrarySaver? saver = null, IModDownloader? downloader = null)
     {
-        var services = new ServicesWith(Provider, (typeof(ICleanupFixService), fixer), (typeof(IOverlayController), Substitute.For<IOverlayController>()));
+        // Without a saver of its own a test gets one that finds nothing to save, so no extra dialog appears.
+        var nothingToSave = Substitute.For<ILibrarySaver>();
+        nothingToSave.PlanAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<CancellationToken>()).Returns(new SavePlan(null, [], []));
+        var services = new ServicesWith(
+            Provider,
+            (typeof(ICleanupFixService), fixer),
+            (typeof(IOverlayController), Substitute.For<IOverlayController>()),
+            (typeof(ILibrarySaver), saver ?? nothingToSave),
+            (typeof(IModDownloader), downloader ?? Substitute.For<IModDownloader>()),
+            (typeof(IGameDomainToGameIdMappingCache), Substitute.For<IGameDomainToGameIdMappingCache>()));
         return new FixCleanupActionHandler(services, windows, manager);
+    }
+
+    private static readonly ModToSave OldMod = new("adjust-the-fov", "Adjust The FOV", "2.0", 325, 5087);
+
+    private static ILibrarySaver SaverOffering(params ModToSave[] mods)
+    {
+        var saver = Substitute.For<ILibrarySaver>();
+        saver.PlanAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<CancellationToken>())
+            .Returns(new SavePlan(NexusModsGameId.From(4333), [..mods], []));
+        return saver;
+    }
+
+    private static IWindowManager AnsweringInOrder(params ButtonDefinitionId[] buttons)
+    {
+        var windows = Substitute.For<IWindowManager>();
+        var results = buttons.Select(b => new StandardDialogResult { ButtonId = b }).ToArray();
+        windows.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>()).Returns(results[0], results.Skip(1).ToArray());
+        return windows;
     }
 
     private static ICleanupFixService FixerPlanning(CleanupPlan plan)
@@ -364,6 +394,140 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         await windows.Received(1).ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
         await fixer.Received(1).FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Is<CleanupPlan>(p => p.SameSteps(plan)), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>());
         await manager.Received(1).RefreshAsync(seeded.LoadoutId);
+    }
+
+    [Fact]
+    public async Task Test_FixDownloadsTheOldModsBeforeTheCleanupRuns()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var log = new List<string>();
+        var downloader = Substitute.For<IModDownloader>();
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                log.Add("download");
+                return Task.FromResult(ModDownloadResult.Added);
+            });
+        var fixer = FixerPlanning(PlanOf("mods/a"));
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                log.Add("cleanup");
+                return Applied("mods/a");
+            });
+
+        await FixHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), fixer, SaverOffering(OldMod), downloader)
+            .ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        log.Should().Equal("download", "cleanup");
+    }
+
+    [Fact]
+    public async Task Test_FixDeletesNothingWhenTheSaveListIsCancelled()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("mods/a"));
+        var downloader = Substitute.For<IModDownloader>();
+        var manager = Substitute.For<IDiagnosticManager>();
+        var windows = AnsweringInOrder(ButtonDefinitionId.Accept, ButtonDefinitionId.Cancel);
+
+        await FixHandler(windows, manager, fixer, SaverOffering(OldMod), downloader).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await downloader.DidNotReceive().DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>());
+        await fixer.DidNotReceive().FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Test_FixStopsWhenADownloadFailedAndTheUserCancels()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("mods/a"));
+        var downloader = Substitute.For<IModDownloader>();
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Failed("404"));
+        var windows = AnsweringInOrder(ButtonDefinitionId.Accept, ButtonDefinitionId.Accept, ButtonDefinitionId.Cancel);
+
+        await FixHandler(windows, Substitute.For<IDiagnosticManager>(), fixer, SaverOffering(OldMod), downloader).ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await downloader.Received(1).DownloadAsync(Arg.Any<NexusModsGameId>(), OldMod, Arg.Any<CancellationToken>());
+        await fixer.DidNotReceive().FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Test_FixGoesOnAfterAFailedDownloadWhenTheUserSaysSo()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("mods/a"));
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>()).Returns(Applied("mods/a"));
+        var downloader = Substitute.For<IModDownloader>();
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Failed("404"));
+
+        await FixHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), fixer, SaverOffering(OldMod), downloader)
+            .ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await fixer.Received(1).FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>Runs a fix whose first plan comes back changed to <paramref name="replanned"/>, which then applies.</summary>
+    private async Task<ILibrarySaver> FixReplannedTo(CleanupPlan first, CleanupPlan replanned)
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(first);
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Is<CleanupPlan>(p => p.SameSteps(first)), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>())
+            .Returns(new CleanupFixOutcome(CleanupFixStatus.PlanChanged, NewPlan: replanned));
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Is<CleanupPlan>(p => !p.SameSteps(first)), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>())
+            .Returns(new CleanupFixOutcome(CleanupFixStatus.Applied, new CleanupResult([..replanned.Steps], null)));
+        var saver = SaverOffering(OldMod);
+        var downloader = Substitute.For<IModDownloader>();
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Added);
+
+        await FixHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), fixer, saver, downloader)
+            .ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+        return saver;
+    }
+
+    [Fact]
+    public async Task Test_FixDoesNotOfferTheOldModsAgainWhenAChangedPlanDeletesTheSameFolders()
+    {
+        var replanned = new CleanupPlan([..PlanOf("mods/a").Steps, new CleanupStep(CleanupStepKind.Move, "Move a over b", "a", "b")]);
+
+        var saver = await FixReplannedTo(PlanOf("mods/a"), replanned);
+
+        await saver.Received(1).PlanAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Test_FixOffersTheModsAgainWhenAChangedPlanDeletesAnotherFolder()
+    {
+        var replanned = PlanOf("mods/a", "mods/b");
+
+        var saver = await FixReplannedTo(PlanOf("mods/a"), replanned);
+
+        await saver.Received(2).PlanAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<CancellationToken>());
+        await saver.Received(1).PlanAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Is<CleanupPlan>(p => p.SameSteps(replanned)), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Test_FixOffersTheModsWhenAChangedPlanStartsDeleting()
+    {
+        var first = new CleanupPlan([new CleanupStep(CleanupStepKind.Move, "Move a over b", "a", "b")]);
+
+        var saver = await FixReplannedTo(first, PlanOf("mods/a"));
+
+        await saver.Received(1).PlanAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Test_FixDoesNotLookForModsWhenNothingIsDeleted()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(new CleanupPlan([new CleanupStep(CleanupStepKind.Move, "Move a over b", "a", "b")]));
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>()).Returns(Applied("a"));
+        var saver = SaverOffering(OldMod);
+
+        await FixHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), fixer, saver)
+            .ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await saver.DidNotReceive().PlanAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

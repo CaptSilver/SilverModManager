@@ -12,6 +12,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <PackageReference Include="Tomlyn" />
         <PackageReference Include="ZstdSharp.Port" />
     </ItemGroup>
 

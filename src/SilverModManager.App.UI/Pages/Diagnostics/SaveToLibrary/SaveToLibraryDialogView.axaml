@@ -1,0 +1,36 @@
+<reactiveUi:ReactiveUserControl x:TypeArguments="local:ISaveToLibraryDialogViewModel"
+                                xmlns="https://github.com/avaloniaui"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                                xmlns:reactiveUi="http://reactiveui.net"
+                                xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.Diagnostics.SaveToLibrary"
+                                mc:Ignorable="d" d:DesignWidth="560"
+                                x:Class="SilverModManager.App.UI.Pages.Diagnostics.SaveToLibrary.SaveToLibraryDialogView">
+
+    <ScrollViewer MaxHeight="480">
+        <StackPanel Spacing="12">
+            <TextBlock Text="{Binding Intro}" TextWrapping="Wrap" />
+
+            <ItemsControl ItemsSource="{Binding Rows}" IsVisible="{Binding HasRows}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:SaveToLibraryRow">
+                        <StackPanel Margin="0 0 0 6">
+                            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Content="{Binding Label}" />
+                            <SelectableTextBlock Margin="28 0 0 0" Text="{Binding Link}" Opacity="0.7" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Text="Not downloaded" FontWeight="SemiBold" IsVisible="{Binding HasNotes}" />
+            <ItemsControl ItemsSource="{Binding Notes}" IsVisible="{Binding HasNotes}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0 0 0 4" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</reactiveUi:ReactiveUserControl>

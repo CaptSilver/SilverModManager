@@ -9,7 +9,9 @@ using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.Pages.Diagnostics.SaveToLibrary;
 using SilverModManager.Games.FromSoft.Cleanup;
+using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Platform.Proton.Doctor;
 using SilverModManager.Sdk.Jobs;
@@ -43,6 +45,8 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
         // Planning reads the game folder and Steam's files, so it stays off the UI thread.
         var plan = await Task.Run(() => fixer.Plan(loadout));
         string? note = null;
+        var offered = new HashSet<string>(StringComparer.Ordinal);
+        var saved = SaveReport.None;
         while (true)
         {
             if (!plan.Steps.Any(s => s.Acts || s.Kind == CleanupStepKind.Privileged))
@@ -52,6 +56,18 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
             }
 
             if (!await Confirm(plan, note)) return;
+
+            // A changed plan is offered again only when it deletes something the earlier offers did not cover, so a
+            // re-confirmation does not ask twice but a folder that appeared meanwhile is not lost. Nothing below deletes
+            // until this returns.
+            var deletes = plan.Steps.Where(s => s.Kind == CleanupStepKind.Delete).Select(s => s.Source).OfType<string>().ToArray();
+            if (deletes.Any(d => !offered.Contains(d)))
+            {
+                offered.UnionWith(deletes);
+                var save = await SaveModsFirst(loadout, plan);
+                if (!save.Proceed) return;
+                saved = saved.Plus(save.Report);
+            }
 
             var outcome = await RunAsJob(loadoutId, loadout, fixer, plan);
             await diagnosticManager.RefreshAsync(loadoutId);
@@ -66,10 +82,17 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
                     await MessageBoxOkViewModel.Show(serviceProvider, "Cleanup did not run", outcome.Message ?? "Nothing was changed.");
                     return;
                 default:
-                    await ShowResult(outcome.Result ?? throw new InvalidOperationException("An applied cleanup came back without a result."));
+                    await ShowResult(outcome.Result ?? throw new InvalidOperationException("An applied cleanup came back without a result."), saved);
                     return;
             }
         }
+    }
+
+    /// <summary>Offers the mods the cleanup would delete for download into the library, and downloads the ones the user keeps ticked.</summary>
+    private async Task<SaveOutcome> SaveModsFirst(Loadout.ReadOnly loadout, CleanupPlan plan)
+    {
+        var savePlan = await serviceProvider.GetRequiredService<ILibrarySaver>().PlanAsync(loadout, plan);
+        return await SaveBeforeCleanup.RunAsync(savePlan, serviceProvider.GetRequiredService<IModDownloader>(), new SaveToLibraryPrompts(serviceProvider, windowManager), CancellationToken.None);
     }
 
     private async Task<CleanupFixOutcome> RunAsJob(LoadoutId loadoutId, Loadout.ReadOnly loadout, ICleanupFixService fixer, CleanupPlan plan)
@@ -143,9 +166,12 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
             ]);
     }
 
-    private async Task ShowResult(CleanupResult result)
+    private async Task ShowResult(CleanupResult result, SaveReport saved)
     {
         var lines = result.Done.Select(step => "- " + step.Description).ToList();
+        lines.AddRange(saved.Added.Select(m => $"- Added {m.Name} {m.Version} to your library"));
+        lines.AddRange(saved.OpenedInBrowser.Select(m => $"- Opened the page of {m.Name} {m.Version} in your browser; download it there to add it to your library"));
+        lines.AddRange(saved.Failed.Select(f => $"- Could not add {f.Mod.Name} {f.Mod.Version} to your library: {f.Message}"));
         if (result.RestoreRecordFolder is { } folder) lines.Add($"- The removed links are recorded in {folder}");
 
         if (result.Failure is { } failure)
