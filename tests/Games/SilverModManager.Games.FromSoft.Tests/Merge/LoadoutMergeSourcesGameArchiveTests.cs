@@ -123,4 +123,77 @@ public class LoadoutMergeSourcesGameArchiveTests(ITestOutputHelper helper) : AMo
 
         Sources.SingleVanilla(loadout, Talk, candidate.Contributors, MergeSourceMode.Report).Should().BeNull();
     }
+
+    private const string Part = "parts/wp_a_0556.partsbnd.dcx";
+
+    private byte[] Packed(IReadOnlyList<(int Id, string Name, byte[] Data)> members) => PartsbndMods.Bundle(Formats, members);
+
+    private async Task<Loadout.ReadOnly> GlowAndMoveset(IReadOnlyList<(int Id, string Name, byte[] Data)> moveset)
+    {
+        var loadout = await CreateLoadout();
+        foreach (var (name, members) in new[] { (PartsbndMods.Glow, PartsbndMods.GlowMembers()), (PartsbndMods.Moveset, moveset) })
+        {
+            var archive = TemporaryFileManager.CreateFolder().Path / (name + ".zip");
+            await TestArchives.WriteEntries(archive, [(Part, Packed(members))]);
+            var registered = await RegisterLocalArchive(archive);
+            var installer = Game.LibraryItemInstallers.OfType<Me3PackageInstaller>().Single();
+            await LoadoutManager.InstallItem(registered.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId, installer: installer);
+        }
+        return Refresh(loadout);
+    }
+
+    [Fact]
+    public async Task AnEquipmentPartTheGameArchivesHoldIsMergedMemberByMemberAgainstThatCopy()
+    {
+        WriteGameArchive((Part, Packed(PartsbndMods.Vanilla())));
+        var loadout = await GlowAndMoveset(PartsbndMods.MovesetMembers());
+
+        var plan = ServiceProvider.GetRequiredService<MergePlanCache>().Current(loadout, MergeSourceMode.Report);
+
+        plan.Refusal.Should().BeNull();
+        var merged = plan.Merged.Should().ContainSingle().Which;
+        merged.Path.Should().Be(Part);
+        merged.Strategy.Should().Be(MergeStrategy.PartsbndThreeWay);
+        var members = PartsbndMods.Read(merged.Bytes, Formats);
+        members[100].Should().Equal(PartsbndMods.GlowMembers().Single(m => m.Id == 100).Data);
+        members[400].Should().Equal(PartsbndMods.MovesetMembers().Single(m => m.Id == 400).Data);
+        members[401].Should().Equal(PartsbndMods.MovesetMembers().Single(m => m.Id == 401).Data);
+        members[201].Should().Equal(PartsbndMods.Vanilla().Single(m => m.Id == 201).Data);
+        // The mod installed last leads the fold, so its model is the one both changed and kept; only the other mod's
+        // texture archive is a take, the leader's own members need no note.
+        members[200].Should().Equal(PartsbndMods.MovesetMembers().Single(m => m.Id == 200).Data);
+        merged.Notes.OfType<MemberKept>().Should().ContainSingle().Which.Should()
+            .Match<MemberKept>(k => k.Member == PartsbndMods.FlverName && k.KeptMod.StartsWith(PartsbndMods.Moveset) && k.DroppedMod.StartsWith(PartsbndMods.Glow));
+        merged.Notes.OfType<MemberTaken>().Should().ContainSingle().Which.Should()
+            .Match<MemberTaken>(t => t.Member == PartsbndMods.TpfName && t.FromMod.StartsWith(PartsbndMods.Glow));
+        merged.Notes.Should().Contain(new VanillaServedFromGameArchive(Part));
+        MergeReports.SourceOf(merged.Notes).Should().Contain(Part).And.Contain("game's own archives");
+    }
+
+    [Fact]
+    public async Task EquipmentPartsWithDifferentMembersEndUnmergedAsTheWinnerWithTheReason()
+    {
+        WriteGameArchive((Part, Packed(PartsbndMods.Vanilla())));
+        var loadout = await GlowAndMoveset([.. PartsbndMods.MovesetMembers().Where(m => m.Id != 201)]);
+
+        var plan = ServiceProvider.GetRequiredService<MergePlanCache>().Current(loadout, MergeSourceMode.Report);
+
+        plan.Refusal.Should().BeNull();
+        plan.Merged.Should().BeEmpty();
+        var unmerged = plan.Unmerged.Should().ContainSingle().Which;
+        unmerged.Path.Should().Be(Part);
+        unmerged.Outcome.Reason.Should().StartWith("the merge failed: ").And.Contain("the three bundles hold different entries");
+        unmerged.Winner!.Value.ModName.Should().StartWith(PartsbndMods.Moveset, "the mod installed last wins by priority");
+    }
+
+    [Fact]
+    public async Task AnEquipmentPartTheGameArchivesDoNotHoldIsNotMergedAndKeepsTheWinner()
+    {
+        var loadout = await GlowAndMoveset(PartsbndMods.MovesetMembers());
+
+        var candidate = Sources.Index(loadout).Lookup(Part)!;
+
+        candidate.Strategy.Should().BeNull();
+        candidate.Outcome.Merges.Should().BeFalse();
+    }
 }

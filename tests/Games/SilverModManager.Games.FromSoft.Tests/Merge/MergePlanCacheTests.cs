@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Installers;
 using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.Games.FromSoft.Tests.Fixtures;
@@ -160,5 +161,51 @@ public class MergePlanCacheTests(ITestOutputHelper helper) : AVanillaDumpTest<Me
 
         (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message
             .Should().Contain("_merged/msg/engus/menu.msgbnd.dcx").And.Contain("disagree");
+    }
+}
+
+/// <summary>A plan whose vanilla comes from the game's own archives is only as current as that archive's copy.</summary>
+public class MergePlanCacheGameArchiveTests(ITestOutputHelper helper) : AModdedTestSoulsTest<MergePlanCacheGameArchiveTests>(helper)
+{
+    private const string Part = "parts/wp_a_0556.partsbnd.dcx";
+
+    private FromSoftFormatTraits Formats => ((IFromSoftGame)GameInstallation.Game).Formats;
+
+    private void WriteGameArchive(IReadOnlyList<(int Id, string Name, byte[] Data)> vanilla)
+        => GameArchiveFixture.Write(RealGameFolder.GetFullPath(), "TestData0", Bhd5Fixture.TestKey, Formats, encrypted: true, lead: 48,
+            (Part, PartsbndMods.Bundle(Formats, vanilla)));
+
+    private async Task<Loadout.ReadOnly> GlowAndMoveset()
+    {
+        var loadout = await CreateLoadout();
+        foreach (var (name, members) in new[] { (PartsbndMods.Glow, PartsbndMods.GlowMembers()), (PartsbndMods.Moveset, PartsbndMods.MovesetMembers()) })
+        {
+            var archive = TemporaryFileManager.CreateFolder().Path / (name + ".zip");
+            await TestArchives.WriteEntries(archive, [(Part, PartsbndMods.Bundle(Formats, members))]);
+            var registered = await RegisterLocalArchive(archive);
+            var installer = Game.LibraryItemInstallers.OfType<Me3PackageInstaller>().Single();
+            await LoadoutManager.InstallItem(registered.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId, installer: installer);
+        }
+        return Refresh(loadout);
+    }
+
+    [Fact]
+    public async Task ANewVanillaCopyInTheGameArchivesIsReadIntoTheNextPlan()
+    {
+        WriteGameArchive(PartsbndMods.Vanilla());
+        var loadout = await GlowAndMoveset();
+        var plans = ServiceProvider.GetRequiredService<MergePlanCache>();
+        var first = plans.Current(loadout, MergeSourceMode.Report);
+        first.Merged.Should().ContainSingle().Which.Path.Should().Be(Part);
+        plans.Current(Refresh(loadout), MergeSourceMode.Report).Should().BeSameAs(first, "nothing changed");
+
+        // The game's update dropped a model from the part, so the mods' bundles no longer line up with vanilla. Only a
+        // plan that read the new copy can know the merge now fails.
+        WriteGameArchive([.. PartsbndMods.Vanilla().Where(m => m.Id != 201)]);
+        var second = plans.Current(Refresh(loadout), MergeSourceMode.Report);
+
+        second.Should().NotBeSameAs(first);
+        second.Merged.Should().BeEmpty();
+        second.Unmerged.Should().ContainSingle().Which.Outcome.Reason.Should().Contain("the three bundles hold different entries");
     }
 }

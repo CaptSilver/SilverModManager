@@ -457,6 +457,61 @@ public class MergePlannerTests
     }
 
     [Fact]
+    public void Two_mods_editing_one_equipment_part_differently_merge_into_one_bundle_with_the_members_each_changed()
+    {
+        const string path = "parts/wp_a_0556.partsbnd.dcx";
+        var van = PartsbndMods.Bundle(ER, PartsbndMods.Vanilla());
+        var contents = new Dictionary<string, byte[]>
+        {
+            [PartsbndMods.Moveset + ":" + path] = PartsbndMods.Bundle(ER, PartsbndMods.MovesetMembers()),
+            [PartsbndMods.Glow + ":" + path] = PartsbndMods.Bundle(ER, PartsbndMods.GlowMembers()),
+        };
+
+        var plan = RealPlan(contents, new HashSet<string> { path }, _ => van, NoBase, Real(PartsbndMods.Moveset, path, 1), Real(PartsbndMods.Glow, path, 2));
+
+        plan.Refusal.Should().BeNull();
+        plan.Unmerged.Should().BeEmpty();
+        var merged = plan.Merged.Should().ContainSingle().Which;
+        merged.Path.Should().Be(path);
+        merged.Strategy.Should().Be(MergeStrategy.PartsbndThreeWay);
+        var members = PartsbndMods.Read(merged.Bytes, ER);
+        members[100].Should().Equal(PartsbndMods.GlowMembers().Single(m => m.Id == 100).Data);
+        members[200].Should().Equal(PartsbndMods.GlowMembers().Single(m => m.Id == 200).Data, "both changed the model and Glow has the priority");
+        members[201].Should().Equal(PartsbndMods.Vanilla().Single(m => m.Id == 201).Data);
+        members[400].Should().Equal(PartsbndMods.MovesetMembers().Single(m => m.Id == 400).Data);
+        members[401].Should().Equal(PartsbndMods.MovesetMembers().Single(m => m.Id == 401).Data);
+        var kept = merged.Notes.OfType<MemberKept>().Should().ContainSingle().Which;
+        (kept.Member, kept.KeptMod, kept.DroppedMod).Should().Be((PartsbndMods.FlverName, PartsbndMods.Glow, PartsbndMods.Moveset));
+        kept.Details.Should().Contain("different mods", "the model comes from one mod and the animations from the other");
+        merged.Notes.OfType<MemberTaken>().Select(n => (n.Member, n.FromMod)).Should().BeEquivalentTo(
+            [(PartsbndMods.AnibndName, PartsbndMods.Moveset), (PartsbndMods.Anibnd1Name, PartsbndMods.Moveset)],
+            "Glow leads the fold, so only Moveset's members are takes; the texture archive is the leader's own");
+    }
+
+    [Fact]
+    public void Bundles_holding_different_members_fall_back_to_the_priority_winner_and_say_why()
+    {
+        const string path = "parts/wp_a_0556.partsbnd.dcx";
+        var van = PartsbndMods.Bundle(ER, PartsbndMods.Vanilla());
+        var contents = new Dictionary<string, byte[]>
+        {
+            [PartsbndMods.Moveset + ":" + path] = PartsbndMods.Bundle(ER, [.. PartsbndMods.MovesetMembers().Where(m => m.Id != 201)]),
+            [PartsbndMods.Glow + ":" + path] = PartsbndMods.Bundle(ER, PartsbndMods.GlowMembers()),
+        };
+
+        var plan = RealPlan(contents, new HashSet<string> { path }, _ => van, NoBase, Real(PartsbndMods.Moveset, path, 1), Real(PartsbndMods.Glow, path, 2));
+
+        plan.Refusal.Should().BeNull();
+        plan.Merged.Should().BeEmpty();
+        var unmerged = plan.Unmerged.Should().ContainSingle().Which;
+        unmerged.Path.Should().Be(path);
+        unmerged.Strategy.Should().Be(MergeStrategy.PartsbndThreeWay);
+        unmerged.Outcome.Merges.Should().BeFalse();
+        unmerged.Outcome.Reason.Should().StartWith("the merge failed: ").And.Contain("the three bundles hold different entries");
+        unmerged.Winner!.Value.PackageId.Should().Be(PartsbndMods.Glow);
+    }
+
+    [Fact]
     public void The_real_talk_archive_strategy_merges_when_the_archives_agree()
     {
         const string path = "script/talk/m00.talkesdbnd.dcx";
