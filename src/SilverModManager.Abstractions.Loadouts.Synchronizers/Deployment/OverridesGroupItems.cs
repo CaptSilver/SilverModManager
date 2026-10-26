@@ -46,13 +46,20 @@ public static class OverridesGroupItems
 
     /// <summary>
     /// Points the group's row at <paramref name="path"/> at the given content: writes the hash and
-    /// size onto whatever row is already there, or adds a file.
+    /// size onto whatever row is already there, or adds a file. A row that was a reified
+    /// delete becomes a file again.
     /// </summary>
     public static UpsertOutcome UpsertFile(ITransaction tx, Loadout.ReadOnly loadout, LoadoutOverridesGroupId overrides, GamePath path, Hash hash, Size size)
     {
         var existingRecord = FindAtPath(loadout, overrides, path);
         if (existingRecord.HasValue)
         {
+            // The winner query reads a row that still has a delete reason as deleted, whatever hash it
+            // carries. Retracting just the reason turns the same row into a file, so the row id and its
+            // history stay put and reverting the transaction brings the delete back.
+            if (existingRecord.Value.TryGetAsDeletedFile(out var deleted))
+                tx.RetractAll(loadout.Db, deleted.Id, DeletedFile.Reason);
+
             tx.Add(existingRecord.Value.Id, LoadoutFile.Hash, hash);
             tx.Add(existingRecord.Value.Id, LoadoutFile.Size, size);
             return UpsertOutcome.Updated;
