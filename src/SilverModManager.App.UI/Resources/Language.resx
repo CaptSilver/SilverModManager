@@ -1581,6 +1581,18 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="ExternalChanges_Move_Activity" xml:space="preserve">
         <value>moving the files into a mod</value>
     </data>
+    <data name="FileConflicts_Order_LoadAscending" xml:space="preserve">
+        <value>Load order: mods lower in the list load later and win when two mods ship the same file.</value>
+    </data>
+    <data name="FileConflicts_Order_LoadDescending" xml:space="preserve">
+        <value>Load order: mods higher in the list load later and win when two mods ship the same file.</value>
+    </data>
+    <data name="FileConflicts_Order_PriorityAscending" xml:space="preserve">
+        <value>Mods lower in the list have higher priority and win when two mods ship the same file.</value>
+    </data>
+    <data name="FileConflicts_Order_PriorityDescending" xml:space="preserve">
+        <value>Mods higher in the list have higher priority and win when two mods ship the same file.</value>
+    </data>
     <data name="FileConflicts_Paths_Title" xml:space="preserve">
         <value>Conflicts for {0}</value>
     </data>

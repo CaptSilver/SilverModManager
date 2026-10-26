@@ -33,6 +33,11 @@ public partial class FileConflictsView : R3UserControl<IFileConflictsViewModel>
                     static (view, isSourceEmpty) => view.EmptyState.IsActive = isSourceEmpty)
                 .AddTo(disposables);
             
+            // Which end of the list wins
+            this.OneWayR3Bind(view => view.BindableViewModel, vm => vm.OrderHint,
+                    static (view, hint) => view.OrderHintTextBlock.Text = hint)
+                .AddTo(disposables);
+
             // Trophy bar
             this.OneWayR3Bind(view => view.BindableViewModel, vm => vm.SortDirectionCurrent,
                     static (view, sortDirection) =>

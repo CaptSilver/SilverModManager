@@ -13,4 +13,7 @@ public interface IFileConflictsViewModel : IViewModelInterface
     IReadOnlyBindableReactiveProperty<ListSortDirection> SortDirectionCurrent { get; }
 
     IReadOnlyBindableReactiveProperty<bool> IsAscending { get; }
+
+    /// <summary>One line saying which end of the list wins, worded for the game.</summary>
+    IReadOnlyBindableReactiveProperty<string> OrderHint { get; }
 }

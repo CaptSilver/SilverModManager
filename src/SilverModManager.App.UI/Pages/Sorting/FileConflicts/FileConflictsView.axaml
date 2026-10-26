@@ -20,9 +20,15 @@
         </controls:EmptyState.Subtitle>
 
         <!-- treedatagrid and trophy bar -->
-        <Grid x:Name="MainGrid" ColumnDefinitions="*, Auto">
+        <Grid x:Name="MainGrid" ColumnDefinitions="*, Auto" RowDefinitions="Auto, *">
 
-            <TreeDataGrid Grid.Column="0"
+            <TextBlock x:Name="OrderHintTextBlock"
+                       Grid.Row="0" Grid.Column="0"
+                       Theme="{StaticResource BodySMNormalTheme}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,8" />
+
+            <TreeDataGrid Grid.Row="1" Grid.Column="0"
                           x:Name="FileConflictsTreeDataGrid"
                           CanUserResizeColumns="False"
                           CanUserSortColumns="False"
@@ -164,7 +170,7 @@
             </TreeDataGrid>
 
             <!-- right column (trophy bar) -->
-            <Grid x:Name="TrophyBarColumnGrid" RowDefinitions="Auto, *" Grid.Column="1">
+            <Grid x:Name="TrophyBarColumnGrid" RowDefinitions="Auto, *" Grid.Row="1" Grid.Column="1">
                 <controls:StandardButton Grid.Row="0" x:Name="InfoAlertButton"
                                          DockPanel.Dock="Top"
                                          ShowIcon="Left"

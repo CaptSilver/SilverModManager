@@ -45,8 +45,10 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
     private readonly IServiceProvider _serviceProvider;
     private readonly IWindowManager _windowManager;
     private readonly ILogger<FileConflictsViewModel> _logger;
+    private readonly IMergeIndexSource? _mergeSource;
     public IReadOnlyBindableReactiveProperty<ListSortDirection> SortDirectionCurrent => _sortDirectionCurrent;
     public IReadOnlyBindableReactiveProperty<bool> IsAscending { get; }
+    public IReadOnlyBindableReactiveProperty<string> OrderHint { get; }
 
     public R3.ReactiveCommand SwitchSortDirectionCommand { get; }
 
@@ -64,7 +66,11 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
         _windowManager = windowManager;
         _logger = serviceProvider.GetRequiredService<ILogger<FileConflictsViewModel>>();
 
+        _mergeSource = serviceProvider.GetService<IMergeIndexSource>();
+
         _sortDirectionCurrent = new BindableReactiveProperty<ListSortDirection>(ListSortDirection.Ascending);
+        var isLoadOrder = _mergeSource?.ProvidesIndex(loadout) == true;
+        OrderHint = _sortDirectionCurrent.Select(direction => OrderHintFor(isLoadOrder, direction)).ToBindableReactiveProperty(OrderHintFor(isLoadOrder, ListSortDirection.Ascending));
         IsAscending = _sortDirectionCurrent.Select(direction => direction == ListSortDirection.Ascending).ToBindableReactiveProperty();
 
         SwitchSortDirectionCommand = new R3.ReactiveCommand(_ =>
@@ -119,6 +125,15 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
             awaitOperation: AwaitOperation.Drop).AddTo(disposables);
         });
     }
+
+    /// <summary>Says which end of the list wins; me3 games call the order a load order because me3 mounts the last package.</summary>
+    internal static string OrderHintFor(bool isLoadOrder, ListSortDirection direction) => (isLoadOrder, direction) switch
+    {
+        (true, ListSortDirection.Ascending) => Language.FileConflicts_Order_LoadAscending,
+        (true, _) => Language.FileConflicts_Order_LoadDescending,
+        (false, ListSortDirection.Ascending) => Language.FileConflicts_Order_PriorityAscending,
+        (false, _) => Language.FileConflicts_Order_PriorityDescending,
+    };
 
     /// <summary>
     /// Moves the dragged rows next to the row or collection they were dropped on. A collection stands for all of its
@@ -243,7 +258,7 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
             priority.TargetId,
             () =>
             {
-                var merges = FileConflictPaths.MergesOf(Loadout.Load(connection.Db, _loadoutId), _serviceProvider.GetRequiredService<LoadoutMergeSources>);
+                var merges = _mergeSource?.IndexOf(Loadout.Load(connection.Db, _loadoutId));
                 return FileConflictPaths.Load(connection, _loadoutId, msg.PriorityId, merges);
             });
 
@@ -280,7 +295,9 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
     private readonly ILoadoutSynchronizer _synchronizer;
     private readonly IResourceLoader<EntityId, Bitmap> _modPageThumbnailPipeline;
     private readonly LoadoutId _loadoutId;
+    private readonly IMergeIndexSource? _mergeSource;
     private readonly IDisposable _activationDisposable;
+    private (TxId Basis, Dictionary<LoadoutItemGroupId, (long Winning, long Losing)> Counts)? _sharedFileCounts;
 
     private readonly Observable<ListSortDirection> _sortDirectionObservable;
     public Subject<OneOf.OneOf<ViewConflictsMessage, RulesMessage, MoveUpCommandPayload, MoveDownCommandPayload>> MessageSubject { get; } = new();
@@ -295,6 +312,7 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
         _connection = connection;
         _synchronizer = synchronizer;
         _loadoutId = loadoutId;
+        _mergeSource = serviceProvider.GetService<IMergeIndexSource>();
         _modPageThumbnailPipeline = ImagePipelines.GetModPageThumbnailPipeline(serviceProvider);
         
         var ascendingComparer = OrderComparer(ListSortDirection.Ascending);
@@ -464,6 +482,7 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
 
         var groupPriority = LoadoutItemGroupPriority.Load(db, groupPriorityId);
         var loadoutGroup = groupPriority.Target;
+        (numWinningFiles, numLosingFiles) = WithSharedFiles(db, groupPriority.TargetId, numWinningFiles, numLosingFiles);
 
         var itemModel = new CompositeItemModel<EntityId>(groupPriorityId);
 
@@ -508,9 +527,31 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
         return itemModel;
     }
 
+    /// <summary>
+    /// Adds the files the mod shares with another me3 package to the synchronizer's counts. The index is rebuilt only
+    /// when the database moved on, since every row of the list asks.
+    /// </summary>
+    private (long Winning, long Losing) WithSharedFiles(IDb db, LoadoutItemGroupId group, long winning, long losing)
+    {
+        if (_mergeSource is null) return (winning, losing);
+
+        var cached = _sharedFileCounts;
+        if (cached is not { } known || known.Basis != db.BasisTxId)
+        {
+            var loadout = Loadout.Load(db, _loadoutId);
+            var counts = _mergeSource.ProvidesIndex(loadout) && _mergeSource.IndexOf(loadout) is { } index
+                ? FileConflictPaths.SharedFileCounts(index)
+                : [];
+            _sharedFileCounts = known = (db.BasisTxId, counts);
+        }
+
+        return known.Counts.TryGetValue(group, out var shared) ? (winning + shared.Winning, losing + shared.Losing) : (winning, losing);
+    }
+
     private void UpdateItemModel(CompositeItemModel<EntityId> itemModel, (EntityId Id, long Index, EntityId Prev, EntityId Next, long NumWinningFiles, long NumLosingFiles) tuple)
     {
-        var (_, index, previousId, nextId, numWinningFiles, numLosingFiles) = tuple;
+        var (id, index, previousId, nextId, numWinningFiles, numLosingFiles) = tuple;
+        (numWinningFiles, numLosingFiles) = WithSharedFiles(_connection.Db, LoadoutItemGroupPriority.Load(_connection.Db, id).TargetId, numWinningFiles, numLosingFiles);
 
         itemModel.Get<FileConflictsComponents.ViewAction>(FileConflictsColumns.Actions.ViewComponentKey).HasConflicts.Value = numWinningFiles > 0 || numLosingFiles > 0;
 

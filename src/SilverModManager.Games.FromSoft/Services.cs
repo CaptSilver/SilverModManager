@@ -107,6 +107,7 @@ public static class Services
             .AddSingleton<VanillaDumps>()
             .AddSingleton<ArchiveVanillas>()
             .AddSingleton<LoadoutMergeSources>()
+            .AddSingleton<IMergeIndexSource, LoadoutMergeIndexSource>()
             .AddSingleton<MergePlanCache>()
             .AddSingleton<IMergeReports, MergeReports>();
 

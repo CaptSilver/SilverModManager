@@ -4543,6 +4543,42 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Load order: mods lower in the list load later and win when two mods ship the same file..
+        /// </summary>
+        public static string FileConflicts_Order_LoadAscending {
+            get {
+                return ResourceManager.GetString("FileConflicts_Order_LoadAscending", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Load order: mods higher in the list load later and win when two mods ship the same file..
+        /// </summary>
+        public static string FileConflicts_Order_LoadDescending {
+            get {
+                return ResourceManager.GetString("FileConflicts_Order_LoadDescending", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Mods lower in the list have higher priority and win when two mods ship the same file..
+        /// </summary>
+        public static string FileConflicts_Order_PriorityAscending {
+            get {
+                return ResourceManager.GetString("FileConflicts_Order_PriorityAscending", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Mods higher in the list have higher priority and win when two mods ship the same file..
+        /// </summary>
+        public static string FileConflicts_Order_PriorityDescending {
+            get {
+                return ResourceManager.GetString("FileConflicts_Order_PriorityDescending", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Conflicts for {0}.
         /// </summary>
         public static string FileConflicts_Paths_Title {
