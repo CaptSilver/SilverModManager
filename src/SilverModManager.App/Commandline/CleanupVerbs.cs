@@ -82,12 +82,7 @@ internal static class CleanupVerbs
             var dataModelSettings = settingsManager.Get<DataModelSettings>();
             var fileExtractorSettings = settingsManager.Get<FileExtractorSettings>();
             var loggingSettings = settingsManager.Get<LoggingSettings>();
-            var appFiles = (AbsolutePath[])
-            [
-                loggingSettings.MainProcessLogFilePath.ToPath(fileSystem),
-                loggingSettings.SlimProcessLogFilePath.ToPath(fileSystem),
-                loggingSettings.RunProcessLogFilePath.ToPath(fileSystem),
-            ];
+            var appFiles = loggingSettings.GetProcessLogFilePaths().Select(path => path.ToPath(fileSystem)).ToArray();
 
             var appDirectories = new[]
             {

@@ -55,6 +55,19 @@ public record LoggingSettings : ISettings
     public ConfigurablePath McpProcessArchiveFilePath { get; init; } = LogFile("mcp.{##}");
 
     /// <summary>
+    /// Gets the current log file of every process kind. Uninstall and the support bundle walk this list,
+    /// so a new kind of process log has to be added here. A method rather than a property so the
+    /// settings serializer does not store it.
+    /// </summary>
+    public ConfigurablePath[] GetProcessLogFilePaths() =>
+    [
+        MainProcessLogFilePath,
+        SlimProcessLogFilePath,
+        RunProcessLogFilePath,
+        McpProcessLogFilePath,
+    ];
+
+    /// <summary>
     /// Number of previous log files to store.
     /// </summary>
     public int MaxArchivedFiles { get; init; } = 10;

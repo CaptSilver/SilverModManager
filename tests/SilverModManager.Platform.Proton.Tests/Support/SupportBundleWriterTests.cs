@@ -123,6 +123,7 @@ public class SupportBundleWriterTests : IDisposable
     {
         WriteLog(_logging.MainProcessLogFilePath, "main log\n");
         WriteLog(_logging.RunProcessLogFilePath, "run log\n");
+        WriteLog(_logging.McpProcessLogFilePath, "mcp log\n");
         WriteState("steam", AppId, "pid=123\nloadout=Main\nphase=running\n");
         WriteState("gog", "7", "pid=9\nloadout=Other\nphase=starting\n");
 
@@ -137,6 +138,7 @@ public class SupportBundleWriterTests : IDisposable
         entries.Keys.Should().BeEquivalentTo(
             "logs/silvermodmanager.main.current.log",
             "logs/silvermodmanager.run.current.log",
+            "logs/silvermodmanager.mcp.current.log",
             "doctor.json",
             "launch-state/launch-gog-7.state",
             "launch-state/launch-steam-42.state",
@@ -145,6 +147,7 @@ public class SupportBundleWriterTests : IDisposable
 
         entries["logs/silvermodmanager.main.current.log"].Should().Be("main log\n");
         entries["logs/silvermodmanager.run.current.log"].Should().Be("run log\n");
+        entries["logs/silvermodmanager.mcp.current.log"].Should().Be("mcp log\n");
         entries["launch-state/launch-steam-42.state"].Should().Be("pid=123\nloadout=Main\nphase=running\n");
         entries["system.txt"].Should().Contain(ApplicationConstants.Version.ToString()).And.Contain(RuntimeInformation.OSDescription);
     }

@@ -42,7 +42,7 @@ public sealed class SupportBundleWriter(
         await using (var stream = target.Create())
         {
             using var zip = new ZipArchive(stream, ZipArchiveMode.Create);
-            foreach (var log in new[] { logging.MainProcessLogFilePath, logging.SlimProcessLogFilePath, logging.RunProcessLogFilePath })
+            foreach (var log in logging.GetProcessLogFilePaths())
                 await AddLog(zip, log.ToPath(fileSystem), cancellationToken);
 
             AddText(zip, "doctor.json", report.ToJson());
