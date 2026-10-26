@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using CommunityToolkit.HighPerformance.Buffers;
@@ -1327,9 +1328,47 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         loadout = await ReconcileGameInstalledContent(loadout, state);
         loadout = await PrepareLoadoutForSync(loadout);
         var diskStateEntries = DiskStateEntry.FindByGame(state.Db, state);
-        var tree = BuildSyncTree(DiskStateToPathPartPair(diskStateEntries), DiskStateToPathPartPair(diskStateEntries), loadout);
+        var diskState = DiskStateToPathPartPair(diskStateEntries).ToList();
+        var tree = BuildSyncTree(diskState, diskState, loadout);
+        AdoptUserFilesOutsideGame(tree, loadout, state, diskState);
         ProcessSyncTree(tree);
         await RunActions(tree, loadout);
+    }
+
+    /// <summary>
+    /// Lets the incoming loadout adopt a file outside <see cref="LocationId.Game"/> that no loadout accounts for,
+    /// so a loadout switch keeps it.
+    /// </summary>
+    /// <remarks>
+    /// A switch builds the tree with the disk as both the current and the previous state, so a user's file in
+    /// Preferences (a game's own INI, say) that the incoming loadout lacks reads as "was there, still is, the
+    /// loadout dropped it" and is deleted. Clearing its previous state makes it read as a file that appeared on
+    /// disk, which the loadout ingests the way any apply ingests a new file. Faking a desired state equal to the
+    /// disk, as a reset does, is not enough here: the switch records the incoming loadout as applied, and its
+    /// next apply would delete the file all the same.
+    /// Left alone: the incoming loadout's own files and generated files, files the last synced loadout deployed
+    /// (they go with it), paths the game's filter protects (saves are never ingested), and paths the incoming
+    /// loadout marks deleted.
+    /// </remarks>
+    private void AdoptUserFilesOutsideGame(Dictionary<GamePath, SyncNode> tree, Loadout.ReadOnly loadout, GameInstallMetadata.ReadOnly metadata, List<PathPartPair> diskState)
+    {
+        HashSet<GamePath>? keepAsIs = null;
+        foreach (var (path, _) in diskState)
+        {
+            if (path.LocationId == LocationId.Game || GamePathFilter.ShouldFilter(path)) continue;
+
+            ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
+            if (Unsafe.IsNullRef(ref node) || node.HaveLoadout || node.SourceItemType == LoadoutSourceItemType.Intrinsic) continue;
+
+            if (keepAsIs is null)
+            {
+                keepAsIs = GetFilesDeployedByLastSyncedLoadout(metadata, diskState);
+                keepAsIs.UnionWith(DeletedWinners(loadout));
+            }
+            if (keepAsIs.Contains(path)) continue;
+
+            node.Previous = default;
+        }
     }
 
     /// <summary>
