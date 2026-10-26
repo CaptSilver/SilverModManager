@@ -11,7 +11,8 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// <param name="Priority">The loadout priority of the mod that provides it; higher wins.</param>
 /// <param name="ModName">The mod's name for display.</param>
 /// <param name="ModId">The loadout item of the mod, so an action on the mod can name it; null when the caller has none.</param>
-public readonly record struct ProviderFile(string PackageId, string RelPath, Hash Hash, ulong Priority, string ModName, LoadoutItemId? ModId = null);
+/// <param name="HasPriority">False when the mod has no priority row, so <paramref name="Priority"/> is only a placeholder.</param>
+public readonly record struct ProviderFile(string PackageId, string RelPath, Hash Hash, ulong Priority, string ModName, LoadoutItemId? ModId = null, bool HasPriority = true);
 
 /// <summary>Whether the app will merge a path, and if not, why.</summary>
 public readonly record struct MergeOutcome(bool Merges, string? Reason)
@@ -31,12 +32,17 @@ public readonly record struct MergeOutcome(bool Merges, string? Reason)
 /// <param name="Strategy">What the engine would use; null when it has none.</param>
 /// <param name="Contributors">Every providing file, the highest priority first.</param>
 /// <param name="Outcome">Whether the merge will happen.</param>
+/// <param name="Winner">
+/// For a path with no strategy, the file me3 mounts: the last of the packages in the profile's order, which can differ
+/// from <paramref name="Contributors"/>[0] for an unlisted package or one that a higher mod shares. Null otherwise.
+/// </param>
 public sealed record MergeCandidate(
     string Path,
     IReadOnlyList<string> Spellings,
     MergeStrategy? Strategy,
     IReadOnlyList<ProviderFile> Contributors,
-    MergeOutcome Outcome);
+    MergeOutcome Outcome,
+    ProviderFile? Winner = null);
 
 /// <summary>
 /// Maps each package-relative path that needs a decision to the enabled files that provide it. It is the one answer
@@ -90,6 +96,14 @@ public sealed class MergePathIndex
             list.Add(file);
         }
 
+        // The profile ranks a package by the highest priority of any mod that puts a file in its folder, whatever path
+        // is being asked about, so the ranking is taken over every file.
+        var packagePriorities = new Dictionary<string, ulong>(StringComparer.Ordinal);
+        foreach (var file in groups.Values.SelectMany(l => l).Where(f => f.HasPriority))
+        {
+            if (!packagePriorities.TryGetValue(file.PackageId, out var known) || file.Priority > known) packagePriorities[file.PackageId] = file.Priority;
+        }
+
         var candidates = new List<MergeCandidate>();
         foreach (var list in groups.Values)
         {
@@ -116,11 +130,19 @@ public sealed class MergePathIndex
             else if (MergeStrategies.NeedsVanilla(s) && !MergeStrategies.TakesGameBase(s) && !vanilla) outcome = MergeOutcome.NotMergeable(MergeOutcome.NoVanillaSource);
             else outcome = MergeOutcome.WillMerge;
 
-            candidates.Add(new MergeCandidate(path, spellings, strategy, contributors, outcome));
+            candidates.Add(new MergeCandidate(path, spellings, strategy, contributors, outcome, outcome.Reason == MergeOutcome.NoStrategy ? WinnerOf(contributors, packagePriorities) : null));
         }
 
         candidates.Sort((a, b) => string.CompareOrdinal(a.Path, b.Path));
         return new MergePathIndex(candidates);
+    }
+
+    // Both copies deploy and me3 mounts the one from the package it lists last, so the winner is read from the same order.
+    // The providers come highest priority first, so a package two mods share is named after the higher one.
+    private static ProviderFile WinnerOf(IReadOnlyList<ProviderFile> providers, IReadOnlyDictionary<string, ulong> packagePriorities)
+    {
+        var last = Me3.Me3PackageOrder.Ascending(providers.Select(f => f.PackageId).Distinct(StringComparer.Ordinal), packagePriorities)[^1];
+        return providers.First(f => f.PackageId.Equals(last, StringComparison.Ordinal));
     }
 
     /// <summary>The candidate for a package-relative path in any casing, or null when nothing needs a decision there.</summary>

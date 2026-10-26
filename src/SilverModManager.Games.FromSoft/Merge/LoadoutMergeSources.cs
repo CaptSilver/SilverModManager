@@ -95,11 +95,11 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
             if (priority is null)
             {
                 if (_unprioritised.TryAdd(parts[0], 0))
-                    logger.LogWarning("Package {Package} is in no mod with a priority, so it ranks below every other mod when its files are merged", parts[0]);
+                    logger.LogWarning("Package {Package} is in no mod with a priority, so it ranks below every other mod when its files are merged, and above them when me3 picks between whole copies", parts[0]);
             }
 
             var owner = mod ?? (chain.Length > 1 ? chain[1] : chain[0]);
-            providers.Add(new ProviderFile(parts[0], parts[1], file.Hash, (priority ?? ConflictPriority.MinValue).Value, owner.Name, owner.LoadoutItemId));
+            providers.Add(new ProviderFile(parts[0], parts[1], file.Hash, (priority ?? ConflictPriority.MinValue).Value, owner.Name, owner.LoadoutItemId, priority is not null));
         }
 
         return providers;

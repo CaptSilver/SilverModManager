@@ -73,8 +73,10 @@ public sealed class MergeReports(
         if (!candidate.Outcome.Merges)
         {
             // An unrecognised dump may be why a file that looks mergeable has no vanilla source, so it rides on the files it holds a copy of.
+            // A file with no strategy still has a winner, so the report says which copy me3 mounts.
             var notes = candidate.Outcome.Reason == MergeOutcome.NoVanillaSource
                 ? unconfirmed.Where(d => d.HoldsCopyOf(candidate.Path)).Select(d => d.Describe(candidate.Path)).ToArray()
+                : candidate.Winner is { } winner ? [$"{winner.ModName} wins by loadout priority; the other copies are ignored"]
                 : [];
             return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.NotMergeable, notes, string.Empty, candidate.Outcome.Reason ?? string.Empty);
         }

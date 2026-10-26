@@ -20,14 +20,35 @@ internal static partial class FromSoftDiagnostics
         .WithDetails("""
 More than one mod provides the file **{Path}**: {Packages}.
 
-The game loads one of them and ignores the rest, and which one wins is not something the app can promise. The app
-does not merge this file: {Reason}. Disable or remove all but one of them.
+The game loads one of them and ignores the rest. The app does not merge this file: {Reason}. Disable or remove all
+but one of them.
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Packages")
             .AddValue<string>("Path")
             .AddValue<string>("CaseNote")
             .AddValue<string>("Reason")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate PackageWinnerByPriority = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 16))
+        .WithTitle("Mods provide a file the app can't merge")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{Winner} wins {Path} by loadout priority; the copy from {Ignored} is ignored")
+        .WithDetails("""
+More than one mod provides the file **{Path}**, and the app has no way to merge it.
+
+**{Winner}** wins by loadout priority, and the copy from {Ignored} is ignored. To make the other mod win instead, use
+Move up / Move down under Rules > File Conflicts.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Winner")
+            .AddValue<string>("Ignored")
+            .AddValue<string>("Path")
         )
         .Finish();
 

@@ -17,7 +17,8 @@ namespace SilverModManager.Games.FromSoft;
 /// <para>
 /// Files that several mods provide and the engine can merge are written once, into the merged package, and the mods'
 /// own copies stay off disk. If the merge can't be made, the apply is refused before anything is written: deploying
-/// the copies whole would leave it to me3 which one wins.
+/// the copies whole would leave it to me3 which one wins. A file with no merge strategy is not a merge that failed:
+/// its copies deploy whole and the profile's package order, which follows loadout priority, decides the winner.
 /// </para>
 /// </summary>
 public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer

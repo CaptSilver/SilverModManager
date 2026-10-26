@@ -13,8 +13,10 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Games.FromSoft.Doctor;
 
 /// <summary>
-/// Reports mods that provide the same file and the app will not merge. Which paths those are is the merge index's
-/// call, so this agrees with the apply: a path the engine merges is not a collision, and one it can't merge says why.
+/// Reports mods that provide the same file and the app will not merge. A file with no merge strategy is a Warning that
+/// names the mod whose copy loadout priority keeps; one that is ambiguous or lacks a vanilla copy is Critical. Which
+/// paths those are is the merge index's call, so this agrees with the apply: a path the engine merges is not a
+/// collision, and one it can't merge says why.
 /// Two files for one place in the overlay's config layer are reported separately: the later one would silently
 /// replace the other there. Neither blocks the apply.
 /// </summary>
@@ -33,6 +35,15 @@ public class PackageCollisionEmitter(LoadoutMergeSources sources) : IFromSoftDia
         foreach (var candidate in sources.Index(loadout).Candidates)
         {
             if (candidate.Outcome.Merges) continue;
+
+            if (candidate.Winner is { } winner)
+            {
+                // A file with no merge strategy deploys whole from each package and me3 mounts the last one it lists,
+                // which is the loadout's priority order, so the winner is known and the other copies are only dropped.
+                var ignored = candidate.Contributors.Select(c => c.ModName).Where(n => n != winner.ModName).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
+                yield return FromSoftDiagnostics.CreatePackageWinnerByPriority(winner.ModName, string.Join(", ", ignored), candidate.Path);
+                continue;
+            }
 
             var packages = candidate.Contributors.Select(c => c.PackageId).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
             var caseOnly = candidate.Spellings.Count > 1;

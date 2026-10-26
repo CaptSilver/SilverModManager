@@ -127,6 +127,23 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
     }
 
     [Fact]
+    public async Task APairWithNoStrategyIsNotMergeableAndSaysWhichModLoadoutPriorityKeeps()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout.LoadoutId, "Alpha", ("parts/wp_a.partsbnd.dcx", [1, 2, 3]));
+        await InstallPackage(loadout.LoadoutId, "Beta", ("parts/wp_a.partsbnd.dcx", [4, 5, 6]));
+
+        var report = await Reports.ForLoadout(loadout.LoadoutId, CancellationToken.None);
+
+        report.Refusal.Should().BeNull();
+        var entry = report.Entries.Should().ContainSingle().Which;
+        entry.Outcome.Should().Be(MergeReportOutcome.NotMergeable);
+        entry.Reason.Should().Be(MergeOutcome.NoStrategy);
+        entry.Notes.Should().ContainSingle().Which.Should().EndWith("wins by loadout priority; the other copies are ignored")
+            .And.Match("*.zip wins*");
+    }
+
+    [Fact]
     public async Task ARefusedRegulationPairReportsTheTextTheApplyThrowsAndHoldsBackTheOtherMerges()
     {
         var loadout = await CreateLoadout();

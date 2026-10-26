@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Games.FromSoft.Diagnostics;
 using SilverModManager.Games.FromSoft.Doctor;
 using SilverModManager.Games.FromSoft.EldenRing;
@@ -52,7 +53,7 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
-    public async Task TwoPackagesProvidingOnePathRaiseOneCriticalNamingBothAndThePath()
+    public async Task TwoPackagesProvidingOnePathRaiseOneWarningNamingTheWinnerAndThePath()
     {
         var loadout = await CreateLoadout();
         await InstallPackage(loadout, "Weapons", "parts/wp_a.dcx", "menu/only_here.dds");
@@ -60,12 +61,10 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
 
         var diagnostic = await GetSingleDiagnostic(loadout);
 
-        diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
-        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 1));
-        var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageCollisionMessageData>>().Which.MessageData;
-        data.Packages.Should().Be("Armor, Weapons");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageWinnerByPriorityMessageData>>().Which.MessageData;
         data.Path.Should().Be("parts/wp_a.dcx");
-        data.CaseNote.Should().BeEmpty();
+        new[] { data.Winner, data.Ignored }.Order().Should().Equal("Armor.zip", "Weapons.zip");
     }
 
     [Fact]
@@ -110,16 +109,54 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
-    public async Task AnUnknownDcxPairIsCriticalBecauseTheAppDoesNotMergeIt()
+    public async Task AnUnknownDcxPairIsAWarningNamingTheModLoadoutPriorityPicks()
     {
         var loadout = await CreateLoadout();
-        await InstallPackage(loadout, "Weapons", "parts/wp_a.dcx");
-        await InstallPackage(loadout, "Armor", "parts/wp_a.dcx");
+        var weapons = await InstallPackage(loadout, "Weapons", "parts/wp_a.dcx");
+        var armor = await InstallPackage(loadout, "Armor", "parts/wp_a.dcx");
+        var winner = PriorityOf(weapons) > PriorityOf(armor) ? "Weapons.zip" : "Armor.zip";
+        var loser = winner == "Weapons.zip" ? "Armor.zip" : "Weapons.zip";
 
         var diagnostic = await GetSingleDiagnostic(loadout);
 
-        diagnostic.Severity.Should().Be(DiagnosticSeverity.Critical);
-        CollisionOf(diagnostic).Reason.Should().Be(MergeOutcome.NoStrategy);
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 16));
+        var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageWinnerByPriorityMessageData>>().Which.MessageData;
+        data.Path.Should().Be("parts/wp_a.dcx");
+        data.Winner.Should().Be(winner);
+        data.Ignored.Should().Be(loser);
+    }
+
+    [Fact]
+    public async Task MovingTheWinningModDownHandsAnUnknownDcxToTheOther()
+    {
+        var loadout = await CreateLoadout();
+        var weapons = await InstallPackage(loadout, "Weapons", "parts/wp_a.dcx");
+        var armor = await InstallPackage(loadout, "Armor", "parts/wp_a.dcx");
+        var (high, low) = PriorityOf(weapons) > PriorityOf(armor) ? (weapons, armor) : (armor, weapons);
+        var highRow = LoadoutItemGroupPriority.FindByTarget(Connection.Db, high.LoadoutItemGroupId).Single();
+        var lowRow = LoadoutItemGroupPriority.FindByTarget(Connection.Db, low.LoadoutItemGroupId).Single();
+
+        await LoadoutManager.ResolveFileConflicts([lowRow.LoadoutItemGroupPriorityId], highRow.LoadoutItemGroupPriorityId);
+
+        var data = (await GetSingleDiagnostic(loadout)).Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageWinnerByPriorityMessageData>>().Which.MessageData;
+        data.Winner.Should().Be(low.AsLoadoutItem().Name);
+    }
+
+    private ConflictPriority PriorityOf(LoadoutItemGroup.ReadOnly group)
+        => LoadoutItemGroupPriority.FindByTarget(Connection.Db, group.LoadoutItemGroupId).Single().Priority;
+
+    [Fact]
+    public async Task AnUnknownDcxPairInThreePackagesNamesEveryIgnoredMod()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "A", "parts/wp_a.dcx");
+        await InstallPackage(loadout, "B", "parts/wp_a.dcx");
+        await InstallPackage(loadout, "C", "parts/wp_a.dcx");
+
+        var data = (await GetSingleDiagnostic(loadout)).Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageWinnerByPriorityMessageData>>().Which.MessageData;
+
+        data.Ignored.Split(", ").Should().HaveCount(2).And.NotContain(data.Winner);
     }
 
     [Fact]
@@ -195,9 +232,10 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
     public async Task ThreePackagesOnOnePathRaiseOneDiagnosticNamingAllThree()
     {
         var loadout = await CreateLoadout();
-        await InstallPackage(loadout, "C", "parts/wp_a.dcx");
-        await InstallPackage(loadout, "A", "parts/wp_a.dcx");
-        await InstallPackage(loadout, "B", "parts/wp_a.dcx");
+        // A talk archive stays Critical (it needs a vanilla copy), so the Critical text still has to name every package.
+        await InstallPackage(loadout, "C", "script/talk/m00.talkesdbnd.dcx");
+        await InstallPackage(loadout, "A", "script/talk/m00.talkesdbnd.dcx");
+        await InstallPackage(loadout, "B", "script/talk/m00.talkesdbnd.dcx");
 
         var data = (await GetSingleDiagnostic(loadout)).Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageCollisionMessageData>>().Which.MessageData;
 

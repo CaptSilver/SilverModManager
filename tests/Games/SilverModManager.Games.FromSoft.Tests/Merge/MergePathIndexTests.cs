@@ -18,8 +18,11 @@ public class MergePathIndexTests
     private static readonly FromSoftFormatTraits Traits = MergeStrategiesTests.WithRegulation("regulation.test");
     private static readonly IReadOnlySet<string> NoVanilla = new HashSet<string>();
 
-    private static ProviderFile File(string package, string rel, ulong priority = 1, string? name = null)
-        => new(package, rel, Hash.From((ulong)(package.GetHashCode() ^ rel.GetHashCode())), priority, name ?? package);
+    private static ProviderFile File(string package, string rel, ulong priority = 1, string? name = null, bool hasPriority = true)
+        => new(package, rel, Hash.From((ulong)(package.GetHashCode() ^ rel.GetHashCode())), priority, name ?? package, HasPriority: hasPriority);
+
+    private static string? WinnerOf(params ProviderFile[] files)
+        => Build(null, files).Single().Winner?.PackageId;
 
     private static IReadOnlyList<MergeCandidate> Build(IReadOnlySet<string>? vanilla, params ProviderFile[] files)
         => MergePathIndex.Build(files, Traits, vanilla ?? NoVanilla).Candidates;
@@ -238,6 +241,56 @@ public class MergePathIndexTests
 
         candidate.Strategy.Should().BeNull();
         candidate.Outcome.Should().Be(MergeOutcome.NotMergeable(MergeOutcome.NoStrategy));
+    }
+
+    [Fact]
+    public void The_winner_of_a_path_without_a_strategy_is_the_highest_priority_package()
+    {
+        WinnerOf(File("a", "map/m10.mapbnd.dcx", 5), File("b", "map/m10.mapbnd.dcx", 1)).Should().Be("a");
+        WinnerOf(File("a", "map/m10.mapbnd.dcx", 1), File("b", "map/m10.mapbnd.dcx", 5)).Should().Be("b");
+    }
+
+    [Fact]
+    public void A_package_with_no_priority_wins_over_one_with_a_priority()
+    {
+        // me3 lists a package it has no priority for after the others, and the last package listed wins.
+        WinnerOf(
+            File("listed", "map/m10.mapbnd.dcx", 9),
+            File("unlisted", "map/m10.mapbnd.dcx", 0, hasPriority: false)).Should().Be("unlisted");
+    }
+
+    [Fact]
+    public void A_package_ranks_by_the_highest_priority_of_any_mod_in_its_folder()
+    {
+        // Package a also holds a file from a mod at 9, so it outranks b's 5 even though a's copy of this path is at 1.
+        WinnerOf(
+            File("a", "map/m10.mapbnd.dcx", 1),
+            File("a", "other/readme.txt", 9),
+            File("b", "map/m10.mapbnd.dcx", 5)).Should().Be("a");
+    }
+
+    [Fact]
+    public void A_winning_package_two_mods_share_is_named_after_the_higher_mod()
+    {
+        var winner = Build(null,
+            File("a", "map/m10.mapbnd.dcx", 1, "Low"),
+            File("a", "map/m10.mapbnd.dcx", 9, "High"),
+            File("b", "map/m10.mapbnd.dcx", 5)).Single().Winner;
+
+        winner?.ModName.Should().Be("High");
+    }
+
+    [Fact]
+    public void Equal_priorities_make_the_last_package_id_the_winner()
+    {
+        WinnerOf(File("a", "map/m10.mapbnd.dcx", 3), File("b", "map/m10.mapbnd.dcx", 3)).Should().Be("b");
+    }
+
+    [Fact]
+    public void A_merged_or_case_only_path_names_no_winner()
+    {
+        WinnerOf(File("a", "msg/engus/item.msgbnd.dcx"), File("b", "msg/engus/item.msgbnd.dcx")).Should().BeNull();
+        WinnerOf(File("a", "map/M10.mapbnd.dcx"), File("b", "map/m10.mapbnd.dcx")).Should().BeNull();
     }
 
     [Fact]

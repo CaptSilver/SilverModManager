@@ -76,11 +76,7 @@ public static class Me3Profile
             }
         }
 
-        var ordered = packages
-            .OrderBy(id => priorities is not null && priorities.ContainsKey(id) ? 0 : 1)
-            .ThenBy(id => priorities is not null && priorities.TryGetValue(id, out var priority) ? priority : 0UL)
-            .ThenBy(id => id, StringComparer.Ordinal)
-            .ToList();
+        var ordered = Me3PackageOrder.Ascending(packages, priorities);
         // Not part of the ordering above: the ordinal comparison puts '_' between the upper and lower case letters.
         if (hasMerged) ordered.Add(Me3ModsLayout.MergedPackageId);
 
