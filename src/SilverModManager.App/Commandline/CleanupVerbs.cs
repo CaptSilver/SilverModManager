@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Exceptions;
 using SilverModManager.Sdk.Errors;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.CrossPlatform;
 using SilverModManager.DataModel;
@@ -36,15 +37,35 @@ internal static class CleanupVerbs
         [Injected] ISynchronizerService syncService,
         [Injected] ILoggerFactory loggerFactory)
     {
-        var logger = loggerFactory.CreateLogger(nameof(CleanupVerbs));
-
-        // Step 1: Revert the managed games to their original state
-        var db = conn.Db;
-        var managedInstallations = Loadout.All(db)
+        var managedInstallations = Loadout.All(conn.Db)
             .Select(loadout => loadout.InstallationInstance)
-            .Distinct();
+            .Distinct()
+            .ToArray();
 
+        var exitCode = await Uninstall(renderer, loggerFactory.CreateLogger(nameof(CleanupVerbs)), settingsManager, fileSystem, syncService, managedInstallations);
+
+        // The database this process holds is gone, and shutting down normally would write to it and recreate the
+        // folders just deleted, so the process ends here with the uninstall's own exit code.
+        Environment.Exit(exitCode);
+        return exitCode;
+    }
+
+    /// <summary>
+    /// Reverts the managed games and deletes the application's data. Returns 0 on success, 1 when a game is still
+    /// running, and -1 when something could not be reverted or deleted. The logs go last and only when everything
+    /// else went, so a failure's pointer to the log folder still leads somewhere.
+    /// </summary>
+    internal static async Task<int> Uninstall(
+        IRenderer renderer,
+        ILogger logger,
+        ISettingsManager settingsManager,
+        IFileSystem fileSystem,
+        ISynchronizerService syncService,
+        IEnumerable<GameInstallation> managedInstallations)
+    {
+        // Step 1: Revert the managed games to their original state
         var refused = false;
+        var failed = false;
         foreach (var installation in managedInstallations)
         {
             try
@@ -59,13 +80,14 @@ internal static class CleanupVerbs
             }
             catch (Exception ex)
             {
+                failed = true;
                 logger.LogFailure(ex, "Error reverting {Game}", installation.Game.DisplayName);
                 await renderer.Error(ex, "Error reverting {0}", installation.Game.DisplayName);
             }
         }
 
         // The app's data is what the next attempt needs to revert the game, so keep it until nothing is running.
-        if (refused) return 1;
+        if (refused) return CliErrors.RefusalExitCode;
 
         // Step 2: Delete application-specific directories
         try
@@ -82,13 +104,12 @@ internal static class CleanupVerbs
             var dataModelSettings = settingsManager.Get<DataModelSettings>();
             var fileExtractorSettings = settingsManager.Get<FileExtractorSettings>();
             var loggingSettings = settingsManager.Get<LoggingSettings>();
-            var appFiles = loggingSettings.GetProcessLogFilePaths().Select(path => path.ToPath(fileSystem)).ToArray();
+            var logFiles = loggingSettings.GetProcessLogFilePaths().Select(path => path.ToPath(fileSystem)).ToArray();
 
             var appDirectories = new[]
             {
                 dataModelSettings.MnemonicDBPath.ToPath(fileSystem),
                 fileExtractorSettings.TempFolderLocation.ToPath(fileSystem),
-                LoggingSettings.GetLogBaseFolder(fileSystem),
 
                 // The DataModel folder.
                 DataModelSettings.GetStandardDataModelFolder(fileSystem),
@@ -97,7 +118,19 @@ internal static class CleanupVerbs
                 DataModelSettings.GetLocalApplicationDataDirectory(fileSystem),
             }.Concat(dataModelSettings.ArchiveLocations.Select(path => path.ToPath(fileSystem)));
 
-            await DeleteRemainingFilesUnix(renderer, logger, appFiles, appDirectories);
+            failed |= !await DeleteDirectoriesUnix(renderer, logger, appDirectories);
+
+            if (!failed)
+            {
+                failed |= !await DeleteFilesUnix(renderer, logger, logFiles);
+                failed |= !await DeleteDirectoriesUnix(renderer, logger, [LoggingSettings.GetLogBaseFolder(fileSystem)]);
+            }
+
+            if (failed)
+            {
+                await renderer.Text("The application was not fully uninstalled. {0}", CliErrors.CrashPointer);
+                return CliErrors.CrashExitCode;
+            }
 
             await renderer.Text("Application uninstalled successfully");
             return 0;
@@ -106,22 +139,14 @@ internal static class CleanupVerbs
         {
             logger.LogFailure(ex, "Error deleting application directories");
             await renderer.Error(ex, "Error deleting application directories");
-            return -1;
-        }
-        finally
-        {
-            Environment.Exit(0);
+            return CliErrors.ExitCode(ex);
         }
     }
 
-    private static async Task DeleteRemainingFilesUnix(IRenderer renderer, ILogger logger, AbsolutePath[] appFiles, IEnumerable<AbsolutePath> appDirectories)
+    /// <returns>False when any directory could not be deleted.</returns>
+    private static async Task<bool> DeleteDirectoriesUnix(IRenderer renderer, ILogger logger, IEnumerable<AbsolutePath> appDirectories)
     {
-        await DeleteFilesUnix(renderer, logger, appFiles);
-        await DeleteDirectoriesUnix(renderer, logger, appDirectories);
-    }
-    
-    private static async Task DeleteDirectoriesUnix(IRenderer renderer, ILogger logger, IEnumerable<AbsolutePath> appDirectories)
-    {
+        var allDeleted = true;
         foreach (var directory in appDirectories)
         {
             if (!directory.DirectoryExists())
@@ -136,12 +161,17 @@ internal static class CleanupVerbs
             {
                 logger.LogFailure(e, "Failed to delete directory {Directory}", directory);
                 await renderer.Error(e, "Failed to delete directory: {0}", directory);
+                allDeleted = false;
             }
         }
+
+        return allDeleted;
     }
 
-    private static async Task DeleteFilesUnix(IRenderer renderer, ILogger logger, AbsolutePath[] appFiles)
+    /// <returns>False when any file could not be deleted.</returns>
+    private static async Task<bool> DeleteFilesUnix(IRenderer renderer, ILogger logger, AbsolutePath[] appFiles)
     {
+        var allDeleted = true;
         foreach (var appFile in appFiles)
         {
             if (!appFile.FileExists)
@@ -156,7 +186,10 @@ internal static class CleanupVerbs
             {
                 logger.LogFailure(e, "Failed to delete file {File}", appFile);
                 await renderer.Error(e, "Failed to delete file: {0}", appFile);
+                allDeleted = false;
             }
         }
+
+        return allDeleted;
     }
 }

@@ -357,11 +357,11 @@ public static class ProcessStartup
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Could not hand the launch to the running window");
-            var failure = $"The launch failed: {ex.Message}";
+            logger.LogFailure(ex, "Could not hand the launch to the running window");
+            var failure = CliErrors.Describe(ex);
             steps.WriteError(failure);
             steps.Notify(services, failure);
-            return RunFailureExitCode;
+            return CliErrors.ExitCode(ex);
         }
     }
 

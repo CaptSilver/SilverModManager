@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Cli;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Settings;
 using MemoryPack;
@@ -205,7 +206,7 @@ public sealed class CliServer : IHostedService, IDisposable
         catch (Exception e)
         {
             _logger.LogFailure(e, "Deciding whether to run a forwarded launch failed");
-            await TrySendAsync(serializer, new LaunchDeclined { Reason = $"the launch failed: {e.Message}" });
+            await TrySendAsync(serializer, new LaunchDeclined { Reason = CliErrors.Describe(e) });
             return;
         }
 
@@ -225,14 +226,11 @@ public sealed class CliServer : IHostedService, IDisposable
         catch (Exception e)
         {
             _logger.LogFailure(e, "A forwarded launch failed");
-            exit = new ForwardedLaunchExit(LaunchFailureExitCode, $"The launch failed: {e.Message}");
+            exit = new ForwardedLaunchExit(CliErrors.ExitCode(e), CliErrors.Describe(e));
         }
 
         await TrySendAsync(serializer, new LaunchExited { ExitCode = exit.ExitCode, Message = exit.Message });
     }
-
-    /// <summary>The exit code of a launch that failed, as <c>run</c> reports it.</summary>
-    private const int LaunchFailureExitCode = 125;
 
     private async Task TrySendAsync(Serializer serializer, IMessage message)
     {

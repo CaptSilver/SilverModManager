@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.CrossPlatform;
+using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.App;
 using SilverModManager.Platform.Proton.Launch;
@@ -820,11 +821,31 @@ public class ProcessStartupTests
             ForwardException = new InvalidOperationException("no main process"),
         };
 
-        Run(recorder, Command("run")).Should().Be(125);
+        Run(recorder, Command("run")).Should().Be(-1);
 
-        recorder.Errors.Should().ContainSingle().Which.Should().Contain("no main process");
-        recorder.Notifications.Should().ContainSingle().Which.Should().Contain("no main process");
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(CliErrors.CrashPointer);
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be(CliErrors.CrashPointer);
         recorder.Calls.Should().NotContain(NothingStarted);
+    }
+
+    [Fact]
+    public void ARefusalHandingTheLaunchToTheWindow_IsShownAsItsSentence_AndExitsWithOne()
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            ForwardException = new TestRefusal("The game is still running. Close it and try again."),
+        };
+
+        Run(recorder, Command("run")).Should().Be(1);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Be("The game is still running. Close it and try again.");
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be("The game is still running. Close it and try again.");
+    }
+
+    private sealed class TestRefusal(string message) : SilverModManager.Sdk.Errors.UserFacingException(message)
+    {
+        public override string Title => "Test refusal";
     }
 
     [Fact]
@@ -945,10 +966,10 @@ public class ProcessStartupTests
             PassThroughException = new InvalidOperationException("no such program"),
         };
 
-        Run(recorder, Command("run")).Should().Be(125);
+        Run(recorder, Command("run")).Should().Be(-1);
 
-        recorder.Errors.Should().ContainSingle().Which.Should().Contain("no such program");
-        recorder.Notifications.Should().ContainSingle().Which.Should().Contain("no such program");
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(CliErrors.CrashPointer);
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be(CliErrors.CrashPointer);
         recorder.Calls.Should().NotContain("run-launch");
     }
 

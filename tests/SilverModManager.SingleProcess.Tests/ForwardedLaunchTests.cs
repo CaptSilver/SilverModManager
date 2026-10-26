@@ -98,7 +98,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         var outcome = await client.ForwardLaunchAsync(Launch(), CancellationToken.None);
 
         outcome.Should().BeOfType<ForwardedLaunchOutcome.Exited>().Which.Should().Match<ForwardedLaunchOutcome.Exited>(
-            e => e.ExitCode == 125 && e.Message!.Contains("no such program"));
+            e => e.ExitCode == -1 && e.Message!.Contains("Details are in the log") && !e.Message.Contains("no such program"));
     }
 
     [Fact(Timeout = TimeoutMs)]

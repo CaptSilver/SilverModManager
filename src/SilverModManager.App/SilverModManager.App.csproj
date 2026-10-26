@@ -45,6 +45,10 @@
         <ProjectReference Include="..\SilverModManager.Themes.NexusFluentDark\SilverModManager.Themes.NexusFluentDark.csproj" />
         <ProjectReference Include="..\SilverModManager.Wabbajack\SilverModManager.Wabbajack.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="SilverModManager.CLI.Tests" />
+    </ItemGroup>
    
     <ItemGroup>
         <ProjectReference Include="..\SilverModManager.Games.StardewValley\SilverModManager.Games.StardewValley.csproj" />
