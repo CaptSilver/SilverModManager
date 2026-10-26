@@ -30,7 +30,10 @@ public class LoadoutGameSettingsTests(IServiceProvider provider) : AUiTest(provi
 
         public Func<Loadout.ReadOnly, AbsolutePath, SaveAdoptionPlan?>? Adopt { get; set; }
 
-        public SaveRedirectPlan? PlanSaveRedirect(Loadout.ReadOnly loadout) => Redirect;
+        /// <summary>Plans per loadout when set, such as a game that needs the loadout's INIs; otherwise <see cref="Redirect"/>.</summary>
+        public Func<Loadout.ReadOnly, SaveRedirectPlan?>? RedirectFor { get; set; }
+
+        public SaveRedirectPlan? PlanSaveRedirect(Loadout.ReadOnly loadout) => RedirectFor is { } plan ? plan(loadout) : Redirect;
 
         public SaveAdoptionPlan? PlanAdoptCurrentSave(Loadout.ReadOnly loadout, AbsolutePath saveRoot) => Adopt?.Invoke(loadout, saveRoot);
     }
@@ -163,6 +166,102 @@ public class LoadoutGameSettingsTests(IServiceProvider provider) : AUiTest(provi
         await settings.ToggleOwnsGameInisCommand.Execute();
         settings.OwnsGameInis.Should().BeTrue();
         Loadout.OwnsGameInis.Get(Reload(loadout)).Should().BeTrue();
+    }
+
+    private static void NeedsOwnedInis(Rig rig) => rig.Saves.RedirectFor = loadout => Loadout.OwnsGameInis.Get(loadout)
+        ? new SaveRedirectPlan.IniKey("General", "sLocalSavePath", @"Saves\x\")
+        : new SaveRedirectPlan.Unsupported("Needs 'Own the game INIs': the save folder is set through the game's INI.");
+
+    private async Task<Loadout.ReadOnly> SeedLoadoutWithInis(string name, bool owns)
+    {
+        var loadout = await SeedLoadout(name);
+        using var tx = Connection.BeginTransaction();
+        tx.Add(loadout.Id, Loadout.OwnsGameInis, owns);
+        await tx.Commit();
+        return Reload(loadout);
+    }
+
+    [Fact]
+    public async Task KeepSaves_IsDisabledWithTheReason_WhileTheInisAreNotOwned_AndComesBackWhenTheyAre()
+    {
+        var rig = new Rig(Provider);
+        NeedsOwnedInis(rig);
+        var loadout = await SeedLoadoutWithInis("Inis Off", owns: false);
+        var settings = rig.Settings(loadout, iniFiles: new IniSet("Skyrim.ini"));
+
+        settings.CanKeepSaves.Should().BeFalse();
+        settings.KeepSavesToolTip.Should().Contain("Own the game INIs");
+        (await settings.ToggleKeepSavesCommand.CanExecute.FirstAsync()).Should().BeFalse();
+
+        await settings.ToggleOwnsGameInisCommand.Execute();
+
+        settings.CanKeepSaves.Should().BeTrue();
+        settings.KeepSavesToolTip.Should().NotContain("Own the game INIs");
+        (await settings.ToggleKeepSavesCommand.CanExecute.FirstAsync()).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task OwnGameInis_UntickedWithoutKeptSaves_AsksNothing_AndDisablesKeepSaves()
+    {
+        var rig = new Rig(Provider);
+        NeedsOwnedInis(rig);
+        var settings = rig.Settings(await SeedLoadoutWithInis("Inis Untick", owns: true), iniFiles: new IniSet("Skyrim.ini"));
+        settings.CanKeepSaves.Should().BeTrue();
+
+        await settings.ToggleOwnsGameInisCommand.Execute();
+
+        rig.Presenter.Dialogs.Should().BeEmpty();
+        settings.CanKeepSaves.Should().BeFalse();
+        settings.KeepSavesToolTip.Should().Contain("Own the game INIs");
+        (await settings.ToggleKeepSavesCommand.CanExecute.FirstAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task OwnGameInis_UntickedWhileSavesAreKept_OnYes_TurnsBothOffAndSaysTheSavesStay()
+    {
+        var rig = new Rig(Provider);
+        NeedsOwnedInis(rig);
+        var loadout = await SeedLoadoutWithInis("Untick Yes", owns: true);
+        var settings = rig.Settings(loadout, iniFiles: new IniSet("Skyrim.ini"));
+        await settings.ToggleKeepSavesCommand.Execute();
+        rig.Answer(ButtonDefinitionId.Accept);
+
+        await settings.ToggleOwnsGameInisCommand.Execute();
+
+        var question = rig.Presenter.Dialogs.Should().ContainSingle().Subject;
+        PresenterRig.Content(question).Text.Should().Contain("normal save folder").And.Contain("Saves/");
+        settings.OwnsGameInis.Should().BeFalse();
+        settings.KeepSavesWithLoadout.Should().BeFalse();
+        var stored = Reload(loadout);
+        Loadout.OwnsGameInis.Get(stored).Should().BeFalse();
+        Loadout.KeepSavesWithLoadout.Get(stored).Should().BeFalse();
+        (await settings.ToggleKeepSavesCommand.CanExecute.FirstAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public Task OwnGameInis_UntickedWhileSavesAreKept_OnNo_ChangesNothing() => UntickLeavesEverythingAs(ButtonDefinitionId.No);
+
+    [Fact]
+    public Task OwnGameInis_UntickedWhileSavesAreKept_WhenDismissed_ChangesNothing() => UntickLeavesEverythingAs(ButtonDefinitionId.Cancel);
+
+    private async Task UntickLeavesEverythingAs(ButtonDefinitionId answer)
+    {
+        var rig = new Rig(Provider);
+        NeedsOwnedInis(rig);
+        var loadout = await SeedLoadoutWithInis("Untick No", owns: true);
+        var settings = rig.Settings(loadout, iniFiles: new IniSet("Skyrim.ini"));
+        await settings.ToggleKeepSavesCommand.Execute();
+        rig.Answer(answer);
+
+        await settings.ToggleOwnsGameInisCommand.Execute();
+
+        rig.Presenter.Dialogs.Should().ContainSingle();
+        settings.OwnsGameInis.Should().BeTrue();
+        settings.KeepSavesWithLoadout.Should().BeTrue();
+        var stored = Reload(loadout);
+        Loadout.OwnsGameInis.Get(stored).Should().BeTrue();
+        Loadout.KeepSavesWithLoadout.Get(stored).Should().BeTrue();
+        settings.CanKeepSaves.Should().BeTrue();
     }
 
     [Fact]

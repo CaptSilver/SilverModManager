@@ -1677,6 +1677,12 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="LoadoutGameSettings_OwnInis_ToolTip" xml:space="preserve">
         <value>The loadout writes the game's INI files from its own copy each time it is applied. Turn this off to leave them to the game.</value>
     </data>
+    <data name="LoadoutGameSettings_DisownInis_Title" xml:space="preserve">
+        <value>Stop owning the game INIs?</value>
+    </data>
+    <data name="LoadoutGameSettings_DisownInis_Text" xml:space="preserve">
+        <value>This loadout keeps its saves apart by setting the save folder in its INI. Without the INI, the game goes back to its normal save folder. The saves this loadout already has stay in its Saves/ slot folder. Turn off both?</value>
+    </data>
     <data name="LoadoutGameSettings_AdoptSave_Title" xml:space="preserve">
         <value>Copy your current save into this loadout's slot?</value>
     </data>

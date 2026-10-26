@@ -244,10 +244,16 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     protected virtual bool SaveRedirectNeedsMyGamesDirectory => false;
 
     /// <inheritdoc />
+    /// <remarks>
+    /// The save folder is only ever written into the loadout's own copy of the INI, and a loadout that does not own
+    /// its INIs has none, so the redirect would silently do nothing.
+    /// </remarks>
     public SaveRedirectPlan? PlanSaveRedirect(Loadout.ReadOnly loadout) =>
         SaveRedirectUnsupportedReason is { } reason
             ? new SaveRedirectPlan.Unsupported(reason)
-            : new SaveRedirectPlan.IniKey("General", "sLocalSavePath", $"Saves\\{LoadoutSaveSlot.IdOf(loadout)}\\");
+            : !Loadout.OwnsGameInis.Get(loadout)
+                ? new SaveRedirectPlan.Unsupported("Needs 'Own the game INIs': the save folder is set through the game's INI.")
+                : new SaveRedirectPlan.IniKey("General", "sLocalSavePath", $"Saves\\{LoadoutSaveSlot.IdOf(loadout)}\\");
 
     private IEnumerable<IniKeyEdit> SaveRedirectKeys(Loadout.ReadOnly loadout)
     {

@@ -120,7 +120,10 @@ public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel
                 {
                     GameSettingsStack.IsVisible = true;
                     OwnInisBox.IsVisible = settings.ShowOwnsGameInis;
-                    ToolTip.SetTip(KeepSavesBox, settings.KeepSavesToolTip);
+                    settings.WhenAnyValue(x => x.KeepSavesToolTip)
+                        .OnUI()
+                        .Subscribe(tip => ToolTip.SetTip(KeepSavesBox, tip))
+                        .DisposeWith(d);
                     settings.WhenAnyValue(x => x.KeepSavesWithLoadout)
                         .OnUI()
                         .Subscribe(keep => KeepSavesBox.IsChecked = keep)

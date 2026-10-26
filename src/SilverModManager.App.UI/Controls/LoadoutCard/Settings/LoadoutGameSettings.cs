@@ -72,7 +72,7 @@ public sealed partial class LoadoutGameSettings : ReactiveObject
         // Switching off stays possible when the game has since stopped supporting it, or the flag could never be cleared.
         ToggleKeepSavesCommand = ReactiveCommand.CreateFromTask(
             ToggleKeepSaves,
-            this.WhenAnyValue(vm => vm.KeepSavesWithLoadout, keep => keep || CanKeepSaves));
+            this.WhenAnyValue(vm => vm.KeepSavesWithLoadout, vm => vm.CanKeepSaves, (keep, can) => keep || can));
         ToggleOwnsGameInisCommand = ReactiveCommand.CreateFromTask(ToggleOwnsGameInis);
     }
 
@@ -112,10 +112,10 @@ public sealed partial class LoadoutGameSettings : ReactiveObject
     [Reactive] public partial bool OwnsGameInis { get; private set; }
 
     /// <summary>Whether the user can turn "keep saves" on for this game and loadout.</summary>
-    public bool CanKeepSaves { get; }
+    [Reactive] public partial bool CanKeepSaves { get; private set; }
 
     /// <summary>Why "keep saves" is disabled, or what to know before turning it on.</summary>
-    public string KeepSavesToolTip { get; }
+    [Reactive] public partial string KeepSavesToolTip { get; private set; }
 
     /// <summary>Whether to show "own the game INIs" at all: only a game that reads INI files has anything to own.</summary>
     public bool ShowOwnsGameInis { get; }
@@ -153,8 +153,21 @@ public sealed partial class LoadoutGameSettings : ReactiveObject
     private async Task ToggleOwnsGameInis()
     {
         var value = !OwnsGameInis;
+        if (!value && KeepSavesWithLoadout)
+        {
+            // The save folder is set through the loadout's INI, so without it the game falls back to its normal one.
+            var answer = await _windows.ShowDialog(
+                YesNoDialog(Language.LoadoutGameSettings_DisownInis_Title, Language.LoadoutGameSettings_DisownInis_Text, defaultYes: false),
+                DialogWindowType.Modal);
+            if (answer.ButtonId != ButtonDefinitionId.Accept) return;
+
+            await Write(Loadout.KeepSavesWithLoadout, false);
+            KeepSavesWithLoadout = false;
+        }
+
         await Write(Loadout.OwnsGameInis, value);
         OwnsGameInis = value;
+        (CanKeepSaves, KeepSavesToolTip) = DescribeKeepSaves(Fresh());
     }
 
     private async Task ToggleKeepSaves()

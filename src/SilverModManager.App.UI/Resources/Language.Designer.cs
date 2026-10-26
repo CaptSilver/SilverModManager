@@ -4903,6 +4903,24 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Stop owning the game INIs?.
+        /// </summary>
+        public static string LoadoutGameSettings_DisownInis_Title {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_DisownInis_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This loadout keeps its saves apart by setting the save folder in its INI. Without the INI, the game goes back to its normal save folder. The saves this loadout already has stay in its Saves/ slot folder. Turn off both?.
+        /// </summary>
+        public static string LoadoutGameSettings_DisownInis_Text {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_DisownInis_Text", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to The saves were not deleted.
         /// </summary>
         public static string LoadoutGameSettings_DeleteRefusedTitle {

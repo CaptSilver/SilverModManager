@@ -54,6 +54,34 @@ public class PerLoadoutSavesTests(ITestOutputHelper helper) : AIsolatedGameTest<
             new SaveRedirectPlan.IniKey("General", "sLocalSavePath", $"Saves\\{LoadoutSaveSlot.IdOf(loadout)}\\"));
     }
 
+    private async Task OwnInis(Loadout.ReadOnly loadout, bool owns)
+    {
+        using var tx = Connection.BeginTransaction();
+        tx.Add(loadout.Id, Loadout.OwnsGameInis, owns);
+        await tx.Commit();
+    }
+
+    [Fact]
+    public async Task TheRedirectIsUnsupportedWhileTheLoadoutDoesNotOwnItsInis()
+    {
+        var loadout = await CreateLoadout();
+        await OwnInis(loadout, false);
+
+        Saves.PlanSaveRedirect(Refresh(loadout)).Should().Be(
+            new SaveRedirectPlan.Unsupported("Needs 'Own the game INIs': the save folder is set through the game's INI."));
+    }
+
+    [Fact]
+    public async Task TheRedirectIsSupportedAgainOnceTheLoadoutOwnsItsInisAgain()
+    {
+        var loadout = await CreateLoadout();
+        await OwnInis(loadout, false);
+        await OwnInis(loadout, true);
+
+        Saves.PlanSaveRedirect(Refresh(loadout)).Should().Be(
+            new SaveRedirectPlan.IniKey("General", "sLocalSavePath", $"Saves\\{LoadoutSaveSlot.IdOf(loadout)}\\"));
+    }
+
     [Fact]
     public async Task RenamingTheLoadoutLeavesTheRedirectAlone()
     {
