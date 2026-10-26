@@ -53,4 +53,7 @@
         </EmbeddedResource>
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="SilverModManager.UI.Tests" />
+    </ItemGroup>
 </Project>

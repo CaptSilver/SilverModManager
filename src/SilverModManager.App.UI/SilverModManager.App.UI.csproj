@@ -46,6 +46,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="SilverModManager.UI.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.Games.FOMOD.UI" />
     </ItemGroup>
 
     <ItemGroup>
