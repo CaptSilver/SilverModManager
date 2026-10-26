@@ -154,9 +154,9 @@ WITH
       coalesce(list(conflicting_path.Winner.LoadoutItemId) FILTER (WHERE conflicting_path.Winner.PriorityId = priority.Id), []) AS WinningFiles,
       coalesce(flatten(list(list_transform(list_filter(conflicting_path.Losers, x -> x.PriorityId = priority.Id), x -> x.LoadoutItemId))), []) AS LosingFiles
     FROM
-      synchronizer.ConflictingPaths(NULL) conflicting_path
+      synchronizer.ConflictingPaths(db) conflicting_path
       CROSS JOIN unnest(conflicting_path.Conflicts) conflict
-      JOIN MDB_LOADOUTITEMGROUPPRIORITY (Db => NULL) priority ON conflict."unnest".PriorityId = priority.Id
+      JOIN MDB_LOADOUTITEMGROUPPRIORITY (Db => db) priority ON conflict."unnest".PriorityId = priority.Id
     GROUP BY priority.Id
   )
 SELECT

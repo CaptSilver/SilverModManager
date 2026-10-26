@@ -202,6 +202,12 @@ internal partial class LoadoutManager : ILoadoutManager
             entityIdList[item.Id] = tx.TempId();
         }
 
+        // Priority rows aren't LoadoutItems; without them the copy has no conflict order at all.
+        foreach (var priority in LoadoutItemGroupPriority.FindByLoadout(loadout.Db, loadout))
+        {
+            entityIdList[priority.Id] = tx.TempId();
+        }
+
         foreach (var (oldId, newId) in entityIdList)
         {
             // Get the original entity

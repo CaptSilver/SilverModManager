@@ -47,8 +47,8 @@ public class VfsSourcesTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
         var low = AddEmptyGroup(tx, loadout.LoadoutId, "Low");
         var high = AddEmptyGroup(tx, loadout.LoadoutId, "High");
         AddFile(tx, loadout.LoadoutId, low, new GamePath(LocationId.Game, "Data/conflict.txt"), "from low");
-        AddFile(tx, loadout.LoadoutId, low, new GamePath(LocationId.Game, "Data/only-in-low.txt"), "only low");
-        AddFile(tx, loadout.LoadoutId, high, new GamePath(LocationId.Game, "Data/conflict.txt"), "from high");
+        AddFile(tx, loadout.LoadoutId, low, new GamePath(LocationId.Game, "Data/only-in-low.txt"), "only low", out var onlyLowHash, out _);
+        AddFile(tx, loadout.LoadoutId, high, new GamePath(LocationId.Game, "Data/conflict.txt"), "from high", out var fromHighHash, out _);
         AddDelete(tx, loadout.LoadoutId, high, new GamePath(LocationId.Game, "Data/image.dds"));
         // "Low" starts on top; the manager has to move "High" above it, the way the conflict UI does.
         _ = new LoadoutItemGroupPriority.New(tx) { LoadoutId = loadout.LoadoutId, TargetId = low, Priority = ConflictPriority.From(2) };
@@ -64,7 +64,8 @@ public class VfsSourcesTests(ITestOutputHelper helper) : AStubbedGameIsolatedTes
         var set = VfsSources.FromSyncTree(tree, deleted, DataRoot, StagedPathFor);
 
         var picked = tree[new GamePath(LocationId.Game, "Data/conflict.txt")].Loadout.Hash;
-        picked.Should().NotBe(Hash.Zero);
+        picked.Should().Be(fromHighHash, "winning all conflicts for High puts its copy of the file on top");
+        tree[new GamePath(LocationId.Game, "Data/only-in-low.txt")].Loadout.Hash.Should().Be(onlyLowHash);
         set.Unserved.Should().BeEmpty();
         set.Sources.Select(s => s.Path.ToString()).Should().BeEquivalentTo("conflict.txt", "only-in-low.txt", "image.dds");
         set.Sources.Should().OnlyContain(s => !s.Path.ToString().StartsWith("Data/", StringComparison.OrdinalIgnoreCase));

@@ -117,7 +117,7 @@ internal partial class LoadoutManager
     /// <summary>
     /// Adds a priority to an item.
     /// </summary>
-    private class AddPriorityTxFunc : ITxFunction
+    internal class AddPriorityTxFunc : ITxFunction
     {
         private readonly LoadoutId _loadoutId;
         private readonly LoadoutItemGroupId _targetId;
@@ -131,10 +131,10 @@ internal partial class LoadoutManager
         public bool Equals(ITxFunction? obj)
         {
             if (obj is not AddPriorityTxFunc other) return false;
-            return other._loadoutId.Equals(_loadoutId);
+            return other._loadoutId.Equals(_loadoutId) && other._targetId.Equals(_targetId);
         }
 
-        public override int GetHashCode() => _loadoutId.GetHashCode();
+        public override int GetHashCode() => HashCode.Combine(_loadoutId, _targetId);
 
         public void Apply(ITransaction tx, IDb basis)
         {
