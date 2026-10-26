@@ -723,40 +723,72 @@ internal partial class LoadoutManager : ILoadoutManager
 
     public async ValueTask ApplyCollectionDownloadRules(NexusCollectionLoadoutGroupId collectionId)
     {
-        var items = _connection.Query<EntityId>($"SELECT Id FROM MDB_NexusCollectionItemLoadoutGroup(Db => {_connection}) WHERE Parent = {collectionId.Value}").ToList();
-
-        var rulesQuery = _connection.Query<(EntityId SourceId, EntityId OtherId, int RuleType)>(
+        var collectionRules = _connection.Query<(EntityId SourceId, EntityId OtherId, int RuleType)>(
             $"""
               SELECT Source, Other, RuleType FROM loadouts.CollectionRulesOnItems({_connection})
               WHERE Parent = {collectionId.Value};
               """
         );
 
-        var rules = rulesQuery
-            .GroupBy(tuple => tuple.SourceId, tuple => (tuple.OtherId, tuple.RuleType))
-            .ToFrozenDictionary(group => group.Key, group => group.ToArray());
+        var db = _connection.Db;
+        var loadoutId = LoadoutItem.Load(db, collectionId).LoadoutId;
 
-        var sortedItems = new Sorter().Sort(
-            items: items,
-            idSelector: static x => x,
-            ruleFn: id =>
-            {
-                if (!rules.TryGetValue(id, out var itemRules)) return [];
-                return itemRules.Select(ISortRule<EntityId, EntityId> (rule) => (CollectionDownloadRuleType)rule.RuleType switch
+        // The query only returns rules whose two downloads both have an installed group in this collection.
+        var wanted = collectionRules
+            .Select(static rule => new GroupRule(
+                LoadoutItemGroupId.From(rule.SourceId.Value),
+                LoadoutItemGroupId.From(rule.OtherId.Value),
+                (CollectionDownloadRuleType)rule.RuleType switch
                 {
-                    CollectionDownloadRuleType.Before => new Before<EntityId, EntityId>() { Other = rule.OtherId },
-                    CollectionDownloadRuleType.After => new After<EntityId, EntityId>() { Other = rule.OtherId },
+                    CollectionDownloadRuleType.Before => GroupRuleKind.Before,
+                    CollectionDownloadRuleType.After => GroupRuleKind.After,
                     _ => throw new UnreachableException(),
-                }).ToArray();
-            }
-        ).ToImmutableArray();
+                }))
+            .Distinct()
+            .ToArray();
+
+        var stored = StoredGroupRules(db, loadoutId).ToHashSet();
+        var added = wanted.Where(rule => !stored.Contains(rule)).ToImmutableArray();
+        if (added.IsEmpty) return;
+
+        // Checked before the transaction, as in AddGroupRule: inside it the resolver can only fail the commit, which
+        // reads as a crash, and a collection that contradicts itself or the player's rules is a refusal, not a bug.
+        var delta = new RuleDelta { Candidates = added };
+        if (RuleResolver.Resolve(PriorityOrder(db, loadoutId), stored, delta).Cycle is { } cycle)
+        {
+            throw new CollectionRulesCycleException(
+                collectionName: LoadoutItem.Load(db, collectionId).Name,
+                firstGroupName: LoadoutItem.Load(db, cycle.First).Name,
+                secondGroupName: LoadoutItem.Load(db, cycle.Second).Name
+            );
+        }
 
         using var tx = _connection.BeginTransaction();
+        foreach (var rule in added)
+        {
+            _ = new LoadoutGroupRule.New(tx)
+            {
+                LoadoutId = loadoutId,
+                SourceId = rule.Source,
+                OtherId = rule.Other,
+                Kind = rule.Kind,
+            };
+        }
 
-        var loadoutId = LoadoutItem.Load(_connection.Db, collectionId).LoadoutId;
-        tx.Add(new ApplyCollectionRulesTxFunc(loadoutId, sortedItems));
+        // The resolver can't read the rows written above, so the new rules travel with it.
+        tx.Add(new ApplyGroupRulesTxFunc(loadoutId, delta));
         await tx.Commit();
     }
+
+    private static LoadoutItemGroupId[] PriorityOrder(IDb db, LoadoutId loadoutId) => LoadoutItemGroupPriority
+        .FindByLoadout(db, loadoutId)
+        .OrderBy(static p => p.Priority)
+        .Select(static p => p.TargetId)
+        .ToArray();
+
+    private static IEnumerable<GroupRule> StoredGroupRules(IDb db, LoadoutId loadoutId) => LoadoutGroupRule
+        .FindByLoadout(db, loadoutId)
+        .Select(static rule => new GroupRule(rule.SourceId, rule.OtherId, rule.Kind));
 
     public async ValueTask<AddGroupRuleResult> AddGroupRule(LoadoutId loadoutId, LoadoutItemGroupId source, LoadoutItemGroupId other, GroupRuleKind kind)
     {
@@ -766,15 +798,14 @@ internal partial class LoadoutManager : ILoadoutManager
 
         // The resolver inside the transaction only sees the rows from before it, so the cycle check runs here over
         // the stored rules plus the candidate and a refused rule never reaches the database.
-        var order = LoadoutItemGroupPriority.FindByLoadout(db, loadoutId).OrderBy(static p => p.Priority).Select(static p => p.TargetId).ToArray();
+        var order = PriorityOrder(db, loadoutId);
 
         // The resolver skips rules naming a group outside the order, so without this check a rule on a group of
         // another loadout, or on a nested group, would be stored and never do anything.
         if (!order.Contains(source)) throw new ArgumentException($"Group {source.Value} has no priority in loadout {loadoutId.Value}.", nameof(source));
         if (!order.Contains(other)) throw new ArgumentException($"Group {other.Value} has no priority in loadout {loadoutId.Value}.", nameof(other));
 
-        var stored = LoadoutGroupRule.FindByLoadout(db, loadoutId).Select(static r => new GroupRule(r.SourceId, r.OtherId, r.Kind));
-        if (RuleResolver.Resolve(order, stored, delta).Cycle is { } cycle) return AddGroupRuleResult.Cyclic(cycle);
+        if (RuleResolver.Resolve(order, StoredGroupRules(db, loadoutId), delta).Cycle is { } cycle) return AddGroupRuleResult.Cyclic(cycle);
 
         using var tx = _connection.BeginTransaction();
         var rule = new LoadoutGroupRule.New(tx)

@@ -7,6 +7,7 @@ using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Collections.Json;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Abstractions.NexusWebApi.Types;
@@ -127,7 +128,8 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
     }
 
     private async Task<(NexusModsCollectionLibraryFile.ReadOnly File, CollectionRevisionMetadata.ReadOnly Revision, CollectionDownload.ReadOnly[] Items)> CreateCollection(
-        (FomodOption[]? Choices, string Name)[] fomodMods, int[]? optionalIndexes = null)
+        (FomodOption[]? Choices, string Name)[] fomodMods, int[]? optionalIndexes = null,
+        (int Source, int Other, CollectionDownloadRuleType Type)[]? rules = null)
     {
         var folder = TemporaryFileManager.CreateFolder();
         var slug = CollectionSlug.From("offline");
@@ -194,6 +196,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
             CollectionId = collection,
         };
 
+        var downloads = new List<CollectionDownload.New>();
         for (var i = 0; i < mods.Count; i++)
         {
             var download = new CollectionDownload.New(tx)
@@ -203,6 +206,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
                 IsOptional = optionalIndexes?.Contains(i) ?? false,
                 Name = mods[i].Name,
             };
+            downloads.Add(download);
 
             _ = new CollectionDownloadExternal.New(tx, download.Id)
             {
@@ -210,6 +214,17 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
                 Md5 = mods[i].Source.Md5,
                 Size = mods[i].Source.FileSize,
                 Uri = mods[i].Source.Url!,
+            };
+        }
+
+        foreach (var (source, other, type) in rules ?? [])
+        {
+            _ = new CollectionDownloadRules.New(tx)
+            {
+                SourceId = downloads[source],
+                OtherId = downloads[other],
+                RuleType = type,
+                ArrayIndex = 0,
             };
         }
 
@@ -355,6 +370,26 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         last.Total.Should().Be(0);
         last.Installed.Should().Be(0);
         last.IsFinished.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TheCollectionsRulesAreKeptOnTheLoadoutAsGroupRules()
+    {
+        var mods = Enumerable.Range(0, 3).Select(i => (Choices(), $"Fomod mod {i}")).ToArray();
+        // Mod 0 has to win over mod 1, which the install order would not give it.
+        var (file, revision, items) = await CreateCollection(mods, rules: [(0, 1, CollectionDownloadRuleType.After)]);
+        var loadout = await CreateLoadout();
+
+        var group = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+
+        var rule = LoadoutGroupRule.FindByLoadout(group.Db, loadout).Should().ContainSingle().Subject;
+        rule.Kind.Should().Be(GroupRuleKind.After);
+        var nameOf = (LoadoutItemGroupId id) => LoadoutItem.Load(group.Db, id).Name;
+        (nameOf(rule.SourceId), nameOf(rule.OtherId)).Should().Be(("Fomod mod 0", "Fomod mod 1"));
+
+        var order = LoadoutItemGroupPriority.FindByLoadout(group.Db, loadout).OrderBy(p => p.Priority).Select(p => nameOf(p.TargetId)).ToList();
+        order.Should().Contain(["Fomod mod 0", "Fomod mod 1"]);
+        order.IndexOf("Fomod mod 0").Should().BeGreaterThan(order.IndexOf("Fomod mod 1"));
     }
 
     [Fact]
