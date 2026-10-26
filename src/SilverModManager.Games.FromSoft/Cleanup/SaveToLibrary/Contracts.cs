@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using SilverModManager.Games.Generic.ModProvenance;
 using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
@@ -14,7 +15,7 @@ public sealed record NexusModHit(uint ModId, string Name);
 /// What the save step asks Nexus Mods. The app implements it over its GraphQL client; this project does not reference
 /// the network code, and tests answer from memory.
 /// </summary>
-public interface INexusCatalog
+public interface INexusCatalog : IArchiveCatalog
 {
     /// <summary>The files of a mod page, or null when the page is unknown.</summary>
     Task<IReadOnlyList<NexusFile>?> ListFilesAsync(NexusModsGameId game, uint modId, CancellationToken cancellationToken);
@@ -64,12 +65,16 @@ public interface IModDownloader
 /// <summary>A Nexus Mods file the cleanup is about to lose the only copy of.</summary>
 /// <param name="Id">What the old manager called it.</param>
 /// <param name="Name">The file's name on Nexus Mods, or <paramref name="Id"/> when it is not known.</param>
-public sealed record ModToSave(string Id, string Name, string Version, uint ModId, uint FileId);
+/// <param name="IdentifiedBy">How the mod was identified, in words for the confirm list ("from Fluorine's records"), or null when not said.</param>
+public sealed record ModToSave(string Id, string Name, string Version, uint ModId, uint FileId, string? IdentifiedBy = null);
 
 public enum ListedReason
 {
     AlreadyInLibrary,
     GitHub,
+
+    /// <summary>A Thunderstore package; the user installs those from Thunderstore, not Nexus Mods.</summary>
+    Thunderstore,
     Unidentified,
 }
 

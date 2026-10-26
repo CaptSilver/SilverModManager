@@ -13,6 +13,9 @@ internal partial class GraphQlClient : IGraphQlClient
     private readonly ILogger _logger;
     private readonly INexusGraphQLClient _client;
 
+    // The endpoint takes a list; keep each request well under any query size limit.
+    private const int FileHashBatchSize = 100;
+
     public GraphQlClient(
         ILogger<GraphQlClient> logger,
         INexusGraphQLClient client)
@@ -116,6 +119,27 @@ internal partial class GraphQlClient : IGraphQlClient
         );
 
         return operationResult.Transform(out GraphQlResult<IModFile[], NotFound> _, static result => result.ModFiles, static fileList => fileList.ToArray<IModFile>());
+    }
+
+    public async ValueTask<GraphQlResult<ArchiveHash[]>> QueryFileHashes(IReadOnlyCollection<string> md5s, CancellationToken cancellationToken)
+    {
+        var hits = new List<ArchiveHash>();
+        foreach (var batch in ArchiveHashes.Batch(md5s, FileHashBatchSize))
+        {
+            var operationResult = await _client.QueryFileHashes.ExecuteAsync(md5s: batch, cancellationToken: cancellationToken);
+            var result = operationResult.Transform(
+                static result => result.FileHashes ?? Array.Empty<IQueryFileHashes_FileHashes>(),
+                static found => found
+                    .Where(h => ArchiveHashes.IsModArchive(h.FileType) && h.ModFile is not null)
+                    .Select(h => new ArchiveHash(h.Md5.ToLowerInvariant(), h.FileName, (uint)h.GameId, (uint)(h.ModFile?.ModId ?? 0), (uint)h.ModFileId))
+                    .ToArray());
+
+            // A failed batch fails the lookup; a half answer would look like "not found".
+            if (!result.TryGetData(out var batchHits)) return result;
+            hits.AddRange(batchHits);
+        }
+
+        return hits.ToArray();
     }
 
     public async ValueTask<GraphQlResult<IQueryMods_Mods>> QueryMods(ModsFilter filter, IReadOnlyList<ModsSort> sort, int offset, int count, CancellationToken cancellationToken)

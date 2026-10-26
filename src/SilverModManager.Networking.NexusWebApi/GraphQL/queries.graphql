@@ -120,3 +120,16 @@ query QueryCollectionRevisionNumbers($collectionSlug: String!, $gameDomainName: 
         }
     }
 }
+
+query QueryFileHashes($md5s: [String!]!) {
+    fileHashes(md5s: $md5s) {
+        md5
+        fileName
+        fileType
+        gameId
+        modFileId
+        modFile {
+            modId
+        }
+    }
+}

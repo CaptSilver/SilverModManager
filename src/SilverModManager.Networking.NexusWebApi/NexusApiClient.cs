@@ -153,6 +153,13 @@ public class NexusApiClient : INexusApiClient
         return await SendAsyncArray<ModUpdate>(msg, token: token);
     }
 
+    /// <inheritdoc />
+    public async Task<Response<ModFiles>> ModFilesAsync(string domain, ModId modId, CancellationToken token = default)
+    {
+        var msg = await _factory.Create(HttpMethod.Get, new Uri($"{ClientConfig.LegacyApiEndpoint}/games/{Uri.EscapeDataString(domain)}/mods/{modId.Value}/files.json"));
+        return await SendAsync<ModFiles>(msg, token);
+    }
+
     private async Task<Response<T>> SendAsync<T>(HttpRequestMessage message,
         CancellationToken token = default) where T : IJsonSerializable<T>
     {

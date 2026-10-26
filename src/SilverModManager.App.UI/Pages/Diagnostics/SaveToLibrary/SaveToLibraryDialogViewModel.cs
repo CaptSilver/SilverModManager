@@ -9,7 +9,7 @@ public sealed class SaveToLibraryRow(ModToSave mod, string link)
 {
     public ModToSave Mod { get; } = mod;
 
-    public string Label { get; } = $"{mod.Name} {mod.Version}";
+    public string Label { get; } = mod.IdentifiedBy is { } how ? $"{mod.Name} {mod.Version} ({how})" : $"{mod.Name} {mod.Version}";
 
     /// <summary>The page the file is on, shown so the user can see where it comes from.</summary>
     public string Link { get; } = link;

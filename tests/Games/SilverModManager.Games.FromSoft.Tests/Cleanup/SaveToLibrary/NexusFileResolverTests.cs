@@ -1,5 +1,6 @@
 using FluentAssertions;
 using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
+using SilverModManager.Games.Generic.ModProvenance;
 using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Games.FromSoft.Tests.Cleanup.SaveToLibrary;
@@ -180,6 +181,8 @@ public class NexusFileResolverTests
         public Task<uint?> ModOfFileAsync(NexusModsGameId game, uint fileId, CancellationToken cancellationToken) => throw new HttpRequestException("offline");
         public Task<IReadOnlyList<NexusModHit>> FindModsByNameAsync(NexusModsGameId game, string name, CancellationToken cancellationToken) => throw new HttpRequestException("offline");
         public Task<uint?> FindMainFileAsync(NexusModsGameId game, uint modId, CancellationToken cancellationToken) => throw new HttpRequestException("offline");
+        public Task<IReadOnlyList<ArchiveHit>> LookupArchivesAsync(IReadOnlyList<string> md5s, CancellationToken cancellationToken) => throw new HttpRequestException("offline");
+        public Task<IReadOnlyList<ArchiveEntry>?> ListArchiveContentAsync(uint game, uint modId, uint fileId, CancellationToken cancellationToken) => throw new HttpRequestException("offline");
     }
 
     private sealed class CancellingCatalog : INexusCatalog
@@ -188,5 +191,7 @@ public class NexusFileResolverTests
         public Task<uint?> ModOfFileAsync(NexusModsGameId game, uint fileId, CancellationToken cancellationToken) => throw new OperationCanceledException(cancellationToken);
         public Task<IReadOnlyList<NexusModHit>> FindModsByNameAsync(NexusModsGameId game, string name, CancellationToken cancellationToken) => throw new OperationCanceledException(cancellationToken);
         public Task<uint?> FindMainFileAsync(NexusModsGameId game, uint modId, CancellationToken cancellationToken) => throw new OperationCanceledException(cancellationToken);
+        public Task<IReadOnlyList<ArchiveHit>> LookupArchivesAsync(IReadOnlyList<string> md5s, CancellationToken cancellationToken) => throw new OperationCanceledException(cancellationToken);
+        public Task<IReadOnlyList<ArchiveEntry>?> ListArchiveContentAsync(uint game, uint modId, uint fileId, CancellationToken cancellationToken) => throw new OperationCanceledException(cancellationToken);
     }
 }

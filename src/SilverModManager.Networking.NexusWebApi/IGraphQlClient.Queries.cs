@@ -72,6 +72,13 @@ public partial interface IGraphQlClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Looks up uploaded archives by MD5, in batches. Only whole archives are known to Nexus Mods, never the files inside them.
+    /// </summary>
+    ValueTask<GraphQlResult<ArchiveHash[]>> QueryFileHashes(
+        IReadOnlyCollection<string> md5s,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Queries one page of a game's mods.
     /// </summary>
     ValueTask<GraphQlResult<IQueryMods_Mods>> QueryMods(

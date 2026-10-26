@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using FluentAssertions;
 using SilverModManager.Games.FromSoft.Cleanup;
 using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
+using SilverModManager.Games.Generic.ModProvenance;
 using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Games.FromSoft.Tests.Cleanup.SaveToLibrary;
@@ -61,7 +62,7 @@ public class SavePlannerTests : IDisposable
 
         var plan = await Planner.PlanAsync(Game, Scope(["x"]), default);
 
-        plan.Save.Should().Equal(new ModToSave("adjust-the-fov", "adjust-the-fov", "2.0", 325, 5087));
+        plan.Save.Should().Equal(new ModToSave("adjust-the-fov", "adjust-the-fov", "2.0", 325, 5087, "from erm's lock file"));
         var github = plan.Listed.Should().ContainSingle().Subject;
         github.Reason.Should().Be(ListedReason.GitHub);
         github.Id.Should().Be("me3-host");
@@ -140,10 +141,12 @@ public class SavePlannerTests : IDisposable
         Catalog.Search["Elden Mod Loader"] = [new NexusModHit(117, "Elden Mod Loader")];
         Catalog.MainFile[117] = 3000;
         Catalog.Files[117] = [new NexusFile(3000, "Elden Mod Loader", "3.2", 1_662_569_069)];
+        WriteFile("Game/mods/Elden Mod Loader/loader.dll", "12345");
+        Catalog.Content[(117, 3000)] = [new ArchiveEntry("loader.dll", 5)];
 
         var plan = await Planner.PlanAsync(Game, Scope(["Elden Mod Loader"]), default);
 
-        plan.Save.Should().Equal(new ModToSave("Elden Mod Loader", "Elden Mod Loader", "3.2", 117, 3000));
+        plan.Save.Should().Equal(new ModToSave("Elden Mod Loader", "Elden Mod Loader", "3.2", 117, 3000, "by name, files checked"));
     }
 
     [Fact]
@@ -191,6 +194,8 @@ public class SavePlannerTests : IDisposable
         Catalog.Search["Elden Mod Loader"] = [new NexusModHit(117, "elden mod loader")];
         Catalog.MainFile[117] = 3000;
         Catalog.Files[117] = [new NexusFile(3000, "Elden Mod Loader", "3.2", 1_662_569_069)];
+        WriteFile("Game/mods/Elden Mod Loader/loader.dll", "12345");
+        Catalog.Content[(117, 3000)] = [new ArchiveEntry("loader.dll", 5)];
 
         var plan = await Planner.PlanAsync(Game, Scope(["Elden Mod Loader"]), default);
 

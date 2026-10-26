@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
+using SilverModManager.Games.Generic.ModProvenance;
 using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Games.FromSoft.Tests.Cleanup.SaveToLibrary;
@@ -12,6 +13,9 @@ internal sealed class FakeCatalog : INexusCatalog
     public Dictionary<string, List<NexusModHit>> Search { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<uint, uint> MainFile { get; } = [];
     public List<string> Calls { get; } = [];
+    public Dictionary<string, ArchiveHit> Archives { get; } = [];
+    public Dictionary<(uint Mod, uint File), List<ArchiveEntry>> Content { get; } = [];
+    public List<string[]> HashLookups { get; } = [];
 
     public Task<IReadOnlyList<NexusFile>?> ListFilesAsync(NexusModsGameId game, uint modId, CancellationToken cancellationToken)
     {
@@ -29,6 +33,19 @@ internal sealed class FakeCatalog : INexusCatalog
     {
         Calls.Add($"search {name}");
         return Task.FromResult<IReadOnlyList<NexusModHit>>(Search.TryGetValue(name, out var hits) ? hits : []);
+    }
+
+    public Task<IReadOnlyList<ArchiveHit>> LookupArchivesAsync(IReadOnlyList<string> md5s, CancellationToken cancellationToken)
+    {
+        Calls.Add("hashes");
+        HashLookups.Add([..md5s]);
+        return Task.FromResult<IReadOnlyList<ArchiveHit>>(md5s.Where(Archives.ContainsKey).Select(h => Archives[h]).ToArray());
+    }
+
+    public Task<IReadOnlyList<ArchiveEntry>?> ListArchiveContentAsync(uint game, uint modId, uint fileId, CancellationToken cancellationToken)
+    {
+        Calls.Add($"content {modId}/{fileId}");
+        return Task.FromResult<IReadOnlyList<ArchiveEntry>?>(Content.TryGetValue((modId, fileId), out var entries) ? entries : null);
     }
 
     public Task<uint?> FindMainFileAsync(NexusModsGameId game, uint modId, CancellationToken cancellationToken)

@@ -89,4 +89,12 @@ public interface INexusApiClient
     /// <param name="token">Token used to cancel the task.</param>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
     Task<Response<ModUpdate[]>> ModUpdatesAsync(string domain, PastTime time, CancellationToken token = default);
+
+    /// <summary>
+    /// Retrieves the files of a mod page, each with the link to the listing of what is inside its archive.
+    /// </summary>
+    /// <param name="domain">The game's domain name, e.g. 'eldenring'.</param>
+    /// <param name="modId">The mod page.</param>
+    /// <param name="token">Token used to cancel the task.</param>
+    Task<Response<ModFiles>> ModFilesAsync(string domain, ModId modId, CancellationToken token = default);
 }

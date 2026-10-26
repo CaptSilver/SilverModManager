@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using SilverModManager.Games.Generic.ModProvenance;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
@@ -9,7 +11,7 @@ public interface ILibrarySaver
 }
 
 /// <inheritdoc />
-public sealed class LibrarySaver(INexusCatalog catalog, ILibraryProbe library) : ILibrarySaver
+public sealed class LibrarySaver(INexusCatalog catalog, ILibraryProbe library, ILogger<LibrarySaver>? logger = null) : ILibrarySaver
 {
     public async Task<SavePlan> PlanAsync(Loadout.ReadOnly loadout, CleanupPlan cleanup, CancellationToken cancellationToken = default)
     {
@@ -21,7 +23,12 @@ public sealed class LibrarySaver(INexusCatalog catalog, ILibraryProbe library) :
 
         // The folder is read here, off the UI thread, before any network call.
         var inventory = await Task.Run(() => GameFolderInventory.Take(gameFolder), cancellationToken);
-        var scope = new SaveScope(gameFolder.GetFullPath(), game.Cleanup.ModsFolder, inventory, cleanup);
-        return await new SavePlanner(catalog, library).PlanAsync(nexusId, scope, cancellationToken);
+        var fullGameFolder = gameFolder.GetFullPath();
+
+        // Other managers know the game by its name, and by the folder it is installed in ("ELDEN RING").
+        var names = new[] { installation.Game.DisplayName, Path.GetFileName(Path.GetDirectoryName(fullGameFolder)) }.OfType<string>().Where(n => n.Length > 0).ToArray();
+        var search = new ManagerSearch(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), [], []);
+        var scope = new SaveScope(fullGameFolder, game.Cleanup.ModsFolder, inventory, cleanup, search, names);
+        return await new SavePlanner(catalog, library, logger).PlanAsync(nexusId, scope, cancellationToken);
     }
 }

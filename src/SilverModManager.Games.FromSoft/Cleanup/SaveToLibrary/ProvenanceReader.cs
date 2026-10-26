@@ -16,7 +16,8 @@ public static class ProvenanceSources
 /// <param name="Version">The pinned version, if the lock gave one.</param>
 /// <param name="FileId">The Nexus Mods file id, if the lock gave a usable one.</param>
 /// <param name="Asset">The archive's file name, if the lock gave one.</param>
-public sealed record ProvenanceEntry(string Id, string Source, string? Version, uint? FileId, string? Asset);
+/// <param name="ModId">The Nexus Mods page, when a source other than the lock's archive name gave it.</param>
+public sealed record ProvenanceEntry(string Id, string Source, string? Version, uint? FileId, string? Asset, uint? ModId = null);
 
 /// <param name="Entries">Every entry that could be read, in the file's order.</param>
 /// <param name="Problems">What was skipped or refused, one sentence each.</param>
