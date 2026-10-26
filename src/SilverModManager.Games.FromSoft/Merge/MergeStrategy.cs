@@ -17,4 +17,7 @@ public enum MergeStrategy
 
     /// <summary>Talk script archives compared against the vanilla file the mods branched from.</summary>
     EsdThreeWay,
+
+    /// <summary>Equipment part bundles compared against the vanilla file the mods branched from, member by member.</summary>
+    PartsbndThreeWay,
 }

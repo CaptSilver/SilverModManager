@@ -436,6 +436,27 @@ public class MergePlannerTests
     }
 
     [Fact]
+    public void The_real_partsbnd_strategy_takes_each_mods_own_member()
+    {
+        const string path = "parts/wp_a_0556.partsbnd.dcx";
+        byte[] Bundle(byte[] model, byte[] animations) => PartsbndFixture.Build(ER, [(200, "a.flver", model), (400, "a.anibnd", animations)]);
+        var van = Bundle([1, 1, 1], [2, 2, 2]);
+        var contents = new Dictionary<string, byte[]>
+        {
+            ["high:" + path] = Bundle([1, 1, 1], [9, 9, 9]),
+            ["low:" + path] = Bundle([7, 7, 7], [2, 2, 2]),
+        };
+
+        var plan = RealPlan(contents, new HashSet<string> { path }, _ => van, NoBase, Real("low", path, 1), Real("high", path, 2));
+
+        plan.Refusal.Should().BeNull();
+        plan.Merged.Single().Strategy.Should().Be(MergeStrategy.PartsbndThreeWay);
+        var members = Binders.For(ER).Read(Dcx.Read(plan.Merged.Single().Bytes, ER)).ToDictionary(e => e.Id, e => e.Data);
+        members[200].Should().Equal(7, 7, 7);
+        members[400].Should().Equal(9, 9, 9);
+    }
+
+    [Fact]
     public void The_real_talk_archive_strategy_merges_when_the_archives_agree()
     {
         const string path = "script/talk/m00.talkesdbnd.dcx";

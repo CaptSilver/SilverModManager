@@ -109,6 +109,23 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task APartsbndPairWithNoVanillaCopyIsAWarningNamingTheWinnerNeverACritical()
+    {
+        var loadout = await CreateLoadout();
+        var weapons = await InstallPackage(loadout, "Weapons", "parts/wp_a_0556.partsbnd.dcx");
+        var armor = await InstallPackage(loadout, "Armor", "parts/wp_a_0556.partsbnd.dcx");
+        var winner = PriorityOf(weapons) > PriorityOf(armor) ? "Weapons.zip" : "Armor.zip";
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 16));
+        var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageWinnerByPriorityMessageData>>().Which.MessageData;
+        data.Path.Should().Be("parts/wp_a_0556.partsbnd.dcx");
+        data.Winner.Should().Be(winner);
+    }
+
+    [Fact]
     public async Task AnUnknownDcxPairIsAWarningNamingTheModLoadoutPriorityPicks()
     {
         var loadout = await CreateLoadout();

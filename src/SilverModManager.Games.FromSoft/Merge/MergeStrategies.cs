@@ -15,8 +15,9 @@ public static class MergeStrategies
     private const string FmgContainer = ".msgbnd.dcx";
     private const string TpfContainer = ".tpf.dcx";
     private const string EsdContainer = ".talkesdbnd.dcx";
+    private const string PartsContainer = ".partsbnd.dcx";
 
-    /// <summary>The spelling the CLI and UI show, carried over from erm's strategy names.</summary>
+    /// <summary>The spelling the CLI and UI show; the first five are erm's strategy names.</summary>
     public static string Name(MergeStrategy strategy) => strategy switch
     {
         MergeStrategy.FmgUnion => "fmg-union",
@@ -24,11 +25,13 @@ public static class MergeStrategies
         MergeStrategy.ParamRows => "param-rows",
         MergeStrategy.TpfUnion => "tpf-union",
         MergeStrategy.EsdThreeWay => "esd-3way",
+        MergeStrategy.PartsbndThreeWay => "partsbnd-3way",
         _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null),
     };
 
     /// <summary>Whether the strategy compares each mod against the vanilla file the mods branched from (erm's NEEDS_VANILLA).</summary>
-    public static bool NeedsVanilla(MergeStrategy strategy) => strategy is MergeStrategy.FmgThreeWay or MergeStrategy.ParamRows or MergeStrategy.EsdThreeWay;
+    public static bool NeedsVanilla(MergeStrategy strategy) => strategy is MergeStrategy.FmgThreeWay or MergeStrategy.ParamRows or MergeStrategy.EsdThreeWay
+        or MergeStrategy.PartsbndThreeWay;
 
     /// <summary>
     /// Whether the strategy reports notes about what it kept or dropped. erm's NEEDS_NOTES held only esd-3way and
@@ -37,7 +40,7 @@ public static class MergeStrategies
     public static bool ProducesNotes(MergeStrategy strategy) => strategy switch
     {
         MergeStrategy.FmgUnion or MergeStrategy.FmgThreeWay or MergeStrategy.ParamRows
-            or MergeStrategy.TpfUnion or MergeStrategy.EsdThreeWay => true,
+            or MergeStrategy.TpfUnion or MergeStrategy.EsdThreeWay or MergeStrategy.PartsbndThreeWay => true,
         _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null),
     };
 
@@ -74,6 +77,9 @@ public static class MergeStrategies
             return vanillaAvailable ? MergeStrategy.FmgThreeWay : MergeStrategy.FmgUnion;
         if (relPath.EndsWith(TpfContainer, StringComparison.OrdinalIgnoreCase)) return MergeStrategy.TpfUnion;
         if (relPath.EndsWith(EsdContainer, StringComparison.OrdinalIgnoreCase)) return MergeStrategy.EsdThreeWay;
+        // Without a vanilla copy there is nothing to tell a member a mod changed from one it left alone, so the path
+        // stays a file the app has no merge for and falls to the priority winner with its warning.
+        if (relPath.EndsWith(PartsContainer, StringComparison.OrdinalIgnoreCase)) return vanillaAvailable ? MergeStrategy.PartsbndThreeWay : null;
         return null;
     }
 }

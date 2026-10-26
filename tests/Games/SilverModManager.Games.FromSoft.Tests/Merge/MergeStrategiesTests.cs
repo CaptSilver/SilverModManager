@@ -24,19 +24,29 @@ public class MergeStrategiesTests
             [MergeStrategy.ParamRows] = "param-rows",
             [MergeStrategy.TpfUnion] = "tpf-union",
             [MergeStrategy.EsdThreeWay] = "esd-3way",
+            [MergeStrategy.PartsbndThreeWay] = "partsbnd-3way",
         });
     }
 
     [Fact]
     public void NeedsVanilla_is_the_strategies_that_read_the_file_the_mods_branched_from()
     {
-        All.Where(MergeStrategies.NeedsVanilla).Should().BeEquivalentTo([MergeStrategy.FmgThreeWay, MergeStrategy.ParamRows, MergeStrategy.EsdThreeWay]);
+        All.Where(MergeStrategies.NeedsVanilla).Should().BeEquivalentTo([MergeStrategy.FmgThreeWay, MergeStrategy.ParamRows, MergeStrategy.EsdThreeWay, MergeStrategy.PartsbndThreeWay]);
     }
 
     [Fact]
     public void TakesGameBase_is_param_rows_only()
     {
         All.Where(MergeStrategies.TakesGameBase).Should().BeEquivalentTo([MergeStrategy.ParamRows]);
+    }
+
+    [Fact]
+    public void The_partsbnd_strategy_is_a_plain_three_way_that_never_refuses_the_apply()
+    {
+        const MergeStrategy strategy = MergeStrategy.PartsbndThreeWay;
+        MergeStrategies.TakesGameBase(strategy).Should().BeFalse();
+        MergeStrategies.RefusesWhenItFails(strategy).Should().BeFalse();
+        MergeStrategies.IsOrderSensitive(strategy).Should().BeFalse();
     }
 
     [Fact]
@@ -55,6 +65,12 @@ public class MergeStrategiesTests
     [InlineData("menu/hi/00_solo.tpf.dcx", false, MergeStrategy.TpfUnion)]
     [InlineData("menu/hi/00_solo.tpf.dcx", true, MergeStrategy.TpfUnion)]
     [InlineData("script/talk/m00_00_00_00.talkesdbnd.dcx", false, MergeStrategy.EsdThreeWay)]
+    [InlineData("parts/wp_a_0556.partsbnd.dcx", true, MergeStrategy.PartsbndThreeWay)]
+    [InlineData("parts/wp_a_0556_l.partsbnd.dcx", true, MergeStrategy.PartsbndThreeWay)]
+    [InlineData("PARTS/WP_A_0556.PARTSBND.DCX", true, MergeStrategy.PartsbndThreeWay)]
+    [InlineData("parts/wp_a_0556.partsbnd.dcx", false, null)]
+    [InlineData("parts/wp_a_0556_l.partsbnd.dcx", false, null)]
+    [InlineData("parts/wp_a_0556.partsbnd", true, null)]
     [InlineData("map/m10.mapbnd.dcx", false, null)]
     [InlineData("sfx/effect.ffxbnd.dcx", true, null)]
     [InlineData("readme.txt", false, null)]

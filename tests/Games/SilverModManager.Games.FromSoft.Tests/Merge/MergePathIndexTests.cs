@@ -235,6 +235,29 @@ public class MergePathIndexTests
     }
 
     [Fact]
+    public void A_partsbnd_overlap_without_a_vanilla_copy_has_no_strategy_and_a_winner()
+    {
+        const string path = "parts/wp_a_0556.partsbnd.dcx";
+
+        var candidate = Build(null, File("a", path, 1), File("b", path, 2)).Single();
+
+        candidate.Strategy.Should().BeNull();
+        candidate.Outcome.Should().Be(MergeOutcome.NotMergeable(MergeOutcome.NoStrategy));
+        candidate.Winner?.PackageId.Should().Be("b");
+    }
+
+    [Fact]
+    public void A_partsbnd_overlap_with_a_vanilla_copy_will_merge()
+    {
+        const string path = "parts/wp_a_0556.partsbnd.dcx";
+
+        var candidate = Build(new HashSet<string> { path }, File("a", path), File("b", path)).Single();
+
+        candidate.Strategy.Should().Be(MergeStrategy.PartsbndThreeWay);
+        candidate.Outcome.Should().Be(MergeOutcome.WillMerge);
+    }
+
+    [Fact]
     public void A_dcx_without_a_strategy_is_not_mergeable()
     {
         var candidate = Build(null, File("a", "map/m10.mapbnd.dcx"), File("b", "map/m10.mapbnd.dcx")).Single();

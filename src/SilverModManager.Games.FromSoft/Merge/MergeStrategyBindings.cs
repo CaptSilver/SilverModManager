@@ -35,6 +35,8 @@ public static class MergeStrategyBindings
             => ParamRowMerge.Merge(acc, next, Vanilla(strategy, vanilla, hasVanilla), traits, notes, baseIsGame, accName, nextName, game),
         MergeStrategy.EsdThreeWay => (acc, next, vanilla, hasVanilla, _, accName, nextName, notes, traits, _)
             => EsdArchiveMerge.ThreeWay(acc, next, Vanilla(strategy, vanilla, hasVanilla), traits, notes, accName, nextName),
+        MergeStrategy.PartsbndThreeWay => (acc, next, vanilla, hasVanilla, _, accName, nextName, notes, traits, _)
+            => BinderMemberMerge.ThreeWay(acc, next, Vanilla(strategy, vanilla, hasVanilla), traits, notes, accName, nextName),
         _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null),
     };
 

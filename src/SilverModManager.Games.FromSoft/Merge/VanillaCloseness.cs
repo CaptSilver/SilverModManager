@@ -121,6 +121,14 @@ internal static class VanillaCloseness
                     bytes => Tpf.Read(Dcx.Read(bytes, traits)).Textures
                         .GroupBy(t => t.Name).ToDictionary(g => g.Key, g => (object?)Convert.ToHexString(SHA256.HashData(g.First().Data))),
                     Equals);
+            case MergeStrategy.PartsbndThreeWay:
+                // A repeated id keeps its first member: the merge itself refuses such a bundle, and the measurement
+                // only has to rank the candidates.
+                return new UnitReader(
+                    bytes => binder.Read(Dcx.Read(bytes, traits))
+                        .GroupBy(e => e.Id)
+                        .ToDictionary(g => g.Key.ToString(), g => (object?)Convert.ToHexString(SHA256.HashData(g.First().Data))),
+                    Equals);
             default:
                 return null;
         }

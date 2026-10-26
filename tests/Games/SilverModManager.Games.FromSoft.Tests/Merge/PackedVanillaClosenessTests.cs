@@ -93,4 +93,34 @@ public class PackedVanillaClosenessTests
         pick.Index.Should().Be(1);
         pick.Distance.Should().Be(1);
     }
+
+    private const string Part = "parts/wp_a_0556.partsbnd.dcx";
+
+    private static byte[] Bundle(params (int Id, string Name, byte[] Data)[] members) => PartsbndFixture.Build(Traits, members);
+
+    private static byte[] Blob(byte value) => [value, value, value];
+
+    [Fact]
+    public void BundleCopiesAreComparedByTheMembersThatDiffer()
+    {
+        var far = Bundle((1, "a.flver", Blob(1)), (2, "a.anibnd", Blob(2)), (3, "a.tpf", Blob(3)));
+        var near = Bundle((1, "a.flver", Blob(1)), (2, "a.anibnd", Blob(2)), (3, "a.tpf", Blob(4)));
+        var mod = Bundle((1, "a.flver", Blob(1)), (2, "a.anibnd", Blob(2)), (3, "a.tpf", Blob(4)));
+
+        var pick = VanillaCloseness.Closest([far, near], [mod], Part, Traits);
+
+        pick.Index.Should().Be(1);
+        pick.Distance.Should().Be(0);
+    }
+
+    [Fact]
+    public void ABundleCandidateThatRepeatsAMemberIdDoesNotCrashTheMeasurement()
+    {
+        var repeated = Bundle((1, "a.flver", Blob(9)), (1, "b.flver", Blob(8)));
+        var good = Bundle((1, "a.flver", Blob(1)));
+        var mod = Bundle((1, "a.flver", Blob(1)));
+
+        VanillaCloseness.Closest([repeated, good], [mod], Part, Traits).Index.Should().Be(1);
+        VanillaCloseness.Closest([repeated], [mod], Part, Traits).Distance.Should().NotBeNull();
+    }
 }
