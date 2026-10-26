@@ -15,7 +15,7 @@
     </Design.DataContext>
 
     <Border
-        Background="{StaticResource SurfaceLowBrush}"
+        Background="{StaticResource SurfaceMidBrush}"
         CornerRadius="{StaticResource Rounded-lg}"
         Padding="12"
         HorizontalAlignment="Stretch"

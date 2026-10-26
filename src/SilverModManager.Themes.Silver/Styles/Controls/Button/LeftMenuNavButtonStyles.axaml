@@ -239,18 +239,20 @@
             </Style>
         </Style>
 
+        <!-- The left menu is a raised SurfaceLow panel, so each state sits one step above it -->
+
         <!-- ACTIVE -->
 
         <Style Selector="^:active">
             <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />
-            <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
         </Style>
 
         
         <!-- POINTEROVER -->
 
         <Style Selector="^:pointerover:not(:selected)">
-            <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceHighBrush}" />
             <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />
         </Style>
 
@@ -258,7 +260,7 @@
         <!-- PRESSED -->
 
         <Style Selector="^:pressed">
-            <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
             <Setter Property="Foreground" Value="{StaticResource NeutralModerateBrush}" />
         </Style>
 
@@ -266,7 +268,7 @@
 
         <Style Selector="^:selected">
             <Setter Property="Margin" Value="0" />
-            <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
             <Setter Property="BorderThickness" Value="2" />
             <Setter Property="BorderBrush" Value="{StaticResource BrandNeutral600Brush}" />
             <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />

@@ -75,7 +75,7 @@
             <Style Selector="^ Separator">
                 <Setter Property="Margin" Value="0,6,0,4" />
                 <Setter Property="Height" Value="1" />
-                <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+                <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
             </Style>
 
             <Style Selector="^ Expander">

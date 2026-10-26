@@ -73,32 +73,40 @@
         <Border x:Name="SpineBorder"
                 Grid.Column="0"
                 Grid.Row="0"
-                Grid.RowSpan="2">
+                Grid.RowSpan="4">
             <reactiveUi:ViewModelViewHost x:Name="SpineViewModelHost" />
         </Border>
 
+        <!-- The window base is the darkest surface; the left menu and the page sit on it as raised panels, with gutters of the base between them -->
         <Border x:Name="LeftMenuBorder"
+                Background="{StaticResource SurfaceLowBrush}"
+                ClipToBounds="True"
+                CornerRadius="8"
                 Grid.Column="1"
-                Grid.Row="1">
+                Grid.Row="1"
+                Grid.RowSpan="3"
+                Margin="6,0,0,6">
             <reactiveUi:ViewModelViewHost x:Name="LeftMenuViewModelHost" />
         </Border>
 
         <Border x:Name="WorkspacesBorder"
                 Grid.Column="2"
                 Grid.Row="1"
-                Padding="0,0,12,12">
+                Background="{StaticResource SurfaceLowBrush}"
+                ClipToBounds="True"
+                CornerRadius="8"
+                Margin="6,0,6,6">
 
             <workspace:WorkspaceView x:Name="WorkspaceView" />
         </Border>
 
+        <!-- The bottom strips sit under the page only; the spine and left menu run to the bottom of the window -->
         <reactiveUi:ViewModelViewHost x:Name="SecretStoreNotice"
-                                      Grid.Column="0"
-                                      Grid.ColumnSpan="3"
+                                      Grid.Column="2"
                                       Grid.Row="2" />
 
         <reactiveUi:ViewModelViewHost x:Name="DevelopmentBuildBanner"
-                                      Grid.Column="0"
-                                      Grid.ColumnSpan="3"
+                                      Grid.Column="2"
                                       Grid.Row="3" />
     </Grid>
 

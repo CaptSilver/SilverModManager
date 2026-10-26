@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using FluentAssertions;
@@ -87,6 +88,54 @@ public class HeadlessRenderTests : AUiTest
         });
 
         AssertHasVariance(path);
+    }
+
+    [Fact]
+    public async Task Test_MainWindowLayersRaisedPanelsOnTheDarkBase()
+    {
+        var path = Path.Combine(_outputDirectory, "Window-layered.png");
+        Color baseColour = default, raised = default;
+        var pixels = await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var window = Track(new MainWindow { Width = Width, Height = Height });
+            // The overlay scrim is only shown while an overlay is open, which a window without a view model never binds.
+            window.OverlayBorder.IsVisible = false;
+            ShowRendered(window);
+            Render(window);
+            baseColour = ThemeColour(window, "SurfaceBase");
+            raised = ThemeColour(window, "SurfaceLow");
+
+            using var bitmap = new RenderTargetBitmap(new PixelSize(Width, Height));
+            bitmap.Render(window);
+            bitmap.Save(path);
+
+            Color At(int x, int y)
+            {
+                var buffer = new byte[4];
+                var handle = System.Runtime.InteropServices.GCHandle.Alloc(buffer, System.Runtime.InteropServices.GCHandleType.Pinned);
+                try { bitmap.CopyPixels(new PixelRect(x, y, 1, 1), handle.AddrOfPinnedObject(), 4, 4); }
+                finally { handle.Free(); }
+                // BGRA
+                return Color.FromArgb(buffer[3], buffer[2], buffer[1], buffer[0]);
+            }
+
+            // Spine is 72 wide, the left menu 232; gutters are 6.
+            return (Spine: At(30, 500), Gutter: At(72 + 2, 500), LeftMenu: At(72 + 100, 500), Page: At(800, 500),
+                Strip: At(800, Height - 20), BelowLeftMenu: At(72 + 100, Height - 20));
+        });
+
+        pixels.Spine.Should().Be(baseColour);
+        pixels.Gutter.Should().Be(baseColour);
+        pixels.LeftMenu.Should().Be(raised);
+        pixels.Page.Should().Be(raised);
+        pixels.BelowLeftMenu.Should().Be(raised, "the left menu runs to the bottom of the window");
+        pixels.Strip.Should().Be(baseColour, "the bottom strips sit on the window base under the page");
+    }
+
+    private static Color ThemeColour(Control control, string key)
+    {
+        control.TryFindResource(key, control.ActualThemeVariant, out var resource).Should().BeTrue();
+        return (Color)resource!;
     }
 
     private async Task<string> Render(string name, Func<Control> createContent)
