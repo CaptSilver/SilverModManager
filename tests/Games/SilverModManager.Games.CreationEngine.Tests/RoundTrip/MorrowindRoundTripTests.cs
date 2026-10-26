@@ -64,9 +64,9 @@ public class MorrowindRoundTripTests(ITestOutputHelper helper)
     [InlineData("copy")]
     public async Task ActivePluginsReachTheGameFilesSectionAndEverythingElseInTheIniSurvives(string backend)
     {
-        var loadout = await CreateLoadoutOn(backend);
-        // After the loadout exists: switching a root's backend resets the game and drops the ini the app wrote.
+        // On disk before the loadout exists, as a player's own file is: the first sync takes it as the loadout's copy.
         await Ini.WriteAllBytesAsync(Encoding.Latin1.GetBytes(OriginalIni));
+        var loadout = await CreateLoadoutOn(backend);
 
         var first = await InstallPlugin(loadout, "First.esp");
         await Apply(loadout);

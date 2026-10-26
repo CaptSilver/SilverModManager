@@ -48,8 +48,16 @@ public static partial class MorrowindIniGameFiles
     public static string Rewrite(string existing, IReadOnlyList<string> names)
     {
         var document = IniDocument.Parse(existing);
-        document.ReplaceKeys(SectionName, key => GameFileKey().IsMatch(key),
-            names.Select((name, i) => KeyValuePair.Create($"GameFile{i}", name)).ToList());
+        Apply(document, names);
         return document.ToText();
     }
+
+    /// <summary>The same edit as <see cref="Rewrite"/>, made on a document the caller keeps working on.</summary>
+    public static void Apply(IniDocument document, IReadOnlyList<string> names) =>
+        document.ReplaceKeys(SectionName, key => GameFileKey().IsMatch(key),
+            names.Select((name, i) => KeyValuePair.Create($"GameFile{i}", name)).ToList());
+
+    /// <summary>Whether <paramref name="key"/> of <paramref name="section"/> is one of the <c>GameFileN</c> lines <see cref="Apply"/> owns.</summary>
+    public static bool IsGameFileKey(string section, string key) =>
+        section.Equals(SectionName, StringComparison.OrdinalIgnoreCase) && GameFileKey().IsMatch(key);
 }

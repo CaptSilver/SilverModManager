@@ -1,4 +1,5 @@
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Wabbajack.Mapping;
@@ -26,6 +27,9 @@ public abstract record Mo2Target
 
     /// <summary>One of the profile's ini files, at the place the game reads it from.</summary>
     public sealed record ProfileSetting(GamePath Path) : Mo2Target;
+
+    /// <summary>The profile's own INI tweaks, as the loadout's tweak of one INI.</summary>
+    public sealed record ProfileTweak(GamePath Path) : Mo2Target;
 
     /// <summary>A file of a game-root folder, at <paramref name="Path"/> inside the game folder.</summary>
     public sealed record GameRootFile(string GroupName, RelativePath Path) : Mo2Target;
@@ -131,6 +135,10 @@ public static class Mo2Layout
         if (name.Equals("modlist.txt", StringComparison.OrdinalIgnoreCase)) return new Mo2Target.Seed(SeedKind.ModlistTxt);
         if (name.Equals("plugins.txt", StringComparison.OrdinalIgnoreCase)) return new Mo2Target.Seed(SeedKind.PluginsTxt);
         if (name.Equals("loadorder.txt", StringComparison.OrdinalIgnoreCase)) return new Mo2Target.Seed(SeedKind.LoadorderTxt);
+
+        // MO2 writes the tweaks the profile has switched on to initweaks.ini, to be laid over the main INI.
+        if (name.Equals("initweaks.ini", StringComparison.OrdinalIgnoreCase) && GameInis.MainIni(context.ProfileSettingsFiles) is { } main)
+            return new Mo2Target.ProfileTweak(IniTweakLayers.LoadoutTweakPath(main.FileName.ToString()));
 
         foreach (var setting in context.ProfileSettingsFiles)
         {

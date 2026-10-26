@@ -48,7 +48,7 @@ public static class IniEdits
     /// </summary>
     public static async Task SetLoadoutTweak(IConnection connection, IFileStore fileStore, Loadout.ReadOnly loadout, GamePath target, byte[] bytes)
     {
-        var tweakPath = new GamePath(LocationId.Game, $"INI Tweaks/{IniTweakLayers.LoadoutTweakName} [{target.FileName}].ini");
+        var tweakPath = IniTweakLayers.LoadoutTweakPath(target.FileName.ToString());
         using var pin = await Store(fileStore, tweakPath, bytes);
         var hash = bytes.xxHash3();
         var size = Size.FromLong(bytes.Length);

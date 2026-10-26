@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.Modlists;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
@@ -242,6 +243,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             {
                 Mo2Target.ModFile mod => (mod.GroupName, (GamePath?)mod.Path),
                 Mo2Target.ProfileSetting setting => (Mo2Layout.ProfileSettingsGroup, setting.Path),
+                Mo2Target.ProfileTweak tweak => (Mo2Layout.ProfileSettingsGroup, tweak.Path),
                 Mo2Target.GameRootFile root => (root.GroupName, new GamePath(LocationId.Game, root.Path)),
                 _ => ((string?)null, (GamePath?)null),
             };
@@ -400,7 +402,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     {
         _resolver = NewResolver(check);
         var executable = check.Placements
-            .Where(p => p.Target is Mo2Target.ModFile or Mo2Target.ProfileSetting or Mo2Target.GameRootFile or Mo2Target.Extra)
+            .Where(p => p.Target is Mo2Target.ModFile or Mo2Target.ProfileSetting or Mo2Target.ProfileTweak or Mo2Target.GameRootFile or Mo2Target.Extra)
             .ToArray();
         Progress.Enter(InstallPhase.Resolve, executable.Length, executable.Sum(p => p.Directive.Size));
 
@@ -677,7 +679,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
             var (hash, size, xxHash64) = await Produce(check, state, extras, item, cancellationToken);
             state.Written[Fold(placement.To)] = (hash, xxHash64);
-            AddFile(tx, modlistGroup, state, groupName, path, hash, size);
+            if (placement.Target is Mo2Target.ProfileSetting && OwnedIniPath(check, path) is { } iniPath)
+                SetIniBaseline(tx, modlistGroup, state, groupName, check, iniPath, hash);
+            else
+                AddFile(tx, modlistGroup, state, groupName, path, hash, size);
         }
         catch (DirectiveSkipped skipped)
         {
@@ -752,6 +757,65 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         }
     }
 
+    /// <summary>
+    /// The path the loadout's bake owns that <paramref name="path"/> names, spelled as the game spells it, or null when
+    /// the game keeps no copy of that file per loadout.
+    /// </summary>
+    private static GamePath? OwnedIniPath(Checked check, GamePath path)
+    {
+        if (check.Loadout.InstallationInstance.Game is not IGameIniFiles game) return null;
+        foreach (var owned in GameInis.Paths(game))
+        {
+            if (owned == path) return owned;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Makes <paramref name="hash"/> the loadout's baseline for a game INI. A file at the INI's real path would be a
+    /// second writer next to the bake, so the profile's INI is kept as the bake's starting point and the settings group
+    /// holds only what is not an INI of the game (the loadout's tweak).
+    /// </summary>
+    private void SetIniBaseline(ITransaction tx, LoadoutItemGroupId modlistGroup, WriteState state, string groupName, Checked check, GamePath iniPath, Hash hash)
+    {
+        EnsureGroup(tx, modlistGroup, state, groupName);
+
+        if (GameInis.StateOf(check.Loadout, iniPath) is { } existing)
+        {
+            tx.Add(existing.Id, LoadoutIniState.Baseline, hash);
+            return;
+        }
+
+        _ = new LoadoutIniState.New(tx)
+        {
+            LoadoutId = TargetLoadout,
+            Path = iniPath.ToGamePathParentTuple(TargetLoadout),
+            Baseline = hash,
+        };
+    }
+
+    private LoadoutItemGroupId EnsureGroup(ITransaction tx, LoadoutItemGroupId modlistGroup, WriteState state, string groupName)
+    {
+        if (state.Groups.TryGetValue(groupName, out var group)) return group;
+
+        var isSettings = groupName.Equals(Mo2Layout.ProfileSettingsGroup, StringComparison.OrdinalIgnoreCase);
+        var created = new LoadoutItemGroup.New(tx, out var id)
+        {
+            IsGroup = true,
+            LoadoutItem = new LoadoutItem.New(tx, id)
+            {
+                LoadoutId = TargetLoadout,
+                Name = isSettings ? Mo2Layout.GameSettingsGroupName : groupName,
+                ParentId = modlistGroup,
+            },
+        };
+        if (isSettings) tx.Add(id, LoadoutItemGroup.GameSettingsGroup, Null.Instance);
+        group = state.Groups[groupName] = created.LoadoutItemGroupId;
+        state.NewGroups.Add(groupName);
+        state.Files[groupName] = new();
+        return group;
+    }
+
     private void AddFile(ITransaction tx, LoadoutItemGroupId modlistGroup, WriteState state, string groupName, GamePath path, Hash hash, Size size)
     {
         if (state.Files.TryGetValue(groupName, out var known) && known.TryGetValue((path, hash), out var existing))
@@ -760,25 +824,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             return;
         }
 
-        if (!state.Groups.TryGetValue(groupName, out var group))
-        {
-            var isSettings = groupName.Equals(Mo2Layout.ProfileSettingsGroup, StringComparison.OrdinalIgnoreCase);
-            var created = new LoadoutItemGroup.New(tx, out var id)
-            {
-                IsGroup = true,
-                LoadoutItem = new LoadoutItem.New(tx, id)
-                {
-                    LoadoutId = TargetLoadout,
-                    Name = isSettings ? Mo2Layout.GameSettingsGroupName : groupName,
-                    ParentId = modlistGroup,
-                },
-            };
-            if (isSettings) tx.Add(id, LoadoutItemGroup.GameSettingsGroup, Null.Instance);
-            group = state.Groups[groupName] = created.LoadoutItemGroupId;
-            state.NewGroups.Add(groupName);
-            state.Files[groupName] = known = new();
-        }
-        known ??= state.Files[groupName] = new();
+        var group = EnsureGroup(tx, modlistGroup, state, groupName);
+        known = state.Files[groupName];
 
         _ = new LoadoutFile.New(tx, out var fileId)
         {

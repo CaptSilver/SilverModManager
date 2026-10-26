@@ -2,8 +2,13 @@ using System.Collections.Immutable;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Bethesda.LoadOrder.Formats;
+using SilverModManager.Games.CreationEngine.SortOrder;
+using SilverModManager.Sdk.Ini;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
 using SilverModManager.Games.CreationEngine.Abstractions;
 using SilverModManager.Games.CreationEngine.Morrowind.OpenMw;
@@ -26,7 +31,7 @@ namespace SilverModManager.Games.CreationEngine.Morrowind;
 /// the <c>content=</c> lines it owns in the app's order (see <see cref="OpenMwMechanism"/>); nothing else under
 /// that folder is indexed. Morrowind.ini is written either way.
 /// </remarks>
-public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowind>(provider), IGameData<Morrowind>, ITimestampOrderedGame
+public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowind>(provider), IGameData<Morrowind>, IHasIniFiles, ITimestampOrderedGame
 {
     /// <summary>The folder that holds the user's openmw.cfg, present only when exactly one is found.</summary>
     public static readonly LocationId OpenMwConfig = LocationId.From("OpenMwConfig");
@@ -100,6 +105,27 @@ public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowin
 
     public Task<IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)>> PluginTimestamps(Loadout.ReadOnly loadout, IReadOnlyDictionary<GamePath, SyncNode> syncTree) =>
         PlanPluginTimestamps(loadout, syncTree);
+
+    // Morrowind.ini is the loadout's own copy like every other owned INI; the active plugins are rendered into its
+    // [Game Files] section from the plugin order. OpenMW gets the same section for anyone launching the original game.
+    // Active, not just switched on: a plugin of a disabled mod keeps its row's switch but is not deployed.
+    protected override Task RenderDerivedIniKeys(IniDocument ini, GamePath path, Loadout.ReadOnly loadout)
+    {
+        if (path != PluginsFile) return Task.CompletedTask;
+
+        var variety = SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single();
+        var active = variety.GetSortOrderIdFor(loadout.LoadoutId, loadout.Db) is { HasValue: true } sortOrderId
+            ? variety.GetSortOrderItems(sortOrderId.Value, loadout.Db).Where(item => item.IsActive).Select(item => item.DisplayName).ToList()
+            : [];
+        MorrowindIniGameFiles.Apply(ini, active);
+        return Task.CompletedTask;
+    }
+
+    protected override bool IsDerivedIniKey(GamePath path, string section, string key) =>
+        path == PluginsFile && MorrowindIniGameFiles.IsGameFileKey(section, key);
+
+    // Morrowind has no archive invalidation switch in its INI.
+    protected override IReadOnlyList<IniKeyEdit> ArchiveIniKeys => [];
 
     protected override RelativePath PrimaryExe => "Morrowind.exe";
 

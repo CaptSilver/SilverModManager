@@ -85,6 +85,7 @@ public static class GameInis
             foreach (var key in game.ManagedKeys(loadout))
                 ini.Set(key.Section, key.Key, key.Value);
 
+        await game.RenderDerivedKeys(ini, path, loadout);
         return ini.ToBytes();
     }
 
@@ -142,7 +143,7 @@ public static class GameInis
             {
                 if (last.Get(section, key) == value) continue;
 
-                if (managed.Any(m => Same(m.Section, section) && Same(m.Key, key)))
+                if (managed.Any(m => Same(m.Section, section) && Same(m.Key, key)) || game.IsDerivedKey(path, section, key))
                     changes.Add(new GameIniChange(GameIniChangeKind.ManagedKeyReset, section, key, value));
                 else if (tweaks.LastOrDefault(t => t.Document.Get(section, key) is not null) is { Name: not null } owner)
                     changes.Add(new GameIniChange(GameIniChangeKind.TweakOverrides, section, key, value, owner.Name));
@@ -158,6 +159,21 @@ public static class GameInis
 
     /// <summary>The INI files of the game, as the paths the loadout stores them under.</summary>
     public static IReadOnlyList<GamePath> Paths(IGameIniFiles game) => game.IniFiles.FileNames.Select(game.IniPath).ToList();
+
+    /// <summary>
+    /// The INI a Bethesda game reads its settings from before the Prefs and Custom files: the first of
+    /// <paramref name="files"/> that is neither a Prefs nor an editor (GECK) file, or null when there is none.
+    /// </summary>
+    public static GamePath? MainIni(IEnumerable<GamePath> files)
+    {
+        foreach (var path in files)
+        {
+            var name = path.FileName.ToString();
+            if (!name.EndsWith("Prefs.ini", StringComparison.OrdinalIgnoreCase) && !name.StartsWith("GECK", StringComparison.OrdinalIgnoreCase))
+                return path;
+        }
+        return null;
+    }
 
     private static Dictionary<GamePath, LoadoutIniState.ReadOnly> StatesByPath(Loadout.ReadOnly loadout) =>
         LoadoutIniState.FindByLoadout(loadout.Db, loadout.LoadoutId).ToDictionary(state => (GamePath)state.Path);

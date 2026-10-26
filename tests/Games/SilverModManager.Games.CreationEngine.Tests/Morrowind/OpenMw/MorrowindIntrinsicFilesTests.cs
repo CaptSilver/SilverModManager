@@ -20,6 +20,14 @@ public abstract class AMorrowindIntrinsicFilesTest<TTest>(ITestOutputHelper help
         return ((ALoadoutSynchronizer)Synchronizer).IntrinsicFiles(loadout).Keys;
     }
 
+    /// <summary>
+    /// Morrowind.ini is the loadout's own copy like any owned INI, so once the first sync has written the file a
+    /// suggestion says the next apply takes it over. That is the only notice a healthy setup carries.
+    /// </summary>
+    protected static void OnlyTheIniTakeOverSuggestion(IEnumerable<Diagnostic> diagnostics) =>
+        diagnostics.Should().OnlyContain(d => d.Severity == DiagnosticSeverity.Suggestion)
+            .And.OnlyContain(d => d.FormatSummary(new PlainDiagnosticWriter()).Contains("Morrowind.ini"));
+
     protected async Task<List<Diagnostic>> Diagnose()
     {
         var loadout = await CreateLoadout();
@@ -61,7 +69,7 @@ public class MorrowindWithoutOpenMwTests(ITestOutputHelper helper) : AMorrowindI
     public void LoadsNothingEarly() => Game.EarlyLoadingPlugins(GameInstallation).Should().BeEmpty();
 
     [Fact]
-    public async Task EmitsNoDiagnostic() => (await Diagnose()).Should().BeEmpty();
+    public async Task EmitsNothingButTheIniTakeOverSuggestion() => OnlyTheIniTakeOverSuggestion(await Diagnose());
 }
 
 /// <summary>One openmw.cfg: its folder is the location and the file is offered with Morrowind.ini, and nothing else under it is.</summary>
@@ -74,7 +82,7 @@ public class MorrowindWithOpenMwTests(ITestOutputHelper helper) : AMorrowindIntr
     {
         (await OfferedFiles()).Should().BeEquivalentTo([new GamePath(OpenMwConfig, "openmw.cfg"), new GamePath(LocationId.Game, "Morrowind.ini")]);
         GameInstallation.Locations[OpenMwConfig].Path.Should().Be(Roots.Candidates[1]);
-        (await Diagnose()).Should().BeEmpty();
+        OnlyTheIniTakeOverSuggestion(await Diagnose());
     }
 
     [Fact]
@@ -110,7 +118,7 @@ public class MorrowindWithTwoOpenMwConfigsTests(ITestOutputHelper helper) : AMor
         (await OfferedFiles()).Should().BeEquivalentTo([new GamePath(LocationId.Game, "Morrowind.ini")]);
         GameInstallation.Locations.ContainsKey(OpenMwConfig).Should().BeFalse();
 
-        var diagnostic = (await Diagnose()).Should().ContainSingle().Subject;
+        var diagnostic = (await Diagnose()).Where(d => d.Severity != DiagnosticSeverity.Suggestion).Should().ContainSingle().Subject;
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
         var summary = diagnostic.FormatSummary(new PlainDiagnosticWriter());
         summary.Should().Contain(Roots.Candidates[0].ToString()).And.Contain(Roots.Candidates[1].ToString());

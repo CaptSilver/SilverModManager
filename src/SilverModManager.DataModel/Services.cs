@@ -127,6 +127,7 @@ public static class Services
         coll.AddSingleton<ILoadoutManager, LoadoutManager>();
         coll.AddSingleton<IOverridesMover>(sp => new OverridesMover(sp.GetRequiredService<IConnection>()));
         coll.AddSingleton<IHostedService, InstallNexusIdBackfill>();
+        coll.AddSingleton<IHostedService, ImportedIniFilesPass>();
         coll.AddSingleton<IGameInstalledContentService, GameInstalledContentService>();
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, GameInstalledGroupDisabledEmitter>());
 

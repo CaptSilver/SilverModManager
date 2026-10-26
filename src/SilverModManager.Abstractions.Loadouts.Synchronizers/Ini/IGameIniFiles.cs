@@ -27,4 +27,17 @@ public interface IGameIniFiles
     /// database state alone: the same bytes are rendered when the bake is recorded and when it is written.
     /// </summary>
     IReadOnlyList<IniKeyEdit> ManagedKeys(Loadout.ReadOnly loadout);
+
+    /// <summary>
+    /// Fills in the part of <paramref name="path"/> that is rendered from the loadout rather than kept as a
+    /// setting (Morrowind's plugin list), after the tweaks and <see cref="ManagedKeys"/> are in. Like
+    /// <see cref="ManagedKeys"/> it must depend on the loadout's database state alone.
+    /// </summary>
+    Task RenderDerivedKeys(IniDocument ini, GamePath path, Loadout.ReadOnly loadout) => Task.CompletedTask;
+
+    /// <summary>
+    /// Whether a key that <see cref="RenderDerivedKeys"/> rewrites is <paramref name="key"/>. A change the game
+    /// makes to such a key is reset like one to a managed key, not adopted into the baseline.
+    /// </summary>
+    bool IsDerivedKey(GamePath path, string section, string key) => false;
 }

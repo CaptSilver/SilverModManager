@@ -127,9 +127,9 @@ public class GameIniBakeTests(ITestOutputHelper helper) : AIsolatedGameTest<Game
     }
 
     [Fact]
-    public void MorrowindsIniStaysWithItsPluginListWriter()
+    public void MorrowindsIniIsOwnedLikeTheOthersWithItsPluginListRenderedIntoIt()
     {
-        CreationEngineMo2Target.OwnedIniFiles(CreationEngine.Morrowind.Morrowind.GameId).Should().BeEmpty();
+        CreationEngineMo2Target.OwnedIniFiles(CreationEngine.Morrowind.Morrowind.GameId).Should().Equal(new GamePath(LocationId.Game, "Morrowind.ini"));
     }
 
     [Fact]

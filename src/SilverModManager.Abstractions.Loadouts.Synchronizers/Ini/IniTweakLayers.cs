@@ -25,6 +25,10 @@ public static partial class IniTweakLayers
 
     private const string Folder = "INI Tweaks";
 
+    /// <summary>Where the loadout's own tweak of the INI called <paramref name="targetFileName"/> lives.</summary>
+    public static GamePath LoadoutTweakPath(string targetFileName) =>
+        new(LocationId.Game, $"{Folder}/{LoadoutTweakName} [{targetFileName}].ini");
+
     [GeneratedRegex(@"^(?<name>.+) \[(?<target>[^\]]+)\]\.ini$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex TweakName();
 

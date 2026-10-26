@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Abstractions.Library;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
@@ -84,7 +85,10 @@ public class HalgarisHelperNetworkTests(ITestOutputHelper helper) : InstallTestB
         foreach (var mo2Folder in new[] { "profiles", "downloads", "mods", "overwrite" })
             targetPaths.Should().NotContain(t => t.StartsWith(mo2Folder + "/", StringComparison.OrdinalIgnoreCase), $"{mo2Folder}\\ is one of Mod Organizer's folders");
 
-        tree["Game settings"].Keys.Should().Contain(["Preferences/Skyrim.ini", "Preferences/SkyrimPrefs.ini", "Preferences/SkyrimCustom.ini"]);
+        // The profile's INIs are the loadout's baselines, not files at their real paths.
+        tree["Game settings"].Keys.Should().NotContain(t => t.EndsWith(".ini", StringComparison.OrdinalIgnoreCase) && t.StartsWith("Preferences/"));
+        LoadoutIniState.FindByLoadout(Connection.Db, loadout.LoadoutId).Select(s => ((GamePath)s.Path).Path.ToString())
+            .Should().Contain(["Skyrim.ini", "SkyrimPrefs.ini", "SkyrimCustom.ini"]);
 
         // The stub game folder and the test's prefix are the only places the job could have read or written.
         var gameRoot = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty));

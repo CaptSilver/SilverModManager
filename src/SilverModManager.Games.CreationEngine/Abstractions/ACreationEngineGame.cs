@@ -208,25 +208,24 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     /// The app's keys go in the first file that is not a Prefs or editor file, which the game reads before the
     /// Custom one the user keeps their own overrides in.
     /// </summary>
-    GamePath? IGameIniFiles.ManagedKeysFile
-    {
-        get
-        {
-            foreach (var path in CreationEngineMo2Target.OwnedIniFiles(TSelf.GameId))
-            {
-                var name = path.FileName.ToString();
-                if (!name.EndsWith("Prefs.ini", StringComparison.OrdinalIgnoreCase) && !name.StartsWith("GECK", StringComparison.OrdinalIgnoreCase))
-                    return path;
-            }
-
-            return null;
-        }
-    }
+    GamePath? IGameIniFiles.ManagedKeysFile => GameInis.MainIni(CreationEngineMo2Target.OwnedIniFiles(TSelf.GameId));
 
     /// <summary>
     /// Loose files only override archived ones when the game stops comparing their dates, which every Bethesda
     /// title of this engine needs for a modded load order.
     /// </summary>
     IReadOnlyList<IniKeyEdit> IGameIniFiles.ManagedKeys(Loadout.ReadOnly loadout) =>
-        [new IniKeyEdit("Archive", "bInvalidateOlderFiles", "1"), .. SaveRedirectIniKeys.For(this, loadout)];
+        [.. ArchiveIniKeys, .. SaveRedirectIniKeys.For(this, loadout)];
+
+    /// <summary>The archive setting the app owns in the main INI. Morrowind has no such switch.</summary>
+    protected virtual IReadOnlyList<IniKeyEdit> ArchiveIniKeys => [new IniKeyEdit("Archive", "bInvalidateOlderFiles", "1")];
+
+    Task IGameIniFiles.RenderDerivedKeys(IniDocument ini, GamePath path, Loadout.ReadOnly loadout) => RenderDerivedIniKeys(ini, path, loadout);
+
+    bool IGameIniFiles.IsDerivedKey(GamePath path, string section, string key) => IsDerivedIniKey(path, section, key);
+
+    /// <summary>Fills in what the INI at <paramref name="path"/> takes from the loadout rather than from its baseline. None by default.</summary>
+    protected virtual Task RenderDerivedIniKeys(IniDocument ini, GamePath path, Loadout.ReadOnly loadout) => Task.CompletedTask;
+
+    protected virtual bool IsDerivedIniKey(GamePath path, string section, string key) => false;
 }

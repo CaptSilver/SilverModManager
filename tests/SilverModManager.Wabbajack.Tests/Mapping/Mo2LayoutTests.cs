@@ -103,11 +103,33 @@ public class Mo2LayoutTests
         ini.Path.Path.ToString().Should().Be(SkyrimIni.Path.ToString());
     }
 
+    [Fact]
+    public void TheProfilesInitweaks_IsTheLoadoutsTweakOfTheMainIniNotThePrefsFile()
+    {
+        var tweak = Classify("profiles/main/INITWEAKS.ini").Should().BeOfType<Mo2Target.ProfileTweak>().Subject;
+
+        tweak.Path.LocationId.Should().Be(LocationId.Game);
+        tweak.Path.Path.ToString().Should().Be("INI Tweaks/Loadout [Skyrim.ini].ini");
+    }
+
+    [Fact]
+    public void AnInitweaksOfAnotherProfile_IsDropped()
+    {
+        Classify("profiles/Other/initweaks.ini").Should().Be(new Mo2Target.Dropped("other profile"));
+    }
+
+    [Fact]
+    public void WithNoMainIniToTweak_InitweaksIsDropped()
+    {
+        var onlyPrefs = Context with { ProfileSettingsFiles = [SkyrimPrefs] };
+
+        Classify("profiles/Main/initweaks.ini", onlyPrefs).Should().Be(new Mo2Target.Dropped("profile file"));
+    }
+
     [Theory]
     [InlineData("profiles/Main/settings.ini")]
     [InlineData("profiles/Main/archives.txt")]
     [InlineData("profiles/Main/lockedorder.txt")]
-    [InlineData("profiles/Main/initweaks.ini")]
     [InlineData("profiles/Main/saves/slot1.ess")]
     public void OtherFilesOfTheSelectedProfile_AreDropped(string to)
     {
