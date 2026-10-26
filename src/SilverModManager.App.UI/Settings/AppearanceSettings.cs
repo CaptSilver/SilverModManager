@@ -24,7 +24,7 @@ public record AppearanceSettings : ISettings
                 x => x.GlassEnabled,
                 new PropertyOptions<AppearanceSettings, bool>
                 {
-                    Section = Sections.General,
+                    Section = Sections.Theme,
                     DisplayName = Language.Appearance_Glass_Name,
                     DescriptionFactory = _ => Language.Appearance_Glass_Description,
                 },
@@ -34,7 +34,7 @@ public record AppearanceSettings : ISettings
                 x => x.GlassTint,
                 new PropertyOptions<AppearanceSettings, double>
                 {
-                    Section = Sections.General,
+                    Section = Sections.Theme,
                     DisplayName = Language.Appearance_GlassTint_Name,
                     DescriptionFactory = _ => Language.Appearance_GlassTint_Description,
                 },

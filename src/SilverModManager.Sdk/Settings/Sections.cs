@@ -10,6 +10,8 @@ public static class Sections
 {
     public static readonly SectionId General = SectionId.From(Guid.Parse("3106487b-db84-4caa-acdd-9428506fbf6d"));
 
+    public static readonly SectionId Theme = SectionId.From(Guid.Parse("86bd3c2d-103c-499d-a4de-117e98a2c51f"));
+
     public static readonly SectionId Privacy = SectionId.From(Guid.Parse("4ef7b142-8f0e-4cae-867f-a58d985241c0"));
 
     public static readonly SectionId Advanced = SectionId.From(Guid.Parse("1531efa7-cb0a-4463-8a04-a865d848ca06"));

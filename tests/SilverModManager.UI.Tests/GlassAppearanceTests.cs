@@ -199,11 +199,24 @@ public class GlassAppearanceTests(IServiceProvider provider) : AUiTest(provider)
         var slider = page.SettingEntries.Single(e => e.InteractionControlViewModel is ISettingSliderViewModel && e.Config.Options.DisplayName == "Glass tint");
 
         slider.Config.Options.Section.Should().Be(toggle.Config.Options.Section);
+        toggle.Config.Options.Section.Should().Be(Sections.Theme);
         var options = slider.Config.ContainerOptions.Should().BeOfType<SliderContainerOptions>().Subject;
         options.Minimum.Should().Be(GlassAppearance.MinTint);
         options.Maximum.Should().Be(GlassAppearance.MaxTint);
         toggle.Config.Options.DisplayName.Should().NotContain("Frosted");
         toggle.Config.Options.DescriptionFactory(false).Should().Contain("Desktop Effects");
+    }
+
+    [Fact]
+    public void TheThemeSectionComesRightAfterGeneralAndBeforeAdvanced()
+    {
+        var page = (SettingsPageViewModel)Provider.GetRequiredService<ISettingsPageViewModel>();
+
+        // The settings view lists sections by descending priority.
+        var order = page.Sections.OrderByDescending(s => s.Descriptor.Priority).Select(s => s.Descriptor.Name).ToList();
+
+        order.IndexOf("Theme").Should().Be(order.IndexOf("General") + 1);
+        order.IndexOf("Theme").Should().BeLessThan(order.IndexOf("Advanced"));
     }
 
     [Fact]
