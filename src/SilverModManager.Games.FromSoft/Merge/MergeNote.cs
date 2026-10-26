@@ -100,6 +100,21 @@ public sealed record TextureKept(string Name, string KeptMod, string DroppedMod)
     public MergeLoss? Loss => MergeLoss.Between(DroppedMod, KeptMod);
 }
 
+/// <summary>One mod deleted a texture from the archive and the other changed it; the accumulated side's choice stood.</summary>
+/// <param name="KeptDeleted">True when the kept mod is the one that deleted it, so the texture is absent from the result.</param>
+public sealed record TextureDeletionConflict(string Name, string KeptMod, string DroppedMod, bool KeptDeleted) : IMergeNote
+{
+    public string Describe() => KeptDeleted
+        ? $"texture {Name}: {KeptMod} deleted it and {DroppedMod} changed it; left out"
+        : $"texture {Name}: {DroppedMod} deleted it and {KeptMod} changed it; kept {KeptMod}'s";
+
+    public string Summary() => KeptDeleted
+        ? $"{KeptMod} deletes the texture {Name} and {DroppedMod} changes it; the texture stays deleted."
+        : $"{DroppedMod} deletes the texture {Name} and {KeptMod} changes it; {KeptMod}'s copy is kept.";
+
+    public MergeLoss? Loss => MergeLoss.Between(DroppedMod, KeptMod);
+}
+
 /// <summary>
 /// The priority order could not be merged, and another contributor as the base could. The result is what that base
 /// gives, so a row or state both sides changed stays as the base had it, not as the highest-priority mod had it.

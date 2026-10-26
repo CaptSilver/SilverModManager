@@ -180,6 +180,8 @@ public class FmgMergeTests
         [
             new RowCollision(1, 2), new RivalRow(1, 2), new UnreadableParam(1), new RowConflict(1, 2, "A", "B"),
             new TextKept(1, 2, "A", "B"), new TextureKept("tex", "A", "B"),
+            new TextureDeletionConflict("tex", "A", "B", KeptDeleted: true),
+            new TextureDeletionConflict("tex", "A", "B", KeptDeleted: false),
         ];
         notes.Select(n => n.Describe()).Should().OnlyHaveUniqueItems();
         new TextKept(1, 2, "A", "B").Describe().Should().Be("entry 1 text 2: both mods ship it and differ; kept A's");
