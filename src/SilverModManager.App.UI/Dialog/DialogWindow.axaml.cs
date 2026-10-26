@@ -37,6 +37,7 @@ public partial class DialogWindow : ReactiveWindow<IDialogViewModel>, IDisposabl
 
         Titlebar.PointerPressed += OnTitlebarPointerPressed;
         WindowChrome.AttachResizeGrips(this);
+        GlassAppearance.AttachShared(this, "SurfaceLow");
         
         this.WhenActivated(disposables =>
             {

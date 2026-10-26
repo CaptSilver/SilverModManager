@@ -1839,4 +1839,16 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="IniPage_Setting_Fov" xml:space="preserve">
         <value>Field of view</value>
     </data>
+    <data name="Appearance_Glass_Name" xml:space="preserve">
+        <value>Glass</value>
+    </data>
+    <data name="Appearance_Glass_Description" xml:space="preserve">
+        <value>Lets the desktop show through the app's window frame, blurred. Blur strength is set by KWin (System Settings &gt; Desktop Effects &gt; Blur), not by the app. Without a blurring compositor the window stays opaque.</value>
+    </data>
+    <data name="Appearance_GlassTint_Name" xml:space="preserve">
+        <value>Glass tint</value>
+    </data>
+    <data name="Appearance_GlassTint_Description" xml:space="preserve">
+        <value>How much of the window colour covers the blurred desktop while Glass is on. Lower shows more of the desktop. Tables, text and other data panels stay opaque.</value>
+    </data>
 </root>

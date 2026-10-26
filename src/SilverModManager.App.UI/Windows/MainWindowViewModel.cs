@@ -3,7 +3,10 @@ using SilverModManager.App.UI.Helpers;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Input.Platform;
+using Avalonia.Controls;
+using Avalonia.Platform;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Sdk.EventBus;
@@ -53,6 +56,12 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
     /// <summary>Runs the files dropped on the window.</summary>
     public MainWindowDropHandler DropHandler { get; }
 
+    /// <summary>The window's own Glass state; the view attaches to it to follow the compositor's blur.</summary>
+    public GlassAppearance Glass { get; }
+
+    /// <summary>What the window asks the compositor for: blur when Glass is on, nothing otherwise.</summary>
+    public IReadOnlyList<WindowTransparencyLevel> TransparencyLevelHint => Glass.TransparencyLevelHint;
+
     public ReactiveUI.ReactiveCommand<System.Reactive.Unit, bool> BringWindowToFront { get; }
     public ReactiveUI.ReactiveCommand<IStorageProvider, System.Reactive.Unit> RegisterStorageProvider { get; }
     public ReactiveUI.ReactiveCommand<IClipboard, System.Reactive.Unit> RegisterClipboard { get; }
@@ -86,6 +95,10 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
             new LibraryDropActions(serviceProvider.GetRequiredService<SilverModManager.Abstractions.Library.ILibraryService>(), _connection, WorkspaceController),
             notificationService,
             serviceProvider.GetService<ILogger<MainWindowViewModel>>());
+
+        Glass = serviceProvider.GetRequiredService<GlassAppearance>();
+        // Posted to the UI thread: settings changes can arrive on any thread, and bindings to the hint need the UI thread.
+        Glass.Changed += () => Dispatcher.UIThread.Post(() => this.RaisePropertyChanged(nameof(TransparencyLevelHint)));
 
         TopBar = serviceProvider.GetRequiredService<ITopBarViewModel>();
         TopBar.AddPanelDropDownViewModel = new AddPanelDropDownViewModel(WorkspaceController);

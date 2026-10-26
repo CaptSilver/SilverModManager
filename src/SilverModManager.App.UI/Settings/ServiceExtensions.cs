@@ -17,6 +17,7 @@ public static class ServiceExtensions
             .AddSettings<LoadoutCollectionOrderSettings>()
             .AddSettings<StoreSortSettings>()
             .AddSettings<BehaviorSettings>()
+            .AddSettings<AppearanceSettings>()
             .AddSettings<AdultContentSettings>()
             .AddSettings<UpdaterSettings>()
             .AddSettings<WelcomeSettings>();

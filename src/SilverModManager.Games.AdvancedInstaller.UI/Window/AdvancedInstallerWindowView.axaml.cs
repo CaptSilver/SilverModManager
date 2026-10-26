@@ -1,6 +1,7 @@
 ﻿using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.ReactiveUI;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.Games.AdvancedInstaller.UI.Resources;
 using ReactiveUI;
 
@@ -11,6 +12,7 @@ public partial class AdvancedInstallerWindowView : ReactiveWindow<IAdvancedInsta
     public AdvancedInstallerWindowView()
     {
         InitializeComponent();
+        GlassAppearance.AttachShared(this, "SurfaceLow");
 
         this.WhenActivated(disposables =>
         {

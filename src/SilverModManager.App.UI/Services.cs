@@ -110,6 +110,7 @@ public static class Services
             .AddSingleton<IErrorPresenter, ErrorPresenter>()
 
             // View Models
+            .AddSingleton<GlassAppearance>()
             .AddTransient<MainWindowViewModel>()
             .AddSingleton<IViewLocator, InjectedViewLocator>()
             
@@ -186,6 +187,8 @@ public static class Services
             .AddViewModel<SettingEntryViewModel, ISettingEntryViewModel>()
             .AddView<SettingToggleControl, ISettingToggleViewModel>()
             .AddViewModel<SettingToggleViewModel, ISettingToggleViewModel>()
+            .AddView<SettingSliderControl, ISettingSliderViewModel>()
+            .AddViewModel<SettingSliderViewModel, ISettingSliderViewModel>()
             .AddView<SettingComboBoxView, ISettingComboBoxViewModel>()
             .AddViewModel<SettingComboBoxViewModel, ISettingComboBoxViewModel>()
             .AddView<SettingPathsControl, ISettingPathsViewModel>()
@@ -359,6 +362,7 @@ public static class Services
             .AddUISettings()
             .AddSingleton<IInteractionControlFactory<SingleValueMultipleChoiceContainerOptions>, SettingComboBoxFactory>()
             .AddSingleton<IInteractionControlFactory<BooleanContainerOptions>, SettingToggleFactory>()
+            .AddSingleton<IInteractionControlFactory<SliderContainerOptions>, SettingSliderFactory>()
             .AddSingleton<IInteractionControlFactory<ConfigurablePathsContainerOption>, SettingPathsFactory>()
 
             // Other

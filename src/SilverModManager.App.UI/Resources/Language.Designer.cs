@@ -5315,5 +5315,41 @@ namespace SilverModManager.App.UI.Resources {
                 return ResourceManager.GetString("IniPage_Setting_Fov", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Glass.
+        /// </summary>
+        public static string Appearance_Glass_Name {
+            get {
+                return ResourceManager.GetString("Appearance_Glass_Name", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Lets the desktop show through the app's window frame, blurred. Blur strength is set by KWin (System Settings > Desktop Effects > Blur), not by the app. Without a blurring compositor the window stays opaque..
+        /// </summary>
+        public static string Appearance_Glass_Description {
+            get {
+                return ResourceManager.GetString("Appearance_Glass_Description", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Glass tint.
+        /// </summary>
+        public static string Appearance_GlassTint_Name {
+            get {
+                return ResourceManager.GetString("Appearance_GlassTint_Name", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How much of the window colour covers the blurred desktop while Glass is on. Lower shows more of the desktop. Tables, text and other data panels stay opaque..
+        /// </summary>
+        public static string Appearance_GlassTint_Description {
+            get {
+                return ResourceManager.GetString("Appearance_GlassTint_Description", resourceCulture);
+            }
+        }
     }
 }

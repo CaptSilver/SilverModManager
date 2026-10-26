@@ -30,6 +30,7 @@ public partial class GuidedInstallerWindow : ReactiveWindow<IGuidedInstallerWind
 
         Titlebar.PointerPressed += OnTitlebarPointerPressed;
         WindowChrome.AttachResizeGrips(this);
+        GlassAppearance.AttachShared(this, "SurfaceLow");
 
 #if DEBUG
         this.AttachDevTools();

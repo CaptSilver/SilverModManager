@@ -1,0 +1,25 @@
+<reactiveUi:ReactiveUserControl
+    x:TypeArguments="settingEntries:ISettingSliderViewModel" xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:settingEntries="clr-namespace:SilverModManager.App.UI.Controls.Settings.SettingEntries"
+    mc:Ignorable="d"
+    x:Class="SilverModManager.App.UI.Controls.Settings.SettingEntries.SettingSliderControl"
+    ClipToBounds="False">
+
+    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+        <Slider x:Name="ValueSlider"
+                IsSnapToTickEnabled="True"
+                VerticalAlignment="Center"
+                Width="160" />
+        <TextBlock x:Name="ValueTextBlock"
+                   Foreground="{StaticResource NeutralStrongBrush}"
+                   MinWidth="40"
+                   TextAlignment="Right"
+                   Theme="{StaticResource BodySMSemiTheme}"
+                   VerticalAlignment="Center" />
+    </StackPanel>
+
+</reactiveUi:ReactiveUserControl>
