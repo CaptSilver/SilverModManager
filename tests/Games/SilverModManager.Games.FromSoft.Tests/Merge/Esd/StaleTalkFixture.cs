@@ -24,18 +24,18 @@ public static class StaleTalkFixture
 
     public static FromSoftFormatTraits Traits => EldenRingGame.Definition.Formats;
 
-    private static CommandCall Call(int machine) => new(EsdFormat.CallBank, machine);
+    internal static CommandCall Call(int machine) => new(EsdFormat.CallBank, machine);
 
-    private static State Plain(long id, params Condition[] conditions) => new(id, conditions);
+    internal static State Plain(long id, params Condition[] conditions) => new(id, conditions);
 
-    private static State Entering(long id, params int[] machines) => new(id, Entry: machines.Select(Call).ToList());
+    internal static State Entering(long id, params int[] machines) => new(id, Entry: machines.Select(Call).ToList());
 
-    private static StateGroup Machine(long id) => new(id, [Plain(0)]);
+    internal static StateGroup Machine(long id) => new(id, [Plain(0)]);
 
-    private static StateGroup Caller(params int[] enteredBySecondState)
+    internal static StateGroup Caller(params int[] enteredBySecondState)
         => new(10, [Plain(0, new Condition(1, Evaluator: EsdMergeFixture.Always)), Entering(1, enteredBySecondState)]);
 
-    private static byte[] Talk(params StateGroup[] groups)
+    internal static byte[] Talk(params StateGroup[] groups)
     {
         var file = new EsdFile(groups.OrderBy(g => g.Id).ToList(), EsdName, [0u, 0u, 0u, 0u]);
         var members = new[] { (Id: 1000, Name: EsdName + ".esd", Data: EsdFormat.Write(file)) };

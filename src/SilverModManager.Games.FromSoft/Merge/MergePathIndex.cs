@@ -39,13 +39,17 @@ public readonly record struct MergeOutcome(bool Merges, string? Reason)
 /// For a path with no strategy, the file me3 mounts: the last of the packages in the profile's order, which can differ
 /// from <paramref name="Contributors"/>[0] for an unlisted package or one that a higher mod shares. Null otherwise.
 /// </param>
+/// <param name="VanillaSource">
+/// For a merge that failed, where the vanilla copy it was tried against came from; empty for every other candidate.
+/// </param>
 public sealed record MergeCandidate(
     string Path,
     IReadOnlyList<string> Spellings,
     MergeStrategy? Strategy,
     IReadOnlyList<ProviderFile> Contributors,
     MergeOutcome Outcome,
-    ProviderFile? Winner = null);
+    ProviderFile? Winner = null,
+    string VanillaSource = "");
 
 /// <summary>
 /// Maps each package-relative path that needs a decision to the enabled files that provide it. It is the one answer

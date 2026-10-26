@@ -103,7 +103,7 @@ public class LoadoutMergeSourcesNearestVanillaTests(ITestOutputHelper helper) : 
     }
 
     [Fact]
-    public async Task TheNewerCopyAloneStillFailsTheMergeItCannotKeepWhole()
+    public async Task TheNewerCopyAloneStillFailsTheMergeNoBaseCanKeepWhole()
     {
         var loadout = await TalkMods(Remover, Adder);
         await AddDump("Current", EldenRingInstall.RegulationFile, Patched);
@@ -111,7 +111,42 @@ public class LoadoutMergeSourcesNearestVanillaTests(ITestOutputHelper helper) : 
         var plan = Plans.Current(Refresh(loadout), MergeSourceMode.Report);
 
         plan.Merged.Should().NotContain(m => m.Path == TalkPath);
-        plan.Unmerged.Should().ContainSingle(u => u.Path == TalkPath).Which.Outcome.Reason.Should().Contain("calls machine 20");
+        var fallback = plan.Unmerged.Should().ContainSingle(u => u.Path == TalkPath).Which;
+        fallback.Outcome.Reason.Should().Contain("calls machine 20");
+        fallback.VanillaSource.Should().Contain("Current.zip");
+    }
+
+    [Fact]
+    public async Task TheReportSaysWhichModTheMergeUsedAsTheBaseAndWhyThePriorityOrderFailed()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout.LoadoutId, "Hooker", (TalkPath, DeletedMachineTalkFixture.Hooker));
+        await InstallPackage(loadout.LoadoutId, "Deleter", (TalkPath, DeletedMachineTalkFixture.Deleter));
+        await AddDump("Current", EldenRingInstall.RegulationFile, DeletedMachineTalkFixture.Vanilla);
+
+        var report = await ServiceProvider.GetRequiredService<IMergeReports>().ForLoadout(Refresh(loadout).LoadoutId, CancellationToken.None);
+
+        var entry = report.Entries.Should().ContainSingle(e => e.Path == TalkPath).Which;
+        entry.Outcome.Should().Be(MergeReportOutcome.Merged, entry.Reason);
+        entry.Notes.Should().ContainSingle(n => n.Contains("Hooker.zip as the base") && n.Contains("calls machine 20"));
+        entry.VanillaSource.Should().Contain("Current.zip");
+    }
+
+    [Fact]
+    public async Task AMergeThatFailsInEveryOrderNamesTheVanillaCopyItWasTriedAgainstInTheReport()
+    {
+        KeepValidatedBaseline(OlderVersion, Regulation(OlderVersion, 0xB0), "Old.zip: Vanilla/regulation.bin");
+        var loadout = await TalkMods(Bytes("one"), Bytes("two"));
+        await AddDump("Old", Regulation(OlderVersion, 0xB0), Old);
+        loadout = Refresh(loadout);
+
+        var report = await ServiceProvider.GetRequiredService<IMergeReports>().ForLoadout(loadout.LoadoutId, CancellationToken.None);
+
+        var entry = report.Entries.Should().ContainSingle(e => e.Path == TalkPath).Which;
+        entry.Outcome.Should().Be(MergeReportOutcome.NotMergeable);
+        entry.Reason.Should().StartWith("the merge failed: ");
+        entry.VanillaSource.Should().Contain("Old.zip").And.Contain(TalkPath);
+        entry.Notes.Should().ContainSingle().Which.Should().EndWith("wins by loadout priority; the other copies are ignored");
     }
 
     [Fact]

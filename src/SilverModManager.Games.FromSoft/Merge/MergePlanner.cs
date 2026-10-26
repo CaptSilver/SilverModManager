@@ -46,17 +46,53 @@ public static class MergePlanner
                            ?? throw new InvalidOperationException($"{candidate.Path} is marked as merging but has no strategy");
             try
             {
-                merged.Add(Merge(candidate, strategy, bytes, vanilla, gameBase, traits, bindings(strategy), rebase));
+                merged.Add(MergeInSomeOrder(candidate, strategy, bytes, vanilla, gameBase, traits, bindings(strategy), rebase));
             }
             catch (Exception exception) when (IsFormatFailure(exception))
             {
                 if (MergeStrategies.RefusesWhenItFails(strategy))
                     return new MergePlan([], new MergeRefusal(candidate.Path, strategy, exception.Message, (exception as MergeException)?.Missing ?? []), notMergeable);
 
-                unmerged.Add(candidate with { Outcome = MergeOutcome.NotMergeable(MergeOutcome.MergeFailed(exception.Message)), Winner = index.WinnerOf(candidate) });
+                unmerged.Add(candidate with { Outcome = MergeOutcome.NotMergeable(MergeOutcome.MergeFailed(exception.Message)), Winner = index.WinnerOf(candidate), VanillaSource = VanillaSourceOf(strategy) });
             }
         }
         return new MergePlan(merged, null, notMergeable, unmerged);
+    }
+
+    // A merge whose result depends on who leads is tried with each contributor as the base before it is given up on.
+    // The base is the only thing that moves: the others follow in priority order, so the same inputs always give the same
+    // file. The error that is reported is the priority order's, since that is the order the user set up.
+    private static MergedPath MergeInSomeOrder(
+        MergeCandidate candidate, MergeStrategy strategy, Func<ProviderFile, byte[]> bytes,
+        Func<string, ProviderFile, byte[]?> vanilla, Func<string, byte[]> gameBase,
+        FromSoftFormatTraits traits, MergeFold fold, RegulationRebase? rebase)
+    {
+        try
+        {
+            return Merge(candidate, strategy, bytes, vanilla, gameBase, traits, fold, rebase);
+        }
+        catch (Exception first) when (IsFormatFailure(first) && MergeStrategies.IsOrderSensitive(strategy) && candidate.Contributors.Count > 1)
+        {
+            for (var lead = 1; lead < candidate.Contributors.Count; lead++)
+            {
+                var order = candidate.Contributors.Where((_, i) => i == lead)
+                    .Concat(candidate.Contributors.Where((_, i) => i != lead)).ToArray();
+                try
+                {
+                    var merged = Merge(candidate with { Contributors = order }, strategy, bytes, vanilla, gameBase, traits, fold, rebase);
+                    return merged with
+                    {
+                        Contributors = candidate.Contributors,
+                        Notes = [new MergeBaseChanged(order[0].ModName, candidate.Contributors[0].ModName, first.Message), .. merged.Notes],
+                    };
+                }
+                catch (Exception other) when (IsFormatFailure(other))
+                {
+                    // Not this one either; the next contributor gets the lead.
+                }
+            }
+            throw;
+        }
     }
 
     private static MergedPath Merge(

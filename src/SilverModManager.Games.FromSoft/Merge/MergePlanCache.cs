@@ -247,6 +247,10 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
                 Merged = plan.Merged
                     .Select(m => Notes.TryGetValue(m.Path, out var extra) && extra.Count > 0 ? m with { Notes = [.. m.Notes, .. extra] } : m)
                     .ToArray(),
+                // A merge that failed still compared against some vanilla copy; the report names it.
+                Unmerged = plan.Unmerged
+                    .Select(u => Notes.TryGetValue(u.Path, out var extra) && MergeReports.SourceOf(extra) is { } source ? u with { VanillaSource = source } : u)
+                    .ToArray(),
             };
     }
 }

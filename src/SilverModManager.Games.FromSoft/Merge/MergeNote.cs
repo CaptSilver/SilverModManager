@@ -67,6 +67,19 @@ public sealed record TextureKept(string Name, string KeptMod, string DroppedMod)
         $"texture {Name}: both mods ship it and differ; kept {KeptMod}'s";
 }
 
+/// <summary>
+/// The priority order could not be merged, and another contributor as the base could. The result is what that base
+/// gives, so a row or state both sides changed stays as the base had it, not as the highest-priority mod had it.
+/// </summary>
+/// <param name="Base">The mod the merge was led by.</param>
+/// <param name="Leader">The highest-priority mod, whose lead failed.</param>
+/// <param name="Error">Why the priority order failed.</param>
+public sealed record MergeBaseChanged(string Base, string Leader, string Error) : IMergeNote
+{
+    public string Describe() =>
+        $"merged with {Base} as the base because the priority order ({Leader} first) failed: {Error}";
+}
+
 /// <summary>A note about where a merge's ancestor came from. Reports show it in the source column, not among the choices the merge made.</summary>
 public interface IVanillaSourceNote : IMergeNote;
 

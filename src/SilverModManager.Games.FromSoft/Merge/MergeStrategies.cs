@@ -48,6 +48,17 @@ public static class MergeStrategies
     /// </summary>
     public static bool RefusesWhenItFails(MergeStrategy strategy) => strategy is MergeStrategy.ParamRows;
 
+    /// <summary>
+    /// Whether a merge can fail with one contributor leading and succeed with another. The talk-archive merge can: it
+    /// refuses a state that calls a machine the other side deleted, which depends on whose graph the other is laid onto.
+    /// The message union can too: it keeps the base's table list and refuses a table only the other side holds, so the
+    /// side holding more tables has to lead. The three-way message merge refuses archives whose tables differ, the same
+    /// whoever leads, and the texture union fails only on unreadable input. The regulation is not retried: its failures
+    /// are about the game's layout, and the order there decides which edit wins, so a different lead would be a
+    /// different result rather than a rescue.
+    /// </summary>
+    public static bool IsOrderSensitive(MergeStrategy strategy) => strategy is MergeStrategy.EsdThreeWay or MergeStrategy.FmgUnion;
+
     /// <summary>Whether the first step starts from the game's own file rather than the highest-priority mod's (erm's TAKES_GAME_BASE).</summary>
     public static bool TakesGameBase(MergeStrategy strategy) => strategy is MergeStrategy.ParamRows;
 

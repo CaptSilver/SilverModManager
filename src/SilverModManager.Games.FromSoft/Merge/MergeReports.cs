@@ -67,6 +67,22 @@ public sealed class MergeReports(
         return MergeRefusedException.PlanFailed(exception).Message;
     }
 
+    /// <summary>
+    /// Where the ancestor of a merge came from, said by the notes the sources left; null when they said nothing.
+    /// Mods of several builds each have a source of their own; with one build the first note says it all.
+    /// </summary>
+    internal static string? SourceOf(IEnumerable<IMergeNote> notes)
+    {
+        var all = notes.ToArray();
+        var groups = all.OfType<VanillaGroupSource>().Select(n => n.Describe()).ToArray();
+        return groups.Length > 0
+            ? string.Join("; ", groups)
+            : all.OfType<BaselineWillBeKept>().Select(n => n.Describe())
+                .Concat(all.OfType<VanillaServedFromDump>().Select(n => n.Describe()))
+                .Concat(all.OfType<VanillaServedFromGameArchive>().Select(n => n.Describe()))
+                .FirstOrDefault();
+    }
+
     private static MergeReportEntry EntryOf(MergeCandidate candidate, MergePlan? plan, string? refusal, IReadOnlyList<UnconfirmedDump> unconfirmed, string? archiveFailure)
     {
         var strategy = candidate.Strategy is { } s ? MergeStrategies.Name(s) : string.Empty;
@@ -82,20 +98,14 @@ public sealed class MergeReports(
                     .Concat(archiveFailure is null ? [] : [archiveFailure]).ToArray()
                 : candidate.Winner is { } winner ? [$"{winner.ModName} wins by loadout priority; the other copies are ignored"]
                 : [];
-            return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.NotMergeable, notes, string.Empty, candidate.Outcome.Reason ?? string.Empty);
+            return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.NotMergeable, notes, candidate.VanillaSource, candidate.Outcome.Reason ?? string.Empty);
         }
 
         if (plan?.Merged.FirstOrDefault(m => m.Path.Equals(candidate.Path, StringComparison.OrdinalIgnoreCase)) is { } merged)
         {
             // Where the ancestor came from has its own field, so its notes are not repeated among the choices the merge made.
             // Mods of several builds each have a source of their own; with one build the first note says it all.
-            var groups = merged.Notes.OfType<VanillaGroupSource>().Select(n => n.Describe()).ToArray();
-            var source = groups.Length > 0
-                ? string.Join("; ", groups)
-                : merged.Notes.OfType<BaselineWillBeKept>().Select(n => n.Describe())
-                    .Concat(merged.Notes.OfType<VanillaServedFromDump>().Select(n => n.Describe()))
-                    .Concat(merged.Notes.OfType<VanillaServedFromGameArchive>().Select(n => n.Describe()))
-                    .FirstOrDefault() ?? merged.VanillaSource;
+            var source = SourceOf(merged.Notes) ?? merged.VanillaSource;
             var notes = merged.Notes.Where(n => n is not IVanillaSourceNote).Select(n => n.Describe()).ToArray();
             return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.Merged, notes, source, string.Empty);
         }

@@ -449,6 +449,164 @@ public class MergePlannerTests
         Binders.For(ER).Read(Dcx.Read(plan.Merged.Single().Bytes, ER)).Select(e => e.Id).Should().Equal(0, 1);
     }
 
+    // --- the base of an order-sensitive merge ---
+
+    private static MergePlan DeleterAndHookerPlan(string highPriority, string lowPriority)
+    {
+        var path = StaleTalkFixture.TalkPath;
+        var contents = new Dictionary<string, byte[]>
+        {
+            ["Deleter:" + path] = DeletedMachineTalkFixture.Deleter,
+            ["Hooker:" + path] = DeletedMachineTalkFixture.Hooker,
+        };
+        return RealPlan(contents, new HashSet<string> { path }, _ => DeletedMachineTalkFixture.Vanilla, NoBase,
+            Real(lowPriority, path, 1), Real(highPriority, path, 2));
+    }
+
+    [Fact]
+    public void A_talk_pair_that_only_merges_with_the_other_mod_as_the_base_merges_that_way_and_says_so()
+    {
+        var plan = DeleterAndHookerPlan(highPriority: "Deleter", lowPriority: "Hooker");
+
+        plan.Refusal.Should().BeNull();
+        plan.Unmerged.Should().BeEmpty();
+        var merged = plan.Merged.Should().ContainSingle().Which;
+        var swapped = merged.Notes.OfType<MergeBaseChanged>().Should().ContainSingle().Which;
+        swapped.Base.Should().Be("Hooker");
+        swapped.Leader.Should().Be("Deleter");
+        swapped.Error.Should().Contain("calls machine 20");
+        swapped.Describe().Should().Contain("Hooker as the base").And.Contain("Deleter first").And.Contain("calls machine 20");
+        merged.Contributors.Select(c => c.ModName).Should().Equal("Deleter", "Hooker");
+    }
+
+    [Fact]
+    public void A_talk_pair_that_merges_with_the_priority_leader_as_the_base_is_left_alone()
+    {
+        var plan = DeleterAndHookerPlan(highPriority: "Hooker", lowPriority: "Deleter");
+
+        plan.Unmerged.Should().BeEmpty();
+        plan.Merged.Should().ContainSingle().Which.Notes.OfType<MergeBaseChanged>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void The_file_a_swapped_base_gives_is_the_file_the_same_base_gives_when_it_leads_by_priority()
+    {
+        var swapped = DeleterAndHookerPlan(highPriority: "Deleter", lowPriority: "Hooker").Merged.Single().Bytes;
+        var direct = DeleterAndHookerPlan(highPriority: "Hooker", lowPriority: "Deleter").Merged.Single().Bytes;
+
+        swapped.Should().Equal(direct);
+    }
+
+    [Fact]
+    public void A_talk_merge_that_succeeds_in_the_priority_order_is_tried_once_and_not_turned_round()
+    {
+        const string path = "script/talk/m00.talkesdbnd.dcx";
+        var calls = new List<Call>();
+        var index = MergePathIndex.Build([File("a", path, 2), File("b", path, 1)], Traits, new HashSet<string> { path });
+
+        var plan = MergePlanner.Plan(index, ByPackage, Vanilla("van"), NoBase, Traits, _ => Recording(calls));
+
+        calls.Should().ContainSingle().Which.Should().BeEquivalentTo(new { Accumulated = "a", Next = "b" }, o => o.ExcludingMissingMembers());
+        plan.Merged.Single().Notes.OfType<MergeBaseChanged>().Should().BeEmpty();
+        plan.Merged.Single().Contributors.Select(c => c.PackageId).Should().Equal("a", "b");
+    }
+
+    [Fact]
+    public void A_talk_pair_that_fails_in_every_order_falls_back_to_the_priority_winner_with_the_first_error()
+    {
+        // Archives holding different entries are refused before any machine is read, whichever is the base.
+        const string path = "script/talk/m00.talkesdbnd.dcx";
+        var contents = new Dictionary<string, byte[]>
+        {
+            ["high:" + path] = EsdMergeFixtureArchive(ER, [0, 1]),
+            ["low:" + path] = EsdMergeFixtureArchive(ER, [0]),
+        };
+
+        var plan = RealPlan(contents, new HashSet<string> { path }, _ => EsdMergeFixtureArchive(ER, [0, 1]), NoBase, Real("low", path, 1), Real("high", path, 2));
+
+        plan.Merged.Should().BeEmpty();
+        var fallback = plan.Unmerged.Should().ContainSingle().Which;
+        fallback.Winner!.Value.PackageId.Should().Be("high");
+        fallback.VanillaSource.Should().NotBeEmpty("the report names the vanilla copy the merge was tried against");
+    }
+
+    [Fact]
+    public void A_three_way_pair_of_message_archives_is_not_retried_with_another_base()
+    {
+        const string path = "msg/engus/item.msgbnd.dcx";
+        var calls = 0;
+        MergeFold fold = (_, _, _, _, _, _, _, _, _, _) => { calls++; throw new MergeException("cannot join"); };
+        var index = Index(new HashSet<string> { path }, File("a", path, 2), File("b", path, 1));
+
+        var plan = Plan(index, fold);
+
+        plan.Unmerged.Should().ContainSingle();
+        calls.Should().Be(1, "a three-way message merge refuses archives holding different tables whichever side leads");
+    }
+
+    [Fact]
+    public void The_bases_tried_for_three_talk_mods_rotate_with_the_others_kept_in_priority_order()
+    {
+        const string path = "script/talk/m00.talkesdbnd.dcx";
+        var seen = new List<string>();
+        MergeFold fold = (acc, next, _, _, _, _, _, _, _, _) =>
+        {
+            seen.Add(S(acc) + ">" + S(next));
+            if (S(acc) is "a" or "b") throw new MergeException("only c leads");
+            return B("c");
+        };
+        var index = MergePathIndex.Build([File("a", path, 3), File("b", path, 2), File("c", path, 1)], Traits, new HashSet<string> { path });
+
+        var plan = MergePlanner.Plan(index, ByPackage, Vanilla("van"), NoBase, Traits, s => s == MergeStrategy.EsdThreeWay ? fold : throw new InvalidOperationException());
+
+        plan.Merged.Should().ContainSingle();
+        seen.Should().Equal("a>b", "b>a", "c>a", "c>b");
+        plan.Merged.Single().Notes.OfType<MergeBaseChanged>().Single().Base.Should().Be("c");
+    }
+
+    [Fact]
+    public void A_talk_merge_that_fails_with_every_base_reports_the_priority_orders_error()
+    {
+        const string path = "script/talk/m00.talkesdbnd.dcx";
+        MergeFold fold = (acc, _, _, _, _, _, _, _, _, _) => throw new MergeException($"{S(acc)} cannot lead");
+        var index = MergePathIndex.Build([File("a", path, 3), File("b", path, 2), File("c", path, 1)], Traits, new HashSet<string> { path });
+
+        var plan = MergePlanner.Plan(index, ByPackage, Vanilla("van"), NoBase, Traits, _ => fold);
+
+        plan.Merged.Should().BeEmpty();
+        var fallback = plan.Unmerged.Should().ContainSingle().Which;
+        fallback.Outcome.Reason.Should().Contain("a cannot lead").And.NotContain("b cannot lead").And.NotContain("c cannot lead");
+        fallback.Winner!.Value.PackageId.Should().Be("a");
+    }
+
+    [Fact]
+    public void A_message_union_whose_leader_lacks_a_table_the_other_has_merges_with_the_other_as_the_base()
+    {
+        // The union keeps the base's table list, so it refuses a table only the other side has; leading with the side
+        // that holds both keeps every table.
+        const string path = "msg/engus/item.msgbnd.dcx";
+        var contents = new Dictionary<string, byte[]>
+        {
+            ["high:" + path] = Msgbnd((1, [(100, "high's text")])),
+            ["low:" + path] = Msgbnd((1, [(100, "low's text"), (200, "only low")]), (2, [(300, "low's second table")])),
+        };
+
+        var plan = RealPlan(contents, NoVanilla, _ => null, NoBase, Real("low", path, 1), Real("high", path, 2));
+
+        plan.Unmerged.Should().BeEmpty();
+        var merged = plan.Merged.Should().ContainSingle().Which;
+        merged.Strategy.Should().Be(MergeStrategy.FmgUnion);
+        merged.Contributors.Select(c => c.PackageId).Should().Equal("high", "low");
+        var swapped = merged.Notes.OfType<MergeBaseChanged>().Should().ContainSingle().Which;
+        swapped.Base.Should().Be("low");
+        swapped.Leader.Should().Be("high");
+        swapped.Error.Should().Contain("entries [2]");
+        var tables = MsgbndFixture.ReadBack(merged.Bytes, ER);
+        tables.Keys.Should().BeEquivalentTo(new[] { 1, 2 });
+        tables[1].Should().Equal(new Dictionary<int, string?> { [100] = "low's text", [200] = "only low" });
+        tables[2].Should().Equal(new Dictionary<int, string?> { [300] = "low's second table" });
+    }
+
     // --- golden: erm's resolve over the same packages ---
 
     private static byte[] Golden(string name) => Formats.GoldenFilesTests.Read($"planner_{name}");
