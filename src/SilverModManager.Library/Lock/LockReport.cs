@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
+using SilverModManager.Abstractions.Cli;
 
 namespace SilverModManager.Library.Lock;
 
@@ -22,9 +23,10 @@ public sealed record LockReportItem(LockLevel Level, string Message);
 [PublicAPI]
 public sealed class LockReport(IReadOnlyList<LockReportItem> items)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    // One line, as this report has always printed; only the escaping comes from the shared options.
+    private static readonly JsonSerializerOptions JsonOptions = new(CliJson.Options)
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 

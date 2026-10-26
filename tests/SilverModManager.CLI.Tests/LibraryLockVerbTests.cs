@@ -202,6 +202,18 @@ public class LibraryLockVerbTests(IServiceProvider provider) : IDisposable
     }
 
     [Fact]
+    public async Task VerifyJsonPrintsAnApostropheLiterally()
+    {
+        var asset = UniqueName("json-apostrophe");
+        await AddFile(asset, "bad", DigestOf("bad"));
+        var path = await WriteLock(LockText(("\"Bob's mod\"", asset, DigestOf("other").ToString())));
+
+        var (_, output) = await Run("library", "verify", "--lock", path.ToString(), "--json");
+
+        output.Should().Contain("Bob's mod").And.NotContain("\\u0027");
+    }
+
+    [Fact]
     public async Task VerifyRejectsALockWithAnUnknownKeyAndExitsOne()
     {
         var path = await WriteLock("[mod]\nversion = \"1\"\nasset = \"a.zip\"\nsha256 = \"ab\"\nsource = \"github\"\nextra = \"x\"\n");

@@ -13,10 +13,8 @@ internal static class MergeVerbs
     internal const string ListName = "fromsoft merge list";
     internal const string EmptyMessage = "No path is provided by more than one mod, so there is nothing to merge.";
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions JsonOptions = new(CliJson.Options)
     {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters = { new JsonStringEnumConverter() },
     };
 

@@ -144,6 +144,20 @@ public class MergeVerbsTests(ITestOutputHelper helper) : AIsolatedGameTest<Merge
     }
 
     [Fact]
+    public async Task JsonPrintsAnApostropheLiterally()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "Alpha's mod", (Msg, Msgbnd("alpha text")));
+        await InstallPackage(loadout, "Beta", (Msg, Msgbnd("beta text")));
+        loadout = Refresh(loadout);
+
+        var (exitCode, _, output) = await Run("fromsoft", "merge", "list", "--json", "-l", loadout.Name);
+
+        exitCode.Should().Be(0, output);
+        output.Should().Contain("Alpha's mod").And.NotContain("\\u0027");
+    }
+
+    [Fact]
     public async Task ARefusedPairExitsNonZeroAndPrintsTheRefusalFirst()
     {
         var loadout = await CreateLoadout();
