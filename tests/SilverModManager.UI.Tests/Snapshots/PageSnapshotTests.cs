@@ -132,6 +132,13 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
         var dates = DateComponentsIn(window);
         dates.Should().HaveCount(2, "both seeded mods' install dates have to be pinned");
         foreach (var date in dates) date.FormattedValue.Value = "2 days ago";
+
+        // An auto column keeps the widest text it has seen, and before pinning the dates read "now" or "one second
+        // ago" depending on timing, which moved every column after this one between runs.
+        var grid = window.GetVisualDescendants().OfType<Avalonia.Controls.TreeDataGrid>().Single();
+        var columns = grid.Source!.Columns;
+        var installed = columns.Select((column, index) => (column, index)).Single(c => c.column.Header as string == "Installed").index;
+        columns.SetColumnWidth(installed, new GridLength(120));
     }
 
     /// <summary>
