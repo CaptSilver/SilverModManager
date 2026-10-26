@@ -29,7 +29,7 @@ namespace SilverModManager.Games.CreationEngine.Abstractions;
 /// A Bethesda title whose plugin headers the load order reader can parse: adds the Plugins.txt intrinsic file and the
 /// missing-master check on top of <see cref="ABethesdaGame{TSelf}"/>.
 /// </summary>
-public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IGameIniFiles
+public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IGameIniFiles, IPerLoadoutSaves
     where TSelf : ACreationEngineGame<TSelf>, IGameData<TSelf>
 {
     private readonly IStreamSourceDispatcher _streamSource;
@@ -215,7 +215,7 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     /// title of this engine needs for a modded load order.
     /// </summary>
     IReadOnlyList<IniKeyEdit> IGameIniFiles.ManagedKeys(Loadout.ReadOnly loadout) =>
-        [.. ArchiveIniKeys, .. SaveRedirectIniKeys.For(this, loadout)];
+        [.. ArchiveIniKeys, .. SaveRedirectKeys(loadout)];
 
     /// <summary>The archive setting the app owns in the main INI. Morrowind has no such switch.</summary>
     protected virtual IReadOnlyList<IniKeyEdit> ArchiveIniKeys => [new IniKeyEdit("Archive", "bInvalidateOlderFiles", "1")];
@@ -228,4 +228,61 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     protected virtual Task RenderDerivedIniKeys(IniDocument ini, GamePath path, Loadout.ReadOnly loadout) => Task.CompletedTask;
 
     protected virtual bool IsDerivedIniKey(GamePath path, string section, string key) => false;
+
+    /// <summary>
+    /// The extensions of the files a save is made of, such as the save itself and the script extender's co-save.
+    /// A <c>.bak</c> copy of any of them follows the save.
+    /// </summary>
+    protected abstract string[] SaveExtensions { get; }
+
+    /// <summary>Why this title cannot keep saves per loadout, or null when it can.</summary>
+    protected virtual string? SaveRedirectUnsupportedReason => null;
+
+    /// <summary>
+    /// True when the game only honours <c>sLocalSavePath</c> once <c>bUseMyGamesDirectory</c> sends it to My Games.
+    /// </summary>
+    protected virtual bool SaveRedirectNeedsMyGamesDirectory => false;
+
+    /// <inheritdoc />
+    public SaveRedirectPlan? PlanSaveRedirect(Loadout.ReadOnly loadout) =>
+        SaveRedirectUnsupportedReason is { } reason
+            ? new SaveRedirectPlan.Unsupported(reason)
+            : new SaveRedirectPlan.IniKey("General", "sLocalSavePath", $"Saves\\{LoadoutSaveSlot.IdOf(loadout)}\\");
+
+    private IEnumerable<IniKeyEdit> SaveRedirectKeys(Loadout.ReadOnly loadout)
+    {
+        var keys = SaveRedirectIniKeys.For(this, loadout).ToList();
+        if (keys.Count > 0 && SaveRedirectNeedsMyGamesDirectory) keys.Add(new IniKeyEdit("General", "bUseMyGamesDirectory", "1"));
+        return keys;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <paramref name="saveRoot"/> is the folder the INI's save path is relative to (My Games/&lt;title&gt;). The
+    /// saves the game writes today sit loose in its <c>Saves</c> folder; folders under it, including other loadouts'
+    /// slots, are left alone, as is any file the slot already has.
+    /// </remarks>
+    public SaveAdoptionPlan? PlanAdoptCurrentSave(Loadout.ReadOnly loadout, AbsolutePath saveRoot)
+    {
+        var saves = saveRoot / "Saves";
+        if (SaveRedirectUnsupportedReason is not null || !saves.DirectoryExists()) return null;
+
+        var slot = LoadoutSaveSlot.IdOf(loadout);
+        var copies = saves.EnumerateFiles(recursive: false)
+            .Where(IsSaveFile)
+            .OrderBy(file => file.FileName, StringComparer.OrdinalIgnoreCase)
+            .Select(file => new SaveAdoptionPlan.Copy(file, saves / slot / file.FileName))
+            .Where(copy => !copy.Destination.FileExists)
+            .ToList();
+        return copies.Count == 0
+            ? null
+            : new SaveAdoptionPlan($"Copy the saves in {saves} to {saves / slot}, so this loadout continues from the saves you play today.", copies);
+    }
+
+    private bool IsSaveFile(AbsolutePath file)
+    {
+        var name = file.FileName.ToString();
+        if (name.EndsWith(".bak", StringComparison.OrdinalIgnoreCase)) name = name[..^".bak".Length];
+        return SaveExtensions.Any(extension => name.EndsWith(extension, StringComparison.OrdinalIgnoreCase));
+    }
 }

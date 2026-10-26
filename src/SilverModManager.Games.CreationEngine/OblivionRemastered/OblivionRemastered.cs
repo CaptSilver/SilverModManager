@@ -46,6 +46,12 @@ public class OblivionRemastered(IServiceProvider provider) : ACreationEngineGame
     // The root launcher is what Steam starts; the engine binary sits in the project's Binaries/Win64.
     protected override RelativePath PrimaryExe => "OblivionRemastered.exe";
 
+    /// <inheritdoc />
+    protected override string[] SaveExtensions => [".sav"];
+
+    /// <inheritdoc />
+    protected override string? SaveRedirectUnsupportedReason => "Oblivion Remastered keeps its saves where the game puts them and has no save-path setting";
+
     private const string EngineExe = $"{ProjectFolder}/Binaries/Win64/OblivionRemastered-Win64-Shipping.exe";
 
     // game_oblivion_remaster.py, GameDataPath.

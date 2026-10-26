@@ -42,6 +42,9 @@ public class Fallout3(IServiceProvider provider) : ACreationEngineGame<Fallout3>
 
     protected override RelativePath PrimaryExe => "Fallout3.exe";
 
+    /// <inheritdoc />
+    protected override string[] SaveExtensions => [".fos", ".fose"];
+
     // https://github.com/ModOrganizer2/modorganizer-game_fallout3/blob/master/src/gamefallout3.cpp
     // (determineMyGamesPath("Fallout3") and the plugins.txt copy from localAppFolder() + "/Fallout3")
     protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "Fallout3";

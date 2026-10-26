@@ -30,6 +30,9 @@ public class Fallout4(IServiceProvider provider) : ACreationEngineGame<Fallout4>
     };
 
     protected override RelativePath PrimaryExe => "Fallout4.exe";
+
+    /// <inheritdoc />
+    protected override string[] SaveExtensions => [".fos", ".f4se"];
     public override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.Fallout4;
     public override GamePath PluginsFile => Fallout4KnownPaths.PluginsFile;

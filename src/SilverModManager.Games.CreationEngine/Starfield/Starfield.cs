@@ -35,6 +35,9 @@ public class Starfield(IServiceProvider provider) : ACreationEngineGame<Starfiel
     };
 
     protected override RelativePath PrimaryExe => "Starfield.exe";
+
+    /// <inheritdoc />
+    protected override string[] SaveExtensions => [".sfs", ".sfse"];
     public override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.Starfield;
     public override GamePath PluginsFile => new(LocationId.AppData, "Plugins.txt");

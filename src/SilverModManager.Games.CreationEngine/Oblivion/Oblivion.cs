@@ -44,6 +44,12 @@ public class Oblivion(IServiceProvider provider) : ACreationEngineGame<Oblivion>
 
     protected override RelativePath PrimaryExe => "Oblivion.exe";
 
+    /// <inheritdoc />
+    protected override string[] SaveExtensions => [".ess", ".obse"];
+
+    // The game only reads sLocalSavePath once it looks in My Games at all.
+    protected override bool SaveRedirectNeedsMyGamesDirectory => true;
+
     // https://github.com/ModOrganizer2/modorganizer-game_oblivion/blob/master/src/gameoblivion.cpp
     // (the plugins.txt copy from localAppFolder() + "/Oblivion", and gameName() is "Oblivion")
     protected override string LocalAppDataFolderName(GameLocatorResult gameLocatorResult) => "Oblivion";

@@ -50,6 +50,9 @@ public class FalloutNewVegas(IServiceProvider provider) : ACreationEngineGame<Fa
 
     protected override RelativePath PrimaryExe => "FalloutNV.exe";
 
+    /// <inheritdoc />
+    protected override string[] SaveExtensions => [".fos", ".nvse"];
+
     // https://github.com/ModOrganizer2/modorganizer-game_falloutnv/blob/master/src/gamefalloutnv.cpp
     // (gameDirectoryName() is "FalloutNV" outside the Epic release; it names both the My Games folder
     // and the plugins.txt copy from localAppFolder())

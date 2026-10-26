@@ -22,6 +22,9 @@ public class SkyrimLE(IServiceProvider provider) : ACreationEngineGame<SkyrimLE>
     };
 
     protected override RelativePath PrimaryExe => "TESV.exe";
+
+    /// <inheritdoc />
+    protected override string[] SaveExtensions => [".ess", ".skse"];
     public override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.Skyrim;
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");

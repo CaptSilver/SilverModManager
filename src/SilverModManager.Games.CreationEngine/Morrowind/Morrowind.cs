@@ -129,6 +129,12 @@ public class Morrowind(IServiceProvider provider) : ACreationEngineGame<Morrowin
 
     protected override RelativePath PrimaryExe => "Morrowind.exe";
 
+    /// <inheritdoc />
+    protected override string[] SaveExtensions => [".ess"];
+
+    /// <inheritdoc />
+    protected override string? SaveRedirectUnsupportedReason => "Morrowind has no save-path setting";
+
     protected override string DataFolderName => "Data Files";
 
     // Saves live in the game folder, not under My Games.

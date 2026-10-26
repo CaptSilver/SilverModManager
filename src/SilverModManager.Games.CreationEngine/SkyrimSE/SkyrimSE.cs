@@ -30,6 +30,9 @@ public class SkyrimSE(IServiceProvider provider) : ACreationEngineGame<SkyrimSE>
     };
 
     protected override RelativePath PrimaryExe => "SkyrimSE.exe";
+
+    /// <inheritdoc />
+    protected override string[] SaveExtensions => [".ess", ".skse"];
     public override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.SkyrimSE;
     public override GamePath PluginsFile => new(LocationId.AppData, "Plugins.txt");

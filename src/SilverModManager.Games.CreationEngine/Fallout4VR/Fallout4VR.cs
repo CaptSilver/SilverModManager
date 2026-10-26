@@ -23,6 +23,9 @@ public class Fallout4VR(IServiceProvider provider) : ACreationEngineGame<Fallout
     };
 
     protected override RelativePath PrimaryExe => "Fallout4VR.exe";
+
+    /// <inheritdoc />
+    protected override string[] SaveExtensions => [".fos", ".f4se"];
     public override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.Fallout4VR;
     public override GamePath PluginsFile => new(LocationId.AppData, "plugins.txt");

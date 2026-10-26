@@ -29,6 +29,9 @@ public class EnderalSE(IServiceProvider provider) : ACreationEngineGame<EnderalS
     public override IReadOnlyList<RelativePath> IdentifyingFiles => ["Enderal Launcher.exe", "Data/Enderal - Forgotten Stories.esm"];
 
     protected override RelativePath PrimaryExe => "SkyrimSE.exe";
+
+    /// <inheritdoc />
+    protected override string[] SaveExtensions => [".ess", ".skse"];
     public override PluginFormat HeaderFormat => PluginFormat.Tes4;
     public override LootGame LootGame(GameInstallation installation) => Bethesda.Loot.Masterlists.LootGame.EnderalSE;
     public override GamePath PluginsFile => new(LocationId.AppData, "Plugins.txt");
