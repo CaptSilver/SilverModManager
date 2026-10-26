@@ -33,12 +33,16 @@ internal sealed class RecordingLogger<T> : ILogger<T>
         get { lock (_entries) return _entries.ToArray(); }
     }
 
+    /// <summary>Raised after an entry is recorded, with the formatted message, so a test can feed the entries on to a pipe.</summary>
+    public event Action<LogLevel, Exception?, string>? Written;
+
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
     public bool IsEnabled(LogLevel logLevel) => true;
 
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
     {
         lock (_entries) _entries.Add((logLevel, exception));
+        Written?.Invoke(logLevel, exception, formatter(state, exception));
     }
 }
 
