@@ -15,6 +15,7 @@ public sealed class JobContext<TJobDefinition, TJobResult> : IJobWithResult<TJob
     private readonly Func<IJobContext<TJobDefinition>, ValueTask<TJobResult>> _action;
     private readonly TaskCompletionSource<TJobResult> _tcs;
     private readonly JobCancellationToken _jobCancellationToken;
+    private volatile bool _awaited;
 
     internal JobContext(TJobDefinition definition, IJobMonitor monitor, IJobGroup jobGroup, JobCancellationToken jobCancellationToken, Func<IJobContext<TJobDefinition>, ValueTask<TJobResult>> action)
     {
@@ -142,15 +143,20 @@ public sealed class JobContext<TJobDefinition, TJobResult> : IJobWithResult<TJob
 
     public Task WaitAsync(CancellationToken cancellationToken = default)
     {
+        _awaited = true;
         return _tcs.Task;
     }
     
     /// <inheritdoc />
+    public bool IsAwaited => _awaited;
+
+    /// <inheritdoc />
     public bool TryGetException(out Exception? exception)
     {
-        if (_tcs.Task.IsFaulted)
+        // The task wraps its failure in an AggregateException, which only hides the type in the log.
+        if (_tcs.Task.IsFaulted && _tcs.Task.Exception is { } aggregate)
         {
-            exception = _tcs.Task.Exception;
+            exception = aggregate.InnerException ?? aggregate;
             return true;
         }
 
@@ -162,6 +168,7 @@ public sealed class JobContext<TJobDefinition, TJobResult> : IJobWithResult<TJob
     
     public Task<TJobResult> WaitForResult(CancellationToken cancellationToken = default)
     {
+        _awaited = true;
         return _tcs.Task;
     }
     

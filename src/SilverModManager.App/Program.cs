@@ -325,8 +325,9 @@ public class Program
         {
             var s = services.AddApp(startupMode: startupMode).Validate();
 
-            if (loggingSettings.ShowExceptions)
-                s.AddSingleton<IObservableExceptionSource, ObservableLoggingTarget>(_ => observableTarget);
+            // Registered whatever ShowExceptions says: that setting hides crash dialogs only, and refusals logged
+            // through the same source still have to reach the user. The consumer applies the setting.
+            s.AddSingleton<IObservableExceptionSource, ObservableLoggingTarget>(_ => observableTarget);
 
             if (startupMode.IsAvaloniaDesigner)
             {

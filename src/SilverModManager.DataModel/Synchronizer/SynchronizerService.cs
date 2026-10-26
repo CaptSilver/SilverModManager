@@ -12,6 +12,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
@@ -121,6 +122,13 @@ public class SynchronizerService : ISynchronizerService
                     if (reselectBackends) await ReselectUnchosenBackends(loadout.InstallationInstance);
 
                     await loadout.InstallationInstance.GetGame().Synchronizer.Synchronize(loadout, job);
+                }
+                catch (SynchronizerPreflightException e) when (e.Action is null)
+                {
+                    // Stamped here, inside the job, so every entry point (apply, launch sessions, the CLI) carries it
+                    // and it is set before the job fails and its awaiter runs.
+                    e.Action = new OpenHealthCheck(loadoutId);
+                    throw;
                 }
                 finally
                 {

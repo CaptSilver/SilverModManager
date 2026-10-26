@@ -49,6 +49,12 @@ public interface IJobContext : IAsyncDisposable, IDisposable
     Type JobType { get; }
     
     /// <summary>
+    /// Whether anyone has awaited or waited on this job. A failure of an awaited job reaches that caller as an
+    /// exception, so the caller decides what the user sees; only a job nobody awaits has no one to report it.
+    /// </summary>
+    bool IsAwaited { get; }
+
+    /// <summary>
     /// Try to get the exception that caused the job to fail.
     /// </summary>
     public bool TryGetException(out Exception? exception);

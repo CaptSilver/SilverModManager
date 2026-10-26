@@ -103,7 +103,6 @@ src/SilverModManager.App.UI/WorkspaceSystem/Workspace/WorkspaceViewModel.cs	2
 src/SilverModManager.App/MainThreadData.cs	1
 src/SilverModManager.App/Program.cs	1
 src/SilverModManager.App/Startup.cs	2
-src/SilverModManager.Backend/Jobs/JobMonitor.cs	1
 src/SilverModManager.Backend/Settings/SettingsManager.cs	4
 src/SilverModManager.Collections/InstallCollectionDownloadJob.cs	2
 src/SilverModManager.Collections/InstallCollectionJob.cs	1

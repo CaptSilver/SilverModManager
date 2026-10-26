@@ -155,10 +155,16 @@ public sealed class JobMonitor : IJobMonitor, IDisposable
             var job = ((IJob)ctx);
             if (job.Status == JobStatus.Failed)
             {
+                // A caller awaiting the job gets the exception rethrown and decides what the user sees, so the
+                // trace only goes to the log. Nobody else will hear about an unawaited job's failure, so that one
+                // is an Error.
+                var (level, template) = ctx.IsAwaited
+                    ? (LogLevel.Warning, "Job {JobId} of type {JobType} failed; rethrown to the caller")
+                    : (LogLevel.Error, "Job {JobId} of type {JobType} failed");
                 if (ctx.TryGetException(out var ex))
-                    _logger.LogError(ex!, "Job {JobId} of type {JobType} failed", job.Id, ctx.JobType);
+                    _logger.Log(level, ex, template, job.Id, ctx.JobType);
                 else
-                    _logger.LogError("Job {JobId} of type {JobType} failed", job.Id, ctx.JobType);
+                    _logger.Log(level, template, job.Id, ctx.JobType);
             }
             
             if (((IJob)ctx).Status != JobStatus.Paused)
