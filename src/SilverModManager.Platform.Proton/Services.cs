@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SilverModManager.Platform.Proton.Doctor;
 using SilverModManager.Platform.Proton.Launch;
+using SilverModManager.Platform.Proton.PrefixSetup;
 using SilverModManager.Platform.Proton.Support;
 using SilverModManager.Platform.Proton.Protontricks;
 using SilverModManager.Platform.Proton.Steam;
@@ -37,6 +38,10 @@ public static class Services
         services.AddSingleton<IToolRunStrategy, ProtontricksStrategy>();
         services.AddSingleton<IToolProvider, UserToolProvider>();
         services.AddSingleton<IToolRunner, ToolRunner.ToolRunner>();
+        services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddSingleton<IPrefixInspector, PrefixInspector>();
+        services.AddSingleton<IPrefixFileFetcher>(s => new HttpPrefixFileFetcher(s.GetRequiredService<HttpClient>()));
+        services.AddSingleton<PrefixSetupRunner>();
         // The doctor probes launch locks without needing the rest of the headless launch services.
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));

@@ -16,6 +16,7 @@ using SilverModManager.Sdk;
 using NSubstitute;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Settings;
+using SilverModManager.Platform.Proton.PrefixSetup;
 using SilverModManager.Platform.Proton.Support;
 
 namespace SilverModManager.Platform.Proton.Tests;
@@ -38,6 +39,7 @@ public class ProtonServicesTests
         services.AddSingleton(Substitute.For<IGameLaunchSession>());
         services.AddSingleton(Substitute.For<ISettingsManager>());
         services.AddSingleton(Substitute.For<IToolManager>());
+        services.AddSingleton(new HttpClient());
         services.AddLogging();
         services.AddProton();
 
@@ -51,6 +53,7 @@ public class ProtonServicesTests
         provider.GetRequiredService<IPrefixResolver>().Should().BeOfType<PrefixResolver>();
         provider.GetRequiredService<ISupportBundleWriter>().Should().BeOfType<SupportBundleWriter>();
         provider.GetRequiredService<DeploymentCommand>().Should().NotBeNull();
+        provider.GetRequiredService<PrefixSetupRunner>().Should().NotBeNull();
         provider.GetRequiredService<IToolRunner>().Should().BeOfType<ToolRunner.ToolRunner>();
         provider.GetServices<IToolProvider>().Should().ContainSingle().Which.Should().BeOfType<UserToolProvider>();
         provider.GetServices<IToolRunStrategy>().Select(s => s.Kind).Should().BeEquivalentTo(

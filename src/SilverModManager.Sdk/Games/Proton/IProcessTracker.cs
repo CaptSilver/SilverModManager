@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using NexusMods.Paths;
 
 namespace SilverModManager.Sdk.Games;
 
@@ -31,6 +32,14 @@ public interface IProcessTracker
     /// processes are found by the executable they run even though the kernel truncates their name.
     /// </summary>
     IReadOnlyList<TrackedProcess> FindByName(string name);
+
+    /// <summary>
+    /// The processes started with <paramref name="prefix"/> as their Wine prefix: <c>WINEPREFIX</c> naming it,
+    /// or <c>STEAM_COMPAT_DATA_PATH</c> naming the compatdata folder it sits in. This is how a <c>wineserver</c>
+    /// is tied to a prefix, which its name and command line cannot do. Processes whose environment cannot be
+    /// read are left out.
+    /// </summary>
+    IReadOnlyList<TrackedProcess> FindByPrefix(AbsolutePath prefix);
 
     /// <summary>
     /// Whether a Steam client is running.

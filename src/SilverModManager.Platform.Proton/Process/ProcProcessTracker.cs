@@ -1,4 +1,5 @@
 using System.Text;
+using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Platform.Proton;
@@ -42,6 +43,22 @@ public sealed class ProcProcessTracker(string procRoot) : IProcessTracker
     public IReadOnlyList<TrackedProcess> FindByName(string name)
     {
         return Scan().Where(p => HasName(p, name)).Select(p => p.Process).ToList();
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<TrackedProcess> FindByPrefix(AbsolutePath prefix)
+    {
+        var wanted = RealPath(prefix.ToString());
+        var compatData = Path.GetFileName(wanted) == "pfx" ? Path.GetDirectoryName(wanted) : null;
+
+        return Scan().Where(UsesPrefix).Select(p => p.Process).ToList();
+
+        bool UsesPrefix(Candidate p)
+        {
+            var environment = p.Environment();
+            return (environment.TryGetValue("WINEPREFIX", out var wine) && RealPath(wine) == wanted)
+                   || (compatData is not null && environment.TryGetValue("STEAM_COMPAT_DATA_PATH", out var compat) && RealPath(compat) == compatData);
+        }
     }
 
     /// <inheritdoc />

@@ -65,6 +65,52 @@ public class ProcProcessTrackerTests : IDisposable
 
     private int[] GamePids() => Tracker.FindGameProcesses(Installation()).Select(p => p.Pid).Order().ToArray();
 
+    private int[] PrefixPids(string prefix) => Tracker.FindByPrefix(FileSystem.Shared.FromUnsanitizedFullPath(prefix)).Select(p => p.Pid).Order().ToArray();
+
+    [Fact]
+    public void FindByPrefix_MatchesWinePrefixInTheEnvironment()
+    {
+        AddProcess(100, "wineserver", environ: [$"WINEPREFIX={_prefix}", "HOME=/x"]);
+        AddProcess(101, "wineserver", environ: [$"WINEPREFIX={Path.Combine(_root, "other", "pfx")}"]);
+        AddProcess(102, "bash", environ: ["HOME=/x"]);
+
+        PrefixPids(_prefix).Should().Equal(100);
+    }
+
+    [Fact]
+    public void FindByPrefix_MatchesSteamCompatDataPathOfThePrefixParent()
+    {
+        var compatData = Path.GetDirectoryName(_prefix)!;
+        AddProcess(100, "wine64-preloader", environ: [$"STEAM_COMPAT_DATA_PATH={compatData}"]);
+        AddProcess(101, "wine64-preloader", environ: [$"STEAM_COMPAT_DATA_PATH={Path.Combine(_root, "steam", "steamapps", "compatdata", "43")}"]);
+
+        PrefixPids(_prefix).Should().Equal(100);
+    }
+
+    [Fact]
+    public void FindByPrefix_ComparesPathsAfterResolvingSymlinks()
+    {
+        var link = Path.Combine(_root, "link");
+        Directory.CreateSymbolicLink(link, Path.Combine(_root, "steam"));
+        AddProcess(100, "wineserver", environ: [$"WINEPREFIX={link}/steamapps/compatdata/42/pfx/"]);
+
+        PrefixPids(_prefix).Should().Equal(100);
+    }
+
+    [Fact]
+    public void FindByPrefix_SkipsProcessesWhoseEnvironmentCannotBeRead()
+    {
+        AddProcess(100, "wineserver", environ: [$"WINEPREFIX={_prefix}"]);
+        AddProcess(101, "wineserver", environ: [$"WINEPREFIX={_prefix}"]);
+        var unreadable = Path.Combine(_proc, "101", "environ");
+        File.SetUnixFileMode(unreadable, UnixFileMode.None);
+        Directory.CreateDirectory(Path.Combine(_proc, "102"));
+        File.WriteAllText(Path.Combine(_proc, "102", "comm"), "gone\n");
+
+        try { PrefixPids(_prefix).Should().Equal(100); }
+        finally { File.SetUnixFileMode(unreadable, UnixFileMode.UserRead | UnixFileMode.UserWrite); }
+    }
+
     [Fact]
     public void FindGameProcesses_MatchesAnExecutableInsideTheGameFolder()
     {

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.TestFramework;
@@ -25,6 +26,11 @@ public class FakeProcessTracker : IProcessTracker
     public Func<GameInstallation, IReadOnlyList<TrackedProcess>> ForInstallation { get; set; } = _ => [];
 
     /// <summary>
+    /// What <see cref="FindByPrefix"/> returns; nothing is bound to a prefix by default.
+    /// </summary>
+    public Func<AbsolutePath, IReadOnlyList<TrackedProcess>> ByPrefix { get; set; } = _ => [];
+
+    /// <summary>
     /// The value of <see cref="IsSteamRunning"/>.
     /// </summary>
     public bool SteamRunning { get; set; }
@@ -43,6 +49,9 @@ public class FakeProcessTracker : IProcessTracker
         lock (NameQueries) NameQueries.Add(name);
         return ByName(name);
     }
+
+    /// <inheritdoc />
+    public IReadOnlyList<TrackedProcess> FindByPrefix(AbsolutePath prefix) => ByPrefix(prefix);
 
     /// <inheritdoc />
     public bool IsSteamRunning() => SteamRunning;
