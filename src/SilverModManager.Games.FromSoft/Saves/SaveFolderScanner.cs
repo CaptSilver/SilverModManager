@@ -29,7 +29,8 @@ public sealed record SaveFileEntry(string Name, string Path, SaveKind Kind, bool
 /// <summary>
 /// Lists a save folder and says which files the game's <see cref="FromSoftSaveNames"/> know. Every operation on a
 /// save asks <see cref="KindOf"/> first, so a file with a name nobody here wrote (an <c>ER0000_modded</c> from an
-/// earlier tool, say) is shown and left alone. A game without a modded or Seamless Co-op save never yields that kind.
+/// earlier tool, say) is shown and left alone. The saves named for a loadout match only the exact shape the app
+/// writes, never <c>ER0000_&lt;anything&gt;</c>. A game without a modded or Seamless Co-op save never yields that kind.
 /// </summary>
 public sealed class SaveFolderScanner
 {
@@ -38,8 +39,11 @@ public sealed class SaveFolderScanner
     /// <summary>The known save files, with the kind each name stands for. Names are matched exactly, as the game writes them.</summary>
     private readonly (string Name, SaveKind Kind)[] _knownNames;
 
+    private readonly FromSoftSaveNames _names;
+
     public SaveFolderScanner(FromSoftSaveNames names)
     {
+        _names = names;
         var known = new List<(string, SaveKind)> { (names.Vanilla, SaveKind.Vanilla) };
         if (names.SeamlessCoop is { } coop) known.Add((coop, SaveKind.SeamlessCoop));
         if (names.Modded is { } modded) known.Add((modded, SaveKind.Modded));
@@ -52,6 +56,14 @@ public sealed class SaveFolderScanner
         {
             if (fileName == name) { isBackup = false; return kind; }
             if (fileName == name + BackupSuffix) { isBackup = true; return kind; }
+        }
+
+        // A save named for a loadout is the app's own; any other name next to it was written by someone else.
+        if (_names.IsLoadoutSlotName(fileName)) { isBackup = false; return SaveKind.Modded; }
+        if (fileName.EndsWith(BackupSuffix, StringComparison.Ordinal) && _names.IsLoadoutSlotName(fileName[..^BackupSuffix.Length]))
+        {
+            isBackup = true;
+            return SaveKind.Modded;
         }
 
         isBackup = false;

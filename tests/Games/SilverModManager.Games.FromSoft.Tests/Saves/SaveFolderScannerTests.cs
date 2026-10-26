@@ -46,6 +46,35 @@ public class SaveFolderScannerTests : IDisposable
     }
 
     [Fact]
+    public void ASaveNamedForALoadoutSlotAndItsBackupAreModded()
+    {
+        Scanner.KindOf("ER0000_00000000000abc.sl2", out var isBackup).Should().Be(SaveKind.Modded);
+        isBackup.Should().BeFalse();
+        Scanner.KindOf("ER0000_00000000000abc.sl2.bak", out var backup).Should().Be(SaveKind.Modded);
+        backup.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ANameThatOnlyResemblesALoadoutSlotStaysUnknown()
+    {
+        // One character too many or too few, upper case, a non-hex digit, another extension, and the names other tools wrote.
+        foreach (var name in new[]
+                 {
+                     "ER0000_00000000000abcd.sl2", "ER0000_0000000000abc.sl2", "ER0000_00000000000ABC.sl2", "ER0000_0000000000000g.sl2",
+                     "ER0000_00000000000abc.co2", "ER0000_00000000000abc.sl2.bak2", "ER0000_backup.sl2", "ER0000_modded.sl2", "XR0000_00000000000abc.sl2",
+                 })
+            Scanner.KindOf(name, out _).Should().Be(SaveKind.Unknown, name);
+    }
+
+    [Fact]
+    public void ASlotNameIsOnlyModdedForAGameWithAModdedSave()
+    {
+        var scanner = new SaveFolderScanner(new FromSoftSaveNames("TS0000.sl2", null, null));
+
+        scanner.KindOf("TS0000_00000000000abc.sl2", out _).Should().Be(SaveKind.Unknown);
+    }
+
+    [Fact]
     public void AFolderThatDoesNotExistHasNoFiles()
         => Scanner.Scan(Path.Combine(_fixture.Root, "missing")).Should().BeEmpty();
 

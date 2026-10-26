@@ -22,8 +22,12 @@ namespace SilverModManager.Games.FromSoft.Me3;
 /// </summary>
 public sealed class Me3Loader(IServiceProvider provider, Me3LoaderOptions options, FromSoftGameDefinition definition) : IFromSoftModLoader
 {
-    /// <summary>The profile text of the game: its me3 name, modded save and overlay natives.</summary>
-    public Me3ProfileSpec ProfileSpec => new(options.GameName, definition.SaveNames.Modded, options.OverlayNatives);
+    /// <summary>
+    /// The profile text of the game for one loadout: its me3 name, modded save and overlay natives. A loadout that
+    /// keeps its saves gets the save named for it, any other the game's fixed modded save.
+    /// </summary>
+    public Me3ProfileSpec ProfileSpecFor(Loadout.ReadOnly loadout)
+        => new(options.GameName, Loadout.KeepSavesWithLoadout.Get(loadout) ? definition.SaveNames.ModdedFor(loadout) : definition.SaveNames.Modded, options.OverlayNatives);
 
     /// <summary>Whether the game loads its mods with me3.</summary>
     public static bool Serves(IGameData game) => game is IFromSoftGame { Loader: Me3Loader };
@@ -154,6 +158,11 @@ public sealed class Me3Loader(IServiceProvider provider, Me3LoaderOptions option
     /// <summary>True when the loadout has the me3 binary, enabled, in the me3 host location.</summary>
     public bool HasHost(Loadout.ReadOnly loadout)
         => EnabledTargets(loadout).Contains(new GamePath(LocationId.Me3Host, Me3HostFiles.Binary));
+
+    /// <summary>True when the loadout has the file that adds the overlay native to the profile, enabled.</summary>
+    public static bool HasOverlayNative(Loadout.ReadOnly loadout, Me3OverlayNative native)
+        => EnabledTargets(loadout).Any(path => path.LocationId == LocationId.Me3Mods
+            && path.Path.Path.Equals(native.TriggerPathInMods, StringComparison.OrdinalIgnoreCase));
 
     private static IEnumerable<GamePath> EnabledTargets(Loadout.ReadOnly loadout)
         => LoadoutItem.FindByLoadout(loadout.Db, loadout)

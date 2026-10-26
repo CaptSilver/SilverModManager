@@ -58,6 +58,6 @@ public class Me3ProfileFile(ILogger<Me3ProfileFile> logger, Me3Loader loader) : 
             .Where(entry => entry.Key.LocationId == LocationId.Me3Mods && entry.Key != Path && WillBeOnDisk(entry.Value))
             .Select(entry => entry.Key.Path.Path);
 
-        return Me3Profile.Render(loader.ProfileSpec, files, installation.Locations[LocationId.Me3Mods].Path, FromSoftPaths.GameFolder(((IFromSoftGame)installation.Game).Layout, installation), Me3PackagePriorities.Read(loadout));
+        return Me3Profile.Render(loader.ProfileSpecFor(loadout), files, installation.Locations[LocationId.Me3Mods].Path, FromSoftPaths.GameFolder(((IFromSoftGame)installation.Game).Layout, installation), Me3PackagePriorities.Read(loadout));
     }
 }

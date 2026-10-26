@@ -140,6 +140,25 @@ public class SaveBackupsTests : IDisposable
     }
 
     [Fact]
+    public void ASaveNamedForALoadoutIsBackedUpAndRestoredToItsOwnName()
+    {
+        const string name = "ER0000_00000000000abc.sl2";
+        var save = _fixture.Save(name, "loadout save");
+        var vanilla = _fixture.Save("ER0000.sl2", "vanilla");
+        var before = File.ReadAllBytes(vanilla);
+        var backup = Backups.Backup(save);
+        File.Delete(save);
+
+        var result = Backups.Restore(backup, _fixture.SaveFolder);
+
+        backup.SaveName.Should().Be(name);
+        Backups.List().Should().ContainSingle().Which.SaveName.Should().Be(name);
+        result.Destination.Should().Be(save);
+        File.ReadAllBytes(save).Should().Equal(SaveFixture.BytesOf("loadout save"));
+        File.ReadAllBytes(vanilla).Should().Equal(before);
+    }
+
+    [Fact]
     public void RestoreOfACopyNamedForAnUnknownFileIsRefusedAndTouchesNothing()
     {
         _fixture.Save("ER0000.sl2", "vanilla");

@@ -146,6 +146,33 @@ public class Me3ProfileFileTests(ITestOutputHelper helper) : AEldenRingTest<Me3P
         text.Should().Contain($"path = '{RealGameFolder}/SeamlessCoop/ersc.dll'");
     }
 
+    private static Dictionary<GamePath, SyncNode> OnePackage() => new() { { Mods("kept/parts/a.dcx"), InLoadout() } };
+
+    [Fact]
+    public async Task AModdedProfileUsesTheFixedSaveWhenTheLoadoutDoesNotKeepItsSaves()
+    {
+        var loadout = await CreateLoadout();
+
+        var text = await Write(loadout, OnePackage());
+
+        text.Should().Contain("savefile = \"ER0000_silver.sl2\"");
+    }
+
+    [Fact]
+    public async Task AModdedProfileUsesTheSaveNamedForTheLoadoutWhenItKeepsItsSaves()
+    {
+        var loadout = await CreateLoadout();
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(loadout.Id, Loadout.KeepSavesWithLoadout, true);
+            await tx.Commit();
+        }
+
+        var text = await Write(Refresh(loadout), OnePackage());
+
+        text.Should().Contain($"savefile = \"ER0000_{SilverModManager.Abstractions.Games.LoadoutSaveSlot.IdOf(loadout)}.sl2\"").And.NotContain("ER0000_silver");
+    }
+
     [Fact]
     public async Task ApplyWritesTheProfileBesideThePackagesWithoutTouchingTheGameFolder()
     {
