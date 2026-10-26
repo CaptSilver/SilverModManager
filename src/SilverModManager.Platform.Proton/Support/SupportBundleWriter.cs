@@ -46,6 +46,7 @@ public sealed class SupportBundleWriter(
                 await AddLog(zip, log.ToPath(fileSystem), cancellationToken);
 
             AddText(zip, "doctor.json", report.ToJson());
+            if (PrefixComponentsText(report) is { } components) AddText(zip, "prefix-components.txt", components);
             AddText(zip, "steam-launch-options.txt", LaunchOptionsText(report));
             AddText(zip, "system.txt", SystemText());
             AddLaunchState(zip);
@@ -86,6 +87,22 @@ public sealed class SupportBundleWriter(
         }
 
         return sb.Length == 0 ? "No Steam game with a readable localconfig.vdf.\n" : sb.ToString();
+    }
+
+    /// <summary>
+    /// The prefix component section of every game that has one, or null when no game needs components, so a
+    /// bundle for such a setup has no empty file.
+    /// </summary>
+    private static string? PrefixComponentsText(DoctorReport report)
+    {
+        var sb = new StringBuilder();
+        foreach (var installation in report.Installations.Where(i => i.PrefixComponents.Count > 0))
+        {
+            sb.Append(installation.Game).Append(" (").Append(installation.StoreId).AppendLine("):");
+            foreach (var line in DoctorTextFormatter.PrefixComponents(installation)) sb.AppendLine(line);
+        }
+
+        return sb.Length == 0 ? null : sb.ToString();
     }
 
     private static string SystemText() =>

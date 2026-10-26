@@ -32,3 +32,12 @@ public interface IInstallationCheck
 {
     IReadOnlyList<DoctorCheck> Check(GameInstallation installation);
 }
+
+/// <summary>
+/// Names the prefix components a game needs, so the doctor can report whether the prefix has them. Register one
+/// per game, and return an empty list for an installation of any other game.
+/// </summary>
+public interface IPrefixComponentRequirements
+{
+    IReadOnlyList<PrefixComponentId> Required(GameInstallation installation);
+}

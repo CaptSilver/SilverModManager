@@ -100,6 +100,54 @@ public class SupportBundleWriterTests : IDisposable
         return new SupportBundleWriter(_fs, settings, new FakeEnvironment(_runtimeDir), reporter, source);
     }
 
+    private SupportBundleWriter WriterWithComponents(params PrefixComponentId[] ids)
+    {
+        var prefixes = Substitute.For<IPrefixResolver>();
+        prefixes.Resolve(Arg.Any<GameInstallation>()).Returns(PrefixResolution.Resolved(new ResolvedPrefix(_steam.Combine("steamapps/compatdata/42/pfx"), CompatibilityLayerKind.SteamProton, ProtonAppId: 42)));
+        var proton = Substitute.For<IProtonResolver>();
+        proton.ListBuilds(Arg.Any<AbsolutePath>()).Returns([]);
+        proton.ResolveForApp(Arg.Any<AbsolutePath>(), Arg.Any<uint>()).Returns(ProtonResolution.Failed("no Proton in the fixture"));
+
+        var inspector = Substitute.For<IPrefixInspector>();
+        inspector.Inspect(Arg.Any<ResolvedPrefix>(), Arg.Any<IReadOnlyList<PrefixComponentId>>()).Returns(call =>
+            call.Arg<IReadOnlyList<PrefixComponentId>>()
+                .Select((id, n) => new PrefixComponentStatus(id, n == 0 ? PrefixComponentState.Installed : PrefixComponentState.Missing, n == 0 ? "native file with a version resource" : "only Wine's placeholder"))
+                .ToArray());
+        var requirements = Substitute.For<IPrefixComponentRequirements>();
+        requirements.Required(Arg.Any<GameInstallation>()).Returns((IReadOnlyList<PrefixComponentId>)ids);
+
+        var reporter = new DoctorReporter(prefixes, proton, Substitute.For<IToolRunner>(), new InstallationLockFactory(new FakeEnvironment(_runtimeDir)), null, inspector, [requirements]);
+
+        var settings = Substitute.For<ISettingsManager>();
+        settings.Get<LoggingSettings>().Returns(_logging);
+        var source = Substitute.For<IManagedInstallations>();
+        var managed = new ManagedInstallation(SteamGame(), ["Main"]);
+        source.List().Returns([managed]);
+        return new SupportBundleWriter(_fs, settings, new FakeEnvironment(_runtimeDir), reporter, source);
+    }
+
+    [Fact]
+    public async Task WriteAsync_GameWithComponents_AddsThePrefixComponentSection()
+    {
+        WriteLocalConfig("");
+        var bundle = await WriterWithComponents(new PrefixComponentId("vcrun2022"), new PrefixComponentId("d3dcompiler_47")).WriteAsync();
+
+        var entries = Read(bundle);
+        entries["prefix-components.txt"].Should().Contain("Test Game")
+            .And.Contain("vcrun2022: installed, native file with a version resource")
+            .And.Contain("d3dcompiler_47: missing, only Wine's placeholder");
+        entries["doctor.json"].Should().Contain("\"prefixComponents\"").And.Contain("\"installed\"");
+    }
+
+    [Fact]
+    public async Task WriteAsync_NoComponents_AddsNoPrefixComponentEntry()
+    {
+        WriteLocalConfig("");
+        var bundle = await WriterWithComponents().WriteAsync();
+
+        Read(bundle).Keys.Should().NotContain("prefix-components.txt");
+    }
+
     private void WriteState(string store, string id, string text)
     {
         var path = InstallationLock.PathFor(_runtimeDir, store, id);

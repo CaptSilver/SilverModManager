@@ -63,7 +63,19 @@ public sealed record DoctorInstallation(
     /// array and no existing field changes.
     /// </summary>
     public IReadOnlyList<DoctorCheck> Checks { get; init; } = [];
+
+    /// <summary>
+    /// What the prefix shows for each component the game needs. Empty when the game needs none or no prefix was
+    /// chosen, so the JSON gains an array and no existing field changes.
+    /// </summary>
+    public IReadOnlyList<DoctorPrefixComponent> PrefixComponents { get; init; } = [];
 }
+
+/// <summary>One prefix component the game needs and what the prefix shows for it.</summary>
+/// <param name="Id">The component's name, such as <c>vcrun2022</c>.</param>
+/// <param name="State">Whether the prefix has it.</param>
+/// <param name="Evidence">One line saying why.</param>
+public sealed record DoctorPrefixComponent(string Id, PrefixComponentState State, string Evidence);
 
 /// <summary>How the prefix lookup ended.</summary>
 public enum DoctorPrefixStatus

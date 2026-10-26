@@ -460,6 +460,130 @@ public class DoctorReporterTests : IDisposable
         }
     }
 
+    private static readonly PrefixComponentId Vc = new("vcrun2022");
+    private static readonly PrefixComponentId D3d = new("d3dcompiler_47");
+
+    private sealed class FakePrefixInspector(Func<PrefixComponentId, PrefixComponentStatus> status) : IPrefixInspector
+    {
+        public List<ResolvedPrefix> Inspected { get; } = [];
+
+        public IReadOnlyList<PrefixComponentStatus> Inspect(ResolvedPrefix prefix, IReadOnlyList<PrefixComponentId> components)
+        {
+            Inspected.Add(prefix);
+            return components.Select(status).ToArray();
+        }
+    }
+
+    private sealed class FakeRequirements(params PrefixComponentId[] ids) : IPrefixComponentRequirements
+    {
+        public IReadOnlyList<PrefixComponentId> Required(GameInstallation installation) => ids;
+    }
+
+    private DoctorReporter ReporterWithComponents(IPrefixInspector inspector, IToolRunner? runner = null, PrefixResolution? prefix = null, params PrefixComponentId[] ids)
+        => new(
+            new FakePrefixResolver(prefix ?? PrefixResolution.Resolved(new ResolvedPrefix(_prefix, CompatibilityLayerKind.SteamProton, ProtonAppId: 42))),
+            new FakeProtonResolver([Proton8, Proton9], ProtonResolution.Resolved(Proton9)),
+            runner ?? new FakeToolRunner(),
+            new InstallationLockFactory(new FakeEnvironment(_runtimeDir)),
+            null,
+            inspector,
+            [new FakeRequirements(ids)]);
+
+    private static PrefixComponentStatus StatusFor(PrefixComponentId id) => id.Value switch
+    {
+        "vcrun2022" => new PrefixComponentStatus(id, PrefixComponentState.Installed, "native vcruntime140.dll 14.38 in system32"),
+        "d3dcompiler_47" => new PrefixComponentStatus(id, PrefixComponentState.Missing, "only Wine's placeholder in system32"),
+        _ => new PrefixComponentStatus(id, PrefixComponentState.Unknown, "winetricks.log lists it but no native file"),
+    };
+
+    [Fact]
+    public void Build_GameWithComponents_ReportsEachStatusWithItsEvidence()
+    {
+        WriteLocalConfig(null);
+        var inspector = new FakePrefixInspector(StatusFor);
+
+        var install = ReporterWithComponents(inspector, ids: [Vc, D3d, new PrefixComponentId("other")]).Build([Managed(SteamGame())]).Installations.Single();
+
+        install.PrefixComponents.Should().Equal(
+            new DoctorPrefixComponent("vcrun2022", PrefixComponentState.Installed, "native vcruntime140.dll 14.38 in system32"),
+            new DoctorPrefixComponent("d3dcompiler_47", PrefixComponentState.Missing, "only Wine's placeholder in system32"),
+            new DoctorPrefixComponent("other", PrefixComponentState.Unknown, "winetricks.log lists it but no native file"));
+        inspector.Inspected.Should().ContainSingle().Which.Path.Should().Be(_prefix);
+    }
+
+    [Fact]
+    public void Build_GameWithoutComponents_DoesNotInspectAndReportsNone()
+    {
+        WriteLocalConfig(null);
+        var inspector = new FakePrefixInspector(StatusFor);
+
+        var install = ReporterWithComponents(inspector).Build([Managed(SteamGame())]).Installations.Single();
+
+        install.PrefixComponents.Should().BeEmpty();
+        inspector.Inspected.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Build_NoPrefixResolved_DoesNotInspect()
+    {
+        WriteLocalConfig(null);
+        var inspector = new FakePrefixInspector(StatusFor);
+
+        var install = ReporterWithComponents(inspector, prefix: PrefixResolution.Failed("two prefixes"), ids: [Vc]).Build([Managed(SteamGame())]).Installations.Single();
+
+        install.PrefixComponents.Should().BeEmpty();
+        inspector.Inspected.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Build_UnreadablePrefix_ReportsEachComponentUnknownWithTheError()
+    {
+        WriteLocalConfig(null);
+        var inspector = new FakePrefixInspector(_ => throw new UnauthorizedAccessException("Access to 'system.reg' is denied."));
+
+        var install = ReporterWithComponents(inspector, ids: [Vc, D3d]).Build([Managed(SteamGame())]).Installations.Single();
+
+        install.PrefixComponents.Should().Equal(
+            new DoctorPrefixComponent("vcrun2022", PrefixComponentState.Unknown, "could not read the prefix: Access to 'system.reg' is denied."),
+            new DoctorPrefixComponent("d3dcompiler_47", PrefixComponentState.Unknown, "could not read the prefix: Access to 'system.reg' is denied."));
+    }
+
+    [Fact]
+    public void Build_Inspection_NeverRunsATool()
+    {
+        WriteLocalConfig(null);
+        var runner = Substitute.For<IToolRunner>();
+        runner.CanRun(Arg.Any<GameInstallation>(), out Arg.Any<string?>()).Returns(false);
+
+        ReporterWithComponents(new FakePrefixInspector(StatusFor), runner, ids: [Vc, D3d]).Build([Managed(SteamGame())]);
+
+        runner.DidNotReceiveWithAnyArgs().RunInPrefix(default!, default!, default);
+        runner.DidNotReceiveWithAnyArgs().RunWindowsTool(default!, default, default!, default, default, default);
+    }
+
+    [Fact]
+    public void Format_PrefixComponents_PrintsStateAndEvidenceForEach()
+    {
+        WriteLocalConfig(null);
+        var report = ReporterWithComponents(new FakePrefixInspector(StatusFor), ids: [Vc, D3d, new PrefixComponentId("other")]).Build([Managed(SteamGame())]);
+
+        var text = string.Join('\n', DoctorTextFormatter.Format(report));
+
+        text.Should().Contain("  Prefix components:");
+        text.Should().Contain("    vcrun2022: installed, native vcruntime140.dll 14.38 in system32");
+        text.Should().Contain("    d3dcompiler_47: missing, only Wine's placeholder in system32");
+        text.Should().Contain("    other: unknown, winetricks.log lists it but no native file");
+    }
+
+    [Fact]
+    public void Format_GameWithoutComponents_PrintsNoComponentSection()
+    {
+        WriteLocalConfig(null);
+        var text = string.Join('\n', DoctorTextFormatter.Format(Reporter().Build([Managed(SteamGame())])));
+
+        text.Should().NotContain("Prefix components");
+    }
+
     [Fact]
     public void Format_NoInstallations_SaysSo()
     {

@@ -23,9 +23,12 @@ public sealed class DoctorReporter(
     IProtonResolver protonResolver,
     IToolRunner toolRunner,
     IInstallationLockFactory lockFactory,
-    IEnumerable<IInstallationCheck>? checks = null)
+    IEnumerable<IInstallationCheck>? checks = null,
+    IPrefixInspector? prefixInspector = null,
+    IEnumerable<IPrefixComponentRequirements>? componentRequirements = null)
 {
     private readonly IInstallationCheck[] _checks = checks?.ToArray() ?? [];
+    private readonly IPrefixComponentRequirements[] _componentRequirements = componentRequirements?.ToArray() ?? [];
 
     /// <summary>The program the runner is asked to plan, so the report shows a real command line.</summary>
     public const string PlaceholderExe = "/doctor/placeholder.exe";
@@ -48,12 +51,13 @@ public sealed class DoctorReporter(
         var store = result.Store.Value.ToLowerInvariant();
 
         var steamAppId = SteamApp(installation);
+        var prefix = prefixResolver.Resolve(installation);
         return new DoctorInstallation(
             installation.Game.DisplayName,
             store,
             result.StoreIdentifier,
             managed.Loadouts,
-            DescribePrefix(prefixResolver.Resolve(installation)),
+            DescribePrefix(prefix),
             steamAppId is { } id ? DescribeProton(result.LinuxCompatabilityDataProvider!, id) : null,
             DescribeRunner(installation),
             steamAppId is { } app ? DescribeLaunchOptions(result.LinuxCompatabilityDataProvider!, app) : null,
@@ -61,7 +65,34 @@ public sealed class DoctorReporter(
             managed.Deployment ?? [])
         {
             Checks = _checks.SelectMany(check => check.Check(installation)).ToArray(),
+            PrefixComponents = DescribeComponents(installation, prefix),
         };
+    }
+
+    /// <summary>
+    /// Reads the prefix for the components the game needs. Only reads files: nothing is run in the prefix. A file
+    /// the app can't read marks every component unknown rather than failing the whole report, which is the one
+    /// place the user goes to find out what is wrong.
+    /// </summary>
+    private IReadOnlyList<DoctorPrefixComponent> DescribeComponents(GameInstallation installation, PrefixResolution resolution)
+    {
+        if (prefixInspector is null || !resolution.IsResolved) return [];
+
+        var required = _componentRequirements.SelectMany(r => r.Required(installation)).Distinct().ToArray();
+        if (required.Length == 0) return [];
+
+        try
+        {
+            return prefixInspector.Inspect(resolution.Prefix, required)
+                .Select(s => new DoctorPrefixComponent(s.Id.Value, s.State, s.Evidence))
+                .ToArray();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return required
+                .Select(id => new DoctorPrefixComponent(id.Value, PrefixComponentState.Unknown, $"could not read the prefix: {e.Message}"))
+                .ToArray();
+        }
     }
 
     /// <summary>

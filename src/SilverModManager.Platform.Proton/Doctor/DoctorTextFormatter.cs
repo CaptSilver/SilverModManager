@@ -22,6 +22,7 @@ public static class DoctorTextFormatter
             lines.Add($"  Runner: {Runner(install.Runner)}");
             if (install.LaunchOptions is { } options) lines.Add($"  Launch options: {LaunchOptions(options)}");
             if (install.Deployment.Count > 0) lines.Add($"  Deployment: {string.Join(", ", install.Deployment.Select(DeploymentRoot))}");
+            lines.AddRange(PrefixComponents(install));
             lines.Add($"  Launch: {Lock(install.Lock)}");
             if (install.Checks.Count > 0)
             {
@@ -33,6 +34,19 @@ public static class DoctorTextFormatter
         if (report.Problems.Count > 0 && lines.Count > 0) lines.Add("");
         foreach (var problem in report.Problems) lines.Add($"Locator problem: {problem}");
         return lines;
+    }
+
+    /// <summary>
+    /// The prefix component section for one game, or nothing when the game needs none. The report and the
+    /// support bundle print it the same way.
+    /// </summary>
+    public static IEnumerable<string> PrefixComponents(DoctorInstallation install)
+    {
+        if (install.PrefixComponents.Count == 0) yield break;
+
+        yield return "  Prefix components:";
+        foreach (var c in install.PrefixComponents)
+            yield return $"    {c.Id}: {c.State.ToString().ToLowerInvariant()}, {c.Evidence}";
     }
 
     private static string Prefix(DoctorPrefix prefix) => prefix.Status switch
