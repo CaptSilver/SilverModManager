@@ -17,7 +17,14 @@ public static class Bnd4Fixture
     /// <summary>The eight-byte field a regulation carries its build stamp in.</summary>
     public static readonly byte[] DefaultVersion = "07D7R6\0\0"u8.ToArray();
 
-    public static byte[] Build(IReadOnlyList<(int Id, string Name, byte[] Data)> entries, byte[]? hashTable = null, byte[]? version = null)
+    /// <summary>The decoded entry flags shipped archives give an uncompressed member; 0x01 would mark it compressed.</summary>
+    public const byte MemberFlags = 0x02;
+
+    /// <summary>
+    /// Entry flags are passed decoded, one per entry (default <see cref="MemberFlags"/>), and stored least significant
+    /// bit first, which is how the header's bit-order byte at 0x0A says this layout stores them.
+    /// </summary>
+    public static byte[] Build(IReadOnlyList<(int Id, string Name, byte[] Data)> entries, byte[]? hashTable = null, byte[]? version = null, IReadOnlyList<byte>? entryFlags = null)
     {
         hashTable ??= DefaultHashTable;
         version ??= DefaultVersion;
@@ -58,7 +65,10 @@ public static class Bnd4Fixture
         {
             var (id, _, data) = entries[i];
             var e = headers.AsSpan(i * EntryHeaderSize, EntryHeaderSize);
-            BinaryPrimitives.WriteInt32LittleEndian(e, 0x40);
+            e[0] = Bnd3Fixture.Store(entryFlags?[i] ?? MemberFlags, bigEndian: false);
+            e[1] = 0;
+            e[2] = 0;
+            e[3] = 0;
             BinaryPrimitives.WriteInt32LittleEndian(e[4..], -1);
             BinaryPrimitives.WriteInt64LittleEndian(e[8..], data.Length);
             BinaryPrimitives.WriteInt64LittleEndian(e[0x10..], data.Length);

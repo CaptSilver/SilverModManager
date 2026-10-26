@@ -202,6 +202,29 @@ public class Bnd3Tests
     }
 
     [Fact]
+    public void EntryFlagsAreReturnedDecodedInTableOrder()
+    {
+        var source = Bnd3Fixture.Build(Bnd3Fixture.ThreeEntryList, entryFlags: [0x02, 0x03, 0x00]);
+        Bnd3.EntryFlags(source).Should().Equal([0x02, 0x03, 0x00]);
+    }
+
+    [Fact]
+    public void EntryFlagsAreDecodedThroughTheBitOrderByteOfABigEndianArchive()
+    {
+        var source = Bnd3Fixture.Build(Bnd3Fixture.ThreeEntryList, bigEndian: true, entryFlags: [0x03, 0x02, 0x02]);
+        Bnd3.EntryFlags(source).Should().Equal([0x03, 0x02, 0x02]);
+    }
+
+    [Fact]
+    public void EntryFlagsReportACompressedMemberInsteadOfRefusingIt()
+    {
+        var source = Bnd3Fixture.Build(Bnd3Fixture.ThreeEntryList, entryFlags: [0x02, 0x03, 0x02]);
+        Bnd3.EntryFlags(source).Should().Equal([0x02, 0x03, 0x02]);
+        var read = () => Binder.Read(source);
+        read.Should().Throw<Bnd3Exception>().WithMessage("*id=20*compressed*");
+    }
+
+    [Fact]
     public void BadMagicIsRefused()
     {
         var source = Archive();

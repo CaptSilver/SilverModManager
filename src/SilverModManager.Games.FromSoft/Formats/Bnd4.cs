@@ -23,7 +23,33 @@ public sealed class Bnd4 : IBinder
 
     private static ReadOnlySpan<byte> Magic => "BND4"u8;
 
+    // Entry flags bit marking a member whose stored bytes are compressed.
+    private const byte MemberCompressed = 0x01;
+
     private Bnd4() { }
+
+    /// <summary>
+    /// Each entry's flags byte in table order, decoded through the header's bit-order byte at 0x0A: set, the flags are
+    /// stored least significant bit first (a shipped archive's raw 0x40 is 0x02); clear, they are already in bit order.
+    /// Unlike <see cref="Read"/> this reports a compressed member rather than refusing it.
+    /// </summary>
+    public static IReadOnlyList<byte> EntryFlags(ReadOnlySpan<byte> data)
+    {
+        var (count, entryHeaderSize, _) = EntryLayout(data);
+        var flags = new byte[count];
+        for (var i = 0; i < count; i++)
+            flags[i] = DecodeFlags(data, data[HeaderSize + i * (int)entryHeaderSize]);
+        return flags;
+    }
+
+    private static byte DecodeFlags(ReadOnlySpan<byte> data, byte raw) => data[0x0A] != 0 ? ReverseBits(raw) : raw;
+
+    private static byte ReverseBits(byte b)
+    {
+        b = (byte)(((b & 0xF0) >> 4) | ((b & 0x0F) << 4));
+        b = (byte)(((b & 0xCC) >> 2) | ((b & 0x33) << 2));
+        return (byte)(((b & 0xAA) >> 1) | ((b & 0x55) << 1));
+    }
 
     /// <inheritdoc />
     public IReadOnlyList<BinderEntry> Read(ReadOnlySpan<byte> data)
@@ -34,11 +60,16 @@ public sealed class Bnd4 : IBinder
         for (var i = 0; i < count; i++)
         {
             var entry = data[(HeaderSize + i * (int)entryHeaderSize)..];
+            var flags = DecodeFlags(data, entry[0]);
             var size = BinaryPrimitives.ReadInt64LittleEndian(entry[0x10..]);
             var offset = BinaryPrimitives.ReadUInt32LittleEndian(entry[0x18..]);
             var id = BinaryPrimitives.ReadInt32LittleEndian(entry[0x1C..]);
             var nameOffset = BinaryPrimitives.ReadInt32LittleEndian(entry[0x20..]);
 
+            // The size read at 0x10 is the uncompressed one, so slicing by it would hand back garbage as the member,
+            // and Rebuild would write raw bytes into a member the game then tries to decompress.
+            if ((flags & MemberCompressed) != 0)
+                throw new Bnd4Exception($"BND4 entry {i} (id={id}) is stored compressed, which this reader does not decompress");
             if (size < 0)
                 throw new Bnd4Exception($"BND4 entry {i} (id={id}) has a negative size: {size}");
             // An offset before the data section would slice the header, names or hash table and hand them back

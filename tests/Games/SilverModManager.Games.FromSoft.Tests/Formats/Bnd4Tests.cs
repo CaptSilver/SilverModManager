@@ -331,6 +331,54 @@ public class Bnd4Tests
         raw.Should().Equal(before);
     }
 
+    [Fact]
+    public void AMemberStoredCompressedIsRefused()
+    {
+        var raw = Bnd4Fixture.Build([E(10, "a.fmg", "AAA"), E(20, "b.fmg", "BBBB")], entryFlags: [Bnd4Fixture.MemberFlags, Bnd4Fixture.MemberFlags | 0x01]);
+        // Stored least significant bit first (header 0x0A is set), the compressed bit is the top bit of the raw byte.
+        raw[HeaderSize + EntryHeaderSize].Should().Be(0xC0);
+        var read = () => Binder.Read(raw);
+        read.Should().Throw<Bnd4Exception>().WithMessage("*entry 1*id=20*compressed*");
+        var rebuild = () => Binder.Rebuild(raw, new Dictionary<int, byte[]> { [10] = [1] });
+        rebuild.Should().Throw<Bnd4Exception>().WithMessage("*id=20*compressed*");
+    }
+
+    [Fact]
+    public void ACompressedBitIsDecodedThroughTheBitOrderByte()
+    {
+        var raw = Bnd4Fixture.Build([E(10, "a.fmg", "AAA")]);
+        // Cleared, the header stores flags most significant bit first, so the same raw 0x01 byte is now the compressed bit.
+        raw[0x0A] = 0;
+        raw[HeaderSize] = 0x01;
+        var read = () => Binder.Read(raw);
+        read.Should().Throw<Bnd4Exception>().WithMessage("*id=10*compressed*");
+        // And a raw 0x80 is no longer compressed.
+        raw[HeaderSize] = 0x80;
+        Binder.Read(raw).Should().ContainSingle();
+    }
+
+    [Fact]
+    public void EntryFlagsAreReturnedDecodedInTableOrder()
+    {
+        var raw = Bnd4Fixture.Build([E(10, "a.fmg", "AAA"), E(20, "b.fmg", "BBBB"), E(30, "c.fmg", "C")], entryFlags: [0x02, 0x03, 0x00]);
+        Bnd4.EntryFlags(raw).Should().Equal([0x02, 0x03, 0x00]);
+    }
+
+    [Fact]
+    public void EntryFlagsOfAnArchiveBuiltWithDefaultsAreTheShippedMemberFlags()
+    {
+        Bnd4.EntryFlags(Bnd4Fixture.ThreeEntries()).Should().Equal([0x02, 0x02, 0x02]);
+    }
+
+    [Fact]
+    public void EntryFlagsRefuseABadMagic()
+    {
+        var raw = Archive(E(10, "a.fmg", "AAA"));
+        raw[0] = (byte)'X';
+        var act = () => Bnd4.EntryFlags(raw);
+        act.Should().Throw<Bnd4Exception>().WithMessage("*bad magic*");
+    }
+
     // The golden blobs are erm's own output; matching them is what ties this fixture and rebuild to that tool.
 
     [Fact]

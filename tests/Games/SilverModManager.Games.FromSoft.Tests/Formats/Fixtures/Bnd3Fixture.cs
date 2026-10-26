@@ -35,7 +35,7 @@ public static class Bnd3Fixture
           + ((formatFlags & Names) != 0 ? 4 : 0)
           + ((formatFlags & Compression) != 0 ? 4 : 0);
 
-    public static byte[] Build(IReadOnlyList<(int Id, string Name, byte[] Data)> entries, byte formatFlags = DefaultFlags, bool bigEndian = false)
+    public static byte[] Build(IReadOnlyList<(int Id, string Name, byte[] Data)> entries, byte formatFlags = DefaultFlags, bool bigEndian = false, IReadOnlyList<byte>? entryFlags = null)
     {
         var stride = EntryHeaderSize(formatFlags);
         var hasNames = (formatFlags & Names) != 0;
@@ -60,7 +60,7 @@ public static class Bnd3Fixture
         {
             var (id, _, data) = entries[i];
             var w = new Writer(headers.AsSpan(i * stride, stride), bigEndian);
-            w.U8(Store(MemberFlags, bigEndian));
+            w.U8(Store(entryFlags?[i] ?? MemberFlags, bigEndian));
             w.Seek(4);
             w.I32(data.Length);
             if ((formatFlags & LongOffsets) != 0) w.I64(cursor); else w.I32(cursor);

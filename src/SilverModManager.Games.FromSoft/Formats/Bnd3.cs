@@ -52,7 +52,14 @@ public sealed class Bnd3 : IBinder
         public int UncompressedSizeField => 8 + OffsetWidth + (Has(HasIds) ? 4 : 0) + (Has(HasNames) ? 4 : 0);
     }
 
-    private readonly record struct Member(int Index, int Id, string Name, int Offset, int Size);
+    private readonly record struct Member(int Index, int Id, string Name, int Offset, int Size, byte Flags);
+
+    /// <summary>
+    /// Each entry's decoded flags byte in table order. Unlike <see cref="Read"/> this reports a compressed member
+    /// rather than refusing it.
+    /// </summary>
+    public static IReadOnlyList<byte> EntryFlags(ReadOnlySpan<byte> data) =>
+        Parse(data, allowCompressed: true).Members.Select(m => m.Flags).ToArray();
 
     /// <inheritdoc />
     public IReadOnlyList<BinderEntry> Read(ReadOnlySpan<byte> data)
@@ -129,7 +136,7 @@ public sealed class Bnd3 : IBinder
     /// Reads the header and every entry header. These are arbitrary third-party archives, so every field is
     /// untrusted: a bad value must throw here, before a slice can run past the buffer.
     /// </summary>
-    private static (Layout Layout, List<Member> Members) Parse(ReadOnlySpan<byte> data)
+    private static (Layout Layout, List<Member> Members) Parse(ReadOnlySpan<byte> data, bool allowCompressed = false)
     {
         if (data.Length < HeaderSize || !data[..Magic.Length].SequenceEqual(Magic))
             throw new Bnd3Exception("not a BND3 archive (bad magic)");
@@ -186,10 +193,10 @@ public sealed class Bnd3 : IBinder
 
             // Handing back the stored bytes would pass compressed data off as the member, and a rebuild would write
             // raw bytes into a member the game then tries to decompress. Nothing ships these yet, so refuse loudly.
-            if ((flags & MemberCompressed) != 0)
+            if (!allowCompressed && (flags & MemberCompressed) != 0)
                 throw new Bnd3Exception($"BND3 entry {i} (id={id}) is stored compressed, which this reader does not decompress");
 
-            members.Add(new Member(i, id, name, (int)offset, size));
+            members.Add(new Member(i, id, name, (int)offset, size, flags));
         }
 
         // Nothing above stops one entry's region from overlapping another's. Shipped archives lay entries out back
