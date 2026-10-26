@@ -221,9 +221,21 @@ public sealed class Connection : IConnection
                 _logger.LogError(ex, "Failed to analyze db");
             }
 
-            _dbStream.OnNext(newRevisionEvent.Db);
-            ProcessObservers(newRevisionEvent.Db);
-            newRevisionEvent.OnFinished.Set();
+            // The commit that made this revision waits on OnFinished, so it must be set whatever a subscriber does.
+            // A subscriber that throws is logged and skipped; waiting forever would stall every later commit too.
+            try
+            {
+                _dbStream.OnNext(newRevisionEvent.Db);
+                ProcessObservers(newRevisionEvent.Db);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "A subscriber failed while handling a new revision");
+            }
+            finally
+            {
+                newRevisionEvent.OnFinished.Set();
+            }
         }
     }
 
