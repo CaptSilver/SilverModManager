@@ -1387,6 +1387,159 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to moving the files into a mod.
+        /// </summary>
+        public static string ExternalChanges_Move_Activity {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_Activity", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Move.
+        /// </summary>
+        public static string ExternalChanges_Move_Button {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_Button", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The files leave External Changes and become part of {0}..
+        /// </summary>
+        public static string ExternalChanges_Move_Confirm_Text {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_Confirm_Text", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Move files into {0}.
+        /// </summary>
+        public static string ExternalChanges_Move_Confirm_Title {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_Confirm_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to deleted.
+        /// </summary>
+        public static string ExternalChanges_Move_Deleted {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_Deleted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is already in {1} ({2}). The moved file ({3}) replaces it..
+        /// </summary>
+        public static string ExternalChanges_Move_Duplicate {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_Duplicate", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pick the mod that receives the selected files..
+        /// </summary>
+        public static string ExternalChanges_Move_Existing_Text {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_Existing_Text", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Move to an existing mod.
+        /// </summary>
+        public static string ExternalChanges_Move_Existing_Title {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_Existing_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Keep these files winning.
+        /// </summary>
+        public static string ExternalChanges_Move_KeepWinning {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_KeepWinning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} will lose to {1} for these files:.
+        /// </summary>
+        public static string ExternalChanges_Move_Loses {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_Loses", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} will provide none of these files, because it is turned off:.
+        /// </summary>
+        public static string ExternalChanges_Move_Loses_NoWinner {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_Loses_NoWinner", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mod name.
+        /// </summary>
+        public static string ExternalChanges_Move_NewMod_InputLabel {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_NewMod_InputLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to e.g. Rock replacer.
+        /// </summary>
+        public static string ExternalChanges_Move_NewMod_InputWatermark {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_NewMod_InputWatermark", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The selected files become the files of a new mod..
+        /// </summary>
+        public static string ExternalChanges_Move_NewMod_Text {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_NewMod_Text", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Move to a new mod.
+        /// </summary>
+        public static string ExternalChanges_Move_NewMod_Title {
+            get {
+                return ResourceManager.GetString("ExternalChanges_Move_NewMod_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Move to existing mod….
+        /// </summary>
+        public static string ExternalChanges_MoveToExistingMod {
+            get {
+                return ResourceManager.GetString("ExternalChanges_MoveToExistingMod", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Move to new mod….
+        /// </summary>
+        public static string ExternalChanges_MoveToNewMod {
+            get {
+                return ResourceManager.GetString("ExternalChanges_MoveToNewMod", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Install.
         /// </summary>
         public static string FileOriginPage_AddMod {

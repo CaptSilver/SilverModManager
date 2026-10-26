@@ -1,0 +1,29 @@
+<reactiveUi:ReactiveUserControl x:TypeArguments="local:IMoveToModDialogViewModel"
+                                xmlns="https://github.com/avaloniaui"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                                xmlns:reactiveUi="http://reactiveui.net"
+                                xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.LoadoutGroupFilesPage"
+                                xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
+                                mc:Ignorable="d" d:DesignWidth="480"
+                                x:Class="SilverModManager.App.UI.Pages.LoadoutGroupFilesPage.MoveToModDialogView">
+
+    <StackPanel Spacing="12">
+        <TextBlock x:Name="TextBlockText"
+                   TextWrapping="Wrap"
+                   Foreground="{StaticResource NeutralSubduedBrush}" />
+
+        <ComboBox x:Name="ModPicker" HorizontalAlignment="Stretch" />
+
+        <ScrollViewer MaxHeight="240" x:Name="DetailsScroller">
+            <TextBlock x:Name="TextBlockDetails"
+                       TextWrapping="Wrap"
+                       Foreground="{StaticResource NeutralSubduedBrush}" />
+        </ScrollViewer>
+
+        <CheckBox x:Name="KeepWinningCheckBox"
+                  Content="{x:Static resources:Language.ExternalChanges_Move_KeepWinning}" />
+    </StackPanel>
+
+</reactiveUi:ReactiveUserControl>

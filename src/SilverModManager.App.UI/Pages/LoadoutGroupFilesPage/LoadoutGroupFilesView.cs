@@ -37,6 +37,19 @@ public partial class LoadoutGroupFilesView : ReactiveUserControl<ILoadoutGroupFi
 
             this.BindCommand(ViewModel, vm => vm.UndoTreatAsMineCommand, view => view.UndoTreatAsMineButton)
                 .AddTo(disposables);
+
+            this.BindCommand(ViewModel, vm => vm.MoveToNewModCommand, view => view.MoveToNewModButton)
+                .AddTo(disposables);
+
+            this.BindCommand(ViewModel, vm => vm.MoveToExistingModCommand, view => view.MoveToExistingModButton)
+                .AddTo(disposables);
+
+            // Hidden, not just disabled: on a mod's own file list there is no External Changes to move out of.
+            this.OneWayBind(ViewModel, vm => vm.IsExternalChanges, view => view.MoveToNewModButton.IsVisible)
+                .AddTo(disposables);
+
+            this.OneWayBind(ViewModel, vm => vm.IsExternalChanges, view => view.MoveToExistingModButton.IsVisible)
+                .AddTo(disposables);
         });
     }
 }

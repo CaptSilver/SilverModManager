@@ -1530,4 +1530,55 @@ Keep the downloaded files in your library in case you want to retry the installa
 
 {0}</value>
     </data>
+    <data name="ExternalChanges_MoveToNewMod" xml:space="preserve">
+        <value>Move to new mod…</value>
+    </data>
+    <data name="ExternalChanges_MoveToExistingMod" xml:space="preserve">
+        <value>Move to existing mod…</value>
+    </data>
+    <data name="ExternalChanges_Move_NewMod_Title" xml:space="preserve">
+        <value>Move to a new mod</value>
+    </data>
+    <data name="ExternalChanges_Move_NewMod_Text" xml:space="preserve">
+        <value>The selected files become the files of a new mod.</value>
+    </data>
+    <data name="ExternalChanges_Move_NewMod_InputLabel" xml:space="preserve">
+        <value>Mod name</value>
+    </data>
+    <data name="ExternalChanges_Move_NewMod_InputWatermark" xml:space="preserve">
+        <value>e.g. Rock replacer</value>
+    </data>
+    <data name="ExternalChanges_Move_Existing_Title" xml:space="preserve">
+        <value>Move to an existing mod</value>
+    </data>
+    <data name="ExternalChanges_Move_Existing_Text" xml:space="preserve">
+        <value>Pick the mod that receives the selected files.</value>
+    </data>
+    <data name="ExternalChanges_Move_Button" xml:space="preserve">
+        <value>Move</value>
+    </data>
+    <data name="ExternalChanges_Move_Confirm_Title" xml:space="preserve">
+        <value>Move files into {0}</value>
+    </data>
+    <data name="ExternalChanges_Move_Confirm_Text" xml:space="preserve">
+        <value>The files leave External Changes and become part of {0}.</value>
+    </data>
+    <data name="ExternalChanges_Move_Duplicate" xml:space="preserve">
+        <value>{0} is already in {1} ({2}). The moved file ({3}) replaces it.</value>
+    </data>
+    <data name="ExternalChanges_Move_Loses" xml:space="preserve">
+        <value>{0} will lose to {1} for these files:</value>
+    </data>
+    <data name="ExternalChanges_Move_Loses_NoWinner" xml:space="preserve">
+        <value>{0} will provide none of these files, because it is turned off:</value>
+    </data>
+    <data name="ExternalChanges_Move_KeepWinning" xml:space="preserve">
+        <value>Keep these files winning</value>
+    </data>
+    <data name="ExternalChanges_Move_Deleted" xml:space="preserve">
+        <value>deleted</value>
+    </data>
+    <data name="ExternalChanges_Move_Activity" xml:space="preserve">
+        <value>moving the files into a mod</value>
+    </data>
 </root>

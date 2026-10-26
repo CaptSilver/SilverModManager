@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Controls.Navigation;
@@ -40,14 +41,34 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
     public ReactiveCommand<Unit> UndoTreatAsMineCommand { get; }
     public ReactiveCommand<Unit> RefreshCommand { get; }
     [Reactive] public partial CompositeItemModel<GamePath>? SelectedItem { get; set; }
+
+    /// <summary>Everything selected in the tree, files and folders alike. <see cref="SelectedItem"/> is the first.</summary>
+    [Reactive] public partial IReadOnlyList<CompositeItemModel<GamePath>> SelectedItems { get; set; } = [];
+
+    /// <summary>
+    /// Whether the page shows the loadout's External Changes. The move commands only make sense there, so the
+    /// view hides them elsewhere instead of leaving them disabled.
+    /// </summary>
+    [Reactive] public partial bool IsExternalChanges { get; private set; }
+
+    /// <summary>Takes the selected External Changes files out into a mod created for them.</summary>
+    public ReactiveCommand<Unit> MoveToNewModCommand { get; }
+
+    /// <summary>Takes the selected External Changes files out into one of the loadout's mods.</summary>
+    public ReactiveCommand<Unit> MoveToExistingModCommand { get; }
     [Reactive] public partial ViewLoadoutGroupFilesTreeDataGridAdapter? FileTreeAdapter { get; set; }
     
+    private readonly IServiceProvider _provider;
+    private readonly IConnection _connection;
+
     public LoadoutGroupFilesViewModel(
         ILogger<LoadoutGroupFilesViewModel> logger,
         IWindowManager windowManager,
         IServiceProvider provider,
         IConnection connection) : base(windowManager)
     {
+        _provider = provider;
+        _connection = connection;
         TabIcon = IconValues.FolderOpen;
         TabTitle = "File Tree";
 
@@ -68,6 +89,14 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
                             .ShowToast(string.Format(Language.GameInstalled_UndoTreatAsMine_Failed, outcome.Reason));
                 }
             );
+
+        this.ObservePropertyChanged(vm => vm.Context)
+            .Subscribe((this, connection), static (context, state) => state.Item1.IsExternalChanges = FindExternalChangesLoadout(state.connection, context).HasValue);
+
+        var canMove = this.ObservePropertyChanged(vm => vm.IsExternalChanges)
+            .CombineLatest(this.ObservePropertyChanged(vm => vm.SelectedItems), static (external, selection) => external && selection.Count > 0);
+        MoveToNewModCommand = canMove.ToReactiveCommand<Unit>(async (_, _) => await MoveToNewMod());
+        MoveToExistingModCommand = canMove.ToReactiveCommand<Unit>(async (_, _) => await MoveToExistingMod());
 
         // Only the loadout's External Changes can have gone stale: it mirrors the game folder, which cleanups and
         // other tools change without a sync.
@@ -184,6 +213,7 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
                             .Subscribe(FileTreeAdapter, (_, adapter) =>
                                 {
                                     SelectedItem = adapter.SelectedModels.FirstOrDefault();
+                                    SelectedItems = adapter.SelectedModels.ToArray();
                                 }
                             )
                             .AddTo(compositeDisposable);
@@ -195,6 +225,7 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
             
                         // Initial update
                         SelectedItem = FileTreeAdapter.SelectedModels.FirstOrDefault();
+                        SelectedItems = FileTreeAdapter.SelectedModels.ToArray();
                     }
                 )
                 .Subscribe()
@@ -204,6 +235,34 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
         });
     }
     
+    internal Task MoveToNewMod() => MoveSelected(static (flow, loadout, selected, paths) => flow.MoveToNewMod(loadout, selected, paths));
+
+    internal Task MoveToExistingMod() => MoveSelected(static (flow, loadout, _, paths) => flow.MoveToExistingMod(loadout, paths));
+
+    /// <summary>
+    /// Expands the selection to files and runs one of the move flows over them. A refusal or failure is handed to
+    /// the error presenter, which words it for the user; nothing here lets it escape the command.
+    /// </summary>
+    private async Task MoveSelected(Func<OverridesMoveFlow, LoadoutId, GamePath[], GamePath[], Task> run)
+    {
+        try
+        {
+            var loadoutId = FindExternalChangesLoadout(_connection, Context);
+            if (!loadoutId.HasValue || Context is null || SelectedItems.Count == 0) return;
+
+            var selected = SelectedItems.Select(item => item.Key).ToArray();
+            var paths = LoadoutItemGroupHelpers.FilePathsUnder(_connection, Context.GroupIds, selected);
+            if (paths.Length == 0)
+                throw new OverridesMoveRefusedException("The selected files are no longer among the external changes, so nothing was moved.");
+
+            await run(new OverridesMoveFlow(_provider, WindowManager, _connection), loadoutId.Value, selected, paths);
+        }
+        catch (Exception e)
+        {
+            await _provider.GetRequiredService<IErrorPresenter>().Report(e, Language.ExternalChanges_Move_Activity);
+        }
+    }
+
     /// <summary>The loadout whose External Changes the page shows, or None for any other group.</summary>
     private static Optional<LoadoutId> FindExternalChangesLoadout(IConnection connection, LoadoutGroupFilesPageContext? context)
     {

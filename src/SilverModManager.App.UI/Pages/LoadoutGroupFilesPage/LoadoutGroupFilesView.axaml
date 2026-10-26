@@ -46,6 +46,22 @@
                                          Type="Tertiary"
                                          Fill="WeakAlt"/>
 
+                <controls:StandardButton x:Name="MoveToNewModButton"
+                                         Text="{x:Static resources:Language.ExternalChanges_MoveToNewMod}"
+                                         LeftIcon="{x:Static icons:IconValues.FolderEditOutline}"
+                                         ShowIcon="Left"
+                                         Size="Toolbar"
+                                         Type="Tertiary"
+                                         Fill="WeakAlt"/>
+
+                <controls:StandardButton x:Name="MoveToExistingModButton"
+                                         Text="{x:Static resources:Language.ExternalChanges_MoveToExistingMod}"
+                                         LeftIcon="{x:Static icons:IconValues.FolderEditOutline}"
+                                         ShowIcon="Left"
+                                         Size="Toolbar"
+                                         Type="Tertiary"
+                                         Fill="WeakAlt"/>
+
                 <controls:StandardButton x:Name="RemoveButton" 
                                          Text="Delete"
                                          LeftIcon="{x:Static icons:IconValues.DeleteForever}"

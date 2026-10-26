@@ -23,5 +23,14 @@ public interface ILoadoutGroupFilesViewModel : IPageViewModelInterface
     /// </summary>
     R3.ReactiveCommand<R3.Unit> RefreshCommand { get; }
 
+    /// <summary>Whether the page shows the loadout's External Changes, the only place the move commands apply.</summary>
+    bool IsExternalChanges { get; }
+
+    /// <summary>Moves the selected files out of External Changes into a mod made for them.</summary>
+    R3.ReactiveCommand<R3.Unit> MoveToNewModCommand { get; }
+
+    /// <summary>Moves the selected files out of External Changes into one of the loadout's mods.</summary>
+    R3.ReactiveCommand<R3.Unit> MoveToExistingModCommand { get; }
+
     ViewLoadoutGroupFilesTreeDataGridAdapter? FileTreeAdapter { get; set; }
 }

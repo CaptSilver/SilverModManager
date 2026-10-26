@@ -107,6 +107,23 @@ public static class LoadoutItemGroupHelpers
         return null;
     }
 
+    /// <summary>
+    /// The paths of the files in the groups that are one of <paramref name="selected"/> or sit inside one of them
+    /// when it names a folder, so a selection of folders and files can be handed on as plain file paths.
+    /// </summary>
+    public static GamePath[] FilePathsUnder(IConnection connection, LoadoutItemGroupId[] groupIds, IEnumerable<GamePath> selected)
+    {
+        var (validGroups, _) = LoadAllGroups(connection, groupIds, requireAllGroups: false);
+        var selection = selected.ToArray();
+        return validGroups
+            .SelectMany(group => group.Children.OfTypeLoadoutItemWithTargetPath())
+            .Select(item => (GamePath)item.TargetPath)
+            .Where(path => selection.Any(chosen => path.LocationId == chosen.LocationId
+                                                   && (path.Path == chosen.Path || path.Path.InFolder(chosen.Path))))
+            .Distinct()
+            .ToArray();
+    }
+
     private static bool PathMatches(LoadoutItemWithTargetPath.ReadOnly item, GamePath path)
     {
         return item.TargetPath.Item2.Equals(path.LocationId) && item.TargetPath.Item3.StartsWith(path.Path);

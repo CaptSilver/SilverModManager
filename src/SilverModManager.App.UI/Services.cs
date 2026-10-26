@@ -268,6 +268,8 @@ public static class Services
             .AddViewModel<DialogShareCollectionViewModel, IDialogShareCollectionViewModel>()
             .AddView<DialogCollectionPublishedView, IDialogCollectionPublishedViewModel>()
             .AddViewModel<DialogCollectionPublishedViewModel, IDialogCollectionPublishedViewModel>()
+            .AddView<MoveToModDialogView, IMoveToModDialogViewModel>()
+            .AddViewModel<MoveToModDialogViewModel, IMoveToModDialogViewModel>()
             
             .AddView<DialogPremiumCollectionDownloadsView, IDialogPremiumCollectionDownloadsViewModel>()
             .AddViewModel<DialogPremiumCollectionDownloadsViewModel, IDialogPremiumCollectionDownloadsViewModel>()
