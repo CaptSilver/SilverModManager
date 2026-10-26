@@ -168,6 +168,74 @@ public class DiagnosticDetailsViewTests(IServiceProvider provider) : AUiTest(pro
     }
 
     [Fact]
+    public async Task Test_AnActionsStatus_ShowsNextToTheButtonWhileItRuns_AndHidesWhenCleared()
+    {
+        var status = new System.Reactive.Subjects.BehaviorSubject<string?>(null);
+        var action = new DiagnosticActionButton("Fix it", ReactiveCommand.Create(() => { }), status: status);
+        var (window, view) = await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var view = new DiagnosticDetailsView { ViewModel = new StubViewModel("Plain text", [action]) };
+            var window = Track(new Window { Width = 800, Height = 300, Content = view });
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            return (window, view);
+        });
+
+        TextBlock StatusText() => view.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "ActionStatusTextBlock");
+        await Dispatcher.UIThread.InvokeAsync(() => StatusText().IsEffectivelyVisible.Should().BeFalse());
+
+        status.OnNext("Planning the cleanup\u2026");
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Dispatcher.UIThread.RunJobs();
+            StatusText().Text.Should().Be("Planning the cleanup\u2026");
+            StatusText().IsEffectivelyVisible.Should().BeTrue();
+        });
+
+        status.OnNext(null);
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Dispatcher.UIThread.RunJobs();
+            StatusText().IsEffectivelyVisible.Should().BeFalse();
+        });
+        await Dispatcher.UIThread.InvokeAsync(window.Close);
+    }
+
+    [Fact]
+    public async Task Test_TheViewModel_HandsTheHandlersStatusToItsButton()
+    {
+        var status = new System.Reactive.Subjects.BehaviorSubject<string?>("Checking");
+        var diagnostic = new Diagnostic
+        {
+            Id = new DiagnosticId("SilverModManager.UI.Tests", 3),
+            Title = "Title",
+            Severity = DiagnosticSeverity.Suggestion,
+            Summary = DiagnosticMessage.From("Summary"),
+            Details = DiagnosticMessage.From("Plain consequence"),
+            DataReferences = new Dictionary<SilverModManager.Abstractions.Diagnostics.References.DataReferenceDescription, SilverModManager.Abstractions.Diagnostics.References.IDataReference>(),
+            Actions = [DiagnosticActions.UseLoadoutFromSteam()],
+        };
+
+        var vm = await Dispatcher.UIThread.InvokeAsync(() => new DiagnosticDetailsViewModel(
+            new DesignWindowManager(),
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IDiagnosticWriter>(Provider),
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IMarkdownRendererViewModel>(Provider),
+            diagnostic,
+            default,
+            [new StatusHandler(DiagnosticActions.UseLoadoutFromSteamId, status)],
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<DiagnosticDetailsViewModel>.Instance));
+
+        vm.Actions.Single().Status.Should().BeSameAs(status);
+    }
+
+    private sealed class StatusHandler(string actionId, IObservable<string?> status) : IDiagnosticActionHandler
+    {
+        public string ActionId { get; } = actionId;
+        public IObservable<string?> StatusOf(SilverModManager.Sdk.Loadouts.LoadoutId loadoutId) => status;
+        public Task ExecuteAsync(SilverModManager.Sdk.Loadouts.LoadoutId loadoutId, System.Collections.Immutable.ImmutableArray<string> arguments) => Task.CompletedTask;
+    }
+
+    [Fact]
     public async Task Test_AnActionWithoutANote_ShowsNoNoteText()
     {
         var (window, view) = await ShowAsync("Plain text");

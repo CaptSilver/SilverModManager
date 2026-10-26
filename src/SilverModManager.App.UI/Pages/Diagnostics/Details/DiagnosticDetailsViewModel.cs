@@ -1,4 +1,5 @@
 using System.Reactive;
+using System.Reactive.Linq;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
@@ -13,7 +14,11 @@ namespace SilverModManager.App.UI.Pages.Diagnostics;
 /// <summary>
 /// A button on the details page that runs one of the diagnostic's fix actions.
 /// </summary>
-public sealed record DiagnosticActionButton(string Label, ReactiveCommand<Unit, Unit> Command, string? Note = null);
+public sealed record DiagnosticActionButton(string Label, ReactiveCommand<Unit, Unit> Command, string? Note = null, IObservable<string?>? status = null)
+{
+    /// <summary>What the action is doing while it runs, shown next to the button; null when idle.</summary>
+    public IObservable<string?> Status { get; } = status ?? Observable.Return<string?>(null);
+}
 
 public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewModel>, IDiagnosticDetailsViewModel
 {
@@ -81,7 +86,7 @@ public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewM
                     logger.LogError(e, "The diagnostic action {ActionId} failed for loadout {LoadoutId}", action.Id, loadoutId);
                 }
             });
-            buttons.Add(new DiagnosticActionButton(action.Label, command, action.Note));
+            buttons.Add(new DiagnosticActionButton(action.Label, command, action.Note, handler.StatusOf(loadoutId)));
         }
 
         return buttons;

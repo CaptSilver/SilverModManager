@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Reactive.Linq;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.App.UI.Pages.Diagnostics;
@@ -19,4 +20,10 @@ public interface IDiagnosticActionHandler
     /// diagnostics have been refreshed.
     /// </summary>
     Task ExecuteAsync(LoadoutId loadoutId, ImmutableArray<string> arguments);
+
+    /// <summary>
+    /// What the action is doing for the loadout right now, shown next to its button while it runs; null when it is
+    /// idle. Handlers that finish at once have nothing to say.
+    /// </summary>
+    IObservable<string?> StatusOf(LoadoutId loadoutId) => Observable.Return<string?>(null);
 }

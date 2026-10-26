@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Reactive.Subjects;
 using System.Text;
 using Avalonia.Threading;
 using JetBrains.Annotations;
@@ -28,8 +30,10 @@ namespace SilverModManager.App.UI.Pages.Diagnostics;
 /// The Fix button of a game folder left by another mod manager: shows the steps, and once the user confirms runs
 /// them as a job. A step that needs root asks for the password (or shows the command when it cannot); the folder is
 /// planned again afterwards and only a plan identical to the confirmed one is applied, anything else is shown for
-/// confirmation again. After an applied cleanup the game folder is read again so External Changes matches it, and
-/// Health Check is refreshed after every run so the diagnostic clears when it is fixed.
+/// confirmation again. Each phase is logged and shown next to the button while it runs, since planning and the
+/// library check can take a while with nothing else on screen. After an applied cleanup the game folder is read again
+/// so External Changes matches it, and Health Check is refreshed after every run so the diagnostic clears when it is
+/// fixed.
 /// </summary>
 [UsedImplicitly]
 public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IWindowManager windowManager, IDiagnosticManager diagnosticManager) : IDiagnosticActionHandler
@@ -37,8 +41,34 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
     /// <inheritdoc />
     public string ActionId => GameCleanupActions.FixId;
 
+    private readonly ConcurrentDictionary<LoadoutId, BehaviorSubject<string?>> _status = new();
+
+    /// <inheritdoc />
+    public IObservable<string?> StatusOf(LoadoutId loadoutId) => StatusSubject(loadoutId);
+
+    private BehaviorSubject<string?> StatusSubject(LoadoutId loadoutId) => _status.GetOrAdd(loadoutId, _ => new BehaviorSubject<string?>(null));
+
+    /// <summary>Shows <paramref name="text"/> next to the button and logs it; null clears it.</summary>
+    private void SetStatus(LoadoutId loadoutId, string? text)
+    {
+        if (text is not null) serviceProvider.GetService<ILogger<FixCleanupActionHandler>>()?.LogInformation("Fix for loadout {LoadoutId}: {Phase}", loadoutId, text);
+        StatusSubject(loadoutId).OnNext(text);
+    }
+
     /// <inheritdoc />
     public async Task ExecuteAsync(LoadoutId loadoutId, ImmutableArray<string> arguments)
+    {
+        try
+        {
+            await FixAsync(loadoutId);
+        }
+        finally
+        {
+            SetStatus(loadoutId, null);
+        }
+    }
+
+    private async Task FixAsync(LoadoutId loadoutId)
     {
         var loadout = Loadout.Load(serviceProvider.GetRequiredService<IConnection>().Db, loadoutId);
         if (!loadout.IsValid()) throw new InvalidOperationException($"The loadout {loadoutId} no longer exists.");
@@ -46,7 +76,9 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
         var fixer = serviceProvider.GetRequiredService<ICleanupFixService>();
 
         // Planning reads the game folder and Steam's files, so it stays off the UI thread.
+        SetStatus(loadoutId, "Planning the cleanup\u2026");
         var plan = await Task.Run(() => fixer.Plan(loadout));
+        SetStatus(loadoutId, null);
         string? note = null;
         var offered = new HashSet<string>(StringComparer.Ordinal);
         var saved = SaveReport.None;
@@ -67,17 +99,22 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
             if (deletes.Any(d => !offered.Contains(d)))
             {
                 offered.UnionWith(deletes);
-                var save = await SaveModsFirst(loadout, plan);
+                var save = await SaveModsFirst(loadoutId, loadout, plan);
                 if (!save.Proceed) return;
                 saved = saved.Plus(save.Report);
             }
 
+            SetStatus(loadoutId, plan.Steps.Any(s => s.Kind == CleanupStepKind.Privileged)
+                ? "Asking for your password, then applying the cleanup\u2026"
+                : "Applying the cleanup\u2026");
             var outcome = await RunAsJob(loadoutId, loadout, fixer, plan);
 
             // External Changes still lists the files the cleanup just removed until the folder is read again.
             // Before Health Check, so its diagnostics see the same state.
             var rescanFailure = outcome.Status == CleanupFixStatus.Applied ? await RescanGameFolder(loadoutId) : null;
+            SetStatus(loadoutId, "Refreshing Health Check\u2026");
             await diagnosticManager.RefreshAsync(loadoutId);
+            SetStatus(loadoutId, null);
 
             switch (outcome.Status)
             {
@@ -100,6 +137,7 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
     {
         try
         {
+            SetStatus(loadoutId, "Reading the game folder again\u2026");
             var loadout = Loadout.Load(serviceProvider.GetRequiredService<IConnection>().Db, loadoutId);
             var loadouts = serviceProvider.GetRequiredService<ILoadoutManager>();
             await Task.Run(() => loadouts.RescanGameFolder(loadout));
@@ -113,10 +151,35 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
     }
 
     /// <summary>Offers the mods the cleanup would delete for download into the library, and downloads the ones the user keeps ticked.</summary>
-    private async Task<SaveOutcome> SaveModsFirst(Loadout.ReadOnly loadout, CleanupPlan plan)
+    private async Task<SaveOutcome> SaveModsFirst(LoadoutId loadoutId, Loadout.ReadOnly loadout, CleanupPlan plan)
     {
+        // One Nexus lookup per old mod, so this is the long wait before the list appears.
+        SetStatus(loadoutId, "Checking which mods are already in your library\u2026");
         var savePlan = await serviceProvider.GetRequiredService<ILibrarySaver>().PlanAsync(loadout, plan);
-        return await SaveBeforeCleanup.RunAsync(savePlan, serviceProvider.GetRequiredService<IModDownloader>(), new SaveToLibraryPrompts(serviceProvider, windowManager), CancellationToken.None);
+        SetStatus(loadoutId, null);
+
+        var downloader = new ReportingDownloader(serviceProvider.GetRequiredService<IModDownloader>(), text => SetStatus(loadoutId, text));
+        return await SaveBeforeCleanup.RunAsync(savePlan, downloader, new SaveToLibraryPrompts(serviceProvider, windowManager), CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Says which mod is downloading, so the wait shows what it is for. The text goes again once each download ends,
+    /// since a failed one is followed by a question and the button must not still claim to be downloading.
+    /// </summary>
+    private sealed class ReportingDownloader(IModDownloader inner, Action<string?> status) : IModDownloader
+    {
+        public async Task<ModDownloadResult> DownloadAsync(SilverModManager.Sdk.NexusModsApi.NexusModsGameId game, ModToSave mod, CancellationToken cancellationToken)
+        {
+            status($"Downloading {mod.Name} {mod.Version}\u2026");
+            try
+            {
+                return await inner.DownloadAsync(game, mod, cancellationToken);
+            }
+            finally
+            {
+                status(null);
+            }
+        }
     }
 
     private async Task<CleanupFixOutcome> RunAsJob(LoadoutId loadoutId, Loadout.ReadOnly loadout, ICleanupFixService fixer, CleanupPlan plan)

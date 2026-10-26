@@ -103,6 +103,12 @@
                                                              Command="{Binding Command}"
                                                              Type="Primary"
                                                              Fill="Strong" />
+                                    <!-- what the action is doing while its button is busy -->
+                                    <TextBlock x:Name="ActionStatusTextBlock"
+                                               Text="{Binding Status^}"
+                                               IsVisible="{Binding Status^, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               Theme="{StaticResource BodySMNormalTheme}"
+                                               TextWrapping="Wrap" />
                                     <TextBlock x:Name="ActionNoteTextBlock"
                                                Text="{Binding Note}"
                                                IsVisible="{Binding Note, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

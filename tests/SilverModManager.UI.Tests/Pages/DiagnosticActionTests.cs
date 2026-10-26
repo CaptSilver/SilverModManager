@@ -399,6 +399,67 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
     }
 
     [Fact]
+    public async Task Test_FixShowsWhatItIsDoingAndClearsItWhenDone()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("mods/a"));
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>()).Returns(Applied("mods/a"));
+        var downloader = Substitute.For<IModDownloader>();
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Added);
+        var handler = FixHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), fixer, SaverOffering(OldMod), downloader);
+        var seen = new List<string?>();
+        using var subscription = handler.StatusOf(seeded.LoadoutId).Subscribe(seen.Add);
+
+        await handler.ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        seen.OfType<string>().Should().Equal(
+            "Planning the cleanup\u2026",
+            "Checking which mods are already in your library\u2026",
+            "Downloading Adjust The FOV 2.0\u2026",
+            "Applying the cleanup\u2026",
+            "Reading the game folder again\u2026",
+            "Refreshing Health Check\u2026");
+        seen.Last().Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Test_FixShowsNoStatusWhileADialogIsOpen_EvenAfterAFailedDownload()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("mods/a"));
+        var downloader = Substitute.For<IModDownloader>();
+        downloader.DownloadAsync(Arg.Any<NexusModsGameId>(), Arg.Any<ModToSave>(), Arg.Any<CancellationToken>()).Returns(ModDownloadResult.Failed("404"));
+        var windows = AnsweringInOrder(ButtonDefinitionId.Accept, ButtonDefinitionId.Accept, ButtonDefinitionId.Cancel);
+        var handler = FixHandler(windows, Substitute.For<IDiagnosticManager>(), fixer, SaverOffering(OldMod), downloader);
+        string? current = null;
+        using var subscription = handler.StatusOf(seeded.LoadoutId).Subscribe(v => current = v);
+        var shownWith = new List<string?>();
+        windows.When(w => w.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>())).Do(_ => shownWith.Add(current));
+
+        await handler.ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        // The confirmation, the list of mods to save, and the question after the failed download.
+        shownWith.Should().HaveCount(3).And.OnlyContain(s => s == null);
+    }
+
+    [Fact]
+    public async Task Test_FixClearsItsStatusWhenTheCleanupThrows()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("mods/a"));
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>())
+            .Returns<CleanupFixOutcome>(_ => throw new InvalidOperationException("boom"));
+        var handler = FixHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), fixer);
+        string? last = "unset";
+        using var subscription = handler.StatusOf(seeded.LoadoutId).Subscribe(v => last = v);
+
+        var act = () => handler.ExecuteAsync(seeded.LoadoutId, []);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        last.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Test_FixRescansTheGameFolderBeforeHealthCheckIsRefreshed()
     {
         var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");

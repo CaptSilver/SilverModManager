@@ -140,8 +140,11 @@ public sealed class CleanupService(
 
         var gameFolder = GameFolderOf(loadout);
         var cleared = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var step in confirmed.Steps.Where(s => s.Kind == CleanupStepKind.Privileged))
+        var privileged = confirmed.Steps.Where(s => s.Kind == CleanupStepKind.Privileged).ToArray();
+        if (privileged.Length == 0) logger.LogInformation("The cleanup of {Folder} has no privileged step, so no password is needed", gameFolder);
+        foreach (var step in privileged)
         {
+            logger.LogInformation("Clearing the immutable attribute of {File} before the cleanup", step.Source);
             if (await ClearImmutableAsync(gameFolder, step, askUserToRun, cancellationToken) is { } stopped) return stopped;
             cleared.Add(step.RequiredSource);
         }
@@ -151,9 +154,11 @@ public sealed class CleanupService(
         var expected = confirmed.Steps
             .Where(s => s.Kind != CleanupStepKind.Privileged)
             .Select(s => s.Target is { } target && cleared.Contains(target) ? s with { BlockedReason = null } : s);
+        logger.LogInformation("Planning the cleanup of {Folder} again to check it still matches the confirmed steps", gameFolder);
         var rebuilt = Plan(loadout);
         if (!rebuilt.Steps.SequenceEqual(expected)) return new CleanupFixOutcome(CleanupFixStatus.PlanChanged, NewPlan: rebuilt);
 
+        logger.LogInformation("Applying the cleanup of {Folder}: {Count} step(s)", gameFolder, rebuilt.Steps.Count(s => s.Acts));
         return new CleanupFixOutcome(CleanupFixStatus.Applied, await ApplyAsync(loadout, rebuilt, cancellationToken));
     }
 

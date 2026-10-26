@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
 using NSubstitute;
 using SilverModManager.Abstractions.Games;
@@ -35,8 +36,27 @@ public class CleanupFixTests(ITestOutputHelper helper) : AEldenRingTest<CleanupF
         services.Replace(ServiceDescriptor.Singleton(Substitute.For<ISteamLaunchOptionWriter>()));
         services.Replace(ServiceDescriptor.Singleton(LaunchSession));
         services.Replace(ServiceDescriptor.Singleton<IProcessRunner>(Process));
+        services.Replace(ServiceDescriptor.Singleton<ILogger<CleanupService>>(Log));
         return services;
     }
+
+    private sealed class CapturingLogger : ILogger<CleanupService>
+    {
+        public List<string> Information { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            lock (Information)
+            {
+                if (logLevel == LogLevel.Information) Information.Add(formatter(state, exception));
+            }
+        }
+    }
+
+    private CapturingLogger Log { get; } = new();
 
     private CleanupService Service => ServiceProvider.GetRequiredService<CleanupService>();
     private AbsolutePath Game => RealGameFolder;
@@ -65,6 +85,33 @@ public class CleanupFixTests(ITestOutputHelper helper) : AEldenRingTest<CleanupF
         (await (Game / "start_protected_game.exe").ReadAllTextAsync()).Should().Be("anti-cheat launcher");
         (Game / "start_protected_game.exe.erm-backup").FileExists.Should().BeFalse();
         (Game / "mods").DirectoryExists().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task EachPhaseOfAFixWithAPrivilegedStepIsLoggedAtInformation()
+    {
+        var loadout = await CreateLoadout();
+        Probe.Immutable = true;
+        PkexecClearsTheFlag();
+        var confirmed = Service.Plan(loadout);
+
+        await Service.FixAsync(loadout, confirmed, NoPrompt);
+
+        Log.Information.Should().Contain(m => m.StartsWith("Planning the cleanup"));
+        Log.Information.Should().Contain(m => m.Contains("start_protected_game.exe") && m.Contains("immutable"));
+        Log.Information.Should().Contain(m => m.StartsWith("Applying the cleanup"));
+    }
+
+    [Fact]
+    public async Task AFixWithoutAPrivilegedStepLogsThatNoneIsNeeded()
+    {
+        var loadout = await CreateLoadout();
+        var confirmed = Service.Plan(loadout);
+
+        await Service.FixAsync(loadout, confirmed, NoPrompt);
+
+        Log.Information.Should().Contain(m => m.Contains("no privileged step"));
+        Log.Information.Should().Contain(m => m.StartsWith("Applying the cleanup"));
     }
 
     [Fact]
