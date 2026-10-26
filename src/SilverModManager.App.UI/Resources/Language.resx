@@ -1851,4 +1851,58 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="Appearance_GlassTint_Description" xml:space="preserve">
         <value>How much of the window colour covers the blurred desktop while Glass is on. Lower shows more of the desktop. Tables, text and other data panels stay opaque.</value>
     </data>
+    <data name="PrefixSetup_Title" xml:space="preserve">
+        <value>Set up the prefix of {0}</value>
+    </data>
+    <data name="PrefixSetup_Intro" xml:space="preserve">
+        <value>Nothing has been changed yet. This is what the setup would do to the game's Wine prefix.</value>
+    </data>
+    <data name="PrefixSetup_PrefixLabel" xml:space="preserve">
+        <value>Prefix</value>
+    </data>
+    <data name="PrefixSetup_BackupLabel" xml:space="preserve">
+        <value>The registry files are copied here first</value>
+    </data>
+    <data name="PrefixSetup_Confirmation" xml:space="preserve">
+        <value>I confirm that the prefix at {0} may be changed.</value>
+    </data>
+    <data name="PrefixSetup_Download" xml:space="preserve">
+        <value>fetch {0} (sha256 {1})</value>
+    </data>
+    <data name="PrefixSetup_NothingToDo" xml:space="preserve">
+        <value>Nothing to do.</value>
+    </data>
+    <data name="PrefixSetup_AlreadyInstalled" xml:space="preserve">
+        <value>Already installed</value>
+    </data>
+    <data name="PrefixSetup_Installed" xml:space="preserve">
+        <value>Installed</value>
+    </data>
+    <data name="PrefixSetup_Failed" xml:space="preserve">
+        <value>Failed: {0}</value>
+    </data>
+    <data name="PrefixSetup_NotRun" xml:space="preserve">
+        <value>Not run</value>
+    </data>
+    <data name="PrefixSetup_StepFailed" xml:space="preserve">
+        <value>Setting up {0} failed: {1}</value>
+    </data>
+    <data name="PrefixSetup_Cancelled" xml:space="preserve">
+        <value>The setup was cancelled. Steps that finished stay installed.</value>
+    </data>
+    <data name="PrefixSetup_Running" xml:space="preserve">
+        <value>Setting up the prefix. Keep the game closed.</value>
+    </data>
+    <data name="PrefixSetup_Done" xml:space="preserve">
+        <value>The prefix is set up.</value>
+    </data>
+    <data name="PrefixSetup_Run" xml:space="preserve">
+        <value>Set up prefix</value>
+    </data>
+    <data name="PrefixSetup_Retry" xml:space="preserve">
+        <value>Retry</value>
+    </data>
+    <data name="PrefixSetup_Close" xml:space="preserve">
+        <value>Close</value>
+    </data>
 </root>

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SilverModManager.App.UI.Pages.Diagnostics.PrefixSetup;
 using SilverModManager.App.UI.Pages.Diagnostics.SaveToLibrary;
 using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
 
@@ -21,6 +22,8 @@ public static class DiagnosticActionServices
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, DismissGameMovedActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, CheckModUpdatesActionHandler>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, DisableModsActionHandler>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticActionHandler, SetUpPrefixActionHandler>());
+        services.AddView<PrefixSetupView, IPrefixSetupViewModel>();
 
         // What the Fix button needs to save the old mods to the library before it deletes them
         services.TryAddSingleton<INexusCatalog, NexusCatalogAdapter>();

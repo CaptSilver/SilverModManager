@@ -1,0 +1,71 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:IPrefixSetupViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.Diagnostics.PrefixSetup"
+    xmlns:base="clr-namespace:SilverModManager.App.UI.Overlays.Generic.MessageBox.Base"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="500"
+    x:Class="SilverModManager.App.UI.Pages.Diagnostics.PrefixSetup.PrefixSetupView">
+
+    <base:MessageBoxBackground MinWidth="576" MaxWidth="720">
+        <base:MessageBoxBackground.TopContent>
+            <Border Padding="24">
+                <ScrollViewer MaxHeight="520">
+                    <StackPanel Spacing="12">
+                        <TextBlock x:Name="TitleText" TextWrapping="Wrap" Theme="{StaticResource HeadingXSSemiTheme}" />
+                        <TextBlock x:Name="IntroText" TextWrapping="Wrap" Theme="{StaticResource BodyMDNormalTheme}" />
+                        <TextBlock x:Name="PrefixLabel" Theme="{StaticResource BodyMDSemiTheme}" />
+                        <SelectableTextBlock x:Name="PrefixText" TextWrapping="Wrap" Theme="{StaticResource BodyMDNormalTheme}" />
+                        <TextBlock x:Name="BackupLabel" Theme="{StaticResource BodyMDSemiTheme}" />
+                        <SelectableTextBlock x:Name="BackupText" TextWrapping="Wrap" Theme="{StaticResource BodyMDNormalTheme}" />
+                        <TextBlock x:Name="SharedNoteText" TextWrapping="Wrap" Theme="{StaticResource BodyMDNormalTheme}" />
+                        <ItemsControl x:Name="StepsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:PrefixPreviewStep">
+                                    <StackPanel Spacing="4" Margin="0,4">
+                                        <TextBlock Text="{Binding Heading}" Theme="{StaticResource BodyMDSemiTheme}" />
+                                        <ItemsControl ItemsSource="{Binding Lines}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="x:String">
+                                                    <SelectableTextBlock Text="{Binding}" TextWrapping="Wrap" Theme="{StaticResource BodyMDNormalTheme}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <CheckBox x:Name="ConfirmBox" />
+                        <TextBlock x:Name="RunningText" TextWrapping="Wrap" Theme="{StaticResource BodyMDNormalTheme}" />
+                        <ItemsControl x:Name="ProgressList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <TextBlock Text="{Binding}" TextWrapping="Wrap" Theme="{StaticResource BodyMDNormalTheme}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock x:Name="ErrorText" TextWrapping="Wrap" Theme="{StaticResource BodyMDNormalTheme}" />
+                        <TextBlock x:Name="DoneText" TextWrapping="Wrap" Theme="{StaticResource BodyMDNormalTheme}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </base:MessageBoxBackground.TopContent>
+
+        <base:MessageBoxBackground.BottomContent>
+            <StackPanel Orientation="Horizontal"
+                        Margin="24"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Spacing="{StaticResource Spacing-2.5}">
+                <controls:StandardButton x:Name="ButtonClose" Type="Secondary" />
+                <controls:StandardButton x:Name="ButtonRetry" Type="Secondary" IsVisible="False" />
+                <controls:StandardButton x:Name="ButtonRun" Type="Primary" Fill="Strong" />
+            </StackPanel>
+        </base:MessageBoxBackground.BottomContent>
+    </base:MessageBoxBackground>
+
+</reactive:ReactiveUserControl>

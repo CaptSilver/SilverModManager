@@ -5351,5 +5351,167 @@ namespace SilverModManager.App.UI.Resources {
                 return ResourceManager.GetString("Appearance_GlassTint_Description", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Set up the prefix of {0}.
+        /// </summary>
+        public static string PrefixSetup_Title {
+            get {
+                return ResourceManager.GetString("PrefixSetup_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing has been changed yet. This is what the setup would do to the game's Wine prefix..
+        /// </summary>
+        public static string PrefixSetup_Intro {
+            get {
+                return ResourceManager.GetString("PrefixSetup_Intro", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Prefix.
+        /// </summary>
+        public static string PrefixSetup_PrefixLabel {
+            get {
+                return ResourceManager.GetString("PrefixSetup_PrefixLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The registry files are copied here first.
+        /// </summary>
+        public static string PrefixSetup_BackupLabel {
+            get {
+                return ResourceManager.GetString("PrefixSetup_BackupLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to I confirm that the prefix at {0} may be changed..
+        /// </summary>
+        public static string PrefixSetup_Confirmation {
+            get {
+                return ResourceManager.GetString("PrefixSetup_Confirmation", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to fetch {0} (sha256 {1}).
+        /// </summary>
+        public static string PrefixSetup_Download {
+            get {
+                return ResourceManager.GetString("PrefixSetup_Download", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing to do..
+        /// </summary>
+        public static string PrefixSetup_NothingToDo {
+            get {
+                return ResourceManager.GetString("PrefixSetup_NothingToDo", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Already installed.
+        /// </summary>
+        public static string PrefixSetup_AlreadyInstalled {
+            get {
+                return ResourceManager.GetString("PrefixSetup_AlreadyInstalled", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Installed.
+        /// </summary>
+        public static string PrefixSetup_Installed {
+            get {
+                return ResourceManager.GetString("PrefixSetup_Installed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Failed: {0}.
+        /// </summary>
+        public static string PrefixSetup_Failed {
+            get {
+                return ResourceManager.GetString("PrefixSetup_Failed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Not run.
+        /// </summary>
+        public static string PrefixSetup_NotRun {
+            get {
+                return ResourceManager.GetString("PrefixSetup_NotRun", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Setting up {0} failed: {1}.
+        /// </summary>
+        public static string PrefixSetup_StepFailed {
+            get {
+                return ResourceManager.GetString("PrefixSetup_StepFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The setup was cancelled. Steps that finished stay installed..
+        /// </summary>
+        public static string PrefixSetup_Cancelled {
+            get {
+                return ResourceManager.GetString("PrefixSetup_Cancelled", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Setting up the prefix. Keep the game closed..
+        /// </summary>
+        public static string PrefixSetup_Running {
+            get {
+                return ResourceManager.GetString("PrefixSetup_Running", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The prefix is set up..
+        /// </summary>
+        public static string PrefixSetup_Done {
+            get {
+                return ResourceManager.GetString("PrefixSetup_Done", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Set up prefix.
+        /// </summary>
+        public static string PrefixSetup_Run {
+            get {
+                return ResourceManager.GetString("PrefixSetup_Run", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Retry.
+        /// </summary>
+        public static string PrefixSetup_Retry {
+            get {
+                return ResourceManager.GetString("PrefixSetup_Retry", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Close.
+        /// </summary>
+        public static string PrefixSetup_Close {
+            get {
+                return ResourceManager.GetString("PrefixSetup_Close", resourceCulture);
+            }
+        }
     }
 }
