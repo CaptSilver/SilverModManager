@@ -19,9 +19,9 @@
         <!-- Both Border's below need CornerRadius as one is clipping the content below, and the other is drawing the 
         border and needs setting specifically -->
         
+        <!-- No background of its own: the page panel in the main window paints the surface, and Glass tints it there -->
         <Style Selector="^ Border#PanelClipBorder">
             <Setter Property="ClipToBounds" Value="True" />
-            <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
             <Setter Property="CornerRadius" Value="{StaticResource PanelViewCornerRadius}" />
         </Style>
         
@@ -83,7 +83,6 @@
         <!-- one tab -->
         <Style Selector="^:one-tab">
             <Style Selector="^ Border#TabHeaderBorder">
-                <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
                 <Setter Property="BorderThickness" Value="0 0 0 1" />
                 <Setter Property="BorderBrush" Value="{StaticResource StrokeTranslucentWeak}" />
 

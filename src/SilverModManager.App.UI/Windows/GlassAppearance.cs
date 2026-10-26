@@ -82,26 +82,62 @@ public sealed class GlassAppearance : IDisposable
     }
 
     /// <summary>
+    /// How opaque a raised panel is over the blurred desktop: halfway between the window's tint and solid, so the
+    /// gutters around it stay the most see-through part and text on the panel keeps most of its backing.
+    /// </summary>
+    public static double PanelTint(double tint)
+    {
+        var frame = ClampTint(tint);
+        return frame + (1 - frame) / 2;
+    }
+
+    /// <summary>The translucent background for a panel inside a blurred window, or null when it keeps its own opaque one.</summary>
+    public static IBrush? PanelBackgroundFor(bool enabled, WindowTransparencyLevel actual, double tint, Color surface)
+    {
+        if (!enabled || !IsBlurred(actual)) return null;
+        var alpha = (byte)Math.Round(PanelTint(tint) * 255);
+        return new SolidColorBrush(Color.FromArgb(alpha, surface.R, surface.G, surface.B));
+    }
+
+    private static Color SurfaceColor(string key) =>
+        (Application.Current?.TryFindResource(key, out var resource) ?? false) && resource is Color surface
+            ? surface
+            : throw new InvalidOperationException($"The theme has no colour resource `{key}` to use as a background");
+
+    /// <summary>
     /// Keeps <paramref name="window"/>'s transparency hint and background in step with the setting and with
     /// what the compositor actually grants. <paramref name="surfaceKey"/> names the theme colour (for example
     /// "SurfaceBase") that the tint is made from; it should match the window's opaque background.
     /// </summary>
-    public IDisposable Attach(Window window, string surfaceKey)
-    {
-        if (!(Application.Current?.TryFindResource(surfaceKey, out var resource) ?? false) || resource is not Color surface)
-            throw new InvalidOperationException($"The theme has no colour resource `{surfaceKey}` to use as the window background");
+    public IDisposable Attach(Window window, string surfaceKey) => Attach(window, surfaceKey, panelSurfaceKey: null);
 
-        // The tint sits above the window's own Background (set in its axaml, a style or the theme) and is
+    /// <summary>
+    /// As <see cref="Attach(Window, string)"/>, and also tints <paramref name="panels"/>, which are painted in the
+    /// theme colour <paramref name="panelSurfaceKey"/>, with the more opaque <see cref="PanelTint"/>.
+    /// </summary>
+    public IDisposable Attach(Window window, string surfaceKey, string? panelSurfaceKey, params Border[] panels)
+    {
+        var surface = SurfaceColor(surfaceKey);
+        var panelSurface = panelSurfaceKey is null ? default : SurfaceColor(panelSurfaceKey);
+
+        // Each tint sits above the control's own Background (set in its axaml, a style or the theme) and is
         // removed again without blur, so the opaque look is exactly what the window had before Glass existed.
-        IDisposable? tint = null;
+        var tints = new List<IDisposable>();
 
         void Refresh()
         {
             window.TransparencyLevelHint = TransparencyLevelHint;
-            tint?.Dispose();
-            tint = TintedBackgroundFor(Enabled, window.ActualTransparencyLevel, Tint, surface) is { } brush
-                ? window.SetValue(TemplatedControl.BackgroundProperty, brush, BindingPriority.Animation)
-                : null;
+            foreach (var tint in tints) tint.Dispose();
+            tints.Clear();
+
+            var actual = window.ActualTransparencyLevel;
+            if (TintedBackgroundFor(Enabled, actual, Tint, surface) is { } brush)
+                tints.Add(window.SetValue(TemplatedControl.BackgroundProperty, brush, BindingPriority.Animation)!);
+            foreach (var panel in panels)
+            {
+                if (PanelBackgroundFor(Enabled, actual, Tint, panelSurface) is { } panelBrush)
+                    tints.Add(panel.SetValue(Border.BackgroundProperty, panelBrush, BindingPriority.Animation)!);
+            }
         }
 
         void OnSettingChanged()
@@ -123,8 +159,8 @@ public sealed class GlassAppearance : IDisposable
         {
             Changed -= OnSettingChanged;
             window.PropertyChanged -= OnPropertyChanged;
-            tint?.Dispose();
-            tint = null;
+            foreach (var tint in tints) tint.Dispose();
+            tints.Clear();
         });
     }
 

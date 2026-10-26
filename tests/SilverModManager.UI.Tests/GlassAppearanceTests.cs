@@ -75,6 +75,27 @@ public class GlassAppearanceTests(IServiceProvider provider) : AUiTest(provider)
     }
 
     [Theory]
+    [InlineData(0.4, 0xB2)]
+    [InlineData(0.0, 0x99)]
+    [InlineData(1.0, 0xE6)]
+    public async Task WithBlurAPanelIsTintedHalfwayBetweenTheFrameAndOpaque(double tint, byte alpha)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var brush = (SolidColorBrush)GlassAppearance.PanelBackgroundFor(true, WindowTransparencyLevel.Blur, tint, Surface)!;
+            brush.Color.A.Should().Be(alpha);
+            (brush.Color.R, brush.Color.G, brush.Color.B).Should().Be((Surface.R, Surface.G, Surface.B));
+        });
+    }
+
+    [Fact]
+    public void WithoutBlurAPanelKeepsItsOwnBackground()
+    {
+        GlassAppearance.PanelBackgroundFor(true, WindowTransparencyLevel.None, 0.4, Surface).Should().BeNull();
+        GlassAppearance.PanelBackgroundFor(false, WindowTransparencyLevel.Blur, 0.4, Surface).Should().BeNull();
+    }
+
+    [Theory]
     [InlineData("SurfaceMidBrush")]
     [InlineData("SurfaceHighBrush")]
     [InlineData("SurfaceInvertedBrush")]

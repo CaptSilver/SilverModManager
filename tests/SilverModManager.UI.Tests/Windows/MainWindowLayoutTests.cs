@@ -1,11 +1,16 @@
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.LeftMenu.Loadout;
+using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.App.UI.WorkspaceSystem;
+using SilverModManager.Sdk.Settings;
 
 namespace SilverModManager.UI.Tests.Windows;
 
@@ -136,24 +141,64 @@ public class MainWindowLayoutTests(IServiceProvider provider) : AUiTest(provider
     }
 
     [Fact]
-    public async Task GlassTintingTheWindowLeavesThePanelsOpaque()
+    public async Task UnderGlassThePanelsCoverMoreOfTheDesktopThanTheWindowBase()
+    {
+        await OnUi(() =>
+        {
+            var frame = GlassAppearance.TintedBackgroundFor(true, WindowTransparencyLevel.Blur, GlassAppearance.DefaultTint, SurfaceLow());
+            var panel = GlassAppearance.PanelBackgroundFor(true, WindowTransparencyLevel.Blur, GlassAppearance.DefaultTint, SurfaceLow());
+
+            ((SolidColorBrush)panel!).Color.A.Should().BeGreaterThan(((SolidColorBrush)frame!).Color.A, "text sits on the panels, so they cover more of the desktop than the gutters do");
+            ((SolidColorBrush)panel).Color.A.Should().BeLessThan(255, "the blurred desktop shows faintly through the panels too");
+        });
+    }
+
+    [Fact]
+    public async Task WithoutBlurThePanelsStayOpaqueUnderGlass()
     {
         await OnUi(() =>
         {
             var window = new MainWindow();
-            var tint = GlassAppearance.TintedBackgroundFor(true, WindowTransparencyLevel.Blur, GlassAppearance.DefaultTint, SurfaceLow());
-            tint.Should().NotBeNull();
-            window.Background = tint;
-
-            foreach (var name in new[] { "LeftMenuBorder", "WorkspacesBorder" })
+            var settings = Provider.GetRequiredService<ISettingsManager>();
+            settings.Update<AppearanceSettings>(s => s with { GlassEnabled = true });
+            try
             {
-                var brush = Panel(window, name).Background.Should().BeOfType<SolidColorBrush>().Subject;
-                brush.Color.A.Should().Be(255);
-                brush.Opacity.Should().Be(1);
+                using var attachment = window.AttachGlass(Provider.GetRequiredService<GlassAppearance>());
+
+                GlassAppearance.IsBlurred(window.ActualTransparencyLevel).Should().BeFalse("the headless platform has no blur");
+                foreach (var name in new[] { "LeftMenuBorder", "WorkspacesBorder" })
+                    Panel(window, name).Background.Should().BeOfType<SolidColorBrush>().Which.Color.Should().Be(SurfaceLow());
+            }
+            finally
+            {
+                settings.Update<AppearanceSettings>(_ => new AppearanceSettings());
             }
         });
     }
+
     private static Color? BackgroundColor(IBrush? brush) => (brush as ISolidColorBrush)?.Color;
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AWorkspacePanelLetsThePageAreaBehindItShowThrough(bool oneTab)
+    {
+        await OnUi(() =>
+        {
+            var panel = new PanelView();
+            // Set from the view model's tab count in the app; there is no view model here.
+            ((IPseudoClasses)typeof(StyledElement).GetProperty("PseudoClasses", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(panel)!)
+                .Set(":one-tab", oneTab);
+            var window = Track(new Window { Width = 600, Height = 400, Content = panel });
+            ShowRendered(window);
+
+            foreach (var name in new[] { "PanelClipBorder", "TabHeaderBorder" })
+            {
+                var border = panel.GetVisualDescendants().OfType<Border>().Single(b => b.Name == name);
+                BackgroundColor(border.Background)?.A.Should().BeLessThan(255, $"{name} painted opaque hides the page panel's Glass tint");
+            }
+        });
+    }
 
     [Fact]
     public async Task TheLeftMenusOwnHighlightsStandOutFromTheRaisedPanel()

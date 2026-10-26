@@ -32,7 +32,7 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
 
         this.WhenActivated(disposables =>
         {
-            ViewModel?.Glass.Attach(this, "SurfaceWindow").DisposeWith(disposables);
+            if (ViewModel is not null) AttachGlass(ViewModel.Glass).DisposeWith(disposables);
 
             var storageProvider = GetTopLevel(this)?.StorageProvider;
             var clipboard = GetTopLevel(this)?.Clipboard;
@@ -102,6 +102,10 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
                 }).DisposeWith(disposables);
         });
     }
+
+    /// <summary>Glass tints the dark window base and, more lightly, the left menu and page panels raised on it.</summary>
+    public IDisposable AttachGlass(GlassAppearance glass) =>
+        glass.Attach(this, "SurfaceWindow", "SurfaceLow", LeftMenuBorder, WorkspacesBorder);
 
     private void OnTopBarPointerPressed(object? sender, PointerPressedEventArgs e)
     {
