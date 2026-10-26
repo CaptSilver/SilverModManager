@@ -85,13 +85,15 @@ public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnost
         }
     }
 
-    // The talk archives are named by map, which says more to a player than the file extension does.
+    // The talk archives are named by map and the equipment parts by item, which say more to a player than the file extension does.
     private static string MergeSubject(string path)
     {
         const string talk = ".talkesdbnd.dcx";
-        return path.EndsWith(talk, StringComparison.OrdinalIgnoreCase)
-            ? $"the talk script {System.IO.Path.GetFileName(path)[..^talk.Length]}"
-            : path;
+        const string part = ".partsbnd.dcx";
+        var name = System.IO.Path.GetFileName(path);
+        if (path.EndsWith(talk, StringComparison.OrdinalIgnoreCase)) return $"the talk script {name[..^talk.Length]}";
+        if (path.EndsWith(part, StringComparison.OrdinalIgnoreCase)) return $"the equipment part {name[..^part.Length]}";
+        return path;
     }
 
     private static string Advice(IMergeNote note)

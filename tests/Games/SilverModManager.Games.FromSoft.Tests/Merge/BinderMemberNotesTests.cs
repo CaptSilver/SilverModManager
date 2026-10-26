@@ -68,4 +68,30 @@ public class BinderMemberNotesTests
     public void TheMergeReportListsATakenMember()
         => MergeReports.ReportNotes([new MemberTaken("A.anibnd", "Moveset"), new MemberKept("A.flver", "X", "Y", null), new BaselineWillBeKept("1.0")])
             .Should().Equal("member A.anibnd: only Moveset changed it; taken from there", "member A.flver: both mods changed it; kept X's");
+
+    [Theory]
+    [InlineData("parts/wp_a_0556.partsbnd.dcx", "the equipment part wp_a_0556")]
+    [InlineData("parts/wp_a_0556_l.partsbnd.dcx", "the equipment part wp_a_0556_l")]
+    [InlineData("parts/WP_A_0556.PARTSBND.DCX", "the equipment part WP_A_0556")]
+    [InlineData("script/talk/m00.talkesdbnd.dcx", "the talk script m00")]
+    public void TheCardNamesAnEquipmentPartOrATalkScriptByItsFileName(string path, string subject)
+    {
+        var card = MergeDiagnosticsEmitter.NoteCards(path, "A, B", [new MemberKept("x.flver", "A", "B", null)]).Single();
+
+        card.Should().BeOfType<SilverModManager.Abstractions.Diagnostics.Diagnostic<FromSoftDiagnostics.MergeNoteMessageData>>()
+            .Which.MessageData.Subject.Should().Be(subject);
+    }
+
+    [Fact]
+    public void AConflictOverAModelGivesOneCardNamingBothModsTheModelAndWhichWayToMoveAMod()
+    {
+        var cards = MergeDiagnosticsEmitter.NoteCards(
+            "parts/wp_a_0556.partsbnd.dcx", "Weapon Glow, Moveset",
+            [new MemberKept("WP_A_0556.flver", "Weapon Glow", "Moveset", null), new MemberTaken("WP_A_0556.tpf", "Moveset")]).ToArray();
+
+        var data = cards.Should().ContainSingle().Which.Should()
+            .BeOfType<SilverModManager.Abstractions.Diagnostics.Diagnostic<FromSoftDiagnostics.MergeNoteMessageData>>().Which.MessageData;
+        data.Note.Should().Contain("Weapon Glow").And.Contain("Moveset").And.Contain("the model");
+        data.Advice.Should().Contain("move Moveset below Weapon Glow on Rules > File Conflicts");
+    }
 }

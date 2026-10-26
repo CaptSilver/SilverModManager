@@ -171,6 +171,21 @@ public class LoadoutMergeSourcesGameArchiveTests(ITestOutputHelper helper) : AMo
     }
 
     [Fact]
+    public async Task TheReportListsTheTakenMembersAndTheStrategyOfAMergedEquipmentPart()
+    {
+        WriteGameArchive((Part, Packed(PartsbndMods.Vanilla())));
+        var loadout = await GlowAndMoveset(PartsbndMods.MovesetMembers());
+
+        var report = await ServiceProvider.GetRequiredService<IMergeReports>().ForLoadout(loadout.LoadoutId, CancellationToken.None);
+
+        var entry = report.Entries.Should().ContainSingle().Which;
+        entry.Path.Should().Be(Part);
+        entry.Strategy.Should().Be("partsbnd-3way");
+        entry.Outcome.Should().Be(MergeReportOutcome.Merged);
+        entry.Notes.Should().Contain(n => n.Contains(PartsbndMods.TpfName) && n.Contains("only " + PartsbndMods.Glow));
+    }
+
+    [Fact]
     public async Task EquipmentPartsWithDifferentMembersEndUnmergedAsTheWinnerWithTheReason()
     {
         WriteGameArchive((Part, Packed(PartsbndMods.Vanilla())));

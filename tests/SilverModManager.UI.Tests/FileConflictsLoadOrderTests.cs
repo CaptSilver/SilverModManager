@@ -28,8 +28,9 @@ namespace SilverModManager.UI.Tests;
 /// </summary>
 public class FileConflictsLoadOrderTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private const string Shared = "parts/wp_a_0556.partsbnd.dcx";
+    private const string Shared = "chr/c0000.chrbnd.dcx";
     private const string Merged = "msg/engus/item_dlc02.msgbnd.dcx";
+    private const string Part = "parts/wp_a_0556.partsbnd.dcx";
 
     // The view model reads keyed services (image pipelines), which only a keyed provider serves.
     private sealed class FakedServices(IServiceProvider inner, IMergeIndexSource source) : IKeyedServiceProvider
@@ -72,14 +73,16 @@ public class FileConflictsLoadOrderTests(IServiceProvider provider) : AUiTest(pr
     private static ProviderFile File(string package, string relPath, ulong priority, string mod, LoadoutItemGroupId group, ulong content)
         => new(package, relPath, Hash.From(content), priority, mod, LoadoutItemId.From(group.Value));
 
-    private static MergePathIndex IndexOf(Mods mods, params string[] paths) => MergePathIndex.Build(
+    private static MergePathIndex IndexOf(Mods mods, params string[] paths) => IndexWithVanilla(mods, [], paths);
+
+    private static MergePathIndex IndexWithVanilla(Mods mods, string[] vanillaPaths, params string[] paths) => MergePathIndex.Build(
         paths.SelectMany((path, i) => new[]
         {
             File("weapon_glow", path, 1, "Weapon Glow", mods.Glow, (ulong)i * 2 + 1),
             File("moveset", path, 2, "Moveset", mods.Moveset, (ulong)i * 2 + 2),
         }),
         EldenRingGame.Definition.Formats,
-        new HashSet<string>());
+        new HashSet<string>(vanillaPaths));
 
     private static IMergeIndexSource Me3(MergePathIndex index)
     {
@@ -191,6 +194,27 @@ public class FileConflictsLoadOrderTests(IServiceProvider provider) : AUiTest(pr
         {
             RowOf(page, "Weapon Glow").Should().Be((0, 1, true));
             RowOf(page, "Moveset").Should().Be((1, 0, true));
+        });
+    }
+
+    [Fact]
+    public async Task AnEquipmentPartTheAppCanMergeAgainstAVanillaCopyIsNotCountedButIsWithoutOne()
+    {
+        var mods = await Seed("Parts Merged");
+        var withVanilla = Page(mods, Me3(IndexWithVanilla(mods, [Part], Part)));
+        using var _ = withVanilla.Activator.Activate();
+        await EventuallyOnUi(() =>
+        {
+            RowOf(withVanilla, "Weapon Glow").Should().Be((0, 0, false));
+            RowOf(withVanilla, "Moveset").Should().Be((0, 0, false));
+        });
+
+        var without = Page(mods, Me3(IndexOf(mods, Part)));
+        using var __ = without.Activator.Activate();
+        await EventuallyOnUi(() =>
+        {
+            RowOf(without, "Weapon Glow").Should().Be((0, 1, true));
+            RowOf(without, "Moveset").Should().Be((1, 0, true));
         });
     }
 

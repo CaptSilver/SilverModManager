@@ -134,8 +134,8 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
     public async Task APairWithNoStrategyIsNotMergeableAndSaysWhichModLoadoutPriorityKeeps()
     {
         var loadout = await CreateLoadout();
-        await InstallPackage(loadout.LoadoutId, "Alpha", ("parts/wp_a.partsbnd.dcx", [1, 2, 3]));
-        await InstallPackage(loadout.LoadoutId, "Beta", ("parts/wp_a.partsbnd.dcx", [4, 5, 6]));
+        await InstallPackage(loadout.LoadoutId, "Alpha", ("chr/c0000.chrbnd.dcx", [1, 2, 3]));
+        await InstallPackage(loadout.LoadoutId, "Beta", ("chr/c0000.chrbnd.dcx", [4, 5, 6]));
 
         var report = await Reports.ForLoadout(loadout.LoadoutId, CancellationToken.None);
 
