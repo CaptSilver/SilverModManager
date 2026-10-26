@@ -758,6 +758,45 @@ internal partial class LoadoutManager : ILoadoutManager
         await tx.Commit();
     }
 
+    public async ValueTask<AddGroupRuleResult> AddGroupRule(LoadoutId loadoutId, LoadoutItemGroupId source, LoadoutItemGroupId other, GroupRuleKind kind)
+    {
+        var db = _connection.Db;
+        var candidate = new GroupRule(source, other, kind);
+        var delta = new RuleDelta { Candidates = [candidate] };
+
+        // The resolver inside the transaction only sees the rows from before it, so the cycle check runs here over
+        // the stored rules plus the candidate and a refused rule never reaches the database.
+        var order = LoadoutItemGroupPriority.FindByLoadout(db, loadoutId).OrderBy(static p => p.Priority).Select(static p => p.TargetId).ToArray();
+
+        // The resolver skips rules naming a group outside the order, so without this check a rule on a group of
+        // another loadout, or on a nested group, would be stored and never do anything.
+        if (!order.Contains(source)) throw new ArgumentException($"Group {source.Value} has no priority in loadout {loadoutId.Value}.", nameof(source));
+        if (!order.Contains(other)) throw new ArgumentException($"Group {other.Value} has no priority in loadout {loadoutId.Value}.", nameof(other));
+
+        var stored = LoadoutGroupRule.FindByLoadout(db, loadoutId).Select(static r => new GroupRule(r.SourceId, r.OtherId, r.Kind));
+        if (RuleResolver.Resolve(order, stored, delta).Cycle is { } cycle) return AddGroupRuleResult.Cyclic(cycle);
+
+        using var tx = _connection.BeginTransaction();
+        var rule = new LoadoutGroupRule.New(tx)
+        {
+            LoadoutId = loadoutId,
+            SourceId = source,
+            OtherId = other,
+            Kind = kind,
+        };
+        tx.Add(new ApplyGroupRulesTxFunc(loadoutId, delta));
+
+        var result = await tx.Commit();
+        return AddGroupRuleResult.Added(LoadoutGroupRuleId.From(result[rule.Id]));
+    }
+
+    public async ValueTask RemoveGroupRule(LoadoutGroupRuleId ruleId)
+    {
+        using var tx = _connection.BeginTransaction();
+        tx.Delete(ruleId, recursive: false);
+        await tx.Commit();
+    }
+
     public async ValueTask LoseAllFileConflicts(LoadoutItemGroupPriorityId[] loserIds)
     {
         var db = _connection.Db;

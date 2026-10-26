@@ -140,4 +140,16 @@ public interface ILoadoutManager
     /// Make items in <paramref name="winnerIds"/> win all file conflicts.
     /// </summary>
     ValueTask WinAllFileConflicts(LoadoutItemGroupPriorityId[] winnerIds);
+
+    /// <summary>
+    /// Adds an ordering rule between two top-level groups of a loadout and moves the priorities to satisfy it,
+    /// together with every rule already stored. When the rule contradicts the stored ones the result names the
+    /// conflicting groups and nothing is written.
+    /// </summary>
+    ValueTask<AddGroupRuleResult> AddGroupRule(LoadoutId loadoutId, LoadoutItemGroupId source, LoadoutItemGroupId other, GroupRuleKind kind);
+
+    /// <summary>
+    /// Deletes a group rule. Priorities stay where they are: removing a constraint never moves a group.
+    /// </summary>
+    ValueTask RemoveGroupRule(LoadoutGroupRuleId ruleId);
 }

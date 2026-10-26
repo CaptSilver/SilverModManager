@@ -3,6 +3,7 @@ using System.Diagnostics;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.DataModel.Sorting;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Loadouts;
@@ -146,6 +147,72 @@ internal partial class LoadoutManager
         }
     }
 
+    /// <summary>
+    /// Rewrites a loadout's group priorities so the stored rules, plus the changes in <paramref name="delta"/>, hold.
+    /// </summary>
+    /// <remarks>
+    /// A tx function only sees the database from before its transaction, and every function in a transaction gets the
+    /// same one, so two resolvers for one loadout would each compute a whole order over it and write the same rows.
+    /// Equality is therefore the loadout alone: the method that owns the transaction builds one complete delta (every
+    /// candidate rule, new group and removed group) and adds one function. Groups the delta creates get their
+    /// priority row from here, since a row another function created under its own temp id can't be addressed.
+    /// </remarks>
+    internal class ApplyGroupRulesTxFunc(LoadoutId loadoutId, RuleDelta delta) : ITxFunction
+    {
+        public bool Equals(ITxFunction? other) => other is ApplyGroupRulesTxFunc func && func.LoadoutId == loadoutId;
+
+        public override int GetHashCode() => loadoutId.GetHashCode();
+
+        private LoadoutId LoadoutId => loadoutId;
+
+        public void Apply(ITransaction tx, IDb basis)
+        {
+            var rows = LoadoutItemGroupPriority
+                .FindByLoadout(basis, loadoutId)
+                .OrderBy(static model => model.Priority)
+                .ToList();
+
+            var removed = delta.RemovedGroups.ToHashSet();
+            var rowOfGroup = new Dictionary<LoadoutItemGroupId, LoadoutItemGroupPriority.ReadOnly>();
+            foreach (var row in rows)
+            {
+                if (removed.Contains(row.TargetId)) continue;
+
+                if (!row.Target.IsValid())
+                {
+                    tx.Delete(row.Id, recursive: false);
+                    continue;
+                }
+
+                rowOfGroup[row.TargetId] = row;
+            }
+
+            var storedRules = LoadoutGroupRule
+                .FindByLoadout(basis, loadoutId)
+                .Select(static rule => new GroupRule(rule.SourceId, rule.OtherId, rule.Kind));
+
+            var resolution = RuleResolver.Resolve(rowOfGroup.Keys.OrderBy(group => rowOfGroup[group].Priority).ToArray(), storedRules, delta);
+            if (resolution.Cycle is { } cycle)
+                throw new InvalidOperationException($"The group rules of loadout {loadoutId.Value} contradict each other: {cycle.First.Value} and {cycle.Second.Value}.");
+
+            var next = 0UL;
+            foreach (var group in resolution.Order)
+            {
+                var priority = ConflictPriority.From(++next);
+                if (rowOfGroup.TryGetValue(group, out var row))
+                {
+                    if (row.Priority != priority) tx.Add(row.Id, LoadoutItemGroupPriority.Priority, priority);
+                    continue;
+                }
+
+                var id = tx.TempId();
+                tx.Add(id, LoadoutItemGroupPriority.Loadout, loadoutId);
+                tx.Add(id, LoadoutItemGroupPriority.Target, group);
+                tx.Add(id, LoadoutItemGroupPriority.Priority, priority);
+            }
+        }
+    }
+
     private class ApplyCollectionRulesTxFunc : ITxFunction
     {
         private readonly LoadoutId _loadoutId;
@@ -157,7 +224,10 @@ internal partial class LoadoutManager
             _sortedItems = sortedItems;
         }
 
-        public bool Equals(ITxFunction? other) => other is ApplyCollectionRulesTxFunc;
+        // One per loadout: a bare type check would collapse the functions of two loadouts in one transaction.
+        public bool Equals(ITxFunction? other) => other is ApplyCollectionRulesTxFunc func && func._loadoutId == _loadoutId;
+
+        public override int GetHashCode() => _loadoutId.GetHashCode();
 
         public void Apply(ITransaction tx, IDb basis)
         {
