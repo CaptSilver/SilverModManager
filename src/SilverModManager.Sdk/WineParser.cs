@@ -45,7 +45,7 @@ public static class WineParser
             var trimmed = line.Trim();
             if (trimmed.Length == 0) continue;
 
-            result.Add(line);
+            result.Add(trimmed);
         }
 
         return result.ToImmutableHashSet();

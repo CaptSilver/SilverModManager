@@ -116,3 +116,14 @@ public class WineParserMergeTests
         }
     }
 }
+
+public class WineParserWinetricksLogTests
+{
+    [Fact]
+    public void ParseWinetricksLogFile_TrimsWhitespaceAndCarriageReturnsFromEachVerb()
+    {
+        using var stream = new MemoryStream("  vcrun2022 \r\n\r\n\td3dcompiler_47\r\n"u8.ToArray());
+
+        WineParser.ParseWinetricksLogFile(stream).Should().BeEquivalentTo("vcrun2022", "d3dcompiler_47");
+    }
+}
