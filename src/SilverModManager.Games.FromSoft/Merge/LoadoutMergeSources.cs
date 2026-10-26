@@ -258,15 +258,39 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
             throw new MergeException($"{relPath} points outside the game folder, so it cannot be the game's file");
 
         var game = GameOf(installation);
-        var file = FromSoftPaths.GameFolder(game.Layout, installation) / relPath;
         try
         {
-            return File.ReadAllBytes(file.GetFullPath());
+            return File.ReadAllBytes(FindIgnoringCase(FromSoftPaths.GameFolder(game.Layout, installation).GetFullPath(), relPath));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             throw new MergeException($"can't read {relPath} from the game folder ({exception.Message}); refusing rather than merging onto a mod's older snapshot");
         }
+    }
+
+    /// <summary>
+    /// The game's file for <paramref name="relPath"/> whatever case a mod spelled it in: the game folder is
+    /// case-sensitive on Linux, but the game ships <c>regulation.bin</c> and a mod may call it <c>Regulation.bin</c>.
+    /// A segment with no match is kept as spelled, so the read fails naming the path the mod gave.
+    /// </summary>
+    private static string FindIgnoringCase(string folder, string relPath)
+    {
+        var current = folder;
+        foreach (var segment in relPath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            var exact = System.IO.Path.Combine(current, segment);
+            if (File.Exists(exact) || Directory.Exists(exact) || !Directory.Exists(current))
+            {
+                current = exact;
+                continue;
+            }
+
+            var match = Directory.EnumerateFileSystemEntries(current)
+                .Where(e => System.IO.Path.GetFileName(e).Equals(segment, StringComparison.OrdinalIgnoreCase))
+                .Order(StringComparer.Ordinal).FirstOrDefault();
+            current = match ?? exact;
+        }
+        return current;
     }
 
     private Served? FromDump(Loadout.ReadOnly loadout, string regulationName, string version, ICollection<IMergeNote> notes, ICollection<string> tried)

@@ -77,6 +77,20 @@ public class MergePlannerTests
     }
 
     [Fact]
+    public void Case_variant_spellings_merge_into_one_output_under_the_leaders_spelling()
+    {
+        var index = Index(null, File("a", "Menu/X.tpf.dcx", 1), File("b", "menu/x.tpf.dcx", 2));
+        var recorded = new List<Call>();
+
+        var plan = Plan(index, Recording(recorded));
+
+        plan.Refusal.Should().BeNull();
+        var merged = plan.Merged.Should().ContainSingle().Subject;
+        merged.Path.Should().Be("menu/x.tpf.dcx");
+        S(merged.Bytes).Should().Be("b+a");
+    }
+
+    [Fact]
     public void A_supplied_base_leads_the_fold()
     {
         var index = Index(null, File("a", "regulation.test", 2), File("b", "regulation.test", 1));

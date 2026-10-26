@@ -52,4 +52,24 @@ public class MergedFileTestSoulsTests(ITestOutputHelper helper) : AModdedTestSou
         Directory.GetFiles(Mods.GetFullPath(), "item.msgbnd.dcx", SearchOption.AllDirectories).Should().ContainSingle();
         File.ReadAllText((Mods / "silver.me3").GetFullPath()).Should().Contain("id = \"_merged\"").And.NotContain("id = \"Beta\"");
     }
+
+    [Fact]
+    public async Task MessageArchivesUnderTwoSpellingsMergeAndNeitherContributorsCopyIsDeployed()
+    {
+        var loadout = await CreateLoadout();
+        var alpha = Msgbnd("alpha text", 11);
+        var beta = Msgbnd("beta text", 12);
+        await InstallMod(loadout.LoadoutId, "Alpha", ("msg/engUS/item.msgbnd.dcx", alpha), ("parts/alpha.dcx", [1]));
+        await InstallMod(loadout.LoadoutId, "Beta", ("msg/engus/item.msgbnd.dcx", beta));
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        var deployed = Directory.GetFiles(Mods.GetFullPath(), "*", SearchOption.AllDirectories)
+            .Where(f => f.EndsWith("item.msgbnd.dcx", StringComparison.OrdinalIgnoreCase)).ToArray();
+        deployed.Should().ContainSingle().Which.Should().Be((Mods / "_merged/msg/engus/item.msgbnd.dcx").GetFullPath(),
+            "the merged file takes the leading mod's spelling");
+        var merged = await (Mods / "_merged/msg/engus/item.msgbnd.dcx").ReadAllBytesAsync();
+        merged.Should().Equal(FmgMerge.Union(beta, alpha, Formats));
+        (Mods / "Alpha/parts/alpha.dcx").FileExists.Should().BeTrue();
+    }
 }

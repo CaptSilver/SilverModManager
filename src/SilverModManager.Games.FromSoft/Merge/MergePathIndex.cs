@@ -42,12 +42,19 @@ public sealed record MergeCandidate(
 /// Maps each package-relative path that needs a decision to the enabled files that provide it. It is the one answer
 /// the synchronizer, apply checks, Health Check, UI and CLI read, so they cannot disagree.
 /// <para>
-/// It replaces the planning half of erm's conflicts.py (index_paths, the case-only check, the provider-count rule)
-/// for a loadout where nothing is declared: erm's <c>prefer</c> is the highest priority, <c>mods</c> is every enabled
-/// provider, <c>vanilla</c> is a member of a recognised vanilla dump, a disabled mod is simply not in the input, and
-/// a provider that was never declared or went stale cannot exist. Not ported: declaring merges, the refusals about
+/// It replaces the planning half of erm's conflicts.py (index_paths, the provider-count rule) for a loadout where
+/// nothing is declared: erm's <c>prefer</c> is the highest priority, <c>mods</c> is every enabled provider,
+/// <c>vanilla</c> is a member of a recognised vanilla dump, a disabled mod is simply not in the input, and a provider
+/// that was never declared or went stale cannot exist. Not ported: declaring merges, the refusals about
 /// prefer, undeclared providers and unknown strategies, prunes, renames, faithful-source checks and stale
 /// contributors. Pure and deterministic; it never touches disk or the database.
+/// </para>
+/// <para>
+/// Paths that differ only in case group together, and this deliberately differs from erm's case-only refusal: erm
+/// says it can't tell whether me3 resolves paths case-sensitively, but the game looks up its archive entries
+/// case-insensitively, and a merge deploys only the merged file, in the highest-priority contributor's spelling, so
+/// there is nothing left to disambiguate. A path with no strategy still refuses, since both spellings would deploy.
+/// One package that provides two spellings refuses either way, because the sync tree can't hold both of its files.
 /// </para>
 /// </summary>
 public sealed class MergePathIndex
@@ -100,8 +107,10 @@ public sealed class MergePathIndex
             var strategy = MergeStrategies.ForPath(path, traits, vanilla);
 
             MergeOutcome outcome;
-            if (spellings.Length > 1) outcome = MergeOutcome.NotMergeable(MergeOutcome.CaseOnlyCollision);
-            else if (strategy is not { } s) outcome = MergeOutcome.NotMergeable(MergeOutcome.NoStrategy);
+            // One package under two spellings can't be merged away: the sync tree folds case, so it can't hold both items.
+            var selfCollides = list.GroupBy(f => f.PackageId, StringComparer.Ordinal).Any(g => g.Select(f => f.RelPath).Distinct(StringComparer.Ordinal).Count() > 1);
+            if (selfCollides) outcome = MergeOutcome.NotMergeable(MergeOutcome.CaseOnlyCollision);
+            else if (strategy is not { } s) outcome = MergeOutcome.NotMergeable(spellings.Length > 1 ? MergeOutcome.CaseOnlyCollision : MergeOutcome.NoStrategy);
             // A strategy that starts from the game's own file reads its ancestor from the game folder, which always
             // holds it; only files the game ships inside its packed archives need a vanilla dump from the library.
             else if (MergeStrategies.NeedsVanilla(s) && !MergeStrategies.TakesGameBase(s) && !vanilla) outcome = MergeOutcome.NotMergeable(MergeOutcome.NoVanillaSource);

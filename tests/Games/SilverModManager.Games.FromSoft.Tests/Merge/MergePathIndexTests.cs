@@ -69,12 +69,64 @@ public class MergePathIndexTests
     }
 
     [Fact]
-    public void Case_only_path_collision_between_packages_is_not_mergeable()
+    public void Case_variant_spellings_from_different_packages_merge_as_one_target()
     {
-        var candidate = Build(null, File("a", "Menu/X.tpf.dcx"), File("b", "menu/x.tpf.dcx")).Single();
+        var candidate = Build(null, File("a", "Menu/X.tpf.dcx", 1), File("b", "menu/x.tpf.dcx", 5)).Single();
 
         candidate.Spellings.Should().BeEquivalentTo(["Menu/X.tpf.dcx", "menu/x.tpf.dcx"]);
+        candidate.Path.Should().Be("menu/x.tpf.dcx", "the highest-priority contributor's spelling names the merged file");
+        candidate.Strategy.Should().Be(MergeStrategy.TpfUnion);
+        candidate.Outcome.Should().Be(MergeOutcome.WillMerge);
+    }
+
+    [Fact]
+    public void Case_variant_spellings_with_no_strategy_are_a_case_only_collision()
+    {
+        var candidate = Build(null, File("a", "parts/Wp.dcx"), File("b", "parts/wp.dcx")).Single();
+
+        candidate.Spellings.Should().BeEquivalentTo(["parts/Wp.dcx", "parts/wp.dcx"]);
         candidate.Outcome.Should().Be(MergeOutcome.NotMergeable(MergeOutcome.CaseOnlyCollision));
+    }
+
+    [Fact]
+    public void Four_providers_of_a_message_archive_under_two_spellings_merge_under_the_top_priority_spelling()
+    {
+        var candidate = Build(null,
+            File("NoFallDead", "msg/engUS/item_dlc02.msgbnd.dcx", 4),
+            File("GreatRuneOverhaul", "msg/engus/item_dlc02.msgbnd.dcx", 9),
+            File("movesets", "msg/engUS/item_dlc02.msgbnd.dcx", 2),
+            File("BossResurrection", "msg/engus/item_dlc02.msgbnd.dcx", 1)).Single();
+
+        candidate.Strategy.Should().Be(MergeStrategy.FmgUnion);
+        candidate.Outcome.Should().Be(MergeOutcome.WillMerge);
+        candidate.Path.Should().Be("msg/engus/item_dlc02.msgbnd.dcx");
+        candidate.Contributors.Select(c => c.PackageId).Should().Equal("GreatRuneOverhaul", "NoFallDead", "movesets", "BossResurrection");
+    }
+
+    [Fact]
+    public void A_priority_tie_between_spellings_goes_to_the_first_package_id()
+    {
+        var candidate = Build(null, File("b", "msg/engus/Item.msgbnd.dcx", 3), File("a", "msg/engus/item.msgbnd.dcx", 3)).Single();
+
+        candidate.Path.Should().Be("msg/engus/item.msgbnd.dcx");
+        candidate.Outcome.Should().Be(MergeOutcome.WillMerge);
+    }
+
+    [Fact]
+    public void A_package_holding_two_spellings_stays_refused_even_when_other_packages_provide_the_path()
+    {
+        var candidate = Build(null,
+            File("a", "msg/engus/Item.msgbnd.dcx"), File("a", "msg/engus/item.msgbnd.dcx"), File("b", "msg/engus/item.msgbnd.dcx")).Single();
+
+        candidate.Outcome.Should().Be(MergeOutcome.NotMergeable(MergeOutcome.CaseOnlyCollision));
+    }
+
+    [Fact]
+    public void Case_variants_of_a_path_whose_merge_needs_a_vanilla_copy_wait_for_one()
+    {
+        var candidate = Build(null, File("a", "script/talk/M00.talkesdbnd.dcx"), File("b", "script/talk/m00.talkesdbnd.dcx")).Single();
+
+        candidate.Outcome.Should().Be(MergeOutcome.NotMergeable(MergeOutcome.NoVanillaSource));
     }
 
     [Fact]

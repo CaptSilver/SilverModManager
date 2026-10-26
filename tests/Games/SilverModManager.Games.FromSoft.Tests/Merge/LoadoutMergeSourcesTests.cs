@@ -381,6 +381,12 @@ public class LoadoutMergeSourcesTests(ITestOutputHelper helper) : AModdedEldenRi
     }
 
     [Fact]
+    public void TheGameBaseIsFoundWhateverCaseTheModSpellsIt()
+    {
+        Sources.GameBase(GameInstallation, "Regulation.bin").Should().Equal(EldenRingInstall.RegulationFile);
+    }
+
+    [Fact]
     public void AGameBaseThatIsNotInTheGameFolderIsRefusedNamingThePath()
     {
         var act = () => Sources.GameBase(GameInstallation, "param/missing.bin");

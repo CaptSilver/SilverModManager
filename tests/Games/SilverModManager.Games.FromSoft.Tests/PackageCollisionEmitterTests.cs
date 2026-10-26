@@ -72,15 +72,15 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
     public async Task TwoPathsThatDifferOnlyInCaseRaiseTheSameCriticalWithASentenceAboutIt()
     {
         var loadout = await CreateLoadout();
-        await InstallPackage(loadout, "Weapons", "msg/engus/Item.msgbnd.dcx");
-        await InstallPackage(loadout, "Armor", "msg/engus/item.msgbnd.dcx");
+        await InstallPackage(loadout, "Weapons", "parts/Wp.dcx");
+        await InstallPackage(loadout, "Armor", "parts/wp.dcx");
 
         var diagnostic = await GetSingleDiagnostic(loadout);
 
         diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 1));
         var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageCollisionMessageData>>().Which.MessageData;
         data.CaseNote.Should().Contain("differ only in case");
-        data.Path.Should().Contain("msg/engus/Item.msgbnd.dcx").And.Contain("msg/engus/item.msgbnd.dcx");
+        data.Path.Should().Contain("parts/Wp.dcx").And.Contain("parts/wp.dcx");
     }
 
     private static FromSoftDiagnostics.PackageCollisionMessageData CollisionOf(Diagnostic diagnostic)
@@ -126,12 +126,22 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
     public async Task ACaseOnlyPairKeepsTheCaseNoteAsItsReason()
     {
         var loadout = await CreateLoadout();
-        await InstallPackage(loadout, "Weapons", "msg/engus/Item.msgbnd.dcx");
-        await InstallPackage(loadout, "Armor", "msg/engus/item.msgbnd.dcx");
+        await InstallPackage(loadout, "Weapons", "parts/Wp.dcx");
+        await InstallPackage(loadout, "Armor", "parts/wp.dcx");
 
         var data = CollisionOf(await GetSingleDiagnostic(loadout));
 
         data.Reason.Should().Be(MergeOutcome.CaseOnlyCollision);
+    }
+
+    [Fact]
+    public async Task AMergeableCaseVariantPairIsNotACollision()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "Weapons", "msg/engUS/item.msgbnd.dcx");
+        await InstallPackage(loadout, "Armor", "msg/engus/item.msgbnd.dcx");
+
+        await ShouldHaveNoDiagnostics(loadout, because: "the engine merges the two spellings into one file");
     }
 
     [Fact]
