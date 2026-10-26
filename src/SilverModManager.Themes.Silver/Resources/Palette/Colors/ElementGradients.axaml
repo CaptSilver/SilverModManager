@@ -10,7 +10,7 @@
     </LinearGradientBrush>
     
     <LinearGradientBrush x:Key="AppLinearGradientBrush" StartPoint="0%,50%" EndPoint="100%,50%">
-        <GradientStop Color="{StaticResource BrandPrimary400}" Offset="0" />
+        <GradientStop Color="{StaticResource BrandPrimary200}" Offset="0" />
         <GradientStop Color="{StaticResource BrandPrimary600}" Offset="1" />
     </LinearGradientBrush>
     
@@ -25,8 +25,8 @@
     </LinearGradientBrush>
 
     <!-- SurfaceLow 75% to SurfaceLow 100% -->
-    <Color x:Key="CollectionHeaderImageLinearGradientStartColor">#BF1D1D21</Color>
-    <Color x:Key="CollectionHeaderImageLinearGradientEndColor">#FA1D1D21</Color>
+    <Color x:Key="CollectionHeaderImageLinearGradientStartColor">#BF23272D</Color>
+    <Color x:Key="CollectionHeaderImageLinearGradientEndColor">#FA23272D</Color>
     
     <LinearGradientBrush x:Key="CollectionHeaderImageLinearGradientBrush" StartPoint="0%,0%" EndPoint="0%,100%">
         <GradientStop Offset="0" Color="{StaticResource CollectionHeaderImageLinearGradientStartColor}" />

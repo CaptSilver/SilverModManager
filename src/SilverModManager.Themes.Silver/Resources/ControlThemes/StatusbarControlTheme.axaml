@@ -117,7 +117,7 @@
         </Style>
 
         <Style Selector="^.Primary">
-            <Setter Property="Background" Value="#33FB923C" />
+            <Setter Property="Background" Value="#335B8DB8" />
         </Style>
 
         <Style Selector="^.Warning">

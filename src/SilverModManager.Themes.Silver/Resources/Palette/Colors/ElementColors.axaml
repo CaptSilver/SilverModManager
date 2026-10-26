@@ -90,10 +90,10 @@
     <!-- Primary -->
 
     <!-- Colors -->
-    <StaticResource x:Key="PrimaryWeak" ResourceKey="BrandPrimary700" />
-    <StaticResource x:Key="PrimarySubdued" ResourceKey="BrandPrimary500" />
-    <StaticResource x:Key="PrimaryModerate" ResourceKey="BrandPrimary400" />
-    <StaticResource x:Key="PrimaryStrong" ResourceKey="BrandPrimary300" />
+    <StaticResource x:Key="PrimaryWeak" ResourceKey="BrandAccent700" />
+    <StaticResource x:Key="PrimarySubdued" ResourceKey="BrandAccent500" />
+    <StaticResource x:Key="PrimaryModerate" ResourceKey="BrandAccent400" />
+    <StaticResource x:Key="PrimaryStrong" ResourceKey="BrandAccent300" />
 
     <!-- SolidColorBrushes -->
     <SolidColorBrush x:Key="PrimaryWeakBrush" Color="{StaticResource PrimaryWeak}" />
@@ -183,7 +183,7 @@
     <!-- Focus -->
 
     <!-- Colors -->
-    <StaticResource x:Key="FocusSubdued" ResourceKey="PrimitiveBlue500" />
+    <StaticResource x:Key="FocusSubdued" ResourceKey="PrimitiveSteel400" />
 
     <!-- SolidColorBrushes -->
     <SolidColorBrush x:Key="FocusSubduedBrush" Color="{StaticResource FocusSubdued}" />
@@ -213,10 +213,10 @@
     <!-- NeutralTranslucent -->
 
     <!-- Colors -->
-    <StaticResource x:Key="StrokeTranslucentWeak" ResourceKey="BrandTranslucentLight100" />
-    <StaticResource x:Key="StrokeTranslucentSubdued" ResourceKey="BrandTranslucentLight200" />
-    <StaticResource x:Key="StrokeTranslucentModerate" ResourceKey="BrandTranslucentLight300" />
-    <StaticResource x:Key="StrokeTranslucentStrong" ResourceKey="BrandTranslucentLight800" />
+    <StaticResource x:Key="StrokeTranslucentWeak" ResourceKey="BrandNeutral700" />
+    <StaticResource x:Key="StrokeTranslucentSubdued" ResourceKey="BrandNeutral600" />
+    <StaticResource x:Key="StrokeTranslucentModerate" ResourceKey="BrandNeutral500" />
+    <StaticResource x:Key="StrokeTranslucentStrong" ResourceKey="BrandNeutral300" />
 
     <!-- SolidColorBrushes -->
     <SolidColorBrush x:Key="StrokeTranslucentWeakBrush" Color="{StaticResource StrokeTranslucentWeak}" />

@@ -38,8 +38,8 @@
         <!-- progress bar styles -->
         <Style Selector="^ ProgressBar#ProgressBarControl">
             <!-- these colors are only used here which is why they are raw hex -->
-            <Setter Property="Foreground" Value="#EA580C" />
-            <Setter Property="Background" Value="#33EA580C" />
+            <Setter Property="Foreground" Value="#5B8DB8" />
+            <Setter Property="Background" Value="#335B8DB8" />
             <Setter Property="Height" Value="44" />
 
             <!-- needs this more specific selector to override the default template values -->

@@ -24,6 +24,34 @@
     <Color x:Key="PrimitiveZinc100">#F4F4F5</Color>
     <Color x:Key="PrimitiveZinc50">#FAFAFA</Color>
 
+    <!-- Silver: the facets of the app icon -->
+    <Color x:Key="PrimitiveSilver600">#737984</Color>
+    <Color x:Key="PrimitiveSilver500">#7F8691</Color>
+    <Color x:Key="PrimitiveSilver400">#8A909A</Color>
+    <Color x:Key="PrimitiveSilver300">#AEB4BD</Color>
+    <Color x:Key="PrimitiveSilver200">#C9CED5</Color>
+    <Color x:Key="PrimitiveSilver100">#DDE1E6</Color>
+    <Color x:Key="PrimitiveSilver50">#F4F6F8</Color>
+
+    <!-- Gunmetal: the icon tile and ink -->
+    <Color x:Key="PrimitiveGunmetal950">#1F2328</Color>
+    <Color x:Key="PrimitiveGunmetal900">#23272D</Color>
+    <Color x:Key="PrimitiveGunmetal800">#2D323A</Color>
+    <Color x:Key="PrimitiveGunmetal700">#444B55</Color>
+
+    <!-- Steel: the accent, centred on #5B8DB8 -->
+    <Color x:Key="PrimitiveSteel950">#182733</Color>
+    <Color x:Key="PrimitiveSteel900">#22384D</Color>
+    <Color x:Key="PrimitiveSteel800">#2C4A66</Color>
+    <Color x:Key="PrimitiveSteel700">#385E80</Color>
+    <Color x:Key="PrimitiveSteel600">#46759E</Color>
+    <Color x:Key="PrimitiveSteel500">#5B8DB8</Color>
+    <Color x:Key="PrimitiveSteel400">#7BA5CB</Color>
+    <Color x:Key="PrimitiveSteel300">#A0BFDB</Color>
+    <Color x:Key="PrimitiveSteel200">#BFD4E8</Color>
+    <Color x:Key="PrimitiveSteel100">#DCE8F3</Color>
+    <Color x:Key="PrimitiveSteel50">#F0F5FA</Color>
+
     <!-- Red -->
     <Color x:Key="PrimitiveRed950">#450A0A</Color>
     <Color x:Key="PrimitiveRed900">#7F1D1D</Color>
