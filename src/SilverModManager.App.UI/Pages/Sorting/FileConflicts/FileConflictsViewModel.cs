@@ -297,6 +297,7 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
     private readonly LoadoutId _loadoutId;
     private readonly IMergeIndexSource? _mergeSource;
     private readonly IDisposable _activationDisposable;
+    private readonly object _sharedFileCountsLock = new();
     private (TxId Basis, Dictionary<LoadoutItemGroupId, (long Winning, long Losing)> Counts)? _sharedFileCounts;
 
     private readonly Observable<ListSortDirection> _sortDirectionObservable;
@@ -398,7 +399,9 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
 
     protected override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> GetRootsObservable(bool viewHierarchical)
     {
-        var mods = ObservePriorityGroups(_connection, _loadoutId).OnUI().TransformWithInlineUpdate(CreateItemModel, UpdateItemModel);
+        // The shared-file counts are worked out before the hop to the UI thread; the first set of rows arrives on the
+        // subscribing thread, so the hop off it is explicit.
+        var mods = ObservePriorityGroups(_connection, _loadoutId).OffUi().Transform(AddSharedFiles, transformOnRefresh: true).OnUI().TransformWithInlineUpdate(CreateItemModel, UpdateItemModel);
         var collections = ObserveCollections(_connection, _loadoutId).OnUI().TransformWithInlineUpdate(CreateCollectionModel, UpdateCollectionModel);
 
         // A collection is a row of its own among the mods: moving it moves all of its mods.
@@ -482,7 +485,6 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
 
         var groupPriority = LoadoutItemGroupPriority.Load(db, groupPriorityId);
         var loadoutGroup = groupPriority.Target;
-        (numWinningFiles, numLosingFiles) = WithSharedFiles(db, groupPriority.TargetId, numWinningFiles, numLosingFiles);
 
         var itemModel = new CompositeItemModel<EntityId>(groupPriorityId);
 
@@ -528,30 +530,40 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
     }
 
     /// <summary>
-    /// Adds the files the mod shares with another me3 package to the synchronizer's counts. The index is rebuilt only
-    /// when the database moved on, since every row of the list asks.
+    /// Adds the files the mod shares with another me3 package to the synchronizer's counts. This walks every item of
+    /// the loadout, so it runs before the changes reach the UI thread. The index is rebuilt only when the database
+    /// moved on, since every row of the list asks.
     /// </summary>
-    private (long Winning, long Losing) WithSharedFiles(IDb db, LoadoutItemGroupId group, long winning, long losing)
+    private (EntityId Id, long Index, EntityId Prev, EntityId Next, long NumWinningFiles, long NumLosingFiles) AddSharedFiles(
+        (EntityId Id, long Index, EntityId Prev, EntityId Next, long NumWinningFiles, long NumLosingFiles) row)
     {
-        if (_mergeSource is null) return (winning, losing);
+        if (_mergeSource is null) return row;
 
-        var cached = _sharedFileCounts;
-        if (cached is not { } known || known.Basis != db.BasisTxId)
+        var db = _connection.Db;
+        Dictionary<LoadoutItemGroupId, (long Winning, long Losing)> counts;
+        lock (_sharedFileCountsLock)
         {
-            var loadout = Loadout.Load(db, _loadoutId);
-            var counts = _mergeSource.ProvidesIndex(loadout) && _mergeSource.IndexOf(loadout) is { } index
-                ? FileConflictPaths.SharedFileCounts(index)
-                : [];
-            _sharedFileCounts = known = (db.BasisTxId, counts);
+            if (_sharedFileCounts is not { } known || known.Basis != db.BasisTxId)
+            {
+                var loadout = Loadout.Load(db, _loadoutId);
+                known = (db.BasisTxId, _mergeSource.ProvidesIndex(loadout) && _mergeSource.IndexOf(loadout) is { } index
+                    ? FileConflictPaths.SharedFileCounts(index)
+                    : []);
+                _sharedFileCounts = known;
+            }
+
+            counts = known.Counts;
         }
 
-        return known.Counts.TryGetValue(group, out var shared) ? (winning + shared.Winning, losing + shared.Losing) : (winning, losing);
+        var group = LoadoutItemGroupPriority.Load(db, row.Id).TargetId;
+        return counts.TryGetValue(group, out var shared)
+            ? row with { NumWinningFiles = row.NumWinningFiles + shared.Winning, NumLosingFiles = row.NumLosingFiles + shared.Losing }
+            : row;
     }
 
     private void UpdateItemModel(CompositeItemModel<EntityId> itemModel, (EntityId Id, long Index, EntityId Prev, EntityId Next, long NumWinningFiles, long NumLosingFiles) tuple)
     {
         var (id, index, previousId, nextId, numWinningFiles, numLosingFiles) = tuple;
-        (numWinningFiles, numLosingFiles) = WithSharedFiles(_connection.Db, LoadoutItemGroupPriority.Load(_connection.Db, id).TargetId, numWinningFiles, numLosingFiles);
 
         itemModel.Get<FileConflictsComponents.ViewAction>(FileConflictsColumns.Actions.ViewComponentKey).HasConflicts.Value = numWinningFiles > 0 || numLosingFiles > 0;
 

@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
+using Avalonia.Threading;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Hashing.xxHash3;
@@ -151,6 +153,31 @@ public class FileConflictsLoadOrderTests(IServiceProvider provider) : AUiTest(pr
             RowOf(page, "Weapon Glow").Should().Be((0, 1, true));
             RowOf(page, "Moveset").Should().Be((1, 0, true));
         });
+    }
+
+    [Fact]
+    public async Task TheSharedFileCountsAreBuiltOffTheUiThread()
+    {
+        var mods = await Seed("Shared Counts Thread");
+        var index = IndexOf(mods, Shared);
+        var onUiThread = new ConcurrentQueue<bool>();
+        var source = Substitute.For<IMergeIndexSource>();
+        source.ProvidesIndex(Arg.Any<Loadout.ReadOnly>()).Returns(_ =>
+        {
+            onUiThread.Enqueue(Dispatcher.UIThread.CheckAccess());
+            return true;
+        });
+        source.IndexOf(Arg.Any<Loadout.ReadOnly>()).Returns(_ =>
+        {
+            onUiThread.Enqueue(Dispatcher.UIThread.CheckAccess());
+            return index;
+        });
+        var page = Page(mods, source);
+        using var _ = page.Activator.Activate();
+
+        await EventuallyOnUi(() => RowOf(page, "Moveset").Should().Be((1, 0, true)));
+
+        onUiThread.Should().NotBeEmpty().And.AllSatisfy(onUi => onUi.Should().BeFalse("the index walks every item of the loadout"));
     }
 
     [Fact]
