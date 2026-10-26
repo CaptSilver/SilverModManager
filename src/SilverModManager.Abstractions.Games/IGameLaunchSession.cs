@@ -62,3 +62,13 @@ public sealed class GameLaunchException(string message) : UserFacingException(me
     /// <inheritdoc />
     public override string Title => "The game was not started";
 }
+
+/// <summary>
+/// The game was started and then asked to stop, but a process of it survived SIGKILL. Kept apart from
+/// <see cref="GameLaunchException"/> because the game did start; what the player must do is stop that process.
+/// </summary>
+public sealed class GameDidNotStopException(string message) : UserFacingException(message)
+{
+    /// <inheritdoc />
+    public override string Title => "The game did not stop";
+}

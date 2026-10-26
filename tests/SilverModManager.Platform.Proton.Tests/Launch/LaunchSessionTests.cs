@@ -866,17 +866,31 @@ public class LaunchSessionTests : IDisposable
     }
 
     [Fact]
-    public async Task AGameLaunch_ThrowsTheFailureMessageAndReleasesWhenDisposed()
+    public async Task AGameLaunch_WhoseGameSurvivesKill_ThrowsAGameDidNotStopException_AndReleasesWhenDisposed()
     {
         _processes.Survivor = new TrackedProcess(4242, "wineserver");
         var launch = new GameLaunch(NewSession(), _context);
 
         var act = async () => await launch.RunAsync(_ => Task.CompletedTask, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<GameLaunchException>()).Which.Message.Should().Contain("4242");
+        var thrown = (await act.Should().ThrowAsync<GameDidNotStopException>()).Which;
+        thrown.Message.Should().Contain("4242");
+        thrown.Title.Should().Be("The game did not stop");
         _active.IsRunning(_installation).Should().BeTrue();
         launch.Dispose();
         _active.IsRunning(_installation).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ARunLaunch_WhoseGameSurvivesKill_LogsTheSurvivorAtError()
+    {
+        _processes.Result = new GameProcessResult(0, new TrackedProcess(4242, "wineserver"));
+
+        var result = await Run(NewSession());
+
+        result.Cause.Should().BeOfType<GameDidNotStopException>();
+        _log.Records.Zip(_log.Entries).Should().Contain(r => r.First.Level == LogLevel.Error && r.Second.Contains("4242"),
+            "nothing else logged the survivor, and the run verb is the last stop");
     }
 
     private sealed class FakeProcessFactory(List<string> events, LaunchSessionTests test, RecordingLogger log) : IGameProcessFactory

@@ -227,7 +227,9 @@ public sealed class LaunchSession
     {
         // A crash's exception was logged where it was caught; this line only says what the user is told. When the
         // caller shows the failure, neither the log line nor anything else here may look like a second crash report.
-        var level = failure.Refused || failure.Cause is not null || _callerReports ? LogLevel.Warning : LogLevel.Error;
+        // A surviving process carries a cause only for the awaiting caller; nothing logged it, so this line is its record.
+        var logged = failure.Cause is not (null or GameDidNotStopException);
+        var level = failure.Refused || logged || _callerReports ? LogLevel.Warning : LogLevel.Error;
         _logger.Log(level, "{Message}", failure.Message);
         if (!_callerReports)
         {
@@ -353,8 +355,10 @@ public sealed class LaunchSession
         {
             // The game folder is in use; ingesting it or running the gates' teardown now could corrupt it.
             _keepRunningState = true;
-            return new LaunchFailure($"{game} did not stop: process {survivor.Pid} ({survivor.Name}) survived SIGKILL. " +
-                                     "The loadout is still applied. Stop that process, then launch again.");
+            var message = $"{game} did not stop: process {survivor.Pid} ({survivor.Name}) survived SIGKILL. " +
+                          "The loadout is still applied. Stop that process, then launch again.";
+            // The cause makes an awaiting caller show this as "the game did not stop" and not as a launch that never started.
+            return new LaunchFailure(message, Cause: new GameDidNotStopException(message));
         }
 
         var stopped = BeginFinishing();
