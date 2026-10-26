@@ -1344,6 +1344,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     public virtual bool IsIgnoredBackupPath(GamePath path) => false;
 
     /// <inheritdoc />
+    public virtual bool CanMoveOverrides(Loadout.ReadOnly loadout, GamePath path) => true;
+
+    /// <inheritdoc />
     public virtual bool IsGameWrittenPath(GamePath path) => GameWrittenFiles.IsLogOrCrashFile(path);
 
     private IGamePathFilter? _composedFilter;

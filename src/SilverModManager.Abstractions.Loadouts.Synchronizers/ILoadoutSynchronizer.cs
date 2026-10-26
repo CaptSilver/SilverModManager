@@ -162,6 +162,12 @@ public interface ILoadoutSynchronizer
     bool IsIgnoredBackupPath(GamePath path);
 
     /// <summary>
+    /// Whether a file in the loadout's Overrides group at <paramref name="path"/> may be moved into a mod. A game
+    /// whose mods need more than the file in place (a registry of paks, a plugin list) says no for those paths.
+    /// </summary>
+    bool CanMoveOverrides(Loadout.ReadOnly loadout, GamePath path);
+
+    /// <summary>
     /// Returns true if the game writes this file itself while it runs (a log, a crash dump), so it is never a mod
     /// or an edit. This is not <see cref="IsIgnoredBackupPath"/>: that says what is not worth backing up, which
     /// for some games is the whole install folder, mods included. By default logs and crash dumps count, see

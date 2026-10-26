@@ -15,6 +15,7 @@ using SilverModManager.DataModel.CommandLine.Verbs;
 using SilverModManager.DataModel.Diagnostics;
 using SilverModManager.DataModel.GameInstalled;
 using SilverModManager.DataModel.JsonConverters;
+using SilverModManager.DataModel.Overrides;
 using SilverModManager.DataModel.SchemaVersions;
 using SilverModManager.DataModel.Sorting;
 using SilverModManager.DataModel.Synchronizer;
@@ -124,6 +125,7 @@ public static class Services
         coll.AddSingleton<UndoService>();
 
         coll.AddSingleton<ILoadoutManager, LoadoutManager>();
+        coll.AddSingleton<IOverridesMover>(sp => new OverridesMover(sp.GetRequiredService<IConnection>()));
         coll.AddSingleton<IHostedService, InstallNexusIdBackfill>();
         coll.AddSingleton<IGameInstalledContentService, GameInstalledContentService>();
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, GameInstalledGroupDisabledEmitter>());
