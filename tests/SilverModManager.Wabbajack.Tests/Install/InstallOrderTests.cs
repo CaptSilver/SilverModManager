@@ -110,14 +110,46 @@ public class InstallOrderTests(ITestOutputHelper helper) : InstallTestBase<Insta
 
         var priorities = PrioritiesOf(group);
 
-        priorities.Keys.Should().BeEquivalentTo("A", "B", "C", "D", "Overwrite", "Profile settings", "Stock Game");
+        priorities.Keys.Should().BeEquivalentTo("A", "B", "C", "D", "Overwrite", "Game settings", "Stock Game");
         priorities["B"].Value.Should().BeGreaterThan(priorities["A"].Value, "the first line of modlist.txt wins");
         priorities["A"].Value.Should().BeGreaterThan(priorities["C"].Value);
         priorities["Overwrite"].Value.Should().BeGreaterThan(priorities["B"].Value);
         priorities["C"].Value.Should().BeGreaterThan(priorities["D"].Value, "a mod with no line sits below the lowest listed mod");
-        priorities["D"].Value.Should().BeGreaterThan(priorities["Profile settings"].Value);
-        priorities["Profile settings"].Value.Should().BeGreaterThan(priorities["Stock Game"].Value);
+        priorities["D"].Value.Should().BeGreaterThan(priorities["Game settings"].Value);
+        priorities["Game settings"].Value.Should().BeGreaterThan(priorities["Stock Game"].Value);
         priorities["Stock Game"].Value.Should().BeLessThan(priorities["A"].Value);
+    }
+
+    [Fact]
+    public async Task ASettingsGroupRenamedLikeAModKeepsItsPlaceAndIgnoresThatModsLine()
+    {
+        var list = List();
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(list.ToList(), list.Blobs);
+        var (_, group) = await Install(loadout, modlist, Options);
+        var settings = LoadoutItem.FindByParent(Connection.Db, group.Id).OfTypeLoadoutItemGroup().Single(g => g.IsGameSettingsGroup);
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(settings.Id, LoadoutItem.Name, "C");
+            await tx.Commit();
+        }
+
+        (_, group) = await Install(loadout, modlist, Options);
+
+        var db = Connection.Db;
+        var children = LoadoutItem.FindByParent(db, group.Id).OfTypeLoadoutItemGroup().ToArray();
+        ConflictPriority PriorityOf(LoadoutItemGroup.ReadOnly g) => LoadoutItemGroupPriority.FindByTarget(db, g.LoadoutItemGroupId).Single().Priority;
+        var renamed = children.Single(g => g.IsGameSettingsGroup);
+        var modC = children.Single(g => !g.IsGameSettingsGroup && g.AsLoadoutItem().Name == "C");
+        var modD = children.Single(g => g.AsLoadoutItem().Name == "D");
+        var stock = children.Single(g => g.AsLoadoutItem().Name == "Stock Game");
+
+        renamed.AsLoadoutItem().Name.Should().Be("C");
+        renamed.AsLoadoutItem().IsDisabled.Should().BeFalse("the -C line of modlist.txt is about the mod, not the settings group");
+        modC.AsLoadoutItem().IsDisabled.Should().BeTrue();
+        PriorityOf(renamed).Value.Should().BeLessThan(PriorityOf(modD).Value);
+        PriorityOf(renamed).Value.Should().BeGreaterThan(PriorityOf(stock).Value);
+        PriorityOf(modC).Value.Should().BeGreaterThan(PriorityOf(modD).Value, "mod C keeps its own place in the order");
     }
 
     [Fact]

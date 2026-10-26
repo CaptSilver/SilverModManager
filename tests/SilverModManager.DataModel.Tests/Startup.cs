@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Backend;
 using SilverModManager.Games.RedEngine;
 using SilverModManager.Games.RedEngine.Cyberpunk2077;
@@ -43,6 +44,7 @@ public static class Startup
             .AddLoadoutItemGroupPriorityModel()
             .AddLoadoutGroupRuleModel()
             .AddLoadoutFileWinnerModel()
+            .AddLoadoutIniStateModel()
             .AddSortOrderItemModel()
             .AddDefaultServicesForTesting()
             .AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"))

@@ -84,7 +84,7 @@ public class HalgarisHelperNetworkTests(ITestOutputHelper helper) : InstallTestB
         foreach (var mo2Folder in new[] { "profiles", "downloads", "mods", "overwrite" })
             targetPaths.Should().NotContain(t => t.StartsWith(mo2Folder + "/", StringComparison.OrdinalIgnoreCase), $"{mo2Folder}\\ is one of Mod Organizer's folders");
 
-        tree["Profile settings"].Keys.Should().Contain(["Preferences/Skyrim.ini", "Preferences/SkyrimPrefs.ini", "Preferences/SkyrimCustom.ini"]);
+        tree["Game settings"].Keys.Should().Contain(["Preferences/Skyrim.ini", "Preferences/SkyrimPrefs.ini", "Preferences/SkyrimCustom.ini"]);
 
         // The stub game folder and the test's prefix are the only places the job could have read or written.
         var gameRoot = loadout.InstallationInstance.Locations.ToAbsolutePath(new GamePath(LocationId.Game, RelativePath.Empty));

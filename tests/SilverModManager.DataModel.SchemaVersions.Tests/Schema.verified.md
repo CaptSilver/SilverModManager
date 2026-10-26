@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xE824F3BF63AC0CEB
-   - Total attributes: 347
-   - Total namespaces: 99
+   - Fingerprint: 0xF2BEB42302CC5587
+   - Total attributes: 354
+   - Total namespaces: 100
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -208,10 +208,12 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.LibraryLinkedLoadoutItem/LibraryItem                            | Reference               | True    | False | False     | 
 | SilverModManager.Loadouts.Loadout/GameVersion                                             | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.Loadout/Installation                                            | Reference               | False   | False | False     | 
+| SilverModManager.Loadouts.Loadout/KeepSavesWithLoadout                                    | UInt8                   | False   | False | False     | 
 | SilverModManager.Loadouts.Loadout/LastAppliedDateTime                                     | Int64                   | False   | False | False     | 
 | SilverModManager.Loadouts.Loadout/LoadoutKind                                             | UInt8                   | False   | False | False     | 
 | SilverModManager.Loadouts.Loadout/LocatorIds                                              | Utf8                    | False   | True  | False     | 
 | SilverModManager.Loadouts.Loadout/Name                                                    | Utf8                    | True    | False | False     | 
+| SilverModManager.Loadouts.Loadout/OwnsGameInis                                            | UInt8                   | False   | False | False     | 
 | SilverModManager.Loadouts.Loadout/Revision                                                | UInt64                  | False   | False | False     | 
 | SilverModManager.Loadouts.Loadout/ShortName                                               | Utf8                    | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutFile/Hash                                                | UInt64                  | True    | False | False     | 
@@ -224,11 +226,16 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.LoadoutGroupRule/Loadout                                        | Reference               | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutGroupRule/Other                                          | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.LoadoutGroupRule/Source                                         | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.LoadoutIniState/Baseline                                        | UInt64                  | False   | False | False     | 
+| SilverModManager.Loadouts.LoadoutIniState/LastBakedHash                                   | UInt64                  | False   | False | False     | 
+| SilverModManager.Loadouts.LoadoutIniState/Loadout                                         | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.LoadoutIniState/Path                                            | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 
 | SilverModManager.Loadouts.LoadoutItem/Disabled                                            | Null                    | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutItem/Loadout                                             | Reference               | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutItem/Name                                                | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.LoadoutItem/Parent                                              | Reference               | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutItem/ProtectedPathsAllowed                               | Null                    | True    | False | False     | 
+| SilverModManager.Loadouts.LoadoutItemGroup/GameSettingsGroup                              | Null                    | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutItemGroup/Group                                          | Null                    | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutItemGroupPriority/Loadout                                | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.LoadoutItemGroupPriority/Priority                               | UInt64                  | False   | False | False     | 

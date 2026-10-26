@@ -595,7 +595,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var db = Connection.Db;
         foreach (var child in LoadoutItem.FindByParent(db, groupId).OfTypeLoadoutItemGroup())
         {
-            var name = child.AsLoadoutItem().Name;
+            // The settings group is found by its marker; a user may have renamed it.
+            var name = child.IsGameSettingsGroup ? Mo2Layout.ProfileSettingsGroup : child.AsLoadoutItem().Name;
             state.Groups[name] = child.LoadoutItemGroupId;
             var files = state.Files[name] = new();
             foreach (var file in LoadoutItem.FindByParent(db, child.Id).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
@@ -761,16 +762,18 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
 
         if (!state.Groups.TryGetValue(groupName, out var group))
         {
+            var isSettings = groupName.Equals(Mo2Layout.ProfileSettingsGroup, StringComparison.OrdinalIgnoreCase);
             var created = new LoadoutItemGroup.New(tx, out var id)
             {
                 IsGroup = true,
                 LoadoutItem = new LoadoutItem.New(tx, id)
                 {
                     LoadoutId = TargetLoadout,
-                    Name = groupName,
+                    Name = isSettings ? Mo2Layout.GameSettingsGroupName : groupName,
                     ParentId = modlistGroup,
                 },
             };
+            if (isSettings) tx.Add(id, LoadoutItemGroup.GameSettingsGroup, Null.Instance);
             group = state.Groups[groupName] = created.LoadoutItemGroupId;
             state.NewGroups.Add(groupName);
             state.Files[groupName] = known = new();
@@ -883,7 +886,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var disabledByList = entries.Where(e => !e.Enabled && !e.IsSeparator && !e.IsForeign).Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var enabledByList = entries.Where(e => e.Enabled && !e.IsSeparator && !e.IsForeign).Select(e => e.Name)
             .Where(name => !disabledByList.Contains(name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var child in children)
+        // modlist.txt never lists the settings group; a mod line that matches its free-text name is about the mod.
+        foreach (var child in children.Where(c => !c.IsGameSettingsGroup))
         {
             var name = child.AsLoadoutItem().Name;
             if (disabledByList.Contains(name))
@@ -905,12 +909,15 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     }
 
     /// <summary>
-    /// The groups from lowest priority to highest: game-root groups, profile settings, mods with no line in modlist.txt,
+    /// The groups from lowest priority to highest: game-root groups, the game settings group, mods with no line in modlist.txt,
     /// the listed mods bottom-up (modlist.txt is written top-down, and the first line wins), then Overwrite.
     /// </summary>
     private List<LoadoutItemGroup.ReadOnly> PriorityOrder(Checked check, IReadOnlyList<LoadoutItemGroup.ReadOnly> children, IReadOnlyList<ModlistTxtEntry> entries)
     {
-        var byName = children.ToDictionary(c => c.AsLoadoutItem().Name, StringComparer.OrdinalIgnoreCase);
+        // The settings group goes by its marker: its name is free text and may match a mod's.
+        var settingsGroups = children.Where(c => c.IsGameSettingsGroup).ToArray();
+        var mods = children.Where(c => !c.IsGameSettingsGroup).ToArray();
+        var byName = mods.ToDictionary(c => c.AsLoadoutItem().Name, StringComparer.OrdinalIgnoreCase);
         var rootNames = check.Placements.Select(p => p.Target).OfType<Mo2Target.GameRootFile>().Select(t => t.GroupName).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var ordered = new List<LoadoutItemGroup.ReadOnly>(children.Count);
         var placed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -921,10 +928,10 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         }
 
         foreach (var name in rootNames.Order(StringComparer.OrdinalIgnoreCase)) Place(name);
-        Place(Mo2Layout.ProfileSettingsGroup);
+        ordered.AddRange(settingsGroups);
 
         var listed = entries.Where(e => !e.IsSeparator && !e.IsForeign).Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var unlisted = children
+        var unlisted = mods
             .Select(c => c.AsLoadoutItem().Name)
             .Where(name => !placed.Contains(name) && !listed.Contains(name) && !name.Equals(Mo2Layout.OverwriteGroup, StringComparison.OrdinalIgnoreCase))
             .Order(StringComparer.OrdinalIgnoreCase)

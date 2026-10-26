@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 
 namespace SilverModManager.Abstractions.Games;
 
@@ -19,6 +20,7 @@ public static class Services
             .AddSortOrderQueriesSql()
             .AddLoadoutItemGroupPriorityModel()
             .AddLoadoutGroupRuleModel()
-            .AddLoadoutFileWinnerModel();
+            .AddLoadoutFileWinnerModel()
+            .AddLoadoutIniStateModel();
     }
 }

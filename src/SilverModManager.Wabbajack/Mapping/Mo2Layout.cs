@@ -47,7 +47,14 @@ public abstract record Mo2Target
 public static class Mo2Layout
 {
     public const string OverwriteGroup = "Overwrite";
+    /// <summary>
+    /// The key the profile's INIs are grouped under while a list is installed. It is not the group's name: the
+    /// group is found by its game-settings marker, and <see cref="GameSettingsGroupName"/> only names a new one.
+    /// </summary>
     public const string ProfileSettingsGroup = "Profile settings";
+
+    /// <summary>What a new game settings group is called. The user may rename it.</summary>
+    public const string GameSettingsGroupName = "Game settings";
     public const string GameFolderFilesGroup = "Game Folder Files";
 
     private static readonly HashSet<string> ModOrganizerFolders = new(StringComparer.OrdinalIgnoreCase)

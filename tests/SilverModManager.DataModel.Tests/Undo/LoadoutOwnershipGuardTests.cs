@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.Models;
 using SilverModManager.Sdk;
@@ -33,6 +34,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         "SilverModManager.Loadouts.LoadoutItemGroupPriority/Loadout",
         "SilverModManager.Loadouts.LoadoutGroupRule/Loadout",
         "SilverModManager.Loadouts.LoadoutFileWinner/Loadout",
+        "SilverModManager.Loadouts.LoadoutIniState/Loadout",
     ];
 
     /// <summary>
@@ -61,7 +63,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
     /// <summary>
     /// The roots of the owned closure: what the loadout owns directly, besides the loadout row itself.
     /// </summary>
-    private static readonly Type[] Roots = [typeof(LoadoutItem), typeof(SortOrder), typeof(SortOrderItem), typeof(LoadoutItemGroupPriority), typeof(LoadoutGroupRule), typeof(LoadoutFileWinner)];
+    private static readonly Type[] Roots = [typeof(LoadoutItem), typeof(SortOrder), typeof(SortOrderItem), typeof(LoadoutItemGroupPriority), typeof(LoadoutGroupRule), typeof(LoadoutFileWinner), typeof(LoadoutIniState)];
 
     [Fact]
     public void EveryReferenceToAnOwnedModelIsClassified()

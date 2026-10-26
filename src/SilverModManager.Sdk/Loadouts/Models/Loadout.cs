@@ -69,6 +69,25 @@ public partial class Loadout : IModelDefinition
         DefaultValue = DateTimeOffset.MinValue,
     };
 
+    /// <summary>
+    /// Whether the game's saves are kept apart per loadout. Off for a loadout that never set it.
+    /// </summary>
+    public static readonly BooleanAttribute KeepSavesWithLoadout = new(Namespace, nameof(KeepSavesWithLoadout))
+    {
+        IsOptional = true,
+        DefaultValue = false,
+    };
+
+    /// <summary>
+    /// Whether the loadout owns the game's INI files, so they are written from its baseline on each apply.
+    /// On for a loadout that never set it.
+    /// </summary>
+    public static readonly BooleanAttribute OwnsGameInis = new(Namespace, nameof(OwnsGameInis))
+    {
+        IsOptional = true,
+        DefaultValue = true,
+    };
+
     public partial struct ReadOnly
     {
         public IGameData Game => TryGetGame(out var game)

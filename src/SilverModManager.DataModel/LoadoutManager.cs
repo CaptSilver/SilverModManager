@@ -14,6 +14,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Sorting;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.DataModel.Sorting;
 using SilverModManager.DataModel.Synchronizer;
@@ -220,6 +221,12 @@ internal partial class LoadoutManager : ILoadoutManager
             entityIdList[pin.Id] = tx.TempId();
         }
 
+        // The INI baselines go with the copy, so it starts from the same game settings.
+        foreach (var iniState in LoadoutIniState.FindByLoadout(loadout.Db, loadout))
+        {
+            entityIdList[iniState.Id] = tx.TempId();
+        }
+
         foreach (var (oldId, newId) in entityIdList)
         {
             // Get the original entity
@@ -347,6 +354,11 @@ internal partial class LoadoutManager : ILoadoutManager
         foreach (var pin in LoadoutFileWinner.FindByLoadout(loadout.Db, loadout))
         {
             tx.Delete(pin, recursive: false);
+        }
+
+        foreach (var iniState in LoadoutIniState.FindByLoadout(loadout.Db, loadout))
+        {
+            tx.Delete(iniState, recursive: false);
         }
 
         // A claim is its own entity rather than a loadout item, so the loop above misses it.

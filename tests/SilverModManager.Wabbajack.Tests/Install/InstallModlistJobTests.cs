@@ -89,13 +89,13 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         var (job, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
 
         var tree = TreeOf(group);
-        tree.Keys.Should().BeEquivalentTo("A", "B", "Overwrite", "Profile settings", "Stock Game");
+        tree.Keys.Should().BeEquivalentTo("A", "B", "Overwrite", "Game settings", "Stock Game");
         tree["A"].Keys.Should().BeEquivalentTo("Game/Data/Plugin A.esp", "Game/Data/meshes/x.nif", "Game/root.dll", "Game/Data/SKSE/Plugins/x.ini");
         tree["A"]["Game/Data/Plugin A.esp"].Should().Be(PluginA.xxHash3());
         tree["A"]["Game/root.dll"].Should().Be(RootDll.xxHash3());
         tree["B"].Keys.Should().BeEquivalentTo("Game/Data/B.esp");
         tree["Overwrite"].Keys.Should().BeEquivalentTo("Game/Data/over.txt");
-        tree["Profile settings"].Keys.Should().BeEquivalentTo("Preferences/Skyrim.ini", "Preferences/SkyrimPrefs.ini");
+        tree["Game settings"].Keys.Should().BeEquivalentTo("Preferences/Skyrim.ini", "Preferences/SkyrimPrefs.ini");
         tree["Stock Game"].Keys.Should().BeEquivalentTo("Game/d3d11.dll");
 
         WabbajackSkippedFile.All(Connection.Db).Should().BeEmpty();
@@ -108,6 +108,43 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         job.Progress.IsEstimateLowerBound.Should().BeFalse();
         job.Progress.Phase.Should().Be(InstallPhase.Order);
         job.Progress.DoneItems.Should().Be(job.Progress.TotalItems);
+    }
+
+    [Fact]
+    public async Task OnlyTheProfileSettingsGroupCarriesTheGameSettingsMarker()
+    {
+        var (fixture, _, _, _) = await FixtureList();
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(fixture.ToList(), fixture.Blobs);
+
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        var marked = LoadoutItem.FindByParent(Connection.Db, group.Id).OfTypeLoadoutItemGroup()
+            .Where(g => g.IsGameSettingsGroup)
+            .Select(g => g.AsLoadoutItem().Name)
+            .ToArray();
+        marked.Should().Equal("Game settings");
+    }
+
+    [Fact]
+    public async Task ARenamedGameSettingsGroupIsReusedByTheNextInstall()
+    {
+        var (fixture, _, _, _) = await FixtureList();
+        var loadout = await CreateLoadout();
+        var modlist = await AddModlist(fixture.ToList(), fixture.Blobs);
+        var (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+        var settings = LoadoutItem.FindByParent(Connection.Db, group.Id).OfTypeLoadoutItemGroup().Single(g => g.IsGameSettingsGroup);
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(settings.Id, LoadoutItem.Name, "My INIs");
+            await tx.Commit();
+        }
+
+        (_, group) = await Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>()));
+
+        var groups = LoadoutItem.FindByParent(Connection.Db, group.Id).OfTypeLoadoutItemGroup().ToArray();
+        groups.Should().HaveCount(5, "the renamed group is found by its marker, not recreated under the stock name");
+        groups.Single(g => g.IsGameSettingsGroup).AsLoadoutItem().Name.Should().Be("My INIs");
     }
 
     [Fact]
@@ -464,7 +501,7 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
 
         WabbajackModlistLoadoutGroup.All(Connection.Db).Should().BeEmpty();
         LoadoutItem.FindByLoadout(Connection.Db, loadout.Id).OfTypeLoadoutItemGroup()
-            .Where(g => g.AsLoadoutItem().Name is "A" or "B" or "Overwrite" or "Profile settings" or "Stock Game")
+            .Where(g => g.AsLoadoutItem().Name is "A" or "B" or "Overwrite" or "Game settings" or "Stock Game")
             .Should().BeEmpty();
         FileCount(loadout).Should().Be(filesBefore, "the files of every child group went with it");
     }
