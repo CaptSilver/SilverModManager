@@ -122,16 +122,9 @@ public class Program
         TryPassThrough = LaunchRun.TryPassThroughAsync,
         ForwardLaunch = LaunchRun.ForwardAsync,
         DescribeHeadlessMain = (services, kind, pid) => HeadlessMainRefusal.Describe(kind, pid, services.GetRequiredService<IEnvironmentReader>().Get("XDG_RUNTIME_DIR")),
-        RunMcp = (_, _) => RunMcpUnavailable(),
+        RunMcp = Mcp.McpServerRunner.RunAsync,
         RunUi = services => Startup.Main(services, []),
     };
-
-    // This build has no MCP server to run: say so instead of exiting 0 having served nothing.
-    private static Task<int> RunMcpUnavailable()
-    {
-        Console.Error.WriteLine("The MCP server is not available in this build.");
-        return Task.FromResult(1);
-    }
 
     /// <summary>
     /// Closes the connection, the store and the RocksDB backend under it, in that order.
