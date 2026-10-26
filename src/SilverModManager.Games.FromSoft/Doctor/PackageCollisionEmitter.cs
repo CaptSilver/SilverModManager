@@ -25,17 +25,39 @@ public class PackageCollisionEmitter(LoadoutMergeSources sources) : IFromSoftDia
     private const string CaseNote = " The paths differ only in case, and the game's file lookup does not tell them apart.";
 
     /// <summary>
-    /// The warning for a file that deploys whole from each package, whether the app has no merge for it or its merge
+    /// The warnings for files that deploy whole from one package, whether the app has no merge for them or their merge
     /// failed: me3 mounts the last package it lists, which is the loadout's priority order, so the winner is known and
-    /// the other copies are only dropped.
+    /// the other copies are only dropped. Files with the same winner and the same ignored mods share one warning, since
+    /// the player's choice is about the mods, not about each file.
     /// </summary>
-    internal static Diagnostic WinnerWarning(MergeCandidate candidate, ProviderFile winner)
+    internal static IEnumerable<Diagnostic> WinnerWarnings(IEnumerable<MergeCandidate> candidates)
     {
-        var ignored = candidate.Contributors.Select(c => c.ModName).Where(n => n != winner.ModName).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
-        return FromSoftDiagnostics.CreatePackageWinnerByPriority(
-            winner.ModName, string.Join(", ", ignored), candidate.Path,
-            candidate.Outcome.Reason ?? throw new InvalidOperationException($"{candidate.Path} is not merged and says no reason"));
+        var groups = candidates
+            .Select(candidate =>
+            {
+                var winner = candidate.Winner ?? throw new InvalidOperationException($"{candidate.Path} is not merged and has no winner");
+                var ignored = candidate.Contributors.Select(c => c.ModName).Where(n => n != winner.ModName).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+                return (Winner: winner.ModName, Ignored: ignored, Candidate: candidate);
+            })
+            .GroupBy(c => (c.Winner, Ignored: string.Join(", ", c.Ignored)));
+
+        foreach (var group in groups)
+        {
+            var paths = group.Select(c => c.Candidate.Path).Order(StringComparer.Ordinal).ToArray();
+            var reasons = group.Select(c => c.Candidate.Outcome.Reason ?? throw new InvalidOperationException($"{c.Candidate.Path} is not merged and says no reason"))
+                .Distinct(StringComparer.Ordinal).ToArray();
+            var ignored = group.First().Ignored;
+            yield return FromSoftDiagnostics.CreatePackageWinnerByPriority(
+                group.Key.Winner, group.Key.Ignored, string.Join(", ", paths), string.Join("; ", reasons),
+                paths.Length == 1 ? paths[0] : $"{paths.Length} files", SwapSentence(group.Key.Winner, ignored));
+        }
     }
+
+    private const string Direction = "on Rules > File Conflicts (in the default order, the mod lower in the list wins).";
+
+    private static string SwapSentence(string winner, IReadOnlyList<string> ignored) => ignored.Count == 1
+        ? $"To use the copy from {ignored[0]} instead, move {ignored[0]} below {winner} {Direction}"
+        : $"To use another mod's copy instead, move that mod ({string.Join(", ", ignored)}) below {winner} {Direction}";
 
     // The check reads the loadout's items, not the sync tree, so it gives the same answer without one.
     public IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
@@ -45,13 +67,14 @@ public class PackageCollisionEmitter(LoadoutMergeSources sources) : IFromSoftDia
     {
         await Task.Yield();
 
+        var winners = new List<MergeCandidate>();
         foreach (var candidate in sources.Index(loadout).Candidates)
         {
             if (candidate.Outcome.Merges) continue;
 
-            if (candidate.Winner is { } winner)
+            if (candidate.Winner is not null)
             {
-                yield return WinnerWarning(candidate, winner);
+                winners.Add(candidate);
                 continue;
             }
 
@@ -63,6 +86,8 @@ public class PackageCollisionEmitter(LoadoutMergeSources sources) : IFromSoftDia
                 caseOnly ? CaseNote : "",
                 candidate.Outcome.Reason ?? throw new InvalidOperationException($"{candidate.Path} is not merged and says no reason"));
         }
+
+        foreach (var warning in WinnerWarnings(winners)) yield return warning;
 
         var overlayFiles = new List<(string Mod, string Path)>();
         foreach (var item in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath())

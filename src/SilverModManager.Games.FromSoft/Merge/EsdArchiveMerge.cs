@@ -23,11 +23,19 @@ public static class EsdArchiveMerge
         ICollection<IMergeNote>? notes = null) =>
         ThreeWay(@base, other, vanilla, traits, notes, EsdFormat.Write);
 
+    /// <inheritdoc cref="ThreeWay(ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, FromSoftFormatTraits, ICollection{IMergeNote}?)"/>
+    /// <param name="baseName">Who owns base, for the notes; a generic name when null.</param>
+    /// <param name="otherName">Who owns the other archive, for the notes; a generic name when null.</param>
+    public static byte[] ThreeWay(
+        ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, ReadOnlySpan<byte> vanilla, FromSoftFormatTraits traits,
+        ICollection<IMergeNote>? notes, string? baseName, string? otherName) =>
+        ThreeWay(@base, other, vanilla, traits, notes, EsdFormat.Write, baseName, otherName);
+
     // The writer is a parameter so a test can hand in one that emits a broken file: the check below has to be reached
     // through bytes, and no real input makes the real writer produce a bad one.
     internal static byte[] ThreeWay(
         ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, ReadOnlySpan<byte> vanilla, FromSoftFormatTraits traits,
-        ICollection<IMergeNote>? notes, Func<EsdFile, byte[]> write)
+        ICollection<IMergeNote>? notes, Func<EsdFile, byte[]> write, string? baseName = null, string? otherName = null)
     {
         var binder = Binders.For(traits);
         var baseRaw = Dcx.Read(@base, traits);
@@ -61,7 +69,8 @@ public static class EsdArchiveMerge
             replacements[id] = blob;
             if (notes is not null)
             {
-                foreach (var note in entryNotes) notes.Add(note);
+                foreach (var note in entryNotes)
+                    notes.Add(note with { PreferredMod = baseName ?? MergeNames.PreferredMod, OtherMod = otherName ?? MergeNames.OtherMod });
             }
         }
         return Dcx.Write(binder.Rebuild(baseRaw, replacements), traits.PackedWrite);

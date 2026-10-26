@@ -38,18 +38,20 @@ but one of them.
         .WithId(new DiagnosticId(Source, number: 16))
         .WithTitle("Mods provide a file the app can't merge")
         .WithSeverity(DiagnosticSeverity.Warning)
-        .WithSummary("{Winner} wins {Path} by loadout priority; the copy from {Ignored} is ignored")
+        .WithSummary("{Winner} replaces {Subject} from {Ignored}")
         .WithDetails("""
-More than one mod provides the file **{Path}**, and the app did not merge it: {Reason}.
+**{Winner}** replaces {Path} from {Ignored}.
 
-**{Winner}** wins by loadout priority, and the copy from {Ignored} is ignored. To make the other mod win instead, use
-Move up / Move down under Rules > File Conflicts.
+The app did not merge the copies ({Reason}), so the game uses one mod's copy whole. Loadout priority picked
+{Winner}'s copy, and the copy from {Ignored} is ignored. {Swap}
 """)
         .WithMessageData(messageBuilder => messageBuilder
             .AddValue<string>("Winner")
             .AddValue<string>("Ignored")
             .AddValue<string>("Path")
             .AddValue<string>("Reason")
+            .AddValue<string>("Subject")
+            .AddValue<string>("Swap")
         )
         .Finish();
 
@@ -253,19 +255,18 @@ Re-stamp once you have, to take the installed build as the new reference.
         .WithId(new DiagnosticId(Source, number: 11))
         .WithTitle("A merge made a choice between mods")
         .WithSeverity(DiagnosticSeverity.Warning)
-        .WithSummary("Merging {Path}: {Note}")
+        .WithSummary("Merging {Subject}: {Note}")
         .WithDetails("""
 **{Path}** is provided by {Mods}, so the app merges the copies when the loadout is applied.
 
-{Note}
-
-Nothing is refused and the apply goes ahead; the note says which copy the merged file keeps. If that is not the one
-you want, disable the mod whose change was dropped.
+{Advice}
 """)
         .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Subject")
             .AddValue<string>("Path")
             .AddValue<string>("Mods")
             .AddValue<string>("Note")
+            .AddValue<string>("Advice")
         )
         .Finish();
 

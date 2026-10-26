@@ -143,23 +143,23 @@ public class LoadoutMergeSourcesNearestVanillaTests(ITestOutputHelper helper) : 
     }
 
     [Fact]
-    public async Task TheHealthCheckNoteOnTheChosenCopyNamesThePathOnce()
+    public async Task TheChoiceOfVanillaCopyIsInTheMergeReportAndNotInTheHealthCheck()
     {
         KeepValidatedBaseline(OlderVersion, Regulation(OlderVersion, 0xB0), "Old.zip: Vanilla/regulation.bin");
         var loadout = await TalkMods(Remover, Adder);
         await AddDump("Old", Regulation(OlderVersion, 0xB0), Old);
         await AddDump("Current", EldenRingInstall.RegulationFile, Patched);
+        loadout = Refresh(loadout);
 
         var diagnostics = new List<Diagnostic>();
-        await foreach (var diagnostic in Emitter.Diagnose(Refresh(loadout), CancellationToken.None)) diagnostics.Add(diagnostic);
+        await foreach (var diagnostic in Emitter.Diagnose(loadout, CancellationToken.None)) diagnostics.Add(diagnostic);
+        var report = await ServiceProvider.GetRequiredService<IMergeReports>().ForLoadout(loadout.LoadoutId, CancellationToken.None);
 
         var writer = new PlainDiagnosticWriter();
-        var choice = diagnostics.Should().ContainSingle(d => d.FormatSummary(writer, DiagnosticWriterMode.PlainText).Contains("vanilla copies were on offer")).Which;
-        Occurrences(choice.FormatSummary(writer, DiagnosticWriterMode.PlainText), TalkPath).Should().Be(1);
-        Occurrences(choice.FormatDetails(writer, DiagnosticWriterMode.PlainText), TalkPath).Should().Be(1);
+        diagnostics.Should().NotContain(d => d.FormatSummary(writer, DiagnosticWriterMode.PlainText).Contains("vanilla copies were on offer"));
+        diagnostics.Should().NotContain(d => d.FormatDetails(writer, DiagnosticWriterMode.PlainText).Contains("vanilla copies were on offer"));
+        report.Entries.Should().ContainSingle(e => e.Path == TalkPath).Which.Notes.Should().Contain(n => n.Contains("vanilla copies were on offer"));
     }
-
-    private static int Occurrences(string text, string value) => text.Split(value).Length - 1;
 
     [Fact]
     public async Task TheNewerCopyAloneStillFailsTheMergeNoBaseCanKeepWhole()

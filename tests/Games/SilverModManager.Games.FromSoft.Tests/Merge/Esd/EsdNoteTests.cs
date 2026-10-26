@@ -65,4 +65,39 @@ public class EsdNoteTests
         var act = () => new EsdNote(24, null, EsdNoteReason.NotInBase).Describe();
         act.Should().Throw<InvalidOperationException>();
     }
+
+    private static EsdNote Named(EsdNoteReason reason)
+        => new(2147483624, 26, reason, 44, PreferredMod: "Boss Resurrection - Lite", OtherMod: "Journey With Melina V1.1");
+
+    [Fact]
+    public void ASummaryNamesBothModsAndLeavesTheInternalIdsToTheDetails()
+    {
+        foreach (var reason in Enum.GetValues<EsdNoteReason>())
+        {
+            var note = Named(reason);
+            var summary = note.Summary();
+            summary.Should().Contain("Journey With Melina V1.1", $"{reason}: {summary}");
+            summary.Should().NotContain("the other mod").And.NotContain("the preferred mod").And.NotContain("2147483624").And.NotContain("vanilla state");
+            note.Details.Should().Contain("2147483624").And.Contain("26");
+        }
+    }
+
+    [Fact]
+    public void ADeletedStateTheOtherModChangedSaysWhoseChangeIsNotUsed()
+    {
+        var note = Named(EsdNoteReason.NotInBase);
+
+        note.Summary().Should().Be(
+            "Boss Resurrection - Lite removed a dialogue state that Journey With Melina V1.1 changed, so Journey With Melina V1.1's change to it is not used.");
+        note.Loss.Should().Be(new MergeLoss(DroppedMod: "Journey With Melina V1.1", KeptMod: "Boss Resurrection - Lite"));
+    }
+
+    [Theory]
+    [InlineData(EsdNoteReason.NotInEither)]
+    public void ANoteThatDroppedNothingHasNoLoss(EsdNoteReason reason)
+        => Named(reason).Loss.Should().BeNull();
+
+    [Fact]
+    public void ANoteWithoutRealModNamesHasNoLossToAdviseOn()
+        => new EsdNote(24, 1, EsdNoteReason.NotInBase).Loss.Should().BeNull("there is no mod to move below another");
 }

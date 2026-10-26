@@ -41,8 +41,39 @@ public enum EsdNoteReason
 /// Only meaningful for two reasons: the jump target that had no home in the merge (<see cref="EsdNoteReason.UnplaceableJump"/>)
 /// and the id a graft landed at (<see cref="EsdNoteReason.OrphanedGraft"/>).
 /// </param>
-public sealed record EsdNote(long Group, long? State, EsdNoteReason Reason, long? Target = null) : IMergeNote
+/// <param name="PreferredMod">The mod whose file the merge started from.</param>
+/// <param name="OtherMod">The mod whose changes were laid on top.</param>
+public sealed record EsdNote(
+    long Group, long? State, EsdNoteReason Reason, long? Target = null,
+    string PreferredMod = MergeNames.PreferredMod, string OtherMod = MergeNames.OtherMod) : IMergeNote
 {
+    public string Summary() => Reason switch
+    {
+        EsdNoteReason.UnresolvedInOther =>
+            $"several of {OtherMod}'s dialogue states look alike, so the app can't tell which one is its change to an original state; {OtherMod}'s change to it is not used.",
+        EsdNoteReason.NotInOther =>
+            $"{OtherMod} removed or rewrote a dialogue state that {PreferredMod} still has; {PreferredMod}'s copy of it is used.",
+        EsdNoteReason.NotInEither =>
+            $"{PreferredMod} and {OtherMod} both removed or rewrote a dialogue state, so nothing of it is left.",
+        EsdNoteReason.UnresolvedInBase =>
+            $"{OtherMod} changed a dialogue state that several of {PreferredMod}'s states look like, so {OtherMod}'s change to it is not used.",
+        EsdNoteReason.NotInBase =>
+            $"{PreferredMod} removed a dialogue state that {OtherMod} changed, so {OtherMod}'s change to it is not used.",
+        EsdNoteReason.BothChanged =>
+            $"{PreferredMod} and {OtherMod} both changed the same dialogue state; {PreferredMod}'s version is used.",
+        EsdNoteReason.UnplaceableJump =>
+            $"{OtherMod} changed a dialogue state to jump to a state that doesn't exist in the merged script, so {OtherMod}'s change to it is not used.",
+        EsdNoteReason.OrphanedGraft =>
+            $"{OtherMod} added a dialogue state that nothing in the merged script reaches, so it will never run.",
+        _ => throw new ArgumentOutOfRangeException(nameof(Reason), Reason, "no sentence for this reason"),
+    };
+
+    public string? Details => Reason == EsdNoteReason.OrphanedGraft
+        ? $"group {Group}, the other mod's state {State}, which came across as state {Target}"
+        : $"group {Group}, vanilla state {State}";
+
+    public MergeLoss? Loss => Reason == EsdNoteReason.NotInEither ? null : MergeLoss.Between(OtherMod, PreferredMod);
+
     public string Describe()
     {
         var state = State ?? throw new InvalidOperationException($"a {Reason} note names a state and this one has none");

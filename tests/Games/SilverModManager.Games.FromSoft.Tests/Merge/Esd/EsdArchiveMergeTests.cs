@@ -215,6 +215,37 @@ public class EsdArchiveMergeTests
     }
 
     [Fact]
+    public void NotesNameTheModsTheCallerGave()
+    {
+        var t = EldenRingGame.Definition.Formats;
+        var vanilla = Talkesdbnd(t, new Dictionary<int, byte[]> { [6] = BothVanilla });
+        var @base = Talkesdbnd(t, new Dictionary<int, byte[]> { [6] = BothBase });
+        var other = Talkesdbnd(t, new Dictionary<int, byte[]> { [6] = BothOther });
+        var notes = new List<IMergeNote>();
+
+        EsdArchiveMerge.ThreeWay(@base, other, vanilla, t, notes, "Mod A", "Mod B");
+
+        notes.Should().NotBeEmpty();
+        notes.Should().AllBeOfType<EsdNote>().Which.Should().OnlyContain(n => n.PreferredMod == "Mod A" && n.OtherMod == "Mod B");
+        notes.Select(n => n.Summary()).Should().OnlyContain(text => text.Contains("Mod A") || text.Contains("Mod B"));
+    }
+
+    [Fact]
+    public void TheLoadoutFoldNamesTheModsOnTheTalkScriptNotes()
+    {
+        var t = EldenRingGame.Definition.Formats;
+        var vanilla = Talkesdbnd(t, new Dictionary<int, byte[]> { [6] = BothVanilla });
+        var @base = Talkesdbnd(t, new Dictionary<int, byte[]> { [6] = BothBase });
+        var other = Talkesdbnd(t, new Dictionary<int, byte[]> { [6] = BothOther });
+        var notes = new List<IMergeNote>();
+
+        MergeStrategyBindings.For(MergeStrategy.EsdThreeWay)(@base, other, vanilla, true, false, "Mod A", "Mod B", notes, t, null);
+
+        notes.Should().NotBeEmpty();
+        notes.Should().AllBeOfType<EsdNote>().Which.Should().OnlyContain(n => n.PreferredMod == "Mod A" && n.OtherMod == "Mod B");
+    }
+
+    [Fact]
     public void MatchesTheArchiveErmMerges()
     {
         // Entry 0 untouched, entry 6 changed by both, entry 7 changed by the other side only.

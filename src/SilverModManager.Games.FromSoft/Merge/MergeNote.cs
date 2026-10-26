@@ -6,7 +6,30 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// </summary>
 public interface IMergeNote
 {
+    /// <summary>The sentence a merge report prints.</summary>
     string Describe();
+
+    /// <summary>The sentence a Health Check card leads with: plain words, the mods by name, no ids the player can't act on.</summary>
+    string Summary() => Describe();
+
+    /// <summary>The ids behind <see cref="Summary"/> for someone who wants to look; null when the summary already has all there is.</summary>
+    string? Details => null;
+
+    /// <summary>The change this merge dropped, when it dropped one that moving the mods on Rules > File Conflicts could bring back.</summary>
+    MergeLoss? Loss => null;
+}
+
+/// <summary>A merge kept one mod's edit over another's. Swapping the two mods' order on Rules > File Conflicts swaps the outcome.</summary>
+/// <param name="DroppedMod">The mod whose change is not used.</param>
+/// <param name="KeptMod">The mod whose change is used instead.</param>
+public sealed record MergeLoss(string DroppedMod, string KeptMod)
+{
+    /// <summary>A loss between two real mods, or null when either side is the generic stand-in a caller that named nobody gets.</summary>
+    public static MergeLoss? Between(string droppedMod, string keptMod)
+        => droppedMod is MergeNames.OtherMod or MergeNames.PreferredMod or MergeNames.Game
+            || keptMod is MergeNames.OtherMod or MergeNames.PreferredMod or MergeNames.Game
+            ? null
+            : new MergeLoss(droppedMod, keptMod);
 }
 
 /// <summary>The game and a mod each added a different row under one id, with no ancestor row to locate either edit against.</summary>
@@ -39,6 +62,8 @@ public sealed record RowConflict(int EntryId, int RowId, string KeptMod, string 
     public string Describe() => KeptIsGame
         ? $"entry {EntryId} row {RowId}: {DroppedMod} changed it differently from the game's own row; kept the game's row and dropped {DroppedMod}'s edits to it"
         : $"entry {EntryId} row {RowId}: both mods changed it differently; kept {KeptMod}'s row and dropped {DroppedMod}'s edits to it";
+
+    public MergeLoss? Loss => KeptIsGame ? null : MergeLoss.Between(DroppedMod, KeptMod);
 }
 
 /// <summary>
@@ -58,6 +83,10 @@ public sealed record TextKept(int EntryId, int TextId, string KeptMod, string Dr
 {
     public string Describe() =>
         $"entry {EntryId} text {TextId}: both mods ship it and differ; kept {KeptMod}'s";
+
+    public string Summary() => $"both {KeptMod} and {DroppedMod} change the text {TextId} of entry {EntryId}; {KeptMod}'s is used.";
+
+    public MergeLoss? Loss => MergeLoss.Between(DroppedMod, KeptMod);
 }
 
 /// <summary>Both mods ship a texture under one name with different bytes; the winner's copy was kept.</summary>
@@ -65,6 +94,10 @@ public sealed record TextureKept(string Name, string KeptMod, string DroppedMod)
 {
     public string Describe() =>
         $"texture {Name}: both mods ship it and differ; kept {KeptMod}'s";
+
+    public string Summary() => $"both {KeptMod} and {DroppedMod} replace the texture {Name}; {KeptMod}'s is used.";
+
+    public MergeLoss? Loss => MergeLoss.Between(DroppedMod, KeptMod);
 }
 
 /// <summary>

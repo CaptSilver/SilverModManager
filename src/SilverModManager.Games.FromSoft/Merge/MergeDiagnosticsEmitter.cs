@@ -64,18 +64,35 @@ public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnost
             yield break;
         }
 
-        foreach (var fallback in plan.Unmerged)
-            yield return PackageCollisionEmitter.WinnerWarning(fallback, fallback.Winner ?? throw new InvalidOperationException($"{fallback.Path} fell back to loadout priority but has no winner"));
+        foreach (var warning in PackageCollisionEmitter.WinnerWarnings(plan.Unmerged)) yield return warning;
 
         foreach (var merged in plan.Merged)
         {
             var mods = string.Join(", ", merged.Contributors.Select(c => c.ModName).Distinct(StringComparer.Ordinal));
             foreach (var note in merged.Notes)
             {
-                // What an apply would keep and where the ancestor came from are information; the user has nothing to decide about them.
-                if (note is IVanillaSourceNote) continue;
-                yield return FromSoftDiagnostics.CreateMergeNote(merged.Path, mods, note.Describe());
+                // Which original copy a merge compared against is for the merge report; the user has nothing to decide about it.
+                if (note is IVanillaSourceNote or VanillaNearestChosen or VanillaAlternateChosen) continue;
+                yield return FromSoftDiagnostics.CreateMergeNote(MergeSubject(merged.Path), merged.Path, mods, note.Summary(), Advice(note));
             }
         }
+    }
+
+    // The talk archives are named by map, which says more to a player than the file extension does.
+    private static string MergeSubject(string path)
+    {
+        const string talk = ".talkesdbnd.dcx";
+        return path.EndsWith(talk, StringComparison.OrdinalIgnoreCase)
+            ? $"the talk script {System.IO.Path.GetFileName(path)[..^talk.Length]}"
+            : path;
+    }
+
+    private static string Advice(IMergeNote note)
+    {
+        var advice = note.Loss is { } loss
+            ? $"{loss.DroppedMod}'s change is not used. To use it instead, move {loss.DroppedMod} below {loss.KeptMod} on Rules > File Conflicts " +
+              $"(in the default order, the mod lower in the list wins), or disable {loss.KeptMod}."
+            : "Nothing is refused and the apply goes ahead.";
+        return note.Details is { } details ? $"{advice}\n\nDetails: {details}." : advice;
     }
 }

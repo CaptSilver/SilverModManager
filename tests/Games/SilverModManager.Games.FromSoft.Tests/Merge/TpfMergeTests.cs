@@ -130,4 +130,17 @@ public class TpfMergeTests
         TpfMerge.Union(@base, other, t, notes).Should().Equal(@base);
         notes.Should().Equal(new TextureKept("A", "the preferred mod", "the other mod"));
     }
+
+    [Fact]
+    public void ATextureNoteNamesBothModsAndWhichCopyIsUsed()
+    {
+        var note = new TextureKept("SB_Icon_02_A", "Great Rune Overhaul", "Rune Icons");
+
+        note.Summary().Should().Be("both Great Rune Overhaul and Rune Icons replace the texture SB_Icon_02_A; Great Rune Overhaul's is used.");
+        note.Loss.Should().Be(new MergeLoss("Rune Icons", "Great Rune Overhaul"));
+    }
+
+    [Fact]
+    public void ATextureNoteWithoutModNamesHasNoLossToAdviseOn()
+        => new TextureKept("A", MergeNames.PreferredMod, MergeNames.OtherMod).Loss.Should().BeNull();
 }

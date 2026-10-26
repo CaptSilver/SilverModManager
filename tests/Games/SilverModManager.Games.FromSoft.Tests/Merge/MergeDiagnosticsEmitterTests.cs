@@ -57,7 +57,11 @@ public class MergeDiagnosticsEmitterTests(ITestOutputHelper helper) : AVanillaDu
         var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.MergeNoteMessageData>>().Which.MessageData;
         data.Path.Should().Be(Msg);
         data.Mods.Should().Contain("Alpha").And.Contain("Beta");
-        data.Note.Should().Be(note.Note.Describe());
+        data.Note.Should().Be(note.Note.Summary());
+        data.Note.Should().Contain("Alpha.zip").And.Contain("Beta.zip");
+        var details = diagnostic.FormatDetails(new PlainDiagnosticWriter(), DiagnosticWriterMode.PlainText);
+        details.Should().NotContain(data.Note, "the summary already says it");
+        details.Should().Contain("move Alpha.zip below Beta.zip on Rules > File Conflicts").And.Contain("the mod lower in the list wins");
     }
 
     [Fact]
@@ -73,7 +77,9 @@ public class MergeDiagnosticsEmitterTests(ITestOutputHelper helper) : AVanillaDu
 
         var data = diagnostics.Should().ContainSingle().Which.Should().BeOfType<Diagnostic<FromSoftDiagnostics.MergeNoteMessageData>>().Which.MessageData;
         data.Path.Should().Be(RegulationPath);
-        data.Note.Should().Be(new UnreadableParam(1).Describe());
+        data.Note.Should().Be(((IMergeNote)new UnreadableParam(1)).Summary());
+        diagnostics[0].FormatDetails(new PlainDiagnosticWriter(), DiagnosticWriterMode.PlainText)
+            .Should().NotContain("whose change was dropped", "nothing was dropped");
     }
 
     [Fact]

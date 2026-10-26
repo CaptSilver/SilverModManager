@@ -128,6 +128,51 @@ public class PackageCollisionEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task TwoSharedPathsBetweenTheSameModsRaiseOneWarningNamingBoth()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "Weapons", "parts/wp_a_0556.dcx", "parts/wp_a_0556_l.dcx");
+        await InstallPackage(loadout, "Armor", "parts/wp_a_0556.dcx", "parts/wp_a_0556_l.dcx");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 16));
+        var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageWinnerByPriorityMessageData>>().Which.MessageData;
+        data.Path.Should().Contain("parts/wp_a_0556.dcx").And.Contain("parts/wp_a_0556_l.dcx");
+        var writer = new PlainDiagnosticWriter();
+        diagnostic.FormatSummary(writer, DiagnosticWriterMode.PlainText).Should().Be($"{data.Winner} replaces 2 files from {data.Ignored}");
+    }
+
+    [Fact]
+    public async Task ModsThatShareDifferentPathsWithDifferentModsGetTheirOwnWarnings()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "Alpha", "parts/one.dcx", "parts/two.dcx");
+        await InstallPackage(loadout, "Beta", "parts/one.dcx");
+        await InstallPackage(loadout, "Gamma", "parts/two.dcx");
+
+        var diagnostics = await GetAllDiagnostics(loadout);
+
+        diagnostics.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task TheWarningSaysHowToSwapInADirectionAndNamesBothMods()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout, "Weapons", "parts/wp_a.dcx");
+        await InstallPackage(loadout, "Armor", "parts/wp_a.dcx");
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageWinnerByPriorityMessageData>>().Which.MessageData;
+        var details = diagnostic.FormatDetails(new PlainDiagnosticWriter(), DiagnosticWriterMode.PlainText);
+        details.Should().Contain($"move {data.Ignored} below {data.Winner} on Rules > File Conflicts")
+            .And.Contain("the mod lower in the list wins")
+            .And.NotContain("Move up / Move down");
+    }
+
+    [Fact]
     public async Task MovingTheWinningModDownHandsAnUnknownDcxToTheOther()
     {
         var loadout = await CreateLoadout();

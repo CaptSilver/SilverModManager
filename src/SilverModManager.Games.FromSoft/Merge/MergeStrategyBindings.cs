@@ -33,9 +33,8 @@ public static class MergeStrategyBindings
             => TpfMerge.Union(acc, next, traits, notes, accName, nextName),
         MergeStrategy.ParamRows => (acc, next, vanilla, hasVanilla, baseIsGame, accName, nextName, notes, traits, game)
             => ParamRowMerge.Merge(acc, next, Vanilla(strategy, vanilla, hasVanilla), traits, notes, baseIsGame, accName, nextName, game),
-        // The talk-archive merge does not name its sides: its notes name the entry and state, not a mod.
-        MergeStrategy.EsdThreeWay => (acc, next, vanilla, hasVanilla, _, _, _, notes, traits, _)
-            => EsdArchiveMerge.ThreeWay(acc, next, Vanilla(strategy, vanilla, hasVanilla), traits, notes),
+        MergeStrategy.EsdThreeWay => (acc, next, vanilla, hasVanilla, _, accName, nextName, notes, traits, _)
+            => EsdArchiveMerge.ThreeWay(acc, next, Vanilla(strategy, vanilla, hasVanilla), traits, notes, accName, nextName),
         _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null),
     };
 
