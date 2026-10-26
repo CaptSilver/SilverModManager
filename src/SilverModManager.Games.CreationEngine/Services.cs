@@ -55,7 +55,10 @@ public static class Services
     {
         services.AddGame<TGame>();
         if (scriptExtenderLoader is { } loader)
+        {
+            services.AddSingleton(new ScriptExtenderLoader<TGame>(loader));
             services.AddSingleton<ITool>(s => RunGameViaScriptExtenderTool<TGame>.Create(s, loader));
+        }
         else
             services.AddSingleton<ITool, RunGameTool<TGame>>();
         return services;

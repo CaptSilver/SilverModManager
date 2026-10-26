@@ -26,11 +26,20 @@ public static class WineDiagnosticHelper
         var missingPackages = requiredPackages.Except(installedPackages);
         if (missingPackages.Count == 0) return null;
 
+        return WinetricksInstructions(locatorResultMetadata.Store == GameStore.Steam, missingPackages);
+    }
+
+    /// <summary>
+    /// The text that tells the user to install <paramref name="missingPackages"/> by hand: protontricks for a
+    /// Steam Proton prefix, winetricks for any other.
+    /// </summary>
+    public static string WinetricksInstructions(bool steamProton, IEnumerable<string> missingPackages)
+    {
         var sb = new StringBuilder();
 
         var missingPackagesString = missingPackages.Select(x => $"* `{x}`").Aggregate((a, b) => $"{a}\n{b}");
 
-        if (locatorResultMetadata.Store == GameStore.Steam)
+        if (steamProton)
         {
             sb.AppendLine($"""
 Use [protontricks](https://github.com/Matoking/protontricks) to install the following missing required packages:

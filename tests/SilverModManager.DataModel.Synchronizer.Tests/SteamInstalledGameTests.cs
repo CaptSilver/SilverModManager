@@ -131,15 +131,17 @@ public class SteamInstalledGameTests(ITestOutputHelper helper) : ASteamInstalled
     public async Task HealthCheckOfAFreshlyManagedGameNamesTheNonVanillaFilesAndReportsNothingMissing()
     {
         var loadout = await CreateLoadout();
+        ServiceProvider.GetRequiredService<FakePrefixInspector>().State = _ => PrefixComponentState.Missing;
 
         var diagnostics = await RunEveryEmitter(loadout);
 
-        // The prefix Proton wrote is bare, so the Wine setup checks have their say; the file checks must not.
+        // The prefix Proton wrote is bare, so the Wine setup checks have their say (Generic 6: DLL overrides, Generic 7: missing
+        // prefix components, both formerly Cyberpunk-only); the file checks must not.
         Ids(diagnostics).Should().Equal(
             "SilverModManager.Games.FileHashes: 3",
-            "SilverModManager.Games.RedEngine.Cyberpunk2077: 1",
-            "SilverModManager.Games.RedEngine.Cyberpunk2077: 5",
-            "SilverModManager.Games.RedEngine.Cyberpunk2077: 6");
+            "SilverModManager.Games.Generic: 6",
+            "SilverModManager.Games.Generic: 7",
+            "SilverModManager.Games.RedEngine.Cyberpunk2077: 1");
         // CET's log is a file the game setup writes itself, so it is counted out and mentioned instead of listed.
         var differ = Describe(diagnostics[0]);
         differ.Should().Contain("2 file(s) in the Cyberpunk 2077 folder");

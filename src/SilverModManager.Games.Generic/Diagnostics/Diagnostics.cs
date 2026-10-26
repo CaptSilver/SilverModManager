@@ -148,4 +148,33 @@ The WINE DLL overrides of this game's prefix do not include the ones its mod loa
             .AddValue<string>("Instructions")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate RequiredPrefixComponents = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 7))
+        .WithTitle("Missing prefix components")
+        .WithSeverity(DiagnosticSeverity.Critical)
+        .WithSummary("Install the components {GameName} needs in its Wine prefix")
+        .WithDetails("""
+Modding {GameName} on Linux requires components that its Wine prefix does not have yet:
+
+{Missing}
+{Unverified}
+### How to Resolve
+Use "Set up prefix" to install them with the app's own installer, or do it by hand:
+
+{Instructions}
+
+### Technical Details
+The prefix was read from disk without running anything. A DLL in `system32` does not count as installed on its own, because Wine puts placeholder DLLs there; the check needs the real files or the component's registry entry.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("GameName")
+            .AddValue<string>("Missing")
+            .AddValue<string>("Unverified")
+            .AddValue<string>("Instructions")
+        )
+        .Finish();
 }

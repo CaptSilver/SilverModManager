@@ -6,8 +6,9 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Backend;
 using SilverModManager.CrossPlatform;
 using SilverModManager.Games.Generic;
+using SilverModManager.App.UI.DiagnosticSystem;
 using SilverModManager.Games.RedEngine.Cyberpunk2077;
-using SilverModManager.Games.RedEngine.Cyberpunk2077.Emitters;
+using SilverModManager.Games.Generic.Diagnostics;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
@@ -25,6 +26,8 @@ namespace SilverModManager.Games.RedEngine.Tests;
 /// </summary>
 public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolatedGameTest<Cyberpunk2077WineEmitterTests, Cyberpunk2077Game>(helper)
 {
+    private static readonly DiagnosticId RequiredOverridesId = new("SilverModManager.Games.Generic", number: 6);
+
     private readonly ILinuxCompatabilityDataProvider _provider = Substitute.For<ILinuxCompatabilityDataProvider>();
 
     protected override IServiceCollection AddServices(IServiceCollection services)
@@ -35,6 +38,7 @@ public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolated
             .RemoveRuntimeDependencyChecker()
             .AddGenericGameSupport()
             .AddFakeToolRunner()
+            .AddDiagnosticWriter()
             .AddSingleton<IGameLocator>(provider => new UniversalStubbedGameLocator<Cyberpunk2077Game>(
                 provider,
                 provider.GetRequiredService<IFileSystem>(),
@@ -47,13 +51,24 @@ public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolated
     }
 
     [Fact]
+    public void CyberpunkDeclaresTheComponentsItsModLoadersNeedInThePrefix()
+    {
+        ((IWinePrefixRequirements)Game).RequiredPrefixComponents(default)
+            .Should().Equal(PrefixComponents.D3DCompiler47.Id, PrefixComponents.VisualCppRuntime.Id);
+    }
+
+    [Fact]
+    public void CyberpunkChecksItsPrefixThroughTheSharedEmitters()
+    {
+        Game.DiagnosticEmitters.OfType<WineDllOverrideEmitter>().Should().ContainSingle();
+        Game.DiagnosticEmitters.OfType<WinePrefixComponentsEmitter>().Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task TheWineEmitterReportsOnlyWhatTheGameDeclares()
     {
-        // Every winetricks package is present, so the only thing that can be reported is a DLL override.
-        _provider.GetInstalledWinetricksComponents(Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ImmutableHashSet<string>>(["d3dcompiler_47", "vcrun2022"]));
         var loadout = await CreateLoadout();
-        var emitter = Game.DiagnosticEmitters.OfType<WinePrefixRequirementsEmitter>().Single();
+        var emitter = Game.DiagnosticEmitters.OfType<WineDllOverrideEmitter>().Single();
 
         SetPrefixOverrides(((IWineDllOverrideRequirements)Game).RequiredWineDllOverrides(loadout).ToArray());
         (await Overrides(emitter, loadout)).Should().BeEmpty("the prefix already has exactly what the game declares");
@@ -61,7 +76,7 @@ public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolated
         SetPrefixOverrides(new WineDllOverride("winmm", [WineDllOverrideType.BuiltIn]), new WineDllOverride("version", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]));
         var reported = await Overrides(emitter, loadout);
 
-        reported.Should().ContainSingle().Which.MessageData.Instructions.Should().Contain("winmm=n,b;version=n,b");
+        reported.Should().ContainSingle().Which.FormatDetails(ServiceProvider.GetRequiredService<IDiagnosticWriter>()).Should().Contain("winmm=n,b;version=n,b");
         reported.Single().Actions.Should().BeEmpty("a game from an unknown store has no Steam launch options to write");
     }
 
@@ -86,10 +101,10 @@ public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolated
             .Returns(new ValueTask<ImmutableArray<WineDllOverride>>([..overrides]));
     }
 
-    private static async Task<List<Diagnostic<Diagnostics.RequiredWineDllOverridesMessageData>>> Overrides(WinePrefixRequirementsEmitter emitter, Loadout.ReadOnly loadout)
+    private static async Task<List<Diagnostic>> Overrides(WineDllOverrideEmitter emitter, Loadout.ReadOnly loadout)
     {
         var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
-        return diagnostics.OfType<Diagnostic<Diagnostics.RequiredWineDllOverridesMessageData>>().ToList();
+        return diagnostics.Where(d => d.Id == RequiredOverridesId).ToList();
     }
 }
 
@@ -98,6 +113,9 @@ public class Cyberpunk2077WineEmitterTests(ITestOutputHelper helper) : AIsolated
 /// </summary>
 public class Cyberpunk2077WineEmitterSteamTests(ITestOutputHelper helper) : AIsolatedGameTest<Cyberpunk2077WineEmitterSteamTests, Cyberpunk2077Game>(helper)
 {
+    private static readonly DiagnosticId RequiredOverridesId = new("SilverModManager.Games.Generic", number: 6);
+    private static readonly DiagnosticId RequiredComponentsId = new("SilverModManager.Games.Generic", number: 7);
+
     private readonly ILinuxCompatabilityDataProvider _provider = Substitute.For<ILinuxCompatabilityDataProvider>();
 
     protected override IServiceCollection AddServices(IServiceCollection services)
@@ -125,32 +143,29 @@ public class Cyberpunk2077WineEmitterSteamTests(ITestOutputHelper helper) : AIso
     [Fact]
     public async Task TheOverridesDiagnosticOffersTheSteamLaunchOptionFix()
     {
-        _provider.GetInstalledWinetricksComponents(Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ImmutableHashSet<string>>(["d3dcompiler_47", "vcrun2022"]));
         _provider.GetWineDllOverrides(Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ImmutableArray<WineDllOverride>>(ImmutableArray<WineDllOverride>.Empty));
         var loadout = await CreateLoadout();
-        var emitter = Game.DiagnosticEmitters.OfType<WinePrefixRequirementsEmitter>().Single();
+        var emitter = Game.DiagnosticEmitters.OfType<WineDllOverrideEmitter>().Single();
 
         var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
 
-        diagnostics.OfType<Diagnostic<Diagnostics.RequiredWineDllOverridesMessageData>>().Should().ContainSingle()
+        diagnostics.Where(d => d.Id == RequiredOverridesId).Should().ContainSingle()
             .Which.Actions.Should().Equal(DiagnosticActions.UseLoadoutFromSteam());
     }
 
     [Fact]
-    public async Task TheWinetricksDiagnosticHasNoFixAction()
+    public async Task TheMissingComponentsDiagnosticOffersToSetUpThePrefix()
     {
+        ServiceProvider.GetRequiredService<FakePrefixInspector>().State = _ => PrefixComponentState.Missing;
         _provider.GetInstalledWinetricksComponents(Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ImmutableHashSet<string>>([]));
-        _provider.GetWineDllOverrides(Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ImmutableArray<WineDllOverride>>(ImmutableArray<WineDllOverride>.Empty));
         var loadout = await CreateLoadout();
-        var emitter = Game.DiagnosticEmitters.OfType<WinePrefixRequirementsEmitter>().Single();
+        var emitter = Game.DiagnosticEmitters.OfType<WinePrefixComponentsEmitter>().Single();
 
         var diagnostics = await emitter.Diagnose(loadout, CancellationToken.None).ToListAsync();
 
-        diagnostics.OfType<Diagnostic<Diagnostics.RequiredWinetricksPackagesMessageData>>().Should().ContainSingle()
-            .Which.Actions.Should().BeEmpty("the launch line cannot install winetricks packages");
+        diagnostics.Where(d => d.Id == RequiredComponentsId).Should().ContainSingle()
+            .Which.Actions.Should().Equal(DiagnosticActions.SetUpPrefix(["d3dcompiler_47", "vcrun2022"]));
     }
 }

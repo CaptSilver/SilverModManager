@@ -122,8 +122,8 @@ public class FakeToolRunner : IToolRunner
 public static class FakeToolRunnerExtensions
 {
     /// <summary>
-    /// Registers a <see cref="FakeToolRunner"/> as the tool runner and a <see cref="FakePrefixResolver"/> as
-    /// the prefix resolver, unless they are already registered. The fakes themselves are registered too, so
+    /// Registers a <see cref="FakeToolRunner"/> as the tool runner, a <see cref="FakePrefixResolver"/> as
+    /// the prefix resolver and a <see cref="FakePrefixInspector"/> as the prefix inspector, unless they are already registered. The fakes themselves are registered too, so
     /// tests can configure what they report.
     /// </summary>
     public static IServiceCollection AddFakeToolRunner(this IServiceCollection services)
@@ -132,6 +132,8 @@ public static class FakeToolRunnerExtensions
         services.TryAddSingleton<IToolRunner>(s => s.GetRequiredService<FakeToolRunner>());
         services.TryAddSingleton<FakePrefixResolver>();
         services.TryAddSingleton<IPrefixResolver>(s => s.GetRequiredService<FakePrefixResolver>());
+        services.TryAddSingleton<FakePrefixInspector>();
+        services.TryAddSingleton<IPrefixInspector>(s => s.GetRequiredService<FakePrefixInspector>());
         return services;
     }
 }

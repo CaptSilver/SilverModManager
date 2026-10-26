@@ -11,6 +11,7 @@ public static class Services
         services.AddSingleton<IniAnalysisData>();
         services.AddSingleton<ProtonPrefixEmitter>();
         services.AddSingleton<WineDllOverrideEmitter>();
+        services.AddSingleton<WinePrefixComponentsEmitter>();
 
         return services;
     }

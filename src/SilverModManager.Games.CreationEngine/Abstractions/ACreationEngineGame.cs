@@ -12,6 +12,7 @@ using SilverModManager.Games.CreationEngine.Modlists;
 using SilverModManager.Games.CreationEngine.PluginLists;
 using SilverModManager.Games.CreationEngine.SortOrder;
 using SilverModManager.Games.Bethesda.LoadOrder;
+using SilverModManager.Games.Generic.Diagnostics;
 using SilverModManager.Games.Bethesda.LoadOrder.Ordering;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
@@ -29,17 +30,28 @@ namespace SilverModManager.Games.CreationEngine.Abstractions;
 /// A Bethesda title whose plugin headers the load order reader can parse: adds the Plugins.txt intrinsic file and the
 /// missing-master check on top of <see cref="ABethesdaGame{TSelf}"/>.
 /// </summary>
-public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IGameIniFiles, IPerLoadoutSaves
+public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IGameIniFiles, IPerLoadoutSaves, IWinePrefixRequirements
     where TSelf : ACreationEngineGame<TSelf>, IGameData<TSelf>
 {
     private readonly IStreamSourceDispatcher _streamSource;
     private readonly IServiceProvider _provider;
+    private readonly GamePath? _scriptExtenderLoader;
 
     protected ACreationEngineGame(IServiceProvider provider) : base(provider)
     {
         _provider = provider;
+        _scriptExtenderLoader = provider.GetService<ScriptExtenderLoader<TSelf>>()?.Path;
         _streamSource = provider.GetRequiredService<IStreamSourceDispatcher>();
     }
+
+    /// <summary>
+    /// The script extender loader is a Windows program, so a loadout that carries one needs the Visual C++
+    /// runtime in the prefix. Titles without an extender need nothing.
+    /// </summary>
+    public IReadOnlyList<PrefixComponentId> RequiredPrefixComponents(Loadout.ReadOnly loadout) =>
+        _scriptExtenderLoader is { } loader && ScriptExtender.IsInLoadout(loadout, loader)
+            ? [PrefixComponents.VisualCppRuntime.Id]
+            : [];
 
     public abstract PluginFormat HeaderFormat { get; }
 
@@ -177,6 +189,7 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         yield return new GameIniChangedByGameEmitter(this, provider);
         if (TestFileIniFiles.Count > 0)
             yield return new TestFileEntriesEmitter(this);
+        yield return provider.GetRequiredService<WinePrefixComponentsEmitter>();
         foreach (var emitter in base.CreateEmitters(provider))
             yield return emitter;
     }

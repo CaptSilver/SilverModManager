@@ -71,4 +71,16 @@ public static class DiagnosticActions
     /// </summary>
     public static DiagnosticAction RestoreFolderFromBackup(string linkPath, string backupPath)
         => new(RestoreFolderFromBackupId, $"Restore {Path.GetFileName(backupPath)}", [linkPath, backupPath]);
+
+    /// <summary>
+    /// Id of the action that installs missing components into the game's Wine prefix.
+    /// </summary>
+    public const string SetUpPrefixId = "set-up-prefix";
+
+    /// <summary>
+    /// Offers to install <paramref name="componentIds"/> into the prefix. The arguments are the component ids; the
+    /// handler shows what it will change and asks first.
+    /// </summary>
+    public static DiagnosticAction SetUpPrefix(IEnumerable<string> componentIds)
+        => new(SetUpPrefixId, "Set up prefix", [..componentIds]);
 }

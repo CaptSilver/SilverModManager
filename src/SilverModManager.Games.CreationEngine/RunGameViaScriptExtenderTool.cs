@@ -24,15 +24,37 @@ public class RunGameViaScriptExtenderTool<TGame> : RunGameTool<TGame> where TGam
 
     protected override ValueTask<AbsolutePath> GetGamePath(Loadout.ReadOnly loadout)
     {
-        // The loader only counts when the loadout puts it there. Checking the disk would pick up a
-        // loader left behind by an earlier deployment, or miss one that is about to be deployed.
-        // A deleted-file record at the same path wins over a mod's copy, so it rules the loader out.
-        var itemsAtPath = LoadoutItemWithTargetPath.FindByTargetPath(loadout.Db, _scriptExtenderPath.ToGamePathParentTuple(loadout.Id))
-            .Where(x => x.AsLoadoutItem().IsEnabled())
-            .ToArray();
-        var extenderInLoadout = itemsAtPath.Any(x => x.IsLoadoutFile()) && !itemsAtPath.Any(x => x.IsDeletedFile());
+        var extenderInLoadout = ScriptExtender.IsInLoadout(loadout, _scriptExtenderPath);
 
         if (!extenderInLoadout) return base.GetGamePath(loadout);
         return ValueTask.FromResult(loadout.InstallationInstance.Locations.ToAbsolutePath(_scriptExtenderPath));
     }
 }
+
+/// <summary>
+/// Where a script extender's loader is looked for.
+/// </summary>
+public static class ScriptExtender
+{
+    /// <summary>
+    /// Whether the loadout puts the loader at <paramref name="loader"/>.
+    /// </summary>
+    /// <remarks>
+    /// The loader only counts when the loadout puts it there. Checking the disk would pick up a loader left behind
+    /// by an earlier deployment, or miss one that is about to be deployed. A deleted-file record at the same path
+    /// wins over a mod's copy, so it rules the loader out.
+    /// </remarks>
+    public static bool IsInLoadout(Loadout.ReadOnly loadout, GamePath loader)
+    {
+        var itemsAtPath = LoadoutItemWithTargetPath.FindByTargetPath(loadout.Db, loader.ToGamePathParentTuple(loadout.Id))
+            .Where(x => x.AsLoadoutItem().IsEnabled())
+            .ToArray();
+        return itemsAtPath.Any(x => x.IsLoadoutFile()) && !itemsAtPath.Any(x => x.IsDeletedFile());
+    }
+}
+
+/// <summary>
+/// The loader of the script extender <typeparamref name="TGame"/> launches through, registered next to the game
+/// so the game can tell whether the loadout carries it.
+/// </summary>
+public sealed record ScriptExtenderLoader<TGame>(GamePath Path);

@@ -22,7 +22,7 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Games.RedEngine.Cyberpunk2077;
 
 [UsedImplicitly]
-public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements, IGameLauncherSkip, IGameUserDataFolders, IGameNativeCode, IGameUpdateSensitivity
+public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOverrideRequirements, IWinePrefixRequirements, IGameLauncherSkip, IGameUserDataFolders, IGameNativeCode, IGameUpdateSensitivity
 {
     public static GameId GameId { get; } = GameId.From("RedEngine.Cyberpunk2077");
     public static string DisplayName => "Cyberpunk 2077";
@@ -94,7 +94,8 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOv
             new PatternBasedDependencyEmitter(PatternDefinitions.Definitions, provider),
             new NoWayToRunRedModEmitter(provider),
             new MissingRedModEmitter(),
-            new WinePrefixRequirementsEmitter(this, this),
+            provider.GetRequiredService<WineDllOverrideEmitter>(),
+            provider.GetRequiredService<WinePrefixComponentsEmitter>(),
             provider.GetRequiredService<ProtonPrefixEmitter>(),
             new UserDataLinkEmitter(),
         ];
@@ -137,6 +138,11 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IWineDllOv
     ];
 
     public IReadOnlyList<WineDllOverride> RequiredWineDllOverrides(Loadout.ReadOnly loadout) => RequiredOverrides;
+
+    // What the mod loaders need in the prefix besides the DLL overrides above.
+    private static readonly PrefixComponentId[] RequiredComponents = [PrefixComponents.D3DCompiler47.Id, PrefixComponents.VisualCppRuntime.Id];
+
+    public IReadOnlyList<PrefixComponentId> RequiredPrefixComponents(Loadout.ReadOnly loadout) => RequiredComponents;
 
     // Steam's %command% is REDprelauncher.exe, which opens its own window unless it is told to start the game.
     public IReadOnlyList<string> LauncherSkipArguments { get; } = ["--launcher-skip"];
