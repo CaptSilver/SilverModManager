@@ -70,9 +70,16 @@ public sealed class GlassAppearance : IDisposable
 
     public static byte TintAlpha(double tint) => (byte)Math.Round(ClampTint(tint) * 255);
 
-    public static IReadOnlyList<WindowTransparencyLevel> HintFor(bool enabled) => enabled
-        ? [WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent]
-        : [WindowTransparencyLevel.None];
+    /// <summary>
+    /// The transparency to ask the platform for. <paramref name="transparentFrame"/> is for a window that paints its
+    /// own shaped frame (rounded corners) and needs a transparent window even without Glass.
+    /// </summary>
+    public static IReadOnlyList<WindowTransparencyLevel> HintFor(bool enabled, bool transparentFrame = false) => (enabled, transparentFrame) switch
+    {
+        (true, _) => [WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent],
+        (false, true) => [WindowTransparencyLevel.Transparent, WindowTransparencyLevel.None],
+        (false, false) => [WindowTransparencyLevel.None],
+    };
 
     /// <summary>
     /// Plain Transparent counts as no blur: the desktop would show through sharp and the text on the chrome
@@ -124,7 +131,18 @@ public sealed class GlassAppearance : IDisposable
     /// As <see cref="Attach(Window, string)"/>, and also tints <paramref name="panels"/>, which are painted in the
     /// theme colour <paramref name="panelSurfaceKey"/>, with the more opaque <see cref="PanelTint"/>.
     /// </summary>
-    public IDisposable Attach(Window window, string surfaceKey, string? panelSurfaceKey, params Border[] panels)
+    public IDisposable Attach(Window window, string surfaceKey, string? panelSurfaceKey, params Border[] panels) =>
+        Attach(window, window, TemplatedControl.BackgroundProperty, transparentFrame: false, surfaceKey, panelSurfaceKey, panels);
+
+    /// <summary>
+    /// For a transparent window whose <paramref name="frame"/> paints its base: the window always asks for
+    /// transparency so the frame can shape its corners, and the base tint goes on the frame rather than the window.
+    /// </summary>
+    public IDisposable AttachFramed(Window window, Border frame, string surfaceKey, string panelSurfaceKey, params Border[] panels) =>
+        Attach(window, frame, Border.BackgroundProperty, transparentFrame: true, surfaceKey, panelSurfaceKey, panels);
+
+    private IDisposable Attach(Window window, AvaloniaObject baseTarget, AvaloniaProperty<IBrush?> baseProperty, bool transparentFrame,
+        string surfaceKey, string? panelSurfaceKey, Border[] panels)
     {
         var surface = SurfaceColor(surfaceKey);
         var panelSurface = panelSurfaceKey is null ? default : SurfaceColor(panelSurfaceKey);
@@ -135,14 +153,14 @@ public sealed class GlassAppearance : IDisposable
 
         void Refresh()
         {
-            window.TransparencyLevelHint = TransparencyLevelHint;
+            window.TransparencyLevelHint = HintFor(Enabled, transparentFrame);
             foreach (var tint in tints) tint.Dispose();
             tints.Clear();
 
             var actual = window.ActualTransparencyLevel;
             if (TintedBackgroundFor(Enabled, actual, Tint, surface) is { } brush
-                && window.SetValue(TemplatedControl.BackgroundProperty, brush, BindingPriority.Animation) is { } windowTint)
-                tints.Add(windowTint);
+                && baseTarget.SetValue(baseProperty, brush, BindingPriority.Animation) is { } baseTint)
+                tints.Add(baseTint);
             foreach (var panel in panels)
             {
                 if (PanelBackgroundFor(Enabled, actual, Tint, panelSurface) is { } panelBrush

@@ -21,6 +21,10 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
 
         InitializeComponent();
 
+        // Glass replaces this hint once it attaches; until then the frame still needs a transparent window to round.
+        TransparencyLevelHint = GlassAppearance.HintFor(enabled: false, transparentFrame: true);
+        UpdateFrameCorners();
+
         WindowChrome.AttachResizeGrips(this);
         TopBarBorder.PointerPressed += OnTopBarPointerPressed;
 
@@ -105,7 +109,27 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
 
     /// <summary>Glass tints the dark window base and, more lightly, the left menu and page panels raised on it.</summary>
     public IDisposable AttachGlass(GlassAppearance glass) =>
-        glass.Attach(this, "SurfaceWindow", "SurfaceLow", LeftMenuBorder, WorkspacesBorder);
+        glass.AttachFramed(this, WindowFrame, "SurfaceWindow", "SurfaceLow", LeftMenuBorder, WorkspacesBorder);
+
+    private static readonly CornerRadius FloatingCorners = new(8);
+
+    /// <summary>
+    /// Rounded while the window floats on a compositor. Without transparency the corners would be filled black, and a
+    /// maximized or fullscreen window meets the screen edges, where rounding only cuts off pixels.
+    /// </summary>
+    public static CornerRadius FrameCornerRadiusFor(WindowState state, WindowTransparencyLevel actual) =>
+        state is WindowState.Maximized or WindowState.FullScreen || actual == WindowTransparencyLevel.None
+            ? default
+            : FloatingCorners;
+
+    private void UpdateFrameCorners() => WindowFrame.CornerRadius = FrameCornerRadiusFor(WindowState, ActualTransparencyLevel);
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == WindowStateProperty || change.Property == ActualTransparencyLevelProperty)
+            UpdateFrameCorners();
+    }
 
     private void OnTopBarPointerPressed(object? sender, PointerPressedEventArgs e)
     {

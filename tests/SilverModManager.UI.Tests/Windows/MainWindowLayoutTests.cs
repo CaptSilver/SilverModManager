@@ -24,7 +24,7 @@ public class MainWindowLayoutTests(IServiceProvider provider) : AUiTest(provider
         return (Grid.GetColumn(control!), Grid.GetColumnSpan(control!), Grid.GetRow(control!), Grid.GetRowSpan(control!));
     }
 
-    private static int LastRow(Window window) => ((Grid)window.Content!).RowDefinitions.Count - 1;
+    private static int LastRow(Window window) => ((Grid)((Border)window.Content!).Child!).RowDefinitions.Count - 1;
 
     [Theory]
     [InlineData("DevelopmentBuildBanner")]
@@ -109,8 +109,52 @@ public class MainWindowLayoutTests(IServiceProvider provider) : AUiTest(provider
         {
             var window = new MainWindow();
 
-            window.Background.Should().BeOfType<SolidColorBrush>().Which.Color.Should().Be(ThemeColor("SurfaceWindowBrush"));
+            Panel(window, "WindowFrame").Background.Should().BeOfType<SolidColorBrush>().Which.Color.Should().Be(ThemeColor("SurfaceWindowBrush"));
+            Panel(window, "WindowFrame").ClipToBounds.Should().BeTrue("content is cut to the frame's corners");
+            window.Background.Should().BeAssignableTo<ISolidColorBrush>().Which.Color.A.Should().Be(0, "only the frame paints, so its corners can show the desktop");
             Panel(window, "SpineBorder").Background.Should().BeNull("the spine sits on the window base");
+        });
+    }
+
+    [Theory]
+    [InlineData(WindowState.Normal, "Transparent", 8)]
+    [InlineData(WindowState.Normal, "Blur", 8)]
+    [InlineData(WindowState.Normal, "None", 0)]
+    [InlineData(WindowState.Maximized, "Transparent", 0)]
+    [InlineData(WindowState.FullScreen, "Blur", 0)]
+    [InlineData(WindowState.Minimized, "Transparent", 8)]
+    public void TheWindowIsRoundedOnlyWhenFloatingOnACompositor(WindowState state, string level, double radius)
+    {
+        // WindowTransparencyLevel is a struct, so the cases name it.
+        var actual = level switch
+        {
+            "Transparent" => WindowTransparencyLevel.Transparent,
+            "Blur" => WindowTransparencyLevel.Blur,
+            _ => WindowTransparencyLevel.None,
+        };
+        // Without transparency the corners would be filled black; a window that fills the screen has square corners.
+        MainWindow.FrameCornerRadiusFor(state, actual).Should().Be(new CornerRadius(radius));
+    }
+
+    [Fact]
+    public async Task TheFrameRoundsWhileFloatingAndSquaresWhenMaximized()
+    {
+        await OnUi(() =>
+        {
+            var window = Track(new MainWindow());
+            using var attachment = window.AttachGlass(Provider.GetRequiredService<GlassAppearance>());
+            ShowRendered(window);
+            var frame = Panel(window, "WindowFrame");
+
+            window.TransparencyLevelHint.Should().Contain(WindowTransparencyLevel.Transparent, "rounded corners need a transparent window even with Glass off");
+            window.ActualTransparencyLevel.Should().Be(WindowTransparencyLevel.Transparent, "the headless platform grants plain transparency");
+            frame.CornerRadius.Should().Be(new CornerRadius(8));
+
+            window.WindowState = WindowState.Maximized;
+            frame.CornerRadius.Should().Be(new CornerRadius(0));
+
+            window.WindowState = WindowState.Normal;
+            frame.CornerRadius.Should().Be(new CornerRadius(8));
         });
     }
 

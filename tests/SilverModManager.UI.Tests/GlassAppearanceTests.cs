@@ -45,6 +45,8 @@ public class GlassAppearanceTests(IServiceProvider provider) : AUiTest(provider)
     public void TheHintAsksForBlurOnlyWhenGlassIsOn()
     {
         GlassAppearance.HintFor(false).Should().Equal(WindowTransparencyLevel.None);
+        GlassAppearance.HintFor(false, transparentFrame: true).Should().Equal(WindowTransparencyLevel.Transparent, WindowTransparencyLevel.None);
+        GlassAppearance.HintFor(true, transparentFrame: true).Should().Equal(WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent);
         GlassAppearance.HintFor(true).Should().Equal(WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent);
     }
 
