@@ -115,6 +115,27 @@ public sealed record TextureDeletionConflict(string Name, string KeptMod, string
     public MergeLoss? Loss => MergeLoss.Between(DroppedMod, KeptMod);
 }
 
+/// <summary>A binder member both mods changed; the winner's copy was kept whole.</summary>
+/// <param name="Member">The member's name inside the binder.</param>
+/// <param name="Details">The reader's message when the member could not be merged more finely; null when it was simply kept.</param>
+public sealed record MemberKept(string Member, string KeptMod, string DroppedMod, string? Details = null) : IMergeNote
+{
+    public string Describe() => $"member {Member}: both mods changed it; kept {KeptMod}'s";
+
+    public string Summary() => $"both {KeptMod} and {DroppedMod} change {MemberPolicy.Noun(Member)} {Member}; {KeptMod}'s is used.";
+
+    public MergeLoss? Loss => MergeLoss.Between(DroppedMod, KeptMod);
+}
+
+/// <summary>What a merge did without choosing between mods. Reports list it; Health Check raises no card for it.</summary>
+public interface IMergeDetailNote : IMergeNote;
+
+/// <summary>Only one mod changed a binder member, so its copy was taken.</summary>
+public sealed record MemberTaken(string Member, string FromMod) : IMergeDetailNote
+{
+    public string Describe() => $"member {Member}: only {FromMod} changed it; taken from there";
+}
+
 /// <summary>
 /// The priority order could not be merged, and another contributor as the base could. The result is what that base
 /// gives, so a row or state both sides changed stays as the base had it, not as the highest-priority mod had it.

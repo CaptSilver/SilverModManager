@@ -69,12 +69,19 @@ public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnost
         foreach (var merged in plan.Merged)
         {
             var mods = string.Join(", ", merged.Contributors.Select(c => c.ModName).Distinct(StringComparer.Ordinal));
-            foreach (var note in merged.Notes)
-            {
-                // Which original copy a merge compared against is for the merge report; the user has nothing to decide about it.
-                if (note is IVanillaSourceNote or VanillaNearestChosen or VanillaAlternateChosen) continue;
-                yield return FromSoftDiagnostics.CreateMergeNote(MergeSubject(merged.Path), merged.Path, mods, note.Summary(), Advice(note));
-            }
+            foreach (var card in NoteCards(merged.Path, mods, merged.Notes)) yield return card;
+        }
+    }
+
+    /// <summary>The card for each note that records a choice; notes about the source or what was taken without a choice raise none.</summary>
+    internal static IEnumerable<Diagnostic> NoteCards(string path, string mods, IEnumerable<IMergeNote> notes)
+    {
+        foreach (var note in notes)
+        {
+            // Which original copy a merge compared against, and what it took whole from one mod, are for the merge report;
+            // the user has nothing to decide about either.
+            if (note is IVanillaSourceNote or IMergeDetailNote or VanillaNearestChosen or VanillaAlternateChosen) continue;
+            yield return FromSoftDiagnostics.CreateMergeNote(MergeSubject(path), path, mods, note.Summary(), Advice(note));
         }
     }
 

@@ -83,6 +83,10 @@ public sealed class MergeReports(
                 .FirstOrDefault();
     }
 
+    /// <summary>The sentences a report lists for a merge: the choices and takes, without the notes that say where the ancestor came from.</summary>
+    internal static string[] ReportNotes(IEnumerable<IMergeNote> notes)
+        => notes.Where(n => n is not IVanillaSourceNote).Select(n => n.Describe()).ToArray();
+
     private static MergeReportEntry EntryOf(MergeCandidate candidate, MergePlan? plan, string? refusal, IReadOnlyList<UnconfirmedDump> unconfirmed, string? archiveFailure)
     {
         var strategy = candidate.Strategy is { } s ? MergeStrategies.Name(s) : string.Empty;
@@ -106,7 +110,7 @@ public sealed class MergeReports(
             // Where the ancestor came from has its own field, so its notes are not repeated among the choices the merge made.
             // Mods of several builds each have a source of their own; with one build the first note says it all.
             var source = SourceOf(merged.Notes) ?? merged.VanillaSource;
-            var notes = merged.Notes.Where(n => n is not IVanillaSourceNote).Select(n => n.Describe()).ToArray();
+            var notes = ReportNotes(merged.Notes);
             return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.Merged, notes, source, string.Empty);
         }
 
