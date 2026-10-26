@@ -313,6 +313,14 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
 
     private static WabbajackLoadoutChoice CreateNew(WabbajackModlistViewModel vm) => vm.LoadoutChoices.Single(choice => choice.Id is null);
 
+    // The install runs on the task pool, so a fixed delay is not always long enough under a full parallel test run.
+    private static async Task WaitUntil(Func<bool> condition)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        while (!condition())
+            await Task.Delay(25, cts.Token);
+    }
+
     [Fact]
     public async Task OpeningThePage_ShowsThePlanAndStartsNothing()
     {
@@ -391,7 +399,8 @@ public class WabbajackModlistViewModelTests(IServiceProvider provider) : AUiTest
         await vm.SelectLoadoutCommand.Execute(CreateNew(vm));
 
         vm.InstallCommand.Execute().Subscribe();
-        await Task.Delay(200);
+        await WaitUntil(() => service.InstalledInto.Count > 0
+            && vm.LoadoutChoices.Any(choice => choice.Name == "Created by install"));
 
         service.LoadoutsCreated.Should().Be(1);
         var created = vm.LoadoutChoices.Single(choice => choice.Name == "Created by install");
