@@ -17,6 +17,10 @@ internal sealed class GameLaunch(LaunchSession session, LaunchContext context) :
         var result = await session.RunExternalAsync(context, whileRunning, cancellationToken);
         if (result.Message is not { } message) return;
 
+        // The failure is known: the game exited and the loadout is still applied. The step's own exception goes
+        // to the log (it was logged where it was caught) and the player gets the plain sentence.
+        if (result.LoadoutStillApplied) throw new LoadoutStillAppliedException(message, result.Cause) { Action = (result.Cause as UserFacingException)?.Action };
+
         // A refusal the step raised keeps its type and action. A crash keeps its own exception, so it is
         // reported as a crash and not as a calm "not started".
         if (result.Cause is { } cause && (cause is UserFacingException || !result.Refused))

@@ -791,24 +791,7 @@ public class LaunchSessionTests : IDisposable
     }
 
     [Fact]
-    public async Task AnAppLaunch_WhoseIngestFails_RethrowsTheOriginalException_AndLogsItAtWarning()
-    {
-        var broke = new InvalidOperationException("ingest broke");
-        _synchronizer.FailOn = 2;
-        _synchronizer.FailWith = broke;
-        using var launch = new GameLaunch(NewSession(), _context);
-
-        var act = async () => await launch.RunAsync(_ => Task.CompletedTask, CancellationToken.None);
-
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(broke);
-        _notifier.DidNotReceiveWithAnyArgs().Notify(default!, default!);
-        _error.ToString().Should().BeEmpty();
-        _log.Records.Should().Contain(r => r.Level == LogLevel.Warning && ReferenceEquals(r.Exception, broke));
-        _log.Records.Should().NotContain(r => r.Level >= LogLevel.Error, "the awaiter reports the crash, once");
-    }
-
-    [Fact]
-    public async Task AnAppLaunch_WhoseIngestIsRefusedByPreflight_ThrowsThatExceptionWithItsAction()
+    public async Task AnAppLaunch_WhoseIngestIsRefusedByPreflight_ThrowsLoadoutStillAppliedWithTheRefusalsAction()
     {
         var refusal = new SynchronizerPreflightException("The Proton prefix is gone.") { Action = new OpenHealthCheck(_context.LoadoutId) };
         _synchronizer.FailOn = 2;
@@ -817,8 +800,9 @@ public class LaunchSessionTests : IDisposable
 
         var act = async () => await launch.RunAsync(_ => Task.CompletedTask, CancellationToken.None);
 
-        var thrown = (await act.Should().ThrowAsync<SynchronizerPreflightException>()).Which;
-        thrown.Should().BeSameAs(refusal);
+        var thrown = (await act.Should().ThrowAsync<LoadoutStillAppliedException>()).Which;
+        thrown.Message.Should().Contain("The Proton prefix is gone.").And.Contain("still applied");
+        thrown.InnerException.Should().BeSameAs(refusal);
         thrown.Action.Should().Be(new OpenHealthCheck(_context.LoadoutId));
     }
 
@@ -879,6 +863,54 @@ public class LaunchSessionTests : IDisposable
         _active.IsRunning(_installation).Should().BeTrue();
         launch.Dispose();
         _active.IsRunning(_installation).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AnAppLaunch_WhoseIngestFails_ThrowsALoadoutStillAppliedException_ThatTellsThePlayerWhatToDo()
+    {
+        var broke = new InvalidOperationException("ingest broke");
+        _synchronizer.FailOn = 2;
+        _synchronizer.FailWith = broke;
+        using var launch = new GameLaunch(NewSession(), _context);
+
+        var act = async () => await launch.RunAsync(_ => Task.CompletedTask, CancellationToken.None);
+
+        var thrown = (await act.Should().ThrowAsync<LoadoutStillAppliedException>()).Which;
+        thrown.Title.Should().Be("The loadout is still applied");
+        thrown.Message.Should().Contain("Loadout 'My Loadout' is still applied").And.Contain("Apply or revert it");
+        thrown.InnerException.Should().BeSameAs(broke);
+        _notifier.DidNotReceiveWithAnyArgs().Notify(default!, default!);
+        _error.ToString().Should().BeEmpty();
+        // The trace is in the log once, at Warning, because the awaiter shows the failure.
+        _log.Records.Count(r => ReferenceEquals(r.Exception, broke)).Should().Be(1);
+        _log.Records.Should().Contain(r => r.Level == LogLevel.Warning && ReferenceEquals(r.Exception, broke));
+        _log.Records.Should().NotContain(r => r.Level >= LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task AnAppLaunch_WhoseGateTeardownFails_ThrowsALoadoutStillAppliedException()
+    {
+        var broke = new InvalidOperationException("finish broke");
+        AddGate("a").FinishFailure = broke;
+        using var launch = new GameLaunch(NewSession(), _context);
+
+        var act = async () => await launch.RunAsync(_ => Task.CompletedTask, CancellationToken.None);
+
+        var thrown = (await act.Should().ThrowAsync<LoadoutStillAppliedException>()).Which;
+        thrown.Message.Should().Contain("finish broke").And.Contain("still applied");
+        thrown.InnerException.Should().BeSameAs(broke);
+        _notifier.DidNotReceiveWithAnyArgs().Notify(default!, default!);
+    }
+
+    [Fact]
+    public async Task AnAppLaunch_WhoseGameStartFailsAndWhoseIngestWorks_StillRethrowsTheStartFailureAsACrash()
+    {
+        var broke = new InvalidOperationException("start broke");
+        using var launch = new GameLaunch(NewSession(), _context);
+
+        var act = async () => await launch.RunAsync(_ => throw broke, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(broke);
     }
 
     [Fact]

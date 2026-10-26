@@ -16,6 +16,7 @@ public class UserFacingExceptionTitleTests
     [
         () => new Abstractions.Games.GameLaunchException("The game is already running."),
         () => new Abstractions.Games.GameDidNotStopException("Process 1 survived."),
+        () => new Abstractions.Games.LoadoutStillAppliedException("Loadout 'A' is still applied."),
         () => new Abstractions.Loadouts.Exceptions.ExecutableInUseException("The executable is in use."),
         () => new Abstractions.Loadouts.Synchronizers.SynchronizerPreflightException("Preflight refused."),
         () => new Games.FromSoft.Merge.MergeRefusedException("the plan failed"),

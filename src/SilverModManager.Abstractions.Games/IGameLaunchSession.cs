@@ -72,3 +72,14 @@ public sealed class GameDidNotStopException(string message) : UserFacingExceptio
     /// <inheritdoc />
     public override string Title => "The game did not stop";
 }
+
+/// <summary>
+/// The game ran and exited, but taking the loadout off afterwards failed: a gate's teardown or the ingest of the
+/// game's changes. The loadout is still applied to the game folder, and the player has to apply or revert it from
+/// the app before playing outside it. The step's own exception is the inner exception, for the log.
+/// </summary>
+public sealed class LoadoutStillAppliedException(string message, Exception? cause = null) : UserFacingException(message, cause)
+{
+    /// <inheritdoc />
+    public override string Title => "The loadout is still applied";
+}

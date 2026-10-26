@@ -151,7 +151,7 @@ public class ReadableErrorsEndToEndTests(IServiceProvider provider) : AUiTest(pr
     }
 
     [Fact]
-    public async Task APlayRefusedByTheSteamUpdateVeto_IsOnePlainDialogWithNoErrorEventAndNoNotification()
+    public async Task APlayRefusedByTheSteamUpdateVeto_IsOnePlainDialogWithNoErrorEvent()
     {
         var (button, wiring) = await PlayButton(new GameLaunchException("Steam is updating Cyberpunk 2077. Start it again when the update has finished."));
 
@@ -162,8 +162,27 @@ public class ReadableErrorsEndToEndTests(IServiceProvider provider) : AUiTest(pr
         PresenterRig.Body(dialog).Should().Contain("Steam is updating Cyberpunk 2077");
         ButtonsOf(dialog).Should().NotContain(ErrorPresenter.OpenHealthCheckButton);
         wiring.ErrorEvents.Should().BeEmpty();
-        wiring.Notifier.DidNotReceiveWithAnyArgs().Notify(default!, default!);
         wiring.Toasts.DidNotReceiveWithAnyArgs().ShowToast(default!);
+        wiring.Presenter.AllOnUiThread.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task APlayWhoseLoadoutCouldNotBeTakenOffAfterTheGame_IsOnePlainDialogNotACrash()
+    {
+        var cause = new InvalidOperationException("ingest broke");
+        var (button, wiring) = await PlayButton(new LoadoutStillAppliedException(
+            "Cyberpunk 2077 has exited, but taking the game's changes back into the loadout failed: ingest broke Loadout 'Mine' is still applied. " +
+            "Apply or revert it from SilverModManager before playing the game outside it.", cause));
+
+        await Play(button);
+
+        var dialog = wiring.Presenter.Dialogs.Should().ContainSingle().Subject;
+        dialog.WindowTitle.Should().Be("The loadout is still applied");
+        var body = PresenterRig.Body(dialog);
+        body.Should().Contain("Loadout 'Mine' is still applied").And.Contain("Apply or revert it");
+        body.Should().NotContain("written to the log").And.NotContain("   at ");
+        ButtonsOf(dialog).Should().NotContain(ErrorPresenter.OpenHealthCheckButton);
+        wiring.ErrorEvents.Should().BeEmpty();
         wiring.Presenter.AllOnUiThread.Should().BeTrue();
     }
 

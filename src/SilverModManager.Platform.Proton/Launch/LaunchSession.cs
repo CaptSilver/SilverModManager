@@ -14,10 +14,11 @@ namespace SilverModManager.Platform.Proton.Launch;
 /// <param name="Message">Why the launch failed; null when it ran and the game's own exit code is the answer.</param>
 /// <param name="Refused">True when the launch was turned down before anything was started, by a gate or another launch holding the game.</param>
 /// <param name="Cause">The exception a failing step threw, when there was one; its message is folded into <paramref name="Message"/>.</param>
-public sealed record LaunchResult(int ExitCode, string? Message, bool Refused = false, Exception? Cause = null);
+/// <param name="LoadoutStillApplied">True when the game ran but the teardown or the ingest after it failed, so the loadout is still applied.</param>
+public sealed record LaunchResult(int ExitCode, string? Message, bool Refused = false, Exception? Cause = null, bool LoadoutStillApplied = false);
 
 /// <summary>Why a launch failed, before it is reported.</summary>
-internal sealed record LaunchFailure(string Message, bool Refused = false, Exception? Cause = null);
+internal sealed record LaunchFailure(string Message, bool Refused = false, Exception? Cause = null, bool LoadoutStillApplied = false);
 
 /// <summary>
 /// The command a launch will start, with the steps that produced it, so the log can show how the final argv came
@@ -236,7 +237,7 @@ public sealed class LaunchSession
             _error.WriteLine(failure.Message);
             _notifier.Notify(ApplicationConstants.ProductName, failure.Message);
         }
-        return new LaunchResult(FailureExitCode, failure.Message, failure.Refused, failure.Cause);
+        return new LaunchResult(FailureExitCode, failure.Message, failure.Refused, failure.Cause, failure.LoadoutStillApplied);
     }
 
     // A caught exception goes to the log with its trace: at Error when the run verb is the last stop, at Warning
@@ -532,7 +533,8 @@ public sealed class LaunchSession
         {
             LogCause(e, "{What} failed for {Loadout}", what, context.LoadoutName);
             failure ??= new LaunchFailure($"{context.Installation.Game.DisplayName} has exited, but {what} failed: {e.Message} " +
-                                          $"Loadout '{context.LoadoutName}' is still applied.", Cause: e);
+                                          $"Loadout '{context.LoadoutName}' is still applied. Apply or revert it from SilverModManager before playing the game outside it.",
+                Cause: e, LoadoutStillApplied: true);
         }
 
         try
