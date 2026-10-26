@@ -229,7 +229,9 @@ public class SelftestRunnerTests : IDisposable
     [Fact]
     public async Task Signal_Fails_WhenTheHelperExitsBeforeTheSignal()
     {
-        var check = await Check(Runner(Script("quitter", "echo ready; exit 0")), SelftestRunner.SignalCheck);
+        // Ignoring TERM keeps an early signal from killing the script: a death by SIGTERM reports 143,
+        // the same code the real stop handler uses, and would read as a pass.
+        var check = await Check(Runner(Script("quitter", "trap '' TERM; echo ready; exit 0")), SelftestRunner.SignalCheck);
 
         check.Status.Should().Be(SelftestStatus.Failed);
     }
