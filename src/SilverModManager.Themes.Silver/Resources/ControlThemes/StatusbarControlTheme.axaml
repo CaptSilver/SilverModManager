@@ -93,7 +93,7 @@
                     MinHeight="{TemplateBinding MinHeight}"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="{TemplateBinding VerticalAlignment}"
-                    Background="{StaticResource SurfaceLowBrush}"
+                    Background="{StaticResource SurfaceTransparentBrush}"
                     Padding="{TemplateBinding Padding}">
                     <Border Name="ButtonContainer"
                             BorderBrush="{TemplateBinding BorderBrush}"

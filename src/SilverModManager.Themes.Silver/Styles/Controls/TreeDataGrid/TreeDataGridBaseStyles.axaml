@@ -122,11 +122,11 @@
     <Style Selector="TreeDataGrid">
         <!-- <Setter Property="Background" Value="{StaticResource BrandTranslucentDark300Brush}" /> -->
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+        <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
 
 
         <Style Selector="^ /template/ Border#ColumnHeadersPresenterBorder">
-            <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
             <Setter Property="Height" Value="32" />
             <Setter Property="BorderBrush" Value="{StaticResource StrokeTranslucentWeakBrush}" />
             <Setter Property="BorderThickness" Value="0" />
@@ -325,7 +325,7 @@
         <!-- "RootRow" is a class that was manually added to the TreeDataGridRow that have indent level 0. -->
         <!-- See `SilverModManager.App.UI.Controls.CustomElementFactory.cs` for more information. -->
         <Style Selector="^.RootRow">
-            <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
         </Style>
 
         <!-- Child rows styling -->

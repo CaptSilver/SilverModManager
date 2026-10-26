@@ -176,7 +176,7 @@
             <Setter Property="Margin" Value="0" />
 
             <!-- templated bindings (passed down to Border#RowBorder) -->
-            <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource SurfaceTransparentBrush}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="CornerRadius" Value="8" />
@@ -192,7 +192,7 @@
 
             <!-- all rows are root row at the moment and we need to override default -->
             <Style Selector="^.RootRow">
-                <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+                <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
             </Style>
 
             <!-- is not active -->

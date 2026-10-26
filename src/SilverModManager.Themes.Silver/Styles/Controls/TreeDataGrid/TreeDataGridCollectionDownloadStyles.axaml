@@ -12,7 +12,7 @@
         <Style Selector="^ TreeDataGridRow">
 
             <!-- child row -->
-            <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
 
             <!-- parent row -->
             <Style Selector="^.RootRow">

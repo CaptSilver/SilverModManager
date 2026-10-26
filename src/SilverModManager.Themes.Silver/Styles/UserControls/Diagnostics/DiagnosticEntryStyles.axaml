@@ -28,9 +28,9 @@
 
             <Style Selector="^[Type=Tertiary]">
                 <Style Selector="^[Fill=Weak]">
-                    <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+                    <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
                     <Style Selector="^:pointerover">
-                        <Setter Property="Background" Value="{StaticResource SurfaceHighBrush}" />
+                        <Setter Property="Background" Value="{StaticResource SurfaceTranslucentMidBrush}" />
                     </Style>
                     <Style Selector="^:pressed">
                         <Setter Property="Background" Value="{StaticResource BrandTranslucentLight100Brush}" />

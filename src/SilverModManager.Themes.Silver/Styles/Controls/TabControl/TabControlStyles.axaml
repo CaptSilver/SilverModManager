@@ -347,7 +347,7 @@
                 
                 <!-- selected state -->
                 <Style Selector="^:selected">
-                    <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+                    <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
                     <!-- <Setter Property="BorderBrush" Value="{StaticResource SurfaceMidBrush}" /> -->
                     <Setter Property="TextElement.Foreground" Value="{StaticResource NeutralStrongBrush}" />
 
@@ -360,13 +360,13 @@
                 
                 <!-- pointerover tabs -->
                 <Style Selector="^:pointerover:not(:selected) /template/ Border#PART_LayoutRoot">
-                    <Setter Property="Background" Value="{StaticResource SurfaceHighBrush}" />
+                    <Setter Property="Background" Value="{StaticResource SurfaceTranslucentMidBrush}" />
                 </Style>
 
                 <!--  Selected PointerOver state (don't change background if it's selected and pointerover) -->
                 <Style Selector="^:selected:pointerover /template/ Border#PART_LayoutRoot">
                     <Setter Property="TextElement.Foreground" Value="{StaticResource NeutralStrongBrush}" />
-                    <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+                    <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
                 </Style>
                 
 

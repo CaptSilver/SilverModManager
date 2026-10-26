@@ -215,7 +215,7 @@
             <Setter Property="Background" Value="{StaticResource CollectionHeaderImageLinearGradientEndColor}" />
             
             <Style Selector="^ /template/ ContentPresenter#PART_SelectedContentHost">
-                <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+                <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
             </Style>
             
 
@@ -240,7 +240,7 @@
 
                     <!-- content -->
                     <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
-                        <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+                        <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
                     </Style>
 
                     <!-- collections instructions -->

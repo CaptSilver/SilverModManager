@@ -10,7 +10,7 @@
                                 x:Class="SilverModManager.App.UI.Controls.Settings.SettingEntries.SettingEntryView">
 
     <Border Padding="16,12"
-            Background="{StaticResource SurfaceMidBrush}"
+            Background="{StaticResource SurfaceTranslucentLowBrush}"
             CornerRadius="{StaticResource Rounded-lg}">
         <Grid RowDefinitions="Auto, Auto" >
             <Grid Grid.Row="0" 

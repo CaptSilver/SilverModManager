@@ -183,7 +183,7 @@
         <Setter Property="Focusable" Value="False" />
         <Setter Property="VerticalAlignment" Value="Top" />
         <Setter Property="HorizontalAlignment" Value="Left" />
-        <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+        <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
         <Setter Property="Margin" Value="0" />
         <Setter Property="Padding" Value="4" />
         <Setter Property="CornerRadius" Value="{StaticResource Rounded-lg}" />

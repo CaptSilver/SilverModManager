@@ -245,14 +245,14 @@
 
         <Style Selector="^:active">
             <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />
-            <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
         </Style>
 
         
         <!-- POINTEROVER -->
 
         <Style Selector="^:pointerover:not(:selected)">
-            <Setter Property="Background" Value="{StaticResource SurfaceHighBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentMidBrush}" />
             <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />
         </Style>
 
@@ -260,7 +260,7 @@
         <!-- PRESSED -->
 
         <Style Selector="^:pressed">
-            <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
             <Setter Property="Foreground" Value="{StaticResource NeutralModerateBrush}" />
         </Style>
 
@@ -268,7 +268,7 @@
 
         <Style Selector="^:selected">
             <Setter Property="Margin" Value="0" />
-            <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
             <Setter Property="BorderThickness" Value="2" />
             <Setter Property="BorderBrush" Value="{StaticResource BrandNeutral600Brush}" />
             <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />

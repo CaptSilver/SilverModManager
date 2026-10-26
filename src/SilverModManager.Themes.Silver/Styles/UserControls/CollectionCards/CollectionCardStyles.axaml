@@ -16,7 +16,7 @@
 
     <Style Selector="collections|CollectionCardView">
 
-        <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+        <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
         <Setter Property="CornerRadius" Value="{StaticResource Rounded}" />
         <Setter Property="ClipToBounds" Value="False" />
 

@@ -38,7 +38,7 @@
         <Style Selector="^ Button#CardOuterButton">
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="VerticalAlignment" Value="Stretch" />
-            <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
             <Setter Property="CornerRadius" Value="{StaticResource Rounded-lg}" />
             <Setter Property="BorderBrush" Value="{StaticResource StrokeTranslucentWeakBrush}" />
             <Setter Property="BorderThickness" Value="1" />
@@ -50,7 +50,7 @@
             </Style>
 
             <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{StaticResource SurfaceHighBrush}" />
+                <Setter Property="Background" Value="{StaticResource SurfaceTranslucentMidBrush}" />
                 <Setter Property="BoxShadow" Value="{StaticResource DropShadowMD}" />
                 <Setter Property="BorderBrush" Value="Transparent" />
             </Style>
@@ -65,7 +65,7 @@
             </Style>
 
             <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+                <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
                 <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />
                 <Setter Property="Opacity" Value="{StaticResource OpacityDisabledElement}" />
             </Style>
@@ -157,20 +157,20 @@
         <Style Selector="^ Button#CreateNewLoadoutButton">
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="VerticalAlignment" Value="Stretch" />
-            <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
             <Setter Property="CornerRadius" Value="{StaticResource Rounded-lg}" />
             <Setter Property="BorderBrush" Value="{StaticResource StrokeTranslucentWeakBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="0,0,0,0" />
 
             <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{StaticResource SurfaceHighBrush}" />
+                <Setter Property="Background" Value="{StaticResource SurfaceTranslucentMidBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="BorderBrush" Value="{StaticResource SurfaceTranslucentLowBrush}" />
             </Style>
 
             <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+                <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="BorderBrush" Value="{StaticResource SurfaceTranslucentLowBrush}" />
                 <Setter Property="Foreground" Value="{StaticResource NeutralModerateBrush}" />

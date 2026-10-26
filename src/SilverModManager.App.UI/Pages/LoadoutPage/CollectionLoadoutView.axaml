@@ -108,7 +108,7 @@
 
             <Border x:Name="DownloadsTreeContainer"
                     Padding="0 8 0 0"
-                    Background="{StaticResource SurfaceLowBrush}">
+                    Background="{StaticResource SurfaceTransparentBrush}">
                 <!-- tree data grid -->
                 <TreeDataGrid Grid.Row="2" x:Name="TreeDataGrid"
                               ShowColumnHeaders="True"
