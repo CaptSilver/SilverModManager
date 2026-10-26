@@ -86,6 +86,27 @@ public class Fallout4EarlyLoadingTests(ITestOutputHelper helper)
 
         (await Diagnose()).Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task ACommentedOutEntryDoesNotWarnButAnEntryWithATrailingCommentDoes()
+    {
+        await Write(new GamePath(LocationId.Preferences, "Fallout4.ini"),
+            "[General]\r\n;sTestFile1=Foo.esp\r\nsTestFile2=Bar.esp ; for testing\r\n");
+
+        var diagnostic = (await Diagnose()).Should().ContainSingle().Subject;
+
+        diagnostic.FormatSummary(new PlainDiagnosticWriter()).Should().Contain("sTestFile2").And.NotContain("sTestFile1");
+    }
+
+    [Fact]
+    public async Task AnIniWithWindows1252BytesIsStillRead()
+    {
+        var file = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Preferences, "Fallout4.ini"));
+        file.Parent.CreateDirectory();
+        await file.WriteAllBytesAsync(System.Text.Encoding.Latin1.GetBytes("[General]\r\nsPlayerName=Ren\u00e9e\r\nsTestFile4=Foo.esp\r\n"));
+
+        (await Diagnose()).Should().ContainSingle().Which.FormatSummary(new PlainDiagnosticWriter()).Should().Contain("sTestFile4");
+    }
 }
 
 public class StarfieldEarlyLoadingTests(ITestOutputHelper helper)

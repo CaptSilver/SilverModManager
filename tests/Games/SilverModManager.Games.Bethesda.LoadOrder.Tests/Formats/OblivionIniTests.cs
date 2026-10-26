@@ -17,6 +17,9 @@ public class OblivionIniTests
     [InlineData("[Display]\nbUseMyGamesDirectory=0\n", true)]
     [InlineData("[Display]\nfoo=1\n[General]\nbUseMyGamesDirectory=0\n", false)]
     [InlineData("[General]\n; bUseMyGamesDirectory=0\n", true)]
+    // A comment after the value is not part of it.
+    [InlineData("[General]\r\nbUseMyGamesDirectory=0 ; keep it in the game folder\r\n", false)]
+    [InlineData("[general]\r\nBUSEMYGAMESDIRECTORY = 0\r\n", false)]
     public void UsesMyGamesDirectoryOnlyWhenTheKeyInGeneralIsNotZero(string text, bool expected) =>
         OblivionIni.UsesMyGamesDirectory(text).Should().Be(expected);
 }

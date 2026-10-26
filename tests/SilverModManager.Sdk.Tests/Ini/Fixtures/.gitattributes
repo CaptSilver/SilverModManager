@@ -1,0 +1,2 @@
+# The round-trip tests need these bytes exactly as written: CRLF, LF, mixed endings and no final newline.
+* -text

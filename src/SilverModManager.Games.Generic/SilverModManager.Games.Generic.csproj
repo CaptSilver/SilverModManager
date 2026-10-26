@@ -1,10 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <PackageReference Include="ini-parser-netstandard" />
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />
       <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
       <ProjectReference Include="..\SilverModManager.Abstractions.Serialization\SilverModManager.Abstractions.Serialization.csproj" />

@@ -1,6 +1,4 @@
-using IniParser;
-using IniParser.Model.Configuration;
-using IniParser.Parser;
+using SilverModManager.Sdk.Ini;
 using SilverModManager.Sdk.IO;
 
 namespace SilverModManager.Games.Generic.FileAnalyzers;
@@ -8,24 +6,22 @@ namespace SilverModManager.Games.Generic.FileAnalyzers;
 
 public class IniAnalzyer
 {
-    public static readonly IniParserConfiguration Config = new()
-    {
-        AllowDuplicateKeys = true,
-        AllowDuplicateSections = true,
-        AllowKeysWithoutSection = true,
-        AllowCreateSectionsOnFly = true,
-        CaseInsensitive = true,
-        SkipInvalidLines = true,
-    };
-
     public static async Task<IniAnalysisData> AnalyzeAsync(IStreamFactory info)
     {
         await using var os = await info.GetStreamAsync();
-        var data = new StreamIniDataParser(new IniDataParser(Config)).ReadData(new StreamReader(os));
-        var sections = data.Sections.Select(s => s.SectionName).ToHashSet();
-        var keys = data.Global.Select(k => k.KeyName)
-            .Concat(data.Sections.SelectMany(d => d.Keys).Select(kv => kv.KeyName))
-            .ToHashSet();
+        using var buffer = new MemoryStream();
+        await os.CopyToAsync(buffer);
+        return Analyze(IniDocument.Parse(buffer.ToArray()));
+    }
+
+    /// <summary>Every section name and every key name of the document, keys before the first header included.</summary>
+    public static IniAnalysisData Analyze(IniDocument document)
+    {
+        var sections = document.Sections.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var keys = document.Lines
+            .Where(l => l.Kind == IniLineKind.KeyValue)
+            .Select(l => l.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         return new IniAnalysisData
         {
             Sections = sections,

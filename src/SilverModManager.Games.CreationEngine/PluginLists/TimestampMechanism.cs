@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -7,6 +6,7 @@ using SilverModManager.Games.Bethesda.LoadOrder.Formats;
 using SilverModManager.Games.CreationEngine.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Ini;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Games.CreationEngine.PluginLists;
@@ -45,8 +45,8 @@ public sealed class TimestampMechanism : IPluginListMechanism
             var ini = locations.ToAbsolutePath(new GamePath(location, IniFileName));
             if (!ini.FileExists) continue;
 
-            // The game writes its ini in Windows-1252; the key and its value are ASCII, so Latin-1 reads them as is.
-            var usesMyGames = OblivionIni.UsesMyGamesDirectory(Encoding.Latin1.GetString(File.ReadAllBytes(ini.ToString())));
+            // The game writes its ini in Windows-1252; the key and its value are ASCII, which the document reads in any encoding.
+            var usesMyGames = OblivionIni.UsesMyGamesDirectory(IniDocument.Parse(File.ReadAllBytes(ini.ToString())));
             return usesMyGames ? game.PluginsFile : new GamePath(LocationId.Game, game.PluginsFile.Path);
         }
 

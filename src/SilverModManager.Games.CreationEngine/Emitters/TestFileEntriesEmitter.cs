@@ -1,6 +1,7 @@
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Games.CreationEngine.Abstractions;
+using SilverModManager.Sdk.Ini;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Games.CreationEngine.Emitters;
@@ -31,8 +32,7 @@ public class TestFileEntriesEmitter(ICreationEngineGame game) : ILoadoutDiagnost
             var file = locations.ToAbsolutePath(iniFile);
             if (!file.FileExists) continue;
 
-            var text = await file.ReadAllTextAsync(cancellationToken);
-            var found = ReadTestFiles(text);
+            var found = ReadTestFiles(IniDocument.Parse(await file.ReadAllBytesAsync(cancellationToken)));
             for (var i = 0; i < KeyCount; i++)
                 if (found[i] is not null) values[i] = found[i];
         }
@@ -46,31 +46,9 @@ public class TestFileEntriesEmitter(ICreationEngineGame game) : ILoadoutDiagnost
     }
 
     /// <summary>The <c>sTestFileN</c> values of the <c>[General]</c> section; keys that are not there stay null.</summary>
-    internal static string?[] ReadTestFiles(string iniText)
-    {
-        var values = new string?[KeyCount];
-        var inGeneral = false;
-        foreach (var raw in iniText.Split('\n'))
-        {
-            var line = raw.Trim();
-            if (line.Length == 0 || line[0] == ';') continue;
+    internal static string?[] ReadTestFiles(string iniText) => ReadTestFiles(IniDocument.Parse(iniText));
 
-            if (line[0] == '[')
-            {
-                inGeneral = line.TrimEnd().Equals("[General]", StringComparison.OrdinalIgnoreCase);
-                continue;
-            }
-            if (!inGeneral) continue;
-
-            var eq = line.IndexOf('=');
-            if (eq < 0) continue;
-
-            var key = line[..eq].Trim();
-            if (!key.StartsWith("sTestFile", StringComparison.OrdinalIgnoreCase)) continue;
-            if (!int.TryParse(key["sTestFile".Length..], out var number) || number is < 1 or > KeyCount) continue;
-
-            values[number - 1] = line[(eq + 1)..].Trim();
-        }
-        return values;
-    }
+    /// <inheritdoc cref="ReadTestFiles(string)"/>
+    internal static string?[] ReadTestFiles(IniDocument ini) =>
+        Enumerable.Range(1, KeyCount).Select(n => ini.Get("General", $"sTestFile{n}")).ToArray();
 }

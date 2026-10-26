@@ -5,6 +5,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Ini\Fixtures\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <ProjectReference Include="..\..\src\SilverModManager.Sdk\SilverModManager.Sdk.csproj" />
   </ItemGroup>

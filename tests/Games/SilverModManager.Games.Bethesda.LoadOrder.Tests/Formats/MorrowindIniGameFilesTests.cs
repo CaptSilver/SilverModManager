@@ -121,4 +121,27 @@ public class MorrowindIniGameFilesTests
 
         MorrowindIniGameFiles.Parse(text).Should().Equal("Z.esp", "A.esp");
     }
+
+    [Fact]
+    public void ParseIgnoresATrailingCommentAndKeepsASemicolonInsideAName() =>
+        MorrowindIniGameFiles.Parse(Join("\r\n", "[Game Files]", "GameFile0=Morrowind.esm ; base game", "GameFile1=Mod;v2.esp"))
+            .Should().Equal("Morrowind.esm", "Mod;v2.esp");
+
+    [Fact]
+    public void RewriteKeepsTheCommentOnALineItDoesNotReplace()
+    {
+        var text = Join("\n", "[Game Files]", "GameFile0=Old.esp", "Note=keep ; this one", "[Next]", "x=y");
+
+        MorrowindIniGameFiles.Rewrite(text, ["New.esp"]).Should()
+            .Be(Join("\n", "[Game Files]", "GameFile0=New.esp", "Note=keep ; this one", "[Next]", "x=y"));
+    }
+
+    [Fact]
+    public void ParseReadsOnlyTheFirstGameFilesSectionWithEntriesLikeRewriteEdits()
+    {
+        var text = Join("\n", "[Game Files]", "GameFile0=A.esp", "[Other]", "[Game Files]", "GameFile1=Stale.esp");
+
+        MorrowindIniGameFiles.Parse(text).Should().Equal("A.esp");
+        MorrowindIniGameFiles.Parse(MorrowindIniGameFiles.Rewrite(text, ["B.esp"])).Should().Equal("B.esp");
+    }
 }
