@@ -155,4 +155,17 @@ public interface ILoadoutManager
     /// Deletes a group rule. Priorities stay where they are: removing a constraint never moves a group.
     /// </summary>
     ValueTask RemoveGroupRule(LoadoutGroupRuleId ruleId);
+
+    /// <summary>
+    /// Makes the file that <paramref name="winner"/> provides at <paramref name="path"/> win that path whatever the
+    /// group priorities say. A loadout holds at most one pin per path; pinning again replaces it.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="winner"/> is not a group of this loadout.</exception>
+    ValueTask PinFileWinner(LoadoutId loadoutId, GamePath path, LoadoutItemGroupId winner);
+
+    /// <summary>
+    /// Removes the pin on <paramref name="path"/>, so priority decides the winner again. Does nothing when the path
+    /// has no pin.
+    /// </summary>
+    ValueTask ClearFileWinner(LoadoutId loadoutId, GamePath path);
 }

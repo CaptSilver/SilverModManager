@@ -34,19 +34,26 @@ FROM
   LEFT JOIN MDB_DELETEDFILE (Db => db) deleted_file ON loadout_item.Id = deleted_file.Id
   LEFT JOIN MDB_LOADOUTFILE (Db => db) loadout_file on loadout_item.Id = loadout_file.Id;
 
--- All winning leaf loadout items with a target path
+-- What a row is ranked by when several groups provide one path: the group pinned for the path beats every
+-- priority, and a group without a priority row counts as zero. A path with no pin has a NULL pin group, which
+-- never compares equal, so priority decides. HUGEINT so the pin sits above the largest UBIGINT priority.
+CREATE OR REPLACE MACRO synchronizer.WinnerRank (rank_pin_group, rank_item_group, rank_priority) AS
+CASE WHEN rank_pin_group = rank_item_group THEN 18446744073709551616::HUGEINT ELSE coalesce(rank_priority, 0)::HUGEINT END;
+
+-- All winning leaf loadout items with a target path. A pin on the path overrides group priority.
 CREATE OR REPLACE MACRO synchronizer.WinningLeafLoadoutItem (db) AS TABLE
 SELECT
   loadout_item.Loadout,
-  arg_max(loadout_item.Id, coalesce(group_priority.Priority, 0)) AS Id,
-  arg_max(loadout_item.Parent, coalesce(group_priority.Priority, 0)) AS Parent,
-  arg_max(loadout_item.TargetPath, coalesce(group_priority.Priority, 0)) AS TargetPath,
-  arg_max(loadout_item.Hash, coalesce(group_priority.Priority, 0)) AS Hash,
-  arg_max(loadout_item.Size, coalesce(group_priority.Priority, 0)) AS Size,
-  arg_max(loadout_item.IsDeleted, coalesce(group_priority.Priority, 0)) AS IsDeleted
+  arg_max(loadout_item.Id, synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, group_priority.Priority)) AS Id,
+  arg_max(loadout_item.Parent, synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, group_priority.Priority)) AS Parent,
+  arg_max(loadout_item.TargetPath, synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, group_priority.Priority)) AS TargetPath,
+  arg_max(loadout_item.Hash, synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, group_priority.Priority)) AS Hash,
+  arg_max(loadout_item.Size, synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, group_priority.Priority)) AS Size,
+  arg_max(loadout_item.IsDeleted, synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, group_priority.Priority)) AS IsDeleted
 FROM
   synchronizer.LeafLoadoutItems (db) loadout_item
   LEFT JOIN MDB_LOADOUTITEMGROUPPRIORITY(DB => db) group_priority ON loadout_item.Parent = group_priority.Target
+  LEFT JOIN MDB_LOADOUTFILEWINNER(Db => db) pin ON pin.Loadout = loadout_item.Loadout AND pin.TargetPath.Item2 = loadout_item.TargetPath.Item2 AND pin.TargetPath.Item3 = loadout_item.TargetPath.Item3
 WHERE loadout_item.IsEnabled
 GROUP BY loadout_item.Loadout, loadout_item.TargetPath.Item2, loadout_item.TargetPath.Item3;
 
@@ -129,17 +136,18 @@ FROM
   MDB_LOADOUTITEMGROUPPRIORITY (Db => db) item_group
 GROUP BY item_group.Loadout;
 
--- Gets all conflicting paths
+-- Gets all conflicting paths, ordered by priority with a pinned group last (winning).
 CREATE OR REPLACE MACRO synchronizer.ConflictingPaths(db) AS TABLE
 SELECT
   loadout_item.Loadout AS Loadout,
   {LocationId: loadout_item.TargetPath.Item2, Path: loadout_item.TargetPath.Item3} AS Path,
-  list(struct_pack(PriorityId := priority.Id, LoadoutItemId := loadout_item.Id) ORDER BY priority.Priority) AS Conflicts,
-  first(struct_pack(PriorityId := priority.Id, LoadoutItemId := loadout_item.Id) ORDER BY priority.Priority DESC) AS Winner,
-  list_slice(list(struct_pack(PriorityId := priority.Id, LoadoutItemId := loadout_item.Id) ORDER BY priority.Priority), 1, -2) AS Losers,
+  list(struct_pack(PriorityId := priority.Id, LoadoutItemId := loadout_item.Id) ORDER BY synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, priority.Priority)) AS Conflicts,
+  first(struct_pack(PriorityId := priority.Id, LoadoutItemId := loadout_item.Id) ORDER BY synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, priority.Priority) DESC) AS Winner,
+  list_slice(list(struct_pack(PriorityId := priority.Id, LoadoutItemId := loadout_item.Id) ORDER BY synchronizer.WinnerRank(pin.WinnerGroup, loadout_item.Parent, priority.Priority)), 1, -2) AS Losers,
 FROM
   synchronizer.LeafLoadoutItems (db) loadout_item
   LEFT JOIN MDB_LOADOUTITEMGROUPPRIORITY (Db => db) priority ON priority.Target = loadout_item.Parent
+  LEFT JOIN MDB_LOADOUTFILEWINNER(Db => db) pin ON pin.Loadout = loadout_item.Loadout AND pin.TargetPath.Item2 = loadout_item.TargetPath.Item2 AND pin.TargetPath.Item3 = loadout_item.TargetPath.Item3
 WHERE
   priority.Id IS NOT NULL AND loadout_item.IsEnabled
 GROUP BY loadout_item.Loadout, loadout_item.TargetPath.Item2, loadout_item.TargetPath.Item3

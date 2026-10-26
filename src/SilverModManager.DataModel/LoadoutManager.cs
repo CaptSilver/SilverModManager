@@ -869,6 +869,47 @@ internal partial class LoadoutManager : ILoadoutManager
         return AddGroupRuleResult.Added(LoadoutGroupRuleId.From(result[rule.Id]));
     }
 
+    public async ValueTask PinFileWinner(LoadoutId loadoutId, GamePath path, LoadoutItemGroupId winner)
+    {
+        var db = _connection.Db;
+        var group = LoadoutItemGroup.Load(db, winner);
+        if (!group.IsValid() || group.AsLoadoutItem().LoadoutId != loadoutId)
+            throw new ArgumentException($"Group {winner.Value} is not in loadout {loadoutId.Value}.", nameof(winner));
+
+        using var tx = _connection.BeginTransaction();
+        var existing = FindFileWinner(db, loadoutId, path);
+        if (existing is { } pin)
+        {
+            tx.Add(pin.Id, LoadoutFileWinner.WinnerGroup, winner);
+        }
+        else
+        {
+            _ = new LoadoutFileWinner.New(tx)
+            {
+                LoadoutId = loadoutId,
+                TargetPath = path.ToGamePathParentTuple(loadoutId.Value),
+                WinnerGroupId = winner,
+            };
+        }
+
+        await tx.Commit();
+    }
+
+    public async ValueTask ClearFileWinner(LoadoutId loadoutId, GamePath path)
+    {
+        if (FindFileWinner(_connection.Db, loadoutId, path) is not { } pin) return;
+
+        using var tx = _connection.BeginTransaction();
+        tx.Delete(pin.Id, recursive: false);
+        await tx.Commit();
+    }
+
+    private static LoadoutFileWinner.ReadOnly? FindFileWinner(IDb db, LoadoutId loadoutId, GamePath path) => LoadoutFileWinner
+        .FindByLoadout(db, loadoutId)
+        .Where(p => p.TargetPath.Item2 == path.LocationId && p.TargetPath.Item3 == path.Path)
+        .Select(static p => (LoadoutFileWinner.ReadOnly?)p)
+        .FirstOrDefault();
+
     public async ValueTask RemoveGroupRule(LoadoutGroupRuleId ruleId)
     {
         using var tx = _connection.BeginTransaction();
