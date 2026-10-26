@@ -14,8 +14,10 @@
         <items:ApplyControlDesignViewModel />
     </Design.DataContext>
 
+    <!-- A light wash rather than a solid surface, so Glass shows through it like the rest of the left menu -->
     <Border
-        Background="{StaticResource SurfaceMidBrush}"
+        x:Name="ApplyControlBorder"
+        Background="{StaticResource SurfaceTranslucentLowBrush}"
         CornerRadius="{StaticResource Rounded-lg}"
         Padding="12"
         HorizontalAlignment="Stretch"
