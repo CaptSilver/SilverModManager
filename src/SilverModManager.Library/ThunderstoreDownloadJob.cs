@@ -9,6 +9,7 @@ using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Thunderstore;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Library;
 
@@ -147,4 +148,8 @@ public class ThunderstoreDownloadJob : IJobDefinitionWithStart<ThunderstoreDownl
 /// A Thunderstore version could not be found, was withdrawn, or did not match the digest it was expected to have.
 /// </summary>
 [PublicAPI]
-public class ThunderstoreIntegrityException(string message) : Exception(message);
+public class ThunderstoreIntegrityException(string message) : UserFacingException(message)
+{
+    /// <inheritdoc />
+    public override string Title => "The Thunderstore download was rejected";
+}

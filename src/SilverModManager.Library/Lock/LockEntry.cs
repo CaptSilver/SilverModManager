@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using SilverModManager.Library.Sources;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Library.Lock;
 
@@ -44,4 +45,8 @@ public static class LockSources
 /// A lock file could not be read, or a loadout could not be turned into one.
 /// </summary>
 [PublicAPI]
-public sealed class LockException(string message) : Exception(message);
+public sealed class LockException(string message) : UserFacingException(message)
+{
+    /// <inheritdoc />
+    public override string Title => "The lock file was not used";
+}

@@ -9,6 +9,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Library;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Library;
 
@@ -203,4 +204,8 @@ public class AddGitHubReleaseAssetJob : IJobDefinitionWithStart<AddGitHubRelease
 /// A release asset could not be found or did not match the digest it was expected to have.
 /// </summary>
 [PublicAPI]
-public class ReleaseAssetIntegrityException(string message) : Exception(message);
+public class ReleaseAssetIntegrityException(string message) : UserFacingException(message)
+{
+    /// <inheritdoc />
+    public override string Title => "The release asset was rejected";
+}
