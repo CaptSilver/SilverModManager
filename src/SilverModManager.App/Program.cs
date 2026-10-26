@@ -67,15 +67,20 @@ public class Program
             return SelftestHelper.Run(startupMode.Args, Console.Out, Console.Error);
         }
 
-        LoggingSettings loggingSettings;
-        using (var settingsHost = BuildSettingsHost())
+        // Nothing is logged yet, so a settings file that cannot be read is told to the terminal and nowhere else.
+        if (!ProcessStartup.TryReadSettings(ReadLoggingSettings, message => Console.Error.WriteLine(message), out var loggingSettings))
         {
-            var settingsManager = settingsHost.Services.GetRequiredService<ISettingsManager>();
-            loggingSettings = settingsManager.Get<LoggingSettings>();
+            return 1;
         }
 
         var steps = CreateSteps(loggingSettings);
         return ProcessStartup.Run(startupMode, args, steps);
+    }
+
+    private static LoggingSettings ReadLoggingSettings()
+    {
+        using var settingsHost = BuildSettingsHost();
+        return settingsHost.Services.GetRequiredService<ISettingsManager>().Get<LoggingSettings>();
     }
 
     private static ProcessStartupSteps CreateSteps(LoggingSettings loggingSettings) => new()
@@ -209,8 +214,7 @@ public class Program
         var syncFile = services.GetRequiredService<SyncFile>();
         try
         {
-            await client.ExecuteCommand(startupMode.Args, AnsiConsole.Console);
-            return 0;
+            return await client.ExecuteCommand(startupMode.Args, AnsiConsole.Console);
         }
         catch (NoMainProcessStarted _) when (!startupMode.StartsUiWhenNoMainRunning)
         {
@@ -271,8 +275,7 @@ public class Program
                 }
             }
 
-            await client.ExecuteCommand(startupMode.Args, AnsiConsole.Console);
-            return 0;
+            return await client.ExecuteCommand(startupMode.Args, AnsiConsole.Console);
         }
     }
 
@@ -302,7 +305,6 @@ public class Program
             )
             .ConfigureLogging((_, builder) => builder
                 .ClearProviders()
-                .AddSimpleConsole()
                 .SetMinimumLevel(LogLevel.Trace)
             )
             .Build();

@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.EventBus;
 using R3;
 
@@ -67,7 +68,7 @@ public sealed class EventBus : IEventBus, IDisposable
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Exception running request handler for request of type `{RequestType}` with result type `{ResultType}`: `{StringRepresentation}`", typeof(TRequest), typeof(TResult), request.ToString());
+                _logger.LogFailure(e, "Exception running request handler for request of type `{RequestType}` with result type `{ResultType}`: `{StringRepresentation}`", typeof(TRequest), typeof(TResult), request.ToString());
                 return Optional<TResult>.None;
             }
         }

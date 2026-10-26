@@ -1,9 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Cli;
 using SilverModManager.Abstractions.FileExtractor;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Exceptions;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Settings;
 using SilverModManager.CrossPlatform;
 using SilverModManager.DataModel;
@@ -31,8 +33,11 @@ internal static class CleanupVerbs
         [Injected] IConnection conn,
         [Injected] ISettingsManager settingsManager,
         [Injected] IFileSystem fileSystem,
-        [Injected] ISynchronizerService syncService)
+        [Injected] ISynchronizerService syncService,
+        [Injected] ILoggerFactory loggerFactory)
     {
+        var logger = loggerFactory.CreateLogger(nameof(CleanupVerbs));
+
         // Step 1: Revert the managed games to their original state
         var db = conn.Db;
         var managedInstallations = Loadout.All(db)
@@ -54,7 +59,8 @@ internal static class CleanupVerbs
             }
             catch (Exception ex)
             {
-                await renderer.Error(ex, "Error reverting {0}: {1}", installation.Game.DisplayName, ex.Message);
+                logger.LogFailure(ex, "Error reverting {Game}", installation.Game.DisplayName);
+                await renderer.Error(ex, "Error reverting {0}", installation.Game.DisplayName);
             }
         }
 
@@ -96,14 +102,15 @@ internal static class CleanupVerbs
                 DataModelSettings.GetLocalApplicationDataDirectory(fileSystem),
             }.Concat(dataModelSettings.ArchiveLocations.Select(path => path.ToPath(fileSystem)));
 
-            await DeleteRemainingFilesUnix(renderer, appFiles, appDirectories);
+            await DeleteRemainingFilesUnix(renderer, logger, appFiles, appDirectories);
 
             await renderer.Text("Application uninstalled successfully");
             return 0;
         }
         catch (Exception ex)
         {
-            await renderer.Error(ex, $"Error deleting application directories: {ex.Message}");
+            logger.LogFailure(ex, "Error deleting application directories");
+            await renderer.Error(ex, "Error deleting application directories");
             return -1;
         }
         finally
@@ -112,13 +119,13 @@ internal static class CleanupVerbs
         }
     }
 
-    private static async Task DeleteRemainingFilesUnix(IRenderer renderer, AbsolutePath[] appFiles, IEnumerable<AbsolutePath> appDirectories)
+    private static async Task DeleteRemainingFilesUnix(IRenderer renderer, ILogger logger, AbsolutePath[] appFiles, IEnumerable<AbsolutePath> appDirectories)
     {
-        await DeleteFilesUnix(renderer, appFiles);
-        await DeleteDirectoriesUnix(renderer, appDirectories);
+        await DeleteFilesUnix(renderer, logger, appFiles);
+        await DeleteDirectoriesUnix(renderer, logger, appDirectories);
     }
     
-    private static async Task DeleteDirectoriesUnix(IRenderer renderer, IEnumerable<AbsolutePath> appDirectories)
+    private static async Task DeleteDirectoriesUnix(IRenderer renderer, ILogger logger, IEnumerable<AbsolutePath> appDirectories)
     {
         foreach (var directory in appDirectories)
         {
@@ -132,12 +139,13 @@ internal static class CleanupVerbs
             }
             catch (Exception e)
             {
-                await renderer.Error(e, "Failed to delete directory: {0}", directory); 
+                logger.LogFailure(e, "Failed to delete directory {Directory}", directory);
+                await renderer.Error(e, "Failed to delete directory: {0}", directory);
             }
         }
     }
 
-    private static async Task DeleteFilesUnix(IRenderer renderer, AbsolutePath[] appFiles)
+    private static async Task DeleteFilesUnix(IRenderer renderer, ILogger logger, AbsolutePath[] appFiles)
     {
         foreach (var appFile in appFiles)
         {
@@ -151,7 +159,8 @@ internal static class CleanupVerbs
             }
             catch (Exception e)
             {
-                await renderer.Error(e, "Failed to delete file: {0}", appFile); 
+                logger.LogFailure(e, "Failed to delete file {File}", appFile);
+                await renderer.Error(e, "Failed to delete file: {0}", appFile);
             }
         }
     }

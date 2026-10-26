@@ -148,18 +148,27 @@ public static class RendererExtensions
     }
 
     /// <summary>
-    /// Prints the given exception to the renderer
+    /// Prints what failed, then why: the refusal's message, or where the log has the details of a crash. The
+    /// exception itself is never printed; whoever catches it logs it.
     /// </summary>
     /// <param name="renderer"></param>
     /// <param name="ex"></param>
-    /// <param name="template"></param>
+    /// <param name="template">What was being done, without the exception's message.</param>
     /// <param name="args"></param>
     public static async Task Error(this IRenderer renderer, Exception ex, string template, params object[] args)
     {
-        await renderer.Text(template, args);
-        await renderer.Text("Error: {0}", ex);
+        await renderer.TextLine(template, args);
+        await renderer.Error(ex);
     }
-    
+
+    /// <summary>
+    /// Prints the sentence for an exception: the refusal's message, or where the log has the details of a crash.
+    /// </summary>
+    public static async Task Error(this IRenderer renderer, Exception ex)
+    {
+        await renderer.TextLine("{0}", CliErrors.Describe(ex));
+    }
+
     /// <summary>
     /// Prints an error message to the renderer, and returns an error code
     /// </summary>

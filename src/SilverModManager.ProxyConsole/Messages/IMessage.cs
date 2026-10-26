@@ -15,6 +15,7 @@ namespace SilverModManager.ProxyConsole.Messages;
 [MemoryPackUnion(0x7, typeof(LaunchAccepted))]
 [MemoryPackUnion(0x8, typeof(LaunchExited))]
 [MemoryPackUnion(0x9, typeof(LaunchStop))]
+[MemoryPackUnion(0xA, typeof(CommandExited))]
 [MemoryPackUnion(ushort.MaxValue, typeof(Acknowledge))]
 public partial interface IMessage
 {

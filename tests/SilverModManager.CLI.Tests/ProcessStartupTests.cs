@@ -5,6 +5,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
+using SilverModManager.CrossPlatform;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.App;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
@@ -53,6 +55,7 @@ public class ProcessStartupTests
         public List<(MainKind Kind, int Port)> ClaimRequests { get; } = [];
         public Exception? OpenDatabaseException { get; set; }
         public Exception? CliException { get; set; }
+        public Exception? RemoteException { get; set; }
 
         public ProcessStartupSteps Steps() => new()
         {
@@ -98,7 +101,12 @@ public class ProcessStartupTests
                 if (CliException is not null) throw CliException;
                 return Task.FromResult(CliExitCode);
             },
-            RunCliRemotely = (_, _) => { Calls.Add("cli-remote"); return Task.FromResult(CliExitCode); },
+            RunCliRemotely = (_, _) =>
+            {
+                Calls.Add("cli-remote");
+                if (RemoteException is not null) throw RemoteException;
+                return Task.FromResult(CliExitCode);
+            },
             RunLaunch = (_, launch) =>
             {
                 Calls.Add("run-launch");
@@ -247,6 +255,52 @@ public class ProcessStartupTests
 
         var args = new string[] { "as-main", "some-verb" };
         ProcessStartup.Run(StartupMode.Parse(args), args, steps).Should().Be(1);
+    }
+
+    [Fact]
+    public void AClientThatCrashesPrintsOnePlainLine_NoStackTrace()
+    {
+        var recorder = new Recorder { RemoteException = new InvalidOperationException("sequence contains no elements") };
+
+        Run(recorder, "some-verb").Should().Be(1);
+
+        var line = recorder.Errors.Should().ContainSingle().Which;
+        line.Should().Contain("Details are in the log at").And.NotContain("sequence contains").And.NotContain(" at System");
+        recorder.Notifications.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AClientThatIsRefusedPrintsTheRefusalMessage()
+    {
+        var recorder = new Recorder { RemoteException = new GameLaunchException("The game is still running.") };
+
+        Run(recorder, "some-verb").Should().Be(1);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Be("The game is still running.");
+    }
+
+    [Fact]
+    public void ASettingsFileThatCannotBeReadIsAPlainLine()
+    {
+        var errors = new List<string>();
+
+        var read = ProcessStartup.TryReadSettings<LoggingSettings>(() => throw new System.Text.Json.JsonException("the settings file ends in the middle of a value"), errors.Add, out var settings);
+
+        read.Should().BeFalse();
+        settings.Should().BeNull();
+        errors.Should().ContainSingle().Which.Should().Be("Could not read the settings: the settings file ends in the middle of a value");
+    }
+
+    [Fact]
+    public void SettingsThatReadAreReturned()
+    {
+        var errors = new List<string>();
+        var expected = LoggingSettings.CreateDefault();
+
+        ProcessStartup.TryReadSettings(() => expected, errors.Add, out var settings).Should().BeTrue();
+
+        settings.Should().BeSameAs(expected);
+        errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -567,8 +621,8 @@ public class ProcessStartupTests
         Run(recorder, Command("run")).Should().Be(125);
 
         // Steam shows neither stderr nor the log, so the failure has to reach the desktop as well.
-        recorder.Errors.Should().ContainSingle().Which.Should().Contain("boom");
-        recorder.Notifications.Should().ContainSingle().Which.Should().Contain("boom");
+        recorder.Errors.Should().ContainSingle().Which.Should().Contain("Details are in the log at");
+        recorder.Notifications.Should().ContainSingle().Which.Should().Contain("Details are in the log at");
         recorder.Calls.Should().ContainInOrder("close-database", "release-session", "release-main");
     }
 

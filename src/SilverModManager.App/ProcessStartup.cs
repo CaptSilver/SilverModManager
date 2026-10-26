@@ -1,10 +1,13 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Cli;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.SingleProcess;
 using SilverModManager.SingleProcess.Exceptions;
 
@@ -102,6 +105,27 @@ public static class ProcessStartup
     /// </summary>
     public static string GuiUnavailableMessage(string reason) =>
         $"SilverModManager is open but could not take this launch from Steam ({reason}). Close SilverModManager, or start the game from inside it.";
+
+    /// <summary>
+    /// Reads the settings the process needs before it has a logger. A file that cannot be read is reported as a
+    /// plain line on <paramref name="writeError"/>, since there is no log yet to hold the details.
+    /// </summary>
+    public static bool TryReadSettings<T>(Func<T> read, Action<string> writeError, [NotNullWhen(true)] out T? settings)
+        where T : class
+    {
+        try
+        {
+            settings = read();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // No log holds this failure, so the line carries the cause itself instead of pointing at one.
+            writeError($"Could not read the settings: {ex.Message}");
+            settings = null;
+            return false;
+        }
+    }
 
     public static int Run(StartupMode startupMode, string[] args, ProcessStartupSteps steps)
     {
@@ -242,12 +266,13 @@ public static class ProcessStartup
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Unhandled exception");
-                if (!startupMode.IsHeadlessRun) return 1;
+                logger.LogFailure(ex, "Unhandled exception");
 
                 // Steam starts the launch option without a terminal, so the log alone would leave the game silently not starting.
-                var failure = $"The launch failed: {ex.Message}";
+                var failure = CliErrors.Describe(ex);
                 steps.WriteError(failure);
+                if (!startupMode.IsHeadlessRun) return 1;
+
                 steps.Notify(services, failure);
                 return RunFailureExitCode;
             }

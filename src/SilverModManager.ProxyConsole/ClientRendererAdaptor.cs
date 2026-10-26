@@ -37,6 +37,12 @@ public class ClientRendererAdaptor
     /// </summary>
     public Task RunningTask => _task;
 
+    /// <summary>
+    /// The exit code the main process reported for the verb, or null if it never said (it closed the connection,
+    /// or it is a build that does not send one).
+    /// </summary>
+    public int? ExitCode { get; private set; }
+
     private async Task ForwardCommands()
     {
         while(true)
@@ -53,6 +59,9 @@ public class ClientRendererAdaptor
                     case Clear:
                         await _renderer.ClearAsync();
                         break;
+                    case CommandExited exited:
+                        ExitCode = exited.ExitCode;
+                        return;
                     case ProgramArgumentsRequest:
                         await _serializer.SendAsync(new ProgramArgumentsResponse()
                         {

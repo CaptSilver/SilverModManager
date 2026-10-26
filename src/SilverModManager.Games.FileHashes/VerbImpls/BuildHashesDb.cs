@@ -20,6 +20,7 @@ using SilverModManager.Networking.EpicGameStore.DTOs.EgData;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.ProxyConsole;
 using YamlDotNet.Serialization;
@@ -39,6 +40,7 @@ public class BuildHashesDb : IAsyncDisposable
     private readonly DatomStore _datomStore;
     private readonly Connection _connection;
     private readonly IRenderer _renderer;
+    private readonly ILogger<BuildHashesDb> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     
     private readonly Dictionary<(RelativePath Path, EntityId HashId), EntityId> _knownHashPaths = new();
@@ -49,6 +51,7 @@ public class BuildHashesDb : IAsyncDisposable
     {
         Provider = provider;
         _renderer = renderer;
+        _logger = provider.GetRequiredService<ILogger<BuildHashesDb>>();
         _gameRegistry = gameRegistry;
         _tempFolder = temporaryFileManager.CreateFolder();
         _jsonOptions = provider.GetRequiredService<JsonSerializerOptions>();
@@ -78,7 +81,8 @@ public class BuildHashesDb : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            await _renderer.Error(ex, "Failed to build database");
+            // The rethrow reaches the verb handler, which logs it and says why.
+            await _renderer.Error("Failed to build database");
             throw;
         }
 
@@ -391,7 +395,8 @@ public class BuildHashesDb : IAsyncDisposable
             }
             catch (Exception ex)
             {
-                await _renderer.Error(ex, "Failed to import {0}: {1}", build.BuildId, ex.Message);
+                _logger.LogFailure(ex, "Failed to import build {BuildId}", build.BuildId);
+                await _renderer.Error(ex, "Failed to import {0}", build.BuildId);
             }
             buildCount++;
         }
@@ -416,7 +421,8 @@ public class BuildHashesDb : IAsyncDisposable
             }
             catch (Exception ex)
             {
-                await _renderer.Error(ex, "Failed to load {0}: {1}", file, ex.Message);
+                _logger.LogFailure(ex, "Failed to load {File}", file);
+                await _renderer.Error(ex, "Failed to load {0}", file);
             }
         }
 
@@ -486,7 +492,8 @@ public class BuildHashesDb : IAsyncDisposable
             }
             catch (Exception ex)
             {
-                await _renderer.Error(ex, "Failed to import {0}: {1}", id, ex.Message);
+                _logger.LogFailure(ex, "Failed to import {Id}", id);
+                await _renderer.Error(ex, "Failed to import {0}", id);
             }
         }
         
@@ -535,7 +542,8 @@ public class BuildHashesDb : IAsyncDisposable
             }
             catch (Exception ex)
             {
-                await _renderer.Error(ex, "Failed to import {0}: {1}", file, ex.Message);
+                _logger.LogFailure(ex, "Failed to import {File}", file);
+                await _renderer.Error(ex, "Failed to import {0}", file);
             }
         }
 

@@ -3,6 +3,7 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Cli;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.ProxyConsole;
 
 namespace SilverModManager.SingleProcess;
@@ -36,9 +37,12 @@ internal class CommandHandler(IServiceProvider serviceProvider, List<Func<Invoca
         }
         catch (Exception ex)
         {
-            serviceProvider.GetRequiredService<ILogger<CommandHandler>>().LogError(ex, "An error occurred while executing the command {0}", methodInfo.Name);
-            await context.BindingContext.GetRequiredService<IRenderer>().Error(ex, "An error occurred while executing the command");
-            return -1;
+            serviceProvider.GetRequiredService<ILogger<CommandHandler>>().LogFailure(ex, "An error occurred while executing the command {Command}", methodInfo.Name);
+
+            // Only a verb that asks for the renderer gets one bound; any other still has to say why it failed.
+            if (context.BindingContext.GetService<IRenderer>() is { } renderer) await renderer.Error(ex);
+            else context.Console.Error.Write(CliErrors.Describe(ex) + Environment.NewLine);
+            return CliErrors.ExitCode(ex);
         }
     }
 }
