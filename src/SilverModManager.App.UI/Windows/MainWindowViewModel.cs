@@ -354,24 +354,9 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
         var source = provider.GetService<IObservableExceptionSource>();
         if (source is null) return Disposable.Empty;
 
-        return source.Exceptions
-            .Subscribe(msg =>
-                {
-                    var title = "Unhandled Exception";
-                    var description = msg.Message;
-                    string? details = null;
-                    if (msg.Exception != null)
-                    {
-                        details = $"""
-                                  ```
-                                  {msg.Exception}
-                                  ``` 
-                                  """;
-                    }
-
-                    Task.Run(() => MessageBoxOkViewModel.Show(provider, title, description, details));
-                }
-            );
+        return UnhandledExceptionReporter.Connect(source.Exceptions,
+            (title, description, details) => Task.Run(() => MessageBoxOkViewModel.Show(provider, title, description, details))
+        );
     }
 
     internal void OnClose()
