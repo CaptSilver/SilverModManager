@@ -35,19 +35,6 @@ public class DcxTests
     // different frame here means two players building different files from the same inputs.
     private const string PinnedFrameSha256 = "2d587b5079b7baaf1353de00d78a38c0b86f4799a0104db1be1bce234b54f5c4";
 
-    /// <summary>A container with the given method and body, laid out the way <see cref="Dcx.Write"/> lays out a zlib one.</summary>
-    private static byte[] Container(string method, int uncompressedSize, byte[] body)
-    {
-        var header = Dcx.Write([], Dflt)[..Dcx.HeaderSize];
-        var blob = new byte[Dcx.HeaderSize + body.Length];
-        header.CopyTo(blob, 0);
-        System.Text.Encoding.ASCII.GetBytes(method).CopyTo(blob, 0x28);
-        SetU32(blob, 0x1C, (uint)uncompressedSize);
-        SetU32(blob, 0x20, (uint)body.Length);
-        body.CopyTo(blob, Dcx.HeaderSize);
-        return blob;
-    }
-
     [Fact]
     public void ADfltContainerRoundTrips()
     {
@@ -194,7 +181,7 @@ public class DcxTests
     public void AnImpossibleUncompressedSizeIsRefusedBeforeAnyDecoderRuns(string method)
     {
         // A bare 32-bit size straight out of the file: without the cap up front a decoder would size its buffer from it.
-        var blob = Container(method, 0, "garbage"u8.ToArray());
+        var blob = DcxFixture.Container(method, 0, "garbage"u8.ToArray());
         SetU32(blob, 0x1C, uint.MaxValue);
         var act = () => Dcx.Read(blob, EldenRing);
         act.Should().Throw<DcxException>().WithMessage("*refusing to allocate*");
@@ -298,7 +285,7 @@ public class DcxTests
     public void AKrakContainerReadsBackThroughAGameThatShipsKraken()
     {
         var payload = KrakenFixture.Payload(300 * 1024);
-        var blob = Container("KRAK", payload.Length, KrakenFixture.Stored(payload));
+        var blob = DcxFixture.Container("KRAK", payload.Length, KrakenFixture.Stored(payload));
         Dcx.Read(blob, EldenRing).Should().Equal(payload);
     }
 
@@ -307,7 +294,7 @@ public class DcxTests
     [InlineData("ZSTD")]
     public void AGameThatDoesNotShipAMethodRefusesItAndNamesTheOnesItReads(string method)
     {
-        var blob = Container(method, 7, "payload"u8.ToArray());
+        var blob = DcxFixture.Container(method, 7, "payload"u8.ToArray());
         var act = () => Dcx.Read(blob, TestSouls);
         act.Should().Throw<DcxException>().WithMessage($"*{method}*Dflt*");
     }
