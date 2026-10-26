@@ -165,4 +165,74 @@ public class UpdaterViewModelTests : IDisposable
             if (!oldInstance.HasExited) oldInstance.Kill();
         }
     }
+
+    [System.Runtime.InteropServices.DllImport("libc", SetLastError = true)]
+    private static extern int dup(int descriptor);
+
+    [System.Runtime.InteropServices.DllImport("libc", SetLastError = true)]
+    private static extern int close(int descriptor);
+
+    /// <summary>A descriptor without close-on-exec, like the one the AppImage runtime leaves open in the app.</summary>
+    private int OpenInheritableDescriptor(out Microsoft.Win32.SafeHandles.SafeFileHandle file)
+    {
+        file = File.OpenHandle(Path.Combine(_directory, "held"), FileMode.Create, FileAccess.ReadWrite);
+        var descriptor = dup((int)file.DangerousGetHandle());
+        descriptor.Should().BeGreaterThan(2);
+        return descriptor;
+    }
+
+    /// <summary>Runs the restart shell with an app that writes the descriptors it was started with.</summary>
+    private async Task<int[]> DescriptorsTheRestartedAppSees()
+    {
+        var listing = Path.Combine(_directory, "fds");
+        var app = Path.Combine(_directory, "Fds.AppImage");
+        await File.WriteAllTextAsync(app, "#!/bin/sh\nfor f in /proc/$$/fd/*; do echo \"${f##*/}\"; done > \"$(dirname \"$0\")/fds\"\n", TestContext.Current.CancellationToken);
+        File.SetUnixFileMode(app, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+        using var exited = System.Diagnostics.Process.Start("true")!;
+        await exited.WaitForExitAsync(TestContext.Current.CancellationToken);
+        var info = ProcessAppRestarter.BuildStartInfo(app, [], new Dictionary<string, string?> { ["PATH"] = "/usr/bin:/bin" }, exited.Id);
+        using var waiter = System.Diagnostics.Process.Start(info)!;
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(10));
+        await waiter.WaitForExitAsync(timeout.Token);
+
+        return (await File.ReadAllLinesAsync(listing, TestContext.Current.CancellationToken)).Select(int.Parse).ToArray();
+    }
+
+    [Fact]
+    public void Test_InheritableDescriptors_ListsOnlyThoseWithoutCloseOnExec()
+    {
+        var descriptor = OpenInheritableDescriptor(out var file);
+        using (file)
+        {
+            try
+            {
+                var listed = ProcessAppRestarter.InheritableDescriptors();
+                listed.Should().Contain(descriptor);
+                listed.Should().NotContain((int)file.DangerousGetHandle(), ".NET opens files close-on-exec");
+                listed.Should().OnlyContain(fd => fd > 2, "standard input and output stay with the new app");
+            }
+            finally { close(descriptor); }
+        }
+    }
+
+    [Fact]
+    public async Task Test_Restart_DoesNotHandTheOldInstancesDescriptorsToTheNewApp()
+    {
+        // Inherited by the new AppImage, the old runtime's keep-alive descriptor kept that runtime and its mount alive.
+        var descriptor = OpenInheritableDescriptor(out var file);
+        using (file)
+        {
+            try
+            {
+                (await DescriptorsTheRestartedAppSees()).Should().Contain(descriptor, "without the fix the app inherits it");
+
+                ProcessAppRestarter.MarkCloseOnExec([descriptor]);
+
+                (await DescriptorsTheRestartedAppSees()).Should().NotContain(descriptor);
+            }
+            finally { close(descriptor); }
+        }
+    }
 }
