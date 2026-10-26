@@ -38,11 +38,13 @@ public class ProxiedRenderer : IRenderer
     /// <summary>
     /// Asks the client what it wants and returns its first reply unexamined, with the renderer and serializer over
     /// the same stream. A client that wants to run a verb answers with <see cref="ProgramArgumentsResponse"/>;
-    /// anything else is the caller's to interpret.
+    /// anything else is the caller's to interpret. A <paramref name="greeting"/> goes out before the question, so the
+    /// client can check what it is talking to before it answers.
     /// </summary>
-    public static async Task<(IMessage? Reply, IRenderer Renderer, Serializer Serializer)> Accept(IServiceProvider provider, Stream duplexStream)
+    public static async Task<(IMessage? Reply, IRenderer Renderer, Serializer Serializer)> Accept(IServiceProvider provider, Stream duplexStream, IMessage? greeting = null)
     {
         var serializer = new Serializer(duplexStream, provider.GetRequiredService<IEnumerable<IRenderableDefinition>>());
+        if (greeting is not null) await serializer.SendAsync(greeting);
         await serializer.SendAsync(new ProgramArgumentsRequest());
         var reply = await serializer.ReceiveAsync();
         return (reply, new ProxiedRenderer(serializer), serializer);

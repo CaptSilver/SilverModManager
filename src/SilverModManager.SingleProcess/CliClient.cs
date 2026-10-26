@@ -13,8 +13,17 @@ namespace SilverModManager.SingleProcess;
 /// <summary>
 /// Client helper for connecting to a CliServer and executing commands
 /// </summary>
-public class CliClient(ILogger<CliClient> logger, SyncFile syncFile, IServiceProvider provider)
+public class CliClient(
+    ILogger<CliClient> logger,
+    SyncFile syncFile,
+    IServiceProvider provider,
+    AppBuild? build = null,
+    TimeSpan? greetingTimeout = null)
 {
+    private static readonly TimeSpan DefaultGreetingTimeout = TimeSpan.FromSeconds(10);
+
+    private readonly AppBuild _build = build ?? AppBuild.Current;
+    private readonly TimeSpan _greetingTimeout = greetingTimeout ?? DefaultGreetingTimeout;
 
     /// <summary>
     /// Starts the client process, connecting to the main process and running the console response loop. Returns the
@@ -63,6 +72,7 @@ public class CliClient(ILogger<CliClient> logger, SyncFile syncFile, IServicePro
             await using var stream = client.GetStream();
 
             logger.LogDebug("Connected to main process {ProcessId} on port {Port}", process.Id, port);
+            await CheckGreetingAsync(new Serializer(stream, provider.GetRequiredService<IEnumerable<IRenderableDefinition>>()), token);
             return await RunTillCloseAsync(new ConsoleSettings
             {
                 Arguments = args,
@@ -109,6 +119,7 @@ public class CliClient(ILogger<CliClient> logger, SyncFile syncFile, IServicePro
         var accepted = false;
         try
         {
+            await CheckGreetingAsync(serializer, CancellationToken.None);
             if (await serializer.ReceiveAsync() is not ProgramArgumentsRequest)
                 return new ForwardedLaunchOutcome.Unavailable("the running SilverModManager did not greet this client the way it expects");
 
@@ -141,6 +152,10 @@ public class CliClient(ILogger<CliClient> logger, SyncFile syncFile, IServicePro
                 }
             }
         }
+        catch (Exception e) when (e is VersionMismatch or MainProcessSilent)
+        {
+            return new ForwardedLaunchOutcome.Unavailable(e.Message);
+        }
         catch (Exception e) when (e is EndOfStreamException or IOException or MemoryPack.MemoryPackSerializationException)
         {
             logger.LogWarning(e, "Lost the connection to main process {ProcessId} during a forwarded launch", process.Id);
@@ -154,6 +169,42 @@ public class CliClient(ILogger<CliClient> logger, SyncFile syncFile, IServicePro
     }
 
     private const int LaunchFailureExitCode = 125;
+
+    private const string Remedy = "Close the app and run the command again, or run the same version.";
+
+    /// <summary>
+    /// Reads the main process's greeting and refuses to go on unless it is the same build as this one. Nothing has
+    /// been sent by then, so a refused command never reaches the main process.
+    /// </summary>
+    /// <exception cref="VersionMismatch">The main process is another build, or an older one that sends no greeting.</exception>
+    /// <exception cref="MainProcessSilent">The main process said nothing within the greeting timeout.</exception>
+    private async Task CheckGreetingAsync(Serializer serializer, CancellationToken token)
+    {
+        var receive = serializer.ReceiveAsync();
+        IMessage? greeting;
+        try
+        {
+            greeting = await receive.WaitAsync(_greetingTimeout, token);
+        }
+        catch (TimeoutException)
+        {
+            // The abandoned read ends with the connection; nobody is left to look at its failure.
+            _ = receive.ContinueWith(static t => _ = t.Exception, TaskScheduler.Default);
+            throw new MainProcessSilent($"The running SilverModManager did not say which version it is. It may be a different version or stuck. {Remedy}");
+        }
+
+        switch (greeting)
+        {
+            case VersionHello hello when AppBuild.From(hello) == _build:
+                return;
+            case VersionHello hello:
+                var running = AppBuild.From(hello);
+                throw new VersionMismatch($"The running SilverModManager is {running.Describe(_build)} but this command is {_build.Describe(running)}. {Remedy}");
+            default:
+                // A build from before the greeting opens with its question straight away.
+                throw new VersionMismatch($"The running SilverModManager is an older version than this command ({_build.Version}). {Remedy}");
+        }
+    }
 
     private async Task SendStopAsync(Serializer serializer)
     {

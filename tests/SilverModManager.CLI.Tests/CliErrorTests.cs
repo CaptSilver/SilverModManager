@@ -261,6 +261,7 @@ public sealed class CliErrorTests : IAsyncLifetime
             {
                 using var connection = await listener.AcceptTcpClientAsync();
                 var serializer = new Serializer(connection.GetStream(), services.GetRequiredService<IEnumerable<IRenderableDefinition>>());
+                await serializer.SendAsync(AppBuild.Current.ToHello());
                 await serializer.SendAsync(new ProgramArgumentsRequest());
                 await serializer.ReceiveAsync();
                 if (text is null)

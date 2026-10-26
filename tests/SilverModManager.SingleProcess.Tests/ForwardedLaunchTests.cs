@@ -180,6 +180,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         {
             await raw.ConnectAsync(IPAddress.Loopback, port);
             var serializer = new Serializer(raw.GetStream(), []);
+            (await serializer.ReceiveAsync()).Should().BeOfType<VersionHello>();
             (await serializer.ReceiveAsync()).Should().BeOfType<ProgramArgumentsRequest>();
             await serializer.SendAsync(RawRequest(File.ReadAllText(_syncFile.TokenPath.GetFullPath())));
             (await serializer.ReceiveAsync()).Should().BeOfType<LaunchAccepted>();
@@ -197,6 +198,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         using var raw = new TcpClient();
         await raw.ConnectAsync(IPAddress.Loopback, port);
         var serializer = new Serializer(raw.GetStream(), []);
+        await serializer.ReceiveAsync();
         await serializer.ReceiveAsync();
         await serializer.SendAsync(RawRequest("not the token"));
 
@@ -225,6 +227,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         {
             using var peer = await listener.AcceptTcpClientAsync();
             var serializer = new Serializer(peer.GetStream(), []);
+            await serializer.SendAsync(AppBuild.Current.ToHello());
             await serializer.SendAsync(new ProgramArgumentsRequest());
             await serializer.ReceiveAsync();
         });
@@ -248,6 +251,7 @@ public sealed class ForwardedLaunchTests : IAsyncLifetime
         {
             using var peer = await listener.AcceptTcpClientAsync();
             var serializer = new Serializer(peer.GetStream(), []);
+            await serializer.SendAsync(AppBuild.Current.ToHello());
             await serializer.SendAsync(new ProgramArgumentsRequest());
             await serializer.ReceiveAsync();
             await serializer.SendAsync(new LaunchAccepted());

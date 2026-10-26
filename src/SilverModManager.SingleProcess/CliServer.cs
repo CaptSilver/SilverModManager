@@ -33,6 +33,7 @@ public sealed class CliServer : IHostedService, IDisposable
     private readonly ILogger<CliServer> _logger;
     private readonly CommandLineConfigurator _configurator;
     private readonly SyncFile _syncFile;
+    private readonly AppBuild _build;
 
     /// <summary>
     /// Constructor.
@@ -42,8 +43,10 @@ public sealed class CliServer : IHostedService, IDisposable
         CommandLineConfigurator configurator,
         ISettingsManager settingsManager,
         SyncFile syncFile,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        AppBuild? build = null)
     {
+        _build = build ?? AppBuild.Current;
         _serviceProvider = serviceProvider;
         _logger = logger;
         _configurator = configurator;
@@ -121,7 +124,7 @@ public sealed class CliServer : IHostedService, IDisposable
         {
             var stream = client.GetStream();
 
-            var (reply, renderer, serializer) = await ProxiedRenderer.Accept(_serviceProvider, stream);
+            var (reply, renderer, serializer) = await ProxiedRenderer.Accept(_serviceProvider, stream, _build.ToHello());
             switch (reply)
             {
                 case ProgramArgumentsResponse arguments:
@@ -135,6 +138,11 @@ public sealed class CliServer : IHostedService, IDisposable
                     _logger.LogWarning("Dropping a client that answered with {Message}", reply?.GetType().Name ?? "nothing");
                     break;
             }
+        }
+        catch (Exception e) when (e is EndOfStreamException or IOException or ObjectDisposedException)
+        {
+            // A client that checks the greeting and walks away (a different build) never answers the question.
+            _logger.LogInformation(e, "A client went away before it sent a request");
         }
         finally
         {

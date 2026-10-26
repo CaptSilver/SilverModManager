@@ -77,6 +77,10 @@ public sealed class VerbRunner(CliClient client)
         {
             return new ToolResult(e.Message, true);
         }
+        catch (Exception e) when (e is VersionMismatch or MainProcessSilent)
+        {
+            return new ToolResult(e.Message, true);
+        }
         catch (SocketException)
         {
             return new ToolResult("SilverModManager is running but did not answer. Close it and start it again if this keeps happening.", true);

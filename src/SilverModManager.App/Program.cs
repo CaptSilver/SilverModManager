@@ -188,7 +188,7 @@ public class Program
         SecretStartup.PrimeAsync(services, CancellationToken.None).Wait();
     }
 
-    private static async Task<bool> CanConnectToProcess(ILogger logger, int port, TimeSpan timeout, IServiceProvider services)
+    internal static async Task<bool> CanConnectToProcess(ILogger logger, int port, TimeSpan timeout, IServiceProvider services)
     {
         var client = services.GetRequiredService<CliClient>();
         var cts = new CancellationTokenSource(delay: timeout);
@@ -200,6 +200,13 @@ public class Program
             
             // Wait for the command to complete or the timeout to expire
             await commandTask.WaitAsync(cts.Token);
+            return true;
+        }
+        catch (VersionMismatch e)
+        {
+            // It answered, so it is alive: another build is no reason to close the user's window. The command that
+            // follows is refused in words.
+            logger.LogInformation("The process on `{Port}` is another build: {Reason}", port, e.Message);
             return true;
         }
         catch (Exception e)

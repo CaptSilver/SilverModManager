@@ -353,6 +353,31 @@ public class ProcessStartupTests
     }
 
     [Fact]
+    public void AClientRefusedByAnotherBuildPrintsOneLineAndDoesNotNotify()
+    {
+        var refusal = new VersionMismatch("The running SilverModManager is 0.2.0 but this command is 0.1.2.");
+        var recorder = new Recorder { RemoteException = refusal };
+
+        Run(recorder, "some-verb").Should().Be(1);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(refusal.Message);
+        recorder.Notifications.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ALinkRefusedByAnotherBuildNotifiesTheDesktop()
+    {
+        // A browser shows no stderr, so the refusal would otherwise vanish and the link would seem to do nothing.
+        var refusal = new VersionMismatch("The running SilverModManager is 0.2.0 but this command is 0.1.2.");
+        var recorder = new Recorder { RemoteException = refusal };
+
+        Run(recorder, "protocol-invoke", "--url", "nxm://skyrimspecialedition/mods/1/files/2").Should().Be(1);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Be(refusal.Message);
+        recorder.Notifications.Should().ContainSingle().Which.Should().Be(refusal.Message);
+    }
+
+    [Fact]
     public void ASettingsFileThatCannotBeReadIsAPlainLine()
     {
         var errors = new List<string>();

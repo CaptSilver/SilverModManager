@@ -286,6 +286,9 @@ public static class ProcessStartup
                 // Steam starts the launch option without a terminal, so the log alone would leave the game silently not starting.
                 var failure = CliErrors.Describe(ex);
                 steps.WriteError(failure);
+
+                // Like the headless refusal above: a link clicked in a browser shows no stderr.
+                if (startupMode.StartsUiWhenNoMainRunning && ex is VersionMismatch or MainProcessSilent) steps.Notify(services, failure);
                 if (!startupMode.IsHeadlessRun) return 1;
 
                 steps.Notify(services, failure);
