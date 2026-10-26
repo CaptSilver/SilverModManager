@@ -37,9 +37,9 @@ public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnost
             failure = refused;
             plan = new MergePlan([], null, []);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (MergeFailures.IsInputProblem(exception))
         {
-            logger.LogError(exception, "Planning the merges of {Loadout} failed", loadout.Name);
+            logger.LogWarning(exception, "Planning the merges of {Loadout} failed", loadout.Name);
             failure = MergeRefusedException.PlanFailed(exception);
             plan = new MergePlan([], null, []);
         }

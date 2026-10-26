@@ -161,9 +161,9 @@ public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
         {
             return _plans.Value.Current(loadout, mode);
         }
-        catch (Exception exception) when (exception is not (OperationCanceledException or MergeRefusedException))
+        catch (Exception exception) when (MergeFailures.IsInputProblem(exception))
         {
-            Logger.LogError(exception, "Planning the merges of {Loadout} failed", loadout.Name);
+            Logger.LogWarning(exception, "Planning the merges of {Loadout} failed", loadout.Name);
             throw MergeRefusedException.PlanFailed(exception);
         }
     }

@@ -48,7 +48,7 @@ public static class MergePlanner
             {
                 merged.Add(MergeInSomeOrder(candidate, strategy, bytes, vanilla, gameBase, traits, bindings(strategy), rebase));
             }
-            catch (Exception exception) when (IsFormatFailure(exception))
+            catch (Exception exception) when (MergeFailures.IsInputProblem(exception))
             {
                 if (MergeStrategies.RefusesWhenItFails(strategy))
                     return new MergePlan([], new MergeRefusal(candidate.Path, strategy, exception.Message, (exception as MergeException)?.Missing ?? []), notMergeable);
@@ -71,7 +71,7 @@ public static class MergePlanner
         {
             return Merge(candidate, strategy, bytes, vanilla, gameBase, traits, fold, rebase);
         }
-        catch (Exception first) when (IsFormatFailure(first) && MergeStrategies.IsOrderSensitive(strategy) && candidate.Contributors.Count > 1)
+        catch (Exception first) when (MergeFailures.IsInputProblem(first) && MergeStrategies.IsOrderSensitive(strategy) && candidate.Contributors.Count > 1)
         {
             for (var lead = 1; lead < candidate.Contributors.Count; lead++)
             {
@@ -86,7 +86,7 @@ public static class MergePlanner
                         Notes = [new MergeBaseChanged(order[0].ModName, candidate.Contributors[0].ModName, first.Message), .. merged.Notes],
                     };
                 }
-                catch (Exception other) when (IsFormatFailure(other))
+                catch (Exception other) when (MergeFailures.IsInputProblem(other))
                 {
                     // Not this one either; the next contributor gets the lead.
                 }
@@ -194,10 +194,4 @@ public static class MergePlanner
             ? "the vanilla regulation the mods were built against, from a kept baseline, a vanilla dump in the library or the installed game"
             : "the vanilla copy of the file in a vanilla dump in the library";
     }
-
-    // A strategy refuses with its own exception, and the readers under it add theirs; all of them mean this path
-    // cannot be merged, and none of them is a bug in the planner.
-    private static bool IsFormatFailure(Exception exception) => exception is
-        MergeException or ParamException or TpfException or EsdMergeException or EsdException or FmgException
-        or DcxException or RegulationException or Bnd3Exception or Bnd4Exception or AesException or KrakenException;
 }
