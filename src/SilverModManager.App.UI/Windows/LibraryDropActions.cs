@@ -1,5 +1,6 @@
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Library;
+using SilverModManager.App.UI.Controls.Spine;
 using SilverModManager.App.UI.Pages.Wabbajack;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -41,7 +42,7 @@ internal sealed class LibraryDropActions(ILibraryService libraryService, IConnec
         {
             if (workspaceController.ActiveWorkspace.Context is not LoadoutContext context) return null;
             var loadout = Loadout.Load(connection.Db, context.LoadoutId);
-            return loadout.IsValid() ? $"{loadout.InstallationInstance.Game.DisplayName} - {loadout.Name}" : null;
+            return loadout.IsValid() ? LoadoutLabel.For(loadout, connection.Db) : null;
         }
     }
 }

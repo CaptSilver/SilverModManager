@@ -122,6 +122,23 @@ public class AUiTest : IAsyncDisposable
         return result.Remap(loadout);
     }
 
+    /// <summary>Another loadout on the same installation as <paramref name="sibling"/>, as a second profile of one game is.</summary>
+    protected async Task<Loadout.ReadOnly> SeedSiblingLoadoutRow(Loadout.ReadOnly sibling, string name)
+    {
+        using var tx = Connection.BeginTransaction();
+        var loadout = new Loadout.New(tx)
+        {
+            Name = name,
+            ShortName = "ZZY",
+            InstallationId = sibling.InstallationId,
+            LoadoutKind = LoadoutKind.Default,
+            Revision = 0,
+            GameVersion = VanityVersion.From("Unknown"),
+        };
+        var result = await tx.Commit();
+        return result.Remap(loadout);
+    }
+
     protected VMWrapper<T> GetActivatedViewModel<T>()
     where T : IViewModelInterface
     {

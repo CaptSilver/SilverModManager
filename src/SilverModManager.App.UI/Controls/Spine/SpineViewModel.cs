@@ -50,6 +50,9 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
     // instead makes DynamicData clear and refill the list, and the view rebuilds every tile (the spine blinks).
     private readonly ObservableCollectionExtended<IImageButtonViewModel> _loadoutSpineList = new();
     private readonly LoadoutSpineEntriesComparer _loadoutOrder = new();
+
+    // The visible loadouts as of the last change, read and written on the UI thread only.
+    private Loadout.ReadOnly[]? _visibleLoadouts;
     private readonly ReadOnlyObservableCollection<IImageButtonViewModel> _loadoutSpineItems;
     private readonly ISettingsManager _settingsManager;
     public ReadOnlyObservableCollection<IImageButtonViewModel> LoadoutSpineItems => _loadoutSpineItems;
@@ -127,7 +130,7 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
                             await using var iconStream = await loadout.InstallationInstance.Game.IconImage.GetStreamAsync();
 
                             var vm = serviceProvider.GetRequiredService<IImageButtonViewModel>();
-                            vm.Name = loadout.InstallationInstance.Game.DisplayName + " - " + loadout.Name;
+                            vm.Name = LoadoutLabel.For(loadout, loadout.Db);
                             vm.Image = LoadImageFromStream(iconStream);
                             vm.LoadoutBadgeViewModel = new LoadoutBadgeViewModel(_conn, _syncService, hideOnSingleLoadout: true);
                             vm.LoadoutBadgeViewModel.LoadoutValue = loadout;
@@ -148,6 +151,9 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
                         }
                     )
                     .OnUI()
+                    // The icon load above is awaited, so a sibling can come or go before this button is bound and
+                    // the relabel below would miss it; name it against the latest visible set as it arrives.
+                    .OnItemAdded(loadoutSpineItem => Relabel(loadoutSpineItem, _visibleLoadouts))
                     .OnItemRemoved(loadoutSpineItem =>
                         {
                             if (loadoutSpineItem.WorkspaceContext is LoadoutContext loadoutContext)
@@ -156,6 +162,19 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
                 // A changed order must move icons, not clear and refill the list: a reset makes the view rebuild every tile.
                 .SortAndBind(_loadoutSpineList, _loadoutOrder)
                 .SubscribeWithErrorLogging()
+                .DisposeWith(disposables);
+
+            // A button's label depends on how many loadouts its game has, so adding or deleting one relabels the others.
+            loadouts
+                .Filter(loadout => loadout.IsVisible())
+                .QueryWhenChanged(query => query.Items.ToArray())
+                .OnUI()
+                .SubscribeWithErrorLogging(visible =>
+                {
+                    _visibleLoadouts = visible;
+                    foreach (var item in _loadoutSpineList)
+                        Relabel(item, visible);
+                })
                 .DisposeWith(disposables);
 
             // Create Left Menus for each workspace on demand
@@ -382,6 +401,12 @@ public partial class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewMod
     /// Loadouts in the saved order come first; the rest follow by installation, then loadout creation time.
     /// </summary>
     /// <summary>Moves icons whose place changed under a new saved order, one Move each, so no tile is rebuilt.</summary>
+    private static void Relabel(IImageButtonViewModel item, Loadout.ReadOnly[]? visibleLoadouts)
+    {
+        if (visibleLoadouts is not null && item.LoadoutBadgeViewModel?.LoadoutValue is { HasValue: true } loadout)
+            item.Name = LoadoutLabel.For(loadout.Value, visibleLoadouts);
+    }
+
     private void MoveIconsIntoOrder()
     {
         var sorted = _loadoutSpineList.OrderBy(item => item, _loadoutOrder).ToList();
