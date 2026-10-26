@@ -21,15 +21,12 @@ public sealed class SteamProtonStrategy(IProtonResolver protonResolver) : IToolR
     public ToolRunPlan Plan(
         GameInstallation installation,
         ResolvedPrefix prefix,
-        AbsolutePath exe,
-        IReadOnlyList<string> args,
-        IReadOnlyDictionary<string, string>? env)
+        PrefixCommand command)
     {
         var (build, steamInstallPath, diagnostic) = Resolve(installation, prefix);
         if (diagnostic is not null) return ToolRunPlan.Failed(diagnostic);
 
-        var argv = new List<string>(args.Count + 3) { build!.Launcher.ToString(), "run", exe.ToString() };
-        foreach (var arg in args) argv.Add(WindowsPathTranslator.Translate(arg, prefix.Path.ToString()));
+        var argv = WineRunSupport.Argv([build!.Launcher.ToString(), "run"], command, prefix.Path);
 
         // Proton wants the app's compatdata directory, which is the parent of the pfx directory.
         var environment = new Dictionary<string, string>
@@ -37,12 +34,9 @@ public sealed class SteamProtonStrategy(IProtonResolver protonResolver) : IToolR
             ["STEAM_COMPAT_DATA_PATH"] = prefix.Path.Parent.ToString(),
             ["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = steamInstallPath!.Value.ToString(),
         };
-        if (env is not null)
-        {
-            foreach (var (name, value) in env) environment[name] = value;
-        }
+        WineRunSupport.Environment(environment, command.Env);
 
-        return ToolRunPlan.Runnable(StrategyName, argv, exe.Parent, environment);
+        return ToolRunPlan.Runnable(StrategyName, argv, WineRunSupport.WorkingDirectory(command, prefix), environment);
     }
 
     private (ProtonBuild? Build, AbsolutePath? SteamInstallPath, string? Diagnostic) Resolve(GameInstallation installation, ResolvedPrefix prefix)

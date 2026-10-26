@@ -30,16 +30,14 @@ public sealed class PlainWineStrategy(IProcessRunner processRunner) : IToolRunSt
     public ToolRunPlan Plan(
         GameInstallation installation,
         ResolvedPrefix prefix,
-        AbsolutePath exe,
-        IReadOnlyList<string> args,
-        IReadOnlyDictionary<string, string>? env)
+        PrefixCommand command)
     {
         var binary = Binary(prefix);
         var diagnostic = CheckRunnable(installation, prefix);
         if (diagnostic is not null) return ToolRunPlan.Failed(diagnostic);
 
-        var environment = WineRunSupport.Environment(new Dictionary<string, string> { ["WINEPREFIX"] = prefix.Path.ToString() }, env);
-        return ToolRunPlan.Runnable(StrategyName, WineRunSupport.Argv([binary], exe, args, prefix.Path), exe.Parent, environment);
+        var environment = WineRunSupport.Environment(new Dictionary<string, string> { ["WINEPREFIX"] = prefix.Path.ToString() }, command.Env);
+        return ToolRunPlan.Runnable(StrategyName, WineRunSupport.Argv([binary], command, prefix.Path), WineRunSupport.WorkingDirectory(command, prefix), environment);
     }
 
     private static string Binary(ResolvedPrefix prefix) => prefix.WineBinary?.ToString() ?? WineOnPath;

@@ -502,6 +502,9 @@ public class DoctorReporterTests : IDisposable
         public Task<ToolRunResult> RunWindowsTool(GameInstallation installation, AbsolutePath exe, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env, bool logOutput, CancellationToken cancellationToken, ToolRunVia via = ToolRunVia.Auto)
             => throw new NotSupportedException("the doctor never runs anything");
 
+        public Task<PrefixRunResult> RunInPrefix(GameInstallation installation, PrefixCommand command, CancellationToken cancellationToken)
+            => throw new NotSupportedException("the doctor never runs anything");
+
         public bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic)
         {
             diagnostic = _refusal;

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 using CliWrap;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 using NexusMods.Paths;
@@ -43,7 +44,22 @@ public sealed class ToolRunner(
         if (!TryGetStrategy(installation, via, out var strategy, out var prefix, out var diagnostic))
             return ToolRunPlan.Failed(diagnostic);
 
-        var plan = strategy.Plan(installation, prefix, exe, args, env);
+        return WithLaunchRoots(installation, strategy.Plan(installation, prefix, PrefixCommand.ForExe(exe, args, env)));
+    }
+
+    /// <summary>
+    /// Builds the plan for running <paramref name="command"/> in the game's prefix, or the reason there is none.
+    /// </summary>
+    public ToolRunPlan PlanInPrefix(GameInstallation installation, PrefixCommand command)
+    {
+        if (!TryGetStrategy(installation, ToolRunVia.Auto, out var strategy, out var prefix, out var diagnostic))
+            return ToolRunPlan.Failed(diagnostic);
+
+        return WithLaunchRoots(installation, strategy.Plan(installation, prefix, command));
+    }
+
+    private ToolRunPlan WithLaunchRoots(GameInstallation installation, ToolRunPlan plan)
+    {
         if (!plan.IsRunnable) return plan;
 
         // Symlinks written by the deployment backends point into a folder the Steam container does not share
@@ -72,15 +88,33 @@ public sealed class ToolRunner(
         var plan = Plan(installation, exe, args, env, via);
         if (!plan.IsRunnable) throw new InvalidOperationException(plan.Diagnostic);
 
-        var command = Cli.Wrap(plan.Argv[0])
-            .WithArguments(plan.Argv.Skip(1))
-            .WithWorkingDirectory(plan.WorkingDirectory.Value.ToString())
-            .WithEnvironmentVariables(plan.Environment.ToDictionary(kv => kv.Key, kv => (string?)kv.Value))
-            .WithValidation(CommandResultValidation.None);
-
-        var result = await processRunner.RunAsync(command, logOutput, cancellationToken);
+        var result = await processRunner.RunAsync(ToCommand(plan), logOutput, cancellationToken);
         return new ToolRunResult(result.ExitCode);
     }
+
+    /// <inheritdoc/>
+    public async Task<PrefixRunResult> RunInPrefix(GameInstallation installation, PrefixCommand command, CancellationToken cancellationToken)
+    {
+        var plan = PlanInPrefix(installation, command);
+        if (!plan.IsRunnable) throw new InvalidOperationException(plan.Diagnostic);
+
+        var stdout = new StringBuilder();
+        var stderr = new StringBuilder();
+        var cli = ToCommand(plan)
+            .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdout))
+            .WithStandardErrorPipe(PipeTarget.ToStringBuilder(stderr));
+
+        // The output comes back to the caller, so it is not also written to the process log.
+        var result = await processRunner.RunAsync(cli, logOutput: false, cancellationToken);
+        return new PrefixRunResult(result.ExitCode, stdout.ToString(), stderr.ToString());
+    }
+
+    // Only called for a runnable plan, which always has a working directory.
+    private static Command ToCommand(ToolRunPlan plan) => Cli.Wrap(plan.Argv[0])
+        .WithArguments(plan.Argv.Skip(1))
+        .WithWorkingDirectory((plan.WorkingDirectory ?? throw new InvalidOperationException(plan.Diagnostic)).ToString())
+        .WithEnvironmentVariables(plan.Environment.ToDictionary(kv => kv.Key, kv => (string?)kv.Value))
+        .WithValidation(CommandResultValidation.None);
 
     /// <inheritdoc/>
     public bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic)

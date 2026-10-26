@@ -22,16 +22,17 @@ public sealed class ProtontricksStrategy(AggregateProtontricksDependency protont
     public ToolRunPlan Plan(
         GameInstallation installation,
         ResolvedPrefix prefix,
-        AbsolutePath exe,
-        IReadOnlyList<string> args,
-        IReadOnlyDictionary<string, string>? env)
+        PrefixCommand command)
     {
+        // protontricks-launch takes a file to run, so a bare verb has nothing to be looked up by.
+        if (command.Exe is not { } exe)
+            return ToolRunPlan.Failed($"protontricks-launch can only run an executable, so '{command.Program}' cannot be run through protontricks.");
+
         var (dependency, appId, diagnostic) = Resolve(installation, prefix);
         if (diagnostic is not null) return ToolRunPlan.Failed(diagnostic);
 
-        var translated = args.Select(arg => WindowsPathTranslator.Translate(arg, prefix.Path.ToString())).ToList();
-        var argv = dependency!.MakeLaunchArgv(appId, exe, translated);
-        return ToolRunPlan.Runnable(StrategyName, argv, exe.Parent, env ?? new Dictionary<string, string>());
+        var argv = dependency!.MakeLaunchArgv(appId, exe, WineRunSupport.Arguments(command, prefix.Path).ToList());
+        return ToolRunPlan.Runnable(StrategyName, argv, exe.Parent, command.Env ?? new Dictionary<string, string>());
     }
 
     private (IProtontricksDependency? Dependency, long AppId, string? Diagnostic) Resolve(GameInstallation installation, ResolvedPrefix prefix)

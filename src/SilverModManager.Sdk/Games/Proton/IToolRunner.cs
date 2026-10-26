@@ -37,6 +37,18 @@ public interface IToolRunner
         ToolRunVia via = ToolRunVia.Auto);
 
     /// <summary>
+    /// Runs a Wine verb or an installer inside the game's prefix with the runner the prefix would pick, waits
+    /// for it to exit and returns what it wrote. A non-zero exit code is a result; only a program that cannot
+    /// be started at all throws.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No strategy can run the command; the message is the reason.</exception>
+    /// <exception cref="OperationCanceledException">The token was cancelled; the process is interrupted, then killed.</exception>
+    Task<PrefixRunResult> RunInPrefix(
+        GameInstallation installation,
+        PrefixCommand command,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Whether a program can be run for this installation, and if not, why.
     /// </summary>
     bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic);

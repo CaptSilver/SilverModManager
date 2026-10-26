@@ -24,6 +24,14 @@ public interface IToolRunStrategy
     string? CheckRunnable(GameInstallation installation, ResolvedPrefix prefix);
 
     /// <summary>
+    /// Builds the plan for running <paramref name="command"/>, which is an executable or a Wine verb.
+    /// </summary>
+    ToolRunPlan Plan(
+        GameInstallation installation,
+        ResolvedPrefix prefix,
+        PrefixCommand command);
+
+    /// <summary>
     /// Builds the plan for <paramref name="exe"/>.
     /// </summary>
     ToolRunPlan Plan(
@@ -31,5 +39,6 @@ public interface IToolRunStrategy
         ResolvedPrefix prefix,
         AbsolutePath exe,
         IReadOnlyList<string> args,
-        IReadOnlyDictionary<string, string>? env);
+        IReadOnlyDictionary<string, string>? env)
+        => Plan(installation, prefix, PrefixCommand.ForExe(exe, args, env));
 }

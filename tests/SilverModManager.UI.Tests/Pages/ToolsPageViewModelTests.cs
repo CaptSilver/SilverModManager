@@ -332,6 +332,15 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
             return Task.FromResult(new ToolRunResult(0));
         }
 
+        public List<PrefixCommand> PrefixCommands { get; } = [];
+
+        public Task<PrefixRunResult> RunInPrefix(GameInstallation installation, PrefixCommand command, CancellationToken cancellationToken)
+        {
+            if (Diagnostic is not null) throw new InvalidOperationException(Diagnostic);
+            PrefixCommands.Add(command);
+            return Task.FromResult(new PrefixRunResult(0, "", ""));
+        }
+
         public bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic)
         {
             diagnostic = Diagnostic;

@@ -35,54 +35,48 @@ public sealed class UmuStrategy(IProcessRunner processRunner) : IToolRunStrategy
     public ToolRunPlan Plan(
         GameInstallation installation,
         ResolvedPrefix prefix,
-        AbsolutePath exe,
-        IReadOnlyList<string> args,
-        IReadOnlyDictionary<string, string>? env)
+        PrefixCommand command)
     {
         if (!RunnerOf(installation, prefix, out var runner, out var diagnostic)) return ToolRunPlan.Failed(diagnostic);
-        if (!WineRunSupport.IsProtonScript(runner)) return _wine.Plan(installation, prefix, exe, args, env);
+        if (!WineRunSupport.IsProtonScript(runner)) return _wine.Plan(installation, prefix, command);
 
         var unrunnable = CheckRunnable(installation, prefix);
         if (unrunnable is not null) return ToolRunPlan.Failed(unrunnable);
 
         return _umu.IsInstalled()
-            ? PlanUmu(installation, prefix, runner, exe, args, env)
-            : PlanProton(prefix, runner, exe, args, env);
+            ? PlanUmu(installation, prefix, runner, command)
+            : PlanProton(prefix, runner, command);
     }
 
     private static ToolRunPlan PlanUmu(
         GameInstallation installation,
         ResolvedPrefix prefix,
         AbsolutePath runner,
-        AbsolutePath exe,
-        IReadOnlyList<string> args,
-        IReadOnlyDictionary<string, string>? env)
+        PrefixCommand command)
     {
         var environment = WineRunSupport.Environment(new Dictionary<string, string>
         {
             ["GAMEID"] = $"umu-{installation.LocatorResult.StoreIdentifier}",
             ["WINEPREFIX"] = prefix.Path.ToString(),
             ["PROTONPATH"] = runner.Parent.ToString(),
-        }, env);
+        }, command.Env);
 
-        return ToolRunPlan.Runnable(UmuStrategyName, WineRunSupport.Argv(["umu-run"], exe, args, prefix.Path), exe.Parent, environment);
+        return ToolRunPlan.Runnable(UmuStrategyName, WineRunSupport.Argv(["umu-run"], command, prefix.Path), WineRunSupport.WorkingDirectory(command, prefix), environment);
     }
 
     private static ToolRunPlan PlanProton(
         ResolvedPrefix prefix,
         AbsolutePath runner,
-        AbsolutePath exe,
-        IReadOnlyList<string> args,
-        IReadOnlyDictionary<string, string>? env)
+        PrefixCommand command)
     {
         // Proton wants the directory that holds pfx, and Heroic records either that directory or pfx itself.
         var compatData = prefix.Path.FileName == "pfx" ? prefix.Path.Parent : prefix.Path;
         var environment = WineRunSupport.Environment(new Dictionary<string, string>
         {
             ["STEAM_COMPAT_DATA_PATH"] = compatData.ToString(),
-        }, env);
+        }, command.Env);
 
-        return ToolRunPlan.Runnable(ProtonStrategyName, WineRunSupport.Argv([runner.ToString(), "run"], exe, args, prefix.Path), exe.Parent, environment);
+        return ToolRunPlan.Runnable(ProtonStrategyName, WineRunSupport.Argv([runner.ToString(), "run"], command, prefix.Path), WineRunSupport.WorkingDirectory(command, prefix), environment);
     }
 
     private static bool RunnerOf(GameInstallation installation, ResolvedPrefix prefix, out AbsolutePath runner, [NotNullWhen(false)] out string? diagnostic)

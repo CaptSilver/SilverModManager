@@ -29,22 +29,20 @@ public sealed class HeroicFlatpakStrategy(IProcessRunner processRunner) : IToolR
     public ToolRunPlan Plan(
         GameInstallation installation,
         ResolvedPrefix prefix,
-        AbsolutePath exe,
-        IReadOnlyList<string> args,
-        IReadOnlyDictionary<string, string>? env)
+        PrefixCommand command)
     {
         var diagnostic = CheckRunnable(installation, prefix);
         if (diagnostic is not null) return ToolRunPlan.Failed(diagnostic);
 
         // Every variable goes as --env rather than on the flatpak process: flatpak resets some host variables
         // on the way into the sandbox, and --env also wins over anything the app's manifest sets.
-        var environment = WineRunSupport.Environment(new Dictionary<string, string> { ["WINEPREFIX"] = prefix.Path.ToString() }, env);
+        var environment = WineRunSupport.Environment(new Dictionary<string, string> { ["WINEPREFIX"] = prefix.Path.ToString() }, command.Env);
 
         List<string> head = ["flatpak", "run", $"--command={prefix.WineBinary!.Value}"];
         head.AddRange(environment.Select(kv => $"--env={kv.Key}={kv.Value}"));
         head.Add(HeroicFlatpakDependency.FlatpakId);
 
-        return ToolRunPlan.Runnable(StrategyName, WineRunSupport.Argv(head, exe, args, prefix.Path), exe.Parent, new Dictionary<string, string>());
+        return ToolRunPlan.Runnable(StrategyName, WineRunSupport.Argv(head, command, prefix.Path), WineRunSupport.WorkingDirectory(command, prefix), new Dictionary<string, string>());
     }
 
     private static string? CheckRunner(GameInstallation installation, ResolvedPrefix prefix)

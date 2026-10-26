@@ -80,6 +80,37 @@ public class FakeToolRunner : IToolRunner
         return new ToolRunResult(ExitCode);
     }
 
+    /// <summary>
+    /// One <see cref="RunInPrefix"/> call.
+    /// </summary>
+    public sealed record PrefixCall(GameInstallation Installation, PrefixCommand Command);
+
+    private readonly List<PrefixCall> _prefixCalls = [];
+
+    /// <summary>
+    /// Every <see cref="RunInPrefix"/> call so far, in order.
+    /// </summary>
+    public IReadOnlyList<PrefixCall> PrefixCalls
+    {
+        get { lock (_prefixCalls) return _prefixCalls.ToArray(); }
+    }
+
+    /// <summary>
+    /// Decides what a <see cref="RunInPrefix"/> call reports; by default a successful run with no output.
+    /// </summary>
+    public Func<PrefixCommand, PrefixRunResult> PrefixResult { get; set; } = _ => new PrefixRunResult(0, "", "");
+
+    /// <inheritdoc />
+    public Task<PrefixRunResult> RunInPrefix(GameInstallation installation, PrefixCommand command, CancellationToken cancellationToken)
+    {
+        if (!CanRunTools) throw new InvalidOperationException(Diagnostic);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        OnRun?.Invoke();
+        lock (_prefixCalls) _prefixCalls.Add(new PrefixCall(installation, command));
+        return Task.FromResult(PrefixResult(command));
+    }
+
     /// <inheritdoc />
     public bool CanRun(GameInstallation installation, [NotNullWhen(false)] out string? diagnostic)
     {
