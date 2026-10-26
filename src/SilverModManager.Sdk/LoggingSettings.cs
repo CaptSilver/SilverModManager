@@ -45,6 +45,16 @@ public record LoggingSettings : ISettings
     public ConfigurablePath RunProcessArchiveFilePath { get; init; } = LogFile("run.{##}");
 
     /// <summary>
+    /// Gets the path to the current log file for an <c>mcp</c> process.
+    /// </summary>
+    public ConfigurablePath McpProcessLogFilePath { get; init; } = LogFile("mcp.current");
+
+    /// <summary>
+    /// Gets the template path to the archive log file for an <c>mcp</c> process.
+    /// </summary>
+    public ConfigurablePath McpProcessArchiveFilePath { get; init; } = LogFile("mcp.{##}");
+
+    /// <summary>
     /// Number of previous log files to store.
     /// </summary>
     public int MaxArchivedFiles { get; init; } = 10;

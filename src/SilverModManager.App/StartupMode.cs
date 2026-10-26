@@ -70,6 +70,25 @@ public class StartupMode
     public bool IsStatus { get; set; } = false;
 
     /// <summary>
+    /// True for <c>mcp</c>: the process serves MCP over stdio and talks to the running window like any slim client,
+    /// but it never starts, kills or waits for a main process, and stdout belongs to the protocol.
+    /// </summary>
+    public bool IsMcp { get; set; } = false;
+
+    /// <summary>
+    /// True for <c>mcp --read-only</c>: the server leaves out the tools that change anything.
+    /// </summary>
+    public bool McpReadOnly { get; set; } = false;
+
+    /// <summary>
+    /// The usage line for an <c>mcp</c> start with an argument it does not know, or null. It is reported before any
+    /// host is built; handing the arguments on as a verb would run them inside the window.
+    /// </summary>
+    public string? McpUsageError { get; set; }
+
+    public const string McpUsage = "Usage: silvermodmanager mcp [--read-only]";
+
+    /// <summary>
     /// True for <c>run --help</c> / <c>run -h</c> with the flag before any <c>--</c>: it prints the usage and exits,
     /// so no host is built. <c>run name -- game.exe --help</c> is still a launch, because the flag belongs to the game.
     /// </summary>
@@ -151,6 +170,15 @@ public class StartupMode
             mode.Args = args[1..];
             mode.ExecuteCli = false;
         }
+        else if (arg.Equals("mcp", StringComparison.OrdinalIgnoreCase))
+        {
+            mode.RunAsMain = false;
+            mode.ShowUI = false;
+            mode.IsMcp = true;
+            mode.ExecuteCli = false;
+            mode.Args = [];
+            ReadMcpOptions(mode, args[1..]);
+        }
         else if (arg.Equals("selftest-helper", StringComparison.OrdinalIgnoreCase))
         {
             mode.RunAsMain = false;
@@ -169,13 +197,26 @@ public class StartupMode
         return mode;
     }
 
+    private static void ReadMcpOptions(StartupMode mode, string[] options)
+    {
+        foreach (var option in options)
+        {
+            if (option == "--read-only") mode.McpReadOnly = true;
+            else
+            {
+                mode.McpUsageError = $"Unknown argument '{option}'. {McpUsage}";
+                return;
+            }
+        }
+    }
+
     private static readonly string[] CredentialVerbs = ["nexus-whoami", "secrets-status"];
 
     // The option stays in Args: a verb that is forwarded to a new headless main is started from them, and
     // that process has to read the option again to build its own store.
     private static void ReadCredentialVerb(StartupMode mode)
     {
-        if (!mode.ExecuteCli || mode.IsHeadlessRun || mode.IsRunHelp || mode.IsStatus || mode.IsSelftestHelper) return;
+        if (!mode.ExecuteCli || mode.IsHeadlessRun || mode.IsRunHelp || mode.IsStatus || mode.IsSelftestHelper || mode.IsMcp) return;
         if (!CredentialVerbs.Contains(mode.Args[0], StringComparer.Ordinal)) return;
 
         mode.UsesOwnCredentials = true;

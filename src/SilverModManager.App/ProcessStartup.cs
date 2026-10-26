@@ -78,6 +78,12 @@ public sealed record ProcessStartupSteps
     public required Action<IServiceProvider> RunUi { get; init; }
 
     /// <summary>
+    /// Serves MCP on stdio until the client closes it or the host stops, and returns the exit code. Runs in place of
+    /// <see cref="RunCliRemotely"/>: it never starts a main process for a missing window.
+    /// </summary>
+    public required Func<IServiceProvider, StartupMode, Task<int>> RunMcp { get; init; }
+
+    /// <summary>
     /// Reports a refusal to the person at the terminal.
     /// </summary>
     public Action<string> WriteError { get; init; } = message => Console.Error.WriteLine(message);
@@ -154,6 +160,12 @@ public static class ProcessStartup
             return 1;
         }
 
+        if (startupMode.McpUsageError is { } mcpUsageError)
+        {
+            steps.WriteError(mcpUsageError);
+            return 1;
+        }
+
         using var host = steps.BuildHost(startupMode);
 
         var services = host.Services;
@@ -191,7 +203,8 @@ public static class ProcessStartup
         // NOTE(erri120): has to come before host startup
         // A headless main must not kill the process it is queueing behind, and a hung window
         // is not its to judge: it only needs the slot to be free.
-        if (!headlessMain)
+        // The MCP server also stays out of it: stdout is the protocol, and it must not kill a window the user is working in.
+        if (!headlessMain && !startupMode.IsMcp)
             CleanupUnresponsiveProcesses(services, logger, steps, syncInfo).Wait(timeout: TimeSpan.FromSeconds(10));
 
         var slotClaimed = false;
@@ -252,6 +265,8 @@ public static class ProcessStartup
                     if (startupMode.ShowUI) steps.RunUi(services);
                     return task.Result;
                 }
+
+                if (startupMode.IsMcp) return steps.RunMcp(services, startupMode).GetAwaiter().GetResult();
 
                 return steps.RunCliRemotely(services, startupMode).GetAwaiter().GetResult();
             }

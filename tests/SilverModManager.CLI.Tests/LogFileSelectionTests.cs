@@ -40,6 +40,19 @@ public class LogFileSelectionTests
         Select("as-main", "list-games").Current.Should().Be(Settings.MainProcessLogFilePath.ToPath(Fs));
     }
 
+    [Theory]
+    [InlineData("mcp")]
+    [InlineData("mcp --read-only")]
+    public void Mcp_UsesItsOwnLogFile(string input)
+    {
+        var (current, archive) = Select(input.Split(' '));
+
+        current.Should().Be(Settings.McpProcessLogFilePath.ToPath(Fs));
+        archive.Should().Be(Settings.McpProcessArchiveFilePath.ToPath(Fs));
+        current.Should().NotBe(Settings.SlimProcessLogFilePath.ToPath(Fs));
+        current.FileName.Should().Contain(".mcp.");
+    }
+
     [Fact]
     public void SlimClient_UsesTheSlimLogFile()
     {

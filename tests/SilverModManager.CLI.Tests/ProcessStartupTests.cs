@@ -56,6 +56,9 @@ public class ProcessStartupTests
         public Exception? OpenDatabaseException { get; set; }
         public Exception? CliException { get; set; }
         public Exception? RemoteException { get; set; }
+        public Exception? McpException { get; set; }
+        public int McpExitCode { get; set; }
+        public List<StartupMode> McpModes { get; } = [];
 
         public ProcessStartupSteps Steps() => new()
         {
@@ -133,6 +136,13 @@ public class ProcessStartupTests
                 Described.Add((kind, pid));
                 return Describe?.Invoke(kind, pid) ?? new HeadlessMainRunning(kind, pid).Message;
             },
+            RunMcp = (_, mode) =>
+            {
+                Calls.Add("run-mcp");
+                McpModes.Add(mode);
+                if (McpException is not null) throw McpException;
+                return Task.FromResult(McpExitCode);
+            },
             RunUi = _ => Calls.Add("ui"),
             WriteError = Errors.Add,
         };
@@ -183,6 +193,68 @@ public class ProcessStartupTests
             "build-host", "read-sync", "host-start", "open-database", "install-handlers", "cli-as-main", "ui",
             "host-stop", "close-database", "release-session", "release-main"
         );
+    }
+
+    [Fact]
+    public void McpStartBuildsTheHostReadsTheSyncFileAndServesWithoutCleanupOrSpawning()
+    {
+        var recorder = new Recorder { McpExitCode = 7 };
+
+        Run(recorder, "mcp").Should().Be(7);
+
+        recorder.Calls.Should().Equal("build-host", "read-sync", "host-start", "install-handlers", "run-mcp", "host-stop");
+        recorder.McpModes.Should().ContainSingle().Which.IsMcp.Should().BeTrue();
+    }
+
+    [Fact]
+    public void McpStartLeavesAnUnresponsiveWindowAlone()
+    {
+        var recorder = new Recorder
+        {
+            SyncInfo = (Process.GetCurrentProcess(), MainKind.Gui, 1234),
+            CanConnect = false,
+        };
+
+        Run(recorder, "mcp", "--read-only").Should().Be(0);
+
+        recorder.Calls.Should().NotContain("can-connect").And.NotContain("kill")
+            .And.NotContain("cli-remote").And.NotContain("claim").And.NotContain("open-database").And.NotContain("ui");
+        recorder.Calls.Should().Contain("run-mcp");
+        recorder.McpModes.Single().McpReadOnly.Should().BeTrue();
+    }
+
+    [Fact]
+    public void McpStartStillServesWhileAHeadlessMainHoldsTheSlot()
+    {
+        var recorder = new Recorder { SyncInfo = (Process.GetCurrentProcess(), MainKind.HeadlessCli, 0) };
+
+        Run(recorder, "mcp").Should().Be(0);
+
+        recorder.Calls.Should().Contain("run-mcp").And.NotContain("kill").And.NotContain("claim");
+        recorder.Notifications.Should().BeEmpty();
+        recorder.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void McpUsageErrorIsReportedBeforeAnyHostIsBuilt()
+    {
+        var recorder = new Recorder();
+
+        Run(recorder, "mcp", "--bogus").Should().Be(1);
+
+        recorder.Calls.Should().BeEmpty();
+        recorder.Errors.Should().ContainSingle().Which.Should().Contain("--bogus").And.Contain("mcp [--read-only]");
+    }
+
+    [Fact]
+    public void McpFailureIsReportedAsASentenceAndExitsOne()
+    {
+        var recorder = new Recorder { McpException = new InvalidOperationException("transport broke") };
+
+        Run(recorder, "mcp").Should().Be(1);
+
+        recorder.Errors.Should().ContainSingle();
+        recorder.Calls.Should().EndWith("host-stop");
     }
 
     [Fact]

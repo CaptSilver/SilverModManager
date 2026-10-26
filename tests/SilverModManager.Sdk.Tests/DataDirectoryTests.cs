@@ -37,6 +37,28 @@ public class DataDirectoryTests
     }
 
     [Fact]
+    public void Test_McpProcessLogFilesLiveBesideTheOthers()
+    {
+        var fs = NewFileSystem();
+        var logs = fs.GetKnownPath(KnownPath.XDG_STATE_HOME).Combine("SilverModManager/Logs");
+        var settings = LoggingSettings.CreateDefault();
+
+        settings.McpProcessLogFilePath.ToPath(fs).Should().Be(logs.Combine("silvermodmanager.mcp.current.log"));
+        settings.McpProcessArchiveFilePath.ToPath(fs).Should().Be(logs.Combine("silvermodmanager.mcp.{##}.log"));
+    }
+
+    [Fact]
+    public void Test_ASettingsFileSavedBeforeTheMcpLogsExistedStillGetsTheirDefaultPaths()
+    {
+        var fs = NewFileSystem();
+        var logs = fs.GetKnownPath(KnownPath.XDG_STATE_HOME).Combine("SilverModManager/Logs");
+        var saved = LoadSavedWithout(LoggingSettings.CreateDefault(), nameof(LoggingSettings.McpProcessLogFilePath), nameof(LoggingSettings.McpProcessArchiveFilePath));
+
+        saved.McpProcessLogFilePath.ToPath(fs).Should().Be(logs.Combine("silvermodmanager.mcp.current.log"));
+        saved.McpProcessArchiveFilePath.ToPath(fs).Should().Be(logs.Combine("silvermodmanager.mcp.{##}.log"));
+    }
+
+    [Fact]
     public void Test_ASettingsFileSavedBeforeTheRunLogsExistedStillGetsTheirDefaultPaths()
     {
         var fs = NewFileSystem();

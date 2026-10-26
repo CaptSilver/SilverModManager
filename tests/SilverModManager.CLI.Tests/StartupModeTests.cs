@@ -206,4 +206,48 @@ public class StartupModeTests
         mode.SecretsFileError.Should().BeNull();
         mode.UsesOwnCredentials.Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData("mcp", false)]
+    [InlineData("MCP", false)]
+    [InlineData("mcp --read-only", true)]
+    public void McpIsAClientModeThatConsumesItsOwnOptions(string input, bool readOnly)
+    {
+        var mode = StartupMode.Parse(input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+        mode.IsMcp.Should().BeTrue();
+        mode.McpReadOnly.Should().Be(readOnly);
+        mode.McpUsageError.Should().BeNull();
+        mode.RunAsMain.Should().BeFalse();
+        mode.ShowUI.Should().BeFalse();
+        mode.ExecuteCli.Should().BeFalse();
+        mode.StartsUiWhenNoMainRunning.Should().BeFalse();
+        mode.Args.Should().BeEmpty();
+        SilverModManager.App.Services.ProfileOf(mode).Should().Be(SilverModManager.App.HostProfile.Slim);
+    }
+
+    [Theory]
+    [InlineData("mcp --readonly")]
+    [InlineData("mcp list-games")]
+    [InlineData("mcp --read-only extra")]
+    public void McpWithAnArgumentItDoesNotKnowIsAUsageError(string input)
+    {
+        var mode = StartupMode.Parse(input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+        mode.IsMcp.Should().BeTrue();
+        mode.McpUsageError.Should().Contain("Usage: ").And.Contain("mcp [--read-only]");
+        mode.McpUsageError.Should().Contain(input.Split(' ')[^1]);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("as-main mcp")]
+    [InlineData("run mcp")]
+    [InlineData("loadouts list")]
+    public void OtherModesAreNotMcp(string input)
+    {
+        var mode = StartupMode.Parse(input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        mode.IsMcp.Should().BeFalse();
+        mode.McpUsageError.Should().BeNull();
+    }
 }

@@ -122,8 +122,16 @@ public class Program
         TryPassThrough = LaunchRun.TryPassThroughAsync,
         ForwardLaunch = LaunchRun.ForwardAsync,
         DescribeHeadlessMain = (services, kind, pid) => HeadlessMainRefusal.Describe(kind, pid, services.GetRequiredService<IEnvironmentReader>().Get("XDG_RUNTIME_DIR")),
+        RunMcp = (_, _) => RunMcpUnavailable(),
         RunUi = services => Startup.Main(services, []),
     };
+
+    // This build has no MCP server to run: say so instead of exiting 0 having served nothing.
+    private static Task<int> RunMcpUnavailable()
+    {
+        Console.Error.WriteLine("The MCP server is not available in this build.");
+        return Task.FromResult(1);
+    }
 
     /// <summary>
     /// Closes the connection, the store and the RocksDB backend under it, in that order.
@@ -343,6 +351,16 @@ public class Program
         return ApplicationConstants.IsDebug ? new DebuggingHost(host) : host;
     }
 
+    /// <summary>
+    /// The console log target. An <c>mcp</c> process writes it to stderr, because its stdout carries the protocol and a
+    /// log line there would corrupt a frame.
+    /// </summary>
+    public static ConsoleTarget CreateConsoleTarget(StartupMode startupMode) => new("console")
+    {
+        Layout = "${processtime} [${level:uppercase=true}] ${message:withexception=true}",
+        StdErr = startupMode.IsMcp,
+    };
+
     private static void AddLogging(ObservableLoggingTarget observableLoggingTarget, ILoggingBuilder loggingBuilder, LoggingSettings settings, StartupMode startupMode)
     {
         var fs = FileSystem.Shared;
@@ -363,14 +381,7 @@ public class Program
         fileTarget.Layout = defaultLayout;
         fileTarget.Header = defaultHeader;
 
-        if (settings.LogToConsole)
-        {
-            var consoleTarget = new ConsoleTarget("console")
-            {
-                Layout = "${processtime} [${level:uppercase=true}] ${message:withexception=true}",
-            };
-            config.AddRuleForAllLevels(consoleTarget);
-        }
+        if (settings.LogToConsole) config.AddRuleForAllLevels(CreateConsoleTarget(startupMode));
 
         config.AddRuleForAllLevels(fileTarget);
         config.AddRuleForAllLevels(observableLoggingTarget);
