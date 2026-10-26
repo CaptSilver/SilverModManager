@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 
@@ -10,4 +11,8 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers;
 /// The message is written for the player and names what to do about it, so a UI can show it as it is.
 /// </remarks>
 [PublicAPI]
-public class SynchronizerPreflightException(string message) : Exception(message);
+public class SynchronizerPreflightException(string message) : UserFacingException(message)
+{
+    /// <inheritdoc />
+    public override string Title => "The loadout was not applied";
+}
