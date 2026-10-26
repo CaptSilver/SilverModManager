@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentAssertions;
 using SilverModManager.CrossPlatform;
 using NexusMods.Paths;
@@ -32,6 +34,26 @@ public class DataDirectoryTests
 
         settings.RunProcessLogFilePath.ToPath(fs).Should().Be(logs.Combine("silvermodmanager.run.current.log"));
         settings.RunProcessArchiveFilePath.ToPath(fs).Should().Be(logs.Combine("silvermodmanager.run.{##}.log"));
+    }
+
+    [Fact]
+    public void Test_ASettingsFileSavedBeforeTheRunLogsExistedStillGetsTheirDefaultPaths()
+    {
+        var fs = NewFileSystem();
+        var logs = fs.GetKnownPath(KnownPath.XDG_STATE_HOME).Combine("SilverModManager/Logs");
+        var saved = LoadSavedWithout(LoggingSettings.CreateDefault(), nameof(LoggingSettings.RunProcessLogFilePath), nameof(LoggingSettings.RunProcessArchiveFilePath));
+
+        saved.RunProcessLogFilePath.ToPath(fs).Should().Be(logs.Combine("silvermodmanager.run.current.log"));
+        saved.RunProcessArchiveFilePath.ToPath(fs).Should().Be(logs.Combine("silvermodmanager.run.{##}.log"));
+    }
+
+    // The settings backend deserializes the saved file straight into the record, so this is what a file written by an
+    // older build turns into.
+    private static LoggingSettings LoadSavedWithout(LoggingSettings settings, params string[] properties)
+    {
+        var json = JsonSerializer.SerializeToNode(settings)!.AsObject();
+        foreach (var property in properties) json.Remove(property).Should().BeTrue();
+        return JsonSerializer.Deserialize<LoggingSettings>(json.ToJsonString())!;
     }
 
     [Fact]

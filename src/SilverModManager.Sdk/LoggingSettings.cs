@@ -37,12 +37,12 @@ public record LoggingSettings : ISettings
     /// <summary>
     /// Gets the path to the current log file for a headless <c>run</c> process.
     /// </summary>
-    public ConfigurablePath RunProcessLogFilePath { get; init; }
+    public ConfigurablePath RunProcessLogFilePath { get; init; } = LogFile("run.current");
 
     /// <summary>
     /// Gets the template path to the archive log file for a headless <c>run</c> process.
     /// </summary>
-    public ConfigurablePath RunProcessArchiveFilePath { get; init; }
+    public ConfigurablePath RunProcessArchiveFilePath { get; init; } = LogFile("run.{##}");
 
     /// <summary>
     /// Number of previous log files to store.
@@ -134,8 +134,6 @@ public record LoggingSettings : ISettings
             MainProcessArchiveFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.main.{{##}}.log"),
             SlimProcessLogFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.slim.current.log"),
             SlimProcessArchiveFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.slim.{{##}}.log"),
-            RunProcessLogFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.run.current.log"),
-            RunProcessArchiveFilePath = new ConfigurablePath(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.run.{{##}}.log"),
         };
     }
 
@@ -144,4 +142,8 @@ public record LoggingSettings : ISettings
 
     // Lowercase, as log file names conventionally are; the product name has capitals.
     private const string LogFilePrefix = "silvermodmanager";
+
+    // The settings file is deserialized straight into this record, so a path added after the file was first saved
+    // gets its default from the property initializer; without one it would be an empty path.
+    private static ConfigurablePath LogFile(string name) => new(BaseKnownPath, $"{BaseDirectoryName}/{LogFilePrefix}.{name}.log");
 }
