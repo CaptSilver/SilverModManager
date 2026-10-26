@@ -148,6 +148,23 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
     }
 
     [Fact]
+    public async Task APairWhoseMergeFailsIsNotMergeableWithTheErrorAndSaysWhichModLoadoutPriorityKeeps()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout.LoadoutId, "Alpha", (Msg, [1, 2, 3]));
+        await InstallPackage(loadout.LoadoutId, "Beta", (Msg, [4, 5, 6]));
+
+        var report = await Reports.ForLoadout(loadout.LoadoutId, CancellationToken.None);
+
+        report.Refusal.Should().BeNull("a merge of anything but the regulation falls back to the priority winner");
+        var entry = report.Entries.Should().ContainSingle().Which;
+        entry.Outcome.Should().Be(MergeReportOutcome.NotMergeable);
+        entry.Strategy.Should().Be("fmg-union");
+        entry.Reason.Should().StartWith("the merge failed: ").And.NotBe(MergeOutcome.NoStrategy);
+        entry.Notes.Should().ContainSingle().Which.Should().EndWith("wins by loadout priority; the other copies are ignored");
+    }
+
+    [Fact]
     public async Task ARefusedRegulationPairReportsTheTextTheApplyThrowsAndHoldsBackTheOtherMerges()
     {
         var loadout = await CreateLoadout();

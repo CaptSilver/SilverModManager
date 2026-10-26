@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using SilverModManager.Games.FromSoft.Build;
@@ -25,6 +26,10 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
     private sealed record Entry(string Key, MergePlan Plan, bool ApplyWouldKeepSomething);
 
     private readonly Dictionary<LoadoutId, Entry> _latest = [];
+
+    // Kept apart from the entries because the listing of intrinsic files asks for it on every refresh and must never wait
+    // behind a plan that is being made.
+    private readonly ConcurrentDictionary<LoadoutId, IReadOnlySet<string>> _unmerged = new();
     private readonly object _gate = new();
 
     // Identifying the installed build decrypts the regulation, so it is remembered for as long as the game's file and
@@ -32,11 +37,20 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
     private readonly Dictionary<GameInstallMetadataId, (string Key, BuildIdentity Live)> _live = [];
 
     /// <summary>
+    /// The paths the latest plan of the loadout left unmerged because their merge failed, in any casing. They are
+    /// known only once a plan has been made, so the answer is empty until the first preflight or report plans.
+    /// </summary>
+    public IReadOnlySet<string> UnmergedPaths(LoadoutId loadout)
+        => _unmerged.TryGetValue(loadout, out var paths) ? paths : EmptyPaths;
+
+    private static readonly IReadOnlySet<string> EmptyPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// The plan for the loadout as it is now. <see cref="MergeSourceMode.Apply"/> may keep a vanilla regulation under
     /// the data root; <see cref="MergeSourceMode.Report"/> writes no vanilla and says what the next apply would keep.
     /// Either one keeps a copy of the installed build's regulation when the install is stamped and unmodified.
     /// </summary>
-    /// <exception cref="Exception">The index could not be built or a file could not be read for a reason that is not about the merge itself; a merge that can't be made is a <see cref="MergePlan.Refusal"/>.</exception>
+    /// <exception cref="Exception">The index could not be built or a file could not be read for a reason that is not about the merge itself; a merge that can't be made is a <see cref="MergePlan.Refusal"/> for the regulation and a <see cref="MergePlan.Unmerged"/> entry for any other file.</exception>
     public MergePlan Current(Loadout.ReadOnly loadout, MergeSourceMode mode)
     {
         var installation = loadout.InstallationInstance;
@@ -51,18 +65,25 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
             if (_latest.TryGetValue(loadout.LoadoutId, out var known)
                 && known.Key == key
                 && (mode == MergeSourceMode.Report || !known.ApplyWouldKeepSomething))
+            {
+                _unmerged[loadout.LoadoutId] = UnmergedOf(known.Plan);
                 return known.Plan;
+            }
 
             var rebase = RegulationRebase.For(c => sources.VersionOf(installation, c), () => inputs.Live(), traits);
             var plan = MergePlanner.Plan(index, sources.ContributorBytes, inputs.Vanilla, inputs.GameBase, traits, MergeStrategyBindings.For, rebase);
             plan = inputs.WithSourceNotes(plan);
             _latest[loadout.LoadoutId] = new Entry(key, plan, inputs.Notes.Values.Any(notes => notes.OfType<BaselineWillBeKept>().Any()));
+            _unmerged[loadout.LoadoutId] = UnmergedOf(plan);
             return plan;
         }
     }
 
+    private static IReadOnlySet<string> UnmergedOf(MergePlan plan)
+        => plan.Unmerged.Select(c => c.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     // Both inputs are read before the planner runs because they are part of the cache key, and a failure to read one
-    // belongs to the path that needed it: it is held and thrown when the planner asks, so it becomes that path's refusal.
+    // belongs to the path that needed it: it is held and thrown when the planner asks, so it counts as that path's merge failing.
     private Inputs Fetch(Loadout.ReadOnly loadout, MergePathIndex index, MergeSourceMode mode, FromSoftFormatTraits traits)
     {
         var inputs = new Inputs();

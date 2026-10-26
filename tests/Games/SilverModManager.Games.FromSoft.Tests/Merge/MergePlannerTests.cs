@@ -58,7 +58,45 @@ public class MergePlannerTests
         => MergePlanner.Plan(index, bytes ?? ByPackage, vanilla ?? Vanilla("van"), gameBase ?? NoBase, Traits, _ => fold);
 
     [Fact]
-    public void A_later_path_failing_leaves_no_output_for_the_earlier_one()
+    public void A_later_regulation_failing_leaves_no_output_for_the_earlier_path()
+    {
+        var index = Index(null,
+            File("a", "a.tpf.dcx", 2), File("b", "a.tpf.dcx", 1),
+            File("a", "regulation.test", 2), File("b", "regulation.test", 1));
+        var calls = 0;
+        MergeFold fold = (_, _, _, _, _, _, _, _, _, _) =>
+            calls++ == 0 ? B("ok") : throw new MergeException("cannot join");
+
+        var plan = Plan(index, fold, gameBase: _ => B("game"));
+
+        plan.Merged.Should().BeEmpty();
+        plan.Unmerged.Should().BeEmpty();
+        plan.Refusal.Should().NotBeNull();
+        plan.Refusal!.Path.Should().Be("regulation.test");
+        plan.Refusal.Strategy.Should().Be(MergeStrategy.ParamRows);
+        plan.Refusal.Reason.Should().Be("cannot join");
+    }
+
+    [Fact]
+    public void A_failing_merge_of_another_file_falls_back_to_the_priority_winner_without_a_refusal()
+    {
+        var index = Index(null, File("a", "b.tpf.dcx", 2), File("b", "b.tpf.dcx", 1));
+        MergeFold fold = (_, _, _, _, _, _, _, _, _, _) => throw new MergeException("cannot join");
+
+        var plan = Plan(index, fold);
+
+        plan.Refusal.Should().BeNull();
+        plan.Merged.Should().BeEmpty();
+        var fallback = plan.Unmerged.Should().ContainSingle().Which;
+        fallback.Path.Should().Be("b.tpf.dcx");
+        fallback.Strategy.Should().Be(MergeStrategy.TpfUnion);
+        fallback.Outcome.Merges.Should().BeFalse();
+        fallback.Outcome.Reason.Should().Be(MergeOutcome.MergeFailed("cannot join")).And.Contain("cannot join");
+        fallback.Winner!.Value.PackageId.Should().Be("a", "loadout priority puts a above b");
+    }
+
+    [Fact]
+    public void A_path_that_fails_to_merge_does_not_take_the_other_merges_with_it()
     {
         var index = Index(null,
             File("a", "a.tpf.dcx", 2), File("b", "a.tpf.dcx", 1),
@@ -69,11 +107,10 @@ public class MergePlannerTests
 
         var plan = Plan(index, fold);
 
-        plan.Merged.Should().BeEmpty();
-        plan.Refusal.Should().NotBeNull();
-        plan.Refusal!.Path.Should().Be("b.tpf.dcx");
-        plan.Refusal.Strategy.Should().Be(MergeStrategy.TpfUnion);
-        plan.Refusal.Reason.Should().Be("cannot join");
+        plan.Refusal.Should().BeNull();
+        S(plan.Merged.Should().ContainSingle().Which.Bytes).Should().Be("ok");
+        plan.Merged.Single().Path.Should().Be("a.tpf.dcx");
+        plan.Unmerged.Should().ContainSingle().Which.Path.Should().Be("b.tpf.dcx");
     }
 
     [Fact]
@@ -179,15 +216,16 @@ public class MergePlannerTests
     }
 
     [Fact]
-    public void A_three_way_merge_without_a_vanilla_source_is_refused()
+    public void A_three_way_merge_without_a_vanilla_source_falls_back_to_the_priority_winner()
     {
         var index = Index(new HashSet<string> { "t.msgbnd.dcx" }, File("a", "t.msgbnd.dcx", 2), File("b", "t.msgbnd.dcx", 1));
 
         var plan = Plan(index, Recording([]), vanilla: (_, _) => null);
 
         plan.Merged.Should().BeEmpty();
-        plan.Refusal.Should().Be(new MergeRefusal("t.msgbnd.dcx", MergeStrategy.FmgThreeWay,
-            "b compares against the vanilla file it branched from, and none is available"));
+        plan.Refusal.Should().BeNull();
+        plan.Unmerged.Should().ContainSingle().Which.Outcome.Reason
+            .Should().Be(MergeOutcome.MergeFailed("b compares against the vanilla file it branched from, and none is available"));
     }
 
     [Fact]
@@ -379,7 +417,7 @@ public class MergePlannerTests
     }
 
     [Fact]
-    public void The_real_talk_archive_strategy_runs_and_a_failure_in_it_is_a_refusal()
+    public void The_real_talk_archive_strategy_runs_and_a_failure_in_it_falls_back_to_the_priority_winner()
     {
         // Archives holding different entries are the one thing the talk merge refuses on before reading any machine.
         const string path = "script/talk/m00.talkesdbnd.dcx";
@@ -393,8 +431,8 @@ public class MergePlannerTests
         var plan = RealPlan(contents, new HashSet<string> { path }, _ => van, NoBase, Real("low", path, 1), Real("high", path, 2));
 
         plan.Merged.Should().BeEmpty();
-        plan.Refusal.Should().NotBeNull();
-        plan.Refusal!.Strategy.Should().Be(MergeStrategy.EsdThreeWay);
+        plan.Refusal.Should().BeNull();
+        plan.Unmerged.Should().ContainSingle().Which.Strategy.Should().Be(MergeStrategy.EsdThreeWay);
     }
 
     [Fact]

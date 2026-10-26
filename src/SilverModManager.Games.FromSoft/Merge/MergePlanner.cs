@@ -9,9 +9,10 @@ namespace SilverModManager.Games.FromSoft.Merge;
 public static class MergePlanner
 {
     /// <summary>
-    /// Merges every path the index says will merge. The highest-priority contributor leads the fold, so it wins what a
-    /// strategy settles by priority. A strategy that starts from the game's file puts that file first, so the output
-    /// claims the installed build and a mod that ships a whole regulation contributes only what it authored.
+    /// Merges every path the index says will merge. A path other than the regulation whose merge fails is left unmerged
+    /// (<see cref="MergePlan.Unmerged"/>) and the rest still merge; the regulation failing refuses the plan. The
+    /// highest-priority contributor leads the fold, so it wins what a strategy settles by priority. A strategy that
+    /// starts from the game's file puts that file first, so the output claims the installed build and a mod that ships a whole regulation contributes only what it authored.
     /// </summary>
     /// <param name="bytes">A contributor's file.</param>
     /// <param name="vanilla">The file a contributor branched from, asked per contributor and only for strategies that compare against it; null when none is available. Contributors built for different game builds have different answers.</param>
@@ -36,6 +37,7 @@ public static class MergePlanner
     {
         var notMergeable = index.Candidates.Where(c => !c.Outcome.Merges).ToArray();
         var merged = new List<MergedPath>();
+        var unmerged = new List<MergeCandidate>();
 
         // Everything is computed before anything is returned: a failure on a later path must leave no earlier output.
         foreach (var candidate in index.Candidates.Where(c => c.Outcome.Merges))
@@ -48,10 +50,13 @@ public static class MergePlanner
             }
             catch (Exception exception) when (IsFormatFailure(exception))
             {
-                return new MergePlan([], new MergeRefusal(candidate.Path, strategy, exception.Message, (exception as MergeException)?.Missing ?? []), notMergeable);
+                if (MergeStrategies.RefusesWhenItFails(strategy))
+                    return new MergePlan([], new MergeRefusal(candidate.Path, strategy, exception.Message, (exception as MergeException)?.Missing ?? []), notMergeable);
+
+                unmerged.Add(candidate with { Outcome = MergeOutcome.NotMergeable(MergeOutcome.MergeFailed(exception.Message)), Winner = index.WinnerOf(candidate) });
             }
         }
-        return new MergePlan(merged, null, notMergeable);
+        return new MergePlan(merged, null, notMergeable, unmerged);
     }
 
     private static MergedPath Merge(

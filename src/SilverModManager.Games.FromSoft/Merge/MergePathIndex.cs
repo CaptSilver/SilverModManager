@@ -21,6 +21,9 @@ public readonly record struct MergeOutcome(bool Merges, string? Reason)
     public const string NoVanillaSource = "needs a vanilla copy of this file, the one the mods branched from; add an archive holding a vanilla copy to the library";
     public const string CaseOnlyCollision = "these paths differ only in case, so it's ambiguous which file me3 would mount; rename one so the paths differ for real, or drop one of the mods";
 
+    /// <summary>The reason for a path the index expected to merge but whose merge threw: the error stays in the text so the report and the warning can say why.</summary>
+    public static string MergeFailed(string error) => $"the merge failed: {error}";
+
     public static MergeOutcome WillMerge => new(true, null);
 
     public static MergeOutcome NotMergeable(string reason) => new(false, reason);
@@ -72,13 +75,15 @@ public sealed class MergePathIndex
     public const string MergedPackageId = Me3.Me3ModsLayout.MergedPackageId;
 
     private readonly Dictionary<string, MergeCandidate> _byPath;
+    private readonly IReadOnlyDictionary<string, ulong> _packagePriorities;
 
     /// <summary>Every candidate, sorted by path.</summary>
     public IReadOnlyList<MergeCandidate> Candidates { get; }
 
-    private MergePathIndex(IReadOnlyList<MergeCandidate> candidates)
+    private MergePathIndex(IReadOnlyList<MergeCandidate> candidates, IReadOnlyDictionary<string, ulong> packagePriorities)
     {
         Candidates = candidates;
+        _packagePriorities = packagePriorities;
         _byPath = new Dictionary<string, MergeCandidate>(candidates.Count, StringComparer.OrdinalIgnoreCase);
         foreach (var candidate in candidates) _byPath[candidate.Path] = candidate;
     }
@@ -134,7 +139,7 @@ public sealed class MergePathIndex
         }
 
         candidates.Sort((a, b) => string.CompareOrdinal(a.Path, b.Path));
-        return new MergePathIndex(candidates);
+        return new MergePathIndex(candidates, packagePriorities);
     }
 
     // Both copies deploy and me3 mounts the one from the package it lists last, so the winner is read from the same order.
@@ -144,6 +149,13 @@ public sealed class MergePathIndex
         var last = Me3.Me3PackageOrder.Ascending(providers.Select(f => f.PackageId).Distinct(StringComparer.Ordinal), packagePriorities)[^1];
         return providers.First(f => f.PackageId.Equals(last, StringComparison.Ordinal));
     }
+
+    /// <summary>
+    /// The file me3 mounts for a candidate whose copies all deploy whole, which is how a path that could not be merged
+    /// ends up. A merging candidate carries no <see cref="MergeCandidate.Winner"/> of its own, so the planner asks here
+    /// when a merge fails.
+    /// </summary>
+    public ProviderFile WinnerOf(MergeCandidate candidate) => WinnerOf(candidate.Contributors, _packagePriorities);
 
     /// <summary>The candidate for a package-relative path in any casing, or null when nothing needs a decision there.</summary>
     public MergeCandidate? Lookup(string relPath) => _byPath.GetValueOrDefault(relPath);

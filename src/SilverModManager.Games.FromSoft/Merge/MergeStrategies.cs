@@ -41,6 +41,13 @@ public static class MergeStrategies
         _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null),
     };
 
+    /// <summary>
+    /// Whether a merge that fails stops the whole apply. Only the regulation does: the game cannot run on a copy of it
+    /// picked by priority when mods edit different rows, while any other file can be left to me3, which mounts the
+    /// package that loadout priority puts last, exactly as for a file the app has no merge for.
+    /// </summary>
+    public static bool RefusesWhenItFails(MergeStrategy strategy) => strategy is MergeStrategy.ParamRows;
+
     /// <summary>Whether the first step starts from the game's own file rather than the highest-priority mod's (erm's TAKES_GAME_BASE).</summary>
     public static bool TakesGameBase(MergeStrategy strategy) => strategy is MergeStrategy.ParamRows;
 

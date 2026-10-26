@@ -28,17 +28,27 @@ public sealed record MergeRefusal(string Path, MergeStrategy Strategy, string Re
 }
 
 /// <summary>
-/// What an apply would merge. Either every mergeable path has its merged bytes, or the plan carries the one
-/// <see cref="Refusal"/> and no bytes at all: a later path failing must not leave an earlier one half done.
+/// What an apply would merge. Either every mergeable path has its merged bytes or is <see cref="Unmerged"/>, or the
+/// plan carries the one <see cref="Refusal"/> and no bytes at all: a later path failing must not leave an earlier one
+/// half done.
 /// </summary>
 /// <param name="Merged">Every merged path, sorted by path; empty when refused.</param>
 /// <param name="Refusal">The path that stopped the plan, if any.</param>
 /// <param name="NotMergeable">The index's candidates the engine will not merge, passed through for the reports.</param>
+/// <param name="Unmerged">
+/// The candidates the index expected to merge whose merge failed and that are not the regulation: each comes back as
+/// not mergeable, with the error as its reason and the loadout's priority winner, and deploys whole like any file the
+/// app has no merge for.
+/// </param>
 public sealed record MergePlan(
     IReadOnlyList<MergedPath> Merged,
     MergeRefusal? Refusal,
-    IReadOnlyList<MergeCandidate> NotMergeable)
+    IReadOnlyList<MergeCandidate> NotMergeable,
+    IReadOnlyList<MergeCandidate> Unmerged)
 {
+    public MergePlan(IReadOnlyList<MergedPath> merged, MergeRefusal? refusal, IReadOnlyList<MergeCandidate> notMergeable)
+        : this(merged, refusal, notMergeable, []) { }
+
     /// <summary>Every merged path's notes, each tagged with its path.</summary>
     public IEnumerable<PathNote> Notes => Merged.SelectMany(m => m.Notes.Select(n => new PathNote(m.Path, n)));
 }

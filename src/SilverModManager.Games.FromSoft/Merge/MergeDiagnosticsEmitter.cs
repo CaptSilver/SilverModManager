@@ -5,6 +5,7 @@ using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.FromSoft.Diagnostics;
+using SilverModManager.Games.FromSoft.Doctor;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
@@ -62,6 +63,9 @@ public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnost
             yield return FromSoftDiagnostics.CreateMergeRefused(message, refusal.Path, MergeStrategies.Name(refusal.Strategy));
             yield break;
         }
+
+        foreach (var fallback in plan.Unmerged)
+            yield return PackageCollisionEmitter.WinnerWarning(fallback, fallback.Winner ?? throw new InvalidOperationException($"{fallback.Path} fell back to loadout priority but has no winner"));
 
         foreach (var merged in plan.Merged)
         {

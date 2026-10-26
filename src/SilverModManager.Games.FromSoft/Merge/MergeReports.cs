@@ -51,7 +51,9 @@ public sealed class MergeReports(
         var unconfirmed = missingVanilla ? dumps.Unconfirmed(loadout.Db, loadout.InstallationInstance) : [];
         var archiveFailure = missingVanilla ? sources.GameArchiveFailure(loadout.InstallationInstance) : null;
 
+        // A merge that failed reads like a file with no strategy: not merged, and loadout priority decides.
         var entries = index.Candidates
+            .Select(c => plan?.Unmerged.FirstOrDefault(u => u.Path.Equals(c.Path, StringComparison.OrdinalIgnoreCase)) ?? c)
             .Select(c => EntryOf(c, plan, refusal, unconfirmed, archiveFailure))
             .OrderBy(e => e.Path, StringComparer.Ordinal)
             .ToArray();

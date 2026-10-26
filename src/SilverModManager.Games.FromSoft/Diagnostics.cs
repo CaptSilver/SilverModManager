@@ -40,7 +40,7 @@ but one of them.
         .WithSeverity(DiagnosticSeverity.Warning)
         .WithSummary("{Winner} wins {Path} by loadout priority; the copy from {Ignored} is ignored")
         .WithDetails("""
-More than one mod provides the file **{Path}**, and the app has no way to merge it.
+More than one mod provides the file **{Path}**, and the app did not merge it: {Reason}.
 
 **{Winner}** wins by loadout priority, and the copy from {Ignored} is ignored. To make the other mod win instead, use
 Move up / Move down under Rules > File Conflicts.
@@ -49,6 +49,7 @@ Move up / Move down under Rules > File Conflicts.
             .AddValue<string>("Winner")
             .AddValue<string>("Ignored")
             .AddValue<string>("Path")
+            .AddValue<string>("Reason")
         )
         .Finish();
 

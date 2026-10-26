@@ -98,6 +98,25 @@ public class MergeDiagnosticsEmitterTests(ITestOutputHelper helper) : AVanillaDu
     }
 
     [Fact]
+    public async Task AMergeThatFailsIsAWarningNamingTheWinnerByPriorityAndWhyTheMergeFailed()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout.LoadoutId, "Alpha", (Msg, [1, 2, 3]));
+        await InstallPackage(loadout.LoadoutId, "Beta", (Msg, [4, 5, 6]));
+        loadout = Refresh(loadout);
+
+        var diagnostic = (await Run(loadout)).Should().ContainSingle().Which;
+
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostic.Id.Should().Be(new DiagnosticId("SilverModManager.Games.FromSoft", 16));
+        var data = diagnostic.Should().BeOfType<Diagnostic<FromSoftDiagnostics.PackageWinnerByPriorityMessageData>>().Which.MessageData;
+        data.Path.Should().Be(Msg);
+        data.Winner.Should().Be("Beta.zip");
+        data.Ignored.Should().Be("Alpha.zip");
+        data.Reason.Should().StartWith("the merge failed: ");
+    }
+
+    [Fact]
     public async Task AMissingVanillaIsACriticalThatOffersToCheckForUpdatesAndToDisableTheModsOfThatBuild()
     {
         var loadout = await CreateLoadout();

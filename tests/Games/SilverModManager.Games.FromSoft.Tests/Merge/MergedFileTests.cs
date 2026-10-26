@@ -250,6 +250,37 @@ public class MergedFileTests(ITestOutputHelper helper) : AVanillaDumpTest<Merged
         ProfilePackages().Should().Equal("Alpha", "Beta");
     }
 
+    [Fact]
+    public async Task AMergeThatFailsDeploysBothCopiesSoMe3MountsTheLoadoutPriorityWinner()
+    {
+        var loadout = await CreateLoadout();
+        await InstallMod(loadout.LoadoutId, "Alpha", (Msg, Bytes("not an archive, alpha")), ("parts/alpha.dcx", Bytes("alpha part")));
+        await InstallMod(loadout.LoadoutId, "Beta", (Msg, Bytes("not an archive, beta")));
+
+        await Apply(Refresh(loadout));
+
+        (await (Mods / "Alpha" / Msg).ReadAllBytesAsync()).Should().Equal(Bytes("not an archive, alpha"));
+        (await (Mods / "Beta" / Msg).ReadAllBytesAsync()).Should().Equal(Bytes("not an archive, beta"));
+        (Mods / "_merged").DirectoryExists().Should().BeFalse();
+        // Beta is installed last, so it has the higher priority and me3 mounts the package the profile lists last.
+        ProfilePackages().Should().Equal("Alpha", "Beta");
+    }
+
+    [Fact]
+    public async Task AMergeThatFailsAfterItWasMergedTakesTheOldMergedFileOffDisk()
+    {
+        var (loadout, _, _, _, _) = await TwoMsgbndMods(bothShipAPart: false);
+        await Apply(loadout);
+        MergedMsg.FileExists.Should().BeTrue();
+        await InstallMod(loadout.LoadoutId, "Gamma", (Msg, Bytes("not an archive")));
+
+        await Apply(Refresh(loadout));
+
+        MergedMsg.FileExists.Should().BeFalse("a stale merged file would be mounted over the winner's copy");
+        (Mods / "Gamma" / Msg).FileExists.Should().BeTrue();
+        (Mods / "Alpha" / Msg).FileExists.Should().BeTrue();
+    }
+
     private async Task<Loadout.ReadOnly> TwoRegulationsOfDifferentVersions(string alphaFile)
     {
         var loadout = await CreateLoadout();

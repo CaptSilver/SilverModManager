@@ -16,9 +16,10 @@ namespace SilverModManager.Games.FromSoft;
 /// data and reach the game through the launcher, never through a deployment.
 /// <para>
 /// Files that several mods provide and the engine can merge are written once, into the merged package, and the mods'
-/// own copies stay off disk. If the merge can't be made, the apply is refused before anything is written: deploying
-/// the copies whole would leave it to me3 which one wins. A file with no merge strategy is not a merge that failed:
-/// its copies deploy whole and the profile's package order, which follows loadout priority, decides the winner.
+/// own copies stay off disk. If the regulation's merge can't be made, the apply is refused before anything is written:
+/// deploying the copies whole would leave the game with one mod's rows only. Any other file whose merge fails, like a
+/// file with no merge strategy, deploys its copies whole and the profile's package order, which follows loadout
+/// priority, decides the winner.
 /// </para>
 /// </summary>
 public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
@@ -29,7 +30,9 @@ public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
     private readonly Lazy<MergePlanCache> _plans;
 
     // Only the latest revision of each loadout is kept: the listing is asked for on every refresh and an older one is never asked for again.
-    private readonly ConcurrentDictionary<LoadoutId, (TxId Revision, Dictionary<GamePath, IIntrinsicFile> Files)> _listed = new();
+    // A path whose merge failed has no merged file, and that is only known once a plan was made, so the listing is also
+    // remembered with the failed paths it left out and is made again when they change.
+    private readonly ConcurrentDictionary<LoadoutId, (TxId Revision, IReadOnlySet<string> Unmerged, Dictionary<GamePath, IIntrinsicFile> Files)> _listed = new();
     private readonly ConcurrentDictionary<LoadoutId, (TxId Revision, string Reason)> _listingFailures = new();
 
     protected AFromSoftSynchronizer(IServiceProvider provider, IFromSoftGame game, IEnumerable<IIntrinsicFile> intrinsicFiles) : base(provider)
@@ -50,12 +53,14 @@ public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
     public override Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout)
     {
         var revision = loadout.Db.BasisTxId;
-        if (_listed.TryGetValue(loadout.LoadoutId, out var known) && known.Revision == revision) return known.Files;
+        var unmerged = _plans.Value.UnmergedPaths(loadout.LoadoutId);
+        if (_listed.TryGetValue(loadout.LoadoutId, out var known) && known.Revision == revision && known.Unmerged.SetEquals(unmerged)) return known.Files;
 
         var files = new Dictionary<GamePath, IIntrinsicFile>(_intrinsicFiles);
         try
         {
-            foreach (var candidate in _sources.Value.Index(loadout).Candidates.Where(c => c.Outcome.Merges))
+            // A merge that failed leaves no merged file, and with none in the tree AdjustActions keeps the contributors' copies.
+            foreach (var candidate in _sources.Value.Index(loadout).Candidates.Where(c => c.Outcome.Merges && !unmerged.Contains(c.Path)))
             {
                 var merged = new MergedFile(_plans.Value, candidate.Path);
                 files[merged.Path] = merged;
@@ -68,7 +73,7 @@ public abstract class AFromSoftSynchronizer : ALoadoutSynchronizer
             _listingFailures[loadout.LoadoutId] = (revision, $"the files the mods provide could not be listed: {exception.Message}");
         }
 
-        _listed[loadout.LoadoutId] = (revision, files);
+        _listed[loadout.LoadoutId] = (revision, unmerged, files);
         return files;
     }
 

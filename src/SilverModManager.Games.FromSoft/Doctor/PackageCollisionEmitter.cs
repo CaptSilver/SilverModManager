@@ -24,6 +24,19 @@ public class PackageCollisionEmitter(LoadoutMergeSources sources) : IFromSoftDia
 {
     private const string CaseNote = " The paths differ only in case, and the game's file lookup does not tell them apart.";
 
+    /// <summary>
+    /// The warning for a file that deploys whole from each package, whether the app has no merge for it or its merge
+    /// failed: me3 mounts the last package it lists, which is the loadout's priority order, so the winner is known and
+    /// the other copies are only dropped.
+    /// </summary>
+    internal static Diagnostic WinnerWarning(MergeCandidate candidate, ProviderFile winner)
+    {
+        var ignored = candidate.Contributors.Select(c => c.ModName).Where(n => n != winner.ModName).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
+        return FromSoftDiagnostics.CreatePackageWinnerByPriority(
+            winner.ModName, string.Join(", ", ignored), candidate.Path,
+            candidate.Outcome.Reason ?? throw new InvalidOperationException($"{candidate.Path} is not merged and says no reason"));
+    }
+
     // The check reads the loadout's items, not the sync tree, so it gives the same answer without one.
     public IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
         => Diagnose(loadout, FrozenDictionary<GamePath, SyncNode>.Empty, cancellationToken);
@@ -38,10 +51,7 @@ public class PackageCollisionEmitter(LoadoutMergeSources sources) : IFromSoftDia
 
             if (candidate.Winner is { } winner)
             {
-                // A file with no merge strategy deploys whole from each package and me3 mounts the last one it lists,
-                // which is the loadout's priority order, so the winner is known and the other copies are only dropped.
-                var ignored = candidate.Contributors.Select(c => c.ModName).Where(n => n != winner.ModName).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
-                yield return FromSoftDiagnostics.CreatePackageWinnerByPriority(winner.ModName, string.Join(", ", ignored), candidate.Path);
+                yield return WinnerWarning(candidate, winner);
                 continue;
             }
 
