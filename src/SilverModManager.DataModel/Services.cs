@@ -129,7 +129,8 @@ public static class Services
         // Verbs
         coll.AddLoadoutManagementVerbs()
             .AddImportExportVerbs()
-            .AddToolVerbs();
+            .AddToolVerbs()
+            .AddGameVerbs();
 
         return coll;
     }
