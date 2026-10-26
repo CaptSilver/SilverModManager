@@ -4613,5 +4613,131 @@ namespace SilverModManager.App.UI.Resources {
                 return ResourceManager.GetString("FileConflicts_Paths_NoPins", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Rules.
+        /// </summary>
+        public static string FileConflicts_Rules_Action {
+            get {
+                return ResourceManager.GetString("FileConflicts_Rules_Action", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Rules for {0}.
+        /// </summary>
+        public static string FileConflicts_Rules_Title {
+            get {
+                return ResourceManager.GetString("FileConflicts_Rules_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No rules for this mod..
+        /// </summary>
+        public static string FileConflicts_Rules_None {
+            get {
+                return ResourceManager.GetString("FileConflicts_Rules_None", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Wins over {0}.
+        /// </summary>
+        public static string FileConflicts_Rules_Wins {
+            get {
+                return ResourceManager.GetString("FileConflicts_Rules_Wins", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Loses to {0}.
+        /// </summary>
+        public static string FileConflicts_Rules_Loses {
+            get {
+                return ResourceManager.GetString("FileConflicts_Rules_Loses", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to From the collection {0}.
+        /// </summary>
+        public static string FileConflicts_Rules_FromCollection {
+            get {
+                return ResourceManager.GetString("FileConflicts_Rules_FromCollection", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Delete rule.
+        /// </summary>
+        public static string FileConflicts_Rules_Delete {
+            get {
+                return ResourceManager.GetString("FileConflicts_Rules_Delete", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pick a mod.
+        /// </summary>
+        public static string FileConflicts_Rules_Pick {
+            get {
+                return ResourceManager.GetString("FileConflicts_Rules_Pick", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Win over it.
+        /// </summary>
+        public static string FileConflicts_Rules_AddAfter {
+            get {
+                return ResourceManager.GetString("FileConflicts_Rules_AddAfter", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Lose to it.
+        /// </summary>
+        public static string FileConflicts_Rules_AddBefore {
+            get {
+                return ResourceManager.GetString("FileConflicts_Rules_AddBefore", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This rule creates a loop between {0} and {1}..
+        /// </summary>
+        public static string FileConflicts_Rules_Loop {
+            get {
+                return ResourceManager.GetString("FileConflicts_Rules_Loop", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Move not possible.
+        /// </summary>
+        public static string FileConflicts_Refused_Title {
+            get {
+                return ResourceManager.GetString("FileConflicts_Refused_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to **{0}** has to win over **{1}**, and a rule stops this move..
+        /// </summary>
+        public static string FileConflicts_Refused_Message {
+            get {
+                return ResourceManager.GetString("FileConflicts_Refused_Message", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove the rule and move.
+        /// </summary>
+        public static string FileConflicts_Refused_RemoveAndMove {
+            get {
+                return ResourceManager.GetString("FileConflicts_Refused_RemoveAndMove", resourceCulture);
+            }
+        }
     }
 }

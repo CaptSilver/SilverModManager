@@ -18,6 +18,8 @@ using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Pages.LoadoutPage;
+using SilverModManager.UI.Sdk.Dialog;
+using SilverModManager.UI.Sdk.Dialog.Enums;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Games.FromSoft.Merge;
@@ -83,6 +85,7 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
             {
                 await msg.Match<Task>(
                     ViewConflicts,
+                    OpenRules,
                     moveUp => Move(moveUp.Item.Key, moveUp.Item.Get<FileConflictsComponents.NeighbourIds>(FileConflictsColumns.IndexColumn.NeighbourIdsComponentKey), _sortDirectionCurrent.Value, moveUp: true), 
                     moveDown => Move(moveDown.Item.Key, moveDown.Item.Get<FileConflictsComponents.NeighbourIds>(FileConflictsColumns.IndexColumn.NeighbourIdsComponentKey), _sortDirectionCurrent.Value, moveUp: false)
                 );
@@ -118,10 +121,9 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
                 };
 
                 var loserId = losingItemModel.Convert(x => (LoadoutItemGroupPriorityId)x.Key);
-                var result = loserId.HasValue
-                    ? await _loadoutManager.ResolveFileConflicts(itemIds, loserId.Value)
-                    : await _loadoutManager.LoseAllFileConflicts(itemIds);
-                await HandleMoveResult(result);
+                await RunMove(() => loserId.HasValue
+                    ? _loadoutManager.ResolveFileConflicts(itemIds, loserId.Value)
+                    : _loadoutManager.LoseAllFileConflicts(itemIds));
             },
             awaitOperation: AwaitOperation.Drop).AddTo(disposables);
         });
@@ -137,18 +139,30 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
             (ListSortDirection.Descending, moveUp: true) => (toMove, neighbourIds.Next.Value),
         };
 
-        var result = await _loadoutManager.ResolveFileConflicts(winnerIds: [LoadoutItemGroupPriorityId.From(winnerId)], LoadoutItemGroupPriorityId.From(loserId));
-        await HandleMoveResult(result);
+        await RunMove(() => _loadoutManager.ResolveFileConflicts(winnerIds: [LoadoutItemGroupPriorityId.From(winnerId)], LoadoutItemGroupPriorityId.From(loserId)));
     }
 
     /// <summary>
-    /// A move is either done or refused with a reason, never silently undone: when a group rule stops it, say which.
+    /// Runs a priority move. One that a group rule stops is not applied: the player either cancels, or has the rule
+    /// removed and the move repeated. Every way of moving a mod goes through here.
     /// </summary>
-    private async Task HandleMoveResult(ConflictMoveResult result)
+    internal async Task RunMove(Func<ValueTask<ConflictMoveResult>> move)
     {
-        if (!result.IsRuleViolation) return;
+        var result = await move();
 
-        var rule = result.Rule;
+        // Removing the rule can expose another one the move also breaks, so the question is asked again for it.
+        while (result.IsRuleViolation)
+        {
+            var rule = result.Rule;
+            if (!await AskToRemoveRule(rule)) return;
+
+            await _loadoutManager.RemoveGroupRule(rule.LoadoutGroupRuleId);
+            result = await move();
+        }
+    }
+
+    private async Task<bool> AskToRemoveRule(LoadoutGroupRule.ReadOnly rule)
+    {
         var source = rule.Source.AsLoadoutItem().Name;
         var other = rule.Other.AsLoadoutItem().Name;
         _logger.LogInformation("Refused a priority move: it would break the rule that {Source} must {Kind} {Other}", source, rule.Kind, other);
@@ -156,12 +170,32 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
         var winner = rule.Kind == GroupRuleKind.After ? source : other;
         var loser = rule.Kind == GroupRuleKind.After ? other : source;
         var markdownRendererViewModel = _serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
-        markdownRendererViewModel.Contents = $"**{winner}** has to win over **{loser}**, and this rule stops that move.";
+        markdownRendererViewModel.Contents = string.Format(Language.FileConflicts_Refused_Message, winner, loser);
 
-        _ = await _windowManager.ShowDialog(DialogFactory.CreateStandardDialog(title: "Move not possible", new StandardDialogParameters
-        {
-            Markdown = markdownRendererViewModel,
-        }, buttonDefinitions: [DialogStandardButtons.Close]), DialogWindowType.Modeless);
+        var dialog = DialogFactory.CreateStandardDialog(
+            title: Language.FileConflicts_Refused_Title,
+            new StandardDialogParameters { Markdown = markdownRendererViewModel },
+            buttonDefinitions:
+            [
+                DialogStandardButtons.Cancel,
+                new DialogButtonDefinition(Language.FileConflicts_Refused_RemoveAndMove, ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Primary),
+            ]);
+
+        var answer = await _windowManager.ShowDialog(dialog, DialogWindowType.Modal);
+        return answer.ButtonId == ButtonDefinitionId.Accept;
+    }
+
+    /// <summary>Opens the Rules editor for the mod, where its Before/After rules are added and deleted.</summary>
+    internal async Task OpenRules(FileConflictsTreeDataGridAdapter.RulesMessage msg)
+    {
+        var connection = _serviceProvider.GetRequiredService<IConnection>();
+        var priority = LoadoutItemGroupPriority.Load(connection.Db, msg.PriorityId);
+
+        var content = new FileConflictRulesViewModel(connection, _loadoutManager, _loadoutId, priority.TargetId);
+        var title = string.Format(Language.FileConflicts_Rules_Title, priority.Target.AsLoadoutItem().Name);
+        _ = await _windowManager.ShowDialog(
+            DialogFactory.CreateDialog(title, [DialogStandardButtons.Close], content, DialogWindowSize.Large),
+            DialogWindowType.Modeless);
     }
 
     /// <summary>Opens the per-path list for the mod, where a path's winner can be pinned.</summary>
@@ -196,11 +230,13 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
 public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeItemModel<EntityId>, EntityId>,
     ITreeDataGirdMessageAdapter<OneOf.OneOf<
         FileConflictsTreeDataGridAdapter.ViewConflictsMessage,
+        FileConflictsTreeDataGridAdapter.RulesMessage,
         FileConflictsTreeDataGridAdapter.MoveUpCommandPayload,
         FileConflictsTreeDataGridAdapter.MoveDownCommandPayload
     >>
 {
     public record ViewConflictsMessage(LoadoutItemGroupPriorityId PriorityId);
+    public record RulesMessage(LoadoutItemGroupPriorityId PriorityId);
     public readonly record struct MoveUpCommandPayload(CompositeItemModel<EntityId> Item);
     public readonly record struct MoveDownCommandPayload(CompositeItemModel<EntityId> Item);
 
@@ -211,7 +247,7 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
     private readonly IDisposable _activationDisposable;
 
     private readonly Observable<ListSortDirection> _sortDirectionObservable;
-    public Subject<OneOf.OneOf<ViewConflictsMessage, MoveUpCommandPayload, MoveDownCommandPayload>> MessageSubject { get; } = new();
+    public Subject<OneOf.OneOf<ViewConflictsMessage, RulesMessage, MoveUpCommandPayload, MoveDownCommandPayload>> MessageSubject { get; } = new();
 
     public FileConflictsTreeDataGridAdapter(
         IServiceProvider serviceProvider, 
@@ -258,6 +294,17 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
             {
                 var (self, itemModel, component) = state;
                 self.MessageSubject.OnNext(new ViewConflictsMessage(itemModel.Key));
+            })
+        );
+
+        // Rules command
+        model.SubscribeToComponentAndTrack<FileConflictsComponents.ViewAction, FileConflictsTreeDataGridAdapter>(
+            key: FileConflictsColumns.Actions.ViewComponentKey,
+            state: this,
+            factory: static (self, itemModel, component) => component.CommandEditRules.Subscribe((self, itemModel), static (_, state) =>
+            {
+                var (self, itemModel) = state;
+                self.MessageSubject.OnNext(new RulesMessage(itemModel.Key));
             })
         );
 

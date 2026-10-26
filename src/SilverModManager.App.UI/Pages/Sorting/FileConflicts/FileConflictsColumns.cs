@@ -54,6 +54,9 @@ public static class FileConflictsComponents
         public BindableReactiveProperty<bool> HasConflicts { get; }
         public ReactiveCommand<Unit> CommandViewConflicts { get; }
 
+        /// <summary>Opens the rules editor; a mod always has one, conflicts or not.</summary>
+        public ReactiveCommand<Unit> CommandEditRules { get; } = new();
+
         public ViewAction(bool hasConflicts)
         {
             HasConflicts = new BindableReactiveProperty<bool>(value: hasConflicts);

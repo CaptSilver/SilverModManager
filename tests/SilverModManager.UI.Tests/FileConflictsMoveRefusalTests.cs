@@ -7,6 +7,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Pages.Sorting;
+using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
@@ -27,8 +28,21 @@ public class FileConflictsMoveRefusalTests(IServiceProvider provider) : AUiTest(
         public object GetRequiredKeyedService(Type serviceType, object? serviceKey) => ((IKeyedServiceProvider)inner).GetRequiredKeyedService(serviceType, serviceKey);
     }
 
+    private static readonly FileConflictsComponents.NeighbourIds Neighbours = new(EntityId.From(9), EntityId.From(11));
+
+    private static StandardDialogResult Pressed(ButtonDefinitionId id) => new() { ButtonId = id };
+
+    /// <summary>Shows what the refusal dialog was given and answers it with <paramref name="answer"/>.</summary>
+    private static IWindowManager WindowsAnswering(ButtonDefinitionId answer, List<Dialog> shown)
+    {
+        var windows = Substitute.For<IWindowManager>();
+        windows.ShowDialog(Arg.Do<IDialog>(d => shown.Add((Dialog)d)), Arg.Any<DialogWindowType>())
+            .Returns(Task.FromResult(Pressed(answer)));
+        return windows;
+    }
+
     [Fact]
-    public async Task AMoveARuleStopsShowsADialogNamingTheRule()
+    public async Task AMoveARuleStopsOffersCancelOrRemovingTheRule()
     {
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Refused Move");
         var rule = await SeedRule(loadout.LoadoutId, "Winning Mod", "Losing Mod");
@@ -36,13 +50,55 @@ public class FileConflictsMoveRefusalTests(IServiceProvider provider) : AUiTest(
         var loadouts = Substitute.For<ILoadoutManager>();
         loadouts.ResolveFileConflicts(Arg.Any<LoadoutItemGroupPriorityId[]>(), Arg.Any<LoadoutItemGroupPriorityId>())
             .Returns(new ValueTask<ConflictMoveResult>(ConflictMoveResult.RuleViolation(rule)));
-        var windows = Substitute.For<IWindowManager>();
-        var vm = new FileConflictsViewModel(new FakedServices(Provider, loadouts), windows, loadout.LoadoutId);
+        var shown = new List<Dialog>();
+        var vm = new FileConflictsViewModel(new FakedServices(Provider, loadouts), WindowsAnswering(ButtonDefinitionId.Cancel, shown), loadout.LoadoutId);
 
-        await vm.Move(EntityId.From(10), new FileConflictsComponents.NeighbourIds(EntityId.From(9), EntityId.From(11)),
-            System.ComponentModel.ListSortDirection.Ascending, moveUp: false);
+        await vm.Move(EntityId.From(10), Neighbours, System.ComponentModel.ListSortDirection.Ascending, moveUp: false);
 
-        await windows.Received(1).ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
+        var dialog = shown.Should().ContainSingle().Subject;
+        dialog.ViewModel.WindowTitle.Should().Be(Language.FileConflicts_Refused_Title);
+        dialog.ViewModel.ButtonDefinitions.Select(b => b.Text).Should()
+            .Equal(DialogStandardButtons.Cancel.Text, Language.FileConflicts_Refused_RemoveAndMove);
+        await loadouts.DidNotReceive().RemoveGroupRule(Arg.Any<LoadoutGroupRuleId>());
+        await loadouts.Received(1).ResolveFileConflicts(Arg.Any<LoadoutItemGroupPriorityId[]>(), Arg.Any<LoadoutItemGroupPriorityId>());
+    }
+
+    [Fact]
+    public async Task RemovingTheRuleDeletesItAndRepeatsTheMove()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Refused Then Removed");
+        var rule = await SeedRule(loadout.LoadoutId, "Winning Mod", "Losing Mod");
+
+        var loadouts = Substitute.For<ILoadoutManager>();
+        loadouts.ResolveFileConflicts(Arg.Any<LoadoutItemGroupPriorityId[]>(), Arg.Any<LoadoutItemGroupPriorityId>())
+            .Returns(new ValueTask<ConflictMoveResult>(ConflictMoveResult.RuleViolation(rule)), new ValueTask<ConflictMoveResult>(ConflictMoveResult.Moved));
+        var shown = new List<Dialog>();
+        var vm = new FileConflictsViewModel(new FakedServices(Provider, loadouts), WindowsAnswering(ButtonDefinitionId.Accept, shown), loadout.LoadoutId);
+
+        await vm.Move(EntityId.From(10), Neighbours, System.ComponentModel.ListSortDirection.Ascending, moveUp: false);
+
+        shown.Should().ContainSingle();
+        await loadouts.Received(1).RemoveGroupRule(rule.LoadoutGroupRuleId);
+        await loadouts.Received(2).ResolveFileConflicts(Arg.Any<LoadoutItemGroupPriorityId[]>(), Arg.Any<LoadoutItemGroupPriorityId>());
+    }
+
+    [Fact]
+    public async Task EveryKindOfMoveGoesThroughTheSameRefusalHandling()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Refused Drag");
+        var rule = await SeedRule(loadout.LoadoutId, "Winning Mod", "Losing Mod");
+
+        var loadouts = Substitute.For<ILoadoutManager>();
+        loadouts.LoseAllFileConflicts(Arg.Any<LoadoutItemGroupPriorityId[]>())
+            .Returns(new ValueTask<ConflictMoveResult>(ConflictMoveResult.RuleViolation(rule)), new ValueTask<ConflictMoveResult>(ConflictMoveResult.Moved));
+        var shown = new List<Dialog>();
+        var vm = new FileConflictsViewModel(new FakedServices(Provider, loadouts), WindowsAnswering(ButtonDefinitionId.Accept, shown), loadout.LoadoutId);
+
+        await vm.RunMove(() => loadouts.LoseAllFileConflicts([]));
+
+        shown.Should().ContainSingle();
+        await loadouts.Received(1).RemoveGroupRule(rule.LoadoutGroupRuleId);
+        await loadouts.Received(2).LoseAllFileConflicts(Arg.Any<LoadoutItemGroupPriorityId[]>());
     }
 
     [Fact]

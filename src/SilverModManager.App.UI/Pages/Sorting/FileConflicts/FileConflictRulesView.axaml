@@ -1,0 +1,44 @@
+<reactiveUi:ReactiveUserControl x:TypeArguments="local:IFileConflictRulesViewModel"
+                                xmlns="https://github.com/avaloniaui"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                                xmlns:reactiveUi="http://reactiveui.net"
+                                xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.Sorting"
+                                xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
+                                mc:Ignorable="d" d:DesignWidth="600"
+                                x:Class="SilverModManager.App.UI.Pages.Sorting.FileConflictRulesView">
+
+    <StackPanel Spacing="16">
+        <StackPanel Spacing="8">
+            <TextBlock x:Name="NoRulesText" Text="{x:Static resources:Language.FileConflicts_Rules_None}"
+                       Foreground="{StaticResource NeutralSubduedBrush}" />
+            <ItemsControl x:Name="RulesList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:FileConflictRuleRow">
+                        <StackPanel Spacing="2" Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{Binding Text}" VerticalAlignment="Center" />
+                                <Button Content="{x:Static resources:Language.FileConflicts_Rules_Delete}"
+                                        Command="{Binding RemoveCommand}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding CollectionText}"
+                                       IsVisible="{Binding CollectionText, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                       Foreground="{StaticResource NeutralSubduedBrush}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <ComboBox x:Name="CandidatePicker" MinWidth="220"
+                      PlaceholderText="{x:Static resources:Language.FileConflicts_Rules_Pick}" />
+            <Button x:Name="AddAfterButton" Content="{x:Static resources:Language.FileConflicts_Rules_AddAfter}" />
+            <Button x:Name="AddBeforeButton" Content="{x:Static resources:Language.FileConflicts_Rules_AddBefore}" />
+        </StackPanel>
+
+        <TextBlock x:Name="ErrorText" TextWrapping="Wrap" />
+    </StackPanel>
+
+</reactiveUi:ReactiveUserControl>

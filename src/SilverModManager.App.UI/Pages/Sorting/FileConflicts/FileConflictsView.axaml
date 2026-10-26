@@ -7,6 +7,7 @@
                    xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.Sorting"
                    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
                    xmlns:abstractions="clr-namespace:SilverModManager.MnemonicDB.Abstractions;assembly=SilverModManager.MnemonicDB.Abstractions"
+                   xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
                    xmlns:icons="clr-namespace:SilverModManager.UI.Sdk.Icons;assembly=SilverModManager.UI.Sdk"
                    mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
                    x:Class="SilverModManager.App.UI.Pages.Sorting.FileConflictsView">
@@ -138,11 +139,18 @@
                                                                 ComponentKey="{x:Static local:FileConflictsColumns+Actions.ViewComponentKey}">
                                         <controls:ComponentTemplate.DataTemplate>
                                             <DataTemplate DataType="{x:Type local:FileConflictsComponents+ViewAction}">
-                                                <controls:StandardButton Command="{CompiledBinding CommandViewConflicts}"
-                                                                         Text="View conflicts"
-                                                                         Size="Small"
-                                                                         Type="Tertiary"
-                                                                         Fill="Weak" />
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <controls:StandardButton Command="{CompiledBinding CommandViewConflicts}"
+                                                                             Text="View conflicts"
+                                                                             Size="Small"
+                                                                             Type="Tertiary"
+                                                                             Fill="Weak" />
+                                                    <controls:StandardButton Command="{CompiledBinding CommandEditRules}"
+                                                                             Text="{x:Static resources:Language.FileConflicts_Rules_Action}"
+                                                                             Size="Small"
+                                                                             Type="Tertiary"
+                                                                             Fill="Weak" />
+                                                </StackPanel>
                                             </DataTemplate>
                                         </controls:ComponentTemplate.DataTemplate>
                                     </controls:ComponentTemplate>

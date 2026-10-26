@@ -272,6 +272,8 @@ public static class Services
             .AddViewModel<MoveToModDialogViewModel, IMoveToModDialogViewModel>()
             .AddView<FileConflictPathsView, IFileConflictPathsViewModel>()
             .AddViewModel<FileConflictPathsViewModel, IFileConflictPathsViewModel>()
+            .AddView<FileConflictRulesView, IFileConflictRulesViewModel>()
+            .AddViewModel<FileConflictRulesViewModel, IFileConflictRulesViewModel>()
             
             .AddView<DialogPremiumCollectionDownloadsView, IDialogPremiumCollectionDownloadsViewModel>()
             .AddViewModel<DialogPremiumCollectionDownloadsViewModel, IDialogPremiumCollectionDownloadsViewModel>()

@@ -1605,4 +1605,46 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="FileConflicts_Paths_NoPins" xml:space="preserve">
         <value>A pin has no effect on this path: another mod package provides the same file, so the copies are merged, or me3 picks one, by the mods' priority. Change the priority instead.</value>
     </data>
+    <data name="FileConflicts_Rules_Action" xml:space="preserve">
+        <value>Rules</value>
+    </data>
+    <data name="FileConflicts_Rules_Title" xml:space="preserve">
+        <value>Rules for {0}</value>
+    </data>
+    <data name="FileConflicts_Rules_None" xml:space="preserve">
+        <value>No rules for this mod.</value>
+    </data>
+    <data name="FileConflicts_Rules_Wins" xml:space="preserve">
+        <value>Wins over {0}</value>
+    </data>
+    <data name="FileConflicts_Rules_Loses" xml:space="preserve">
+        <value>Loses to {0}</value>
+    </data>
+    <data name="FileConflicts_Rules_FromCollection" xml:space="preserve">
+        <value>From the collection {0}</value>
+    </data>
+    <data name="FileConflicts_Rules_Delete" xml:space="preserve">
+        <value>Delete rule</value>
+    </data>
+    <data name="FileConflicts_Rules_Pick" xml:space="preserve">
+        <value>Pick a mod</value>
+    </data>
+    <data name="FileConflicts_Rules_AddAfter" xml:space="preserve">
+        <value>Win over it</value>
+    </data>
+    <data name="FileConflicts_Rules_AddBefore" xml:space="preserve">
+        <value>Lose to it</value>
+    </data>
+    <data name="FileConflicts_Rules_Loop" xml:space="preserve">
+        <value>This rule creates a loop between {0} and {1}.</value>
+    </data>
+    <data name="FileConflicts_Refused_Title" xml:space="preserve">
+        <value>Move not possible</value>
+    </data>
+    <data name="FileConflicts_Refused_Message" xml:space="preserve">
+        <value>**{0}** has to win over **{1}**, and a rule stops this move.</value>
+    </data>
+    <data name="FileConflicts_Refused_RemoveAndMove" xml:space="preserve">
+        <value>Remove the rule and move</value>
+    </data>
 </root>
