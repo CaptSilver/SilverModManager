@@ -20,16 +20,17 @@
                 <Style Selector="^:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
                 <Style Selector="^:selected /template/ ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
             </Style>
-            <!-- The card template's root Border takes this class and sets its own Height. -->
+            <!-- The card template's root Border takes this class and sets its own Height. Cards are a light wash over
+                 the page panel rather than a solid colour, so Glass shows through them. -->
             <Style Selector="Border.GridCard">
                 <Setter Property="Width" Value="{x:Static local:CardGridLayout.CardWidth}" />
                 <Setter Property="Margin" Value="0 0 16 16" />
                 <Setter Property="Padding" Value="12" />
                 <Setter Property="CornerRadius" Value="8" />
-                <Setter Property="Background" Value="{StaticResource SurfaceLowBrush}" />
+                <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="BorderBrush" Value="Transparent" />
-                <Style Selector="^:pointerover"><Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" /></Style>
+                <Style Selector="^:pointerover"><Setter Property="Background" Value="{StaticResource SurfaceTranslucentMidBrush}" /></Style>
             </Style>
         </ListBox.Styles>
         <ListBox.ItemTemplate>
