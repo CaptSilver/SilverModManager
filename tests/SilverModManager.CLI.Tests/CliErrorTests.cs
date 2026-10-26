@@ -50,6 +50,20 @@ public sealed class CliErrorTests : IAsyncLifetime
 
         [Verb("test-ok", "Succeeds")]
         public static Task<int> Ok([Injected] IRenderer renderer) => Task.FromResult(0);
+
+        [Verb("test-option", "Takes an option whose parser throws")]
+        public static Task<int> WithOption([Injected] IRenderer renderer, [Option("t", "thing", "A thing")] Thing thing) => Task.FromResult(0);
+    }
+
+    public sealed record Thing(string Name);
+
+    /// <summary>
+    /// A parser that breaks its contract by throwing instead of returning an error, as LoadoutParser once did.
+    /// </summary>
+    private sealed class ThrowingThingParser : IOptionParser<Thing>
+    {
+        public bool TryParse(string input, out Thing value, out string error) =>
+            throw new InvalidOperationException("sequence contains no elements");
     }
 
     private static ServiceProvider Services(LevelRecorder? log = null) => new ServiceCollection()
@@ -59,6 +73,8 @@ public sealed class CliErrorTests : IAsyncLifetime
         .AddVerb(() => TestVerbs.Crash)
         .AddVerb(() => TestVerbs.CrashLate)
         .AddVerb(() => TestVerbs.Ok)
+        .AddVerb(() => TestVerbs.WithOption)
+        .AddOptionParser<Thing, ThrowingThingParser>()
         .AddSingleton<CommandLineConfigurator>()
         .BuildServiceProvider();
 
@@ -113,6 +129,32 @@ public sealed class CliErrorTests : IAsyncLifetime
         await services.GetRequiredService<CommandLineConfigurator>().RunAsync([verb], new LoggingRenderer(), CancellationToken.None);
 
         log.Entries.Should().ContainSingle(e => e.Exception != null).Which.Level.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task AnOptionParserThatThrows_FailsTheCommandWithoutAStackTrace_AndLogsTheError()
+    {
+        var log = new LevelRecorder();
+        var services = Services(log);
+        var renderer = new LoggingRenderer();
+
+        var exitCode = await services.GetRequiredService<CommandLineConfigurator>().RunAsync(["test-option", "-t", "x"], renderer, CancellationToken.None);
+
+        exitCode.Should().Be(1);
+        TextOf(renderer).Should().Contain("Details are in the log at").And.NotContain("   at ").And.NotContain("InvalidOperationException");
+        log.Entries.Should().ContainSingle(e => e.Exception != null).Which.Level.Should().Be(LogLevel.Error);
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task AnOptionParserThatThrows_ThroughTheClient_ExitsWithOne()
+    {
+        var client = await StartMain();
+        var console = new TestConsole();
+
+        var exitCode = await client.ExecuteCommand(["test-option", "-t", "x"], console);
+
+        exitCode.Should().Be(1);
+        console.Output.Should().Contain("Details are in the log at").And.NotContain("InvalidOperationException");
     }
 
     private async Task<CliClient> StartMain()

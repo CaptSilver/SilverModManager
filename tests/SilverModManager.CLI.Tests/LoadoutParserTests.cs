@@ -149,6 +149,42 @@ public class LoadoutParserTests(IServiceProvider provider)
         parsed.LoadoutId.Should().Be(result.Remap(live).LoadoutId);
     }
 
+    [Theory]
+    [InlineData("999999")]
+    [InlineData("No Such Loadout")]
+    [InlineData("LoadoutId:zzzzzzzzzzzzzzz")]
+    public void AnInputThatMatchesNoLoadout_ReturnsFalseWithAnErrorNamingIt(string input)
+    {
+        var parser = provider.GetRequiredService<IOptionParser<Loadout.ReadOnly>>();
+
+        parser.TryParse(input, out _, out var error).Should().BeFalse();
+        error.Should().Contain(input).And.Contain("loadouts list");
+    }
+
+    [Fact]
+    public async Task ANameTwoLoadoutsShare_ReturnsFalseWithAnErrorSayingToUseTheId()
+    {
+        var connection = provider.GetRequiredService<IConnection>();
+        var name = "Parser Pair " + Guid.NewGuid();
+
+        using var tx = connection.BeginTransaction();
+        var metadata = new GameInstallMetadata.New(tx)
+        {
+            Path = "/tmp/parser-tests-" + Guid.NewGuid(),
+            Name = "Parser Test Game",
+            Store = GameStore.Unknown,
+            GameId = NexusModsGameId.From(1),
+        };
+        NewLoadout(tx, metadata, name, "PA1", LoadoutKind.Default);
+        NewLoadout(tx, metadata, name, "PA2", LoadoutKind.Default);
+        await tx.Commit();
+
+        var parser = provider.GetRequiredService<IOptionParser<Loadout.ReadOnly>>();
+
+        parser.TryParse(name, out _, out var error).Should().BeFalse();
+        error.Should().Contain(name).And.Contain("id");
+    }
+
     private static readonly GameId ParserTestGame = GameId.From("ParserTestGame");
 
     private static Loadout.New NewLoadout(ITransaction tx, GameInstallMetadata.New metadata, string name, string shortName, LoadoutKind kind) => new(tx)

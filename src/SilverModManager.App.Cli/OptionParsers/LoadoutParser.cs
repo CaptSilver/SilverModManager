@@ -29,9 +29,10 @@ internal class LoadoutParser(IConnection conn, IOptionParser<IGame> gameParser) 
         }
         
         // An id in the format of: LoadoutId:00000000000000000000000000
-        if (input.StartsWith("LoadoutId:") && input.Length == 25)
+        if (input.StartsWith("LoadoutId:") && input.Length == 25
+            && ulong.TryParse(input[10..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var loadoutId))
         {
-            var loadout = Loadout.Load(db, EntityId.From(ulong.Parse(input[10..], NumberStyles.HexNumber)));
+            var loadout = Loadout.Load(db, EntityId.From(loadoutId));
             if (loadout.IsValid())
             {
                 value = loadout;
@@ -63,17 +64,16 @@ internal class LoadoutParser(IConnection conn, IOptionParser<IGame> gameParser) 
 
         var found = Loadout.FindByName(db, input).Where(l => l.IsVisible()).ToArray();
 
-        switch (found.Length)
+        if (found.Length == 1)
         {
-            case 0:
-                throw new Exception($"No loadout found with name or id {input}");
-            case > 1:
-                throw new Exception($"Multiple loadouts found with name {input}");
-            case 1:
-                value = found[0];
-                return true;
-            default:
-                throw new Exception($"No loadout found with name {input}");
+            value = found[0];
+            return true;
         }
+
+        value = default;
+        error = found.Length == 0
+            ? $"No loadout has the name or id '{input}'. Run `loadouts list` to see them."
+            : $"More than one loadout is named '{input}'. Use its id from `loadouts list` instead.";
+        return false;
     }
 }

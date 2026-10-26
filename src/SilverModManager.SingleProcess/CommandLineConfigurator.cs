@@ -6,6 +6,8 @@ using System.CommandLine.Parsing;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Cli;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.CLI.Types;
 using SilverModManager.Sdk.ProxyConsole;
 
@@ -186,8 +188,19 @@ public class CommandLineConfigurator
 
             var service = _provider.GetService<IOptionParser<T>>();
             if (service is null) return default!;
-            if (service.TryParse(result.Tokens.Single().Value, out var itm, out var error)) return itm;
-            result.ErrorMessage = error;
+            try
+            {
+                if (service.TryParse(result.Tokens.Single().Value, out var itm, out var error)) return itm;
+                result.ErrorMessage = error;
+            }
+            catch (Exception ex)
+            {
+                // A parser should report a bad value through its error, but one that throws instead must still fail
+                // only this command. Escaping here would leave the client without an exit code and the server with
+                // an unobserved task exception.
+                _logger.LogFailure(ex, "The parser for --{Option} threw", optionDefinition.LongName);
+                result.ErrorMessage = CliErrors.Describe(ex);
+            }
             return default!;
         };
 
