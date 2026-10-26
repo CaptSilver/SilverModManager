@@ -88,6 +88,24 @@ public sealed class RegulationBaselines(Func<AbsolutePath> root, IManifestVouchi
     public IReadOnlySet<Hash> VouchedHashes()
         => KeptFiles().Select(k => VouchedHash(k.File)).OfType<Hash>().ToHashSet();
 
+    /// <summary>
+    /// The xxHash3 of every validated file kept from a library archive, with where it was found, written as
+    /// <c>archive name: member</c>. A validated file vouches for nothing on its own; this lets a dump in the very
+    /// archive it was validated from serve packed files, since the checks were made on that archive's contents.
+    /// </summary>
+    /// <exception cref="HealException">A provenance file is there and cannot be read.</exception>
+    public IReadOnlyList<(Hash Hash, string Origin)> ValidatedFromArchives()
+    {
+        var found = new List<(Hash, string)>();
+        foreach (var kept in KeptFiles())
+        {
+            var provenance = ProvenanceOf(kept.File);
+            if (provenance is not { Tier: BaselineTier.Validated, Source: BaselineSource.LibraryArchive, OriginalPath: { } origin }) continue;
+            found.Add((ReadSidecar(kept.File) ?? Hash.From(ulong.Parse(provenance.Xxh3, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture)), origin));
+        }
+        return found;
+    }
+
     /// <summary>Every file kept, by build and then file name, with where it came from and how far it is trusted.</summary>
     /// <exception cref="HealException">A provenance file is there and cannot be read.</exception>
     public IReadOnlyList<KeptBaseline> List()

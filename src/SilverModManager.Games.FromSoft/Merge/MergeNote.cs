@@ -78,10 +78,12 @@ public sealed record BaselineWillBeKept(string Version) : IVanillaSourceNote
 }
 
 /// <summary>The vanilla copy of a file came from a vanilla dump in the library.</summary>
-public sealed record VanillaServedFromDump(string Path, string ArchiveName, string Version) : IVanillaSourceNote
+/// <param name="Validated">The dump's regulation is a baseline the app kept after checking it, not one the game's own files vouch for.</param>
+public sealed record VanillaServedFromDump(string Path, string ArchiveName, string Version, bool Validated = false) : IVanillaSourceNote
 {
-    public string Describe() =>
-        $"{Path}: compared against the vanilla copy in archive {ArchiveName} (version {Version})";
+    public string Describe() => Validated
+        ? $"{Path}: compared against the vanilla copy in archive {ArchiveName} (version {Version}), whose regulation the app validated as vanilla but the game's files cannot confirm"
+        : $"{Path}: compared against the vanilla copy in archive {ArchiveName} (version {Version})";
 }
 
 /// <summary>The vanilla copy of a packed file was read from the game's own archives, so it is the installed build's.</summary>
@@ -89,6 +91,19 @@ public sealed record VanillaServedFromGameArchive(string Path) : IVanillaSourceN
 {
     public string Describe() =>
         $"{Path}: compared against the copy in the game's own archives, which is the installed build's";
+}
+
+/// <summary>
+/// Several vanilla copies of one packed file were on offer, and the one the contributors' files differ from least was
+/// used. A newer copy reads a patch's own changes as the mods' edits.
+/// </summary>
+/// <param name="Source">Where the chosen copy came from, as a phrase.</param>
+/// <param name="Distance">How far the contributors' files are from it: differing state groups, text entries or textures, summed over the contributors.</param>
+/// <param name="Of">How many copies were on offer.</param>
+public sealed record VanillaNearestChosen(string Path, string Source, long Distance, int Of) : IMergeNote
+{
+    public string Describe() =>
+        $"{Path}: {Of} vanilla copies were on offer; compared the mods against {Source}, which they differ from least ({Distance})";
 }
 
 /// <summary>

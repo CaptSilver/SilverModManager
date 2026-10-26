@@ -1,4 +1,5 @@
 using FluentAssertions;
+using NexusMods.Hashing.xxHash3;
 using SilverModManager.Games.FromSoft.Formats;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;
@@ -102,7 +103,7 @@ public class LoadoutMergeSourcesArchiveVanillaTests(ITestOutputHelper helper) : 
     }
 
     [Fact]
-    public async Task OnceKeptTheArchiveVanillaIsServedFromTheBaselineAndCountsAsValidated()
+    public async Task OnceKeptTheArchiveVanillaIsServedFromTheBaselineAndItsArchiveIsAValidatedDumpThatVouchesForNothing()
     {
         var vanilla = Table(OlderVersion);
         var (loadout, providers) = await Mods(("Alpha", Table(OlderVersion, edited: 3)), ("Beta", Table(OlderVersion, edited: 9)));
@@ -114,7 +115,9 @@ public class LoadoutMergeSourcesArchiveVanillaTests(ITestOutputHelper helper) : 
 
         again.Groups.Single().Bytes.Should().Equal(vanilla);
         notes.Should().NotContain(n => n is BaselineWillBeKept);
-        ServiceProvider.GetRequiredService<VanillaDumps>().Find(Connection.Db, GameInstallation).Should().BeEmpty("a validated file does not make its archive a vanilla dump");
+        ServiceProvider.GetRequiredService<VanillaDumps>().Find(Connection.Db, GameInstallation).Should().ContainSingle()
+            .Which.Validated.Should().BeTrue("the archive the file was validated in may serve packed files, but only as a validated dump");
+        ServiceProvider.GetRequiredService<IVouchedRegulations>().Hashes(GameInstallation).Should().NotContain(vanilla.xxHash3(), "a validated file vouches for nothing");
         archive.Should().NotBeNull();
     }
 

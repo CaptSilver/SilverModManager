@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Heal;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.FileStore;
@@ -18,7 +19,8 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// <param name="Root">The folder inside the archive that holds the regulation; empty for the archive's top.</param>
 /// <param name="Version">The build stamp of the dump's regulation.</param>
 /// <param name="Members">Every file under <paramref name="Root"/>, by its path below it.</param>
-public sealed record VanillaDump(EntityId ArchiveId, string ArchiveName, string Root, string Version, IReadOnlyDictionary<string, Hash> Members)
+/// <param name="Validated">The regulation is a baseline the app kept after checking it, not one the game's own files vouch for.</param>
+public sealed record VanillaDump(EntityId ArchiveId, string ArchiveName, string Root, string Version, IReadOnlyDictionary<string, Hash> Members, bool Validated = false)
 {
     /// <summary>
     /// The member that stands for the package-relative <paramref name="path"/>: the one at that path below the root,
@@ -62,14 +64,15 @@ public sealed record UnconfirmedDump(string ArchiveName, string Root, string Reg
 
 /// <summary>
 /// Finds the vanilla dumps in the library: folders of an archive holding a regulation the app can vouch for (see
-/// <see cref="IVouchedRegulations"/>). The vanilla copy of a packed file is a sibling of that regulation, so the
-/// ancestor of a three-way merge is found without anyone declaring where it is.
+/// <see cref="IVouchedRegulations"/>), or one it kept as a validated baseline from that very archive. The vanilla copy
+/// of a packed file is a sibling of that regulation, so the ancestor of a three-way merge is found without anyone
+/// declaring where it is.
 /// <para>
 /// Re-entrancy: this runs while the merge index is built, inside the winning-files query, so it reads the library
 /// through model accessors only (<c>FindByHash</c>, <c>Children</c>) and never through a database query.
 /// </para>
 /// </summary>
-public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouched, ILogger<VanillaDumps> logger)
+public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouched, RegulationBaselines baselines, ILogger<VanillaDumps> logger)
 {
     private readonly ConcurrentDictionary<Hash, string?> _versions = new();
 
@@ -79,22 +82,22 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
         var traits = TraitsOf(installation);
         if (traits.RegulationFileName is not { } regulationName) return [];
 
-        var found = new Dictionary<(EntityId Archive, string Root), (LibraryArchive.ReadOnly Archive, Hash Regulation)>();
+        var found = new Dictionary<(EntityId Archive, string Root), (LibraryArchive.ReadOnly Archive, Hash Regulation, bool Validated)>();
         foreach (var hash in vouched.Hashes(installation))
         {
-            foreach (var file in LibraryFile.FindByHash(db, hash))
-            {
-                var entry = LibraryArchiveFileEntry.Load(db, file.Id);
-                if (!entry.IsValid()) continue;
+            foreach (var entry in RegulationEntries(db, hash, regulationName))
+                found.TryAdd((entry.Parent.Id, RootOf(entry.Path.ToString())), (entry.Parent, hash, false));
+        }
 
-                var path = entry.Path.ToString();
-                if (!VanillaDump.FileName(path).Equals(regulationName, StringComparison.OrdinalIgnoreCase)) continue;
-                found.TryAdd((entry.Parent.Id, RootOf(path)), (entry.Parent, hash));
-            }
+        // Added after the vouched ones, so a regulation that is both stays a vouched dump.
+        foreach (var (hash, origin) in baselines.ValidatedFromArchives())
+        {
+            foreach (var entry in RegulationEntries(db, hash, regulationName).Where(e => ValidatedFrom(origin, e.Parent)))
+                found.TryAdd((entry.Parent.Id, RootOf(entry.Path.ToString())), (entry.Parent, hash, true));
         }
 
         var dumps = new List<VanillaDump>();
-        foreach (var ((archiveId, root), (archive, regulation)) in found.OrderBy(f => f.Key.Archive.Value).ThenBy(f => f.Key.Root, StringComparer.Ordinal))
+        foreach (var ((archiveId, root), (archive, regulation, validated)) in found.OrderBy(f => f.Key.Archive.Value).ThenBy(f => f.Key.Root, StringComparer.Ordinal))
         {
             if (VersionOf(regulation, traits) is not { } version)
             {
@@ -102,7 +105,7 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
                 continue;
             }
 
-            dumps.Add(new VanillaDump(archiveId, DisplayName(archive), root, version, MembersUnder(archive, root)));
+            dumps.Add(new VanillaDump(archiveId, DisplayName(archive), root, version, MembersUnder(archive, root), validated));
         }
 
         return dumps;
@@ -115,12 +118,14 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
         if (traits.RegulationFileName is not { } regulationName) return [];
 
         var known = vouched.Hashes(installation);
+        var validated = baselines.ValidatedFromArchives();
         var result = new List<UnconfirmedDump>();
         foreach (var entry in LibraryArchiveFileEntry.All(db).OrderBy(e => e.Id.Value))
         {
             var path = entry.Path.ToString();
             if (!VanillaDump.FileName(path).Equals(regulationName, StringComparison.OrdinalIgnoreCase)) continue;
             if (known.Contains(entry.AsLibraryFile().Hash)) continue;
+            if (validated.Any(v => v.Hash == entry.AsLibraryFile().Hash && ValidatedFrom(v.Origin, entry.Parent))) continue;
 
             // Every mod ships its own regulation, so only a folder called Vanilla is taken for someone's attempt at a dump.
             var root = RootOf(path);
@@ -164,6 +169,22 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
     /// download is a temporary GUID name; the library item carries the readable one.
     /// </summary>
     internal static string DisplayName(LibraryArchive.ReadOnly archive) => archive.AsLibraryFile().AsLibraryItem().Name;
+
+    // The regulation files of the library that have this content, as archive entries; a hash can also belong to a loose file.
+    private static IEnumerable<LibraryArchiveFileEntry.ReadOnly> RegulationEntries(IDb db, Hash hash, string regulationName)
+    {
+        foreach (var file in LibraryFile.FindByHash(db, hash))
+        {
+            var entry = LibraryArchiveFileEntry.Load(db, file.Id);
+            if (entry.IsValid() && VanillaDump.FileName(entry.Path.ToString()).Equals(regulationName, StringComparison.OrdinalIgnoreCase))
+                yield return entry;
+        }
+    }
+
+    // A validated baseline records "archive name: member". Only the archive it was checked in may borrow that trust:
+    // another archive may hold the same regulation next to files nobody looked at.
+    private static bool ValidatedFrom(string origin, LibraryArchive.ReadOnly archive)
+        => origin.StartsWith(DisplayName(archive) + ": ", StringComparison.Ordinal);
 
     private static string RootOf(string path)
     {

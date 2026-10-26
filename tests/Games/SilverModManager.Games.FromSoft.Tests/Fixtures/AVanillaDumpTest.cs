@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Games.FromSoft.EldenRing;
 using SilverModManager.Games.FromSoft.Formats;
+using SilverModManager.Games.FromSoft.Heal;
 using SilverModManager.Games.FromSoft.Tests.Formats.Fixtures;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.FromSoft.Installers;
@@ -30,6 +31,17 @@ public abstract class AVanillaDumpTest<TTest>(ITestOutputHelper helper) : AModde
         var folder = DataRoot / "baselines";
         folder.CreateDirectory();
         File.WriteAllBytes((folder / $"regulation-{version}.bin").GetFullPath(), bytes);
+    }
+
+    /// <summary>
+    /// Keeps a regulation the way a merge keeps one it validated from a library archive: trusted as an ancestor, never
+    /// vouching for anything. <paramref name="origin"/> is <c>archive name: member</c>.
+    /// </summary>
+    protected void KeepValidatedBaseline(string version, byte[] bytes, string origin)
+    {
+        var baselines = ServiceProvider.GetRequiredService<RegulationBaselines>();
+        var provenance = baselines.ValidatedProvenance(bytes, BaselineSource.LibraryArchive, origin, "checked by the test");
+        baselines.KeepValidated(version, bytes, provenance);
     }
 
     /// <summary>Puts a zip with these members into the library without installing it.</summary>

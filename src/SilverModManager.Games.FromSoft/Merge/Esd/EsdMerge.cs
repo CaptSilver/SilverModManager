@@ -93,7 +93,7 @@ public static class EsdMerge
     /// missing group is never canonicalised: there is nothing to compare it against, and a group only one side has may
     /// hold bytecode the decoder refuses without that being anybody's problem.
     /// </summary>
-    private static bool Same(StateGroup? a, StateGroup? b)
+    internal static bool Same(StateGroup? a, StateGroup? b)
     {
         if (a is null || b is null) return a is null && b is null;
         return Shape(a).Equals(Shape(b));

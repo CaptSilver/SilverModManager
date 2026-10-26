@@ -212,9 +212,12 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
     /// message lists what is missing.
     /// </para>
     /// <para>
-    /// A packed file's vanilla copy is the member of a vanilla dump, the same for every contributor. With several dumps
-    /// on offer the one of the contributors' regulation version wins when they ship one, otherwise the newest not newer
-    /// than the installed build, otherwise the newest. Each copy served is named in <paramref name="notes"/> with its archive.
+    /// A packed file's vanilla copy is the member of a vanilla dump or the game's own copy, the same for every
+    /// contributor. With several on offer the one the contributors' files differ from least wins, measured in the
+    /// strategy's own units (<see cref="VanillaCloseness.Closest"/>). A tie goes to a dump before the game's archives,
+    /// and among dumps to the one of the contributors' regulation version when they ship one, otherwise the newest not
+    /// newer than the installed build, otherwise the newest. Each copy served is named in <paramref name="notes"/> with
+    /// its archive and, when the dump's regulation was only validated, says so.
     /// </para>
     /// </summary>
     /// <param name="notes">Receives what a read-only call would have kept had it been an apply, and which source served each build's vanilla.</param>
@@ -362,16 +365,40 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
     {
         var installation = loadout.InstallationInstance;
         var offering = dumps.Find(loadout.Db, installation).Where(d => d.TryResolve(relPath, out _, out _)).ToArray();
-        if (offering.Length == 0) return FromGameArchives(installation, relPath, notes);
+        var ranked = offering.Length > 1 ? Rank(loadout, contributors, offering) : offering;
 
-        var dump = offering.Length == 1 ? offering[0] : Choose(loadout, contributors, offering);
-        notes?.Add(new VanillaServedFromDump(relPath, dump.ArchiveName, dump.Version));
+        // The game's own copy is the installed build's, which a mod may have been made before: every change the patch
+        // made then reads as the mod's edit. So it is a candidate beside the dumps, and when there is a choice the copy
+        // nearest the contributors' files is used. A tie goes to a dump, then to the dump the build rules prefer.
+        var game = FromGameArchives(installation, relPath);
+        if (ranked.Length == 0) return game is null ? null : ServedFromGame(game, relPath, notes);
+        if (game is null && ranked.Length == 1) return ServedFromDumpOf(ranked[0], relPath, notes);
+
+        var dumpBytes = ranked.Select(d => dumps.Member(d, relPath)).ToList();
+        var candidates = game is null ? dumpBytes : [.. dumpBytes, game];
+        var (index, distance) = VanillaCloseness.Closest(candidates, contributors.Select(ContributorBytes).ToArray(), relPath, TraitsOf(installation));
+        if (game is not null && index == dumpBytes.Count) return ServedFromGame(game, relPath, notes, distance, candidates.Count);
+
+        var chosen = ranked[index];
+        if (distance is { } measured) notes?.Add(new VanillaNearestChosen(relPath, $"archive {chosen.ArchiveName}", measured, candidates.Count));
+        return ServedFromDumpOf(chosen, relPath, notes);
+    }
+
+    private byte[] ServedFromDumpOf(VanillaDump dump, string relPath, ICollection<IMergeNote>? notes)
+    {
+        notes?.Add(new VanillaServedFromDump(relPath, dump.ArchiveName, dump.Version, dump.Validated));
         return dumps.Member(dump, relPath);
     }
 
-    // Behind the dumps because a mod may branch from an older build than the installed one, and the game's copy of a
-    // newer build would make every patch change look like the mod's edit.
-    private byte[]? FromGameArchives(GameInstallation installation, string relPath, ICollection<IMergeNote>? notes)
+    private static byte[] ServedFromGame(byte[] bytes, string relPath, ICollection<IMergeNote>? notes, long? distance = null, int of = 1)
+    {
+        notes?.Add(new VanillaServedFromGameArchive(relPath));
+        if (distance is { } measured) notes?.Add(new VanillaNearestChosen(relPath, "the game's own archives", measured, of));
+        return bytes;
+    }
+
+    // The game's copy of a packed file, or null when the archives hold none or cannot be opened.
+    private byte[]? FromGameArchives(GameInstallation installation, string relPath)
     {
         var traits = TraitsOf(installation);
         if (traits.Archives.IsEmpty) return null;
@@ -379,11 +406,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
         var folder = ArchiveFolder(installation);
         try
         {
-            if (GameArchives.Find(folder, relPath, traits) is null) return null;
-
-            var bytes = GameArchives.ReadFile(folder, relPath, traits);
-            notes?.Add(new VanillaServedFromGameArchive(relPath));
-            return bytes;
+            return GameArchives.Find(folder, relPath, traits) is null ? null : GameArchives.ReadFile(folder, relPath, traits);
         }
         catch (Bhd5Exception exception)
         {
@@ -394,7 +417,8 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
         }
     }
 
-    private VanillaDump Choose(Loadout.ReadOnly loadout, IReadOnlyList<ProviderFile> contributors, IReadOnlyList<VanillaDump> offering)
+    // The dumps in the order the build rules prefer them, which is where a tie in distance is settled.
+    private VanillaDump[] Rank(Loadout.ReadOnly loadout, IReadOnlyList<ProviderFile> contributors, IReadOnlyList<VanillaDump> offering)
     {
         var installation = loadout.InstallationInstance;
         var regulationName = TraitsOf(installation).RegulationFileName;
@@ -405,7 +429,9 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
             .Select(p => VersionOf(installation, p))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        if (shipped.Length == 1 && offering.FirstOrDefault(d => d.Version.Equals(shipped[0], StringComparison.Ordinal)) is { } exact) return exact;
+        var exact = shipped.Length == 1
+            ? offering.Where(d => d.Version.Equals(shipped[0], StringComparison.Ordinal)).ToArray()
+            : [];
 
         string? installed = null;
         try
@@ -417,8 +443,9 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
             logger.LogDebug(exception, "The installed build could not be identified, so the newest vanilla dump is used");
         }
 
-        var byVersion = offering.OrderByDescending(d => d.Version, Comparer<string>.Create(CompareVersions)).ToArray();
-        return byVersion.FirstOrDefault(d => installed is null || CompareVersions(d.Version, installed) <= 0) ?? byVersion[0];
+        var byVersion = offering.Except(exact).OrderByDescending(d => d.Version, Comparer<string>.Create(CompareVersions)).ToArray();
+        var notNewer = byVersion.Where(d => installed is null || CompareVersions(d.Version, installed) <= 0);
+        return [.. exact, .. notNewer, .. byVersion.Except(notNewer)];
     }
 
     // Build stamps are digit strings of equal length in practice; comparing by number keeps a shorter one from outranking a longer.
