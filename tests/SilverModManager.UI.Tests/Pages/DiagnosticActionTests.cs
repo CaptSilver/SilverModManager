@@ -23,6 +23,7 @@ using SilverModManager.Games.FromSoft.Cleanup.SaveToLibrary;
 using SilverModManager.Sdk.NexusModsApi;
 using SilverModManager.Platform.Proton.Doctor;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
@@ -337,7 +338,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
     private static CleanupFixOutcome Applied(params string[] deletes)
         => new(CleanupFixStatus.Applied, new CleanupResult([..PlanOf(deletes).Steps], null));
 
-    private FixCleanupActionHandler FixHandler(IWindowManager windows, IDiagnosticManager manager, ICleanupFixService fixer, ILibrarySaver? saver = null, IModDownloader? downloader = null)
+    private FixCleanupActionHandler FixHandler(IWindowManager windows, IDiagnosticManager manager, ICleanupFixService fixer, ILibrarySaver? saver = null, IModDownloader? downloader = null, ILoadoutManager? loadouts = null)
     {
         // Without a saver of its own a test gets one that finds nothing to save, so no extra dialog appears.
         var nothingToSave = Substitute.For<ILibrarySaver>();
@@ -348,6 +349,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
             (typeof(IOverlayController), Substitute.For<IOverlayController>()),
             (typeof(ILibrarySaver), saver ?? nothingToSave),
             (typeof(IModDownloader), downloader ?? Substitute.For<IModDownloader>()),
+            (typeof(ILoadoutManager), loadouts ?? Substitute.For<ILoadoutManager>()),
             (typeof(IGameDomainToGameIdMappingCache), Substitute.For<IGameDomainToGameIdMappingCache>()));
         return new FixCleanupActionHandler(services, windows, manager);
     }
@@ -394,6 +396,64 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         await windows.Received(1).ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
         await fixer.Received(1).FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Is<CleanupPlan>(p => p.SameSteps(plan)), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>());
         await manager.Received(1).RefreshAsync(seeded.LoadoutId);
+    }
+
+    [Fact]
+    public async Task Test_FixRescansTheGameFolderBeforeHealthCheckIsRefreshed()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("a"));
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>()).Returns(Applied("a"));
+        var order = new List<string>();
+        var loadouts = Substitute.For<ILoadoutManager>();
+        loadouts.RescanGameFolder(Arg.Any<Loadout.ReadOnly>()).Returns(_ =>
+        {
+            order.Add("rescan");
+            return Task.CompletedTask;
+        });
+        var manager = Substitute.For<IDiagnosticManager>();
+        manager.RefreshAsync(Arg.Any<LoadoutId>()).Returns(_ =>
+        {
+            order.Add("health check");
+            return Task.CompletedTask;
+        });
+
+        await FixHandler(Answering(ButtonDefinitionId.Accept), manager, fixer, loadouts: loadouts)
+            .ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await loadouts.Received(1).RescanGameFolder(Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == seeded.LoadoutId));
+        order.Should().Equal("rescan", "health check");
+    }
+
+    [Fact]
+    public async Task Test_FixStillRefreshesHealthCheckWhenTheRescanFails()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("a"));
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>()).Returns(Applied("a"));
+        var loadouts = Substitute.For<ILoadoutManager>();
+        loadouts.RescanGameFolder(Arg.Any<Loadout.ReadOnly>()).Returns(Task.FromException(new IOException("the folder is unreadable")));
+        var manager = Substitute.For<IDiagnosticManager>();
+
+        await FixHandler(Answering(ButtonDefinitionId.Accept), manager, fixer, loadouts: loadouts)
+            .ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await manager.Received(1).RefreshAsync(seeded.LoadoutId);
+    }
+
+    [Fact]
+    public async Task Test_FixDoesNotRescanWhenNothingWasApplied()
+    {
+        var seeded = await SeedLoadoutRow(GameStore.Steam, "Fix");
+        var fixer = FixerPlanning(PlanOf("a"));
+        fixer.FixAsync(Arg.Any<Loadout.ReadOnly>(), Arg.Any<CleanupPlan>(), Arg.Any<ManualCommandPrompt>(), Arg.Any<CancellationToken>())
+            .Returns(new CleanupFixOutcome(CleanupFixStatus.Cancelled, Message: "dismissed"));
+        var loadouts = Substitute.For<ILoadoutManager>();
+
+        await FixHandler(Answering(ButtonDefinitionId.Accept), Substitute.For<IDiagnosticManager>(), fixer, loadouts: loadouts)
+            .ExecuteAsync(seeded.LoadoutId, []).WaitAsync(TimeSpan.FromSeconds(30));
+
+        await loadouts.DidNotReceive().RescanGameFolder(Arg.Any<Loadout.ReadOnly>());
     }
 
     [Fact]

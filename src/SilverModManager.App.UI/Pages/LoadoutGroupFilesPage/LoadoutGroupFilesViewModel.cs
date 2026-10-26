@@ -20,6 +20,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using ObservableCollections;
 using R3;
 using ReactiveUI;
@@ -37,6 +38,7 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
     [Reactive] public partial ReactiveCommand<NavigationInformation> OpenEditorCommand { get; [UsedImplicitly] set; } = null!;
     [Reactive] public partial ReactiveCommand<Unit> RemoveCommand { get; [UsedImplicitly] set; } = null!;
     public ReactiveCommand<Unit> UndoTreatAsMineCommand { get; }
+    public ReactiveCommand<Unit> RefreshCommand { get; }
     [Reactive] public partial CompositeItemModel<GamePath>? SelectedItem { get; set; }
     [Reactive] public partial ViewLoadoutGroupFilesTreeDataGridAdapter? FileTreeAdapter { get; set; }
     
@@ -67,8 +69,21 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
                 }
             );
 
+        // Only the loadout's External Changes can have gone stale: it mirrors the game folder, which cleanups and
+        // other tools change without a sync.
+        RefreshCommand = this.ObservePropertyChanged(vm => vm.Context)
+            .Select(connection, static (context, conn) => FindExternalChangesLoadout(conn, context).HasValue)
+            .ToReactiveCommand<Unit>(async (_, _) => await RescanGameFolder(logger, provider, connection));
+
         this.WhenActivated(disposables =>
         {
+            // The folder may have changed since External Changes was last built. The reindex only writes when it
+            // finds a difference, so opening the page costs a stat of the folder when nothing moved.
+            this.ObservePropertyChanged(vm => vm.Context)
+                .WhereNotNull()
+                .SubscribeAwait(async (_, _) => await RescanGameFolder(logger, provider, connection), AwaitOperation.Drop)
+                .DisposeWith(disposables);
+
             // Note(sewer):
             // For instant disposing of the TreeDataGridAdapter(s), for when the Context of the
             // ViewModel is dynamically changed. Since the adapter may hold a lot of memory (a whole file tree that beams events),
@@ -189,6 +204,35 @@ public partial class LoadoutGroupFilesViewModel : APageViewModel<ILoadoutGroupFi
         });
     }
     
+    /// <summary>The loadout whose External Changes the page shows, or None for any other group.</summary>
+    private static Optional<LoadoutId> FindExternalChangesLoadout(IConnection connection, LoadoutGroupFilesPageContext? context)
+    {
+        if (context is null) return Optional<LoadoutId>.None;
+        var group = LoadoutItemGroupHelpers.GetFirstValidGroup(connection, context.GroupIds);
+        if (group is null || !LoadoutOverridesGroup.Load(connection.Db, group.Value.Id).IsValid()) return Optional<LoadoutId>.None;
+        return group.Value.AsLoadoutItem().LoadoutId;
+    }
+
+    /// <summary>Reads the game folder again for the shown External Changes; says so in a toast when it cannot.</summary>
+    private async Task RescanGameFolder(ILogger logger, IServiceProvider provider, IConnection connection)
+    {
+        var loadoutId = FindExternalChangesLoadout(connection, Context);
+        if (!loadoutId.HasValue) return;
+
+        try
+        {
+            var loadout = Loadout.Load(connection.Db, loadoutId.Value);
+            var loadouts = provider.GetRequiredService<ILoadoutManager>();
+            await Task.Run(() => loadouts.RescanGameFolder(loadout));
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Reading the game folder again for External Changes failed");
+            provider.GetRequiredService<IWindowNotificationService>()
+                .ShowToast($"The app could not read the game folder: {e.Message}");
+        }
+    }
+
     private static Optional<GameInstalledClaimId> FindClaim(IConnection connection, LoadoutGroupFilesPageContext? context, GamePath path)
     {
         if (context is null) return Optional<GameInstalledClaimId>.None;

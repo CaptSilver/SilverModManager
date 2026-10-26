@@ -97,6 +97,7 @@ public class GameInstalledFilesTests(IServiceProvider provider) : AUiTest(provid
 
     private readonly IGameInstalledContentService _service = Substitute.For<IGameInstalledContentService>();
     private readonly IWindowNotificationService _notifications = Substitute.For<IWindowNotificationService>();
+    private readonly ILoadoutManager _loadouts = Substitute.For<ILoadoutManager>();
 
     /// <summary>
     /// A files page over a plain group in a fresh loadout, standing in for External Changes, with one claimed path.
@@ -125,6 +126,7 @@ public class GameInstalledFilesTests(IServiceProvider provider) : AUiTest(provid
             .AddSingleton(Connection)
             .AddSingleton(_service)
             .AddSingleton(_notifications)
+            .AddSingleton(_loadouts)
             .BuildServiceProvider();
         var page = await OnUi(() => Task.FromResult(new LoadoutGroupFilesViewModel(
             NullLogger<LoadoutGroupFilesViewModel>.Instance, Substitute.For<IWindowManager>(), services, Connection)
@@ -180,6 +182,105 @@ public class GameInstalledFilesTests(IServiceProvider provider) : AUiTest(provid
 
         await Eventually(() => _notifications.Received(1).ShowToast(
             string.Format(Language.GameInstalled_UndoTreatAsMine_Failed, "a mod now owns that path"),
+            Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(),
+            Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()));
+    }
+
+    /// <summary>A files page over the loadout's Overrides group, which is what External Changes shows, or over a plain group.</summary>
+    private async Task<(LoadoutGroupFilesViewModel Page, LoadoutId Loadout)> PageOverGroup(bool isOverrides)
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Unknown, "refresh-" + Guid.NewGuid().ToString("N"));
+        using var tx = Connection.BeginTransaction();
+        EntityId groupId;
+        if (isOverrides)
+        {
+            _ = new LoadoutOverridesGroup.New(tx, out var id)
+            {
+                OverridesForId = loadout,
+                LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
+                {
+                    IsGroup = true,
+                    LoadoutItem = new LoadoutItem.New(tx, id) { Name = "Overrides", LoadoutId = loadout.Id },
+                },
+            };
+            groupId = id;
+        }
+        else
+        {
+            _ = new LoadoutItemGroup.New(tx, out var id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { Name = "Some mod", LoadoutId = loadout.Id },
+            };
+            groupId = id;
+        }
+
+        var result = await tx.Commit();
+        var services = new ServiceCollection()
+            .AddSingleton(Connection)
+            .AddSingleton(_service)
+            .AddSingleton(_notifications)
+            .AddSingleton(_loadouts)
+            .BuildServiceProvider();
+        var page = await OnUi(() => Task.FromResult(new LoadoutGroupFilesViewModel(
+            NullLogger<LoadoutGroupFilesViewModel>.Instance, Substitute.For<IWindowManager>(), services, Connection)
+        {
+            Context = new LoadoutGroupFilesPageContext { GroupIds = [LoadoutItemGroupId.From(result[groupId])], IsReadOnly = false },
+        }));
+        return (page, loadout.LoadoutId);
+    }
+
+    [Fact]
+    public async Task RefreshReadsTheGameFolderAgainOnExternalChanges()
+    {
+        var (page, loadoutId) = await PageOverGroup(isOverrides: true);
+
+        page.RefreshCommand.CanExecute().Should().BeTrue();
+        await OnUi(() => page.RefreshCommand.Execute(R3.Unit.Default));
+
+        await Eventually(() => _loadouts.Received(1).RescanGameFolder(Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == loadoutId)));
+        _notifications.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RefreshIsOffForAModsFileList()
+    {
+        var (page, _) = await PageOverGroup(isOverrides: false);
+
+        page.RefreshCommand.CanExecute().Should().BeFalse("the game folder holds no extra copy of a mod's files");
+    }
+
+    [Fact]
+    public async Task OpeningExternalChangesReadsTheGameFolderAgain()
+    {
+        var (page, loadoutId) = await PageOverGroup(isOverrides: true);
+
+        using var _ = await OnUi(() => Task.FromResult(page.Activator.Activate()));
+
+        await Eventually(() => _loadouts.Received(1).RescanGameFolder(Arg.Is<Loadout.ReadOnly>(l => l.LoadoutId == loadoutId)));
+    }
+
+    [Fact]
+    public async Task OpeningAModsFileListDoesNotReadTheGameFolder()
+    {
+        var (page, _) = await PageOverGroup(isOverrides: false);
+
+        using var _ = await OnUi(() => Task.FromResult(page.Activator.Activate()));
+        await Task.Delay(200);
+
+        await _loadouts.DidNotReceive().RescanGameFolder(Arg.Any<Loadout.ReadOnly>());
+    }
+
+    [Fact]
+    public async Task AFailedRefreshIsShownAsASentence()
+    {
+        var (page, _) = await PageOverGroup(isOverrides: true);
+        _loadouts.RescanGameFolder(Arg.Any<Loadout.ReadOnly>()).Returns(Task.FromException(new IOException("the folder is unreadable")));
+
+        await OnUi(() => page.RefreshCommand.Execute(R3.Unit.Default));
+
+        await Eventually(() => _notifications.Received(1).ShowToast(
+            "The app could not read the game folder: the folder is unreadable",
             Arg.Any<ToastNotificationVariant>(), Arg.Any<TimeSpan?>(),
             Arg.Any<DialogButtonDefinition[]?>(), Arg.Any<Action<ButtonDefinitionId>?>()));
     }

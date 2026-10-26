@@ -3,7 +3,9 @@ using System.Text;
 using Avalonia.Threading;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
@@ -26,7 +28,8 @@ namespace SilverModManager.App.UI.Pages.Diagnostics;
 /// The Fix button of a game folder left by another mod manager: shows the steps, and once the user confirms runs
 /// them as a job. A step that needs root asks for the password (or shows the command when it cannot); the folder is
 /// planned again afterwards and only a plan identical to the confirmed one is applied, anything else is shown for
-/// confirmation again. Health Check is refreshed after every run so the diagnostic clears when it is fixed.
+/// confirmation again. After an applied cleanup the game folder is read again so External Changes matches it, and
+/// Health Check is refreshed after every run so the diagnostic clears when it is fixed.
 /// </summary>
 [UsedImplicitly]
 public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IWindowManager windowManager, IDiagnosticManager diagnosticManager) : IDiagnosticActionHandler
@@ -70,6 +73,10 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
             }
 
             var outcome = await RunAsJob(loadoutId, loadout, fixer, plan);
+
+            // External Changes still lists the files the cleanup just removed until the folder is read again.
+            // Before Health Check, so its diagnostics see the same state.
+            var rescanFailure = outcome.Status == CleanupFixStatus.Applied ? await RescanGameFolder(loadoutId) : null;
             await diagnosticManager.RefreshAsync(loadoutId);
 
             switch (outcome.Status)
@@ -82,9 +89,26 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
                     await MessageBoxOkViewModel.Show(serviceProvider, "Cleanup did not run", outcome.Message ?? "Nothing was changed.");
                     return;
                 default:
-                    await ShowResult(outcome.Result ?? throw new InvalidOperationException("An applied cleanup came back without a result."), saved);
+                    await ShowResult(outcome.Result ?? throw new InvalidOperationException("An applied cleanup came back without a result."), saved, rescanFailure);
                     return;
             }
+        }
+    }
+
+    /// <summary>Reads the game folder again; returns a sentence saying why it could not, or null.</summary>
+    private async Task<string?> RescanGameFolder(LoadoutId loadoutId)
+    {
+        try
+        {
+            var loadout = Loadout.Load(serviceProvider.GetRequiredService<IConnection>().Db, loadoutId);
+            var loadouts = serviceProvider.GetRequiredService<ILoadoutManager>();
+            await Task.Run(() => loadouts.RescanGameFolder(loadout));
+            return null;
+        }
+        catch (Exception e)
+        {
+            serviceProvider.GetService<ILogger<FixCleanupActionHandler>>()?.LogError(e, "Reading the game folder again after the cleanup failed");
+            return $"The app could not read the game folder again ({e.Message}). Press Refresh on External Changes to try again.";
         }
     }
 
@@ -166,13 +190,14 @@ public sealed class FixCleanupActionHandler(IServiceProvider serviceProvider, IW
             ]);
     }
 
-    private async Task ShowResult(CleanupResult result, SaveReport saved)
+    private async Task ShowResult(CleanupResult result, SaveReport saved, string? rescanFailure)
     {
         var lines = result.Done.Select(step => "- " + step.Description).ToList();
         lines.AddRange(saved.Added.Select(m => $"- Added {m.Name} {m.Version} to your library"));
         lines.AddRange(saved.OpenedInBrowser.Select(m => $"- Opened the page of {m.Name} {m.Version} in your browser; download it there to add it to your library"));
         lines.AddRange(saved.Failed.Select(f => $"- Could not add {f.Mod.Name} {f.Mod.Version} to your library: {f.Message}"));
         if (result.RestoreRecordFolder is { } folder) lines.Add($"- The removed links are recorded in {folder}");
+        if (rescanFailure is not null) lines.Add("- " + rescanFailure);
 
         if (result.Failure is { } failure)
             await MessageBoxOkViewModel.Show(serviceProvider, "Cleanup stopped", failure, lines.Count > 0 ? "Done so far:\n\n" + string.Join('\n', lines) : null);

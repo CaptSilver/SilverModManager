@@ -393,6 +393,9 @@ internal partial class LoadoutManager : ILoadoutManager
         await installation.GetGame().Synchronizer.Synchronize(Loadout.Load(_connection.Db, loadout.LoadoutId));
     }
 
+    public Task RescanGameFolder(Loadout.ReadOnly loadout)
+        => loadout.InstallationInstance.GetGame().Synchronizer.RescanExternalChanges(loadout);
+
     public Optional<LoadoutId> GetCurrentlyActiveLoadout(GameInstallation installation)
     {
         var metadata = _gameRegistry.ForceGetMetadata(installation);

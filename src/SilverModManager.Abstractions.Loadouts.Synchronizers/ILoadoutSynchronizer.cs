@@ -131,6 +131,13 @@ public interface ILoadoutSynchronizer
     FileDiffTree LoadoutToDiskDiff(Loadout.ReadOnly loadout, List<PathPartPair> previousState, List<PathPartPair> lastScannedState);
 
     Task<Sdk.Games.GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation, SynchronizeLoadoutJob? job = null);
+
+    /// <summary>
+    /// Reindexes the game folder, then removes the loadout's External Changes that were on disk at the last sync and
+    /// are gone now. Unlike a sync it deploys and deletes nothing.
+    /// </summary>
+    Task RescanExternalChanges(Loadout.ReadOnly loadout);
+
     ValueTask BuildProcessRun(Loadout.ReadOnly loadout, Sdk.Games.GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken);
 
     /// <summary>

@@ -17,5 +17,11 @@ public interface ILoadoutGroupFilesViewModel : IPageViewModelInterface
     /// </summary>
     R3.ReactiveCommand<R3.Unit> UndoTreatAsMineCommand { get; }
     
+    /// <summary>
+    /// Reads the game folder again and drops the External Changes whose files are gone. Only runnable on the
+    /// loadout's External Changes, not on a mod's file list.
+    /// </summary>
+    R3.ReactiveCommand<R3.Unit> RefreshCommand { get; }
+
     ViewLoadoutGroupFilesTreeDataGridAdapter? FileTreeAdapter { get; set; }
 }

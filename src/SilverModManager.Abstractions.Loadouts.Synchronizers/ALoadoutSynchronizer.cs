@@ -1217,6 +1217,28 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return GameInstallMetadata.Load(Connection.Db, metadata);
     }
 
+    /// <inheritdoc />
+    public async Task RescanExternalChanges(Loadout.ReadOnly loadout)
+    {
+        var metadata = await ReindexState(loadout.InstallationInstance);
+
+        loadout = loadout.Rebase();
+        if (!LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var overrides)) return;
+
+        // A sync would put these on its delete path too, but it would also deploy the loadout. Needing a previous
+        // entry keeps a file that was never on disk, such as one still waiting to be deployed, in the list.
+        var gone = BuildSyncTreeFromIndex(loadout, metadata).Values
+            .Where(node => !node.HaveDisk && node.HavePrevious && node.Loadout.HaveEntityId && IsInGroup(loadout.Db, node.Loadout.EntityId, overrides.Id))
+            .Select(node => node.Loadout.EntityId)
+            .ToArray();
+        if (gone.Length == 0) return;
+
+        using var _ = await _lock.LockAsync();
+        using var tx = Connection.BeginTransaction();
+        foreach (var id in gone) tx.Delete(id, recursive: false);
+        await tx.Commit();
+    }
+
     private FrozenDictionary<GamePath, DiskStateEntry.ReadOnly> GetDiskState(GameInstallMetadata.ReadOnly gameInstallMetadata)
     {
         var entities = DiskStateEntry.FindByGame(gameInstallMetadata.Db, gameInstallMetadata);

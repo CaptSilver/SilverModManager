@@ -60,6 +60,13 @@ public interface ILoadoutManager
     Task CleanGameFolder(Loadout.ReadOnly loadout);
 
     /// <summary>
+    /// Re-reads the game folder and drops the External Changes of <paramref name="loadout"/> whose files are no longer
+    /// there, so the page matches the disk after something outside a sync changed the folder. Nothing is written to
+    /// the game folder, and an External Change that was never on disk (still waiting to be deployed) is kept.
+    /// </summary>
+    Task RescanGameFolder(Loadout.ReadOnly loadout);
+
+    /// <summary>
     /// Gets the currently active loadout for the game, if any.
     /// </summary>
     Optional<LoadoutId> GetCurrentlyActiveLoadout(GameInstallation installation);
