@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
@@ -343,6 +344,8 @@ public class InstallModlistJobTests(ITestOutputHelper helper) : InstallTestBase<
         var refused = await Record.ExceptionAsync(() => Install(loadout, modlist, new InstallOptions(false, new HashSet<RelativePath>())));
 
         refused.Should().BeOfType<ArchivesMissingException>().Which.Rows.Should().ContainSingle(r => r.Archive.Name == "needs-headers.7z");
+        refused.Should().BeAssignableTo<UserFacingException>();
+        refused!.Message.Should().Contain("needs-headers.7z").And.Contain("Skip files from missing archives");
         WabbajackModlistLoadoutGroup.All(Connection.Db).Should().BeEmpty("nothing is written before the check passes");
 
         var (_, group) = await Install(loadout, modlist, new InstallOptions(true, new HashSet<RelativePath>()));

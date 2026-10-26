@@ -80,7 +80,6 @@ public class UserFacingExceptionGuardTests
         ["SilverModManager.Wabbajack.Acquire.MemberNotFoundException"] = "A directive names a file the library cannot supply; the install job records a skip row naming it.",
         ["SilverModManager.Wabbajack.Acquire.WabbajackCdnDownloadJob+PermanentCdnException"] = "Carries an error that retrying cannot fix out of the retry loop; unwrapped before anyone sees it.",
         ["SilverModManager.Wabbajack.Install.ArchiveMismatchException"] = "A built archive does not hold the bytes its inputs were written with; the message becomes a skip row.",
-        ["SilverModManager.Wabbajack.Install.ArchivesMissingException"] = "Carries the plan rows so the caller can offer to skip the missing archives; the message alone does not say how.",
         ["SilverModManager.Wabbajack.Install.InstallModlistJob+DirectiveSkipped"] = "Control flow that turns one directive into a skip row.",
         ["SilverModManager.Wabbajack.Transforms.PatchException"] = "A delta that does not apply; the install turns it into a skip row.",
         ["SilverModManager.Wabbajack.Transforms.UnsupportedTextureFormatException"] = "A texture the re-encoder cannot handle; the install turns it into a skip row.",

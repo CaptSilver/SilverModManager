@@ -1,4 +1,5 @@
 using NexusMods.Paths;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Wabbajack.Acquire;
 
 namespace SilverModManager.Wabbajack.Install;
@@ -10,8 +11,12 @@ public sealed record InstallOptions(bool SkipMissingArchives, IReadOnlySet<Relat
 
 /// <summary>Thrown before anything is written when archives are missing and the caller did not choose to go on without them.</summary>
 public sealed class ArchivesMissingException(IReadOnlyList<ArchivePlanRow> rows)
-    : Exception($"{rows.Count} archive(s) of the list are not available: {string.Join(", ", rows.Take(5).Select(r => r.Archive.Name))}{(rows.Count > 5 ? ", ..." : "")}")
+    : UserFacingException($"{rows.Count} archive(s) of the list are not available: {string.Join(", ", rows.Take(5).Select(r => r.Archive.Name))}{(rows.Count > 5 ? ", ..." : "")}. " +
+                          "Add them to the library, or tick \"Skip files from missing archives\" to install without them.")
 {
+    /// <inheritdoc />
+    public override string Title => "The modlist was not installed";
+
     /// <summary>The rows of the plan that are neither in the library nor a game file this install matches.</summary>
     public IReadOnlyList<ArchivePlanRow> Rows { get; } = rows;
 }
