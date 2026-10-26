@@ -208,6 +208,15 @@ public sealed partial class DatomStore : IDatomStore
         _shutdownToken.Cancel();
         _pendingTransactions.CompleteAdding();
         _dbStream.Dispose();
+
+        // The transaction thread reads and writes through the backend and the writers below. The backend frees
+        // its native database when the container disposes it right after this store, so returning while the
+        // thread is still inside a call leaves it using freed native memory and takes the process down.
+        // Dispose can also run on that thread (from a subscriber), which must not wait for itself.
+        var logger = _loggerThread;
+        if (logger is not null && logger != Thread.CurrentThread && !logger.Join(TimeSpan.FromSeconds(30)))
+            Logger.LogError("The transaction thread did not stop within 30 seconds of disposing the store");
+
         _writer.Dispose();
         _retractWriter.Dispose();
 
