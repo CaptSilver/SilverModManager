@@ -26,12 +26,6 @@ public enum EsdNoteReason
 
     /// <summary>A state the other mod added arrived with nothing reaching it.</summary>
     OrphanedGraft,
-
-    /// <summary>The preferred mod deleted a whole group the other mod changed; the deletion was kept.</summary>
-    GroupDeletedByBase,
-
-    /// <summary>The other mod deleted a whole group the preferred mod changed; the preferred mod's version was kept.</summary>
-    GroupDeletedByOther,
 }
 
 /// <summary>
@@ -41,7 +35,7 @@ public enum EsdNoteReason
 /// <param name="Group">The state group the note is about.</param>
 /// <param name="State">
 /// A vanilla state id for every reason except <see cref="EsdNoteReason.OrphanedGraft"/>, where it is the other mod's
-/// own id for a state it added. Null for the two reasons about a whole group.
+/// own id for a state it added.
 /// </param>
 /// <param name="Target">
 /// Only meaningful for two reasons: the jump target that had no home in the merge (<see cref="EsdNoteReason.UnplaceableJump"/>)
@@ -51,14 +45,6 @@ public sealed record EsdNote(long Group, long? State, EsdNoteReason Reason, long
 {
     public string Describe()
     {
-        switch (Reason)
-        {
-            case EsdNoteReason.GroupDeletedByBase:
-                return $"group {Group}: the preferred mod deleted it and the other mod changed it -- the deletion was kept, so the other mod's change to it was not applied";
-            case EsdNoteReason.GroupDeletedByOther:
-                return $"group {Group}: the other mod deleted it and the preferred mod changed it -- the preferred mod's version was kept";
-        }
-
         var state = State ?? throw new InvalidOperationException($"a {Reason} note names a state and this one has none");
         return Reason switch
         {

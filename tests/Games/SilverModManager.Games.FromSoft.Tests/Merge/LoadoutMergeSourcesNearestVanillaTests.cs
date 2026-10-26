@@ -53,6 +53,41 @@ public class LoadoutMergeSourcesNearestVanillaTests(ITestOutputHelper helper) : 
     }
 
     [Fact]
+    public async Task ABaselineValidatedUnderTheArchivesStoredFileNameStillBelongsToThatArchive()
+    {
+        // A Nexus download is stored under a temporary name and its library item carries the readable one. The baseline
+        // was recorded with whichever name the app used at the time, so both must find the archive.
+        var regulation = Regulation(OlderVersion, 0xB0);
+        var loadout = await TalkMods(Bytes("one"), Bytes("two"));
+        var dump = await AddArchive("eb256129", ("Vanilla/regulation.bin", regulation), ("Vanilla/m00.talkesdbnd.dcx", Bytes("vanilla talk")));
+        await RenameLibraryItem(dump, "Item and Enemy Randomizer");
+        KeepValidatedBaseline(OlderVersion, regulation, "eb256129.zip: Vanilla/regulation.bin");
+
+        var candidate = Sources.Index(Refresh(loadout)).Lookup(TalkPath)!;
+
+        candidate.Outcome.Merges.Should().BeTrue();
+        ServiceProvider.GetRequiredService<VanillaDumps>().Unconfirmed(Connection.Db, GameInstallation).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task TheOlderDumpTheModsWereMadeFromBeatsTheNewerCopyWhenItIsKnownByItsStoredFileName()
+    {
+        var older = Regulation(OlderVersion, 0xB0);
+        var loadout = await TalkMods(Remover, Adder);
+        var dump = await AddArchive("eb256129", ("Vanilla/regulation.bin", older), ("Vanilla/m00.talkesdbnd.dcx", Old));
+        await RenameLibraryItem(dump, "Item and Enemy Randomizer");
+        KeepValidatedBaseline(OlderVersion, older, "eb256129.zip: Vanilla/regulation.bin");
+        await AddDump("Current", EldenRingInstall.RegulationFile, Patched);
+        loadout = Refresh(loadout);
+
+        var report = await ServiceProvider.GetRequiredService<IMergeReports>().ForLoadout(loadout.LoadoutId, CancellationToken.None);
+
+        var entry = report.Entries.Should().ContainSingle(e => e.Path == TalkPath).Which;
+        entry.Outcome.Should().Be(MergeReportOutcome.Merged, entry.Reason);
+        entry.VanillaSource.Should().Contain("Item and Enemy Randomizer").And.NotContain("Current.zip");
+    }
+
+    [Fact]
     public async Task AValidatedBaselineFromAnotherArchiveDoesNotMakeThisArchiveADump()
     {
         var regulation = Regulation(OlderVersion, 0xB0);
@@ -120,15 +155,15 @@ public class LoadoutMergeSourcesNearestVanillaTests(ITestOutputHelper helper) : 
     public async Task TheReportSaysWhichModTheMergeUsedAsTheBaseAndWhyThePriorityOrderFailed()
     {
         var loadout = await CreateLoadout();
-        await InstallPackage(loadout.LoadoutId, "Hooker", (TalkPath, DeletedMachineTalkFixture.Hooker));
         await InstallPackage(loadout.LoadoutId, "Deleter", (TalkPath, DeletedMachineTalkFixture.Deleter));
+        await InstallPackage(loadout.LoadoutId, "Hooker", (TalkPath, DeletedMachineTalkFixture.Hooker));
         await AddDump("Current", EldenRingInstall.RegulationFile, DeletedMachineTalkFixture.Vanilla);
 
         var report = await ServiceProvider.GetRequiredService<IMergeReports>().ForLoadout(Refresh(loadout).LoadoutId, CancellationToken.None);
 
         var entry = report.Entries.Should().ContainSingle(e => e.Path == TalkPath).Which;
         entry.Outcome.Should().Be(MergeReportOutcome.Merged, entry.Reason);
-        entry.Notes.Should().ContainSingle(n => n.Contains("Hooker.zip as the base") && n.Contains("calls machine 20"));
+        entry.Notes.Should().ContainSingle(n => n.Contains("Deleter.zip as the base") && n.Contains("calls machine 20"));
         entry.VanillaSource.Should().Contain("Current.zip");
     }
 

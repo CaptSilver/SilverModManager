@@ -5,14 +5,15 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// <summary>
 /// Three-way merge of two mods' edits to one talk state machine file. Whatever can be settled on a whole group is
 /// settled there, which is nearly every group; a group both sides touched needs <see cref="EsdAlignment.Align"/> to
-/// pair its states up first, see <see cref="MergeGroup"/>. The base is the preferred side: wherever the two cannot
-/// both be kept, the base's version stays and the note says what the other mod lost.
+/// pair its states up first, see <see cref="MergeGroup"/>. The base is the preferred side: within a group, wherever the
+/// two cannot both be kept, the base's version stays and the note says what the other mod lost. A whole group one side
+/// deleted and the other changed is refused instead, since either outcome undoes one mod's edit unannounced.
 /// </summary>
 public static class EsdMerge
 {
     /// <summary>Composes <paramref name="other"/>'s edits onto <paramref name="base"/>, both having branched from <paramref name="vanilla"/>.</summary>
     /// <exception cref="EsdMergeException">
-    /// The two sides added a group of the same id with different contents, a graft jumps at a state the base deleted,
+    /// The two sides added a group of the same id with different contents, one deleted a group the other changed, a graft jumps at a state the base deleted,
     /// or the composed graph does not hold together.
     /// </exception>
     public static (EsdFile Merged, IReadOnlyList<EsdNote> Notes) Merge(EsdFile @base, EsdFile other, EsdFile vanilla)
@@ -56,17 +57,21 @@ public static class EsdMerge
                     "to read either one as an edit of, so there is no delta to replay");
             }
 
+            // Keeping the deletion drops the other mod's change and keeping the change undoes the deletion. Neither is
+            // what both mods asked for, and a patch that added the group to a newer vanilla copy looks exactly like this,
+            // so the merge is refused and the caller tries another base or another copy of vanilla.
             if (baseGroup is null)
             {
-                notes.Add(new EsdNote(id, null, EsdNoteReason.GroupDeletedByBase));
-                continue;
+                throw new EsdMergeException(
+                    $"state group {id} was deleted by the preferred mod and changed by the other -- " +
+                    "there is nothing left to replay that change onto");
             }
 
             if (otherGroup is null)
             {
-                kept.Add(baseGroup);
-                notes.Add(new EsdNote(id, null, EsdNoteReason.GroupDeletedByOther));
-                continue;
+                throw new EsdMergeException(
+                    $"state group {id} was deleted by the other mod and changed by the preferred mod -- " +
+                    "keeping the deletion would drop the preferred mod's change and keeping the change would undo the deletion");
             }
 
             var (merged, groupNotes) = MergeGroup(id, baseGroup, otherGroup, vanillaGroup);

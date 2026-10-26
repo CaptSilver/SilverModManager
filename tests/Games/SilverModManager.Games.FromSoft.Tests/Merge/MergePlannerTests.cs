@@ -466,23 +466,23 @@ public class MergePlannerTests
     [Fact]
     public void A_talk_pair_that_only_merges_with_the_other_mod_as_the_base_merges_that_way_and_says_so()
     {
-        var plan = DeleterAndHookerPlan(highPriority: "Deleter", lowPriority: "Hooker");
+        var plan = DeleterAndHookerPlan(highPriority: "Hooker", lowPriority: "Deleter");
 
         plan.Refusal.Should().BeNull();
         plan.Unmerged.Should().BeEmpty();
         var merged = plan.Merged.Should().ContainSingle().Which;
         var swapped = merged.Notes.OfType<MergeBaseChanged>().Should().ContainSingle().Which;
-        swapped.Base.Should().Be("Hooker");
-        swapped.Leader.Should().Be("Deleter");
+        swapped.Base.Should().Be("Deleter");
+        swapped.Leader.Should().Be("Hooker");
         swapped.Error.Should().Contain("calls machine 20");
-        swapped.Describe().Should().Contain("Hooker as the base").And.Contain("Deleter first").And.Contain("calls machine 20");
-        merged.Contributors.Select(c => c.ModName).Should().Equal("Deleter", "Hooker");
+        swapped.Describe().Should().Contain("Deleter as the base").And.Contain("Hooker first").And.Contain("calls machine 20");
+        merged.Contributors.Select(c => c.ModName).Should().Equal("Hooker", "Deleter");
     }
 
     [Fact]
     public void A_talk_pair_that_merges_with_the_priority_leader_as_the_base_is_left_alone()
     {
-        var plan = DeleterAndHookerPlan(highPriority: "Hooker", lowPriority: "Deleter");
+        var plan = DeleterAndHookerPlan(highPriority: "Deleter", lowPriority: "Hooker");
 
         plan.Unmerged.Should().BeEmpty();
         plan.Merged.Should().ContainSingle().Which.Notes.OfType<MergeBaseChanged>().Should().BeEmpty();
@@ -491,8 +491,8 @@ public class MergePlannerTests
     [Fact]
     public void The_file_a_swapped_base_gives_is_the_file_the_same_base_gives_when_it_leads_by_priority()
     {
-        var swapped = DeleterAndHookerPlan(highPriority: "Deleter", lowPriority: "Hooker").Merged.Single().Bytes;
-        var direct = DeleterAndHookerPlan(highPriority: "Hooker", lowPriority: "Deleter").Merged.Single().Bytes;
+        var swapped = DeleterAndHookerPlan(highPriority: "Hooker", lowPriority: "Deleter").Merged.Single().Bytes;
+        var direct = DeleterAndHookerPlan(highPriority: "Deleter", lowPriority: "Hooker").Merged.Single().Bytes;
 
         swapped.Should().Equal(direct);
     }

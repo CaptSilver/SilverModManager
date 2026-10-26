@@ -21,31 +21,16 @@ public class EsdNoteTests
         [EsdNoteReason.OrphanedGraft] = (["nothing", "reaches it", "will not run"], ["not applied"]),
     };
 
-    // The two reasons about a whole group name no state.
-    private static readonly Dictionary<EsdNoteReason, (string[] Must, string[] MustNot)> MustSayOfAGroup = new()
-    {
-        [EsdNoteReason.GroupDeletedByBase] = (["preferred mod deleted", "other mod changed", "deletion was kept"], ["several"]),
-        [EsdNoteReason.GroupDeletedByOther] = (["other mod deleted", "preferred mod changed", "preferred mod's version was kept"], ["several"]),
-    };
-
     [Fact]
     public void EveryReasonSaysWhatItMeans()
     {
         // A reason with no sentence would throw the first time an apply hit it, and a wrong one is worse: it is
         // confidently misleading.
-        MustSay.Keys.Concat(MustSayOfAGroup.Keys).Should().BeEquivalentTo(Enum.GetValues<EsdNoteReason>());
+        MustSay.Keys.Should().BeEquivalentTo(Enum.GetValues<EsdNoteReason>());
         foreach (var (reason, (must, mustNot)) in MustSay)
         {
             var text = new EsdNote(2147483624, 26, reason, 44).Describe();
             text.Should().Contain("2147483624").And.Contain("26", $"{reason}: {text}");
-            foreach (var phrase in must) text.Should().Contain(phrase, $"{reason}: {text}");
-            foreach (var phrase in mustNot) text.Should().NotContain(phrase, $"{reason}: {text}");
-        }
-
-        foreach (var (reason, (must, mustNot)) in MustSayOfAGroup)
-        {
-            var text = new EsdNote(2147483624, null, reason).Describe();
-            text.Should().Contain("2147483624");
             foreach (var phrase in must) text.Should().Contain(phrase, $"{reason}: {text}");
             foreach (var phrase in mustNot) text.Should().NotContain(phrase, $"{reason}: {text}");
         }

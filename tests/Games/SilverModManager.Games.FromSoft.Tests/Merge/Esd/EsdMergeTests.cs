@@ -101,28 +101,25 @@ public class EsdMergeTests
     }
 
     [Fact]
-    public void AGroupTheBaseDeletedAndTheOtherChangedSaysWhichHappened()
+    public void AGroupTheBaseDeletedAndTheOtherChangedIsRefused()
     {
-        // The base is the higher-priority side, so its deletion stands, and the note says the other mod's change to
-        // the group was the casualty.
+        // Keeping the deletion drops the other mod's change and keeping the change undoes the deletion; neither is
+        // a merge. Refusing lets the caller try another base or another vanilla copy.
         var vanilla = Archive((1, [(0, null)]), (85, [(0, 1), (1, null)]));
         var @base = Archive((1, [(0, null)]));
         var other = Archive((1, [(0, null)]), (85, [(0, null), (1, null)]));
-        var (merged, notes) = Merge(@base, other, vanilla);
-        Ids(merged).Should().Equal(1L);
-        notes.Should().ContainSingle().Which.Should().Be(new EsdNote(85, null, EsdNoteReason.GroupDeletedByBase));
+        var act = () => Merge(@base, other, vanilla);
+        act.Should().Throw<EsdMergeException>().WithMessage("*group 85 was deleted by the preferred mod and changed by the other*");
     }
 
     [Fact]
-    public void AGroupTheOtherDeletedAndTheBaseChangedSaysWhichHappened()
+    public void AGroupTheOtherDeletedAndTheBaseChangedIsRefused()
     {
         var vanilla = Archive((1, [(0, null)]), (85, [(0, 1), (1, null)]));
         var @base = Archive((1, [(0, null)]), (85, [(0, null), (1, null)]));
         var other = Archive((1, [(0, null)]));
-        var (merged, notes) = Merge(@base, other, vanilla);
-        Ids(merged).Should().Equal(1L, 85L);
-        Targets(Find(GroupOf(merged, 85), 0)).Should().BeEmpty("the base's changed version stays");
-        notes.Should().ContainSingle().Which.Should().Be(new EsdNote(85, null, EsdNoteReason.GroupDeletedByOther));
+        var act = () => Merge(@base, other, vanilla);
+        act.Should().Throw<EsdMergeException>().WithMessage("*group 85 was deleted by the other mod and changed by the preferred mod*");
     }
 
     [Fact]

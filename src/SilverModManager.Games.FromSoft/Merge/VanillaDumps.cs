@@ -182,9 +182,11 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
     }
 
     // A validated baseline records "archive name: member". Only the archive it was checked in may borrow that trust:
-    // another archive may hold the same regulation next to files nobody looked at.
+    // another archive may hold the same regulation next to files nobody looked at. The name is the library item's or,
+    // for a baseline kept before the item name was used, the name the file is stored under (a download's temporary name).
     private static bool ValidatedFrom(string origin, LibraryArchive.ReadOnly archive)
-        => origin.StartsWith(DisplayName(archive) + ": ", StringComparison.Ordinal);
+        => origin.StartsWith(DisplayName(archive) + ": ", StringComparison.Ordinal)
+           || origin.StartsWith(archive.AsLibraryFile().FileName + ": ", StringComparison.Ordinal);
 
     private static string RootOf(string path)
     {
