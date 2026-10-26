@@ -76,7 +76,7 @@ public sealed class LoadoutLaunchCommand(IServiceProvider services, IToolManager
 
         // A clean end inside the wait proves nothing: when Steam never starts the game that is a desktop
         // notification, not an exception. A slow apply can also still be running, so the text cannot claim it is done.
-        await renderer.TextLine($"The launch applies loadout '{loadout.Name}' and then starts its game; launch in progress. Run `status` to see whether the game process is up.");
+        await renderer.TextLine($"The launch applies loadout '{loadout.Name}' and then starts its game; launch in progress. Run `status` (the app_status tool over MCP) to follow it.");
         return 0;
     }
 }

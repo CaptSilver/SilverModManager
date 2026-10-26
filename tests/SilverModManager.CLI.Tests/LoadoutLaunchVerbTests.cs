@@ -100,7 +100,7 @@ public class LoadoutLaunchVerbTests(IServiceProvider provider)
 
         exitCode.Should().Be(0);
         var output = Output(setup.Renderer);
-        output.Should().Contain("launch in progress").And.Contain(setup.Loadout.Name).And.Contain("applies loadout").And.Contain("status");
+        output.Should().Contain("launch in progress").And.Contain(setup.Loadout.Name).And.Contain("applies loadout").And.Contain("Run `status` (the app_status tool over MCP) to follow it.");
         gameStillRunning.Task.IsCompleted.Should().BeFalse("the verb must not wait for the game to exit");
     }
 
