@@ -22,6 +22,24 @@ public class CliClient(ILogger<CliClient> logger, SyncFile syncFile, IServicePro
     /// </summary>
     public async Task<int> ExecuteCommand(string[] args, IAnsiConsole? console = null)
     {
+        var result = await ExecuteCommandCoreAsync(args, new SpectreRenderer(console ?? AnsiConsole.Console), CancellationToken.None);
+
+        // A main that never reported a code (an older build, or one that went away) leaves the success it always was.
+        return result.ExitCode ?? 0;
+    }
+
+    /// <summary>
+    /// Runs a command in the main process, rendering its output to <paramref name="renderer"/>. Unlike the terminal
+    /// overload, a connection that closes before the verb ends is reported as a result with no exit code rather than
+    /// as success, and <paramref name="token"/> abandons the wait (the command may still be running in the main
+    /// process).
+    /// </summary>
+    /// <exception cref="OperationCanceledException"><paramref name="token"/> was cancelled before the command ended.</exception>
+    public Task<CommandResult> ExecuteCommand(string[] args, IRenderer renderer, CancellationToken token) =>
+        ExecuteCommandCoreAsync(args, renderer, token);
+
+    private async Task<CommandResult> ExecuteCommandCoreAsync(string[] args, IRenderer renderer, CancellationToken token)
+    {
         var (process, kind, port) = syncFile.GetSyncInfo();
         if (process is null)
         {
@@ -41,15 +59,15 @@ public class CliClient(ILogger<CliClient> logger, SyncFile syncFile, IServicePro
         client.NoDelay = true; // Disable Nagle's algorithm to reduce delay.
         try
         {
-            await client.ConnectAsync(IPAddress.Loopback, port);
+            await client.ConnectAsync(IPAddress.Loopback, port, token);
             await using var stream = client.GetStream();
 
             logger.LogDebug("Connected to main process {ProcessId} on port {Port}", process.Id, port);
             return await RunTillCloseAsync(new ConsoleSettings
             {
                 Arguments = args,
-                Renderer = new SpectreRenderer(console ?? AnsiConsole.Console),
-            }, stream);
+                Renderer = renderer,
+            }, stream, token);
         }
         catch (SocketException)
         {
@@ -150,20 +168,32 @@ public class CliClient(ILogger<CliClient> logger, SyncFile syncFile, IServicePro
         }
     }
 
-    private async Task<int> RunTillCloseAsync(ConsoleSettings proxy, NetworkStream stream)
+    private async Task<CommandResult> RunTillCloseAsync(ConsoleSettings proxy, NetworkStream stream, CancellationToken token)
     {
         try
         {
             var adaptor = new ClientRendererAdaptor(stream, proxy.Renderer, provider, proxy.Arguments);
-            await adaptor.RunningTask;
 
-            // A main that never reported a code (an older build, or one that went away) leaves the success it always was.
-            return adaptor.ExitCode ?? 0;
+            // The adaptor has no token of its own; closing the stream under it is what ends its read loop.
+            await using var abandon = token.Register(stream.Close);
+            try
+            {
+                await adaptor.RunningTask;
+            }
+            catch (Exception) when (token.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(token);
+            }
+
+            // Closing the stream can end the read loop quietly; that is still a cancellation, not a closed connection.
+            if (adaptor.ExitCode is null) token.ThrowIfCancellationRequested();
+
+            return new CommandResult(adaptor.ExitCode);
         }
         catch (IOException ex)
         {
             logger.LogDebug(ex, "Client disconnected");
-            return 0;
+            return new CommandResult(null);
         }
     }
 }

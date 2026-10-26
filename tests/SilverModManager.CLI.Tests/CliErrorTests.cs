@@ -2,10 +2,14 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Net;
+using System.Net.Sockets;
 using NexusMods.Paths;
 using SilverModManager.CrossPlatform;
 using NSubstitute;
 using SilverModManager.Abstractions.Cli;
+using SilverModManager.App.Mcp;
+using SilverModManager.ProxyConsole.Messages;
 using SilverModManager.ProxyConsole;
 using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.ProxyConsole;
@@ -84,6 +88,8 @@ public sealed class CliErrorTests : IAsyncLifetime
     {
         if (_server is not null) await _server.StopAsync(CancellationToken.None);
         _server?.Dispose();
+        await _fakeMain.CancelAsync();
+        foreach (var listener in _listeners) listener.Stop();
         Directory.Delete(_directory, recursive: true);
     }
 
@@ -199,6 +205,84 @@ public sealed class CliErrorTests : IAsyncLifetime
 
         exitCode.Should().Be(0);
     }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task ARenderer_ReceivesTheOutput_AndTheExitCodeTheVerbEndedWith()
+    {
+        var client = await StartMain();
+        var renderer = new CapturingRenderer();
+
+        var result = await client.ExecuteCommand(["test-refuse"], renderer, CancellationToken.None);
+
+        result.ExitCode.Should().Be(1);
+        renderer.Output.Trim().Should().Be("The game is still running. Close it and try again.");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task AClosedConnectionBeforeTheVerbEnded_HasNoExitCode_ButKeepsTheOutputSoFar()
+    {
+        var client = await DropAfterSayingAsync("partial output");
+        var renderer = new CapturingRenderer();
+
+        var result = await client.ExecuteCommand(["anything"], renderer, CancellationToken.None);
+
+        result.ExitCode.Should().BeNull();
+        renderer.Output.Should().Be("partial output");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task AMainThatNeverAnswers_EndsWithCancellation_WhenTheTokenIsCancelled()
+    {
+        var client = await DropAfterSayingAsync(null);
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+
+        var act = () => client.ExecuteCommand(["anything"], new CapturingRenderer(), cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    /// <summary>
+    /// A stand-in main process that greets the client, optionally renders one piece of text, and then closes the
+    /// connection (or, with no text, holds it open without ever finishing the verb).
+    /// </summary>
+    private async Task<CliClient> DropAfterSayingAsync(string? text)
+    {
+        var services = Services();
+        var syncPath = FileSystem.Shared.FromUnsanitizedFullPath(Path.Combine(_directory, $"fake-{Guid.NewGuid():N}.sync"));
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        _listeners.Add(listener);
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        new SyncFile(NullLogger<SyncFile>.Instance, syncPath).TrySetMain(MainKind.Gui, port).Should().BeTrue();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var connection = await listener.AcceptTcpClientAsync();
+                var serializer = new Serializer(connection.GetStream(), services.GetRequiredService<IEnumerable<IRenderableDefinition>>());
+                await serializer.SendAsync(new ProgramArgumentsRequest());
+                await serializer.ReceiveAsync();
+                if (text is null)
+                {
+                    // The token is what keeps this task, and with it the connection, reachable: an unrooted
+                    // infinite delay gets collected and the socket's finalizer closes the connection.
+                    await Task.Delay(Timeout.Infinite, _fakeMain.Token);
+                    return;
+                }
+                await serializer.SendAsync(new Render { Renderable = new Text { Template = text } });
+            }
+            catch (Exception e) when (e is IOException or ObjectDisposedException or SocketException or OperationCanceledException)
+            {
+                // The test ended and tore the listener down.
+            }
+        });
+
+        return new CliClient(NullLogger<CliClient>.Instance, new SyncFile(NullLogger<SyncFile>.Instance, syncPath), services);
+    }
+
+    private readonly List<TcpListener> _listeners = [];
+    private readonly CancellationTokenSource _fakeMain = new();
 
     private sealed class LevelRecorder : ILoggerProvider
     {
