@@ -607,6 +607,38 @@ public class MergePlannerTests
     }
 
     [Fact]
+    public void A_packed_three_way_names_the_game_s_own_archives_as_a_source_of_the_vanilla_copy()
+    {
+        const string path = "script/talk/m00.talkesdbnd.dcx";
+        var contents = new Dictionary<string, byte[]>
+        {
+            ["high:" + path] = EsdMergeFixtureArchive(ER, [0, 1]),
+            ["low:" + path] = EsdMergeFixtureArchive(ER, [0]),
+        };
+
+        var plan = RealPlan(contents, new HashSet<string> { path }, _ => EsdMergeFixtureArchive(ER, [0, 1]), NoBase, Real("low", path, 1), Real("high", path, 2));
+
+        plan.Unmerged.Single().VanillaSource.Should().Contain("vanilla dump in the library").And.Contain("the game's own archives");
+    }
+
+    [Fact]
+    public void A_talk_pair_with_different_entries_is_refused_naming_the_mods_not_base_and_other()
+    {
+        const string path = "script/talk/m00.talkesdbnd.dcx";
+        var contents = new Dictionary<string, byte[]>
+        {
+            ["high:" + path] = EsdMergeFixtureArchive(ER, [0, 1]),
+            ["low:" + path] = EsdMergeFixtureArchive(ER, [0]),
+        };
+
+        var plan = RealPlan(contents, new HashSet<string> { path }, _ => EsdMergeFixtureArchive(ER, [0, 1]), NoBase, Real("low", path, 1), Real("high", path, 2));
+
+        var reason = plan.Unmerged.Single().Outcome.Reason;
+        reason.Should().Contain("different entries").And.Contain("entry 1: in high, vanilla");
+        reason.Should().NotContain("in base").And.NotContain("other");
+    }
+
+    [Fact]
     public void A_three_way_pair_of_message_archives_is_not_retried_with_another_base()
     {
         const string path = "msg/engus/item.msgbnd.dcx";

@@ -11,13 +11,15 @@ public static class SharedPackageFiles
     /// <summary>
     /// The paths two packages share whose copies me3 serves whole from the last package, in path order. A path with a
     /// merge strategy is left out: its copies go into the app's merged package, so no package's copy wins on its own.
+    /// One whose merge failed is kept, since both copies then deploy whole and me3 serves the last package's.
     /// </summary>
-    public static IReadOnlyList<SharedPackageFile> Of(MergePathIndex index)
+    /// <param name="unmergedPaths">The paths the latest merge plan could not merge, see <see cref="MergePlanCache.UnmergedPaths"/>; none when omitted.</param>
+    public static IReadOnlyList<SharedPackageFile> Of(MergePathIndex index, IReadOnlySet<string>? unmergedPaths = null)
     {
         var shared = new List<SharedPackageFile>();
         foreach (var candidate in index.Candidates)
         {
-            if (candidate.Strategy is not null) continue;
+            if (candidate.Strategy is not null && unmergedPaths?.Contains(candidate.Path) != true) continue;
 
             var winner = index.WinnerOf(candidate);
             var losers = candidate.Contributors

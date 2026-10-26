@@ -258,8 +258,9 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
             priority.TargetId,
             () =>
             {
-                var merges = _mergeSource?.IndexOf(Loadout.Load(connection.Db, _loadoutId));
-                return FileConflictPaths.Load(connection, _loadoutId, msg.PriorityId, merges);
+                var loadout = Loadout.Load(connection.Db, _loadoutId);
+                var merges = _mergeSource?.IndexOf(loadout);
+                return FileConflictPaths.Load(connection, _loadoutId, msg.PriorityId, merges, _mergeSource?.UnmergedPaths(loadout));
             });
 
         var title = string.Format(Language.FileConflicts_Paths_Title, priority.Target.AsLoadoutItem().Name);
@@ -298,7 +299,7 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
     private readonly IMergeIndexSource? _mergeSource;
     private readonly IDisposable _activationDisposable;
     private readonly object _sharedFileCountsLock = new();
-    private (TxId Basis, Dictionary<LoadoutItemGroupId, (long Winning, long Losing)> Counts)? _sharedFileCounts;
+    private (TxId Basis, IReadOnlySet<string> Unmerged, Dictionary<LoadoutItemGroupId, (long Winning, long Losing)> Counts)? _sharedFileCounts;
 
     private readonly Observable<ListSortDirection> _sortDirectionObservable;
     public Subject<OneOf.OneOf<ViewConflictsMessage, RulesMessage, MoveUpCommandPayload, MoveDownCommandPayload>> MessageSubject { get; } = new();
@@ -543,11 +544,13 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
         Dictionary<LoadoutItemGroupId, (long Winning, long Losing)> counts;
         lock (_sharedFileCountsLock)
         {
-            if (_sharedFileCounts is not { } known || known.Basis != db.BasisTxId)
+            var loadout = Loadout.Load(db, _loadoutId);
+            // A plan made after the counts were built can fail a merge without any database change.
+            var unmerged = _mergeSource.UnmergedPaths(loadout);
+            if (_sharedFileCounts is not { } known || known.Basis != db.BasisTxId || !known.Unmerged.SetEquals(unmerged))
             {
-                var loadout = Loadout.Load(db, _loadoutId);
-                known = (db.BasisTxId, _mergeSource.ProvidesIndex(loadout) && _mergeSource.IndexOf(loadout) is { } index
-                    ? FileConflictPaths.SharedFileCounts(index)
+                known = (db.BasisTxId, unmerged, _mergeSource.ProvidesIndex(loadout) && _mergeSource.IndexOf(loadout) is { } index
+                    ? FileConflictPaths.SharedFileCounts(index, unmerged)
                     : []);
                 _sharedFileCounts = known;
             }

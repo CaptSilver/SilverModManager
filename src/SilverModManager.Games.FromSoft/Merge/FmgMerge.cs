@@ -78,7 +78,7 @@ public static class FmgMerge
         var vanillaTables = Tables(binder, Dcx.Read(vanilla, traits));
 
         BinderEntrySets.RequireSameEntries(
-            baseTables.Keys, otherTables.Keys, vanillaTables.Keys, "archives", message => new FmgMergeException(message));
+            baseTables.Keys, otherTables.Keys, vanillaTables.Keys, "archives", message => new FmgMergeException(message), kept, dropped);
 
         var replacements = new Dictionary<int, byte[]>();
         foreach (var (entryId, baseTable) in baseTables)

@@ -25,13 +25,14 @@ public static class FileConflictPaths
     /// as the winner like any other.
     /// </summary>
     /// <param name="merges">The game's merge index, from <see cref="IMergeIndexSource"/>; null for a game that merges nothing.</param>
-    public static FileConflictPath[] Load(IConnection connection, LoadoutId loadoutId, LoadoutItemGroupPriorityId priorityId, MergePathIndex? merges)
+    /// <param name="unmergedPaths">The paths whose merge failed, from <see cref="IMergeIndexSource.UnmergedPaths"/>; they still show as shared.</param>
+    public static FileConflictPath[] Load(IConnection connection, LoadoutId loadoutId, LoadoutItemGroupPriorityId priorityId, MergePathIndex? merges, IReadOnlySet<string>? unmergedPaths = null)
     {
         var db = connection.Db;
         var thisGroup = LoadoutItemGroupPriority.Load(db, priorityId).TargetId;
         var pins = LoadoutFileWinner.FindByLoadout(db, loadoutId).ToArray();
 
-        var sharedRows = merges is null ? [] : SharedFileRows(merges, thisGroup);
+        var sharedRows = merges is null ? [] : SharedFileRows(merges, thisGroup, unmergedPaths);
 
         return FileConflictsTreeDataGridAdapter.GetPriorityConflicts(connection, priorityId)
             .Select(tuple => (
@@ -62,10 +63,10 @@ public static class FileConflictPaths
     /// Per mod, how many files shared with another me3 package it wins and how many it loses. The sync tree keys a
     /// conflict on the full target path, which differs by package folder, so none of these show up in its counts.
     /// </summary>
-    public static Dictionary<LoadoutItemGroupId, (long Winning, long Losing)> SharedFileCounts(MergePathIndex merges)
+    public static Dictionary<LoadoutItemGroupId, (long Winning, long Losing)> SharedFileCounts(MergePathIndex merges, IReadOnlySet<string>? unmergedPaths = null)
     {
         var counts = new Dictionary<LoadoutItemGroupId, (long Winning, long Losing)>();
-        foreach (var file in SharedPackageFiles.Of(merges))
+        foreach (var file in SharedPackageFiles.Of(merges, unmergedPaths))
         {
             if (GroupOf(file.Winner) is { } winner)
                 counts[winner] = counts.TryGetValue(winner, out var known) ? (known.Winning + 1, known.Losing) : (1, 0);
@@ -79,9 +80,9 @@ public static class FileConflictPaths
         return counts;
     }
 
-    private static IEnumerable<FileConflictPath> SharedFileRows(MergePathIndex merges, LoadoutItemGroupId thisGroup)
+    private static IEnumerable<FileConflictPath> SharedFileRows(MergePathIndex merges, LoadoutItemGroupId thisGroup, IReadOnlySet<string>? unmergedPaths)
     {
-        foreach (var file in SharedPackageFiles.Of(merges))
+        foreach (var file in SharedPackageFiles.Of(merges, unmergedPaths))
         {
             var own = GroupOf(file.Winner) == thisGroup ? file.Winner : file.Losers.FirstOrDefault(l => GroupOf(l) == thisGroup);
             if (own.PackageId is null) continue;

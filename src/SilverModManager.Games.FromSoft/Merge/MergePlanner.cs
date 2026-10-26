@@ -192,6 +192,6 @@ public static class MergePlanner
         if (!MergeStrategies.NeedsVanilla(strategy)) return string.Empty;
         return MergeStrategies.TakesGameBase(strategy)
             ? "the vanilla regulation the mods were built against, from a kept baseline, a vanilla dump in the library or the installed game"
-            : "the vanilla copy of the file in a vanilla dump in the library";
+            : "the vanilla copy of the file in a vanilla dump in the library or in the game's own archives";
     }
 }

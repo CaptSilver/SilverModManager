@@ -17,10 +17,16 @@ public interface IMergeIndexSource
     /// outcome don't matter to a reader of the shared files.
     /// </summary>
     MergePathIndex? IndexOf(Loadout.ReadOnly loadout);
+
+    /// <summary>
+    /// The paths whose merge failed in the loadout's latest plan, in any casing. Those deploy whole, so a reader of the
+    /// shared files still counts them. Empty until a plan has been made.
+    /// </summary>
+    IReadOnlySet<string> UnmergedPaths(Loadout.ReadOnly loadout);
 }
 
 /// <inheritdoc />
-public sealed class LoadoutMergeIndexSource(LoadoutMergeSources sources) : IMergeIndexSource
+public sealed class LoadoutMergeIndexSource(LoadoutMergeSources sources, MergePlanCache plans) : IMergeIndexSource
 {
     /// <inheritdoc />
     public bool ProvidesIndex(Loadout.ReadOnly loadout) => loadout.InstallationInstance.Game is IFromSoftGame;
@@ -30,4 +36,7 @@ public sealed class LoadoutMergeIndexSource(LoadoutMergeSources sources) : IMerg
         => loadout.InstallationInstance.Game is IFromSoftGame game
             ? MergePathIndex.Build(sources.Providers(loadout), game.Formats, new HashSet<string>())
             : null;
+
+    /// <inheritdoc />
+    public IReadOnlySet<string> UnmergedPaths(Loadout.ReadOnly loadout) => plans.UnmergedPaths(loadout.LoadoutId);
 }

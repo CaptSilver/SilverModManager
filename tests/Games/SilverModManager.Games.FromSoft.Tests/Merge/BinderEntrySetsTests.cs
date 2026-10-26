@@ -29,4 +29,27 @@ public class BinderEntrySetsTests
         var act = () => BinderEntrySets.RequireSameEntries([1], [], [], "archives", message => new FmgMergeException(message));
         act.Should().Throw<FmgMergeException>();
     }
+
+    [Fact]
+    public void NamesTheModsWhenTheCallerHasTheirNames()
+    {
+        var act = () => BinderEntrySets.RequireSameEntries([1, 99], [1], [1], "archives", baseName: "Glow", otherName: "Moveset");
+        act.Should().Throw<MergeException>()
+            .WithMessage("*entry 99: in Glow)*")
+            .And.Message.Should().NotContain("in base").And.NotContain("in other");
+    }
+
+    [Fact]
+    public void NamesTheOtherModWhenItHoldsTheExtraEntry()
+    {
+        var act = () => BinderEntrySets.RequireSameEntries([1], [1, 7], [1], "archives", baseName: "Glow", otherName: "Moveset");
+        act.Should().Throw<MergeException>().WithMessage("*entry 7: in Moveset*");
+    }
+
+    [Fact]
+    public void KeepsTheGenericSideNamesWithoutModNames()
+    {
+        var act = () => BinderEntrySets.RequireSameEntries([1, 99], [1], [1], "archives");
+        act.Should().Throw<MergeException>().WithMessage("*entry 99: in base*");
+    }
 }

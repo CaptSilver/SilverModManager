@@ -45,7 +45,7 @@ public static class EsdArchiveMerge
 
         // Without vanilla to compare an entry against, "only the other side moved" cannot be told from "base authored
         // this and vanilla never carried it", and guessing wrong throws away the preferred mod's own content.
-        BinderEntrySets.RequireSameEntries(baseEntries.Keys, otherEntries.Keys, vanillaEntries.Keys, "archives");
+        BinderEntrySets.RequireSameEntries(baseEntries.Keys, otherEntries.Keys, vanillaEntries.Keys, "archives", baseName: baseName, otherName: otherName);
 
         var replacements = new Dictionary<int, byte[]>();
         foreach (var (id, baseBlob) in baseEntries)

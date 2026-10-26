@@ -69,11 +69,11 @@ public static class ParamRowMerge
         var entryNames = baseRead.ToDictionary(e => e.Id, e => e.Name[(e.Name.LastIndexOf('\\') + 1)..]);
         var otherEntries = binder.Read(otherPayload).ToDictionary(e => e.Id, e => e.Data);
         var vanillaEntries = binder.Read(vanillaPayload).ToDictionary(e => e.Id, e => e.Data);
-        BinderEntrySets.RequireSameEntries(baseEntries.Keys, otherEntries.Keys, vanillaEntries.Keys, "regulations");
-
         var names = new Owners(
             baseName ?? (baseIsGame ? MergeNames.Game : MergeNames.PreferredMod),
             otherName ?? MergeNames.OtherMod);
+        BinderEntrySets.RequireSameEntries(
+            baseEntries.Keys, otherEntries.Keys, vanillaEntries.Keys, "regulations", baseName: names.Kept, otherName: names.Dropped);
 
         // Read lazily and only when a both-sides edit needs it: the stamp is not otherwise looked at.
         var ancestorVersion = new Lazy<string>(() => Regulation.Version(vanillaPayload));

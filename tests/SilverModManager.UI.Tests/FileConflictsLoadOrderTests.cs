@@ -84,9 +84,10 @@ public class FileConflictsLoadOrderTests(IServiceProvider provider) : AUiTest(pr
         EldenRingGame.Definition.Formats,
         new HashSet<string>(vanillaPaths));
 
-    private static IMergeIndexSource Me3(MergePathIndex index)
+    private static IMergeIndexSource Me3(MergePathIndex index, string[]? unmerged = null)
     {
         var source = Substitute.For<IMergeIndexSource>();
+        source.UnmergedPaths(Arg.Any<Loadout.ReadOnly>()).Returns(new HashSet<string>(unmerged ?? [], StringComparer.OrdinalIgnoreCase));
         source.ProvidesIndex(Arg.Any<Loadout.ReadOnly>()).Returns(true);
         source.IndexOf(Arg.Any<Loadout.ReadOnly>()).Returns(index);
         return source;
@@ -216,6 +217,33 @@ public class FileConflictsLoadOrderTests(IServiceProvider provider) : AUiTest(pr
             RowOf(without, "Weapon Glow").Should().Be((0, 1, true));
             RowOf(without, "Moveset").Should().Be((1, 0, true));
         });
+    }
+
+    [Fact]
+    public async Task AMergeThatFailedStillCountsBecauseBothCopiesDeployWhole()
+    {
+        var mods = await Seed("Merge Failed");
+        var index = IndexWithVanilla(mods, [Part], Part);
+        var failed = Me3(index, unmerged: [Part]);
+        var page = Page(mods, failed);
+        using var _ = page.Activator.Activate();
+
+        await EventuallyOnUi(() =>
+        {
+            RowOf(page, "Weapon Glow").Should().Be((0, 1, true));
+            RowOf(page, "Moveset").Should().Be((1, 0, true));
+        });
+    }
+
+    [Fact]
+    public async Task TheListOfConflictsKeepsAPathWhoseMergeFailed()
+    {
+        var mods = await Seed("Merge Failed List");
+        var index = IndexWithVanilla(mods, [Part], Part);
+
+        FileConflictPaths.Load(Connection, mods.Loadout.LoadoutId, mods.GlowPriority, index, unmergedPaths: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Part.ToUpperInvariant() })
+            .Should().ContainSingle().Which.Path.Should().Be(new GamePath(LocationId.Me3Mods, "weapon_glow/" + Part));
+        FileConflictPaths.Load(Connection, mods.Loadout.LoadoutId, mods.GlowPriority, index).Should().BeEmpty("a merged path is not a conflict");
     }
 
     [Fact]
