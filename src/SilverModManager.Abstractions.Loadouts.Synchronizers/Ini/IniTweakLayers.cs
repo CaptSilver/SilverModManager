@@ -29,6 +29,15 @@ public static partial class IniTweakLayers
     public static GamePath LoadoutTweakPath(string targetFileName) =>
         new(LocationId.Game, $"{Folder}/{LoadoutTweakName} [{targetFileName}].ini");
 
+    /// <summary>
+    /// Whether <paramref name="path"/> is inside the tweak folder of the game location. The game ignores the
+    /// folder, so nothing in it belongs on disk; the files exist in the loadout to be merged into an INI.
+    /// </summary>
+    public static bool IsTweakPath(GamePath path) =>
+        path.LocationId == LocationId.Game
+        && path.Path.Path.Split('/', 2) is [var first, _]
+        && first.Equals(Folder, StringComparison.OrdinalIgnoreCase);
+
     [GeneratedRegex(@"^(?<name>.+) \[(?<target>[^\]]+)\]\.ini$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex TweakName();
 

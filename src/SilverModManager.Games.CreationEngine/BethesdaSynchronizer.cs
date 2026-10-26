@@ -60,6 +60,7 @@ public class BethesdaSynchronizer(IServiceProvider provider, IBethesdaGame game)
     protected override void AdjustActions(Dictionary<GamePath, SyncNode> tree)
     {
         if (game is IGameIniFiles inis) GameInis.LeaveDisownedInisOnDisk(inis, tree);
+        GameInis.KeepTweaksOffDisk(tree);
     }
 
     public override bool IsIgnoredBackupPath(GamePath path)

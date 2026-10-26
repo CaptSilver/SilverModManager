@@ -71,6 +71,30 @@ public static class GameInis
     }
 
     /// <summary>
+    /// For a game's <c>AdjustActions</c>: the loadout's files in the INI tweak folder stay in the loadout but are
+    /// never written, and a copy found on disk is deleted, backed up first when the file store lacks its bytes.
+    /// </summary>
+    /// <remarks>
+    /// Leaving an unexpected copy on disk untracked does not keep it: the next index records it again, and the
+    /// apply after that would delete it without a backup. A tweak file the loadout no longer has keeps the generic
+    /// actions, which already remove a file that stops being deployed.
+    /// </remarks>
+    public static void KeepTweaksOffDisk(Dictionary<GamePath, SyncNode> tree)
+    {
+        foreach (var path in tree.Keys.Where(IniTweakLayers.IsTweakPath).ToArray())
+        {
+            ref var node = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
+            if (node.SourceItemType is LoadoutSourceItemType.Intrinsic || !node.HaveLoadout) continue;
+
+            node.Actions = !node.HaveDisk
+                ? Actions.DoNothing
+                : node.Signature.HasFlag(Signature.DiskArchived)
+                    ? Actions.DeleteFromDisk
+                    : Actions.BackupFile | Actions.DeleteFromDisk;
+        }
+    }
+
+    /// <summary>
     /// The bytes the game should find at <paramref name="path"/> for <paramref name="loadout"/>, built from
     /// <paramref name="baseline"/> when given and from the loadout's stored baseline otherwise.
     /// </summary>
