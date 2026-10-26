@@ -17,6 +17,8 @@ public static class Services
             .AddTransient<SortOrderManager>()
             .AddSortOrderItemModel()
             .AddSortOrderQueriesSql()
-            .AddLoadoutItemGroupPriorityModel();
+            .AddLoadoutItemGroupPriorityModel()
+            .AddLoadoutGroupRuleModel()
+            .AddLoadoutFileWinnerModel();
     }
 }

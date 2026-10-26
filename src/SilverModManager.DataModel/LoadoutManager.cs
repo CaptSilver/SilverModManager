@@ -208,6 +208,18 @@ internal partial class LoadoutManager : ILoadoutManager
             entityIdList[priority.Id] = tx.TempId();
         }
 
+        // Rules and winner pins belong to the loadout the same way; the remap points their group references
+        // and the loadout part of a pin's path at the copy.
+        foreach (var rule in LoadoutGroupRule.FindByLoadout(loadout.Db, loadout))
+        {
+            entityIdList[rule.Id] = tx.TempId();
+        }
+
+        foreach (var pin in LoadoutFileWinner.FindByLoadout(loadout.Db, loadout))
+        {
+            entityIdList[pin.Id] = tx.TempId();
+        }
+
         foreach (var (oldId, newId) in entityIdList)
         {
             // Get the original entity
@@ -325,6 +337,16 @@ internal partial class LoadoutManager : ILoadoutManager
         foreach (var priorityEntity in LoadoutItemGroupPriority.FindByLoadout(loadout.Db, loadout))
         {
             tx.Delete(priorityEntity, recursive: false);
+        }
+
+        foreach (var rule in LoadoutGroupRule.FindByLoadout(loadout.Db, loadout))
+        {
+            tx.Delete(rule, recursive: false);
+        }
+
+        foreach (var pin in LoadoutFileWinner.FindByLoadout(loadout.Db, loadout))
+        {
+            tx.Delete(pin, recursive: false);
         }
 
         // A claim is its own entity rather than a loadout item, so the loop above misses it.
@@ -555,6 +577,15 @@ internal partial class LoadoutManager : ILoadoutManager
             }
 
             var loadoutId = group.AsLoadoutItem().LoadoutId;
+
+            // A rule or pin that names the group would point at nothing once the group is gone. The recursive
+            // delete above reaches them through that reference today; like the priority rows, they are retracted
+            // here so removal doesn't depend on it.
+            foreach (var rule in LoadoutGroupRule.FindByLoadout(db, loadoutId).Where(r => r.SourceId == groupId || r.OtherId == groupId))
+                tx.Delete(rule.Id, recursive: false);
+            foreach (var pin in LoadoutFileWinner.FindByLoadout(db, loadoutId).Where(p => p.WinnerGroupId == groupId))
+                tx.Delete(pin.Id, recursive: false);
+
             if (!loadouts.TryGetValue(loadoutId, out var list))
             {
                 list = new List<LoadoutItemGroupId>(capacity: groupIds.Length);

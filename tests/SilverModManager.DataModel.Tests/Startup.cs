@@ -41,6 +41,8 @@ public static class Startup
         return container
             .AddGameServices()
             .AddLoadoutItemGroupPriorityModel()
+            .AddLoadoutGroupRuleModel()
+            .AddLoadoutFileWinnerModel()
             .AddSortOrderItemModel()
             .AddDefaultServicesForTesting()
             .AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"))

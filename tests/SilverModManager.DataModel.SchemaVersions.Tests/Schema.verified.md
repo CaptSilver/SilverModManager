@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x41B1A21B0D513ED4
-   - Total attributes: 340
-   - Total namespaces: 97
+   - Fingerprint: 0xE824F3BF63AC0CEB
+   - Total attributes: 347
+   - Total namespaces: 99
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -216,7 +216,14 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.Loadout/ShortName                                               | Utf8                    | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutFile/Hash                                                | UInt64                  | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutFile/Size                                                | UInt64                  | False   | False | False     | 
+| SilverModManager.Loadouts.LoadoutFileWinner/Loadout                                       | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.LoadoutFileWinner/TargetPath                                    | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 
+| SilverModManager.Loadouts.LoadoutFileWinner/WinnerGroup                                   | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.LoadoutGameFilesGroup/GameMetadata                              | Reference               | False   | False | False     | 
+| SilverModManager.Loadouts.LoadoutGroupRule/Kind                                           | UInt8                   | False   | False | False     | 
+| SilverModManager.Loadouts.LoadoutGroupRule/Loadout                                        | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.LoadoutGroupRule/Other                                          | Reference               | False   | False | False     | 
+| SilverModManager.Loadouts.LoadoutGroupRule/Source                                         | Reference               | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutItem/Disabled                                            | Null                    | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutItem/Loadout                                             | Reference               | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutItem/Name                                                | Utf8                    | False   | False | False     | 

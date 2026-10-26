@@ -31,6 +31,8 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         "SilverModManager.Loadouts.SortOrder/Loadout",
         "SilverModManager.Loadouts.SortableEntry/ParentSortOrder",
         "SilverModManager.Loadouts.LoadoutItemGroupPriority/Loadout",
+        "SilverModManager.Loadouts.LoadoutGroupRule/Loadout",
+        "SilverModManager.Loadouts.LoadoutFileWinner/Loadout",
     ];
 
     /// <summary>
@@ -44,6 +46,9 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         "SilverModManager.Loadouts.GameInstalledGroup/InstalledFor",
         "SilverModManager.Loadouts.GameInstalledClaim/Loadout",
         "SilverModManager.Loadouts.LoadoutItemGroupPriority/Target",
+        "SilverModManager.Loadouts.LoadoutGroupRule/Source",
+        "SilverModManager.Loadouts.LoadoutGroupRule/Other",
+        "SilverModManager.Loadouts.LoadoutFileWinner/WinnerGroup",
         "SilverModManager.Loadouts.GameMetadata/LastSyncedLoadout",
         "SilverModManager.Loadouts.LoadoutSnapshot/Snapshot",
         "SilverModManager.RedEngine.Cyberpunk2077.RedModLoadoutGroup/RedModInfoFile",
@@ -56,7 +61,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
     /// <summary>
     /// The roots of the owned closure: what the loadout owns directly, besides the loadout row itself.
     /// </summary>
-    private static readonly Type[] Roots = [typeof(LoadoutItem), typeof(SortOrder), typeof(SortOrderItem), typeof(LoadoutItemGroupPriority)];
+    private static readonly Type[] Roots = [typeof(LoadoutItem), typeof(SortOrder), typeof(SortOrderItem), typeof(LoadoutItemGroupPriority), typeof(LoadoutGroupRule), typeof(LoadoutFileWinner)];
 
     [Fact]
     public void EveryReferenceToAnOwnedModelIsClassified()
