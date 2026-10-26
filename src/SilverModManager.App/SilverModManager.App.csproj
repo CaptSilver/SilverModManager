@@ -42,7 +42,7 @@
         <ProjectReference Include="..\SilverModManager.Secrets.SecretService\SilverModManager.Secrets.SecretService.csproj" />
         <ProjectReference Include="..\SilverModManager.ProxyConsole\SilverModManager.ProxyConsole.csproj" />
         <ProjectReference Include="..\SilverModManager.SingleProcess\SilverModManager.SingleProcess.csproj" />
-        <ProjectReference Include="..\SilverModManager.Themes.NexusFluentDark\SilverModManager.Themes.NexusFluentDark.csproj" />
+        <ProjectReference Include="..\SilverModManager.Themes.Silver\SilverModManager.Themes.Silver.csproj" />
         <ProjectReference Include="..\SilverModManager.Wabbajack\SilverModManager.Wabbajack.csproj" />
     </ItemGroup>
 

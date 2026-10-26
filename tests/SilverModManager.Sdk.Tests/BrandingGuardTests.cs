@@ -87,7 +87,7 @@ public partial class BrandingGuardTests
     // The accent is mapped from the neutral Zinc family. The Orange primitives are still
     // defined in PrimitiveColors.axaml, so pointing the accent back at them would restore
     // upstream's orange.
-    private const string BrandColorsFile = "src/SilverModManager.Themes.NexusFluentDark/Resources/Palette/Colors/BrandColors.axaml";
+    private const string BrandColorsFile = "src/SilverModManager.Themes.Silver/Resources/Palette/Colors/BrandColors.axaml";
 
     [GeneratedRegex("BrandPrimary.*PrimitiveOrange")]
     private static partial Regex UpstreamAccent();

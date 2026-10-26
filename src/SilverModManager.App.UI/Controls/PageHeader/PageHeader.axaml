@@ -9,7 +9,7 @@
         </Border>
     </Design.PreviewWith>
     
-    <!-- Control theme is located at src/Themes/SilverModManager.Themes.NexusFluentDark/Resources/ControlThemes/PageHeaderControlTheme.axaml
+    <!-- Control theme is located at src/SilverModManager.Themes.Silver/Resources/ControlThemes/PageHeaderControlTheme.axaml
     Default style is found here as well as the default template -->
     
 </Styles>

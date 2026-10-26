@@ -12,9 +12,9 @@ Depending on what the control will look like or what functionality is required w
 
 The most basic of visual changes when functionality stays the same. Styling is when the look of a control changes without changing any underlying markup and structure. Primarily used for color and font changes for various states but is used for layout changes such as margin, padding, alignment, spacing etc.
 
-For example, if we want to style an Avalonia `Seperator` control to match our system, we would create a new `SeperatorStyles.axaml` file inside of `src/SilverModManager.Themes.NexusFluentDark/Styles/Controls/Separator`. 
+For example, if we want to style an Avalonia `Seperator` control to match our system, we would create a new `SeperatorStyles.axaml` file inside of `src/SilverModManager.Themes.Silver/Styles/Controls/Separator`. 
 
-Any created style files also need referencing in the `src/SilverModManager.Themes.NexusFluentDark/Styles/StylesIndex.axaml` file.
+Any created style files also need referencing in the `src/SilverModManager.Themes.Silver/Styles/StylesIndex.axaml` file.
 
 !!! info Note:
 
@@ -27,11 +27,11 @@ If we need more elements to style than have been provided by Avalonia's default 
 
 For example, if we want to change the structure of a `Button` control to have a `Border` around it, we would need to create a new `ControlTheme` for the `Button` control.
 
-Copy the default `Button` control theme from the Avalonia repository into `src/SilverModManager.Themes.NexusFluentDark/Controls/Button.axaml` and modify it to suit our needs.
+Copy the default `Button` control theme from the Avalonia repository into `src/SilverModManager.Themes.Silver/Controls/Button.axaml` and modify it to suit our needs.
 
 Styles and classes can be added as part of the `ControlTheme` or alternatively as a separate `Style` file. This will be determined by the complexity of the control and how many controls will use the same styles. 
 
-Any created `ControlTheme`'s also need referencing in the `src/SilverModManager.Themes.NexusFluentDark/Resources/ResourceIndex.axaml` file.
+Any created `ControlTheme`'s also need referencing in the `src/SilverModManager.Themes.Silver/Resources/ResourceIndex.axaml` file.
 
 !!! info Note:
 
@@ -54,9 +54,9 @@ This new control will be paired with a new ControlTheme to complete the control.
 
 Avalonia uses keyed resources to style controls. This allows to define a style in one place and use it in multiple places.
 
-Our styling is based on Avalonia's Fluent theme and inherits from it. This means we can use the same resources as the Fluent theme and override them where necessary. This is done by creating resources witham the se key as the Avalonia theme. We primarily use `StaticResource`'s to reference these resources as it's more performant than `DynamicResource`'s. Our Resources can be found across various files within the `src/SilverModManager.Themes.NexusFluentDark/Resources` folder, some are static values from our Figma design system and others are abstracted values that can be reused across the application. Our resources that override the Fluent theme are mainly in the `BaseResources.axaml` and `ControlResources.axaml` files.
+Our styling is based on Avalonia's Fluent theme and inherits from it. This means we can use the same resources as the Fluent theme and override them where necessary. This is done by creating resources witham the se key as the Avalonia theme. We primarily use `StaticResource`'s to reference these resources as it's more performant than `DynamicResource`'s. Our Resources can be found across various files within the `src/SilverModManager.Themes.Silver/Resources` folder, some are static values from our Figma design system and others are abstracted values that can be reused across the application. Our resources that override the Fluent theme are mainly in the `BaseResources.axaml` and `ControlResources.axaml` files.
 
-All of our Resources and Styles are then merged into our theme within the `src/SilverModManager.Themes.NexusFluentDark/NexusFluentDarkTheme.axaml` file.
+All of our Resources and Styles are then merged into our theme within the `src/SilverModManager.Themes.Silver/SilverTheme.axaml` file.
 
 ## Figma to Avalonia Workflow
 

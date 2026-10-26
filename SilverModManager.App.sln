@@ -116,7 +116,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SilverModManager.Abstractio
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Themes", "Themes", "{9B49FEF2-0218-4147-940F-90843731A4A1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SilverModManager.Themes.NexusFluentDark", "src\SilverModManager.Themes.NexusFluentDark\SilverModManager.Themes.NexusFluentDark.csproj", "{F63AF576-7A7C-4CF1-ADD7-6E95829E5C95}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SilverModManager.Themes.Silver", "src\SilverModManager.Themes.Silver\SilverModManager.Themes.Silver.csproj", "{F63AF576-7A7C-4CF1-ADD7-6E95829E5C95}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SilverModManager.Abstractions.Loadouts", "src\SilverModManager.Abstractions.Loadouts\SilverModManager.Abstractions.Loadouts.csproj", "{4AE9CD2B-1CFB-418E-A2EA-129A2C2B8D9E}"
 EndProject

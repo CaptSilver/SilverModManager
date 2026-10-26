@@ -266,7 +266,7 @@ The above example defines a ControlTheme for a Button, which is based on the def
 
 ### Styling the App
 
-!!! info "In the App, all the Styles are defined in a dedicated Theme project `SilverModManager.Themes.NexusFluentDark`."
+!!! info "In the App, all the Styles are defined in a dedicated Theme project `SilverModManager.Themes.Silver`."
 
 This is so that all the styles can be easily found and modified in one place.
 
@@ -280,16 +280,16 @@ Avalonia core controls, using `ControlThemes`.
 
 !!! info "The App is able to customize the default look provided by the Fluent Theme by passing a custom `FluentTheme.Palette` of colours."
 
-This is done in the main `NexusFluentDarkTheme.axaml` file, which is the entry point for the Theme project.
+This is done in the main `SilverTheme.axaml` file, which is the entry point for the Theme project.
 
 The palette determines the default colours for Foreground, Background, Accent, etc.
 
 These cascade down to all the controls, meaning that `Foreground` and `Background` colours don't need to be set
 explicitly unless they change from the default.
 
-`NexusFluentDarkTheme.axaml` is Styles file and is imported into the main application inside `App.axaml`,
+`SilverTheme.axaml` is a Styles file and is imported into the main application in `App.axaml`.
 
-### Styles in Nexus Theme
+### Styles in the Silver theme
 
 !!! info "The Theme uses mainly Avalonia `Styles` rather than `ControlThemes`, for reasons detailed in [Styling Approach ADR](../decisions/frontend/0003-UI-Styling-Approach.md)."
 

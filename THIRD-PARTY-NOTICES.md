@@ -6,7 +6,7 @@ copyright line or license text shipped with the binary are reproduced here.
 
 ## Bundled fonts
 
-Files in `src/SilverModManager.Themes.NexusFluentDark/Assets/Fonts`.
+Files in `src/SilverModManager.Themes.Silver/Assets/Fonts`.
 
 | Font | Copyright | License |
 |---|---|---|

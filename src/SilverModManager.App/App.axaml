@@ -21,7 +21,7 @@
     </Application.Resources>
 
     <Application.Styles>
-        <StyleInclude Source="avares://SilverModManager.Themes.NexusFluentDark/NexusFluentDarkTheme.axaml" />
+        <StyleInclude Source="avares://SilverModManager.Themes.Silver/SilverTheme.axaml" />
     </Application.Styles>
 
 </Application>
