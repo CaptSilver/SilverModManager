@@ -702,9 +702,6 @@
 	<data name="LoadoutView_Title_Installed_Mods_ToolTip" xml:space="preserve">
 		<value>Zobacz i zarządzaj wszystkimi zainstalowanymi modami</value>
 	</data>
-	<data name="ErrorGameAlreadyRunning_Title" xml:space="preserve">
-		<value>Gra jest już uruchomiona</value>
-	</data>
 	<data name="ErrorGameAlreadyRunning_Description" xml:space="preserve">
 		<value>Wygląda na to, że gra {0} jest już uruchomiona.&#x0a;Zamknij grę, aby zastosować zmiany lub ponownie uruchomić grę.</value>
 	</data>

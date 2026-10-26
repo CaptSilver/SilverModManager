@@ -794,9 +794,6 @@
   <data name="LoadoutView_Title_Installed_Mods_ToolTip" xml:space="preserve">
     <value>Просмотр и управление всеми установленными модами</value>
   </data>
-  <data name="ErrorGameAlreadyRunning_Title" xml:space="preserve">
-    <value>Игра уже запущена</value>
-  </data>
   <data name="ErrorGameAlreadyRunning_Description" xml:space="preserve">
     <value>Похоже, что {0} уже запущена.
 Чтобы применить изменения или запустить игру снова, пожалуйста, сначала закройте игру.</value>
