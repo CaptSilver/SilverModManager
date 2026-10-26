@@ -507,7 +507,7 @@ public class MergePlannerTests
         unmerged.Path.Should().Be(path);
         unmerged.Strategy.Should().Be(MergeStrategy.PartsbndThreeWay);
         unmerged.Outcome.Merges.Should().BeFalse();
-        unmerged.Outcome.Reason.Should().StartWith("the merge failed: ").And.Contain("the three bundles hold different entries");
+        unmerged.Outcome.Reason.Should().StartWith("the merge failed: ").And.Contain("cannot remove a member");
         unmerged.Winner!.Value.PackageId.Should().Be(PartsbndMods.Glow);
     }
 

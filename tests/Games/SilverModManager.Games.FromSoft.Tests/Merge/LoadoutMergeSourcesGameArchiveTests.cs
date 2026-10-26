@@ -186,7 +186,7 @@ public class LoadoutMergeSourcesGameArchiveTests(ITestOutputHelper helper) : AMo
     }
 
     [Fact]
-    public async Task EquipmentPartsWithDifferentMembersEndUnmergedAsTheWinnerWithTheReason()
+    public async Task AnEquipmentPartTheWinnerDroppedAMemberFromStillMergesAndStaysWithoutIt()
     {
         WriteGameArchive((Part, Packed(PartsbndMods.Vanilla())));
         var loadout = await GlowAndMoveset([.. PartsbndMods.MovesetMembers().Where(m => m.Id != 201)]);
@@ -194,11 +194,8 @@ public class LoadoutMergeSourcesGameArchiveTests(ITestOutputHelper helper) : AMo
         var plan = ServiceProvider.GetRequiredService<MergePlanCache>().Current(loadout, MergeSourceMode.Report);
 
         plan.Refusal.Should().BeNull();
-        plan.Merged.Should().BeEmpty();
-        var unmerged = plan.Unmerged.Should().ContainSingle().Which;
-        unmerged.Path.Should().Be(Part);
-        unmerged.Outcome.Reason.Should().StartWith("the merge failed: ").And.Contain("the three bundles hold different entries");
-        unmerged.Winner!.Value.ModName.Should().StartWith(PartsbndMods.Moveset, "the mod installed last wins by priority");
+        plan.Unmerged.Should().BeEmpty();
+        plan.Merged.Should().ContainSingle().Which.Path.Should().Be(Part);
     }
 
     [Fact]

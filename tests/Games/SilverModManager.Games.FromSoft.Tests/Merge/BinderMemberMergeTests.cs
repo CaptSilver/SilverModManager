@@ -246,16 +246,130 @@ public class BinderMemberMergeTests
         notes.OfType<MemberKept>().Single().Details.Should().Contain("more than once");
     }
 
+    private const string ExtraName = Dir + "WP_A_0556_2.bin";
+
+    private static IReadOnlyList<(int Id, string Name, byte[] Data)> Without(
+        IReadOnlyList<(int Id, string Name, byte[] Data)> members, int id) => [.. members.Where(m => m.Id != id)];
+
+    private static IReadOnlyList<(int Id, string Name, byte[] Data)> Plus(
+        IReadOnlyList<(int Id, string Name, byte[] Data)> members, int seed) => [.. members, (300, ExtraName, Bytes(seed, 80))];
+
     [Theory]
     [MemberData(nameof(Games))]
-    public void BundlesWithDifferentMembersAreRefused(string game)
+    public void AMemberTheOtherDroppedThatBaseStillHoldsAtVanillaIsRefused(string game)
     {
         var traits = TraitsOf(game);
-        var fewer = Vanilla().Where(m => m.Id != 401).ToArray();
 
-        var act = () => Merge(traits, Bundle(traits, GlowMembers()), Bundle(traits, fewer), Bundle(traits, Vanilla()));
+        var act = () => Merge(traits, Bundle(traits, GlowMembers()), Bundle(traits, Without(Vanilla(), 401)), Bundle(traits, Vanilla()));
 
-        act.Should().Throw<MergeException>().WithMessage("*the three bundles hold different entries*401*");
+        act.Should().Throw<MergeException>().WithMessage($"*{Moveset}*dropped member 401*{Glow}*cannot remove*");
+    }
+
+    [Theory]
+    [MemberData(nameof(Games))]
+    public void AMemberOnlyTheOtherAddedIsRefused(string game)
+    {
+        var traits = TraitsOf(game);
+
+        var act = () => Merge(traits, Bundle(traits, GlowMembers()), Bundle(traits, Plus(MovesetMembers(), 1)), Bundle(traits, Vanilla()));
+
+        act.Should().Throw<MergeException>().WithMessage($"*{Moveset}*adds member 300*{ExtraName}*cannot add*");
+    }
+
+    [Theory]
+    [MemberData(nameof(Games))]
+    public void AMemberBothDeletedStaysDeleted(string game)
+    {
+        var traits = TraitsOf(game);
+        var notes = new List<IMergeNote>();
+
+        var merged = Merge(traits, Bundle(traits, Without(GlowMembers(), 201)), Bundle(traits, Without(MovesetMembers(), 201)), Bundle(traits, Vanilla()), notes);
+
+        var members = Read(merged, traits);
+        members.Keys.Should().BeEquivalentTo([100, 200, 400, 401]);
+        members[400].Should().Equal(MovesetMembers().First(m => m.Id == 400).Data);
+        notes.OfType<MemberDeletionKept>().Should().BeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(Games))]
+    public void AMemberBothAddedWithTheSameBytesIsKept(string game)
+    {
+        var traits = TraitsOf(game);
+        var notes = new List<IMergeNote>();
+
+        var merged = Merge(traits, Bundle(traits, Plus(GlowMembers(), 1)), Bundle(traits, Plus(MovesetMembers(), 1)), Bundle(traits, Vanilla()), notes);
+
+        Read(merged, traits)[300].Should().Equal(Bytes(1, 80));
+        notes.OfType<MemberKept>().Should().NotContain(k => k.Member == ExtraName);
+    }
+
+    [Theory]
+    [MemberData(nameof(Games))]
+    public void AMemberBothAddedWithDifferentBytesKeepsBasesAndSaysSo(string game)
+    {
+        var traits = TraitsOf(game);
+        var notes = new List<IMergeNote>();
+
+        var merged = Merge(traits, Bundle(traits, Plus(GlowMembers(), 1)), Bundle(traits, Plus(MovesetMembers(), 2)), Bundle(traits, Vanilla()), notes);
+
+        Read(merged, traits)[300].Should().Equal(Bytes(1, 80));
+        notes.OfType<MemberKept>().Should().Contain(new MemberKept(ExtraName, Glow, Moveset));
+    }
+
+    [Theory]
+    [MemberData(nameof(Games))]
+    public void AMemberOnlyBaseAddedIsKept(string game)
+    {
+        var traits = TraitsOf(game);
+        var notes = new List<IMergeNote>();
+
+        var merged = Merge(traits, Bundle(traits, Plus(GlowMembers(), 1)), Bundle(traits, MovesetMembers()), Bundle(traits, Vanilla()), notes);
+
+        var members = Read(merged, traits);
+        members[300].Should().Equal(Bytes(1, 80));
+        members[400].Should().Equal(MovesetMembers().First(m => m.Id == 400).Data);
+        notes.OfType<MemberKept>().Should().NotContain(k => k.Member == ExtraName);
+        notes.OfType<MemberDeletionKept>().Should().BeEmpty("the other never held the member, so nothing was deleted");
+    }
+
+    [Theory]
+    [MemberData(nameof(Games))]
+    public void AMemberBaseDeletedAndTheOtherChangedStaysDeletedWithANote(string game)
+    {
+        var traits = TraitsOf(game);
+        var notes = new List<IMergeNote>();
+
+        var merged = Merge(traits, Bundle(traits, Without(GlowMembers(), 401)), Bundle(traits, MovesetMembers()), Bundle(traits, Vanilla()), notes);
+
+        Read(merged, traits).Keys.Should().BeEquivalentTo([100, 200, 201, 400]);
+        notes.OfType<MemberDeletionKept>().Should().ContainSingle().Which.Should().Be(new MemberDeletionKept(Anibnd1Name, Glow, Moveset, KeptDeletion: true));
+    }
+
+    [Theory]
+    [MemberData(nameof(Games))]
+    public void AMemberBaseDeletedAndTheOtherLeftAloneStaysDeletedQuietly(string game)
+    {
+        var traits = TraitsOf(game);
+        var notes = new List<IMergeNote>();
+
+        var merged = Merge(traits, Bundle(traits, Without(GlowMembers(), 201)), Bundle(traits, GlowMembers()), Bundle(traits, Vanilla()), notes);
+
+        Read(merged, traits).Keys.Should().BeEquivalentTo([100, 200, 400, 401]);
+        notes.OfType<MemberDeletionKept>().Should().BeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(Games))]
+    public void AMemberTheOtherDroppedAndBaseChangedKeepsBasesCopyWithANote(string game)
+    {
+        var traits = TraitsOf(game);
+        var notes = new List<IMergeNote>();
+
+        var merged = Merge(traits, Bundle(traits, GlowMembers()), Bundle(traits, Without(Vanilla(), 200)), Bundle(traits, Vanilla()), notes);
+
+        Read(merged, traits)[200].Should().Equal(GlowMembers().First(m => m.Id == 200).Data);
+        notes.OfType<MemberDeletionKept>().Should().ContainSingle().Which.Should().Be(new MemberDeletionKept(FlverName, Glow, Moveset, KeptDeletion: false));
     }
 
     [Theory]
@@ -392,6 +506,23 @@ public class BinderMemberMergeTests
         Merge(traits, step1, c, vanilla, notes, baseName: Glow, otherName: Third);
 
         notes.OfType<TextureKept>().Should().ContainSingle().Which.Should().Be(new TextureKept("T1", Moveset, Third));
+    }
+
+    [Theory]
+    [MemberData(nameof(Games))]
+    public void AMemberALaterModDroppedNamesTheModThatSuppliedTheKeptCopy(string game)
+    {
+        var traits = TraitsOf(game);
+        var notes = new List<IMergeNote>();
+        var vanilla = Bundle(traits, Vanilla());
+        var b = Bundle(traits, With(Vanilla(), (200, Bytes(701, 300))));
+        var c = Bundle(traits, Without(Vanilla(), 200));
+
+        var step1 = Merge(traits, vanilla, b, vanilla, notes, baseName: Glow, otherName: Moveset);
+        var step2 = Merge(traits, step1, c, vanilla, notes, baseName: Glow, otherName: Third);
+
+        Read(step2, traits)[200].Should().Equal(Bytes(701, 300));
+        notes.OfType<MemberDeletionKept>().Should().ContainSingle().Which.Should().Be(new MemberDeletionKept(FlverName, Moveset, Third, KeptDeletion: false));
     }
 
     [Fact]

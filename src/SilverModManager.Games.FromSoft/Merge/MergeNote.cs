@@ -130,6 +130,25 @@ public sealed record MemberKept(string Member, string KeptMod, string DroppedMod
 /// <summary>What a merge did without choosing between mods. Reports list it; Health Check raises no card for it.</summary>
 public interface IMergeDetailNote : IMergeNote;
 
+/// <summary>
+/// One mod deleted a binder member and the other changed it. A rebuild cannot add or remove a member, so base's side
+/// of it stands: its deletion when base deleted the member, its copy when base changed it and the other deleted it.
+/// </summary>
+/// <param name="Member">The member's name inside the binder.</param>
+/// <param name="KeptDeletion">True when base deleted the member and the other's change is dropped; false when the other deleted it and base's copy stays.</param>
+public sealed record MemberDeletionKept(string Member, string KeptMod, string DroppedMod, bool KeptDeletion) : IMergeNote
+{
+    public string Describe() => KeptDeletion
+        ? $"member {Member}: {KeptMod} deleted it and {DroppedMod} changed it; it stays deleted"
+        : $"member {Member}: {DroppedMod} deleted it and {KeptMod} changed it; kept {KeptMod}'s";
+
+    public string Summary() => KeptDeletion
+        ? $"{KeptMod} removes {MemberPolicy.Noun(Member)} {Member} and {DroppedMod} changes it; it stays removed."
+        : $"{DroppedMod} removes {MemberPolicy.Noun(Member)} {Member} and {KeptMod} changes it; {KeptMod}'s is used.";
+
+    public MergeLoss? Loss => MergeLoss.Between(DroppedMod, KeptMod);
+}
+
 /// <summary>Only one mod changed a binder member, so its copy was taken.</summary>
 public sealed record MemberTaken(string Member, string FromMod) : IMergeDetailNote
 {

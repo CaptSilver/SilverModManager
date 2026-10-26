@@ -12,7 +12,9 @@ public static class BinderMemberMerge
     /// <summary>
     /// Merges two bundles against the vanilla both branched from. A member only one side changed goes to that side, a
     /// member both changed is merged by <see cref="MemberPolicy"/>: texture archives texture by texture, everything
-    /// else stays as base has it. Members are identified by id, which is what the game looks them up by.
+    /// else stays as base has it. Members are identified by id, which is what the game looks them up by. Base's member
+    /// list is the result's: a member base or the other deleted or added is merged as a value (absent or present), and a
+    /// bundle that would need a member added or removed is refused.
     /// </summary>
     /// <param name="notes">
     /// Receives what was done member by member. It is also read: at a conflict the kept mod is the one the latest
@@ -25,7 +27,7 @@ public static class BinderMemberMerge
     /// The base bytes untouched when no member is replaced, so an unchanged file is not recompressed and a Kraken bundle
     /// stays Kraken; otherwise base rebuilt with the replaced members in the game's packed format.
     /// </returns>
-    /// <exception cref="MergeException">The bundles hold different members, name or store a member differently, or repeat an id.</exception>
+    /// <exception cref="MergeException">The other bundle needs a member added or removed, the bundles name or store a member differently, or repeat an id.</exception>
     public static byte[] ThreeWay(
         ReadOnlySpan<byte> @base, ReadOnlySpan<byte> other, ReadOnlySpan<byte> vanilla, FromSoftFormatTraits traits,
         ICollection<IMergeNote>? notes = null, string? baseName = null, string? otherName = null)
@@ -41,17 +43,43 @@ public static class BinderMemberMerge
         var otherSide = Side.Read(binder, otherRaw, traits, otherName);
         var vanillaSide = Side.Read(binder, vanillaRaw, traits, "the game's own copy");
 
-        BinderEntrySets.RequireSameEntries(baseSide.Entries.Keys, otherSide.Entries.Keys, vanillaSide.Entries.Keys, "bundles");
+        RequireRebuildable(baseSide, otherSide, vanillaSide);
         RequireSameLayout(baseSide, otherSide, vanillaSide);
 
         var suppliers = LatestTakers(notes);
         var replacements = new Dictionary<int, byte[]>();
         var added = new List<IMergeNote>();
 
+        // A member the other lacks or base lacks is a value like any other: base's list is the rebuild's list, so what
+        // base holds or lacks stands and the other's edit to a member base deleted is dropped.
+        foreach (var (id, theirMember) in otherSide.Entries)
+        {
+            if (baseSide.Entries.ContainsKey(id) || !vanillaSide.Entries.TryGetValue(id, out var gone)) continue;
+            if (!theirMember.Data.AsSpan().SequenceEqual(gone.Data))
+                added.Add(new MemberDeletionKept(gone.Name, baseName, otherName, KeptDeletion: true));
+        }
+
         foreach (var (id, own) in baseSide.Entries)
         {
-            var theirs = otherSide.Entries[id].Data;
-            var ancestor = vanillaSide.Entries[id].Data;
+            if (!otherSide.Entries.TryGetValue(id, out var theirMember))
+            {
+                // Vanilla holding it means the other deleted it while base changed it (an unchanged copy was refused above),
+                // and base's copy stays. Vanilla lacking it is base's own addition, which the other never saw.
+                if (vanillaSide.Entries.ContainsKey(id))
+                    added.Add(new MemberDeletionKept(own.Name, suppliers.GetValueOrDefault(own.Name, baseName), otherName, KeptDeletion: false));
+                continue;
+            }
+
+            var theirs = theirMember.Data;
+            if (!vanillaSide.Entries.TryGetValue(id, out var vanillaMember))
+            {
+                // Both added it. Same bytes is nothing to say; different bytes is a plain conflict.
+                if (!theirs.AsSpan().SequenceEqual(own.Data))
+                    added.Add(new MemberKept(own.Name, suppliers.GetValueOrDefault(own.Name, baseName), otherName));
+                continue;
+            }
+
+            var ancestor = vanillaMember.Data;
             if (theirs.AsSpan().SequenceEqual(own.Data) || theirs.AsSpan().SequenceEqual(ancestor)) continue; // base's own edit, or nobody touched it
             if (own.Data.AsSpan().SequenceEqual(ancestor))
             {
@@ -127,22 +155,42 @@ public static class BinderMemberMerge
         }
     }
 
+    // The rebuild keeps base's member list, so the other bundle may not need a member added or removed to carry its edits.
+    private static void RequireRebuildable(Side @base, Side other, Side vanilla)
+    {
+        foreach (var (id, theirs) in other.Entries.OrderBy(e => e.Key))
+        {
+            if (!@base.Entries.ContainsKey(id) && !vanilla.Entries.ContainsKey(id))
+                throw new MergeException($"{other.Owner} adds member {id} ({theirs.Name}) that neither {@base.Owner} nor {vanilla.Owner} holds, and a merged bundle cannot add a member");
+        }
+
+        foreach (var (id, own) in @base.Entries.OrderBy(e => e.Key))
+        {
+            if (!other.Entries.ContainsKey(id) && vanilla.Entries.TryGetValue(id, out var ancestor) && own.Data.AsSpan().SequenceEqual(ancestor.Data))
+                throw new MergeException($"{other.Owner} dropped member {id} ({own.Name}) that {@base.Owner} still carries as {vanilla.Owner} has it, and a merged bundle cannot remove a member");
+        }
+    }
+
+    // Compares a member's name and storage wherever two sides both hold it.
     private static void RequireSameLayout(Side @base, Side other, Side vanilla)
     {
         foreach (var (id, own) in @base.Entries)
         {
-            var theirs = other.Entries[id];
-            var ancestor = vanilla.Entries[id];
-            if (own.Name != theirs.Name)
-                throw new MergeException($"member {id} is {own.Name} in {@base.Owner} but {theirs.Name} in {other.Owner}; the bundles are laid out differently");
-            if (own.Name != ancestor.Name)
-                throw new MergeException($"member {id} is {own.Name} in {@base.Owner} and {other.Owner} but {ancestor.Name} in {vanilla.Owner}; the bundles are laid out differently");
+            if (other.Entries.TryGetValue(id, out var theirs))
+            {
+                if (own.Name != theirs.Name)
+                    throw new MergeException($"member {id} is {own.Name} in {@base.Owner} but {theirs.Name} in {other.Owner}; the bundles are laid out differently");
+                // A flag such as compressed-inside-binder changes what the bytes mean, and a rebuild carries base's.
+                if (own.Flags != theirs.Flags)
+                    throw new MergeException($"member {id} ({own.Name}) is stored differently in {@base.Owner} (0x{own.Flags:X2}) and {other.Owner} (0x{theirs.Flags:X2})");
+            }
 
-            // A flag such as compressed-inside-binder changes what the bytes mean, and a rebuild carries base's.
-            if (own.Flags != theirs.Flags)
-                throw new MergeException($"member {id} ({own.Name}) is stored differently in {@base.Owner} (0x{own.Flags:X2}) and {other.Owner} (0x{theirs.Flags:X2})");
+            if (!vanilla.Entries.TryGetValue(id, out var ancestor)) continue;
+            var holders = theirs is null ? @base.Owner : $"{@base.Owner} and {other.Owner}";
+            if (own.Name != ancestor.Name)
+                throw new MergeException($"member {id} is {own.Name} in {holders} but {ancestor.Name} in {vanilla.Owner}; the bundles are laid out differently");
             if (own.Flags != ancestor.Flags)
-                throw new MergeException($"member {id} ({own.Name}) is stored differently in {@base.Owner} and {other.Owner} (0x{own.Flags:X2}) than in {vanilla.Owner} (0x{ancestor.Flags:X2})");
+                throw new MergeException($"member {id} ({own.Name}) is stored differently in {holders} (0x{own.Flags:X2}) than in {vanilla.Owner} (0x{ancestor.Flags:X2})");
         }
     }
 

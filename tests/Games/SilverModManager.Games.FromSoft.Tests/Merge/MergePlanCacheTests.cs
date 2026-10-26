@@ -199,13 +199,13 @@ public class MergePlanCacheGameArchiveTests(ITestOutputHelper helper) : AModdedT
         first.Merged.Should().ContainSingle().Which.Path.Should().Be(Part);
         plans.Current(Refresh(loadout), MergeSourceMode.Report).Should().BeSameAs(first, "nothing changed");
 
-        // The game's update dropped a model from the part, so the mods' bundles no longer line up with vanilla. Only a
+        // The game's update renamed a model in the part, so the mods' bundles no longer line up with vanilla. Only a
         // plan that read the new copy can know the merge now fails.
-        WriteGameArchive([.. PartsbndMods.Vanilla().Where(m => m.Id != 201)]);
+        WriteGameArchive([.. PartsbndMods.Vanilla().Select(m => m.Id == 201 ? (m.Id, m.Name + ".renamed", m.Data) : m)]);
         var second = plans.Current(Refresh(loadout), MergeSourceMode.Report);
 
         second.Should().NotBeSameAs(first);
         second.Merged.Should().BeEmpty();
-        second.Unmerged.Should().ContainSingle().Which.Outcome.Reason.Should().Contain("the three bundles hold different entries");
+        second.Unmerged.Should().ContainSingle().Which.Outcome.Reason.Should().Contain("laid out differently");
     }
 }
