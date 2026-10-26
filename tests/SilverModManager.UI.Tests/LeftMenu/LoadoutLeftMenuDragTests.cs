@@ -44,6 +44,7 @@ public class LoadoutLeftMenuDragTests(IServiceProvider provider) : AUiTest(provi
         public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; } = Item("New collection item");
         public ILeftMenuItemViewModel LeftMenuItemHealthCheck { get; } = Item("Health item");
         public ILeftMenuItemViewModel LeftMenuItemTools { get; } = Item("Tools item");
+        public ILeftMenuItemViewModel? LeftMenuItemIni => null;
         public ILeftMenuItemViewModel? LeftMenuItemExternalChanges => null;
 
         public void MoveCollection(int fromIndex, int toIndex) => Moves.Add((fromIndex, toIndex));

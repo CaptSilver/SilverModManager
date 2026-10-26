@@ -9,6 +9,7 @@ using SilverModManager.App.UI.Pages.Diff.ApplyDiff;
 using SilverModManager.App.UI.Pages.Downloads;
 using SilverModManager.App.UI.Pages.FromSoftMerges;
 using SilverModManager.App.UI.Pages.FromSoftSaves;
+using SilverModManager.App.UI.Pages.Ini;
 using SilverModManager.App.UI.Pages.Thunderstore;
 using SilverModManager.App.UI.Pages.Wabbajack;
 using SilverModManager.App.UI.Pages.WabbajackGallery;
@@ -53,6 +54,7 @@ internal class TypeFinder : ITypeFinder
         typeof(ToolsPageContext),
         typeof(FromSoftMergesPageContext),
         typeof(FromSoftSavesPageContext),
+        typeof(IniPageContext),
         typeof(ThunderstorePageContext),
         typeof(NexusModsPageContext),
         typeof(WabbajackModlistPageContext),

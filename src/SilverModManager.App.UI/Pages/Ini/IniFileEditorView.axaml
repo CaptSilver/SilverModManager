@@ -1,0 +1,76 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:avaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+    xmlns:controls="clr-namespace:SilverModManager.App.UI.Controls"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+    x:Class="SilverModManager.App.UI.Pages.Ini.IniFileEditorView">
+
+    <TabControl>
+        <TabItem x:Name="RawTab">
+            <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="0,12,0,0">
+                <TextBlock x:Name="RawHintText" Grid.Row="0" TextWrapping="Wrap" />
+                <TextBlock x:Name="NoBaselineText" Grid.Row="1" TextWrapping="Wrap" />
+                <avaloniaEdit:TextEditor x:Name="RawEditor" Grid.Row="2"
+                                         ShowLineNumbers="True"
+                                         FontFamily="monospace"
+                                         HorizontalScrollBarVisibility="Auto"
+                                         VerticalScrollBarVisibility="Visible" />
+                <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="{StaticResource Spacing-2}" Margin="0,12,0,0">
+                    <controls:StandardButton x:Name="SaveBaselineButton" Type="Primary" Size="Toolbar" Fill="StrongAlt" />
+                    <controls:StandardButton x:Name="ResetFromDiskButton" Type="Secondary" Size="Toolbar" />
+                </StackPanel>
+            </Grid>
+        </TabItem>
+
+        <TabItem x:Name="TweaksTab">
+            <ScrollViewer>
+                <StackPanel Margin="0,12,0,0" Spacing="{StaticResource Spacing-2}">
+                    <TextBlock x:Name="TweaksHintText" TextWrapping="Wrap" />
+                    <StackPanel x:Name="LayersPanel" Spacing="{StaticResource Spacing-1}" />
+                    <TextBlock x:Name="LoadoutTweakHeading" Theme="{StaticResource HeadingSMSemiTheme}" />
+                    <avaloniaEdit:TextEditor x:Name="TweakEditor"
+                                             Height="220"
+                                             ShowLineNumbers="True"
+                                             FontFamily="monospace"
+                                             HorizontalScrollBarVisibility="Auto"
+                                             VerticalScrollBarVisibility="Visible" />
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
+                        <controls:StandardButton x:Name="SaveTweakButton" Type="Primary" Size="Toolbar" Fill="StrongAlt" />
+                        <controls:StandardButton x:Name="ResetToBaselineButton" Type="Secondary" Size="Toolbar" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
+        <TabItem x:Name="SettingsTab">
+            <ScrollViewer>
+                <StackPanel Margin="0,12,0,0" Spacing="{StaticResource Spacing-2}">
+                    <TextBlock x:Name="SettingsHintText" TextWrapping="Wrap" />
+                    <StackPanel x:Name="SettingsPanel" Spacing="{StaticResource Spacing-2}" />
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
+        <TabItem x:Name="ResultTab">
+            <Grid RowDefinitions="Auto,*,Auto,*" Margin="0,12,0,0">
+                <TextBlock x:Name="ResultHintText" Grid.Row="0" TextWrapping="Wrap" />
+                <avaloniaEdit:TextEditor x:Name="ResultEditor" Grid.Row="1"
+                                         IsReadOnly="True"
+                                         ShowLineNumbers="True"
+                                         FontFamily="monospace"
+                                         HorizontalScrollBarVisibility="Auto"
+                                         VerticalScrollBarVisibility="Visible" />
+                <Separator Grid.Row="2" Margin="0,12" />
+                <avaloniaEdit:TextEditor x:Name="DiffEditor" Grid.Row="3"
+                                         IsReadOnly="True"
+                                         FontFamily="monospace"
+                                         HorizontalScrollBarVisibility="Auto"
+                                         VerticalScrollBarVisibility="Visible" />
+            </Grid>
+        </TabItem>
+    </TabControl>
+
+</UserControl>

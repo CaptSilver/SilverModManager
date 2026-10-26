@@ -1713,4 +1713,124 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="FromSoftSaves_DeletedLoadout" xml:space="preserve">
         <value>Deleted loadout ({0})</value>
     </data>
+    <data name="IniPage_Title" xml:space="preserve">
+        <value>INI files</value>
+    </data>
+    <data name="IniPage_MenuItem" xml:space="preserve">
+        <value>INI</value>
+    </data>
+    <data name="IniPage_MenuItem_ToolTip" xml:space="preserve">
+        <value>Edit the game's INI files for this loadout</value>
+    </data>
+    <data name="IniPage_Tab_Raw" xml:space="preserve">
+        <value>Raw</value>
+    </data>
+    <data name="IniPage_Tab_Tweaks" xml:space="preserve">
+        <value>Tweaks</value>
+    </data>
+    <data name="IniPage_Tab_Settings" xml:space="preserve">
+        <value>Settings</value>
+    </data>
+    <data name="IniPage_Tab_Result" xml:space="preserve">
+        <value>Result</value>
+    </data>
+    <data name="IniPage_Save" xml:space="preserve">
+        <value>Save</value>
+    </data>
+    <data name="IniPage_ResetToBaseline" xml:space="preserve">
+        <value>Reset to baseline</value>
+    </data>
+    <data name="IniPage_ResetBaselineFromDisk" xml:space="preserve">
+        <value>Reset baseline from disk</value>
+    </data>
+    <data name="IniPage_NoBaseline" xml:space="preserve">
+        <value>This loadout has no copy of {0} yet. It takes one from the game folder on the next Apply, or you can save text here to start one.</value>
+    </data>
+    <data name="IniPage_RawHint" xml:space="preserve">
+        <value>The loadout's own copy of the file, before any tweak is applied. Saving changes it for this loadout only.</value>
+    </data>
+    <data name="IniPage_TweaksHint" xml:space="preserve">
+        <value>Tweaks are merged over the copy in this order; the loadout tweak comes last and wins.</value>
+    </data>
+    <data name="IniPage_LoadoutTweak" xml:space="preserve">
+        <value>Loadout tweak</value>
+    </data>
+    <data name="IniPage_LayerSource" xml:space="preserve">
+        <value>from {0}</value>
+    </data>
+    <data name="IniPage_LayerModOff" xml:space="preserve">
+        <value>its mod is off</value>
+    </data>
+    <data name="IniPage_SettingsHint" xml:space="preserve">
+        <value>Changes are written into the loadout tweak, not into the copy of the file.</value>
+    </data>
+    <data name="IniPage_ResultHint" xml:space="preserve">
+        <value>What Apply writes to the game folder, and how it differs from the copy.</value>
+    </data>
+    <data name="IniPage_Managed" xml:space="preserve">
+        <value>Set by the app</value>
+    </data>
+    <data name="IniPage_ManagedReason" xml:space="preserve">
+        <value>The app sets this key itself each time it writes the file, after the tweaks, so a tweak for it would be ignored.</value>
+    </data>
+    <data name="IniPage_Apply" xml:space="preserve">
+        <value>Apply</value>
+    </data>
+    <data name="IniPage_Type_Bool" xml:space="preserve">
+        <value>0 or 1</value>
+    </data>
+    <data name="IniPage_Type_Int" xml:space="preserve">
+        <value>a whole number</value>
+    </data>
+    <data name="IniPage_Type_Float" xml:space="preserve">
+        <value>a number</value>
+    </data>
+    <data name="IniPage_Type_Text" xml:space="preserve">
+        <value>text on one line</value>
+    </data>
+    <data name="IniPage_InvalidValue_Title" xml:space="preserve">
+        <value>That value was not saved</value>
+    </data>
+    <data name="IniPage_InvalidValue" xml:space="preserve">
+        <value>{0} in [{1}] needs {2}, and "{3}" is not that.</value>
+    </data>
+    <data name="IniPage_ResetFromDisk_Title" xml:space="preserve">
+        <value>Replace this loadout's copy of the INI?</value>
+    </data>
+    <data name="IniPage_ResetFromDisk_Text" xml:space="preserve">
+        <value>The loadout's copy of {0} is replaced by the file in the game folder as it is now. Your changes to the copy are lost; tweaks stay.</value>
+    </data>
+    <data name="IniPage_NoFileOnDisk_Title" xml:space="preserve">
+        <value>The INI was not read</value>
+    </data>
+    <data name="IniPage_NoFileOnDisk" xml:space="preserve">
+        <value>There is no {0} in the game's folder to read.</value>
+    </data>
+    <data name="IniPage_Setting_SavePath" xml:space="preserve">
+        <value>Save path</value>
+    </data>
+    <data name="IniPage_Setting_ArchiveInvalidation" xml:space="preserve">
+        <value>Archive invalidation</value>
+    </data>
+    <data name="IniPage_Setting_TestFile" xml:space="preserve">
+        <value>Test file</value>
+    </data>
+    <data name="IniPage_Setting_Fullscreen" xml:space="preserve">
+        <value>Fullscreen</value>
+    </data>
+    <data name="IniPage_Setting_Borderless" xml:space="preserve">
+        <value>Borderless window</value>
+    </data>
+    <data name="IniPage_Setting_ResolutionWidth" xml:space="preserve">
+        <value>Resolution width</value>
+    </data>
+    <data name="IniPage_Setting_ResolutionHeight" xml:space="preserve">
+        <value>Resolution height</value>
+    </data>
+    <data name="IniPage_Setting_Vsync" xml:space="preserve">
+        <value>Vsync interval</value>
+    </data>
+    <data name="IniPage_Setting_Fov" xml:space="preserve">
+        <value>Field of view</value>
+    </data>
 </root>

@@ -32,32 +32,8 @@ public static partial class IniTweakLayers
     /// The tweaks for <paramref name="target"/>, in the order they are merged: mods by priority, lowest first so
     /// the highest wins, then the loadout's own tweak.
     /// </summary>
-    public static IReadOnlyList<IniTweakLayer> For(Loadout.ReadOnly loadout, GamePath target)
-    {
-        var priorities = new Dictionary<EntityId, ConflictPriority>();
-        foreach (var row in LoadoutItemGroupPriority.FindByLoadout(loadout.Db, loadout))
-            priorities[row.TargetId] = row.Priority;
-
-        var found = new List<(ConflictPriority Priority, bool IsLoadoutTweak, string Path, IniTweakLayer Layer)>();
-        foreach (var file in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath().OfTypeLoadoutFile())
-        {
-            var item = file.AsLoadoutItemWithTargetPath().AsLoadoutItem();
-            if (!item.IsEnabled()) continue;
-
-            var path = ((GamePath)file.AsLoadoutItemWithTargetPath().TargetPath).Path;
-            if (!TryParse(path, target.FileName.ToString(), out var name)) continue;
-
-            var isLoadoutTweak = name.Equals(LoadoutTweakName, StringComparison.OrdinalIgnoreCase) && InGameSettingsGroup(item);
-            found.Add((PriorityOf(item, priorities), isLoadoutTweak, path.ToString(), new IniTweakLayer(name, file.Hash)));
-        }
-
-        return found
-            .OrderBy(f => f.IsLoadoutTweak)
-            .ThenBy(f => f.Priority.Value)
-            .ThenBy(f => f.Path, StringComparer.Ordinal)
-            .Select(f => f.Layer)
-            .ToList();
-    }
+    public static IReadOnlyList<IniTweakLayer> For(Loadout.ReadOnly loadout, GamePath target) =>
+        All(loadout, target).Where(t => t.IsEnabled).Select(t => new IniTweakLayer(t.Name, t.Hash)).ToList();
 
     private static bool TryParse(NexusMods.Paths.RelativePath path, string targetFileName, out string name)
     {

@@ -1,0 +1,14 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:IIniPageViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.Ini"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+    x:Class="SilverModManager.App.UI.Pages.Ini.IniPageView">
+
+    <TabControl x:Name="FileTabs" Margin="24" />
+
+</reactive:ReactiveUserControl>

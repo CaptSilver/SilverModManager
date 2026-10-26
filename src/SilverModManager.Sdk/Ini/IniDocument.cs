@@ -45,7 +45,12 @@ public sealed class IniDocument
     public static IniDocument Parse(string text) =>
         text.StartsWith('﻿') ? Parse(text[1..], IniEncoding.Utf8Bom) : Parse(text, IniEncoding.Utf8);
 
-    private static IniDocument Parse(string text, IniEncoding encoding)
+    /// <summary>
+    /// Reads text that was already decoded and writes it back in <paramref name="encoding"/>, for an editor that
+    /// hands back the text of a file whose encoding must not change. Text starting with a byte order mark keeps it
+    /// as part of the text.
+    /// </summary>
+    public static IniDocument Parse(string text, IniEncoding encoding)
     {
         var lines = new List<IniLine>();
         string? newLine = null;

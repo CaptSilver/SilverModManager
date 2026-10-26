@@ -30,6 +30,9 @@ public interface ILoadoutLeftMenuViewModel : ILeftMenuViewModel
 
     public ILeftMenuItemViewModel LeftMenuItemHealthCheck { get; }
     public ILeftMenuItemViewModel LeftMenuItemTools { get; }
+
+    /// <summary>The INI editor of the game, or null when the game keeps no INI files a loadout can own.</summary>
+    public ILeftMenuItemViewModel? LeftMenuItemIni { get; }
     
     public ILeftMenuItemViewModel? LeftMenuItemExternalChanges { get; }
 }

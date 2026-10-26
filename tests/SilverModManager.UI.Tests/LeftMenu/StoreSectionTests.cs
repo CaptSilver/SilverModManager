@@ -109,6 +109,7 @@ public class StoreSectionTests(IServiceProvider provider) : AUiTest(provider)
         public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; } = Item("New collection item");
         public ILeftMenuItemViewModel LeftMenuItemHealthCheck { get; } = Item("Health item");
         public ILeftMenuItemViewModel LeftMenuItemTools { get; } = Item("Tools item");
+        public ILeftMenuItemViewModel? LeftMenuItemIni => null;
         public ILeftMenuItemViewModel? LeftMenuItemExternalChanges => null;
         public void MoveCollection(int fromIndex, int toIndex) { }
         public bool IsCollectionMovable(int index) => false;

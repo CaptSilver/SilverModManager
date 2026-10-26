@@ -4937,5 +4937,365 @@ namespace SilverModManager.App.UI.Resources {
                 return ResourceManager.GetString("FromSoftSaves_DeletedLoadout", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to INI files.
+        /// </summary>
+        public static string IniPage_Title {
+            get {
+                return ResourceManager.GetString("IniPage_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to INI.
+        /// </summary>
+        public static string IniPage_MenuItem {
+            get {
+                return ResourceManager.GetString("IniPage_MenuItem", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Edit the game's INI files for this loadout.
+        /// </summary>
+        public static string IniPage_MenuItem_ToolTip {
+            get {
+                return ResourceManager.GetString("IniPage_MenuItem_ToolTip", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Raw.
+        /// </summary>
+        public static string IniPage_Tab_Raw {
+            get {
+                return ResourceManager.GetString("IniPage_Tab_Raw", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Tweaks.
+        /// </summary>
+        public static string IniPage_Tab_Tweaks {
+            get {
+                return ResourceManager.GetString("IniPage_Tab_Tweaks", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Settings.
+        /// </summary>
+        public static string IniPage_Tab_Settings {
+            get {
+                return ResourceManager.GetString("IniPage_Tab_Settings", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Result.
+        /// </summary>
+        public static string IniPage_Tab_Result {
+            get {
+                return ResourceManager.GetString("IniPage_Tab_Result", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Save.
+        /// </summary>
+        public static string IniPage_Save {
+            get {
+                return ResourceManager.GetString("IniPage_Save", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Reset to baseline.
+        /// </summary>
+        public static string IniPage_ResetToBaseline {
+            get {
+                return ResourceManager.GetString("IniPage_ResetToBaseline", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Reset baseline from disk.
+        /// </summary>
+        public static string IniPage_ResetBaselineFromDisk {
+            get {
+                return ResourceManager.GetString("IniPage_ResetBaselineFromDisk", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This loadout has no copy of {0} yet. It takes one from the game folder on the next Apply, or you can save text here to start one..
+        /// </summary>
+        public static string IniPage_NoBaseline {
+            get {
+                return ResourceManager.GetString("IniPage_NoBaseline", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The loadout's own copy of the file, before any tweak is applied. Saving changes it for this loadout only..
+        /// </summary>
+        public static string IniPage_RawHint {
+            get {
+                return ResourceManager.GetString("IniPage_RawHint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Tweaks are merged over the copy in this order; the loadout tweak comes last and wins..
+        /// </summary>
+        public static string IniPage_TweaksHint {
+            get {
+                return ResourceManager.GetString("IniPage_TweaksHint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Loadout tweak.
+        /// </summary>
+        public static string IniPage_LoadoutTweak {
+            get {
+                return ResourceManager.GetString("IniPage_LoadoutTweak", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to from {0}.
+        /// </summary>
+        public static string IniPage_LayerSource {
+            get {
+                return ResourceManager.GetString("IniPage_LayerSource", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to its mod is off.
+        /// </summary>
+        public static string IniPage_LayerModOff {
+            get {
+                return ResourceManager.GetString("IniPage_LayerModOff", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Changes are written into the loadout tweak, not into the copy of the file..
+        /// </summary>
+        public static string IniPage_SettingsHint {
+            get {
+                return ResourceManager.GetString("IniPage_SettingsHint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to What Apply writes to the game folder, and how it differs from the copy..
+        /// </summary>
+        public static string IniPage_ResultHint {
+            get {
+                return ResourceManager.GetString("IniPage_ResultHint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Set by the app.
+        /// </summary>
+        public static string IniPage_Managed {
+            get {
+                return ResourceManager.GetString("IniPage_Managed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The app sets this key itself each time it writes the file, after the tweaks, so a tweak for it would be ignored..
+        /// </summary>
+        public static string IniPage_ManagedReason {
+            get {
+                return ResourceManager.GetString("IniPage_ManagedReason", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Apply.
+        /// </summary>
+        public static string IniPage_Apply {
+            get {
+                return ResourceManager.GetString("IniPage_Apply", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to 0 or 1.
+        /// </summary>
+        public static string IniPage_Type_Bool {
+            get {
+                return ResourceManager.GetString("IniPage_Type_Bool", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to a whole number.
+        /// </summary>
+        public static string IniPage_Type_Int {
+            get {
+                return ResourceManager.GetString("IniPage_Type_Int", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to a number.
+        /// </summary>
+        public static string IniPage_Type_Float {
+            get {
+                return ResourceManager.GetString("IniPage_Type_Float", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to text on one line.
+        /// </summary>
+        public static string IniPage_Type_Text {
+            get {
+                return ResourceManager.GetString("IniPage_Type_Text", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to That value was not saved.
+        /// </summary>
+        public static string IniPage_InvalidValue_Title {
+            get {
+                return ResourceManager.GetString("IniPage_InvalidValue_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} in [{1}] needs {2}, and "{3}" is not that..
+        /// </summary>
+        public static string IniPage_InvalidValue {
+            get {
+                return ResourceManager.GetString("IniPage_InvalidValue", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Replace this loadout's copy of the INI?.
+        /// </summary>
+        public static string IniPage_ResetFromDisk_Title {
+            get {
+                return ResourceManager.GetString("IniPage_ResetFromDisk_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The loadout's copy of {0} is replaced by the file in the game folder as it is now. Your changes to the copy are lost; tweaks stay..
+        /// </summary>
+        public static string IniPage_ResetFromDisk_Text {
+            get {
+                return ResourceManager.GetString("IniPage_ResetFromDisk_Text", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The INI was not read.
+        /// </summary>
+        public static string IniPage_NoFileOnDisk_Title {
+            get {
+                return ResourceManager.GetString("IniPage_NoFileOnDisk_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to There is no {0} in the game's folder to read..
+        /// </summary>
+        public static string IniPage_NoFileOnDisk {
+            get {
+                return ResourceManager.GetString("IniPage_NoFileOnDisk", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Save path.
+        /// </summary>
+        public static string IniPage_Setting_SavePath {
+            get {
+                return ResourceManager.GetString("IniPage_Setting_SavePath", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Archive invalidation.
+        /// </summary>
+        public static string IniPage_Setting_ArchiveInvalidation {
+            get {
+                return ResourceManager.GetString("IniPage_Setting_ArchiveInvalidation", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Test file.
+        /// </summary>
+        public static string IniPage_Setting_TestFile {
+            get {
+                return ResourceManager.GetString("IniPage_Setting_TestFile", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Fullscreen.
+        /// </summary>
+        public static string IniPage_Setting_Fullscreen {
+            get {
+                return ResourceManager.GetString("IniPage_Setting_Fullscreen", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Borderless window.
+        /// </summary>
+        public static string IniPage_Setting_Borderless {
+            get {
+                return ResourceManager.GetString("IniPage_Setting_Borderless", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Resolution width.
+        /// </summary>
+        public static string IniPage_Setting_ResolutionWidth {
+            get {
+                return ResourceManager.GetString("IniPage_Setting_ResolutionWidth", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Resolution height.
+        /// </summary>
+        public static string IniPage_Setting_ResolutionHeight {
+            get {
+                return ResourceManager.GetString("IniPage_Setting_ResolutionHeight", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Vsync interval.
+        /// </summary>
+        public static string IniPage_Setting_Vsync {
+            get {
+                return ResourceManager.GetString("IniPage_Setting_Vsync", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Field of view.
+        /// </summary>
+        public static string IniPage_Setting_Fov {
+            get {
+                return ResourceManager.GetString("IniPage_Setting_Fov", resourceCulture);
+            }
+        }
     }
 }

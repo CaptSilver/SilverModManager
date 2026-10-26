@@ -54,6 +54,12 @@ public class LoadoutLeftMenuDesignViewModel : AViewModel<ILoadoutLeftMenuViewMod
         Icon = IconValues.Wrench,
     };
 
+    public ILeftMenuItemViewModel LeftMenuItemIni { get; } = new LeftMenuItemDesignViewModel
+    {
+        Text = new StringComponent(Language.IniPage_MenuItem),
+        Icon = IconValues.FileEdit,
+    };
+
     public ILeftMenuItemViewModel LeftMenuItemExternalChanges { get; } = new LeftMenuItemDesignViewModel
     {
         Text = new StringComponent(Language.LoadoutLeftMenuViewModel_External_Changes),

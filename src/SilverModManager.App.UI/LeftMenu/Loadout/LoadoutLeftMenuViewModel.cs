@@ -18,6 +18,7 @@ using SilverModManager.App.UI.Overlays;
 using SilverModManager.App.UI.Pages;
 using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Pages.Diagnostics;
+using SilverModManager.App.UI.Pages.Ini;
 using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
 using SilverModManager.App.UI.Pages.LoadoutPage;
@@ -49,6 +50,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
     public ILeftMenuItemViewModel LeftMenuItemNewCollection { get; }
     public ILeftMenuItemViewModel LeftMenuItemHealthCheck { get; }
     public ILeftMenuItemViewModel LeftMenuItemTools { get; }
+    public ILeftMenuItemViewModel? LeftMenuItemIni { get; }
     [Reactive] public partial ILeftMenuItemViewModel? LeftMenuItemExternalChanges { get; private set; }
     
     [Reactive] public partial bool HasSingleCollection { get; private set; } = true;
@@ -207,6 +209,28 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
             Icon = IconValues.Wrench,
             ToolTip = new StringComponent("Run the tools for this game, or a Windows program in the game's prefix"),
         };
+
+        // INI files, for a game whose INIs a loadout can own
+        if (IniPageFactory.HasIniPage(game))
+        {
+            LeftMenuItemIni = new LeftMenuItemViewModel(
+                workspaceController,
+                WorkspaceId,
+                new PageData
+                {
+                    FactoryId = IniPageFactory.StaticId,
+                    Context = new IniPageContext
+                    {
+                        LoadoutId = loadoutContext.LoadoutId,
+                    },
+                }
+            )
+            {
+                Text = new StringComponent(Language.IniPage_MenuItem),
+                Icon = IconValues.FileEdit,
+                ToolTip = new StringComponent(Language.IniPage_MenuItem_ToolTip),
+            };
+        }
 
         // Apply Control
         ApplyControlViewModel = new ApplyControlViewModel(loadoutContext.LoadoutId,

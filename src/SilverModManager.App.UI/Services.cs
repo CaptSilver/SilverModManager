@@ -51,6 +51,7 @@ using SilverModManager.App.UI.Pages.Diff.ApplyDiff;
 using SilverModManager.App.UI.Pages.Downloads;
 using SilverModManager.App.UI.Pages.FromSoftMerges;
 using SilverModManager.App.UI.Pages.FromSoftSaves;
+using SilverModManager.App.UI.Pages.Ini;
 using SilverModManager.App.UI.Pages.LibraryPage;
 using SilverModManager.App.UI.Pages.LibraryPage.Collections;
 using SilverModManager.App.UI.Pages.LoadoutGroupFilesPage;
@@ -220,6 +221,8 @@ public static class Services
             .AddViewModel<FromSoftMergesViewModel, IFromSoftMergesViewModel>()
             .AddView<FromSoftSavesView, IFromSoftSavesViewModel>()
             .AddViewModel<FromSoftSavesViewModel, IFromSoftSavesViewModel>()
+            .AddView<IniPageView, IIniPageViewModel>()
+            .AddViewModel<IniPageViewModel, IIniPageViewModel>()
             .AddView<ToolsPageView, IToolsPageViewModel>()
             .AddViewModel<ToolsPageViewModel, IToolsPageViewModel>()
             .AddView<AboutPageView, IAboutPageViewModel>()
@@ -313,6 +316,7 @@ public static class Services
             .AddSingleton<IPageFactory, ChangelogPageFactory>()
             .AddSingleton<IPageFactory, FromSoftMergesPageFactory>()
             .AddSingleton<IPageFactory, FromSoftSavesPageFactory>()
+            .AddSingleton<IPageFactory, IniPageFactory>()
             .AddSingleton<IStoreSortMemory, SettingsStoreSortMemory>()
             .AddSingleton<IAdultContentSetting, SettingsAdultContentSetting>()
             .AddSingleton<IPageFactory, ThunderstorePageFactory>()
