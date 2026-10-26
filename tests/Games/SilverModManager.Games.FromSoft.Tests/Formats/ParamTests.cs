@@ -235,14 +235,50 @@ public class ParamTests
     }
 
     [Fact]
-    public void WriteRefusesToMoveAParamTypeThatStartsBeforeTheStringsBlock()
+    public void WriteRelocatesAParamTypeThatStartsInTheTail()
     {
         var blob = ParamFixture.Make([1, 2], tail: "TYPE"u8.ToArray());
         BinaryPrimitives.WriteInt64LittleEndian(blob.AsSpan(0x10), BinaryPrimitives.ReadUInt32LittleEndian(blob) - 4);
         var table = Param.Read(blob);
         Param.Write(table).Should().Equal(blob);
+        TypeNameAt(Param.Write(Param.PatchRows(table, insert: Rows((3, 3))))).Should().Be("TYPETEST_PARAM_ST");
+    }
+
+    [Fact]
+    public void AnInsertedRowRoundTripsWhenTheTypeNameStraddlesTheTailAndTheStringsBlock()
+    {
+        // Vanilla layout: the type name starts in the 8 bytes after the last row and runs on into the strings block.
+        var blob = ParamFixture.Make([1, 2, 5], stride: 16, tail: "POSTURE_"u8.ToArray());
+        BinaryPrimitives.WriteInt64LittleEndian(blob.AsSpan(0x10), BinaryPrimitives.ReadUInt32LittleEndian(blob) - 8);
+        var table = Param.Read(blob);
+        table.Tail.Should().HaveCount(8);
+
+        var written = Param.Write(Param.PatchRows(table, insert: new Dictionary<int, byte[]> { [3] = Enumerable.Repeat((byte)3, 16).ToArray() }));
+
+        var reread = Param.Read(written);
+        reread.Rows.Select(r => r.Id).Should().Equal(1, 2, 3, 5);
+        reread.Rows.Select(r => r.Data.Length).Should().AllBeEquivalentTo(16);
+        reread.Tail.Should().Equal(table.Tail);
+        reread.Strings.Should().Equal(table.Strings);
+        TypeNameAt(written).Should().Be("POSTURE_TEST_PARAM_ST");
+        reread.Rows.Select(r => r.NameOffset - reread.StringsOffset).Should().AllBeEquivalentTo(table.Rows[0].NameOffset - table.StringsOffset);
+    }
+
+    [Fact]
+    public void WriteStillRefusesAParamTypeThatPointsIntoRowData()
+    {
+        var blob = ParamFixture.Make([1, 2]);
+        BinaryPrimitives.WriteInt64LittleEndian(blob.AsSpan(0x10), 0x40 + 2 * 24 + 4);
+        var table = Param.Read(blob);
         FluentActions.Invoking(() => Param.Write(Param.PatchRows(table, insert: Rows((3, 3)))))
-            .Should().Throw<ParamException>().WithMessage("*param type string sits before*");
+            .Should().Throw<ParamException>().WithMessage("*param type*");
+    }
+
+    private static string TypeNameAt(byte[] param)
+    {
+        var offset = (int)BinaryPrimitives.ReadInt64LittleEndian(param.AsSpan(0x10));
+        var span = param.AsSpan(offset);
+        return System.Text.Encoding.Latin1.GetString(span[..span.IndexOf((byte)0)]);
     }
 
     // ---- read guards
@@ -269,10 +305,23 @@ public class ParamTests
     }
 
     [Fact]
-    public void ReadRefusesAStringsOffsetPastTheEndOfTheFile()
+    public void ReadClampsAStringsOffsetPastTheEndOfTheFile()
+    {
+        // The vanilla cutscene params point their strings block beyond the file; the type name sits after the last row.
+        var blob = Make(1, 2);
+        BinaryPrimitives.WriteUInt32LittleEndian(blob, (uint)blob.Length + 500);
+        var table = Param.Read(blob);
+        table.Rows.Select(r => r.Id).Should().Equal(1, 2);
+        table.Rows[1].Data.Should().Equal(Rows8(2));
+        table.StringsOffset.Should().Be(blob.Length);
+        table.Strings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ReadRefusesAZeroStringsOffset()
     {
         var blob = Make(1, 2);
-        BinaryPrimitives.WriteUInt32LittleEndian(blob, (uint)blob.Length + 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(blob, 0);
         FluentActions.Invoking(() => Param.Read(blob)).Should().Throw<ParamException>().WithMessage("*outside the file*");
     }
 

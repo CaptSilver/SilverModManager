@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using FluentAssertions;
 using SilverModManager.Games.FromSoft.EldenRing;
 using SilverModManager.Games.FromSoft.Formats;
@@ -546,6 +547,46 @@ public class ParamRowMergeTests
         EntryOf(merged, 1).Should().Equal(EntryOf(other, 1));
         notes.Should().Equal(new UnreadableParam(1));
         MatchesErm("unreadable_entry_taken_whole", merged);
+    }
+
+    /// <summary>
+    /// A param shaped like the shipped cutscene params: the type name follows the last row and the header's strings
+    /// offset points past the end of the file. A tool that re-saves it only rewrites that offset to where the name starts.
+    /// </summary>
+    private static (byte[] Vanilla, byte[] Resaved) CutsceneParam(params (int Id, byte[] Data)[] rows)
+    {
+        var next = 0;
+        var resaved = ParamFixture.Make(rows.Select(r => r.Id).ToArray(), 16, "CUTSCENE_TEST_ST", fill: _ => rows[next++].Data);
+        var vanilla = resaved.ToArray();
+        BinaryPrimitives.WriteUInt32LittleEndian(vanilla, (uint)vanilla.Length + 1500);
+        return (vanilla, resaved);
+    }
+
+    private static byte[] RegOf(byte[] param) => RegulationFixture.BuildFromEntries([(1, "CutsceneTestParam.param", param)], Version, T);
+
+    [Fact]
+    public void AReSavedCopyOfAParamWhoseStringsOffsetOverrunsTheFileMergesWithoutANote()
+    {
+        var (vanilla, resaved) = CutsceneParam((10, Rep(0x01, 16)), (20, Rep(0x02, 16)));
+        var van = RegOf(vanilla);
+        var notes = new List<IMergeNote>();
+        var merged = Run(van, RegOf(resaved), van, notes);
+        notes.Should().BeEmpty();
+        EntryOf(merged, 1).Should().Equal(vanilla);
+    }
+
+    [Fact]
+    public void ARowAddedToAParamWhoseStringsOffsetOverrunsTheFileMergesRowByRow()
+    {
+        var (vanilla, _) = CutsceneParam((10, Rep(0x01, 16)), (20, Rep(0x02, 16)));
+        var (_, modded) = CutsceneParam((10, Rep(0x01, 16)), (15, Rep(0x0f, 16)), (20, Rep(0x02, 16)));
+        var van = RegOf(vanilla);
+        var notes = new List<IMergeNote>();
+        var merged = Run(van, RegOf(modded), van, notes);
+        notes.Should().BeEmpty();
+        var rows = RowsOf(merged, 1);
+        rows.Keys.Should().Equal(10, 15, 20);
+        rows[15].Should().Equal(Rep(0x0f, 16));
     }
 
     [Fact]

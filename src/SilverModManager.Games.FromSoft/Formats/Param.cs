@@ -85,6 +85,9 @@ public static class Param
         RequireSupportedLayout(data.Slice(FormatFlagsOffset, 4));
 
         long stringsOffset = BinaryPrimitives.ReadUInt32LittleEndian(data);
+        // The vanilla cutscene params (CutsceneGparamTimeParam and two more) point the strings block past the end of the
+        // file. Their type name sits after the last row, so clamping reads them as having an empty strings block.
+        if (stringsOffset > data.Length) stringsOffset = data.Length;
         int rowCount = BinaryPrimitives.ReadUInt16LittleEndian(data[0x0A..]);
         var paramTypeOffset = BinaryPrimitives.ReadInt64LittleEndian(data[0x10..]);
         var dataOffset = BinaryPrimitives.ReadInt64LittleEndian(data[0x30..]);
@@ -213,11 +216,14 @@ public static class Param
         var shift = stringsOffset - table.StringsOffset;
         if (shift != 0)
         {
-            // An offset pointing before the block belongs to a region whose displacement was never measured, so relocating it would be a guess.
-            var stray = table.Rows.Where(r => r.NameOffset != 0 && r.NameOffset < table.StringsOffset).Select(r => r.Id).Take(5).ToArray();
+            // The tail has a fixed length, so it moves by exactly what the strings block does: an offset anywhere from the
+            // tail start on (a type name that begins in the tail and runs into the strings) shifts with it. One before
+            // the tail points into the header or row data, whose displacement was never measured, so relocating it would be a guess.
+            var tailStart = table.StringsOffset - table.Tail.Length;
+            var stray = table.Rows.Where(r => r.NameOffset != 0 && r.NameOffset < tailStart).Select(r => r.Id).Take(5).ToArray();
             if (stray.Length > 0)
                 throw new ParamException($"Rows [{string.Join(", ", stray)}] name offsets point before the strings block, so they can't be relocated when the row count changes");
-            if (table.ParamTypeOffset < table.StringsOffset)
+            if (table.ParamTypeOffset < tailStart)
                 throw new ParamException("Param type string sits before the strings block, so it can't be relocated when the row count changes");
         }
 
