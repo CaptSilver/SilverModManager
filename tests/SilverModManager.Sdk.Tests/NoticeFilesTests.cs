@@ -49,6 +49,15 @@ public class NoticeFilesTests
     }
 
     [Fact]
+    public void Test_NoticeSaysThePictogramsAreMaterialDesignIcons()
+    {
+        var notice = ReadRootFile("NOTICE").ReplaceLineEndings("\n").Replace("\n  ", " ");
+
+        notice.Should().Contain("The large pictograms in dialogs and page headers are Material Design Icons");
+        notice.Should().NotContain("placeholder images, pictograms", "the pictograms are not Nexus artwork any more");
+    }
+
+    [Fact]
     public void Test_NoticeNamesTheVendoredMnemonicDb()
     {
         var notice = ReadRootFile("NOTICE");

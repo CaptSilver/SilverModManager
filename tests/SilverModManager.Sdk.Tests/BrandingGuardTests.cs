@@ -133,4 +133,19 @@ public partial class BrandingGuardTests
             .Where(name => name is "OpenDiscordMenuItem.Header" or "OpenForumsMenuItem.Header");
         removed.Should().BeEmpty("the Discord and forums menu entries are gone");
     }
+
+    // The orange Nexus pictograms were replaced by Material Design glyphs. The hashes of the old
+    // files are in RemovedAssetHashesTests; this keeps the folder and every reference to it gone.
+    [Fact]
+    public void Test_NoNexusPictogramFilesOrReferences()
+    {
+        var root = RepoScanGuard.FindRepoRoot();
+
+        RepoScanGuard.TrackedFiles(root, "src/SilverModManager.App.UI/Assets/Pictograms/*.svg")
+            .Should().BeEmpty("the pictograms are Material Design glyphs now, not Nexus artwork");
+
+        var sources = RepoScanGuard.TrackedFiles(root, "src/*.axaml", "src/*.cs");
+        var found = RepoScanGuard.FindLines(root, sources, line => line.Contains("Assets/Pictograms/", StringComparison.Ordinal));
+        RepoScanGuard.AssertMatchesAllowlist(found, [], "nothing may point at the removed pictogram folder");
+    }
 }

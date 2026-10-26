@@ -22,8 +22,8 @@ namespace SilverModManager.UI.Sdk.Icons;
         - Create a SimpleVectorIconImage based on the contents of an SVG 
             - This will give you the correct icon size, as padding etc. is preserved.
             - We can't use the raw SVGs as they don't support recolouring.
-        - If you explicitly don't want recolouring for brand purposes, import an SVG like
-            - AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/health.svg");
+        - If you explicitly don't want recolouring, import the SVG as an AvaloniaSvg, e.g.
+            - AvaloniaSvg("avares://SilverModManager.App.UI/Assets/home-icon.svg");
 
     How to Import SVG:
     
@@ -682,64 +682,64 @@ public static class IconValues
     public static readonly IconValue NexusColor = new ProjektankerIcon("mdi-cloud-download");
     
     /// <summary>
-    /// Brand pictogram for Health
+    /// Large glyph for Health
     /// </summary>
-    public static readonly IconValue PictogramHealth = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/health.svg");
+    public static readonly IconValue PictogramHealth = new ProjektankerIcon("mdi-heart-pulse");
     
     /// <summary>
-    /// Brand pictogram for Games in 3D
+    /// Large glyph for Games in 3D
     /// </summary>
-    public static readonly IconValue PictogramGame3D = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/game-3d.svg");
+    public static readonly IconValue PictogramGame3D = new ProjektankerIcon("mdi-gamepad-variant");
     
     /// <summary>
-    /// Brand pictogram for Loadouts
+    /// Large glyph for Loadouts
     /// </summary>
-    public static readonly IconValue PictogramBox2 = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/box2.svg");
+    public static readonly IconValue PictogramBox2 = new ProjektankerIcon("mdi-package-variant-closed");
     
     /// <summary>
-    /// Brand pictogram for Settings
+    /// Large glyph for Settings
     /// </summary>
-    public static readonly IconValue PictogramSettings = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/settings.svg");
+    public static readonly IconValue PictogramSettings = new ProjektankerIcon("mdi-cog");
 
     /// <summary>
-    /// Brand pictogram for Celebrate
+    /// Large glyph for Celebrate
     /// </summary>
-    public static readonly IconValue PictogramCelebrate = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/celebrate.svg");
+    public static readonly IconValue PictogramCelebrate = new ProjektankerIcon("mdi-party-popper");
     
     /// <summary>
-    /// Brand pictogram for Playlist Add
+    /// Large glyph for Playlist Add
     /// </summary>
-    public static readonly IconValue PictogramPlaylistAdd = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/playlist-add.svg");
+    public static readonly IconValue PictogramPlaylistAdd = new ProjektankerIcon("mdi-playlist-plus");
     
     /// <summary>
-    /// Brand pictogram for Collection in 3D
+    /// Large glyph for Collection in 3D
     /// </summary>
-    public static readonly IconValue PictogramCollection3D = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/collection-3d.svg");
+    public static readonly IconValue PictogramCollection3D = new ProjektankerIcon("mdi-view-grid-plus");
     
     /// <summary>
-    /// Brand pictogram for Library
+    /// Large glyph for Library
     /// </summary>
-    public static readonly IconValue PictogramLibrary = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/library.svg");
+    public static readonly IconValue PictogramLibrary = new ProjektankerIcon("mdi-bookshelf");
     
     /// <summary>
-    /// Brand pictogram for Upload
+    /// Large glyph for Upload
     /// </summary>
-    public static readonly IconValue PictogramUpload = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/upload.svg");
+    public static readonly IconValue PictogramUpload = new ProjektankerIcon("mdi-upload");
     
     /// <summary>
     /// Pictogram for the dialogs that explain free-account download limits
     /// </summary>
-    public static readonly IconValue PictogramPremium = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/download.svg");
+    public static readonly IconValue PictogramPremium = new ProjektankerIcon("mdi-download-box");
 
     /// <summary>
-    /// Brand pictogram for Success
+    /// Large glyph for Success
     /// </summary>
-    public static readonly IconValue PictogramSuccess = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/success.svg");
+    public static readonly IconValue PictogramSuccess = new ProjektankerIcon("mdi-check-decagram");
     
     /// <summary>
-    /// Brand pictogram for Download
+    /// Large glyph for Download
     /// </summary>
-    public static readonly IconValue PictogramDownload = new AvaloniaSvg("avares://SilverModManager.App.UI/Assets/Pictograms/download.svg");
+    public static readonly IconValue PictogramDownload = new ProjektankerIcon("mdi-download-box");
 
 
 #endregion

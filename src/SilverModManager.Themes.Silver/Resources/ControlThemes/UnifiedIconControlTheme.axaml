@@ -18,7 +18,7 @@
 
                     <!-- Svg -->
                     <icons:IconValue x:Key="AvaloniaSvgValue"
-                                     SvgSetter="avares://SilverModManager.App.UI/Assets/Pictograms/health.svg" />
+                                     SvgSetter="avares://SilverModManager.App.UI/Assets/home-icon.svg" />
 
                     <!-- PathIcon -->
                     <icons:IconValue x:Key="AvaloniaPathIconValue">

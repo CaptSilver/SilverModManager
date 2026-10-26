@@ -24,9 +24,11 @@ What carried over and what did not
   as the ids of the downloaded game-hash database, also keep it because the
   data they name was written under it.
 * Artwork that Nexus Mods wrote and that stays in the tree (placeholder
-  images, pictograms) comes with the GPL-3.0-only code it shipped in. The
+  images) comes with the GPL-3.0-only code it shipped in. The
   license covers the files, not the Nexus Mods trademarks. The Nexus Mods
-  logos and glyphs were removed.
+  logos and glyphs were removed. The large pictograms in dialogs and page
+  headers are Material Design Icons (see THIRD-PARTY-NOTICES.md), not Nexus
+  artwork.
 * erm, the author's earlier project, is GPL-2.0-or-later. Code brought
   over from it is used here under GPL-3.0-only, which its "or later" clause
   allows.

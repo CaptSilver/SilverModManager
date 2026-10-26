@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using FluentAssertions;
@@ -10,6 +11,7 @@ using SilverModManager.App.UI.Pages.MyGames;
 using SilverModManager.App.UI.Pages.Settings;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Sdk.Games;
+using SilverModManager.UI.Sdk.Icons;
 
 namespace SilverModManager.UI.Tests.Theme;
 
@@ -61,6 +63,27 @@ public class HeadlessRenderTests : AUiTest
         var path = await Render("Loadout", () => new LoadoutView
         {
             DataContext = new LoadoutViewModel(Substitute.For<IWindowManager>(), Provider, loadout.LoadoutId),
+        });
+
+        AssertHasVariance(path);
+    }
+
+    [Fact]
+    public async Task Test_PictogramsRenderWithPixelVariance()
+    {
+        var path = await Render("Pictograms", () =>
+        {
+            var panel = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(32) };
+            foreach (var icon in new[]
+            {
+                IconValues.PictogramHealth, IconValues.PictogramLibrary, IconValues.PictogramDownload, IconValues.PictogramUpload,
+                IconValues.PictogramSettings, IconValues.PictogramSuccess, IconValues.PictogramCelebrate, IconValues.PictogramBox2,
+                IconValues.PictogramGame3D, IconValues.PictogramCollection3D, IconValues.PictogramPlaylistAdd,
+            })
+            {
+                panel.Children.Add(new UnifiedIcon { Value = icon, Size = 96, Margin = new Thickness(16) });
+            }
+            return panel;
         });
 
         AssertHasVariance(path);
