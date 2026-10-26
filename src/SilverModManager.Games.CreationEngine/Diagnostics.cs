@@ -147,4 +147,26 @@ The app owns the plugin list. Switching a plugin on or off and changing the load
             .AddValue<string>("Summary")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate GameInisTakenOver = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 7))
+        .WithTitle("Loadout will manage the game's ini files")
+        .WithSeverity(DiagnosticSeverity.Suggestion)
+        .WithSummary("The next apply gives this loadout its own copy of {Files}")
+        .WithDetails("""
+The next time this loadout is applied, it takes its own copy of the game's ini files: **{Files}**.
+
+The files on disk now become the loadout's starting point, so the settings you have today are kept. From then on the
+app writes each file from that copy, plus the ini tweaks of the enabled mods and the keys the app manages itself.
+Switching to another loadout puts that loadout's copy in place.
+
+Turn off "Own the game INIs" for the loadout to leave these files to the game.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("Files")
+        )
+        .Finish();
 }

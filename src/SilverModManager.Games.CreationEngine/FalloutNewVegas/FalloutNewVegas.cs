@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Bethesda.LoadOrder;
@@ -14,7 +15,7 @@ namespace SilverModManager.Games.CreationEngine.FalloutNewVegas;
 /// New Vegas orders its plugins by file modification time and reads the active ones from plugins.txt in AppData.
 /// Tale of Two Wastelands is a mod with its own installer, not a separate game.
 /// </summary>
-public class FalloutNewVegas(IServiceProvider provider) : ACreationEngineGame<FalloutNewVegas>(provider), IGameData<FalloutNewVegas>, ITimestampOrderedGame
+public class FalloutNewVegas(IServiceProvider provider) : ACreationEngineGame<FalloutNewVegas>(provider), IGameData<FalloutNewVegas>, IHasIniFiles, ITimestampOrderedGame
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.FalloutNewVegas");
     public static string DisplayName => "Fallout: New Vegas";

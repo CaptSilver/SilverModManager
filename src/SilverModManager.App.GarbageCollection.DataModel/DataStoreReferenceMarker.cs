@@ -1,4 +1,5 @@
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.App.GarbageCollection.Interfaces;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
@@ -35,12 +36,33 @@ public static class DataStoreReferenceMarker
         // Library will have all of our mods and other things installed from the outside.
         MarkItemsUsedInLibrary(archiveGc, db);
         
+        // A loadout's copy of each game INI, and the bytes last baked from it, live only in the file store.
+        MarkGameIniCopies(archiveGc, db, isLoadoutValidDict);
+
         // Mark non Loadout/Library items that are backups (e.g. Backups of original game files)
         MarkItemsMarkedAsBackups(archiveGc, db);
 
         // Bytes a running job stored but has not yet recorded in any of the above.
         foreach (var hash in FileStorePins.Pinned())
             archiveGc.AddReferencedFile(hash);
+    }
+
+    private static void MarkGameIniCopies<TParsedHeaderState, TFileEntryWrapper>(ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc, IDb db, Dictionary<LoadoutId, bool> isLoadoutValidDict)
+        where TParsedHeaderState : ICanProvideFileHashes<TFileEntryWrapper> where TFileEntryWrapper : IHaveFileHash
+    {
+        foreach (var state in LoadoutIniState.All(db))
+        {
+            if (!isLoadoutValidDict.TryGetValue(state.LoadoutId, out var isLoadoutValid))
+            {
+                isLoadoutValid = state.Loadout.IsValid();
+                isLoadoutValidDict[state.LoadoutId] = isLoadoutValid;
+            }
+
+            if (!isLoadoutValid) continue;
+
+            archiveGc.AddReferencedFile(state.Baseline);
+            if (LoadoutIniState.LastBakedHash.TryGetValue(state, out var baked)) archiveGc.AddReferencedFile(baked);
+        }
     }
 
     private static void MarkItemsMarkedAsBackups<TParsedHeaderState, TFileEntryWrapper>(ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc, IDb db) where TParsedHeaderState : ICanProvideFileHashes<TFileEntryWrapper> where TFileEntryWrapper : IHaveFileHash

@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Games.Modlists;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Sorting;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using SilverModManager.Games.CreationEngine.Emitters;
 using SilverModManager.Games.CreationEngine.Modlists;
 using SilverModManager.Games.CreationEngine.PluginLists;
@@ -19,6 +20,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Ini;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Games.CreationEngine.Abstractions;
@@ -27,7 +29,7 @@ namespace SilverModManager.Games.CreationEngine.Abstractions;
 /// A Bethesda title whose plugin headers the load order reader can parse: adds the Plugins.txt intrinsic file and the
 /// missing-master check on top of <see cref="ABethesdaGame{TSelf}"/>.
 /// </summary>
-public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget
+public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IGameIniFiles
     where TSelf : ACreationEngineGame<TSelf>, IGameData<TSelf>
 {
     private readonly IStreamSourceDispatcher _streamSource;
@@ -171,6 +173,7 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
     {
         yield return new MissingMasterEmitter(this);
         yield return new PluginListReplacedEmitter(this);
+        yield return new GameInisTakenOverEmitter(this);
         if (TestFileIniFiles.Count > 0)
             yield return new TestFileEntriesEmitter(this);
         foreach (var emitter in base.CreateEmitters(provider))
@@ -185,6 +188,44 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
 
         foreach (var file in PluginList(loadout.InstallationInstance).IntrinsicFiles(this, loadout, provider))
             files[file.Path] = file;
+        foreach (var file in GameInis.IntrinsicFiles(this, loadout, provider))
+            files[file.Path] = file;
         return files;
     }
+
+    /// <summary>
+    /// The INI files a loadout keeps its own copy of, in the order a Mod Organizer profile lists them (see
+    /// <see cref="CreationEngineMo2Target.OwnedIniFiles"/>). Only the games with any declare
+    /// <see cref="IHasIniFiles"/>, which is what shows the "Own the game INIs" choice.
+    /// </summary>
+    public IniSet IniFiles => new(CreationEngineMo2Target.OwnedIniFiles(TSelf.GameId).Select(p => p.FileName.ToString()).ToArray());
+
+    GamePath IGameIniFiles.IniPath(string fileName) =>
+        CreationEngineMo2Target.OwnedIniFiles(TSelf.GameId).Single(p => p.FileName.ToString() == fileName);
+
+    /// <summary>
+    /// The app's keys go in the first file that is not a Prefs or editor file, which the game reads before the
+    /// Custom one the user keeps their own overrides in.
+    /// </summary>
+    GamePath? IGameIniFiles.ManagedKeysFile
+    {
+        get
+        {
+            foreach (var path in CreationEngineMo2Target.OwnedIniFiles(TSelf.GameId))
+            {
+                var name = path.FileName.ToString();
+                if (!name.EndsWith("Prefs.ini", StringComparison.OrdinalIgnoreCase) && !name.StartsWith("GECK", StringComparison.OrdinalIgnoreCase))
+                    return path;
+            }
+
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Loose files only override archived ones when the game stops comparing their dates, which every Bethesda
+    /// title of this engine needs for a modded load order.
+    /// </summary>
+    IReadOnlyList<IniKeyEdit> IGameIniFiles.ManagedKeys(Loadout.ReadOnly loadout) =>
+        [new IniKeyEdit("Archive", "bInvalidateOlderFiles", "1"), .. SaveRedirectIniKeys.For(this, loadout)];
 }

@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Bethesda.LoadOrder;
@@ -13,7 +14,7 @@ namespace SilverModManager.Games.CreationEngine.Fallout3;
 /// <summary>
 /// Fallout 3 orders its plugins by file modification time and reads the active ones from plugins.txt in AppData.
 /// </summary>
-public class Fallout3(IServiceProvider provider) : ACreationEngineGame<Fallout3>(provider), IGameData<Fallout3>, ITimestampOrderedGame
+public class Fallout3(IServiceProvider provider) : ACreationEngineGame<Fallout3>(provider), IGameData<Fallout3>, IHasIniFiles, ITimestampOrderedGame
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.Fallout3");
     public static string DisplayName => "Fallout 3";

@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Diagnostics.Values;
@@ -12,7 +13,7 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.CreationEngine.Fallout4;
 
-public class Fallout4(IServiceProvider provider) : ACreationEngineGame<Fallout4>(provider), IGameData<Fallout4>, IGameUpdateSensitivity
+public class Fallout4(IServiceProvider provider) : ACreationEngineGame<Fallout4>(provider), IGameData<Fallout4>, IHasIniFiles, IGameUpdateSensitivity
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.Fallout4");
     public static string DisplayName => "Fallout 4";

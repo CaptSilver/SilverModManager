@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Diagnostics.Values;
@@ -12,7 +13,7 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.CreationEngine.SkyrimSE;
 
-public class SkyrimSE(IServiceProvider provider) : ACreationEngineGame<SkyrimSE>(provider), IGameData<SkyrimSE>, IGameUpdateSensitivity
+public class SkyrimSE(IServiceProvider provider) : ACreationEngineGame<SkyrimSE>(provider), IGameData<SkyrimSE>, IHasIniFiles, IGameUpdateSensitivity
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.SkyrimSE");
     public static string DisplayName => "Skyrim Special Edition";

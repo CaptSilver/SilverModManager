@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using DynamicData.Kernel;
 using SilverModManager.Games.Bethesda.LoadOrder;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
@@ -8,7 +9,7 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.CreationEngine.Enderal;
 
-public class Enderal(IServiceProvider provider) : ACreationEngineGame<Enderal>(provider), IGameData<Enderal>
+public class Enderal(IServiceProvider provider) : ACreationEngineGame<Enderal>(provider), IGameData<Enderal>, IHasIniFiles
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.Enderal");
     public static string DisplayName => "Enderal: Forgotten Stories";

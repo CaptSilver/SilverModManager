@@ -72,6 +72,13 @@ internal static class CreationEngineMo2Target
         return names.Select(name => new GamePath(LocationId.Preferences, name)).ToList();
     }
 
+    /// <summary>
+    /// The INI files each loadout keeps its own copy of. Morrowind's is left out because its plugin list writer owns
+    /// Morrowind.ini; a game with no profile files has none.
+    /// </summary>
+    public static IReadOnlyList<GamePath> OwnedIniFiles(GameId game) =>
+        game == Morrowind.Morrowind.GameId || !ProfileIniNames.ContainsKey(game) ? [] : ProfileSettingsFiles(game);
+
     public static bool IsGameRootFolder(ICreationEngineGame game, GameInstallation installation, IReadOnlySet<RelativePath> filesDirectlyInside) =>
         filesDirectlyInside.Contains(game.GetPrimaryFile(installation).Path.FileName);
 

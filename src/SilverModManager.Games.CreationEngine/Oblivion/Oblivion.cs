@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Bethesda.LoadOrder;
@@ -15,7 +16,7 @@ namespace SilverModManager.Games.CreationEngine.Oblivion;
 /// AppData unless Oblivion.ini sets <c>bUseMyGamesDirectory=0</c>, and then in the game folder. The launcher writes
 /// plugins.txt and the game reads Plugins.txt; they are one file on the prefix's case-insensitive view.
 /// </summary>
-public class Oblivion(IServiceProvider provider) : ACreationEngineGame<Oblivion>(provider), IGameData<Oblivion>, ITimestampOrderedGame
+public class Oblivion(IServiceProvider provider) : ACreationEngineGame<Oblivion>(provider), IGameData<Oblivion>, IHasIniFiles, ITimestampOrderedGame
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.Oblivion");
     public static string DisplayName => "Oblivion";

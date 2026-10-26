@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using DynamicData.Kernel;
 using SilverModManager.Games.Bethesda.LoadOrder;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
@@ -8,7 +9,7 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.CreationEngine.SkyrimLE;
 
-public class SkyrimLE(IServiceProvider provider) : ACreationEngineGame<SkyrimLE>(provider), IGameData<SkyrimLE>
+public class SkyrimLE(IServiceProvider provider) : ACreationEngineGame<SkyrimLE>(provider), IGameData<SkyrimLE>, IHasIniFiles
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.SkyrimLE");
     public static string DisplayName => "Skyrim";

@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games;
 using DynamicData.Kernel;
 using SilverModManager.Games.Bethesda.LoadOrder;
 using SilverModManager.Games.Bethesda.Loot.Masterlists;
@@ -8,7 +9,7 @@ using SilverModManager.Sdk.Games;
 
 namespace SilverModManager.Games.CreationEngine.Fallout4VR;
 
-public class Fallout4VR(IServiceProvider provider) : ACreationEngineGame<Fallout4VR>(provider), IGameData<Fallout4VR>
+public class Fallout4VR(IServiceProvider provider) : ACreationEngineGame<Fallout4VR>(provider), IGameData<Fallout4VR>, IHasIniFiles
 {
     public static GameId GameId { get; } = GameId.From("CreationEngine.Fallout4VR");
     public static string DisplayName => "Fallout 4 VR";

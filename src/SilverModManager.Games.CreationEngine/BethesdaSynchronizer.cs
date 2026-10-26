@@ -1,5 +1,6 @@
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Games.CreationEngine.Abstractions;
 using SilverModManager.Games.CreationEngine.SortOrder;
@@ -29,6 +30,12 @@ public class BethesdaSynchronizer(IServiceProvider provider, IBethesdaGame game)
     /// </summary>
     protected override async ValueTask<Loadout.ReadOnly> PrepareLoadoutForSync(Loadout.ReadOnly loadout)
     {
+        loadout = await PreparePluginOrder(loadout);
+        return game is IGameIniFiles inis ? await GameInis.Prepare(inis, loadout, provider) : loadout;
+    }
+
+    private async ValueTask<Loadout.ReadOnly> PreparePluginOrder(Loadout.ReadOnly loadout)
+    {
         if (game is not ICreationEngineGame creationEngineGame) return loadout;
 
         await game.SortOrderManager.UpdateLoadOrders(loadout.LoadoutId);
@@ -48,6 +55,11 @@ public class BethesdaSynchronizer(IServiceProvider provider, IBethesdaGame game)
 
         await PluginListSeeder.Seed(creationEngineGame, variety, provider.GetRequiredService<IConnection>(), loadout, sortOrderId);
         return loadout.Rebase();
+    }
+
+    protected override void AdjustActions(Dictionary<GamePath, SyncNode> tree)
+    {
+        if (game is IGameIniFiles inis) GameInis.LeaveDisownedInisOnDisk(inis, tree);
     }
 
     public override bool IsIgnoredBackupPath(GamePath path)

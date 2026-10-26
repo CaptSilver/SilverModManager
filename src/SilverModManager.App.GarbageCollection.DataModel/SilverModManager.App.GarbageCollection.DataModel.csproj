@@ -9,6 +9,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts\SilverModManager.Abstractions.Loadouts.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Loadouts.Synchronizers\SilverModManager.Abstractions.Loadouts.Synchronizers.csproj" />
         <ProjectReference Include="..\SilverModManager.App.GarbageCollection.Nx\SilverModManager.App.GarbageCollection.Nx.csproj" />
         <ProjectReference Include="..\SilverModManager.App.GarbageCollection\SilverModManager.App.GarbageCollection.csproj"/>
     </ItemGroup>
