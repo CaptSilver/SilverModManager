@@ -89,6 +89,15 @@ public class GamesListVerbTests
     }
 
     [Fact]
+    public async Task JsonPrintsAnApostropheLiterally()
+    {
+        var (exitCode, output) = await Run([Install("Baldur's Gate 3", GameStore.Steam, "/games/BG3")], "games", "list", "--json");
+
+        exitCode.Should().Be(0);
+        output.Should().Contain("Baldur's Gate 3").And.NotContain("\\u0027");
+    }
+
+    [Fact]
     public async Task NoGamesSaysSoInsteadOfPrintingNothing()
     {
         var (exitCode, output) = await Run([], "games", "list");

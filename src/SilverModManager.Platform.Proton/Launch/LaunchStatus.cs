@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Cli;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -27,8 +28,6 @@ public sealed partial record LaunchStatusReport(IReadOnlyList<LaunchStatusEntry>
     public const string VfsFileSystemType = "fuse.silvermod";
 
     private const string LockPrefix = "launch-";
-
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     /// <summary>
     /// Reads every <c>launch-*.lock</c> under <paramref name="runtimeDir"/> and the mounts in
@@ -135,7 +134,7 @@ public sealed partial record LaunchStatusReport(IReadOnlyList<LaunchStatusEntry>
             leftover = launch.IsLeftover,
         }),
         mounts = Mounts,
-    }, JsonOptions);
+    }, CliJson.Options);
 
     private static string PhaseName(LaunchPhase? phase) => phase.ToString()!.ToLowerInvariant();
 }

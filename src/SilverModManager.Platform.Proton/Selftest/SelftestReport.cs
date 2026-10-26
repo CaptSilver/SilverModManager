@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Cli;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -30,9 +31,8 @@ public sealed record SelftestReport(IReadOnlyList<SelftestCheck> Checks)
     /// <summary>
     /// The options the <c>--json</c> form is written with.
     /// </summary>
-    public static JsonSerializerOptions JsonOptions { get; } = new(JsonSerializerDefaults.Web)
+    public static JsonSerializerOptions JsonOptions { get; } = new(CliJson.Options)
     {
-        WriteIndented = true,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 

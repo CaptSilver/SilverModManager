@@ -11,8 +11,6 @@ namespace SilverModManager.DataModel.CommandLine.Verbs;
 /// </summary>
 public static class GameVerbs
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
-
     public static IServiceCollection AddGameVerbs(this IServiceCollection collection) =>
         collection
             .AddModule("games", "Commands for the games found on this machine")
@@ -31,7 +29,7 @@ public static class GameVerbs
 
         if (json)
         {
-            await renderer.TextLine(JsonSerializer.Serialize(rows, JsonOptions));
+            await renderer.TextLine(JsonSerializer.Serialize(rows, CliJson.Options));
             return 0;
         }
 

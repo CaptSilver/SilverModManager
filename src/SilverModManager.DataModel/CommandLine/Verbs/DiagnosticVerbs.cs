@@ -13,8 +13,6 @@ namespace SilverModManager.DataModel.CommandLine.Verbs;
 /// </summary>
 public static class DiagnosticVerbs
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
-
     // The "loadout" module comes from AddLoadoutManagementVerbs.
     public static IServiceCollection AddDiagnosticVerbs(this IServiceCollection collection) =>
         collection.AddVerb(() => ListDiagnostics);
@@ -39,7 +37,7 @@ public static class DiagnosticVerbs
 
         if (json)
         {
-            await renderer.TextLine(JsonSerializer.Serialize(rows, JsonOptions));
+            await renderer.TextLine(JsonSerializer.Serialize(rows, CliJson.Options));
             return 0;
         }
 

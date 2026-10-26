@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Cli;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SilverModManager.Abstractions.Loadouts.Deployment;
@@ -21,9 +22,8 @@ public sealed record DoctorReport(IReadOnlyList<DoctorInstallation> Installation
     /// <summary>
     /// The options the <c>--json</c> form is written and read with.
     /// </summary>
-    public static JsonSerializerOptions JsonOptions { get; } = new(JsonSerializerDefaults.Web)
+    public static JsonSerializerOptions JsonOptions { get; } = new(CliJson.Options)
     {
-        WriteIndented = true,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
