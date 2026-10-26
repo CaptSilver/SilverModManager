@@ -109,9 +109,61 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
     public virtual MergePathIndex Index(Loadout.ReadOnly loadout)
     {
         var providers = Providers(loadout);
-        var vanillaPaths = dumps.Paths(loadout.Db, loadout.InstallationInstance, providers.Select(p => p.RelPath).Distinct(StringComparer.OrdinalIgnoreCase));
-        return MergePathIndex.Build(providers, TraitsOf(loadout.InstallationInstance), vanillaPaths);
+        var installation = loadout.InstallationInstance;
+        var vanillaPaths = dumps.Paths(loadout.Db, installation, providers.Select(p => p.RelPath).Distinct(StringComparer.OrdinalIgnoreCase)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        vanillaPaths.UnionWith(GameArchivePaths(installation, providers, vanillaPaths));
+        return MergePathIndex.Build(providers, TraitsOf(installation), vanillaPaths);
     }
+
+    /// <summary>
+    /// The overlapping packed paths that no dump offers but the game's own archives hold, in the spelling they were
+    /// provided in. Only a path that is contested and would use a vanilla copy is looked up: the first lookup decrypts
+    /// the archives' indexes, which is not worth doing for a loadout with nothing to merge.
+    /// </summary>
+    private IReadOnlySet<string> GameArchivePaths(GameInstallation installation, IReadOnlyList<ProviderFile> providers, IReadOnlySet<string> offered)
+    {
+        var found = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var traits = TraitsOf(installation);
+        if (traits.Archives.IsEmpty) return found;
+
+        var folder = ArchiveFolder(installation);
+        var warned = false;
+        foreach (var group in providers.GroupBy(p => p.RelPath, StringComparer.OrdinalIgnoreCase))
+        {
+            if (group.Select(p => p.PackageId).Distinct(StringComparer.Ordinal).Count() < 2) continue;
+            if (offered.Contains(group.Key)) continue;
+            if (MergeStrategies.ForPath(group.Key, traits, vanillaAvailable: true) is not { } strategy
+                || !MergeStrategies.NeedsVanilla(strategy) || MergeStrategies.TakesGameBase(strategy)) continue;
+
+            try
+            {
+                if (GameArchives.Find(folder, group.Key, traits) is not null) found.UnionWith(group.Select(p => p.RelPath));
+            }
+            catch (Bhd5Exception exception)
+            {
+                // Archives are searched in order, so a path an earlier archive holds is still found past a broken later
+                // one. The path falls back to what it does without a vanilla copy, and the report says why.
+                if (!warned) logger.LogWarning(exception, "The game's archives could not be searched for a vanilla copy of {Path}", group.Key);
+                warned = true;
+            }
+        }
+        return found;
+    }
+
+    /// <summary>
+    /// Why the game's own archives could not be searched for vanilla copies, as a sentence for the report; null when
+    /// every archive the install ships opens, or the game packs nothing.
+    /// </summary>
+    public string? GameArchiveFailure(GameInstallation installation)
+    {
+        var traits = TraitsOf(installation);
+        if (traits.Archives.IsEmpty) return null;
+        return GameArchives.Unreadable(ArchiveFolder(installation), traits) is var (archive, problem)
+            ? $"the game's archive {archive.Name}.bhd could not be read, so it was not searched for a vanilla copy: {problem}"
+            : null;
+    }
+
+    private string ArchiveFolder(GameInstallation installation) => FromSoftPaths.GameFolder(GameOf(installation).Layout, installation).GetFullPath();
 
     /// <summary>
     /// A provider's bytes from the file store. Read synchronously because the planner is a pure function over byte
@@ -310,11 +362,36 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
     {
         var installation = loadout.InstallationInstance;
         var offering = dumps.Find(loadout.Db, installation).Where(d => d.TryResolve(relPath, out _, out _)).ToArray();
-        if (offering.Length == 0) return null;
+        if (offering.Length == 0) return FromGameArchives(installation, relPath, notes);
 
         var dump = offering.Length == 1 ? offering[0] : Choose(loadout, contributors, offering);
         notes?.Add(new VanillaServedFromDump(relPath, dump.ArchiveName, dump.Version));
         return dumps.Member(dump, relPath);
+    }
+
+    // Behind the dumps because a mod may branch from an older build than the installed one, and the game's copy of a
+    // newer build would make every patch change look like the mod's edit.
+    private byte[]? FromGameArchives(GameInstallation installation, string relPath, ICollection<IMergeNote>? notes)
+    {
+        var traits = TraitsOf(installation);
+        if (traits.Archives.IsEmpty) return null;
+
+        var folder = ArchiveFolder(installation);
+        try
+        {
+            if (GameArchives.Find(folder, relPath, traits) is null) return null;
+
+            var bytes = GameArchives.ReadFile(folder, relPath, traits);
+            notes?.Add(new VanillaServedFromGameArchive(relPath));
+            return bytes;
+        }
+        catch (Bhd5Exception exception)
+        {
+            // An archive that can't be opened is the same as one with no copy: the merge is refused as having no vanilla
+            // source, and the log says why.
+            logger.LogWarning(exception, "The game's archives could not supply a vanilla copy of {Path}", relPath);
+            return null;
+        }
     }
 
     private VanillaDump Choose(Loadout.ReadOnly loadout, IReadOnlyList<ProviderFile> contributors, IReadOnlyList<VanillaDump> offering)

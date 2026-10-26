@@ -12,8 +12,6 @@ public class GameArchivesTests : IDisposable
 {
     private const string MenuPath = "msg/engus/menu_dlc02.msgbnd.dcx";
 
-    private static readonly byte[] AesKey = Enumerable.Range(0, 16).Select(i => (byte)(0xa0 + i)).ToArray();
-
     private readonly string _game = Path.Combine(Directory.CreateTempSubdirectory("game-archives").FullName, "Game");
 
     public GameArchivesTests() => Directory.CreateDirectory(_game);
@@ -30,19 +28,7 @@ public class GameArchivesTests : IDisposable
     private void WriteArchive(
         string name, Bhd5Fixture.SigningKey key, string path, FromSoftFormatTraits traits,
         byte[] stored, int unpadded, bool encrypted, int lead = 48)
-    {
-        var padded = (stored.Length + 15) & ~15;
-        var entry = new Bhd5Fixture.Entry(
-            Bhd5.PathHash(Bhd5.Normalise(path), traits), padded, unpadded, lead,
-            encrypted ? AesKey : null,
-            encrypted ? [(0, padded), (-1, -1)] : null);
-        File.WriteAllBytes(Path.Combine(_game, name + ".bhd"), Bhd5Fixture.Sign(Bhd5Fixture.Build([entry]), key));
-        var bdt = new byte[lead + padded + 64];
-        new Random(5).NextBytes(bdt);
-        (encrypted ? Bhd5Fixture.EncryptPayload(stored, AesKey) : stored.Concat(new byte[padded - stored.Length]).ToArray())
-            .CopyTo(bdt, lead);
-        File.WriteAllBytes(Path.Combine(_game, name + ".bdt"), bdt);
-    }
+        => GameArchiveFixture.WriteSized(_game, name, key, traits, encrypted, lead, [(path, stored, unpadded)]);
 
     [Fact]
     public void ReadFileReturnsTheDcxAndTheDcxReaderRecoversThePayload()
@@ -127,6 +113,29 @@ public class GameArchivesTests : IDisposable
         File.WriteAllBytes(Path.Combine(_game, "Data0.bhd"), Enumerable.Repeat((byte)0xff, 256).ToArray());
         var act = () => GameArchives.Find(_game, MenuPath, real);
         act.Should().Throw<Bhd5Exception>().WithMessage("*Data0*");
+    }
+
+    [Fact]
+    public void UnreadableNamesTheFirstArchiveWhoseIndexCannotBeLoaded()
+    {
+        var three = TestSouls with { Archives = [Bhd5Fixture.TestKey.Archive("TestData0"), Bhd5Fixture.TestKey.Archive("TestData1"), Bhd5Fixture.TestKey.Archive("TestData2")] };
+        WriteArchive("TestData0", Bhd5Fixture.TestKey, MenuPath, three, WrappedPayload, WrappedPayload.Length, encrypted: true);
+        File.WriteAllBytes(Path.Combine(_game, "TestData1.bhd"), new byte[100]);
+        File.WriteAllBytes(Path.Combine(_game, "TestData2.bhd"), new byte[100]);
+
+        var unreadable = GameArchives.Unreadable(_game, three);
+
+        unreadable!.Value.Archive.Name.Should().Be("TestData1");
+        unreadable.Value.Problem.Should().Contain("TestData1.bhd").And.Contain("truncated");
+    }
+
+    [Fact]
+    public void UnreadableIsNullWhenEveryArchiveTheInstallShipsOpens()
+    {
+        var withAbsent = TestSouls with { Archives = [Bhd5Fixture.TestKey.Archive("TestData0"), Bhd5Fixture.TestKey.Archive("Absent")] };
+        WriteArchive("TestData0", Bhd5Fixture.TestKey, MenuPath, withAbsent, WrappedPayload, WrappedPayload.Length, encrypted: true);
+
+        GameArchives.Unreadable(_game, withAbsent).Should().BeNull();
     }
 
     [Fact]

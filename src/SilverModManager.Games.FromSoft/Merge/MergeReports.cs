@@ -47,12 +47,12 @@ public sealed class MergeReports(
             refusal = Failed(loadout, exception);
         }
 
-        var unconfirmed = index.Candidates.Any(c => c.Outcome.Reason == MergeOutcome.NoVanillaSource)
-            ? dumps.Unconfirmed(loadout.Db, loadout.InstallationInstance)
-            : [];
+        var missingVanilla = index.Candidates.Any(c => c.Outcome.Reason == MergeOutcome.NoVanillaSource);
+        var unconfirmed = missingVanilla ? dumps.Unconfirmed(loadout.Db, loadout.InstallationInstance) : [];
+        var archiveFailure = missingVanilla ? sources.GameArchiveFailure(loadout.InstallationInstance) : null;
 
         var entries = index.Candidates
-            .Select(c => EntryOf(c, plan, refusal, unconfirmed))
+            .Select(c => EntryOf(c, plan, refusal, unconfirmed, archiveFailure))
             .OrderBy(e => e.Path, StringComparer.Ordinal)
             .ToArray();
         return new MergeReport(entries, refusal, MergeReport.DefaultPriorityOrderHint);
@@ -65,17 +65,19 @@ public sealed class MergeReports(
         return MergeRefusedException.PlanFailed(exception).Message;
     }
 
-    private static MergeReportEntry EntryOf(MergeCandidate candidate, MergePlan? plan, string? refusal, IReadOnlyList<UnconfirmedDump> unconfirmed)
+    private static MergeReportEntry EntryOf(MergeCandidate candidate, MergePlan? plan, string? refusal, IReadOnlyList<UnconfirmedDump> unconfirmed, string? archiveFailure)
     {
         var strategy = candidate.Strategy is { } s ? MergeStrategies.Name(s) : string.Empty;
         var mods = candidate.Contributors.Select(c => c.ModName).Distinct(StringComparer.Ordinal).ToArray();
 
         if (!candidate.Outcome.Merges)
         {
-            // An unrecognised dump may be why a file that looks mergeable has no vanilla source, so it rides on the files it holds a copy of.
+            // An unrecognised dump may be why a file that looks mergeable has no vanilla source, so it rides on the files it
+            // holds a copy of. A game archive that could not be read may have held any of them.
             // A file with no strategy still has a winner, so the report says which copy me3 mounts.
             var notes = candidate.Outcome.Reason == MergeOutcome.NoVanillaSource
-                ? unconfirmed.Where(d => d.HoldsCopyOf(candidate.Path)).Select(d => d.Describe(candidate.Path)).ToArray()
+                ? unconfirmed.Where(d => d.HoldsCopyOf(candidate.Path)).Select(d => d.Describe(candidate.Path))
+                    .Concat(archiveFailure is null ? [] : [archiveFailure]).ToArray()
                 : candidate.Winner is { } winner ? [$"{winner.ModName} wins by loadout priority; the other copies are ignored"]
                 : [];
             return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.NotMergeable, notes, string.Empty, candidate.Outcome.Reason ?? string.Empty);
@@ -90,6 +92,7 @@ public sealed class MergeReports(
                 ? string.Join("; ", groups)
                 : merged.Notes.OfType<BaselineWillBeKept>().Select(n => n.Describe())
                     .Concat(merged.Notes.OfType<VanillaServedFromDump>().Select(n => n.Describe()))
+                    .Concat(merged.Notes.OfType<VanillaServedFromGameArchive>().Select(n => n.Describe()))
                     .FirstOrDefault() ?? merged.VanillaSource;
             var notes = merged.Notes.Where(n => n is not IVanillaSourceNote).Select(n => n.Describe()).ToArray();
             return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.Merged, notes, source, string.Empty);

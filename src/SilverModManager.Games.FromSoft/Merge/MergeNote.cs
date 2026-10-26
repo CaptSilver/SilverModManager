@@ -84,6 +84,13 @@ public sealed record VanillaServedFromDump(string Path, string ArchiveName, stri
         $"{Path}: compared against the vanilla copy in archive {ArchiveName} (version {Version})";
 }
 
+/// <summary>The vanilla copy of a packed file was read from the game's own archives, so it is the installed build's.</summary>
+public sealed record VanillaServedFromGameArchive(string Path) : IVanillaSourceNote
+{
+    public string Describe() =>
+        $"{Path}: compared against the copy in the game's own archives, which is the installed build's";
+}
+
 /// <summary>
 /// Which vanilla regulation the mods of one build were compared against. Said only when the mods of a path came from
 /// more than one build, since with one the single source needs no label to say whose it is.

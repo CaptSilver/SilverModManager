@@ -53,6 +53,10 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
         }
     }
 
+    // The install's Data0.bhd is a placeholder no key opens. Without it the install has no data archive to search, so a
+    // talk file's notes are only about the library's dumps.
+    private void RemoveTheGameArchive() => File.Delete((RealGameFolder / "Data0.bhd").GetFullPath());
+
     private AbsolutePath Mods => GameInstallation.Locations[LocationId.Me3Mods].Path;
 
     private static byte[] Msgbnd(string text)
@@ -230,6 +234,7 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
     [Fact]
     public async Task ATalkPairBesideADumpNothingVouchesForNamesTheDumpInItsNotes()
     {
+        RemoveTheGameArchive();
         var loadout = await CreateLoadout();
         await AddArchive("Dump", ("Vanilla/regulation.bin", Regulation(OlderVersion, 0xB0)), ("Vanilla/m00.talkesdbnd.dcx", [7, 8, 9]));
         await InstallPackage(loadout.LoadoutId, "Alpha", (Talk, [1, 2, 3]));
@@ -246,6 +251,7 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
     [Fact]
     public async Task ADumpNothingVouchesForIsOnlyNamedUnderThePathsItHoldsACopyOf()
     {
+        RemoveTheGameArchive();
         var loadout = await CreateLoadout();
         await AddArchive("Dump", ("Vanilla/regulation.bin", Regulation(OlderVersion, 0xB0)), ("Vanilla/m10.talkesdbnd.dcx", [7, 8, 9]));
         await InstallPackage(loadout.LoadoutId, "Alpha", (Talk, [1, 2, 3]));
@@ -256,6 +262,22 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
         var entry = report.Entries.Should().ContainSingle().Which;
         entry.Reason.Should().Be(MergeOutcome.NoVanillaSource);
         entry.Notes.Should().BeEmpty("the dump has no copy of this talk file");
+    }
+
+    [Fact]
+    public async Task ATalkPairWithAGameArchiveThatCannotBeReadSaysTheArchiveWasNotSearched()
+    {
+        var loadout = await CreateLoadout();
+        await InstallPackage(loadout.LoadoutId, "Alpha", (Talk, [1, 2, 3]));
+        await InstallPackage(loadout.LoadoutId, "Beta", (Talk, [4, 5, 6]));
+
+        var report = await Reports.ForLoadout(loadout.LoadoutId, CancellationToken.None);
+
+        var entry = report.Entries.Should().ContainSingle().Which;
+        entry.Reason.Should().Be(MergeOutcome.NoVanillaSource);
+        entry.Notes.Should().ContainSingle().Which.Should()
+            .StartWith("the game's archive Data0.bhd could not be read, so it was not searched for a vanilla copy:")
+            .And.Contain("truncated");
     }
 
     [Fact]

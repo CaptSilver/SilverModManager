@@ -28,6 +28,26 @@ public static class GameArchives
     }
 
     /// <summary>
+    /// The first archive this install ships whose index cannot be loaded, and why; null when every one opens. A path
+    /// <see cref="Find"/> did not locate may have been in that archive, so this is what to say instead of "not there".
+    /// </summary>
+    public static (ArchiveIndex Archive, string Problem)? Unreadable(string gameFolder, FromSoftFormatTraits traits)
+    {
+        foreach (var archive in traits.Archives)
+        {
+            try
+            {
+                LoadIndex(gameFolder, archive, traits);
+            }
+            catch (Bhd5Exception exception)
+            {
+                return (archive, exception.Message);
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
     /// The bytes of one game-relative path as stored in the archive, usually a DCX. Throws on a miss rather than
     /// returning nothing: a merge that uses this as its base must never proceed from a file it failed to find.
     /// </summary>
