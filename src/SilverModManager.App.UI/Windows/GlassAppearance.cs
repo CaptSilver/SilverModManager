@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Data;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Microsoft.Extensions.Logging;
 using SilverModManager.App.UI.Settings;
 using SilverModManager.Sdk.Settings;
 using R3;
@@ -48,8 +49,12 @@ public sealed class GlassAppearance : IDisposable
     /// <summary>Raised after <see cref="Enabled"/> or <see cref="Tint"/> changed. May fire on any thread.</summary>
     public event Action? Changed;
 
-    public GlassAppearance(ISettingsManager settingsManager)
+    /// <summary>For the windows Glass is attached to, which have no logger of their own.</summary>
+    public ILogger Logger { get; }
+
+    public GlassAppearance(ISettingsManager settingsManager, ILogger<GlassAppearance> logger)
     {
+        Logger = logger;
         Apply(settingsManager.Get<AppearanceSettings>());
         _subscription = settingsManager.GetChanges<AppearanceSettings>(prependCurrent: false).Subscribe(settings =>
         {

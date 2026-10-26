@@ -5,6 +5,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
+using Avalonia.Threading;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.App.UI.Extensions;
 using ReactiveUI;
 
@@ -23,6 +26,7 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
 
         // Glass replaces this hint once it attaches; until then the frame still needs a transparent window to round.
         TransparencyLevelHint = GlassAppearance.HintFor(enabled: false, transparentFrame: true);
+        _blurRegionTimer.Tick += (_, _) => ApplyBlurRegion();
         UpdateFrameCorners();
 
         WindowChrome.AttachResizeGrips(this);
@@ -108,8 +112,13 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
     }
 
     /// <summary>Glass tints the dark window base and, more lightly, the left menu and page panels raised on it.</summary>
-    public IDisposable AttachGlass(GlassAppearance glass) =>
-        glass.AttachFramed(this, WindowFrame, "SurfaceWindow", "SurfaceLow", LeftMenuBorder, WorkspacesBorder);
+    public IDisposable AttachGlass(GlassAppearance glass)
+    {
+        _logger = glass.Logger;
+        return glass.AttachFramed(this, WindowFrame, "SurfaceWindow", "SurfaceLow", LeftMenuBorder, WorkspacesBorder);
+    }
+
+    private ILogger _logger = NullLogger.Instance;
 
     private static readonly CornerRadius FloatingCorners = new(8);
 
@@ -122,12 +131,35 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
             ? default
             : FloatingCorners;
 
-    private void UpdateFrameCorners() => WindowFrame.CornerRadius = FrameCornerRadiusFor(WindowState, ActualTransparencyLevel);
+    private void UpdateFrameCorners()
+    {
+        // Property changes arrive while InitializeComponent is still building the window.
+        if (WindowFrame is null) return;
+        WindowFrame.CornerRadius = FrameCornerRadiusFor(WindowState, ActualTransparencyLevel);
+        _logger.LogTrace("Window frame corners {Radius} for {State}, transparency {Level}", WindowFrame.CornerRadius.TopLeft, WindowState, ActualTransparencyLevel);
+        // KWin blurs the whole window rectangle unless told otherwise, which squares off the rounded corners.
+        if (GlassAppearance.IsBlurred(ActualTransparencyLevel))
+        {
+            _blurRegionTimer.Stop();
+            _blurRegionTimer.Start();
+        }
+    }
+
+    // Avalonia writes "blur everything" on its own X connection, and X orders requests only within one connection, so
+    // writing the shape at once loses whenever Avalonia's write is still queued. Waiting lets that flush first, and
+    // folds the stream of size changes during a resize into one write.
+    private readonly DispatcherTimer _blurRegionTimer = new() { Interval = TimeSpan.FromMilliseconds(50) };
+
+    private void ApplyBlurRegion()
+    {
+        _blurRegionTimer.Stop();
+        if (GlassAppearance.IsBlurred(ActualTransparencyLevel)) BlurRegion.Apply(this, WindowFrame.CornerRadius.TopLeft, _logger);
+    }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == WindowStateProperty || change.Property == ActualTransparencyLevelProperty)
+        if (change.Property == WindowStateProperty || change.Property == ActualTransparencyLevelProperty || change.Property == ClientSizeProperty)
             UpdateFrameCorners();
     }
 
