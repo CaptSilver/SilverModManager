@@ -7,7 +7,6 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.CreationEngine.Emitters;
 using SilverModManager.Games.CreationEngine.Models;
 using SilverModManager.Games.CreationEngine.SortOrder;
-using SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using NexusMods.Paths;

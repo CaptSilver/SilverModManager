@@ -108,6 +108,8 @@ public static class Services
         // Diagnostics
         coll.AddAllSingleton<IDiagnosticManager, DiagnosticManager>();
         coll.AddSettings<DiagnosticSettings>();
+        // Only a fallback: the UI registers a writer with its own value formatters first, and that one wins.
+        coll.TryAddSingleton<IDiagnosticWriter, PlainDiagnosticWriter>();
         
         // GC
         coll.AddAllSingleton<IGarbageCollectorRunner, GarbageCollectorRunner>();
@@ -130,7 +132,8 @@ public static class Services
         coll.AddLoadoutManagementVerbs()
             .AddImportExportVerbs()
             .AddToolVerbs()
-            .AddGameVerbs();
+            .AddGameVerbs()
+            .AddDiagnosticVerbs();
 
         return coll;
     }

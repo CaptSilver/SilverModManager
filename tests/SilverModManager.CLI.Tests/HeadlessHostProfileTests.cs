@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.GuidedInstallers;
 using SilverModManager.Abstractions.NexusWebApi;
 using SilverModManager.Abstractions.Secrets;
@@ -136,6 +137,17 @@ public class HeadlessHostProfileTests
             .ToArray();
 
         offenders.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("as-main-ui", "DiagnosticWriter")]
+    [InlineData("as-main", "PlainDiagnosticWriter")]
+    public void EachProfileResolvesExactlyOneDiagnosticWriter_TheGuiOnesHaveTheValueFormatters(string input, string expected)
+    {
+        Describe(Mode(input.Split(' ')))
+            .Where(d => d.ServiceType == typeof(IDiagnosticWriter))
+            .Select(d => d.ImplementationType?.Name)
+            .Should().Equal(expected);
     }
 
     [Fact]

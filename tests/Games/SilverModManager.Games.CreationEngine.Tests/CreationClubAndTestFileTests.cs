@@ -2,7 +2,6 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Games.CreationEngine.Emitters;
-using SilverModManager.Games.CreationEngine.Tests.Morrowind.OpenMw;
 using SilverModManager.Games.TestFramework;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
