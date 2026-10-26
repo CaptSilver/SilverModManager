@@ -20,7 +20,7 @@ namespace SilverModManager.Platform.Proton.PrefixSetup;
 /// in <c>winetricks.log</c> only after the prefix shows it installed, because protontricks treats a logged verb
 /// as done.
 /// </remarks>
-public sealed class PrefixSetupRunner
+public sealed class PrefixSetupRunner : IPrefixSetupRunner
 {
     private const string BackupFolder = "prefix-backups";
     private const string CacheFolder = "prefix-components";
@@ -80,7 +80,7 @@ public sealed class PrefixSetupRunner
     /// </summary>
     /// <exception cref="PrefixSetupRefusedException">Nothing was changed: the prefix is missing, not ready or unsupported, the write is not confirmed, or something is running in it.</exception>
     /// <exception cref="OperationCanceledException">The token was cancelled; steps that completed stay installed.</exception>
-    public async Task<PrefixSetupResult> Run(GameInstallation installation, PrefixSetupRequest request, CancellationToken cancellationToken)
+    public async Task<PrefixSetupResult> Run(GameInstallation installation, PrefixSetupRequest request, CancellationToken cancellationToken, Func<PrefixSetupStepResult, ValueTask>? stepFinished = null)
     {
         var prefix = ResolvePrefix(installation);
         var steps = BuildSteps(prefix, request.Components);
@@ -106,9 +106,15 @@ public sealed class PrefixSetupRunner
 
             var result = await RunStep(installation, prefix, steps[i], plan.Steps[i], request.Attempts, cancellationToken);
             results.Add(result);
+            if (stepFinished is not null) await stepFinished(result);
             if (result.Status != PrefixSetupStepStatus.Failed) continue;
 
-            results.AddRange(steps.Skip(i + 1).Select(s => new PrefixSetupStepResult(s.Id, s.Name, PrefixSetupStepStatus.NotRun)));
+            foreach (var skipped in steps.Skip(i + 1).Select(s => new PrefixSetupStepResult(s.Id, s.Name, PrefixSetupStepStatus.NotRun)))
+            {
+                results.Add(skipped);
+                if (stepFinished is not null) await stepFinished(skipped);
+            }
+
             break;
         }
 

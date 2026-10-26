@@ -42,6 +42,7 @@ public static class Services
         services.AddSingleton<IPrefixInspector, PrefixInspector>();
         services.AddSingleton<IPrefixFileFetcher>(s => new HttpPrefixFileFetcher(s.GetRequiredService<HttpClient>()));
         services.AddSingleton<PrefixSetupRunner>();
+        services.AddSingleton<IPrefixSetupRunner>(s => s.GetRequiredService<PrefixSetupRunner>());
         // The doctor probes launch locks without needing the rest of the headless launch services.
         services.TryAddSingleton<IInstallationLockFactory, InstallationLockFactory>();
         services.TryAddSingleton<IProcessTracker>(_ => new ProcProcessTracker("/proc"));
@@ -51,7 +52,7 @@ public static class Services
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, SteamLaunchOptionEmitter>());
         services.AddSingleton<IManagedInstallations, LoadoutManagedInstallations>();
         services.AddSingleton<ISupportBundleWriter, SupportBundleWriter>();
-        return services.AddDoctorVerbs().AddDeploymentVerbs().AddSelftestVerbs();
+        return services.AddDoctorVerbs().AddDeploymentVerbs().AddPrefixVerbs().AddSelftestVerbs();
     }
 
     /// <summary>

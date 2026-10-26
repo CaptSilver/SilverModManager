@@ -541,6 +541,36 @@ public class PrefixSetupRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task Write_ReportsEachStepAsItFinishesIncludingTheOnesNeverRun()
+    {
+        _tools.ExitCode = _ => 1;
+        var reported = new List<(PrefixSetupStepStatus Status, int CommandsRun)>();
+
+        await Runner().Run(_installation, Write("vcrun2022", "d3dcompiler_47"), CancellationToken.None, step =>
+        {
+            reported.Add((step.Status, _tools.Commands.Count));
+            return ValueTask.CompletedTask;
+        });
+
+        reported.Select(r => r.Status).Should().Equal(PrefixSetupStepStatus.Failed, PrefixSetupStepStatus.NotRun);
+        reported[0].CommandsRun.Should().Be(2, "the failure is reported once its attempts are spent, not before");
+    }
+
+    [Fact]
+    public async Task DryRun_ReportsNoSteps()
+    {
+        var reported = new List<PrefixSetupStepResult>();
+
+        await Runner().Run(_installation, DryRun("vcrun2022"), CancellationToken.None, step =>
+        {
+            reported.Add(step);
+            return ValueTask.CompletedTask;
+        });
+
+        reported.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Write_StopsAtAStepThatKeepsFailingAndLeavesLaterStepsUnrun()
     {
         _tools.ExitCode = _ => 1;
