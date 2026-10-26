@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using DynamicData.Kernel;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
@@ -83,12 +84,34 @@ internal partial class LoadoutManager
                 .OrderBy(static model => model.Priority)
                 .ToList();
 
+            // recalculate new priorities
+            var start = 0UL;
+            foreach (var model in Reorder(priorities, _winnerIds, _loserId))
+            {
+                var newPriority = ConflictPriority.From(++start);
+                tx.Add(model.Id, LoadoutItemGroupPriority.Priority, newPriority);
+            }
+        }
+
+        /// <summary>
+        /// The order the rows end up in when <paramref name="winnerIds"/> move directly above <paramref name="loserId"/>
+        /// (to the bottom when there is none), keeping their relative order. Pure, so a caller can check the result
+        /// against the loadout's rules before anything is written.
+        /// </summary>
+        /// <param name="ascending">The loadout's rows, lowest priority first.</param>
+        public static List<LoadoutItemGroupPriority.ReadOnly> Reorder(
+            IReadOnlyList<LoadoutItemGroupPriority.ReadOnly> ascending,
+            LoadoutItemGroupPriorityId[] winnerIds,
+            Optional<LoadoutItemGroupPriorityId> loserId)
+        {
+            var priorities = ascending.ToList();
+
             var items = priorities
-                .Where(x => _winnerIds.Contains(x.LoadoutItemGroupPriorityId))
+                .Where(x => winnerIds.Contains(x.LoadoutItemGroupPriorityId))
                 .ToArray();
 
-            var loserIndex = _loserId.Convert(id => priorities.FindIndex(other => other.Id == id.Value));
- 
+            var loserIndex = loserId.Convert(id => priorities.FindIndex(other => other.Id == id.Value));
+
             // remove items
             foreach (var item in items)
             {
@@ -104,20 +127,40 @@ internal partial class LoadoutManager
 
             Debug.Assert(insertIndex >= 0 || insertIndex < priorities.Count);
             priorities.InsertRange(index: insertIndex, items);
+            return priorities;
+        }
+    }
 
-            // recalculate new priorities
-            var start = 0UL;
-            foreach (var model in priorities)
+    private static readonly ConditionalWeakTable<ITransaction, Dictionary<LoadoutId, Type>> PriorityWriters = new();
+
+    /// <summary>
+    /// Records which kind of function writes a loadout's priority rows in this transaction. Every function of a
+    /// transaction gets the same <paramref name="tx"/>, so a second kind for the same loadout is found here: both
+    /// would compute a position from the database as it was before the transaction and write a row for the same
+    /// group, and a duplicate row would only show up later as a wrong winner.
+    /// </summary>
+    private static void ClaimPriorityRows(ITransaction tx, LoadoutId loadoutId, Type writer)
+    {
+        var claims = PriorityWriters.GetOrCreateValue(tx);
+        lock (claims)
+        {
+            if (claims.TryGetValue(loadoutId, out var existing) && existing != writer)
             {
-                var newPriority = ConflictPriority.From(++start);
-                tx.Add(model.Id, LoadoutItemGroupPriority.Priority, newPriority);
+                throw new InvalidOperationException(
+                    $"{existing.Name} and {writer.Name} both write the priority rows of loadout {loadoutId.Value} in one transaction; " +
+                    "a transaction that touches a loadout's rules or removes groups must let ApplyGroupRulesTxFunc add its new groups too.");
             }
+            claims[loadoutId] = writer;
         }
     }
 
     /// <summary>
     /// Adds a priority to an item.
     /// </summary>
+    /// <remarks>
+    /// Used by <see cref="AddEmptyGroup"/>, which has no rules to honour. A transaction that also resolves rules for
+    /// the loadout (an install, a removal, a new rule) must not mix the two: see <see cref="ClaimPriorityRows"/>.
+    /// </remarks>
     internal class AddPriorityTxFunc : ITxFunction
     {
         private readonly LoadoutId _loadoutId;
@@ -139,6 +182,7 @@ internal partial class LoadoutManager
 
         public void Apply(ITransaction tx, IDb basis)
         {
+            ClaimPriorityRows(tx, _loadoutId, typeof(AddPriorityTxFunc));
             var priority = GetNextPriority(_loadoutId, basis);
             var id = tx.TempId();
             tx.Add(id, LoadoutItemGroupPriority.Loadout, _loadoutId);
@@ -167,6 +211,7 @@ internal partial class LoadoutManager
 
         public void Apply(ITransaction tx, IDb basis)
         {
+            ClaimPriorityRows(tx, loadoutId, typeof(ApplyGroupRulesTxFunc));
             var rows = LoadoutItemGroupPriority
                 .FindByLoadout(basis, loadoutId)
                 .OrderBy(static model => model.Priority)

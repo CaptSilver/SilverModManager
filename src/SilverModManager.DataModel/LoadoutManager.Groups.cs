@@ -12,6 +12,11 @@ internal partial class LoadoutManager
     /// above the existing ones, the way an installed mod does; a group with a <paramref name="parent"/> is
     /// ordered by the parent and gets none.
     /// </summary>
+    /// <remarks>
+    /// The priority row comes from <see cref="AddPriorityTxFunc"/> because an empty group has no rules to honour.
+    /// Installs, removals and rule changes resolve the loadout's rules instead, and the two must not share a
+    /// transaction for one loadout: the transaction fails when they do, rather than writing a second row for a group.
+    /// </remarks>
     public static LoadoutItemGroupId AddEmptyGroup(ITransaction tx, LoadoutId loadoutId, string name, Optional<LoadoutItemGroupId> parent = default)
     {
         var group = new LoadoutItemGroup.New(tx, out var id)

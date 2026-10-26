@@ -128,18 +128,21 @@ public interface ILoadoutManager
 
     /// <summary>
     /// Resolves file conflicts by making items in <paramref name="winnerIds"/> win over <paramref name="loserId"/>.
+    /// The move is refused, and nothing is written, when the resulting order would break a group rule.
     /// </summary>
-    ValueTask ResolveFileConflicts(LoadoutItemGroupPriorityId[] winnerIds, LoadoutItemGroupPriorityId loserId);
+    ValueTask<ConflictMoveResult> ResolveFileConflicts(LoadoutItemGroupPriorityId[] winnerIds, LoadoutItemGroupPriorityId loserId);
 
     /// <summary>
-    /// Make items in <paramref name="losers"/> lose all file conflicts.
+    /// Make items in <paramref name="loserIds"/> lose all file conflicts.
+    /// Refused, with nothing written, when the resulting order would break a group rule.
     /// </summary>
-    ValueTask LoseAllFileConflicts(LoadoutItemGroupPriorityId[] loserIds);
+    ValueTask<ConflictMoveResult> LoseAllFileConflicts(LoadoutItemGroupPriorityId[] loserIds);
 
     /// <summary>
     /// Make items in <paramref name="winnerIds"/> win all file conflicts.
+    /// Refused, with nothing written, when the resulting order would break a group rule.
     /// </summary>
-    ValueTask WinAllFileConflicts(LoadoutItemGroupPriorityId[] winnerIds);
+    ValueTask<ConflictMoveResult> WinAllFileConflicts(LoadoutItemGroupPriorityId[] winnerIds);
 
     /// <summary>
     /// Adds an ordering rule between two top-level groups of a loadout and moves the priorities to satisfy it,

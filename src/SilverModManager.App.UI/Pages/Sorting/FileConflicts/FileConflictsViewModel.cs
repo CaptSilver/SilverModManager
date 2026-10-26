@@ -8,6 +8,7 @@ using DynamicData;
 using DynamicData.Binding;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -37,6 +38,9 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
 
     private readonly BindableReactiveProperty<ListSortDirection> _sortDirectionCurrent;
     private readonly ILoadoutManager _loadoutManager;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IWindowManager _windowManager;
+    private readonly ILogger<FileConflictsViewModel> _logger;
     public IReadOnlyBindableReactiveProperty<ListSortDirection> SortDirectionCurrent => _sortDirectionCurrent;
     public IReadOnlyBindableReactiveProperty<bool> IsAscending { get; }
 
@@ -51,6 +55,9 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
 
         var synchronizer = loadout.InstallationInstance.GetGame().Synchronizer;
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
+        _serviceProvider = serviceProvider;
+        _windowManager = windowManager;
+        _logger = serviceProvider.GetRequiredService<ILogger<FileConflictsViewModel>>();
 
         _sortDirectionCurrent = new BindableReactiveProperty<ListSortDirection>(ListSortDirection.Ascending);
         IsAscending = _sortDirectionCurrent.Select(direction => direction == ListSortDirection.Ascending).ToBindableReactiveProperty();
@@ -108,14 +115,16 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
                 };
 
                 var loserId = losingItemModel.Convert(x => (LoadoutItemGroupPriorityId)x.Key);
-                if (loserId.HasValue) await _loadoutManager.ResolveFileConflicts(itemIds, loserId.Value);
-                else await _loadoutManager.LoseAllFileConflicts(itemIds);
+                var result = loserId.HasValue
+                    ? await _loadoutManager.ResolveFileConflicts(itemIds, loserId.Value)
+                    : await _loadoutManager.LoseAllFileConflicts(itemIds);
+                await HandleMoveResult(result);
             },
             awaitOperation: AwaitOperation.Drop).AddTo(disposables);
         });
     }
 
-    private async Task Move(EntityId toMove, FileConflictsComponents.NeighbourIds neighbourIds, ListSortDirection sortDirection, bool moveUp)
+    internal async Task Move(EntityId toMove, FileConflictsComponents.NeighbourIds neighbourIds, ListSortDirection sortDirection, bool moveUp)
     {
         var (winnerId, loserId) = (sortDirection, moveUp) switch
         {
@@ -125,7 +134,31 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
             (ListSortDirection.Descending, moveUp: true) => (toMove, neighbourIds.Next.Value),
         };
 
-        await _loadoutManager.ResolveFileConflicts(winnerIds: [LoadoutItemGroupPriorityId.From(winnerId)], LoadoutItemGroupPriorityId.From(loserId));
+        var result = await _loadoutManager.ResolveFileConflicts(winnerIds: [LoadoutItemGroupPriorityId.From(winnerId)], LoadoutItemGroupPriorityId.From(loserId));
+        await HandleMoveResult(result);
+    }
+
+    /// <summary>
+    /// A move is either done or refused with a reason, never silently undone: when a group rule stops it, say which.
+    /// </summary>
+    private async Task HandleMoveResult(ConflictMoveResult result)
+    {
+        if (!result.IsRuleViolation) return;
+
+        var rule = result.Rule;
+        var source = rule.Source.AsLoadoutItem().Name;
+        var other = rule.Other.AsLoadoutItem().Name;
+        _logger.LogInformation("Refused a priority move: it would break the rule that {Source} must {Kind} {Other}", source, rule.Kind, other);
+
+        var winner = rule.Kind == GroupRuleKind.After ? source : other;
+        var loser = rule.Kind == GroupRuleKind.After ? other : source;
+        var markdownRendererViewModel = _serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
+        markdownRendererViewModel.Contents = $"**{winner}** has to win over **{loser}**, and this rule stops that move.";
+
+        _ = await _windowManager.ShowDialog(DialogFactory.CreateStandardDialog(title: "Move not possible", new StandardDialogParameters
+        {
+            Markdown = markdownRendererViewModel,
+        }, buttonDefinitions: [DialogStandardButtons.Close]), DialogWindowType.Modeless);
     }
 
     private static async Task HandleViewConflictsMessage(

@@ -507,7 +507,7 @@ internal partial class LoadoutManager : ILoadoutManager
         using var tx = _connection.BeginTransaction();
 
         var groupId = await func(tx);
-        tx.Add(new AddPriorityTxFunc(targetLoadout, groupId));
+        tx.Add(new ApplyGroupRulesTxFunc(targetLoadout, new RuleDelta { NewGroups = [groupId] }));
 
         var result = await tx.Commit();
         return LoadoutItemGroup.Load(result.Db, groupId);
@@ -520,13 +520,20 @@ internal partial class LoadoutManager : ILoadoutManager
         ILibraryItemInstaller? installer = null,
         ILibraryItemInstaller? fallbackInstaller = null)
     {
-        return InstallItem(libraryItem, targetLoadout, inputTx: null, parent: parent, installer: installer, fallbackInstaller: fallbackInstaller);
+        return InstallItem(libraryItem, targetLoadout, inputTx: null, newGroups: null, parent: parent, installer: installer, fallbackInstaller: fallbackInstaller);
     }
 
+    /// <param name="inputTx">A transaction the caller owns and commits, or null to use one of its own.</param>
+    /// <param name="newGroups">
+    /// With an <paramref name="inputTx"/>, the caller builds the one <see cref="ApplyGroupRulesTxFunc"/> for the
+    /// loadout (it may also be removing groups, and a second function would write the same rows again). The new
+    /// group's id is added to this list and no function is queued here. Null queues the function here.
+    /// </param>
     private IJobTask<IInstallLoadoutItemJob, InstallLoadoutItemJobResult> InstallItem(
         LibraryItem.ReadOnly libraryItem,
         LoadoutId targetLoadout,
         ITransaction? inputTx,
+        List<LoadoutItemGroupId>? newGroups,
         Optional<LoadoutItemGroupId> parent = default,
         ILibraryItemInstaller? installer = null,
         ILibraryItemInstaller? fallbackInstaller = null)
@@ -539,7 +546,8 @@ internal partial class LoadoutManager : ILoadoutManager
         {
             var result = await job.StartAsync(context);
             var targetId = result.GroupTxId;
-            tx.Add(new AddPriorityTxFunc(targetLoadout, targetId));
+            if (newGroups is null) tx.Add(new ApplyGroupRulesTxFunc(targetLoadout, new RuleDelta { NewGroups = [targetId] }));
+            else newGroups.Add(targetId);
 
             if (mainTransaction is null) return new InstallLoadoutItemJobResult(null, targetId);
 
@@ -559,6 +567,18 @@ internal partial class LoadoutManager : ILoadoutManager
     }
 
     private void RemoveItems(ITransaction tx, LoadoutItemGroupId[] groupIds)
+    {
+        foreach (var (loadoutId, removed) in DeleteGroups(tx, groupIds))
+        {
+            tx.Add(new ApplyGroupRulesTxFunc(loadoutId, new RuleDelta { RemovedGroups = [..removed] }));
+        }
+    }
+
+    /// <summary>
+    /// Deletes the groups with their priority rows, rules and pins, and returns what it deleted per loadout. The
+    /// caller adds the <see cref="ApplyGroupRulesTxFunc"/> that closes the gaps they leave in the order.
+    /// </summary>
+    private Dictionary<LoadoutId, List<LoadoutItemGroupId>> DeleteGroups(ITransaction tx, LoadoutItemGroupId[] groupIds)
     {
         var db = _connection.Db;
         var loadouts = new Dictionary<LoadoutId, List<LoadoutItemGroupId>>();
@@ -595,10 +615,7 @@ internal partial class LoadoutManager : ILoadoutManager
             list.Add(groupId);
         }
 
-        foreach (var kv in loadouts)
-        {
-            tx.Add(new RebalancePrioritiesTxFunc(kv.Key, kv.Value.Select(x => x.Value).ToArray()));
-        }
+        return loadouts;
     }
 
     public async ValueTask RemoveCollection(CollectionGroupId collection)
@@ -702,23 +719,54 @@ internal partial class LoadoutManager : ILoadoutManager
     public async ValueTask ReplaceItems(LoadoutId loadoutId, LoadoutItemGroupId[] groupsToRemove, LibraryItem.ReadOnly libraryItemToInstall)
     {
         using var tx = _connection.BeginTransaction();
-        RemoveItems(tx, groupsToRemove);
-        await InstallItem(libraryItemToInstall, loadoutId, inputTx: tx);
+        var removed = DeleteGroups(tx, groupsToRemove);
+        var installed = new List<LoadoutItemGroupId>();
+        await InstallItem(libraryItemToInstall, loadoutId, inputTx: tx, newGroups: installed);
+
+        // One function per loadout, with both halves in its delta.
+        foreach (var affected in removed.Keys.Append(loadoutId).Distinct())
+        {
+            tx.Add(new ApplyGroupRulesTxFunc(affected, new RuleDelta
+            {
+                RemovedGroups = [..removed.GetValueOrDefault(affected) ?? []],
+                NewGroups = affected == loadoutId ? [..installed] : [],
+            }));
+        }
+
         await tx.Commit();
     }
 
-    public async ValueTask ResolveFileConflicts(LoadoutItemGroupPriorityId[] winnerIds, LoadoutItemGroupPriorityId loserId)
+    public ValueTask<ConflictMoveResult> ResolveFileConflicts(LoadoutItemGroupPriorityId[] winnerIds, LoadoutItemGroupPriorityId loserId)
+        => MovePriorities(winnerIds, loserId);
+
+    /// <summary>
+    /// Moves the rows unless the new order breaks a rule that holds in the current one. A rule the order already
+    /// breaks is not the move's doing and does not stop it.
+    /// </summary>
+    private async ValueTask<ConflictMoveResult> MovePriorities(LoadoutItemGroupPriorityId[] winnerIds, Optional<LoadoutItemGroupPriorityId> loserId)
     {
         var db = _connection.Db;
+        var loadoutId = LoadoutItemGroupPriority.Load(db, winnerIds[0]).LoadoutId;
+
+        var current = LoadoutItemGroupPriority
+            .FindByLoadout(db, loadoutId)
+            .OrderBy(static model => model.Priority)
+            .ToList();
+        var moved = ResolveFileConflictsTxFunc.Reorder(current, winnerIds, loserId);
+
+        var rules = LoadoutGroupRule.FindByLoadout(db, loadoutId).ToList();
+        var groupRules = rules.Select(static rule => new GroupRule(rule.SourceId, rule.OtherId, rule.Kind)).ToList();
+        var alreadyBroken = RuleResolver.FindViolations(current.Select(static row => row.TargetId).ToList(), groupRules).ToHashSet();
+        var broken = RuleResolver.FindViolations(moved.Select(static row => row.TargetId).ToList(), groupRules)
+            .Where(index => !alreadyBroken.Contains(index))
+            .Select(static index => (int?)index)
+            .FirstOrDefault();
+        if (broken is { } violated) return ConflictMoveResult.RuleViolation(rules[violated]);
+
         using var tx = _connection.BeginTransaction();
-
-        tx.Add(new ResolveFileConflictsTxFunc(
-            loadoutId: LoadoutItemGroupPriority.Load(db,winnerIds[0]).LoadoutId,
-            winnerIds: winnerIds,
-            loserId: loserId
-        ));
-
+        tx.Add(new ResolveFileConflictsTxFunc(loadoutId, winnerIds, loserId));
         await tx.Commit();
+        return ConflictMoveResult.Moved;
     }
 
     public async ValueTask ApplyCollectionDownloadRules(NexusCollectionLoadoutGroupId collectionId)
@@ -828,21 +876,10 @@ internal partial class LoadoutManager : ILoadoutManager
         await tx.Commit();
     }
 
-    public async ValueTask LoseAllFileConflicts(LoadoutItemGroupPriorityId[] loserIds)
-    {
-        var db = _connection.Db;
-        using var tx = _connection.BeginTransaction();
+    public ValueTask<ConflictMoveResult> LoseAllFileConflicts(LoadoutItemGroupPriorityId[] loserIds)
+        => MovePriorities(loserIds, Optional<LoadoutItemGroupPriorityId>.None);
 
-        tx.Add(new ResolveFileConflictsTxFunc(
-            loadoutId: LoadoutItemGroupPriority.Load(db, loserIds[0]).LoadoutId,
-            winnerIds: loserIds,
-            loserId: Optional<LoadoutItemGroupPriorityId>.None
-        ));
-
-        await tx.Commit();
-    }
-
-    public ValueTask WinAllFileConflicts(LoadoutItemGroupPriorityId[] winnerIds)
+    public ValueTask<ConflictMoveResult> WinAllFileConflicts(LoadoutItemGroupPriorityId[] winnerIds)
     {
         var db = _connection.Db;
         var loser = LoadoutItemGroupPriority

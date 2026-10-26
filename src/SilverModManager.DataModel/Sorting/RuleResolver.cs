@@ -104,6 +104,29 @@ public static class RuleResolver
     }
 
     /// <summary>
+    /// The positions in <paramref name="rules"/> of the rules <paramref name="order"/> (ascending priority) breaks.
+    /// A rule naming a group outside the order is not broken, since the resolver ignores it too.
+    /// </summary>
+    public static List<int> FindViolations(IReadOnlyList<LoadoutItemGroupId> order, IReadOnlyList<GroupRule> rules)
+    {
+        var position = new Dictionary<LoadoutItemGroupId, int>(order.Count);
+        for (var i = 0; i < order.Count; i++) position.TryAdd(order[i], i);
+
+        var violated = new List<int>();
+        for (var i = 0; i < rules.Count; i++)
+        {
+            var rule = rules[i];
+            if (!position.TryGetValue(rule.Source, out var source) || !position.TryGetValue(rule.Other, out var other)) continue;
+
+            // The last group wins, so After needs the source at the higher position.
+            var holds = rule.Kind == GroupRuleKind.After ? source > other : source < other;
+            if (!holds) violated.Add(i);
+        }
+
+        return violated;
+    }
+
+    /// <summary>
     /// Every group left over when the sort stalls has a predecessor that is also left over, so walking predecessors
     /// from any of them must come back to a group already visited, and that loop is a cycle. When one of the
     /// proposed rules is an edge of the loop it is the one reported, since it is the change the caller asked for.
