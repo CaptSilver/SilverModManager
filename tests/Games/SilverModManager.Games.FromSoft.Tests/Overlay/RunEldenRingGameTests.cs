@@ -119,14 +119,14 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
     }
 
     [Fact]
-    public async Task ModdedWithoutBwrapThrowsAPlainMessage()
+    public async Task ModdedWithoutBwrap_RefusesTheLaunchWithAPlainMessage()
     {
         var loadout = await CreateModdedLoadout();
         Executables.Bwrap = null;
 
         var act = async () => await Tool.GetLaunchSpec(loadout, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("bwrap was not found");
+        (await act.Should().ThrowAsync<GameLaunchException>()).Which.Message.Should().Contain("bwrap was not found");
     }
 
     [Fact]

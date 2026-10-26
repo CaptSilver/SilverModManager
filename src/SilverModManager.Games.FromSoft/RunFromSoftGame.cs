@@ -27,7 +27,7 @@ public class RunFromSoftGame<TGame>(IServiceProvider provider, TGame game) : Run
             throw new GameLaunchException(game.Loader.MissingHostMessage(loadout.Name));
 
         var bwrap = provider.GetRequiredService<IExecutableLocator>().Find(OverlayCommand.Program)
-                    ?? throw new InvalidOperationException("bwrap was not found on PATH. It runs the game with an overlay over its folder, so a loadout with mods cannot start without it; install bubblewrap.");
+                    ?? throw new GameLaunchException("bwrap was not found on PATH. It runs the game with an overlay over its folder, so a loadout with mods cannot start without it; install bubblewrap.");
 
         var installation = loadout.InstallationInstance;
         var ids = provider.GetRequiredService<IUserIds>();
