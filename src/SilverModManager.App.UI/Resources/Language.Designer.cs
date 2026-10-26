@@ -4541,5 +4541,77 @@ namespace SilverModManager.App.UI.Resources {
                 return ResourceManager.GetString("LoadOrder_SortWithLoot_CycleDialog_Text", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Conflicts for {0}.
+        /// </summary>
+        public static string FileConflicts_Paths_Title {
+            get {
+                return ResourceManager.GetString("FileConflicts_Paths_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Winner: {0}.
+        /// </summary>
+        public static string FileConflicts_Paths_Winner {
+            get {
+                return ResourceManager.GetString("FileConflicts_Paths_Winner", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Losers: {0}.
+        /// </summary>
+        public static string FileConflicts_Paths_Losers {
+            get {
+                return ResourceManager.GetString("FileConflicts_Paths_Losers", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} (this).
+        /// </summary>
+        public static string FileConflicts_Paths_This {
+            get {
+                return ResourceManager.GetString("FileConflicts_Paths_This", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pinned to {0}: it wins this path whatever the priorities say.
+        /// </summary>
+        public static string FileConflicts_Paths_Pinned {
+            get {
+                return ResourceManager.GetString("FileConflicts_Paths_Pinned", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Make this the winner.
+        /// </summary>
+        public static string FileConflicts_Paths_MakeWinner {
+            get {
+                return ResourceManager.GetString("FileConflicts_Paths_MakeWinner", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Clear pin.
+        /// </summary>
+        public static string FileConflicts_Paths_ClearPin {
+            get {
+                return ResourceManager.GetString("FileConflicts_Paths_ClearPin", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to A pin has no effect on this path: another mod package provides the same file, so the copies are merged, or me3 picks one, by the mods' priority. Change the priority instead..
+        /// </summary>
+        public static string FileConflicts_Paths_NoPins {
+            get {
+                return ResourceManager.GetString("FileConflicts_Paths_NoPins", resourceCulture);
+            }
+        }
     }
 }

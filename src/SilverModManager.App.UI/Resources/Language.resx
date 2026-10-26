@@ -1581,4 +1581,28 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="ExternalChanges_Move_Activity" xml:space="preserve">
         <value>moving the files into a mod</value>
     </data>
+    <data name="FileConflicts_Paths_Title" xml:space="preserve">
+        <value>Conflicts for {0}</value>
+    </data>
+    <data name="FileConflicts_Paths_Winner" xml:space="preserve">
+        <value>Winner: {0}</value>
+    </data>
+    <data name="FileConflicts_Paths_Losers" xml:space="preserve">
+        <value>Losers: {0}</value>
+    </data>
+    <data name="FileConflicts_Paths_This" xml:space="preserve">
+        <value>{0} (this)</value>
+    </data>
+    <data name="FileConflicts_Paths_Pinned" xml:space="preserve">
+        <value>Pinned to {0}: it wins this path whatever the priorities say</value>
+    </data>
+    <data name="FileConflicts_Paths_MakeWinner" xml:space="preserve">
+        <value>Make this the winner</value>
+    </data>
+    <data name="FileConflicts_Paths_ClearPin" xml:space="preserve">
+        <value>Clear pin</value>
+    </data>
+    <data name="FileConflicts_Paths_NoPins" xml:space="preserve">
+        <value>A pin has no effect on this path: another mod package provides the same file, so the copies are merged, or me3 picks one, by the mods' priority. Change the priority instead.</value>
+    </data>
 </root>

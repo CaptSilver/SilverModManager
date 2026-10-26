@@ -1,0 +1,40 @@
+<reactiveUi:ReactiveUserControl x:TypeArguments="local:IFileConflictPathsViewModel"
+                                xmlns="https://github.com/avaloniaui"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                                xmlns:reactiveUi="http://reactiveui.net"
+                                xmlns:local="clr-namespace:SilverModManager.App.UI.Pages.Sorting"
+                                xmlns:resources="clr-namespace:SilverModManager.App.UI.Resources"
+                                mc:Ignorable="d" d:DesignWidth="800"
+                                x:Class="SilverModManager.App.UI.Pages.Sorting.FileConflictPathsView">
+
+    <ScrollViewer MaxHeight="420">
+        <ItemsControl x:Name="PathsList">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="local:FileConflictPathRow">
+                    <StackPanel Spacing="4" Margin="0,0,0,16">
+                        <TextBlock Text="{Binding Path}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding WinnerText}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding LosersText}" TextWrapping="Wrap"
+                                   Foreground="{StaticResource NeutralSubduedBrush}" />
+                        <TextBlock Text="{Binding PinText}" TextWrapping="Wrap"
+                                   IsVisible="{Binding IsPinned}" />
+                        <TextBlock Text="{Binding Note}" TextWrapping="Wrap"
+                                   IsVisible="{Binding Note, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                   Foreground="{StaticResource NeutralSubduedBrush}" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="{x:Static resources:Language.FileConflicts_Paths_MakeWinner}"
+                                    Command="{Binding MakeWinnerCommand}"
+                                    IsVisible="{Binding CanMakeWinner}" />
+                            <Button Content="{x:Static resources:Language.FileConflicts_Paths_ClearPin}"
+                                    Command="{Binding ClearPinCommand}"
+                                    IsVisible="{Binding CanClearPin}" />
+                        </StackPanel>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+
+</reactiveUi:ReactiveUserControl>

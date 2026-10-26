@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Text;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Media.Imaging;
@@ -19,7 +18,9 @@ using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Pages.LoadoutPage;
+using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
+using SilverModManager.Games.FromSoft.Merge;
 using NexusMods.HyperDuck;
 using SilverModManager.MnemonicDB.Abstractions;
 using Humanizer;
@@ -38,6 +39,7 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
 
     private readonly BindableReactiveProperty<ListSortDirection> _sortDirectionCurrent;
     private readonly ILoadoutManager _loadoutManager;
+    private readonly LoadoutId _loadoutId;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWindowManager _windowManager;
     private readonly ILogger<FileConflictsViewModel> _logger;
@@ -55,6 +57,7 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
 
         var synchronizer = loadout.InstallationInstance.GetGame().Synchronizer;
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
+        _loadoutId = loadoutId;
         _serviceProvider = serviceProvider;
         _windowManager = windowManager;
         _logger = serviceProvider.GetRequiredService<ILogger<FileConflictsViewModel>>();
@@ -79,7 +82,7 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
             TreeDataGridAdapter.MessageSubject.SubscribeAwait(async (msg, cancellationToken) =>
             {
                 await msg.Match<Task>(
-                    viewConflictsMessage => HandleViewConflictsMessage(viewConflictsMessage, windowManager, serviceProvider),
+                    ViewConflicts,
                     moveUp => Move(moveUp.Item.Key, moveUp.Item.Get<FileConflictsComponents.NeighbourIds>(FileConflictsColumns.IndexColumn.NeighbourIdsComponentKey), _sortDirectionCurrent.Value, moveUp: true), 
                     moveDown => Move(moveDown.Item.Key, moveDown.Item.Get<FileConflictsComponents.NeighbourIds>(FileConflictsColumns.IndexColumn.NeighbourIdsComponentKey), _sortDirectionCurrent.Value, moveUp: false)
                 );
@@ -161,63 +164,26 @@ public class FileConflictsViewModel : AViewModel<IFileConflictsViewModel>, IFile
         }, buttonDefinitions: [DialogStandardButtons.Close]), DialogWindowType.Modeless);
     }
 
-    private static async Task HandleViewConflictsMessage(
-        FileConflictsTreeDataGridAdapter.ViewConflictsMessage msg, 
-        IWindowManager windowManager, 
-        IServiceProvider serviceProvider)
+    /// <summary>Opens the per-path list for the mod, where a path's winner can be pinned.</summary>
+    internal async Task ViewConflicts(FileConflictsTreeDataGridAdapter.ViewConflictsMessage msg)
     {
-        var db = serviceProvider.GetRequiredService<IConnection>().Db;
-        var priority = LoadoutItemGroupPriority.Load(db, msg.PriorityId);
+        var connection = _serviceProvider.GetRequiredService<IConnection>();
+        var priority = LoadoutItemGroupPriority.Load(connection.Db, msg.PriorityId);
 
-        var groups = msg.Conflicts
-            .Select(tuple =>
+        var content = new FileConflictPathsViewModel(
+            _loadoutManager,
+            _loadoutId,
+            priority.TargetId,
+            () =>
             {
-                var winnerPriority = LoadoutItemGroupPriority.Load(db, tuple.WinnerPriorityId);
-                var winnerLoadoutItem = LoadoutItemWithTargetPath.Load(db, tuple.WinnerLoadoutItemId);
+                var merges = FileConflictPaths.MergesOf(Loadout.Load(connection.Db, _loadoutId), _serviceProvider.GetRequiredService<LoadoutMergeSources>);
+                return FileConflictPaths.Load(connection, _loadoutId, msg.PriorityId, merges);
+            });
 
-                var loserPriority = LoadoutItemGroupPriority.Load(db, tuple.LoserPriorityId);
-                var loserLoadoutItem = LoadoutItemWithTargetPath.Load(db, tuple.LoserLoadoutItemId);
-
-                var conflictPriority = LoadoutItemGroupPriority.Load(db, tuple.ConflictPriorityId);
-                var conflictLoadoutItem = LoadoutItemWithTargetPath.Load(db, tuple.ConflictLoadoutItemId);
-
-                return ((winnerPriority, winnerLoadoutItem), (loserPriority, loserLoadoutItem), (conflictPriority, conflictLoadoutItem));
-            })
-            .GroupBy(GamePath (tuple) => tuple.Item1.winnerLoadoutItem.TargetPath)
-            .ToArray();
-
-        var sb = new StringBuilder();
-
-        foreach (var group in groups)
-        {
-            sb.AppendLine($"## {group.Key}");
-
-            var tuples = group.ToArray();
-
-            var winner = tuples[0].Item1.winnerPriority.Target;
-            var losers = tuples.Select(x => x.Item2.loserPriority.Target).DistinctBy(x => x.Id).ToArray();
-
-            if (priority.TargetId == winner.LoadoutItemGroupId) sb.AppendLine($"Winner: {winner.AsLoadoutItem().Name} (this)");
-            else sb.AppendLine($"Winner: {winner.AsLoadoutItem().Name}");
-
-            sb.AppendLine();
-            sb.AppendLine("Losers:");
-            sb.AppendLine();
-
-            foreach (var loser in losers)
-            {
-                if (priority.TargetId == loser.LoadoutItemGroupId) sb.AppendLine($"* {loser.AsLoadoutItem().Name} (this)");
-                else sb.AppendLine($"* {loser.AsLoadoutItem().Name}");
-            }
-        }
-
-        var markdownRendererViewModel = serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
-        markdownRendererViewModel.Contents = sb.ToString();
-
-        _ = await windowManager.ShowDialog(DialogFactory.CreateStandardDialog(title: $"Conflicts for {priority.Target.AsLoadoutItem().Name}", new StandardDialogParameters
-        {
-            Markdown = markdownRendererViewModel,
-        }, buttonDefinitions: [DialogStandardButtons.Close]), DialogWindowType.Modeless);
+        var title = string.Format(Language.FileConflicts_Paths_Title, priority.Target.AsLoadoutItem().Name);
+        _ = await _windowManager.ShowDialog(
+            DialogFactory.CreateDialog(title, [DialogStandardButtons.Close], content, DialogWindowSize.Large),
+            DialogWindowType.Modeless);
     }
 
     private static bool PointerIsInVerticalTopHalf(TreeDataGridRowDragEventArgs eventArgs)
@@ -234,7 +200,7 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
         FileConflictsTreeDataGridAdapter.MoveDownCommandPayload
     >>
 {
-    public record ViewConflictsMessage(LoadoutItemGroupPriorityId PriorityId, (EntityId WinnerPriorityId, EntityId WinnerLoadoutItemId, EntityId ConflictPriorityId, EntityId ConflictLoadoutItemId, EntityId LoserPriorityId, EntityId LoserLoadoutItemId)[] Conflicts);
+    public record ViewConflictsMessage(LoadoutItemGroupPriorityId PriorityId);
     public readonly record struct MoveUpCommandPayload(CompositeItemModel<EntityId> Item);
     public readonly record struct MoveDownCommandPayload(CompositeItemModel<EntityId> Item);
 
@@ -291,8 +257,7 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
             factory: static (self, itemModel, component) => component.CommandViewConflicts.Subscribe((self, itemModel, component), static (_, state) =>
             {
                 var (self, itemModel, component) = state;
-                var conflicts = GetPriorityConflicts(self._connection, itemModel.Key).ToArray();
-                self.MessageSubject.OnNext(new ViewConflictsMessage(itemModel.Key, conflicts));
+                self.MessageSubject.OnNext(new ViewConflictsMessage(itemModel.Key));
             })
         );
 
@@ -426,7 +391,7 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
         indexComponent.DisplaySortIndexComponent.Value.Value = ((int)index).Ordinalize();
     }
 
-    private static Query<(EntityId WinnerPriorityId, EntityId WinnerLoadoutItemId, EntityId ConflictPriorityId, EntityId ConflictLoadoutItemId, EntityId LoserPriorityId, EntityId LoserLoadoutItemId)> GetPriorityConflicts(
+    internal static Query<(EntityId WinnerPriorityId, EntityId WinnerLoadoutItemId, EntityId ConflictPriorityId, EntityId ConflictLoadoutItemId, EntityId LoserPriorityId, EntityId LoserLoadoutItemId)> GetPriorityConflicts(
         IConnection connection,
         EntityId priorityId)
     {
