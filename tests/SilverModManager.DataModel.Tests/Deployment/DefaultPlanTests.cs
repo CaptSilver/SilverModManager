@@ -30,8 +30,8 @@ public class DefaultPlanTests(ITestOutputHelper helper) : AppliedGameTest<Defaul
             row.Reason.Should().NotBeNullOrEmpty();
         }
 
-        // The saves folder is the one location the chain never deploys into.
-        roots.Where(r => r.Root.LocationId != LocationId.Saves).Should().OnlyContain(r => r.Backend != DeploymentBackendId.Copy);
+        // Saves are never deployed into, and Preferences are copied because the game rewrites files there in place.
+        roots.Where(r => r.Root.LocationId != LocationId.Saves && r.Root.LocationId != LocationId.Preferences).Should().OnlyContain(r => r.Backend != DeploymentBackendId.Copy);
     }
 
     [Fact(Timeout = TimeoutMs)]

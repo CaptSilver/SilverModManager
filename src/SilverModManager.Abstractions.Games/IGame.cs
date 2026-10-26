@@ -11,7 +11,7 @@ namespace SilverModManager.Abstractions.Games;
 /// Interface for a specific game recognized by the app. A single game can have
 /// multiple installations.
 /// </summary>
-public interface IGame : IGameData
+public interface IGame : IGameData, IHasSynchronizer
 {
     /// <summary>
     /// Gets all available installers this game supports.
@@ -24,11 +24,6 @@ public interface IGame : IGameData
     /// </summary>
     IDiagnosticEmitter[] DiagnosticEmitters { get; }
 
-    /// <summary>
-    /// The synchronizer for this game.
-    /// </summary>
-    ILoadoutSynchronizer Synchronizer { get; }
-    
     /// <summary>
     /// The sort order manager for this game.
     /// </summary>
