@@ -34,6 +34,16 @@ public class GameLoadoutsSectionEntryViewModel : AViewModel<IGameLoadoutsSection
     public ReadOnlyObservableCollection<IViewModelInterface> CardViewModels => _cardViewModels;
 
 
+    /// <summary>
+    /// Whether the loadout is visible and sits on the install. This runs inside the database's event loop, where
+    /// an exception stops the commit that triggered it from ever finishing, so a loadout whose game is no longer
+    /// found is left out rather than thrown on.
+    /// </summary>
+    internal static bool IsOnInstallation(IGameRegistry gameRegistry, Loadout.ReadOnly loadout, GameInstallation installation) =>
+        loadout.IsVisible()
+        && gameRegistry.TryGetGameInstallation(loadout, out var found)
+        && found.Locations[LocationId.Game].Path == installation.Locations[LocationId.Game].Path;
+
     public GameLoadoutsSectionEntryViewModel(GameInstallation gameInstallation, IConnection conn, IServiceProvider serviceProvider, IWindowManager windowManager)
     {
         _compositeDisposable = new CompositeDisposable();
@@ -43,8 +53,9 @@ public class GameLoadoutsSectionEntryViewModel : AViewModel<IGameLoadoutsSection
         var loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
         HeadingText = string.Format(Language.MyLoadoutsGameSectionHeading, _gameInstallation.Game.DisplayName);
 
+        var gameRegistry = serviceProvider.GetRequiredService<IGameRegistry>();
         Loadout.ObserveAll(conn)
-            .Filter(l => l.IsVisible() && l.InstallationInstance.Locations[LocationId.Game].Path == _gameInstallation.Locations[LocationId.Game].Path)
+            .Filter(l => IsOnInstallation(gameRegistry, l, _gameInstallation))
             .Transform(loadout =>
                 {
                     return (IViewModelInterface)new LoadoutCardViewModel(loadout, conn, serviceProvider)

@@ -20,11 +20,32 @@ public class MyLoadoutsFilterTests(IServiceProvider provider) : AUiTest(provider
     private MyLoadoutsViewModel CreateViewModel(IWindowManager windows, GameInstallMetadataId? installation = null) =>
         new(windows, Connection, Provider, installation);
 
+    private readonly List<IDisposable> _activations = [];
+
     private async Task<MyLoadoutsViewModel> Activated(GameInstallMetadataId? installation, IWindowManager? windows = null)
     {
         var vm = await OnUi(() => Task.FromResult(CreateViewModel(windows ?? Substitute.For<IWindowManager>(), installation)));
-        await OnUi(() => { vm.Activator.Activate(); });
+        await OnUi(() => { _activations.Add(vm.Activator.Activate()); });
         return vm;
+    }
+
+    /// <summary>
+    /// An activated page keeps watching the shared database, and its cards read services from this test's
+    /// scope. Left active, it throws on the next loadout another test adds once the scope is gone, and an
+    /// exception in a database observer stops that commit from ever completing.
+    /// </summary>
+    public override async ValueTask DisposeAsync()
+    {
+        IDisposable[] activations;
+        lock (_activations)
+        {
+            activations = _activations.ToArray();
+            _activations.Clear();
+        }
+
+        if (activations.Length > 0)
+            await OnUi(() => { foreach (var activation in activations) activation.Dispose(); });
+        await base.DisposeAsync();
     }
 
     [Fact]
