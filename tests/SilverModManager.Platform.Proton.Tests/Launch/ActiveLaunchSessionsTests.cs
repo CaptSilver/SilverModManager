@@ -8,6 +8,8 @@ using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
+using SilverModManager.Abstractions.Loadouts;
 using NSubstitute;
 
 namespace SilverModManager.Platform.Proton.Tests.Launch;
@@ -97,6 +99,8 @@ public class ActiveLaunchSessionsTests
         services.AddSingleton(Substitute.For<IConnection>());
         services.AddSingleton(Substitute.For<IGameRegistry>());
         services.AddSingleton(Substitute.For<IFileSystem>());
+        services.AddSingleton(Substitute.For<IToolManager>());
+        services.AddSingleton(Substitute.For<IJobMonitor>());
         services.AddHeadlessLaunch();
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });

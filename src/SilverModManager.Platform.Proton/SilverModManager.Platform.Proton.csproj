@@ -11,6 +11,7 @@
     <ItemGroup>
         <InternalsVisibleTo Include="SilverModManager.Platform.Proton.Tests" />
         <InternalsVisibleTo Include="SilverModManager.Games.FromSoft.Tests" />
+        <InternalsVisibleTo Include="SilverModManager.CLI.Tests" />
     </ItemGroup>
 
     <ItemGroup>

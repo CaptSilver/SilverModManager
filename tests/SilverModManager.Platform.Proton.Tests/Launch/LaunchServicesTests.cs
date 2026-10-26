@@ -7,6 +7,7 @@ using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
 
@@ -171,5 +172,8 @@ public class LaunchServicesTests
         services.AddSingleton(Substitute.For<IGameRegistry>());
         // The app's file system, which the Steam launch option verb uses to find the launcher script.
         services.AddSingleton(Substitute.For<IFileSystem>());
+        // The tool manager and job monitor `loadout launch` starts the game with, as the Play button does.
+        services.AddSingleton(Substitute.For<IToolManager>());
+        services.AddSingleton(Substitute.For<IJobMonitor>());
     }
 }

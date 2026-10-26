@@ -106,6 +106,8 @@ public static class Services
             case HostProfile.Gui:
                 // Only the window-showing process knows which executable Steam launch lines should come back to.
                 services.AddSingleProcess(Mode.Main).AddLauncherShim();
+                // `loadout launch` leaves the game running after the command ends, which only this process can do.
+                services.AddSingleton<WindowHost>();
                 // A Steam launch option's `run` hands its game to the window, which owns the database.
                 services.AddSingleton<IForwardedLaunchHandler, ForwardedLaunchHandler>();
                 // A game started here must leave the window's own shutdown signals alone.
