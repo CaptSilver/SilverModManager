@@ -61,7 +61,16 @@ internal sealed class DiagnosticManager : IDiagnosticManager
 
         // Sent outside the lock: the pipeline publishes a result while holding its own gate, and the
         // publish takes the lock, so pushing into the pipeline with the lock held can deadlock.
-        entry.RefreshRequests.OnNext(Unit.Default);
+        // Sent from the thread pool too: a subscriber runs on the publishing thread, inside the gate of
+        // the run that is publishing. Pushing into the merge from there takes the merge's gate in the
+        // opposite order to a revision arriving from the debounce timer, which holds the merge's gate
+        // and waits for the run's.
+        ThreadPool.UnsafeQueueUserWorkItem(static request =>
+        {
+            // The manager can be disposed between queueing and running; Dispose already cancelled the refresh.
+            try { request.OnNext(Unit.Default); }
+            catch (ObjectDisposedException) { }
+        }, entry.RefreshRequests, preferLocal: false);
         return pending.Task;
     }
 

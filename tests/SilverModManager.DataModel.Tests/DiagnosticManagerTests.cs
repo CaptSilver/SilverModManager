@@ -113,6 +113,46 @@ public class DiagnosticManagerTests(IServiceProvider provider) : AGameTest<Cyber
     }
 
     [Fact]
+    public async Task RefreshAsync_CalledFromAResultSubscriber_WhileARevisionIsBeingDebounced_DoesNotDeadlock()
+    {
+        var emitter = ScriptedEmitter();
+        var loadout = await CreateLoadout();
+        emitter.Scripts.GetOrAdd(loadout.LoadoutId, _ => new EmitterScript { Answer = "answer" });
+        await DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId).Timeout(TimeSpan.FromSeconds(30)).FirstAsync();
+        await Task.Delay(600);
+
+        // A subscriber runs on the thread that publishes a result. While it is still running, a database
+        // change makes the debounce timer fire and push a revision into the pipeline. The subscriber then
+        // asks for a refresh: that must not wait on the revision, which in turn waits on the publisher.
+        var refreshReturned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task? subscriberRefresh = null;
+        // Not disposed by the test: a failing run would block on the stuck publisher instead of reporting it.
+        // Take(1) ends the subscription on its own.
+        DiagnosticManager.GetLoadoutDiagnostics(loadout.LoadoutId)
+            .Skip(1)
+            .Take(1)
+            .Subscribe(published =>
+            {
+                using (var tx = Connection.BeginTransaction())
+                {
+                    tx.Add(loadout.LoadoutId, Loadout.LastAppliedDateTime, DateTime.UtcNow);
+                    tx.Commit().GetAwaiter().GetResult();
+                }
+
+                // Long enough for the 250 ms debounce to fire and block on the publisher.
+                Thread.Sleep(1500);
+                subscriberRefresh = DiagnosticManager.RefreshAsync(loadout.LoadoutId);
+                refreshReturned.TrySetResult();
+            });
+
+        _ = DiagnosticManager.RefreshAsync(loadout.LoadoutId);
+        await refreshReturned.Task.WaitAsync(TimeSpan.FromSeconds(20));
+
+        // The refresh asked for from the subscriber still runs and completes once the subscriber returns.
+        await subscriberRefresh!.WaitAsync(TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
     public async Task Diagnostics_CarryTheirFixActionsThroughTheManager()
     {
         var emitter = ScriptedEmitter();
