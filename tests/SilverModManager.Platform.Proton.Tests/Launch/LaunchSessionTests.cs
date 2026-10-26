@@ -3,9 +3,11 @@ using System.Runtime.InteropServices;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Paths;
 using SilverModManager.Platform.Proton.Launch;
 using SilverModManager.Sdk;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.NexusModsApi;
@@ -288,7 +290,7 @@ public class LaunchSessionTests : IDisposable
 
         var result = await Run(NewSession());
 
-        result.Should().Be(new LaunchResult(125, "Install the thing first."));
+        result.Should().Be(new LaunchResult(125, "Install the thing first.", Refused: true));
         _events.Should().Equal("check:a", "check:b");
         Phase().Should().BeNull("a refused launch never reaches the preparing state");
     }
@@ -474,12 +476,16 @@ public class LaunchSessionTests : IDisposable
     private sealed class RecordingLogger : ILogger<LaunchSession>
     {
         public List<string> Entries { get; } = [];
+        public List<(LogLevel Level, Exception? Exception)> Records { get; } = [];
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
         public bool IsEnabled(LogLevel logLevel) => true;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            => Entries.Add(formatter(state, exception));
+        {
+            Entries.Add(formatter(state, exception));
+            Records.Add((logLevel, exception));
+        }
     }
 
     private sealed class FakeSynchronizer(List<string> events, LaunchSessionTests test) : ILaunchSynchronizer
@@ -487,6 +493,7 @@ public class LaunchSessionTests : IDisposable
         private int _calls;
         public List<LaunchPhase> PhasesSeen { get; } = [];
         public int FailOn { get; set; }
+        public Exception? FailWith { get; set; }
         public Action? OnSync { get; set; }
 
         public Task Synchronize(LoadoutId loadoutId)
@@ -495,7 +502,7 @@ public class LaunchSessionTests : IDisposable
             _calls++;
             PhasesSeen.Add(test.Phase()!.Value);
             OnSync?.Invoke();
-            if (_calls == FailOn) throw new InvalidOperationException("sync broke");
+            if (_calls == FailOn) throw FailWith ?? new InvalidOperationException("sync broke");
             return Task.CompletedTask;
         }
     }
@@ -672,6 +679,190 @@ public class LaunchSessionTests : IDisposable
 
         before.Should().BeFalse();
         after.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AVeto_AndAHeldLock_AreRefusals_WithNoCause()
+    {
+        AddGate("a").Veto = new Veto("Nope.");
+        var first = NewSession();
+        var vetoed = await Run(first);
+        vetoed.Refused.Should().BeTrue();
+        vetoed.Cause.Should().BeNull();
+        first.Release();
+
+        using var other = new InstallationLock(LockPath);
+        other.TryAcquire().Should().BeTrue();
+        _gates.Clear();
+        var held = await Run(NewSession());
+        held.Refused.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ACrash_IsNotARefusal_AndKeepsItsCause()
+    {
+        var broke = new InvalidOperationException("check broke");
+        AddGate("a").CheckFailure = broke;
+        var first = NewSession();
+        var checkResult = await Run(first);
+        first.Release();
+        checkResult.Refused.Should().BeFalse();
+        checkResult.Cause.Should().BeSameAs(broke);
+
+        _gates.Clear();
+        var prepare = new InvalidOperationException("prepare broke");
+        AddGate("b").PrepareFailure = prepare;
+        var prepareResult = await Run(NewSession());
+        prepareResult.Refused.Should().BeFalse();
+        prepareResult.Cause.Should().BeSameAs(prepare);
+    }
+
+    [Fact]
+    public async Task AnAppLaunch_WhoseGateVetoes_ThrowsAGameLaunchException_WithoutNotifyingOrWritingStderr()
+    {
+        AddGate("a").Veto = new Veto("Steam is updating the game.");
+        using var launch = new GameLaunch(NewSession(), _context);
+
+        var act = async () => await launch.RunAsync(_ => Task.CompletedTask, CancellationToken.None);
+
+        var thrown = (await act.Should().ThrowAsync<GameLaunchException>()).Which;
+        thrown.Message.Should().Be("Steam is updating the game.");
+        thrown.Title.Should().Be("The game was not started");
+        _notifier.DidNotReceiveWithAnyArgs().Notify(default!, default!);
+        _error.ToString().Should().BeEmpty();
+        _log.Records.Should().NotContain(r => r.Level >= LogLevel.Error, "the awaiter shows the refusal");
+    }
+
+    [Fact]
+    public async Task AnAppLaunch_WhoseGateThrows_RethrowsTheOriginalException_AndLogsItAtWarning()
+    {
+        var broke = new InvalidOperationException("check broke");
+        AddGate("a").CheckFailure = broke;
+        using var launch = new GameLaunch(NewSession(), _context);
+
+        var act = async () => await launch.RunAsync(_ => Task.CompletedTask, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(broke);
+        _notifier.DidNotReceiveWithAnyArgs().Notify(default!, default!);
+        _error.ToString().Should().BeEmpty();
+        _log.Records.Should().Contain(r => r.Level == LogLevel.Warning && ReferenceEquals(r.Exception, broke));
+        _log.Records.Should().NotContain(r => r.Level >= LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task AnAppLaunch_WhosePrepareIsRefusedByPreflight_ThrowsThatExceptionWithItsAction()
+    {
+        AddGate("a");
+        var refusal = new SynchronizerPreflightException("The Proton prefix does not exist yet.") { Action = new OpenHealthCheck(_context.LoadoutId) };
+        _synchronizer.FailOn = 1;
+        _synchronizer.FailWith = refusal;
+        using var launch = new GameLaunch(NewSession(), _context);
+
+        var act = async () => await launch.RunAsync(_ => Task.CompletedTask, CancellationToken.None);
+
+        var thrown = (await act.Should().ThrowAsync<SynchronizerPreflightException>()).Which;
+        thrown.Should().BeSameAs(refusal);
+        thrown.Action.Should().Be(new OpenHealthCheck(_context.LoadoutId));
+    }
+
+    [Fact]
+    public async Task ARunLaunch_WhoseGateVetoes_StillWritesStderr_AndNotifies_ButLogsAtWarning()
+    {
+        AddGate("a").Veto = new Veto("Nope.");
+
+        await Run(NewSession());
+
+        _error.ToString().Should().Be("Nope." + Environment.NewLine);
+        _notifier.Received(1).Notify(Arg.Any<string>(), "Nope.");
+        _log.Records.Should().NotContain(r => r.Level >= LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task ARunLaunch_WhoseGateThrows_LogsTheCauseAtError()
+    {
+        var broke = new InvalidOperationException("check broke");
+        AddGate("a").CheckFailure = broke;
+
+        await Run(NewSession());
+
+        _log.Records.Should().Contain(r => r.Level == LogLevel.Error && ReferenceEquals(r.Exception, broke));
+        _error.ToString().Should().Contain("check broke");
+        _notifier.Received(1).Notify(Arg.Any<string>(), Arg.Is<string>(m => m.Contains("check broke")));
+    }
+
+    [Fact]
+    public async Task AnAppLaunch_WhoseIngestFails_RethrowsTheOriginalException_AndLogsItAtWarning()
+    {
+        var broke = new InvalidOperationException("ingest broke");
+        _synchronizer.FailOn = 2;
+        _synchronizer.FailWith = broke;
+        using var launch = new GameLaunch(NewSession(), _context);
+
+        var act = async () => await launch.RunAsync(_ => Task.CompletedTask, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(broke);
+        _notifier.DidNotReceiveWithAnyArgs().Notify(default!, default!);
+        _error.ToString().Should().BeEmpty();
+        _log.Records.Should().Contain(r => r.Level == LogLevel.Warning && ReferenceEquals(r.Exception, broke));
+        _log.Records.Should().NotContain(r => r.Level >= LogLevel.Error, "the awaiter reports the crash, once");
+    }
+
+    [Fact]
+    public async Task AnAppLaunch_WhoseIngestIsRefusedByPreflight_ThrowsThatExceptionWithItsAction()
+    {
+        var refusal = new SynchronizerPreflightException("The Proton prefix is gone.") { Action = new OpenHealthCheck(_context.LoadoutId) };
+        _synchronizer.FailOn = 2;
+        _synchronizer.FailWith = refusal;
+        using var launch = new GameLaunch(NewSession(), _context);
+
+        var act = async () => await launch.RunAsync(_ => Task.CompletedTask, CancellationToken.None);
+
+        var thrown = (await act.Should().ThrowAsync<SynchronizerPreflightException>()).Which;
+        thrown.Should().BeSameAs(refusal);
+        thrown.Action.Should().Be(new OpenHealthCheck(_context.LoadoutId));
+    }
+
+    [Fact]
+    public async Task TwoFailingTeardownSteps_KeepTheFirstOnesExceptionAsTheCause()
+    {
+        var first = new InvalidOperationException("finish broke");
+        AddGate("a").FinishFailure = first;
+        _synchronizer.FailOn = 2;
+
+        var result = await Run(NewSession());
+
+        result.Cause.Should().BeSameAs(first);
+        result.Message.Should().Contain("finish broke");
+    }
+
+    [Fact]
+    public async Task ARunLaunch_WhoseIngestFails_LogsTheCauseAtError_AndStillTellsTheUser()
+    {
+        var broke = new InvalidOperationException("ingest broke");
+        _synchronizer.FailOn = 2;
+        _synchronizer.FailWith = broke;
+
+        var result = await Run(NewSession());
+
+        result.Refused.Should().BeFalse();
+        result.Cause.Should().BeSameAs(broke);
+        _log.Records.Should().Contain(r => r.Level == LogLevel.Error && ReferenceEquals(r.Exception, broke));
+        _error.ToString().Should().Contain("still applied");
+        _notifier.Received(1).Notify(Arg.Any<string>(), Arg.Is<string>(m => m.Contains("ingest broke")));
+    }
+
+    [Fact]
+    public async Task AnUnavailableLaunchLock_IsLoggedWithItsException()
+    {
+        var broke = new IOException("runtime dir is read-only");
+        _lockFactory.Create(Arg.Any<string>(), Arg.Any<string>()).Returns(_ => throw broke);
+
+        var result = await Run(NewSession());
+
+        result.Refused.Should().BeFalse();
+        result.Cause.Should().BeSameAs(broke);
+        _log.Records.Should().Contain(r => r.Level == LogLevel.Error && ReferenceEquals(r.Exception, broke));
+        _error.ToString().Should().Contain("launch lock is unavailable");
     }
 
     [Fact]

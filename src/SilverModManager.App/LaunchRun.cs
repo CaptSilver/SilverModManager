@@ -30,7 +30,7 @@ public static class LaunchRun
         if (!resolution.IsResolved)
         {
             // Steam starts the launch option without a terminal to print to.
-            services.GetRequiredService<ILogger<LaunchSession>>().LogError("{Message}", resolution.Error);
+            services.GetRequiredService<ILogger<LaunchSession>>().LogWarning("{Message}", resolution.Error);
             Console.Error.WriteLine(resolution.Error);
             services.GetRequiredService<IDesktopNotifier>().Notify(ApplicationConstants.ProductName, resolution.Error);
             return resolution.ExitCode;

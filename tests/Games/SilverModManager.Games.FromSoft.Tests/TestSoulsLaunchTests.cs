@@ -47,7 +47,7 @@ public class TestSoulsLaunchTests(ITestOutputHelper helper) : AModdedTestSoulsTe
 
         var act = async () => await new RunFromSoftGame<TestSoulsGame>(ServiceProvider, game).GetLaunchSpec(loadout, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Be("install the other loader");
+        (await act.Should().ThrowAsync<GameLaunchException>()).Which.Message.Should().Be("install the other loader");
     }
 
     [Fact]

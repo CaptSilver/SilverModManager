@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
@@ -40,7 +41,7 @@ public interface IGameLaunch : IDisposable
     /// Takes the lock, applies the loadout, runs <paramref name="whileRunning"/> with the launch marked as
     /// running, then shuts down what is left of the game and takes its changes back. The callback is where the
     /// caller starts the game and waits for it. Throws <see cref="GameLaunchException"/> when the launch was
-    /// refused or a step failed, after the failure has gone to the log and the desktop.
+    /// refused, and the failing step's own exception when one crashed, after the failure has gone to the log.
     /// </summary>
     Task RunAsync(Func<CancellationToken, Task> whileRunning, CancellationToken cancellationToken);
 
@@ -52,6 +53,12 @@ public interface IGameLaunch : IDisposable
 }
 
 /// <summary>
-/// A launch did not run to the end. The message is what the user was told.
+/// A launch was refused or ended in a way the player can act on, such as another launch holding the game or Steam
+/// updating it. The message is written for the player. A step that crashed is not reported with this type: its own
+/// exception is thrown instead, so it is shown as a crash.
 /// </summary>
-public sealed class GameLaunchException(string message) : Exception(message);
+public sealed class GameLaunchException(string message) : UserFacingException(message)
+{
+    /// <inheritdoc />
+    public override string Title => "The game was not started";
+}

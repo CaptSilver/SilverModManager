@@ -12,7 +12,12 @@ namespace SilverModManager.Platform.Proton.Launch;
 /// </summary>
 /// <param name="ExitCode">The game's exit code, or 125 when the launch itself failed.</param>
 /// <param name="Message">Why the launch failed; null when it ran and the game's own exit code is the answer.</param>
-public sealed record LaunchResult(int ExitCode, string? Message);
+/// <param name="Refused">True when the launch was turned down before anything was started, by a gate or another launch holding the game.</param>
+/// <param name="Cause">The exception a failing step threw, when there was one; its message is folded into <paramref name="Message"/>.</param>
+public sealed record LaunchResult(int ExitCode, string? Message, bool Refused = false, Exception? Cause = null);
+
+/// <summary>Why a launch failed, before it is reported.</summary>
+internal sealed record LaunchFailure(string Message, bool Refused = false, Exception? Cause = null);
 
 /// <summary>
 /// The command a launch will start, with the steps that produced it, so the log can show how the final argv came
@@ -62,6 +67,8 @@ public sealed class LaunchSession
     private bool _started;
     private bool _released;
     private bool _keepRunningState;
+    // True when the caller awaits the launch and shows its failure, as the app does; the run verb has no one else to tell the user.
+    private bool _callerReports;
     private LaunchResult? _result;
 
     public LaunchSession(
@@ -150,7 +157,7 @@ public sealed class LaunchSession
         catch (Exception e)
         {
             _logger.LogError(e, "Planning the launch of {Loadout} for {Game} failed", context.LoadoutName, game);
-            return ReportFailure($"Cannot plan the launch of {game}: {e.Message}");
+            return ReportFailure(new LaunchFailure($"Cannot plan the launch of {game}: {e.Message}", Cause: e));
         }
 
         output.WriteLine("Dry run: nothing was locked, applied or started.");
@@ -190,8 +197,9 @@ public sealed class LaunchSession
     {
         if (_started) throw new InvalidOperationException("A launch session runs once.");
         _started = true;
+        _callerReports = whileRunning is not null;
 
-        string? failure;
+        LaunchFailure? failure;
         if (_stop is null)
         {
             failure = await RunCore(context, resolvePlan, whileRunning, cancellationToken);
@@ -215,29 +223,41 @@ public sealed class LaunchSession
         return ReportFailure(failure);
     }
 
-    private LaunchResult ReportFailure(string failure)
+    private LaunchResult ReportFailure(LaunchFailure failure)
     {
-        _logger.LogError("{Message}", failure);
-        _error.WriteLine(failure);
-        _notifier.Notify(ApplicationConstants.ProductName, failure);
-        return new LaunchResult(FailureExitCode, failure);
+        // A crash's exception was logged where it was caught; this line only says what the user is told. When the
+        // caller shows the failure, neither the log line nor anything else here may look like a second crash report.
+        var level = failure.Refused || failure.Cause is not null || _callerReports ? LogLevel.Warning : LogLevel.Error;
+        _logger.Log(level, "{Message}", failure.Message);
+        if (!_callerReports)
+        {
+            _error.WriteLine(failure.Message);
+            _notifier.Notify(ApplicationConstants.ProductName, failure.Message);
+        }
+        return new LaunchResult(FailureExitCode, failure.Message, failure.Refused, failure.Cause);
     }
 
+    // A caught exception goes to the log with its trace: at Error when the run verb is the last stop, at Warning
+    // when the awaiting caller shows the failure and the log is only the record.
+    private void LogCause(Exception e, string message, params object?[] args)
+        => _logger.Log(_callerReports ? LogLevel.Warning : LogLevel.Error, e, message, args);
+
     /// <summary>
-    /// Returns the failure message, or null with <see cref="_result"/> set when the game ran to the end.
+    /// Returns the failure, or null with <see cref="_result"/> set when the game ran to the end.
     /// </summary>
-    private async Task<string?> RunCore(LaunchContext context, Func<LaunchPlan>? resolvePlan, Func<CancellationToken, Task>? whileRunning, CancellationToken cancellationToken)
+    private async Task<LaunchFailure?> RunCore(LaunchContext context, Func<LaunchPlan>? resolvePlan, Func<CancellationToken, Task>? whileRunning, CancellationToken cancellationToken)
     {
         var game = context.Installation.Game.DisplayName;
 
         try
         {
             _lock = _lockFactory.Create(context.Installation.LocatorResult.Store.Value.ToLowerInvariant(), context.Installation.LocatorResult.StoreIdentifier);
-            if (!_lock.TryAcquire()) return DescribeHolder(game, _lock);
+            if (!_lock.TryAcquire()) return new LaunchFailure(DescribeHolder(game, _lock), Refused: true);
         }
         catch (Exception e) when (e is IOException or InvalidOperationException)
         {
-            return $"Cannot start {game}: the launch lock is unavailable. {e.Message}";
+            LogCause(e, "Taking the launch lock for {Game} failed", game);
+            return new LaunchFailure($"Cannot start {game}: the launch lock is unavailable. {e.Message}", Cause: e);
         }
 
         _registration = _activeSessions.Register(context.Installation);
@@ -246,12 +266,12 @@ public sealed class LaunchSession
         {
             try
             {
-                if (gate.Check(context) is { } veto) return veto.Message;
+                if (gate.Check(context) is { } veto) return new LaunchFailure(veto.Message, Refused: true);
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Checking {Gate} for {Game} failed", gate.GetType().Name, game);
-                return $"Cannot start {game}: checking whether it can be launched failed ({gate.GetType().Name}). {e.Message}";
+                LogCause(e, "Checking {Gate} for {Game} failed", gate.GetType().Name, game);
+                return new LaunchFailure($"Cannot start {game}: checking whether it can be launched failed ({gate.GetType().Name}). {e.Message}", Cause: e);
             }
         }
 
@@ -269,11 +289,11 @@ public sealed class LaunchSession
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Preparing {Loadout} for {Game} failed", context.LoadoutName, game);
-            return $"Could not prepare loadout '{context.LoadoutName}' for {game}: {e.Message}";
+            LogCause(e, "Preparing {Loadout} for {Game} failed", context.LoadoutName, game);
+            return new LaunchFailure($"Could not prepare loadout '{context.LoadoutName}' for {game}: {e.Message}", Cause: e);
         }
 
-        string? startFailure = null;
+        LaunchFailure? startFailure = null;
         GameProcessResult? exit = null;
         if (!StopRequested)
         {
@@ -320,8 +340,8 @@ public sealed class LaunchSession
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Running {Game} failed", game);
-                startFailure = $"Could not start {game}: {e.Message}";
+                LogCause(e, "Running {Game} failed", game);
+                startFailure = new LaunchFailure($"Could not start {game}: {e.Message}", Cause: e);
             }
         }
         else
@@ -333,8 +353,8 @@ public sealed class LaunchSession
         {
             // The game folder is in use; ingesting it or running the gates' teardown now could corrupt it.
             _keepRunningState = true;
-            return $"{game} did not stop: process {survivor.Pid} ({survivor.Name}) survived SIGKILL. " +
-                   "The loadout is still applied. Stop that process, then launch again.";
+            return new LaunchFailure($"{game} did not stop: process {survivor.Pid} ({survivor.Name}) survived SIGKILL. " +
+                                     "The loadout is still applied. Stop that process, then launch again.");
         }
 
         var stopped = BeginFinishing();
@@ -501,14 +521,14 @@ public sealed class LaunchSession
     /// stop the others or the ingest, so a bad teardown can't cost the user their game's changes. Returns the first
     /// failure.
     /// </summary>
-    private async Task<string?> Finish(LaunchContext context, IReadOnlyList<ILaunchGate> gates)
+    private async Task<LaunchFailure?> Finish(LaunchContext context, IReadOnlyList<ILaunchGate> gates)
     {
-        string? failure = null;
+        LaunchFailure? failure = null;
         void Record(Exception e, string what)
         {
-            _logger.LogError(e, "{What} failed for {Loadout}", what, context.LoadoutName);
-            failure ??= $"{context.Installation.Game.DisplayName} has exited, but {what} failed: {e.Message} " +
-                        $"Loadout '{context.LoadoutName}' is still applied.";
+            LogCause(e, "{What} failed for {Loadout}", what, context.LoadoutName);
+            failure ??= new LaunchFailure($"{context.Installation.Game.DisplayName} has exited, but {what} failed: {e.Message} " +
+                                          $"Loadout '{context.LoadoutName}' is still applied.", Cause: e);
         }
 
         try

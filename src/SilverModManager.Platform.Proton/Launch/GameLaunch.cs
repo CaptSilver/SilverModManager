@@ -1,4 +1,6 @@
+using System.Runtime.ExceptionServices;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Sdk.Errors;
 
 namespace SilverModManager.Platform.Proton.Launch;
 
@@ -13,7 +15,14 @@ internal sealed class GameLaunch(LaunchSession session, LaunchContext context) :
     public async Task RunAsync(Func<CancellationToken, Task> whileRunning, CancellationToken cancellationToken)
     {
         var result = await session.RunExternalAsync(context, whileRunning, cancellationToken);
-        if (result.Message is { } message) throw new GameLaunchException(message);
+        if (result.Message is not { } message) return;
+
+        // A refusal the step raised keeps its type and action. A crash keeps its own exception, so it is
+        // reported as a crash and not as a calm "not started".
+        if (result.Cause is { } cause && (cause is UserFacingException || !result.Refused))
+            ExceptionDispatchInfo.Capture(cause).Throw();
+
+        throw new GameLaunchException(message);
     }
 
     public void Dispose() => session.Release();

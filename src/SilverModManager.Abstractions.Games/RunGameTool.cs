@@ -393,8 +393,8 @@ public class RunGameTool<T> : IRunGameTool
     {
         // TODO: track process
         if (commandLineArgs.Length > 0)
-            _logger.LogError("Heroic does not currently support command line arguments: https://github.com/Nexus-Mods/NexusMods.App/issues/2264 . " +
-                             $"Args {string.Join(',', commandLineArgs)} were specified but will be ignored.");
+            _logger.LogWarning("Heroic does not currently support command line arguments: https://github.com/Nexus-Mods/NexusMods.App/issues/2264 . " +
+                               $"Args {string.Join(',', commandLineArgs)} were specified but will be ignored.");
 
         _osInterop.OpenUri(new Uri($"heroic://launch/{type}/{productId}"));
     }

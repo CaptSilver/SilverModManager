@@ -99,7 +99,7 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
 
         var act = async () => await Tool.GetLaunchSpec(Refresh(loadout), CancellationToken.None);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("no me3");
+        (await act.Should().ThrowAsync<GameLaunchException>()).Which.Message.Should().Contain("no me3");
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
 
         var act = async () => await Tool.GetLaunchSpec(Refresh(loadout), CancellationToken.None);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Be(
+        (await act.Should().ThrowAsync<GameLaunchException>()).Which.Message.Should().Be(
             $"Loadout '{loadout.Name}' has mods but no me3, so there is nothing to load them with. Install the me3 Linux release into it.");
     }
 
@@ -259,7 +259,7 @@ public class RunEldenRingGameTests(ITestOutputHelper helper) : AModdedEldenRingT
 
         var act = async () => await Tool.Execute(loadout, CancellationToken.None, ["-windowed"]);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("-windowed");
+        (await act.Should().ThrowAsync<GameLaunchException>()).Which.Message.Should().Contain("-windowed");
         Processes.Started.Should().BeEmpty();
     }
 
