@@ -118,6 +118,39 @@ public class RuleResolverTests
         result.Order.Should().Equal(A, C);
     }
 
+    [Fact]
+    public void ARuleOnACollectionBecomesOneRulePerPairOfMods()
+    {
+        var collections = new Dictionary<LoadoutItemGroupId, LoadoutItemGroupId[]> { [A] = [B, C] };
+
+        var expanded = RuleResolver.ExpandCollections([After(A, D), After(E, D)], collections);
+
+        expanded.Select(e => (e.Rule, e.Origin)).Should().Equal(
+            (After(B, D), 0),
+            (After(C, D), 0),
+            (After(E, D), 1));
+    }
+
+    [Fact]
+    public void ARuleBetweenTwoCollectionsPairsEveryModOfOneWithEveryModOfTheOther()
+    {
+        var collections = new Dictionary<LoadoutItemGroupId, LoadoutItemGroupId[]> { [A] = [B, C], [D] = [E] };
+
+        var expanded = RuleResolver.ExpandCollections([After(A, D)], collections);
+
+        expanded.Select(e => e.Rule).Should().Equal(After(B, E), After(C, E));
+    }
+
+    [Fact]
+    public void AModIsNotOrderedAgainstItsOwnCollection()
+    {
+        var collections = new Dictionary<LoadoutItemGroupId, LoadoutItemGroupId[]> { [A] = [B, C] };
+
+        var expanded = RuleResolver.ExpandCollections([After(B, A)], collections);
+
+        expanded.Select(e => e.Rule).Should().Equal(After(B, C));
+    }
+
     private static LoadoutItemGroupId Id(ulong n) => LoadoutItemGroupId.From(EntityId.From(n));
     private static GroupRule After(LoadoutItemGroupId source, LoadoutItemGroupId other) => Rule(source, other, GroupRuleKind.After);
     private static GroupRule Rule(LoadoutItemGroupId source, LoadoutItemGroupId other, GroupRuleKind kind) => new(source, other, kind);

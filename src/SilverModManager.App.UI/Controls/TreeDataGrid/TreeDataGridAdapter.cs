@@ -167,7 +167,7 @@ public abstract class TreeDataGridAdapter<TModel, TKey> : ReactiveR3Object, ISea
                             self.Roots.ApplyChanges(changeSet);
                             if (self.CustomSortComparer.Value is not null)
                             {
-                                self.Roots.Sort(self.CustomSortComparer.Value);
+                                self.SortRoots(self.CustomSortComparer.Value);
                             }
                         })
                         .DisposeMany()
@@ -185,7 +185,7 @@ public abstract class TreeDataGridAdapter<TModel, TKey> : ReactiveR3Object, ISea
                 {
                     if (comparer is not null)
                     {
-                        self.Roots.Sort(comparer);
+                        self.SortRoots(comparer);
                     }
 
                 })
@@ -204,6 +204,30 @@ public abstract class TreeDataGridAdapter<TModel, TKey> : ReactiveR3Object, ISea
                 self.Roots.Clear();
             }).AddTo(disposables);
         });
+    }
+
+    /// <summary>
+    /// Whether sorting the roots moves the rows that changed place instead of raising a reset. A reset makes the grid
+    /// throw every row away and build it again, which shows as a flicker and loses the scroll position; it only
+    /// matters for lists the player reorders by dragging, so it is opt-in.
+    /// </summary>
+    protected virtual bool SortWithoutReset => false;
+
+    private void SortRoots(IComparer<TModel> comparer)
+    {
+        if (!SortWithoutReset)
+        {
+            Roots.Sort(comparer);
+            return;
+        }
+
+        // OrderBy is stable, so rows that compare equal keep the places they have.
+        var sorted = Roots.OrderBy(static model => model, comparer).ToArray();
+        for (var index = 0; index < sorted.Length; index++)
+        {
+            var current = Roots.IndexOf(sorted[index]);
+            if (current != index) Roots.Move(current, index);
+        }
     }
 
     public void ClearSelection() => _selectionModel?.Clear();

@@ -21,6 +21,23 @@ public static class FileConflictsComponents
         public int CompareTo(NeighbourIds? other) => 0;
     }
 
+    /// <summary>
+    /// Where a collection row sits: the places in the priority order of the lowest and highest of its mods. Mods have none.
+    /// </summary>
+    public class UnitAnchor : IItemModelComponent<UnitAnchor>, IComparable<UnitAnchor>
+    {
+        public ReactiveProperty<int> Lowest { get; }
+        public ReactiveProperty<int> Highest { get; }
+
+        public UnitAnchor(int lowest, int highest)
+        {
+            Lowest = new ReactiveProperty<int>(lowest);
+            Highest = new ReactiveProperty<int>(highest);
+        }
+
+        public int CompareTo(UnitAnchor? other) => 0;
+    }
+
     public class NumConflicts : IItemModelComponent<NumConflicts>, IComparable<NumConflicts>
     {
         public ValueComponent<long> NumWinners { get; }
@@ -90,6 +107,7 @@ public static class FileConflictsColumns
         public const string ColumnTemplateResourceKey = Prefix + nameof(IndexColumn);
         public static readonly ComponentKey IndexComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.IndexComponent));
         public static readonly ComponentKey NeighbourIdsComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(FileConflictsComponents.NeighbourIds));
+        public static readonly ComponentKey UnitAnchorComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(FileConflictsComponents.UnitAnchor));
 
         public static int Compare<TKey>(CompositeItemModel<TKey> a, CompositeItemModel<TKey> b) where TKey : notnull
         {

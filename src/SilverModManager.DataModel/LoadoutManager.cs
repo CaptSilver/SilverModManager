@@ -756,12 +756,17 @@ internal partial class LoadoutManager : ILoadoutManager
 
         var rules = LoadoutGroupRule.FindByLoadout(db, loadoutId).ToList();
         var groupRules = rules.Select(static rule => new GroupRule(rule.SourceId, rule.OtherId, rule.Kind)).ToList();
-        var alreadyBroken = RuleResolver.FindViolations(current.Select(static row => row.TargetId).ToList(), groupRules).ToHashSet();
-        var broken = RuleResolver.FindViolations(moved.Select(static row => row.TargetId).ToList(), groupRules)
+
+        // The order is made of mods, so a rule on a collection is checked as the rules between its mods; a break is
+        // still reported against the rule that was stored.
+        var expanded = ExpandCollectionRules(db, loadoutId, groupRules);
+        var expandedRules = expanded.Select(static e => e.Rule).ToList();
+        var alreadyBroken = RuleResolver.FindViolations(current.Select(static row => row.TargetId).ToList(), expandedRules).ToHashSet();
+        var broken = RuleResolver.FindViolations(moved.Select(static row => row.TargetId).ToList(), expandedRules)
             .Where(index => !alreadyBroken.Contains(index))
             .Select(static index => (int?)index)
             .FirstOrDefault();
-        if (broken is { } violated) return ConflictMoveResult.RuleViolation(rules[violated]);
+        if (broken is { } violated) return ConflictMoveResult.RuleViolation(rules[expanded[violated].Origin]);
 
         using var tx = _connection.BeginTransaction();
         tx.Add(new ResolveFileConflictsTxFunc(loadoutId, winnerIds, loserId));
@@ -795,14 +800,16 @@ internal partial class LoadoutManager : ILoadoutManager
             .Distinct()
             .ToArray();
 
-        var stored = StoredGroupRules(db, loadoutId).ToHashSet();
-        var added = wanted.Where(rule => !stored.Contains(rule)).ToImmutableArray();
+        var stored = StoredGroupRules(db, loadoutId).ToList();
+        var storedSet = stored.ToHashSet();
+        var added = wanted.Where(rule => !storedSet.Contains(rule)).ToImmutableArray();
         if (added.IsEmpty) return;
 
         // Checked before the transaction, as in AddGroupRule: inside it the resolver can only fail the commit, which
         // reads as a crash, and a collection that contradicts itself or the player's rules is a refusal, not a bug.
         var delta = new RuleDelta { Candidates = added };
-        if (RuleResolver.Resolve(PriorityOrder(db, loadoutId), stored, delta).Cycle is { } cycle)
+        var expandedStored = ExpandCollectionRules(db, loadoutId, stored).Select(static e => e.Rule);
+        if (RuleResolver.Resolve(PriorityOrder(db, loadoutId), expandedStored, delta).Cycle is { } cycle)
         {
             throw new CollectionRulesCycleException(
                 collectionName: LoadoutItem.Load(db, collectionId).Name,
@@ -847,13 +854,22 @@ internal partial class LoadoutManager : ILoadoutManager
         // The resolver inside the transaction only sees the rows from before it, so the cycle check runs here over
         // the stored rules plus the candidate and a refused rule never reaches the database.
         var order = PriorityOrder(db, loadoutId);
+        var collections = CollectionMembers(db, loadoutId);
 
         // The resolver skips rules naming a group outside the order, so without this check a rule on a group of
-        // another loadout, or on a nested group, would be stored and never do anything.
-        if (!order.Contains(source)) throw new ArgumentException($"Group {source.Value} has no priority in loadout {loadoutId.Value}.", nameof(source));
-        if (!order.Contains(other)) throw new ArgumentException($"Group {other.Value} has no priority in loadout {loadoutId.Value}.", nameof(other));
+        // another loadout, or on a nested group, would be stored and never do anything. A collection stands for the
+        // mods it holds in this loadout, so it counts when it holds any.
+        if (!order.Contains(source) && !collections.ContainsKey(source)) throw new ArgumentException($"Group {source.Value} has no priority in loadout {loadoutId.Value}.", nameof(source));
+        if (!order.Contains(other) && !collections.ContainsKey(other)) throw new ArgumentException($"Group {other.Value} has no priority in loadout {loadoutId.Value}.", nameof(other));
 
-        if (RuleResolver.Resolve(order, StoredGroupRules(db, loadoutId), delta).Cycle is { } cycle) return AddGroupRuleResult.Cyclic(cycle);
+        var storedRules = RuleResolver.ExpandCollections(StoredGroupRules(db, loadoutId).ToList(), collections).Select(static e => e.Rule);
+        var expandedDelta = delta with { Candidates = [..RuleResolver.ExpandCollections(delta.Candidates, collections).Select(static e => e.Rule)] };
+        if (RuleResolver.Resolve(order, storedRules, expandedDelta).Cycle is { } cycle)
+        {
+            // The loop is found between mods; a rule on a collection is reported against the collection the player picked.
+            var namesCollection = collections.ContainsKey(source) || collections.ContainsKey(other);
+            return AddGroupRuleResult.Cyclic(namesCollection ? new RuleCycle(source, other) : cycle);
+        }
 
         using var tx = _connection.BeginTransaction();
         var rule = new LoadoutGroupRule.New(tx)

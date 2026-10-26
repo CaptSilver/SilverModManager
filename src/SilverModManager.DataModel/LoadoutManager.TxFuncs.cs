@@ -232,11 +232,20 @@ internal partial class LoadoutManager
                 rowOfGroup[row.TargetId] = row;
             }
 
-            var storedRules = LoadoutGroupRule
-                .FindByLoadout(basis, loadoutId)
-                .Select(static rule => new GroupRule(rule.SourceId, rule.OtherId, rule.Kind));
+            // Rules on a collection stand for rules on its mods, which are what the order is made of.
+            var collections = CollectionMembers(basis, loadoutId);
+            var storedRules = RuleResolver.ExpandCollections(
+                LoadoutGroupRule
+                    .FindByLoadout(basis, loadoutId)
+                    .Select(static rule => new GroupRule(rule.SourceId, rule.OtherId, rule.Kind))
+                    .ToList(),
+                collections).Select(static expanded => expanded.Rule);
+            var expandedDelta = delta with
+            {
+                Candidates = [..RuleResolver.ExpandCollections(delta.Candidates, collections).Select(static expanded => expanded.Rule)],
+            };
 
-            var resolution = RuleResolver.Resolve(rowOfGroup.Keys.OrderBy(group => rowOfGroup[group].Priority).ToArray(), storedRules, delta);
+            var resolution = RuleResolver.Resolve(rowOfGroup.Keys.OrderBy(group => rowOfGroup[group].Priority).ToArray(), storedRules, expandedDelta);
             if (resolution.Cycle is { } cycle)
                 throw new InvalidOperationException($"The group rules of loadout {loadoutId.Value} contradict each other: {cycle.First.Value} and {cycle.Second.Value}.");
 

@@ -104,6 +104,37 @@ public static class RuleResolver
     }
 
     /// <summary>
+    /// Rewrites rules that name a collection into rules between the mods it holds, so the resolver and
+    /// <see cref="FindViolations"/> only ever see mods. A rule on a collection holds for each of its mods against
+    /// each mod on the other side; a collection with no mods contributes nothing.
+    /// </summary>
+    /// <param name="collections">The mods of each collection, by collection group id, lowest priority first.</param>
+    /// <returns>The mod-level rules, each with the position in <paramref name="rules"/> of the rule it came from.</returns>
+    public static List<(GroupRule Rule, int Origin)> ExpandCollections(
+        IReadOnlyList<GroupRule> rules,
+        IReadOnlyDictionary<LoadoutItemGroupId, LoadoutItemGroupId[]> collections)
+    {
+        var expanded = new List<(GroupRule, int)>(rules.Count);
+        for (var i = 0; i < rules.Count; i++)
+        {
+            var rule = rules[i];
+            LoadoutItemGroupId[] sources = collections.TryGetValue(rule.Source, out var s) ? s : [rule.Source];
+            LoadoutItemGroupId[] others = collections.TryGetValue(rule.Other, out var o) ? o : [rule.Other];
+            foreach (var source in sources)
+            {
+                foreach (var other in others)
+                {
+                    // A mod ruled against the collection it sits in would otherwise be ordered against itself.
+                    if (source == other) continue;
+                    expanded.Add((rule with { Source = source, Other = other }, i));
+                }
+            }
+        }
+
+        return expanded;
+    }
+
+    /// <summary>
     /// The positions in <paramref name="rules"/> of the rules <paramref name="order"/> (ascending priority) breaks.
     /// A rule naming a group outside the order is not broken, since the resolver ignores it too.
     /// </summary>

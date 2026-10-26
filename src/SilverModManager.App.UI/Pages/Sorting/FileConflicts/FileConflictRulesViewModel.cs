@@ -50,8 +50,8 @@ public interface IFileConflictRulesViewModel : IViewModelInterface
 }
 
 /// <summary>
-/// The Rules editor behind a mod of the File Conflicts page: the Before/After rules that name the mod, and a picker
-/// to add one against another mod. A rule that would contradict the stored ones is refused inline.
+/// The Rules editor behind a mod or collection of the File Conflicts page: the Before/After rules that name it, and a
+/// picker to add one against another mod or collection. A rule that would contradict the stored ones is refused inline.
 /// </summary>
 public partial class FileConflictRulesViewModel : AViewModel<IFileConflictRulesViewModel>, IFileConflictRulesViewModel
 {
@@ -107,12 +107,27 @@ public partial class FileConflictRulesViewModel : AViewModel<IFileConflictRulesV
         Rows = LoadRows();
     }
 
+    /// <summary>
+    /// The other mods and the collections a rule can be set against. A rule between a mod and its own collection
+    /// would order the mod against itself, so neither is offered for the other.
+    /// </summary>
     private IReadOnlyList<FileConflictRuleCandidate> LoadCandidates()
     {
         var db = _connection.Db;
-        return LoadoutItemGroupPriority.FindByLoadout(db, _loadoutId)
-            .Select(static p => p.TargetId)
-            .Where(id => id != _group)
+        var rows = PriorityUnits.Load(db, _loadoutId);
+        var thisIsCollection = PriorityUnits.IsCollection(rows, _group.Value);
+        var ownCollection = rows.FirstOrDefault(row => row.Group == _group).Collection;
+
+        var mods = rows
+            .Where(row => row.Group != _group && !(thisIsCollection && row.Collection == _group))
+            .Select(static row => row.Group);
+        var collections = rows
+            .Select(static row => row.Collection)
+            .OfType<LoadoutItemGroupId>()
+            .Distinct()
+            .Where(collection => collection != _group && collection != ownCollection);
+
+        return mods.Concat(collections)
             .Select(id => new FileConflictRuleCandidate(id, NameOf(db, id)))
             .OrderBy(static c => c.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToArray();
