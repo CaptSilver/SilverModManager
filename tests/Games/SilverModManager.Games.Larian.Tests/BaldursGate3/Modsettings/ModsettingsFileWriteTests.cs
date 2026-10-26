@@ -160,10 +160,28 @@ public class ModsettingsFileWriteTests(ITestOutputHelper helper) : ModsettingsFi
         await InstallMod(loadout, "Alpha mod", "alpha.pak", AlphaPak());
         await WriteModsettings(BaseEntries);
 
-        // Neither pak has a row in the order before this Apply.
         await Apply(loadout);
 
-        DiskNames().Should().Equal("GustavX", "HonourX", "Alpha", "Beta");
+        // The sort order manager reconciles in the background as the mods land, so whether the two paks got their
+        // rows together (name order) or one after the other (install order) depends on timing. Which pak goes
+        // first is covered by the next test, which runs the reconcile between the installs.
+        var names = DiskNames();
+        names.Take(2).Should().Equal("GustavX", "HonourX");
+        names.Skip(2).Should().BeEquivalentTo("Alpha", "Beta");
+    }
+
+    [Fact]
+    public async Task APakThatArrivesAfterTheOrderWasStoredGoesAfterThePaksAlreadyInIt()
+    {
+        var loadout = await CreateLoadout();
+        await InstallMod(loadout, "Beta mod", "beta.pak", BetaPak());
+        await Game.SortOrderManager.UpdateLoadOrders(loadout.LoadoutId);
+        await InstallMod(loadout, "Alpha mod", "alpha.pak", AlphaPak());
+        await WriteModsettings(BaseEntries);
+
+        await Apply(loadout);
+
+        DiskNames().Should().Equal("GustavX", "HonourX", "Beta", "Alpha");
     }
 
     [Fact]
