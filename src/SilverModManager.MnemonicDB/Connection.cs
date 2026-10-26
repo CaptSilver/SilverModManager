@@ -608,6 +608,15 @@ public sealed class Connection : IConnection
 
         _dbStreamDisposable?.Dispose();
         _pendingEvents.CompleteAdding();
+
+        // The event thread reads _pendingEvents and runs subscribers, so freeing the queue under it throws
+        // ObjectDisposedException on a thread nothing catches for. Dispose can also run on that thread (from a
+        // subscriber), which must not wait for itself.
+        var eventThread = _eventThread;
+        if (eventThread is not null && eventThread != Thread.CurrentThread && eventThread.IsAlive
+            && !eventThread.Join(TimeSpan.FromSeconds(30)))
+            _logger.LogError("The event thread did not stop within 30 seconds of disposing the connection");
+
         _pendingEvents.Dispose();
 
         _isDisposed = true;
