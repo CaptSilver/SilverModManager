@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using FluentAssertions;
 using SilverModManager.Networking.Thunderstore.Tests.Fixtures;
 using NexusMods.Paths;
@@ -168,6 +169,15 @@ public class ThunderstoreIndexCacheTests
         var act = () => _cache.Load("peak", CancellationToken.None);
 
         (await act.Should().ThrowAsync<ThunderstoreIndexUnavailableException>()).WithMessage("*peak*");
+    }
+
+    [Fact]
+    public void Unavailable_IsARefusalThatSaysToRefreshTheIndex()
+    {
+        var refusal = new ThunderstoreIndexUnavailableException("peak");
+
+        refusal.Should().BeAssignableTo<UserFacingException>();
+        refusal.Message.Should().Contain("peak").And.Contain("Refresh");
     }
 
     [Fact]

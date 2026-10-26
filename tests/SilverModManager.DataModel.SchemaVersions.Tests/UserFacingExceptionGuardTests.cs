@@ -72,7 +72,6 @@ public class UserFacingExceptionGuardTests
         ["SilverModManager.Networking.GOG.Exceptions.ForbiddenException"] = "Caught by the GOG verbs, which word the failure.",
         ["SilverModManager.Networking.Steam.Exceptions.FailedToGetRequestCode"] = "Caught by the Steam verbs, which word the failure.",
         ["SilverModManager.Networking.Thunderstore.ThunderstoreBlobIntegrityException"] = "A blob whose bytes do not match its content-addressed URL; the index cache catches it and refetches.",
-        ["SilverModManager.Networking.Thunderstore.ThunderstoreIndexUnavailableException"] = "The message states the fault (no cached index for a community) and not the remedy, so it is not shown as it is.",
         ["SilverModManager.ProxyConsole.Exceptions.UnexpectedMessageException"] = "A protocol violation between the proxy console and its host; a bug.",
         ["SilverModManager.Secrets.SecretService.SecretServiceException"] = "Internal to the secret-service client; its store turns it into an unavailable result.",
         ["SilverModManager.Secrets.SecretService.SecretServiceStore+UnavailableException"] = "Internal to the secret-service client; its store turns it into an unavailable result.",
