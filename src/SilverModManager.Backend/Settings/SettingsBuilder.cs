@@ -59,6 +59,7 @@ internal class SettingsBuilder : ISettingsBuilder
             RequiresRestart = options.RequiresRestart,
             RestartMessage = options.RestartMessage,
             HelpLink = options.HelpLink,
+            DisabledReason = options.DisabledReason,
             DescriptionFactory = obj => options.DescriptionFactory(Cast<TSettings, TProperty>(obj)),
             Validation = options.Validation is null ? null : obj => options.Validation(Cast<TSettings, TProperty>(obj)),
         };

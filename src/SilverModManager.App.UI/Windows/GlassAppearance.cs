@@ -25,6 +25,15 @@ public sealed class GlassAppearance : IDisposable
     private readonly IDisposable _subscription;
 
     /// <summary>
+    /// Whether the desktop named by XDG_CURRENT_DESKTOP (colon-separated, any case) can blur the window. Avalonia's
+    /// X11 backend only grants blur under KWin and keeps that check internal, so this mirrors it by desktop name:
+    /// a KDE Plasma session sets XDG_CURRENT_DESKTOP=KDE.
+    /// </summary>
+    public static bool IsBlurAvailableOn(string? xdgCurrentDesktop) =>
+        xdgCurrentDesktop is not null
+        && xdgCurrentDesktop.Split(':').Any(name => name.Equals("KDE", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
     /// The instance windows that are created without a view model (dialogs, installers) attach to. Set when the
     /// app's instance is created; null in a host that never showed the main window, which leaves those windows opaque.
     /// </summary>
@@ -131,12 +140,14 @@ public sealed class GlassAppearance : IDisposable
             tints.Clear();
 
             var actual = window.ActualTransparencyLevel;
-            if (TintedBackgroundFor(Enabled, actual, Tint, surface) is { } brush)
-                tints.Add(window.SetValue(TemplatedControl.BackgroundProperty, brush, BindingPriority.Animation)!);
+            if (TintedBackgroundFor(Enabled, actual, Tint, surface) is { } brush
+                && window.SetValue(TemplatedControl.BackgroundProperty, brush, BindingPriority.Animation) is { } windowTint)
+                tints.Add(windowTint);
             foreach (var panel in panels)
             {
-                if (PanelBackgroundFor(Enabled, actual, Tint, panelSurface) is { } panelBrush)
-                    tints.Add(panel.SetValue(Border.BackgroundProperty, panelBrush, BindingPriority.Animation)!);
+                if (PanelBackgroundFor(Enabled, actual, Tint, panelSurface) is { } panelBrush
+                    && panel.SetValue(Border.BackgroundProperty, panelBrush, BindingPriority.Animation) is { } panelTint)
+                    tints.Add(panelTint);
             }
         }
 

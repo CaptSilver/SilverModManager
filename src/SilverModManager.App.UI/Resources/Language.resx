@@ -1845,6 +1845,9 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="Appearance_Glass_Description" xml:space="preserve">
         <value>Lets the desktop show through the app's window frame, blurred. Blur strength is set by KWin (System Settings &gt; Desktop Effects &gt; Blur), not by the app. Without a blurring compositor the window stays opaque.</value>
     </data>
+    <data name="Appearance_Glass_NeedsKde" xml:space="preserve">
+        <value>Needs KDE Plasma: only its window manager (KWin) blurs what is behind the window.</value>
+    </data>
     <data name="Appearance_GlassTint_Name" xml:space="preserve">
         <value>Glass tint</value>
     </data>

@@ -15,6 +15,12 @@ public record AppearanceSettings : ISettings
 
     public static string SettingsId => "SilverModManager.App.UI.Settings.AppearanceSettings";
 
+    /// <summary>The reason the Glass settings can't be used on this desktop, or null when they can.</summary>
+    public static string? DisabledReasonFor(string? xdgCurrentDesktop) =>
+        GlassAppearance.IsBlurAvailableOn(xdgCurrentDesktop) ? null : Language.Appearance_Glass_NeedsKde;
+
+    private static string? GlassDisabledReason() => DisabledReasonFor(Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP"));
+
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
         // Json so the choice is readable before the database opens, when the first window is created.
@@ -27,6 +33,7 @@ public record AppearanceSettings : ISettings
                     Section = Sections.Theme,
                     DisplayName = Language.Appearance_Glass_Name,
                     DescriptionFactory = _ => Language.Appearance_Glass_Description,
+                    DisabledReason = GlassDisabledReason,
                 },
                 new BooleanContainerOptions()
             )
@@ -37,6 +44,7 @@ public record AppearanceSettings : ISettings
                     Section = Sections.Theme,
                     DisplayName = Language.Appearance_GlassTint_Name,
                     DescriptionFactory = _ => Language.Appearance_GlassTint_Description,
+                    DisabledReason = GlassDisabledReason,
                 },
                 new SliderContainerOptions(
                     GlassAppearance.MinTint,

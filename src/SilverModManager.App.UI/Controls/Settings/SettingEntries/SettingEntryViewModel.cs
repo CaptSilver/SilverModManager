@@ -17,6 +17,10 @@ public class SettingEntryViewModel : AViewModel<ISettingEntryViewModel>, ISettin
     public IMarkdownRendererViewModel? LinkRenderer { get; }
     public IMarkdownRendererViewModel DescriptionMarkdownRenderer { get; }
 
+    public string? DisabledReason { get; }
+
+    public bool IsEnabled => DisabledReason is null;
+
     public SettingEntryViewModel(
         PropertyConfig propertyConfig,
         IInteractionControl interactionControlViewModel,
@@ -24,6 +28,7 @@ public class SettingEntryViewModel : AViewModel<ISettingEntryViewModel>, ISettin
         IMarkdownRendererViewModel? linkRenderer)
     {
         Config = propertyConfig;
+        DisabledReason = propertyConfig.Options.DisabledReason?.Invoke();
 
         InteractionControlViewModel = interactionControlViewModel;
         LinkRenderer = linkRenderer;

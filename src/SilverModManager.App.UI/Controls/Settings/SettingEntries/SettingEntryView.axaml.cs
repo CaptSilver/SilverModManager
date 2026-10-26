@@ -41,6 +41,9 @@ public partial class SettingEntryView : ReactiveUserControl<ISettingEntryViewMod
         RequiresRestartMessage.Text = viewModel.Config.Options.RestartMessage ?? Language.SettingEntryView_NeedRestartMessage;
 
         InteractionControl.ViewModel = viewModel.InteractionControlViewModel;
+        InteractionControl.IsEnabled = viewModel.IsEnabled;
+        DisabledReasonText.Text = viewModel.DisabledReason;
+        DisabledReasonText.IsVisible = viewModel.DisabledReason is not null;
 
         LinkViewModel.ViewModel = viewModel.LinkRenderer;
         LinkViewModel.IsVisible = viewModel.LinkRenderer is not null;

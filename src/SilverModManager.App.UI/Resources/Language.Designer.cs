@@ -5335,6 +5335,15 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Needs KDE Plasma: only its window manager (KWin) blurs what is behind the window..
+        /// </summary>
+        public static string Appearance_Glass_NeedsKde {
+            get {
+                return ResourceManager.GetString("Appearance_Glass_NeedsKde", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Glass tint.
         /// </summary>
         public static string Appearance_GlassTint_Name {

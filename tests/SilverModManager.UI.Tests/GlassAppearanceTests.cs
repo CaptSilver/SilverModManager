@@ -1,10 +1,12 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Pages.Settings;
 using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Controls.Settings.SettingEntries;
@@ -253,5 +255,111 @@ public class GlassAppearanceTests(IServiceProvider provider) : AUiTest(provider)
         {
             await Dispatcher.UIThread.InvokeAsync(window.Close);
         }
+    }
+
+    [Theory]
+    [InlineData("KDE", true)]
+    [InlineData("kde", true)]
+    [InlineData("KDE:plasma", true)]
+    [InlineData("ubuntu:KDE", true)]
+    [InlineData("ubuntu:GNOME", false)]
+    [InlineData("GNOME", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void BlurIsOfferedOnlyOnKde(string? desktop, bool expected)
+    {
+        GlassAppearance.IsBlurAvailableOn(desktop).Should().Be(expected);
+    }
+
+    [Fact]
+    public void TheGlassSettingsCarryTheKdeOnlyReason()
+    {
+        AppearanceSettings.DisabledReasonFor("GNOME").Should().Be(SilverModManager.App.UI.Resources.Language.Appearance_Glass_NeedsKde);
+        AppearanceSettings.DisabledReasonFor(null).Should().NotBeNullOrWhiteSpace();
+        AppearanceSettings.DisabledReasonFor("KDE").Should().BeNull();
+
+        var page = (SettingsPageViewModel)Provider.GetRequiredService<ISettingsPageViewModel>();
+        var glass = page.SettingEntries.Where(e => e.Config.Options.DisplayName is "Glass" or "Glass tint").ToList();
+        glass.Should().HaveCount(2);
+        var expected = AppearanceSettings.DisabledReasonFor(Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP"));
+        foreach (var entry in glass)
+        {
+            entry.Config.Options.DisabledReason.Should().NotBeNull();
+            entry.Config.Options.DisabledReason!().Should().Be(expected);
+            entry.DisabledReason.Should().Be(expected);
+        }
+    }
+
+    [Fact]
+    public void AnEntryWithADisabledReasonIsDisabledAndAnotherIsNot()
+    {
+        CreateEntry(() => "Not here").Should().Match<ISettingEntryViewModel>(e => !e.IsEnabled && e.DisabledReason == "Not here");
+        CreateEntry(() => null).Should().Match<ISettingEntryViewModel>(e => e.IsEnabled && e.DisabledReason == null);
+        CreateEntry(null).IsEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ADisabledEntryGreysOutItsControlAndShowsTheReason()
+    {
+        var (entry, window) = await ShowEntry(CreateEntry(() => "Needs something"));
+        try
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                var host = entry.FindControl<ContentControl>("InteractionControl")!;
+                host.IsEnabled.Should().BeFalse();
+                var inner = host.GetVisualDescendants().OfType<InputElement>().ToList();
+                inner.Should().NotBeEmpty("the setting's own control is inside the host");
+                inner.Should().OnlyContain(c => !c.IsEffectivelyEnabled, "the user can't click any part of a disabled setting");
+                var reason = entry.FindControl<TextBlock>("DisabledReasonText")!;
+                reason.IsVisible.Should().BeTrue();
+                reason.Text.Should().Be("Needs something");
+            });
+        }
+        finally { await Dispatcher.UIThread.InvokeAsync(window.Close); }
+    }
+
+    [Fact]
+    public async Task AnEnabledEntryShowsNoReason()
+    {
+        var (entry, window) = await ShowEntry(CreateEntry(() => null));
+        try
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                entry.FindControl<ContentControl>("InteractionControl")!.IsEnabled.Should().BeTrue();
+                entry.FindControl<TextBlock>("DisabledReasonText")!.IsVisible.Should().BeFalse();
+            });
+        }
+        finally { await Dispatcher.UIThread.InvokeAsync(window.Close); }
+    }
+
+    private ISettingEntryViewModel CreateEntry(Func<string?>? disabledReason)
+    {
+        var page = (SettingsPageViewModel)Provider.GetRequiredService<ISettingsPageViewModel>();
+        var source = page.SettingEntries.Single(e => e.InteractionControlViewModel is ISettingToggleViewModel && e.Config.Options.DisplayName == "Glass");
+        var options = new PropertyOptionsWrapper
+        {
+            Section = source.Config.Options.Section,
+            DisplayName = "Probe",
+            DescriptionFactory = _ => "Probe description",
+            DisabledReason = disabledReason,
+        };
+        return new SettingEntryViewModel(
+            source.Config with { Options = options },
+            source.InteractionControlViewModel,
+            Provider.GetRequiredService<IMarkdownRendererViewModel>(),
+            linkRenderer: null);
+    }
+
+    private async Task<(SettingEntryView View, Window Window)> ShowEntry(ISettingEntryViewModel viewModel)
+    {
+        return await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var view = new SettingEntryView { ViewModel = viewModel };
+            var window = Track(new Window { Content = view });
+            ShowRendered(window);
+            return (view, window);
+        });
     }
 }

@@ -29,6 +29,13 @@ public class PropertyOptions
     /// Optional link for further help.
     /// </summary>
     public Uri? HelpLink { get; init; }
+
+    /// <summary>
+    /// Returns null when the setting can be changed, otherwise a short user-facing reason it can't. The settings
+    /// page shows such a setting greyed out with the reason beneath its description. Evaluated once when the
+    /// page builds its entries.
+    /// </summary>
+    public Func<string?>? DisabledReason { get; init; }
 }
 
 [PublicAPI]

@@ -25,6 +25,13 @@
                     <reactiveUi:ViewModelViewHost x:Name="DescriptionMarkdownRendererViewModelViewHost"
                                                   Margin="0,4,0,0"/>
                     
+                    <TextBlock x:Name="DisabledReasonText"
+                               IsVisible="False"
+                               Margin="0,8,0,0"
+                               Theme="{StaticResource BodySMNormalTheme}"
+                               Foreground="{StaticResource NeutralModerateBrush}"
+                               TextWrapping="Wrap" />
+
                     <reactiveUi:ViewModelViewHost x:Name="LinkViewModel" IsVisible="True" Margin="0,8,0,0" />
                 </StackPanel>
 
