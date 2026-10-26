@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk.Loadouts;
 
@@ -50,6 +51,7 @@ public class DiagnosticDetailsPageFactory : APageFactory<IDiagnosticDetailsViewM
             context.Diagnostic,
             context.LoadoutId,
             ServiceProvider.GetServices<IDiagnosticActionHandler>(),
+            ServiceProvider.GetRequiredService<IErrorPresenter>(),
             ServiceProvider.GetRequiredService<ILogger<DiagnosticDetailsViewModel>>(),
             ServiceProvider.GetRequiredService<IMarkdownRendererViewModel>()
         );

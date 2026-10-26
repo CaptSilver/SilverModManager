@@ -223,6 +223,7 @@ public class DiagnosticDetailsViewTests(IServiceProvider provider) : AUiTest(pro
             diagnostic,
             default,
             [new StatusHandler(DiagnosticActions.UseLoadoutFromSteamId, status)],
+            NSubstitute.Substitute.For<SilverModManager.App.UI.Windows.IErrorPresenter>(),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<DiagnosticDetailsViewModel>.Instance));
 
         vm.Actions.Single().Status.Should().BeSameAs(status);
@@ -261,6 +262,7 @@ public class DiagnosticDetailsViewTests(IServiceProvider provider) : AUiTest(pro
             diagnostic,
             default,
             [new NoopHandler(DiagnosticActions.UseLoadoutFromSteamId)],
+            NSubstitute.Substitute.For<SilverModManager.App.UI.Windows.IErrorPresenter>(),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<DiagnosticDetailsViewModel>.Instance,
             Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IMarkdownRendererViewModel>(Provider)));
 

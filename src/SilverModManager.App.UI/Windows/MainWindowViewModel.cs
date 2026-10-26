@@ -100,7 +100,7 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
 
         this.WhenActivated(d =>
         {
-            ConnectErrors(serviceProvider).DisposeWith(d);
+            ConnectErrors(serviceProvider);
 
             var welcomeOverlayViewModel = WelcomeOverlayViewModel.CreateIfNeeded(serviceProvider);
             if (welcomeOverlayViewModel is not null) overlayController.Enqueue(welcomeOverlayViewModel);
@@ -294,8 +294,7 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
         }
         catch (Exception e)
         {
-            _serviceProvider.GetService<ILogger<MainWindowViewModel>>()?.LogError(e, "Handling dropped files failed");
-            _notificationService.ShowToast($"Couldn't handle the dropped files: {e.Message}", ToastNotificationVariant.Failure);
+            await _serviceProvider.GetRequiredService<IErrorPresenter>().Report(e, "handling the dropped files");
         }
     }
 
@@ -346,17 +345,10 @@ public partial class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMa
         return _serviceProvider.GetRequiredService<ILoadoutManager>().GetCurrentlyActiveLoadout(gameInstallation);
     }
     
-    private IDisposable ConnectErrors(IServiceProvider provider)
+    private static void ConnectErrors(IServiceProvider provider)
     {
-        var settings = provider.GetRequiredService<ISettingsManager>().Get<LoggingSettings>();
-        if (!settings.ShowExceptions) return Disposable.Empty;
-
         var source = provider.GetService<IObservableExceptionSource>();
-        if (source is null) return Disposable.Empty;
-
-        return UnhandledExceptionReporter.Connect(source.Exceptions,
-            (title, description, details) => Task.Run(() => MessageBoxOkViewModel.Show(provider, title, description, details))
-        );
+        if (source is not null) provider.GetRequiredService<IErrorPresenter>().Connect(source.Exceptions);
     }
 
     internal void OnClose()

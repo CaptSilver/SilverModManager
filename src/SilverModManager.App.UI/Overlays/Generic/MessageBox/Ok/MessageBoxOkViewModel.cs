@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts.Exceptions;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
 using SilverModManager.App.UI.Resources;
+using SilverModManager.App.UI.Windows;
 using R3;
 using ReactiveUI.SourceGenerators;
 
@@ -17,28 +18,21 @@ public partial class MessageBoxOkViewModel : AOverlayViewModel<IMessageBoxOkView
     [Reactive] public required partial IMarkdownRendererViewModel? MarkdownRenderer { get; set; }
     
     /// <summary>
-    /// Shows the 'Game is already Running' error when you try to change a game that the app has launched and is still running.
-    /// </summary>
-    public static Task ShowGameAlreadyRunningError(IServiceProvider serviceProvider, string gameName)
-    {
-        return Show(serviceProvider, Language.ErrorGameAlreadyRunning_Title, string.Format(Language.ErrorGameAlreadyRunning_Description, gameName));
-    }
-
-    /// <summary>
     /// Runs <paramref name="action"/>, and when a game launched from the app is running (the guard on applying,
-    /// deleting and removing refuses with <see cref="ExecutableInUseException"/>) shows the 'Game is already
-    /// Running' error instead of letting the exception escape. Returns false when the action was refused.
+    /// deleting and removing refuses with <see cref="ExecutableInUseException"/>) explains that in a dialog instead
+    /// of letting the exception escape. Returns false when the action was refused. Other refusals are left to the
+    /// caller: the remove-game flow, for one, answers a preflight refusal with a choice of its own.
     /// </summary>
-    public static async Task<bool> RunOrExplainRunningGame(IServiceProvider serviceProvider, string gameName, Func<Task> action)
+    public static async Task<bool> RunOrExplain(IServiceProvider serviceProvider, Func<Task> action)
     {
         try
         {
             await action();
             return true;
         }
-        catch (ExecutableInUseException)
+        catch (ExecutableInUseException e)
         {
-            await ShowGameAlreadyRunningError(serviceProvider, gameName);
+            await serviceProvider.GetRequiredService<IErrorPresenter>().Report(e, "changing a game that is running");
             return false;
         }
     }

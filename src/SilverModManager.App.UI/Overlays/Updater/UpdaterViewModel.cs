@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using System.Diagnostics;
 using Avalonia.Threading;
 using JetBrains.Annotations;
@@ -114,7 +115,7 @@ public partial class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IU
         }
         catch (Exception e)
         {
-            Logger.LogError(e, "Failed to install the update");
+            Logger.LogFailure(e, "Failed to install the update");
             State = UpdateState.Failed;
             StatusMessage = string.Format(Language.Updater_Failed, e.Message);
         }
@@ -130,7 +131,7 @@ public partial class UpdaterViewModel : AOverlayViewModel<IUpdaterViewModel>, IU
         }
         catch (Exception e)
         {
-            Logger.LogError(e, "Failed to restart into the updated app");
+            Logger.LogFailure(e, "Failed to restart into the updated app");
             State = UpdateState.Failed;
             StatusMessage = string.Format(Language.Updater_Failed, e.Message);
         }

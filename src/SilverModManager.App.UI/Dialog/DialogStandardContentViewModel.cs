@@ -13,6 +13,7 @@ public partial class DialogStandardContentViewModel : AViewModel<IDialogStandard
     public IconValue? Icon { get; }
     public IMarkdownRendererViewModel? MarkdownRenderer { get; }
     public bool ShowMarkdownCopyButton { get; }
+    public string? CopyText { get; }
     [Reactive] public partial string InputText { get; set; }
     public string InputLabel { get; set; }
     public string InputWatermark { get; set; }
@@ -30,6 +31,7 @@ public partial class DialogStandardContentViewModel : AViewModel<IDialogStandard
         InputWatermark = standardDialogParameters.InputWatermark;
         BottomText = standardDialogParameters.BottomText;
         ShowMarkdownCopyButton = standardDialogParameters.ShowMarkdownCopyButton;
+        CopyText = standardDialogParameters.CopyText;
 
         ClearInputCommand = new R3.ReactiveCommand(
             executeAsync: (_, cancellationToken) =>

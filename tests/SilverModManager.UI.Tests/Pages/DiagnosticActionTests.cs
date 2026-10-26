@@ -26,6 +26,7 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
+using SilverModManager.UI.Tests.Helpers;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
 namespace SilverModManager.UI.Tests.Pages;
@@ -68,7 +69,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
         Actions = [..actions],
     };
 
-    private Task<DiagnosticDetailsViewModel> DetailsFor(Diagnostic diagnostic, IEnumerable<IDiagnosticActionHandler> handlers, ILogger<DiagnosticDetailsViewModel> logger)
+    private Task<DiagnosticDetailsViewModel> DetailsFor(Diagnostic diagnostic, IEnumerable<IDiagnosticActionHandler> handlers, ILogger<DiagnosticDetailsViewModel> logger, PresenterRig? presenter = null)
         => OnUi(() => Task.FromResult(new DiagnosticDetailsViewModel(
             Substitute.For<IWindowManager>(),
             Provider.GetRequiredService<IDiagnosticWriter>(),
@@ -76,6 +77,7 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
             diagnostic,
             SomeLoadout,
             handlers,
+            (presenter ?? new PresenterRig(Provider)).Presenter,
             logger)));
 
     [Fact]
@@ -116,17 +118,21 @@ public class DiagnosticActionTests(IServiceProvider provider) : AUiTest(provider
     }
 
     [Fact]
-    public async Task Test_AFailingHandlerIsLoggedAndTheButtonStaysUsable()
+    public async Task Test_AFailingHandlerIsReportedAndTheButtonStaysUsable()
     {
         var logger = new RecordingLogger();
+        var presenter = new PresenterRig(Provider);
         var handler = Substitute.For<IDiagnosticActionHandler>();
         handler.ActionId.Returns("fix");
         handler.ExecuteAsync(Arg.Any<LoadoutId>(), Arg.Any<ImmutableArray<string>>()).Returns(Task.FromException(new InvalidOperationException("boom")));
-        var vm = await DetailsFor(DiagnosticWith(new DiagnosticAction("fix", "Fix it", [])), [handler], logger);
+        var vm = await DetailsFor(DiagnosticWith(new DiagnosticAction("fix", "Fix it", [])), [handler], logger, presenter);
 
         await OnUi(async () => await vm.Actions.Single().Command.Execute());
 
-        logger.Entries.Should().Contain(e => e.Level == LogLevel.Error && e.Message.Contains("fix"));
+        presenter.Log.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error && e.Exception!.Message == "boom");
+        presenter.Dialogs.Should().ContainSingle();
+        await OnUi(async () => await vm.Actions.Single().Command.Execute());
+        await handler.Received(2).ExecuteAsync(Arg.Any<LoadoutId>(), Arg.Any<ImmutableArray<string>>());
     }
 
     [Fact]

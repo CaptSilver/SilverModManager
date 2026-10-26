@@ -1,12 +1,12 @@
+using Microsoft.Extensions.DependencyInjection;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
-using SilverModManager.Abstractions.Loadouts.Exceptions;
 using SilverModManager.App.UI.Overlays;
-using SilverModManager.App.UI.Overlays.Generic.MessageBox.Ok;
+using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.Resources;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Jobs;
@@ -89,13 +89,9 @@ public partial class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>,
         {
             _logger.LogInformation("Launch was cancelled");
         }
-        catch (ExecutableInUseException)
-        {
-            await MessageBoxOkViewModel.ShowGameAlreadyRunningError(_serviceProvider, marker.Installation.Name);
-        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error launching game");
+            await _serviceProvider.GetRequiredService<IErrorPresenter>().Report(ex, "launching the game");
         }
         finally
         {

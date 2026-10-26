@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using System.ComponentModel;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -87,7 +88,7 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            _logger.LogError(e, "Changing the {Variety} order failed", _variety.SortOrderVarietyId);
+            _logger.LogFailure(e, "Changing the {Variety} order failed", _variety.SortOrderVarietyId);
             LootOutcomeTitle = Language.LoadOrder_EditFailedTitle;
             LootOutcomeSummary = e.Message;
             HasLootOutcome = true;
@@ -204,7 +205,7 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
                 {
                     // Bad metadata (an unknown group, a rule that contradicts master flags, a broken userlist) is
                     // something the user can fix, so it goes in the panel rather than only into the log.
-                    serviceProvider.GetRequiredService<ILogger<LoadOrderViewModel>>().LogError(e, "Sorting {Variety} with LOOT failed", sortOrderVariety.SortOrderVarietyId);
+                    serviceProvider.GetRequiredService<ILogger<LoadOrderViewModel>>().LogFailure(e, "Sorting {Variety} with LOOT failed", sortOrderVariety.SortOrderVarietyId);
                     LootOutcomeTitle = Language.LoadOrder_SortWithLoot_FailedTitle;
                     LootOutcomeSummary = e.Message;
                     HasLootOutcome = true;

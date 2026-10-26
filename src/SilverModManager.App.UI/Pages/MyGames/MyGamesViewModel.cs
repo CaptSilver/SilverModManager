@@ -171,9 +171,8 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                                 var removed = true;
                                 try
                                 {
-                                    removed = await MessageBoxOkViewModel.RunOrExplainRunningGame(
+                                    removed = await MessageBoxOkViewModel.RunOrExplain(
                                         _serviceProvider,
-                                        installation.Game.DisplayName,
                                         () => Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, filesToDelete, collections))
                                     );
                                 }
@@ -184,9 +183,8 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
                                     removed = await ShowRemoveFromAppOnlyDialog(installation, e.Message);
                                     if (removed)
                                     {
-                                        removed = await MessageBoxOkViewModel.RunOrExplainRunningGame(
+                                        removed = await MessageBoxOkViewModel.RunOrExplain(
                                             _serviceProvider,
-                                            installation.Game.DisplayName,
                                             () => Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, filesToDelete, collections, cleanGameFolder: false))
                                         );
                                     }
@@ -387,9 +385,8 @@ public partial class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGa
             {
                 // Revert the loadout creation
                 vm.State = GameWidgetState.RemovingGame;
-                var reverted = await MessageBoxOkViewModel.RunOrExplainRunningGame(
+                var reverted = await MessageBoxOkViewModel.RunOrExplain(
                     _serviceProvider,
-                    installation.Game.DisplayName,
                     () => Task.Run(async () => await _syncService.UnManage(installation, cleanGameFolder: false))
                 );
                 vm.State = reverted ? GameWidgetState.DetectedGame : GameWidgetState.ManagedGame;

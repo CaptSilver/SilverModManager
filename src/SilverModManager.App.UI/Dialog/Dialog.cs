@@ -8,6 +8,9 @@ namespace SilverModManager.App.UI.Dialog;
 public class Dialog : IDialog
 {
     private DialogViewModel _viewModel;
+
+    /// <summary>The dialog's content, for tests to read without opening a window.</summary>
+    internal DialogViewModel ViewModel => _viewModel;
     private bool _hasUserResized = false;
 
     public Dialog(DialogViewModel viewModel)

@@ -106,6 +106,7 @@ public static class Services
             .AddSingleton<IOverlayController, OverlayController>()
             .AddSingleton<IApiKeyPrompt, ApiKeyPrompt>()
             .AddSingleton<IWindowNotificationService, WindowNotificationService>()
+            .AddSingleton<IErrorPresenter, ErrorPresenter>()
 
             // View Models
             .AddTransient<MainWindowViewModel>()

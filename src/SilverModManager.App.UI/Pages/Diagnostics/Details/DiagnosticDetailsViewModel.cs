@@ -37,6 +37,7 @@ public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewM
         Diagnostic diagnostic,
         LoadoutId loadoutId,
         IEnumerable<IDiagnosticActionHandler> actionHandlers,
+        IErrorPresenter errorPresenter,
         ILogger<DiagnosticDetailsViewModel> logger,
         IMarkdownRendererViewModel? moreDetailsRendererViewModel = null) : base(windowManager)
     {
@@ -58,10 +59,10 @@ public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewM
             MoreDetailsRendererViewModel.Contents = diagnostic.MoreDetails;
         }
 
-        Actions = CreateButtons(diagnostic, loadoutId, actionHandlers.ToArray(), logger);
+        Actions = CreateButtons(diagnostic, loadoutId, actionHandlers.ToArray(), errorPresenter, logger);
     }
 
-    private static IReadOnlyList<DiagnosticActionButton> CreateButtons(Diagnostic diagnostic, LoadoutId loadoutId, IDiagnosticActionHandler[] handlers, ILogger logger)
+    private static IReadOnlyList<DiagnosticActionButton> CreateButtons(Diagnostic diagnostic, LoadoutId loadoutId, IDiagnosticActionHandler[] handlers, IErrorPresenter errorPresenter, ILogger logger)
     {
         if (diagnostic.Actions.IsDefaultOrEmpty) return [];
 
@@ -83,7 +84,7 @@ public class DiagnosticDetailsViewModel : APageViewModel<IDiagnosticDetailsViewM
                 }
                 catch (Exception e)
                 {
-                    logger.LogError(e, "The diagnostic action {ActionId} failed for loadout {LoadoutId}", action.Id, loadoutId);
+                    await errorPresenter.Report(e, $"running \"{action.Label}\"");
                 }
             });
             buttons.Add(new DiagnosticActionButton(action.Label, command, action.Note, handler.StatusOf(loadoutId)));

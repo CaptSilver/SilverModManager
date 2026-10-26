@@ -14,6 +14,7 @@ public partial class DialogStandardContentDesignViewModel : AViewModel<IDialogSt
     public IconValue? Icon { get; } = IconValues.Cog;
     public IMarkdownRendererViewModel? MarkdownRenderer { get; }
     public bool ShowMarkdownCopyButton { get; } = true;
+    public string? CopyText => null;
     [Reactive] public partial string InputText { get; set; } = "Sample input text";
     public string InputLabel { get; set; } = "Sample Input Label";
     public string InputWatermark { get; set; } = "Enter text here...";

@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using Avalonia.Platform.Storage;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
@@ -110,7 +111,8 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
     }
 
     // Commands run on a worker and a thrown exception would end up unobserved, so it is logged and
-    // shown on the page instead.
+    // shown on the page instead. A refusal is only shown here; a crash also reaches the error dialog through
+    // the log.
     private async ValueTask ReportFailure(Func<Task> action)
     {
         try
@@ -119,7 +121,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Running a tool from the Tools page failed");
+            _logger.LogFailure(ex, "Running a tool from the Tools page failed");
             LastRunMessage = ex.Message;
         }
     }
@@ -136,7 +138,7 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
     {
         var loadout = LoadLoadout();
         if (!_toolRunner.CanRun(loadout.InstallationInstance, out var diagnostic))
-            throw new InvalidOperationException($"Cannot run a Windows program for {loadout.InstallationInstance.Game.DisplayName}: {diagnostic}");
+            throw new WindowsProgramRefusedException($"Cannot run a Windows program for {loadout.InstallationInstance.Game.DisplayName}: {diagnostic}");
 
         var picked = await _avaloniaInterop.OpenFilePickerAsync(new FilePickerOpenOptions
         {
@@ -195,4 +197,13 @@ internal partial class ToolsPageViewModel : APageViewModel<IToolsPageViewModel>,
         if (string.IsNullOrWhiteSpace(draft.Name)) throw new ArgumentException("A tool needs a name.", nameof(draft));
         if (!System.IO.Path.IsPathRooted(draft.Exe)) throw new ArgumentException($"'{draft.Exe}' is not an absolute path to a program.", nameof(draft));
     }
+}
+
+/// <summary>
+/// The game's Wine prefix can't run a Windows program, for a reason the message states.
+/// </summary>
+internal sealed class WindowsProgramRefusedException(string message) : UserFacingException(message)
+{
+    /// <inheritdoc />
+    public override string Title => "The program was not started";
 }

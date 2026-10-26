@@ -165,7 +165,7 @@ public class ToolsPageViewModelTests(IServiceProvider provider) : AUiTest(provid
 
         var act = () => vm.RunWindowsProgramAsync(TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*No Wine prefix was found.*");
+        await act.Should().ThrowAsync<SilverModManager.Sdk.Errors.UserFacingException>().WithMessage("*No Wine prefix was found.*");
         toolManager.Ran.Should().BeEmpty();
     }
 

@@ -3,16 +3,19 @@ using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI;
 using SilverModManager.App.UI.LeftMenu.Items;
 using SilverModManager.App.UI.Resources;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
+using SilverModManager.UI.Tests.Helpers;
 using ReactiveUI;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
@@ -33,7 +36,7 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         public LaunchButtonViewModel ViewModel = null!;
     }
 
-    private async Task<Rig> Build()
+    private async Task<Rig> Build(PresenterRig? presenter = null, Func<Exception>? failure = null)
     {
         var rig = new Rig();
         var loadout = await SeedLoadoutRow(GameStore.Steam, "Launch button");
@@ -47,6 +50,7 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         toolManager.RunTool(Arg.Any<ITool>(), Arg.Any<Loadout.ReadOnly>(), Arg.Any<IJobMonitor>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
+                if (failure is not null) throw failure();
                 rig.ToolToken = call.Arg<CancellationToken>();
                 rig.Started.TrySetResult();
                 try { await rig.Finish.Task.WaitAsync(rig.ToolToken); }
@@ -60,7 +64,7 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
             toolManager,
             Connection,
             monitor,
-            Provider,
+            presenter?.Services ?? Provider,
             Provider.GetRequiredService<GameRunningTracker>())
         {
             LoadoutId = loadout.LoadoutId,
@@ -147,5 +151,39 @@ public class LaunchButtonViewModelTests(IServiceProvider provider) : AUiTest(pro
         second.IsCompleted.Should().BeFalse();
         rig.Finish.SetResult();
         await second.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    private sealed class RefusedToStart(string message) : UserFacingException(message)
+    {
+        public override string Title => "The game was not started";
+    }
+
+    [Fact]
+    public async Task ARefusalFromTheLaunch_IsOnePlainDialogAndNoErrorEvent()
+    {
+        var presenter = new PresenterRig(Provider);
+        var rig = await Build(presenter, () => new RefusedToStart("Steam is updating the game."));
+
+        await rig.ViewModel.Command.Execute().ToTask().WaitAsync(TimeSpan.FromSeconds(10));
+
+        var dialog = presenter.Dialogs.Should().ContainSingle().Subject;
+        dialog.WindowTitle.Should().Be("The game was not started");
+        PresenterRig.Body(dialog).Should().Contain("Steam is updating the game.");
+        presenter.Log.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
+        rig.ViewModel.Label.Should().Be(Language.LaunchButtonViewModel_LaunchGame_LAUNCH);
+    }
+
+    [Fact]
+    public async Task ACrashDuringTheLaunch_IsOneCrashDialog()
+    {
+        var presenter = new PresenterRig(Provider);
+        var rig = await Build(presenter, () => new InvalidOperationException("gate blew up"));
+
+        await rig.ViewModel.Command.Execute().ToTask().WaitAsync(TimeSpan.FromSeconds(10));
+
+        var dialog = presenter.Dialogs.Should().ContainSingle().Subject;
+        PresenterRig.Body(dialog).Should().Contain("launching the game").And.Contain("written to the log");
+        PresenterRig.Body(dialog).Should().NotContain("gate blew up");
+        presenter.Log.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error);
     }
 }

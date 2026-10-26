@@ -19,7 +19,7 @@ public partial class DialogStandardContentView : ReactiveUserControl<IDialogStan
             {
                 // COMMANDS
 
-                CopyDetailsButton.Command = ReactiveCommand.CreateFromTask(async () => { await TopLevel.GetTopLevel(this)!.Clipboard!.SetTextAsync(ViewModel?.MarkdownRenderer?.Contents); });
+                CopyDetailsButton.Command = ReactiveCommand.CreateFromTask(async () => { await TopLevel.GetTopLevel(this)!.Clipboard!.SetTextAsync(ViewModel?.CopyText ?? ViewModel?.MarkdownRenderer?.Contents); });
                 
                 this.OneWayBind(ViewModel,
                         vm => vm.ShowMarkdownCopyButton,

@@ -11,6 +11,12 @@ public interface IDialogStandardContentViewModel : IViewModelInterface
     IconValue? Icon { get; }
     IMarkdownRendererViewModel? MarkdownRenderer { get; }
     bool ShowMarkdownCopyButton { get; }
+
+    /// <summary>
+    /// What the copy button puts on the clipboard in place of the markdown, for details that are meant to be
+    /// pasted into a bug report but not read in the dialog. Never drawn.
+    /// </summary>
+    string? CopyText { get; }
     string InputText { get; set; }
     string InputLabel { get; set; }
     string InputWatermark { get; set; }

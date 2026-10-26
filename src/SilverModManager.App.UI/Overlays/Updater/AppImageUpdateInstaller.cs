@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Errors;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Networking.GitHub;
 using SilverModManager.Networking.GitHub.DTOs;
@@ -13,7 +14,11 @@ internal delegate Task UpdateDownload(Uri source, string destination, Action<dou
 /// <summary>
 /// The update could not be installed; the message is meant for the user.
 /// </summary>
-internal sealed class AppImageUpdateException(string message) : Exception(message);
+internal sealed class AppImageUpdateException(string message) : UserFacingException(message)
+{
+    /// <inheritdoc />
+    public override string Title => "The update was not installed";
+}
 
 /// <summary>
 /// Replaces the running AppImage with a release asset once its bytes match the SHA-256 GitHub reports for it.

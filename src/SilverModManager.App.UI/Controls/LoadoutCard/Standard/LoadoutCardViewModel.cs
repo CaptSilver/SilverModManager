@@ -204,9 +204,8 @@ public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
     
     private async Task DeleteLoadout(Loadout.ReadOnly loadout)
     {
-        var deleted = await MessageBoxOkViewModel.RunOrExplainRunningGame(
+        var deleted = await MessageBoxOkViewModel.RunOrExplain(
             _serviceProvider,
-            loadout.Installation.Name,
             () => Task.Run(() => _loadoutManager.DeleteLoadout(loadout).AsTask())
         );
 

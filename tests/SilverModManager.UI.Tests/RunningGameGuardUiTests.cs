@@ -15,6 +15,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Loadouts;
 using NSubstitute;
+using SilverModManager.UI.Tests.Helpers;
 using ReactiveUI;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
@@ -22,25 +23,7 @@ namespace SilverModManager.UI.Tests;
 
 public class RunningGameGuardUiTests(IServiceProvider provider) : AUiTest(provider)
 {
-    /// <summary>
-    /// The real services, except that overlays go to a recorder instead of the (absent) window.
-    /// </summary>
-    private sealed class RecordingProvider(IServiceProvider inner, IOverlayController overlays) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => serviceType == typeof(IOverlayController) ? overlays : inner.GetService(serviceType);
-    }
-
-    private static IOverlayController RecordingOverlays()
-    {
-        var overlays = Substitute.For<IOverlayController>();
-        return overlays;
-    }
-
-    private static string[] ShownTitles(IOverlayController overlays) => overlays.ReceivedCalls()
-        .SelectMany(call => call.GetArguments())
-        .OfType<MessageBoxOkViewModel>()
-        .Select(vm => vm.Title)
-        .ToArray();
+    private static string[] ShownTitles(PresenterRig rig) => rig.Dialogs.Select(d => d.WindowTitle).ToArray();
 
     /// <summary>
     /// A loadout row on the installation without applying anything, since the test game has no files to apply.
@@ -70,37 +53,35 @@ public class RunningGameGuardUiTests(IServiceProvider provider) : AUiTest(provid
     }
 
     [Fact]
-    public async Task RunOrExplainRunningGame_ShowsTheDialog_InsteadOfLettingTheExceptionEscape()
+    public async Task RunOrExplain_ShowsTheDialog_InsteadOfLettingTheExceptionEscape()
     {
-        var overlays = RecordingOverlays();
+        var rig = new PresenterRig(Provider);
 
-        var ran = await MessageBoxOkViewModel.RunOrExplainRunningGame(
-            new RecordingProvider(Provider, overlays),
-            "Cyberpunk 2077",
+        var ran = await MessageBoxOkViewModel.RunOrExplain(
+            rig.Services,
             () => throw new ExecutableInUseException("running")
         );
 
         ran.Should().BeFalse();
-        ShownTitles(overlays).Should().Equal(Language.ErrorGameAlreadyRunning_Title);
+        ShownTitles(rig).Should().Equal("The game is still running");
     }
 
     [Fact]
-    public async Task RunOrExplainRunningGame_ShowsNothing_WhenTheActionSucceeds()
+    public async Task RunOrExplain_ShowsNothing_WhenTheActionSucceeds()
     {
-        var overlays = RecordingOverlays();
+        var rig = new PresenterRig(Provider);
 
-        var ran = await MessageBoxOkViewModel.RunOrExplainRunningGame(new RecordingProvider(Provider, overlays), "Cyberpunk 2077", () => Task.CompletedTask);
+        var ran = await MessageBoxOkViewModel.RunOrExplain(rig.Services, () => Task.CompletedTask);
 
         ran.Should().BeTrue();
-        ShownTitles(overlays).Should().BeEmpty();
+        ShownTitles(rig).Should().BeEmpty();
     }
 
     [Fact]
-    public async Task RunOrExplainRunningGame_DoesNotSwallowOtherExceptions()
+    public async Task RunOrExplain_DoesNotSwallowOtherExceptions()
     {
-        var act = () => MessageBoxOkViewModel.RunOrExplainRunningGame(
-            new RecordingProvider(Provider, RecordingOverlays()),
-            "Cyberpunk 2077",
+        var act = () => MessageBoxOkViewModel.RunOrExplain(
+            new PresenterRig(Provider).Services,
             () => throw new InvalidOperationException("boom")
         );
 
@@ -108,12 +89,24 @@ public class RunningGameGuardUiTests(IServiceProvider provider) : AUiTest(provid
     }
 
     [Fact]
+    public async Task RunOrExplain_LeavesAPreflightRefusalToTheCaller()
+    {
+        // The remove-game flow answers this one with its own choice, so it must still reach that catch.
+        var rig = new PresenterRig(Provider);
+
+        var act = () => MessageBoxOkViewModel.RunOrExplain(rig.Services, () => throw new SynchronizerPreflightException("read-only"));
+
+        await act.Should().ThrowAsync<SynchronizerPreflightException>();
+        rig.Dialogs.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task DeletingALoadoutCard_WhileTheGameRuns_ShowsTheDialogAndKeepsTheLoadout()
     {
         var installation = Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First();
         var loadout = await SeedLoadout(installation, "Running Delete");
-        var overlays = RecordingOverlays();
-        var card = new LoadoutCardViewModel(loadout, Connection, new RecordingProvider(Provider, overlays))
+        var rig = new PresenterRig(Provider);
+        var card = new LoadoutCardViewModel(loadout, Connection, rig.Services)
         {
             VisitLoadoutCommand = ReactiveCommand.Create(() => { }),
         };
@@ -121,7 +114,7 @@ public class RunningGameGuardUiTests(IServiceProvider provider) : AUiTest(provid
         using var running = Provider.GetRequiredService<ActiveLaunchSessions>().Register(installation);
         await card.DeleteLoadoutCommand.Execute();
 
-        ShownTitles(overlays).Should().Equal(Language.ErrorGameAlreadyRunning_Title);
+        ShownTitles(rig).Should().Equal("The game is still running");
         card.IsDeleting.Should().BeFalse();
         var reloaded = Loadout.Load(Connection.Db, loadout.LoadoutId);
         reloaded.IsValid().Should().BeTrue();

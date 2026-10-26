@@ -7,6 +7,7 @@ using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Networking.ModUpdates;
 using SilverModManager.Networking.NexusWebApi;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.App.UI.Pages.Diagnostics;
@@ -47,8 +48,17 @@ public sealed class CheckModUpdatesActionHandler(IServiceProvider serviceProvide
             .Where(item => item.IsValid())
             .Select(item => (item.Name, ModUpdateReport.Outcome(db, modUpdates, item.LoadoutItemId)))
             .ToArray();
-        if (mods.Length == 0) throw new InvalidOperationException($"None of the mods the diagnostic named is in loadout {loadoutId} any more.");
+        if (mods.Length == 0) throw new ModsNotFoundException($"None of the mods the diagnostic named is in loadout {loadoutId} any more.");
 
         await MessageBoxOkViewModel.Show(serviceProvider, "Updates for these mods", ModUpdateReport.Describe(mods, status, failure));
     }
+}
+
+/// <summary>
+/// The mods a diagnostic pointed at left the loadout before the action ran.
+/// </summary>
+internal sealed class ModsNotFoundException(string message) : UserFacingException(message)
+{
+    /// <inheritdoc />
+    public override string Title => "The mods were not found";
 }

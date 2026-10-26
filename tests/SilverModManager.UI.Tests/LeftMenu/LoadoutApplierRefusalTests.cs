@@ -13,9 +13,11 @@ using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Errors;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Dialog;
+using SilverModManager.UI.Tests.Helpers;
 using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
 namespace SilverModManager.UI.Tests;
@@ -39,7 +41,7 @@ public class LoadoutApplierRefusalTests(IServiceProvider provider) : AUiTest(pro
         var loadout = await SeedLoadoutRow(GameStore.Unknown, "Refused " + Guid.NewGuid());
         var synchronizer = Substitute.For<ISynchronizerService>();
         synchronizer.Synchronize(Arg.Any<LoadoutId>())
-            .Returns<Task>(_ => throw (failure ?? new SynchronizerPreflightException("Can't merge regulation.bin: no vanilla to compare against.")));
+            .Returns<Task>(_ => throw (failure ?? Refusal(loadout.LoadoutId)));
 
         var workspace = Substitute.For<IWorkspaceViewModel>();
         workspace.Id.Returns(WorkspaceId.From(Guid.NewGuid()));
@@ -49,14 +51,13 @@ public class LoadoutApplierRefusalTests(IServiceProvider provider) : AUiTest(pro
         workspaces.ChangeOrCreateWorkspaceByContext(Arg.Any<Func<LoadoutContext, bool>>(), Arg.Any<Func<Optional<PageData>>>(), Arg.Any<Func<LoadoutContext>>())
             .Returns(workspace);
 
-        var windows = Substitute.For<IWindowManager>();
-        windows.ActiveWorkspaceController.Returns(workspaces);
-        windows.ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>())
-            .Returns(Task.FromResult(new StandardDialogResult { ButtonId = answer }));
+        var rig = new PresenterRig(Provider);
+        rig.Windows.ActiveWorkspaceController.Returns(workspaces);
+        rig.Answer = _ => Task.FromResult(new StandardDialogResult { ButtonId = answer });
 
         var notifications = Substitute.For<IWindowNotificationService>();
-        var services = new ProviderWith(Provider, (typeof(ISynchronizerService), synchronizer), (typeof(IWindowManager), windows), (typeof(IWindowNotificationService), notifications));
-        return new Fixture { Services = services, Windows = windows, Workspaces = workspaces, Notifications = notifications, Loadout = loadout };
+        var services = new OverridingServiceProvider(rig.Services, (typeof(ISynchronizerService), synchronizer), (typeof(IWindowNotificationService), notifications));
+        return new Fixture { Services = services, Windows = rig.Windows, Workspaces = workspaces, Notifications = notifications, Loadout = loadout };
     }
 
     [Fact]
@@ -71,6 +72,10 @@ public class LoadoutApplierRefusalTests(IServiceProvider provider) : AUiTest(pro
         f.Notifications.DidNotReceiveWithAnyArgs().ShowToast(default!);
     }
 
+    // The synchronizer service attaches the way to Health Check before the refusal reaches the caller.
+    private static SynchronizerPreflightException Refusal(LoadoutId loadoutId) =>
+        new("Can't merge regulation.bin: no vanilla to compare against.") { Action = new OpenHealthCheck(loadoutId) };
+
     [Fact]
     public async Task OkOnTheRefusal_LeavesTheWorkspaceAlone()
     {
@@ -84,7 +89,7 @@ public class LoadoutApplierRefusalTests(IServiceProvider provider) : AUiTest(pro
     [Fact]
     public async Task OpenHealthCheckOnTheRefusal_OpensTheLoadoutsDiagnosticList()
     {
-        var f = await Refusing(LoadoutApplierRefusal.OpenHealthCheck);
+        var f = await Refusing(ErrorPresenter.OpenHealthCheckButton);
 
         var applied = await OnUi(() => LoadoutApplier.Apply(f.Services, f.Loadout.LoadoutId));
 
@@ -98,19 +103,14 @@ public class LoadoutApplierRefusalTests(IServiceProvider provider) : AUiTest(pro
     }
 
     [Fact]
-    public async Task AFailureThatIsNotARefusal_StillPropagates()
+    public async Task AFailureThatIsNotARefusal_IsReportedAsACrashWithoutTheMessage()
     {
         var f = await Refusing(ButtonDefinitionId.Accept, new InvalidOperationException("disk on fire"));
 
-        var act = () => OnUi(() => LoadoutApplier.Apply(f.Services, f.Loadout.LoadoutId));
+        var applied = await OnUi(() => LoadoutApplier.Apply(f.Services, f.Loadout.LoadoutId));
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("disk on fire");
-        await f.Windows.DidNotReceiveWithAnyArgs().ShowDialog(default!, default);
-    }
-
-    private sealed class ProviderWith(IServiceProvider inner, params (Type Service, object Instance)[] overrides) : IServiceProvider
-    {
-        public object? GetService(Type serviceType) =>
-            overrides.Where(o => o.Service == serviceType).Select(o => o.Instance).FirstOrDefault() ?? inner.GetService(serviceType);
+        applied.Should().BeFalse();
+        await f.Windows.Received(1).ShowDialog(Arg.Is<IDialog>(d => !PresenterRig.Body(((Dialog)d).ViewModel).Contains("disk on fire")), DialogWindowType.Modal);
+        f.Notifications.DidNotReceiveWithAnyArgs().ShowToast(default!);
     }
 }

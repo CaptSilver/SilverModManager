@@ -3,6 +3,8 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
+using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Dialog;
 using SilverModManager.App.UI.Dialog.Enums;
 using SilverModManager.App.UI.Overlays;
@@ -63,7 +65,8 @@ public sealed class RestoreFolderFromBackupActionHandler(IServiceProvider servic
     {
         if (!serviceProvider.GetRequiredService<IGameLaunchSession>().IsRunning(installation)) return false;
 
-        await MessageBoxOkViewModel.ShowGameAlreadyRunningError(serviceProvider, installation.Game.DisplayName);
+        var refusal = new ExecutableInUseException(string.Format(Language.ErrorGameAlreadyRunning_Description, installation.Game.DisplayName));
+        await serviceProvider.GetRequiredService<IErrorPresenter>().Report(refusal, "restoring the backup folder");
         return true;
     }
 
