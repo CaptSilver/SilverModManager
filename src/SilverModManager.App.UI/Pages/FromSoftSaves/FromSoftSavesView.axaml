@@ -27,6 +27,7 @@
             </StackPanel>
 
             <ComboBox x:Name="FolderBox" />
+            <ComboBox x:Name="LoadoutFilterBox" />
             <ListBox x:Name="FilesList" />
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-2}">
                 <controls:StandardButton x:Name="BackupButton" Type="Secondary" Size="Toolbar" Text="Backup" />

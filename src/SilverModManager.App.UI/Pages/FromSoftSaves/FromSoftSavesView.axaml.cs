@@ -20,6 +20,11 @@ public partial class FromSoftSavesView : ReactiveUserControl<IFromSoftSavesViewM
             if (ViewModel is { } vm && FolderBox.SelectedIndex >= 0 && FolderBox.SelectedIndex < vm.Folders.Count)
                 vm.SelectedFolder = vm.Folders[FolderBox.SelectedIndex];
         };
+        LoadoutFilterBox.SelectionChanged += (_, _) =>
+        {
+            if (ViewModel is { } vm && LoadoutFilterBox.SelectedIndex >= 0 && LoadoutFilterBox.SelectedIndex < vm.LoadoutFilters.Count)
+                vm.SelectedLoadoutFilter = vm.LoadoutFilters[LoadoutFilterBox.SelectedIndex];
+        };
         FilesList.SelectionChanged += (_, _) =>
         {
             if (ViewModel is { } vm) vm.SelectedFile = FilesList.SelectedIndex >= 0 && FilesList.SelectedIndex < vm.Files.Count ? vm.Files[FilesList.SelectedIndex] : null;
@@ -50,8 +55,16 @@ public partial class FromSoftSavesView : ReactiveUserControl<IFromSoftSavesViewM
                 .Subscribe(index => FolderBox.SelectedIndex = index)
                 .AddTo(disposables);
 
+            viewModel.WhenAnyValue(vm => vm.LoadoutFilters)
+                .Subscribe(filters => LoadoutFilterBox.ItemsSource = filters.Select(f => f.Name).ToArray())
+                .AddTo(disposables);
+            viewModel.WhenAnyValue(vm => vm.SelectedLoadoutFilter, vm => vm.LoadoutFilters,
+                    (selected, filters) => selected is null ? -1 : filters.ToList().FindIndex(f => f.Slot == selected.Slot))
+                .Subscribe(index => LoadoutFilterBox.SelectedIndex = index)
+                .AddTo(disposables);
+
             viewModel.WhenAnyValue(vm => vm.Files)
-                .Subscribe(files => FilesList.ItemsSource = files.Select(Describe).ToArray())
+                .Subscribe(files => FilesList.ItemsSource = files.Select(file => Describe(file, viewModel.LoadoutNameOf(file))).ToArray())
                 .AddTo(disposables);
 
             viewModel.WhenAnyValue(vm => vm.Backups)
@@ -91,7 +104,7 @@ public partial class FromSoftSavesView : ReactiveUserControl<IFromSoftSavesViewM
         block.IsVisible = !string.IsNullOrEmpty(text);
     }
 
-    private static string Describe(SaveFileEntry file)
+    private static string Describe(SaveFileEntry file, string loadoutName)
     {
         var what = file.Kind switch
         {
@@ -100,7 +113,8 @@ public partial class FromSoftSavesView : ReactiveUserControl<IFromSoftSavesViewM
             SaveKind.Modded => "modded session",
             _ => "not a file this page acts on",
         };
-        return $"{file.Name}  ({what}{(file.IsBackup ? ", game's backup" : "")}, {file.Size:N0} bytes, {file.Modified.LocalDateTime:g})";
+        var owner = loadoutName == "" ? "" : $", loadout {loadoutName}";
+        return $"{file.Name}  ({what}{owner}{(file.IsBackup ? ", game's backup" : "")}, {file.Size:N0} bytes, {file.Modified.LocalDateTime:g})";
     }
 
     private static string Describe(SaveBackup backup)

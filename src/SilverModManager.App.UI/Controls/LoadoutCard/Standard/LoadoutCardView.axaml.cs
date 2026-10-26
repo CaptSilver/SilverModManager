@@ -1,5 +1,6 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using SilverModManager.App.UI.Resources;
 using ReactiveUI;
@@ -11,6 +12,21 @@ public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel
     public LoadoutCardView()
     {
         InitializeComponent();
+
+        // Wired once here rather than on activation, so reopening the page does not stack handlers. The box is set
+        // back to what was stored afterwards because a dismissed dialog leaves the setting as it was.
+        KeepSavesBox.Click += async (_, _) =>
+        {
+            if (ViewModel?.GameSettings is not { } settings) return;
+            await settings.ToggleKeepSavesCommand.Execute();
+            KeepSavesBox.IsChecked = settings.KeepSavesWithLoadout;
+        };
+        OwnInisBox.Click += async (_, _) =>
+        {
+            if (ViewModel?.GameSettings is not { } settings) return;
+            await settings.ToggleOwnsGameInisCommand.Execute();
+            OwnInisBox.IsChecked = settings.OwnsGameInis;
+        };
 
         this.WhenActivated(d =>
             {
@@ -98,6 +114,26 @@ public partial class LoadoutCardView : ReactiveUserControl<ILoadoutCardViewModel
                         DetailsSectionStack.IsVisible = !isSkeleton;
                     })
                     .DisposeWith(d);
+
+                // Saves and INI choices
+                if (ViewModel?.GameSettings is { } settings)
+                {
+                    GameSettingsStack.IsVisible = true;
+                    OwnInisBox.IsVisible = settings.ShowOwnsGameInis;
+                    ToolTip.SetTip(KeepSavesBox, settings.KeepSavesToolTip);
+                    settings.WhenAnyValue(x => x.KeepSavesWithLoadout)
+                        .OnUI()
+                        .Subscribe(keep => KeepSavesBox.IsChecked = keep)
+                        .DisposeWith(d);
+                    settings.WhenAnyValue(x => x.OwnsGameInis)
+                        .OnUI()
+                        .Subscribe(owns => OwnInisBox.IsChecked = owns)
+                        .DisposeWith(d);
+                    settings.ToggleKeepSavesCommand.CanExecute
+                        .OnUI()
+                        .Subscribe(can => KeepSavesBox.IsEnabled = can)
+                        .DisposeWith(d);
+                }
 
                 // Clone loadout command
                 this.BindCommand(ViewModel,

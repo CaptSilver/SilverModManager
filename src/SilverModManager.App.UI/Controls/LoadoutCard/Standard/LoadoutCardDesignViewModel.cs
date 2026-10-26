@@ -48,4 +48,5 @@ public partial class LoadoutCardDesignViewModel : AViewModel<ILoadoutCardViewMod
     public ReactiveCommand<Unit, Unit> SwitchToLoadoutCommand { get; } = ReactiveCommand.Create(() => { });
     public bool ShowSwitchButton { get; } = false;
     public bool CanUseFromSteam { get; } = true;
+    public LoadoutGameSettings? GameSettings { get; } = null;
 }

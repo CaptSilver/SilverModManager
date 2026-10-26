@@ -35,6 +35,17 @@ public sealed record FromSoftSaveNames(string Vanilla, string? Modded, string? S
         return LoadoutSaveSlot.IsSlotId(fileName.Substring(prefix.Length, fileName.Length - prefix.Length - extension.Length));
     }
 
+    /// <summary>
+    /// The slot id in a loadout's save name (the <c>&lt;id&gt;</c> of <c>ER0000_&lt;id&gt;.sl2</c>), or <c>null</c>
+    /// when <paramref name="fileName"/> is not such a name.
+    /// </summary>
+    public string? LoadoutSlotOf(string fileName)
+    {
+        if (!IsLoadoutSlotName(fileName) || SlotParts() is not var (prefix, extension)) return null;
+
+        return fileName.Substring(prefix.Length, fileName.Length - prefix.Length - extension.Length);
+    }
+
     private (string Prefix, string Extension)? SlotParts()
     {
         if (Modded is null) return null;

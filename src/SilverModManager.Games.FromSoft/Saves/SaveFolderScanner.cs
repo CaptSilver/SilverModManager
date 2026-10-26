@@ -22,6 +22,9 @@ public enum SaveKind
 /// <param name="IsBackup">True for the game's own <c>.bak</c> copy of a known save.</param>
 public sealed record SaveFileEntry(string Name, string Path, SaveKind Kind, bool IsBackup, long Size, DateTimeOffset Modified)
 {
+    /// <summary>The slot id of the loadout the file belongs to (see <c>LoadoutSaveSlot</c>); <c>null</c> for a save no loadout owns.</summary>
+    public string? LoadoutSlot { get; init; }
+
     /// <summary>Whether the page may act on the file at all.</summary>
     public bool IsKnown => Kind != SaveKind.Unknown;
 }
@@ -70,6 +73,10 @@ public sealed class SaveFolderScanner
         return SaveKind.Unknown;
     }
 
+    // A game's own .bak sits next to the save it backs up, so it belongs to the same loadout.
+    private string? SlotOf(string fileName)
+        => _names.LoadoutSlotOf(fileName.EndsWith(BackupSuffix, StringComparison.Ordinal) ? fileName[..^BackupSuffix.Length] : fileName);
+
     /// <summary>The files of the folder, known saves first and then by name. A folder that does not exist has none.</summary>
     public IReadOnlyList<SaveFileEntry> Scan(string folder)
     {
@@ -79,7 +86,10 @@ public sealed class SaveFolderScanner
             .Select(file =>
             {
                 var kind = KindOf(file.Name, out var isBackup);
-                return new SaveFileEntry(file.Name, file.FullName, kind, isBackup, file.Length, file.LastWriteTimeUtc);
+                return new SaveFileEntry(file.Name, file.FullName, kind, isBackup, file.Length, file.LastWriteTimeUtc)
+                {
+                    LoadoutSlot = SlotOf(file.Name),
+                };
             })
             .OrderBy(e => e.Kind == SaveKind.Unknown)
             .ThenBy(e => e.Name, StringComparer.Ordinal)

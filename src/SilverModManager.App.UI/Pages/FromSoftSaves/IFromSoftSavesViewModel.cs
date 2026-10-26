@@ -22,7 +22,15 @@ public interface IFromSoftSavesViewModel : IPageViewModelInterface
 
     SaveFolder? SelectedFolder { get; set; }
 
-    /// <summary>The files of <see cref="SelectedFolder"/>, the ones the module knows first.</summary>
+    /// <summary>The loadouts whose saves are in the folders, led by "all saves" and "not tied to a loadout".</summary>
+    IReadOnlyList<LoadoutFilterItem> LoadoutFilters { get; }
+
+    LoadoutFilterItem? SelectedLoadoutFilter { get; set; }
+
+    /// <summary>The name of the loadout a save belongs to; empty for a save no loadout owns.</summary>
+    string LoadoutNameOf(SaveFileEntry file);
+
+    /// <summary>The files of <see cref="SelectedFolder"/> that belong to <see cref="SelectedLoadoutFilter"/>, the ones the module knows first.</summary>
     IReadOnlyList<SaveFileEntry> Files { get; }
 
     SaveFileEntry? SelectedFile { get; set; }

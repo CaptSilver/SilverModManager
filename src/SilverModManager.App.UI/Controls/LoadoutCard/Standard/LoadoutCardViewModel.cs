@@ -8,6 +8,7 @@ using DynamicData.Aggregation;
 using Humanizer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -48,6 +49,7 @@ public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
         var applyService = serviceProvider.GetRequiredService<ISynchronizerService>();
         LoadoutName = loadout.Name;
+        GameSettings = LoadoutGameSettings.For(loadout, serviceProvider);
         var badgeVm = serviceProvider.GetRequiredService<ILoadoutBadgeViewModel>();
         badgeVm.LoadoutValue = loadout;
         LoadoutBadgeViewModel = badgeVm;
@@ -165,6 +167,8 @@ public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
     public ReactiveCommand<Unit, Unit> UseFromSteamCommand { get; }
     public ReactiveCommand<Unit, Unit> SwitchToLoadoutCommand { get; }
     public bool CanUseFromSteam { get; }
+
+    public LoadoutGameSettings GameSettings { get; internal init; }
     
     [Reactive] public partial bool IsLastLoadout { get; set; } = true;
     
@@ -204,13 +208,35 @@ public partial class LoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
     
     private async Task DeleteLoadout(Loadout.ReadOnly loadout)
     {
+        // Looked up before the delete, while the loadout still has its settings to read.
+        var saveLocations = FindSaveLocations();
         var deleted = await MessageBoxOkViewModel.RunOrExplain(
             _serviceProvider,
             () => Task.Run(() => _loadoutManager.DeleteLoadout(loadout).AsTask())
         );
 
         // The card stays in the list when the delete was refused.
-        if (!deleted) IsDeleting = false;
+        if (!deleted)
+        {
+            IsDeleting = false;
+            return;
+        }
+
+        await GameSettings.OfferToDeleteSaves(saveLocations);
+    }
+
+    // Offering to clean up saves must never stop the delete, so a game folder that cannot be read just skips the offer.
+    private IReadOnlyList<AbsolutePath> FindSaveLocations()
+    {
+        try
+        {
+            return GameSettings.FindSaveLocations();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            _logger.LogWarning(exception, "Could not look for the saves of {Loadout} to offer deleting them", LoadoutName);
+            return [];
+        }
     }
 
     private Task CopyLoadout(Loadout.ReadOnly loadout)

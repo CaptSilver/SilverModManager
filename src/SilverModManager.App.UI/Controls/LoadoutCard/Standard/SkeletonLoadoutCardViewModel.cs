@@ -26,4 +26,5 @@ public class SkeletonLoadoutCardViewModel : AViewModel<ILoadoutCardViewModel>, I
     public ReactiveCommand<Unit, Unit> SwitchToLoadoutCommand { get; } = ReactiveCommand.Create(() => { });
     public bool ShowSwitchButton { get; } = false;
     public bool CanUseFromSteam { get; } = false;
+    public LoadoutGameSettings? GameSettings { get; } = null;
 }

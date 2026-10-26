@@ -83,6 +83,14 @@
                             </StackPanel>
                         </StackPanel>
 
+                        <StackPanel x:Name="GameSettingsStack" IsVisible="False">
+                            <CheckBox x:Name="KeepSavesBox"
+                                      Content="{x:Static resources:Language.LoadoutGameSettings_KeepSaves_Label}" />
+                            <CheckBox x:Name="OwnInisBox"
+                                      Content="{x:Static resources:Language.LoadoutGameSettings_OwnInis_Label}"
+                                      ToolTip.Tip="{x:Static resources:Language.LoadoutGameSettings_OwnInis_ToolTip}" />
+                        </StackPanel>
+
                         <controls:StandardButton x:Name="SwitchButton"
                                                  Text="{x:Static resources:Language.LoadoutCardSwitchButton}"
                                                  HorizontalAlignment="Stretch" />

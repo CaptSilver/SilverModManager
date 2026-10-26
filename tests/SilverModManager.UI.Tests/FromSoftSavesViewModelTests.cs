@@ -13,7 +13,9 @@ using FromSoftSavesService = SilverModManager.Games.FromSoft.Saves.FromSoftSaves
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.Settings;
+using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 using NSubstitute;
 using ReactiveUI;
 
@@ -82,6 +84,83 @@ public class FromSoftSavesViewModelTests(IServiceProvider provider) : AUiTest(pr
         }
 
         public void Dispose() => Directory.Delete(Root, recursive: true);
+    }
+
+    private async Task<string> SeedLoadoutSlot(Fixture fixture, string name)
+    {
+        var installation = fixture.Vm.Installation!;
+        using var tx = Connection.BeginTransaction();
+        var metadata = new GameInstallMetadata.New(tx)
+        {
+            Path = installation.LocatorResult.Path.ToString(),
+            Name = installation.Game.DisplayName,
+            Store = installation.LocatorResult.Store,
+            Game = installation.Game.GameId,
+            GameId = installation.Game.NexusModsGameId.Value,
+        };
+        var loadout = new Loadout.New(tx)
+        {
+            Name = name,
+            ShortName = "ZZZ",
+            InstallationId = metadata,
+            LoadoutKind = LoadoutKind.Default,
+            Revision = 0,
+            GameVersion = VanityVersion.From("Unknown"),
+        };
+        var result = await tx.Commit();
+        return LoadoutSaveSlot.IdOf(result.Remap(loadout));
+    }
+
+    [Fact]
+    public async Task SavesNamedForALoadoutAreGroupedUnderItsNameAndCanBeFiltered()
+    {
+        using var fixture = new Fixture(Provider, steamRunning: false);
+        var first = await SeedLoadoutSlot(fixture, "Saves Group First");
+        var second = await SeedLoadoutSlot(fixture, "Saves Group Second");
+        fixture.Write("ER0000.sl2", "vanilla");
+        fixture.Write($"ER0000_{first}.sl2", "first");
+        fixture.Write($"ER0000_{first}.sl2.bak", "first");
+        fixture.Write($"ER0000_{second}.sl2", "second");
+        fixture.Vm.RefreshCommand.Execute().Subscribe();
+
+        fixture.Vm.LoadoutNameOf(fixture.Vm.Files.Single(f => f.Name == $"ER0000_{first}.sl2")).Should().Be("Saves Group First");
+        fixture.Vm.LoadoutNameOf(fixture.Vm.Files.Single(f => f.Name == "ER0000.sl2")).Should().BeEmpty();
+        fixture.Vm.Files.Should().HaveCount(4, "no filter is the default");
+
+        fixture.Vm.SelectedLoadoutFilter = fixture.Vm.LoadoutFilters.Single(f => f.Name == "Saves Group First");
+        fixture.Vm.Files.Select(f => f.Name).Should().BeEquivalentTo($"ER0000_{first}.sl2", $"ER0000_{first}.sl2.bak");
+
+        fixture.Vm.SelectedLoadoutFilter = fixture.Vm.LoadoutFilters.Single(f => f.Slot == LoadoutFilterItem.NoLoadout);
+        fixture.Vm.Files.Select(f => f.Name).Should().Equal("ER0000.sl2");
+    }
+
+    [Fact]
+    public async Task ASaveOfADeletedLoadoutIsStillListedAndNamedByItsSlot()
+    {
+        using var fixture = new Fixture(Provider, steamRunning: false);
+        await SeedLoadoutSlot(fixture, "Saves Group Alive");
+        fixture.Write("ER0000_ffffffffffffff.sl2", "orphan");
+        fixture.Vm.RefreshCommand.Execute().Subscribe();
+
+        var orphan = fixture.Vm.Files.Single(f => f.LoadoutSlot == "ffffffffffffff");
+        fixture.Vm.LoadoutNameOf(orphan).Should().Contain("ffffffffffffff").And.Contain("Deleted loadout");
+        fixture.Vm.LoadoutFilters.Should().Contain(f => f.Slot == "ffffffffffffff");
+    }
+
+    [Fact]
+    public async Task TheLoadoutFilterSurvivesARefresh()
+    {
+        using var fixture = new Fixture(Provider, steamRunning: false);
+        var slot = await SeedLoadoutSlot(fixture, "Saves Group Sticky");
+        fixture.Write("ER0000.sl2", "vanilla");
+        fixture.Write($"ER0000_{slot}.sl2", "mine");
+        fixture.Vm.RefreshCommand.Execute().Subscribe();
+        fixture.Vm.SelectedLoadoutFilter = fixture.Vm.LoadoutFilters.Single(f => f.Slot == slot);
+
+        fixture.Vm.RefreshCommand.Execute().Subscribe();
+
+        fixture.Vm.SelectedLoadoutFilter!.Slot.Should().Be(slot);
+        fixture.Vm.Files.Should().ContainSingle().Which.Name.Should().Be($"ER0000_{slot}.sl2");
     }
 
     [Fact]

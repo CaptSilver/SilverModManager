@@ -4775,5 +4775,167 @@ namespace SilverModManager.App.UI.Resources {
                 return ResourceManager.GetString("FileConflicts_Refused_RemoveAndMove", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Keep saves with this loadout.
+        /// </summary>
+        public static string LoadoutGameSettings_KeepSaves_Label {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_KeepSaves_Label", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Each loadout plays its own saves, kept apart from the others..
+        /// </summary>
+        public static string LoadoutGameSettings_KeepSaves_ToolTip {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_KeepSaves_ToolTip", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Steam Cloud may not sync saves kept in a subfolder..
+        /// </summary>
+        public static string LoadoutGameSettings_KeepSaves_CloudCaveat {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_KeepSaves_CloudCaveat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This game cannot keep saves apart per loadout..
+        /// </summary>
+        public static string LoadoutGameSettings_KeepSaves_NotSupported {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_KeepSaves_NotSupported", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Own the game INIs.
+        /// </summary>
+        public static string LoadoutGameSettings_OwnInis_Label {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_OwnInis_Label", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The loadout writes the game's INI files from its own copy each time it is applied. Turn this off to leave them to the game..
+        /// </summary>
+        public static string LoadoutGameSettings_OwnInis_ToolTip {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_OwnInis_ToolTip", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Copy your current save into this loadout's slot?.
+        /// </summary>
+        public static string LoadoutGameSettings_AdoptSave_Title {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_AdoptSave_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} to {1}.
+        /// </summary>
+        public static string LoadoutGameSettings_AdoptSave_Copy {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_AdoptSave_Copy", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Delete the saves of this loadout?.
+        /// </summary>
+        public static string LoadoutGameSettings_DeleteSaves_Title {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_DeleteSaves_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Also delete the saves for this loadout at {0}?.
+        /// </summary>
+        public static string LoadoutGameSettings_DeleteSaves_Text {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_DeleteSaves_Text", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} already exists, so the save was not copied over it..
+        /// </summary>
+        public static string LoadoutGameSettings_AlreadyThere {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_AlreadyThere", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Could not copy {0}: {1}.
+        /// </summary>
+        public static string LoadoutGameSettings_CopyFailed {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_CopyFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Could not delete {0}: {1}.
+        /// </summary>
+        public static string LoadoutGameSettings_DeleteFailed {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_DeleteFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The save was not copied.
+        /// </summary>
+        public static string LoadoutGameSettings_CopyRefusedTitle {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_CopyRefusedTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The saves were not deleted.
+        /// </summary>
+        public static string LoadoutGameSettings_DeleteRefusedTitle {
+            get {
+                return ResourceManager.GetString("LoadoutGameSettings_DeleteRefusedTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to All saves.
+        /// </summary>
+        public static string FromSoftSaves_AllSaves {
+            get {
+                return ResourceManager.GetString("FromSoftSaves_AllSaves", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Not tied to a loadout.
+        /// </summary>
+        public static string FromSoftSaves_NoLoadout {
+            get {
+                return ResourceManager.GetString("FromSoftSaves_NoLoadout", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Deleted loadout ({0}).
+        /// </summary>
+        public static string FromSoftSaves_DeletedLoadout {
+            get {
+                return ResourceManager.GetString("FromSoftSaves_DeletedLoadout", resourceCulture);
+            }
+        }
     }
 }

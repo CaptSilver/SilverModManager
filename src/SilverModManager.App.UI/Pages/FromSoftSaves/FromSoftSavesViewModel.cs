@@ -4,8 +4,10 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Extensions;
+using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Games.FromSoft;
@@ -36,6 +38,8 @@ public partial class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewM
     [Reactive] public partial string Problem { get; private set; } = "";
     [Reactive] public partial IReadOnlyList<SaveFolder> Folders { get; private set; } = [];
     [Reactive] public partial SaveFolder? SelectedFolder { get; set; }
+    [Reactive] public partial IReadOnlyList<LoadoutFilterItem> LoadoutFilters { get; private set; } = [LoadoutFilterItem.All];
+    [Reactive] public partial LoadoutFilterItem? SelectedLoadoutFilter { get; set; } = LoadoutFilterItem.All;
     [Reactive] public partial IReadOnlyList<SaveFileEntry> Files { get; private set; } = [];
     [Reactive] public partial SaveFileEntry? SelectedFile { get; set; }
     [Reactive] public partial IReadOnlyList<SaveBackup> Backups { get; private set; } = [];
@@ -71,7 +75,7 @@ public partial class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewM
             if (id != default) Installation = Loadout.Load(_conn.Db, id).InstallationInstance;
         });
         this.WhenAnyValue(vm => vm.Installation).Subscribe(_ => Refresh());
-        this.WhenAnyValue(vm => vm.SelectedFolder).Subscribe(folder => Files = folder?.Files ?? []);
+        this.WhenAnyValue(vm => vm.SelectedFolder, vm => vm.SelectedLoadoutFilter).Subscribe(_ => ApplyLoadoutFilter());
         // The installation is in here because the reasons name its game's vanilla save.
         this.WhenAnyValue(vm => vm.SelectedFile, vm => vm.IsSteamRunning, vm => vm.Installation).Subscribe(_ => ApplyQuarantineState());
 
@@ -103,6 +107,9 @@ public partial class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewM
             Problem = "";
             Folders = [];
             Backups = [];
+            LoadoutFilters = [LoadoutFilterItem.All];
+            SelectedLoadoutFilter = LoadoutFilterItem.All;
+            _loadoutNames = new Dictionary<string, string>();
             SelectedFolder = null;
             SelectedFile = null;
             HasTaintedSave = false;
@@ -116,6 +123,10 @@ public partial class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewM
         var listing = _saves.List(installation);
         Problem = listing.Problem;
         Folders = listing.Folders;
+
+        var selectedSlot = SelectedLoadoutFilter?.Slot;
+        (LoadoutFilters, _loadoutNames) = BuildLoadoutFilters(installation, Folders);
+        SelectedLoadoutFilter = LoadoutFilters.FirstOrDefault(f => f.Slot == selectedSlot) ?? LoadoutFilterItem.All;
 
         // The same folder and file stay selected across a refresh, as far as they still exist.
         SelectedFolder = Folders.FirstOrDefault(f => f.Folder == selectedFolder) ?? Folders.FirstOrDefault();
@@ -139,6 +150,36 @@ public partial class FromSoftSavesViewModel : APageViewModel<IFromSoftSavesViewM
         }
 
         IsSteamRunning = _saves.IsSteamRunning();
+    }
+
+    private IReadOnlyDictionary<string, string> _loadoutNames = new Dictionary<string, string>();
+
+    public string LoadoutNameOf(SaveFileEntry file)
+        => file.LoadoutSlot is not { } slot ? "" : _loadoutNames.TryGetValue(slot, out var name) ? name : string.Format(Language.FromSoftSaves_DeletedLoadout, slot);
+
+    // The files shown are those of the selected folder that belong to the selected loadout; "all" shows every one.
+    private void ApplyLoadoutFilter()
+    {
+        var filter = SelectedLoadoutFilter ?? LoadoutFilterItem.All;
+        Files = SelectedFolder?.Files.Where(file => filter.Slot is null || (filter.Slot == LoadoutFilterItem.NoLoadout ? file.LoadoutSlot is null : file.LoadoutSlot == filter.Slot)).ToArray() ?? [];
+    }
+
+    // Slots come from the file names, names from the loadouts of the installation. A slot whose loadout is gone is still listed, so its saves can be found and backed up.
+    private (IReadOnlyList<LoadoutFilterItem> Filters, IReadOnlyDictionary<string, string> Names) BuildLoadoutFilters(GameInstallation installation, IReadOnlyList<SaveFolder> folders)
+    {
+        var path = installation.LocatorResult.Path.ToString();
+        var names = Loadout.All(_conn.Db)
+            .Where(loadout => loadout.IsVisible() && loadout.Installation.Path == path)
+            .ToDictionary(LoadoutSaveSlot.IdOf, loadout => loadout.Name);
+
+        var filters = new List<LoadoutFilterItem> { LoadoutFilterItem.All, new(LoadoutFilterItem.NoLoadout, Language.FromSoftSaves_NoLoadout) };
+        filters.AddRange(folders.SelectMany(folder => folder.Files)
+            .Select(file => file.LoadoutSlot)
+            .OfType<string>()
+            .Distinct()
+            .Select(slot => new LoadoutFilterItem(slot, names.TryGetValue(slot, out var name) ? name : string.Format(Language.FromSoftSaves_DeletedLoadout, slot)))
+            .OrderBy(filter => filter.Name, StringComparer.CurrentCultureIgnoreCase));
+        return (filters, names);
     }
 
     // Falls back to a generic name when no FromSoft installation is set, where the page lists nothing to act on anyway.

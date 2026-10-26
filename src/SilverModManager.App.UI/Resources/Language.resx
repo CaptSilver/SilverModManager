@@ -1659,4 +1659,58 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="FileConflicts_Refused_RemoveAndMove" xml:space="preserve">
         <value>Remove the rule and move</value>
     </data>
+    <data name="LoadoutGameSettings_KeepSaves_Label" xml:space="preserve">
+        <value>Keep saves with this loadout</value>
+    </data>
+    <data name="LoadoutGameSettings_KeepSaves_ToolTip" xml:space="preserve">
+        <value>Each loadout plays its own saves, kept apart from the others.</value>
+    </data>
+    <data name="LoadoutGameSettings_KeepSaves_CloudCaveat" xml:space="preserve">
+        <value>Steam Cloud may not sync saves kept in a subfolder.</value>
+    </data>
+    <data name="LoadoutGameSettings_KeepSaves_NotSupported" xml:space="preserve">
+        <value>This game cannot keep saves apart per loadout.</value>
+    </data>
+    <data name="LoadoutGameSettings_OwnInis_Label" xml:space="preserve">
+        <value>Own the game INIs</value>
+    </data>
+    <data name="LoadoutGameSettings_OwnInis_ToolTip" xml:space="preserve">
+        <value>The loadout writes the game's INI files from its own copy each time it is applied. Turn this off to leave them to the game.</value>
+    </data>
+    <data name="LoadoutGameSettings_AdoptSave_Title" xml:space="preserve">
+        <value>Copy your current save into this loadout's slot?</value>
+    </data>
+    <data name="LoadoutGameSettings_AdoptSave_Copy" xml:space="preserve">
+        <value>{0} to {1}</value>
+    </data>
+    <data name="LoadoutGameSettings_DeleteSaves_Title" xml:space="preserve">
+        <value>Delete the saves of this loadout?</value>
+    </data>
+    <data name="LoadoutGameSettings_DeleteSaves_Text" xml:space="preserve">
+        <value>Also delete the saves for this loadout at {0}?</value>
+    </data>
+    <data name="LoadoutGameSettings_AlreadyThere" xml:space="preserve">
+        <value>{0} already exists, so the save was not copied over it.</value>
+    </data>
+    <data name="LoadoutGameSettings_CopyFailed" xml:space="preserve">
+        <value>Could not copy {0}: {1}</value>
+    </data>
+    <data name="LoadoutGameSettings_DeleteFailed" xml:space="preserve">
+        <value>Could not delete {0}: {1}</value>
+    </data>
+    <data name="LoadoutGameSettings_CopyRefusedTitle" xml:space="preserve">
+        <value>The save was not copied</value>
+    </data>
+    <data name="LoadoutGameSettings_DeleteRefusedTitle" xml:space="preserve">
+        <value>The saves were not deleted</value>
+    </data>
+    <data name="FromSoftSaves_AllSaves" xml:space="preserve">
+        <value>All saves</value>
+    </data>
+    <data name="FromSoftSaves_NoLoadout" xml:space="preserve">
+        <value>Not tied to a loadout</value>
+    </data>
+    <data name="FromSoftSaves_DeletedLoadout" xml:space="preserve">
+        <value>Deleted loadout ({0})</value>
+    </data>
 </root>
