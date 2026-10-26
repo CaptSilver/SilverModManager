@@ -15,7 +15,7 @@
     xmlns:windows="clr-namespace:SilverModManager.App.UI.Windows"
     xmlns:workspace="clr-namespace:SilverModManager.App.UI.WorkspaceSystem"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Background="{StaticResource SurfaceBaseBrush}">
+    Background="{StaticResource SurfaceWindowBrush}">
 
     <Design.DataContext>
         <!--

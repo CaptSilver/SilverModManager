@@ -17,6 +17,8 @@
     <!-- Neutral/Solid -->
 
     <!-- Colors -->
+    <!-- The main window's frame: top bar, spine and the gutters between its raised panels -->
+    <StaticResource x:Key="SurfaceWindow" ResourceKey="BrandNeutral1000" />
     <StaticResource x:Key="SurfaceBase" ResourceKey="BrandNeutral950" />
     <StaticResource x:Key="SurfaceLow" ResourceKey="BrandNeutral900" />
     <StaticResource x:Key="SurfaceMid" ResourceKey="BrandNeutral800" />
@@ -24,6 +26,7 @@
     <StaticResource x:Key="SurfaceInverted" ResourceKey="BrandNeutral50" />
 
     <!-- SolidColorBrushes -->
+    <SolidColorBrush x:Key="SurfaceWindowBrush" Color="{StaticResource SurfaceWindow}" />
     <SolidColorBrush x:Key="SurfaceBaseBrush" Color="{StaticResource SurfaceBase}" />
     <SolidColorBrush x:Key="SurfaceLowBrush" Color="{StaticResource SurfaceLow}" />
     <SolidColorBrush x:Key="SurfaceMidBrush" Color="{StaticResource SurfaceMid}" />

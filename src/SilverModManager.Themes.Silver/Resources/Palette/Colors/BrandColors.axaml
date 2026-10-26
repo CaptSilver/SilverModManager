@@ -9,6 +9,7 @@
     <!-- Neutral -->
 
     <!-- Colors -->
+    <StaticResource x:Key="BrandNeutral1000" ResourceKey="PrimitiveGunmetal1000" />
     <StaticResource x:Key="BrandNeutral950" ResourceKey="PrimitiveGunmetal950" />
     <StaticResource x:Key="BrandNeutral900" ResourceKey="PrimitiveGunmetal900" />
     <StaticResource x:Key="BrandNeutral800" ResourceKey="PrimitiveGunmetal800" />

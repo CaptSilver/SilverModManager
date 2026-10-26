@@ -77,16 +77,45 @@ public class MainWindowLayoutTests(IServiceProvider provider) : AUiTest(provider
         });
     }
 
+    private static Color ThemeColor(string key) => ((SolidColorBrush)Application.Current!.FindResource(key)!).Color;
+
+    // WCAG relative luminance and contrast ratio, so "clearly darker" is a number rather than a hex comparison.
+    private static double Luminance(Color color)
+    {
+        static double Channel(byte value)
+        {
+            var c = value / 255.0;
+            return c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+        }
+
+        return 0.2126 * Channel(color.R) + 0.7152 * Channel(color.G) + 0.0722 * Channel(color.B);
+    }
+
+    private static double Contrast(Color a, Color b)
+    {
+        var (light, dark) = Luminance(a) >= Luminance(b) ? (Luminance(a), Luminance(b)) : (Luminance(b), Luminance(a));
+        return (light + 0.05) / (dark + 0.05);
+    }
+
     [Fact]
-    public async Task TheWindowBaseStaysTheDarkestSurface()
+    public async Task TheWindowBaseIsItsOwnDarkSurface()
     {
         await OnUi(() =>
         {
             var window = new MainWindow();
-            var baseColor = ((SolidColorBrush)Application.Current!.FindResource("SurfaceBaseBrush")!).Color;
 
-            window.Background.Should().BeOfType<SolidColorBrush>().Which.Color.Should().Be(baseColor);
+            window.Background.Should().BeOfType<SolidColorBrush>().Which.Color.Should().Be(ThemeColor("SurfaceWindowBrush"));
             Panel(window, "SpineBorder").Background.Should().BeNull("the spine sits on the window base");
+        });
+    }
+
+    [Fact]
+    public async Task TheGuttersReadClearlyDarkerThanThePanels()
+    {
+        await OnUi(() =>
+        {
+            Contrast(ThemeColor("SurfaceWindowBrush"), ThemeColor("SurfaceLowBrush"))
+                .Should().BeGreaterThanOrEqualTo(1.25, "the dark base between the panels has to be visible at a glance");
         });
     }
 

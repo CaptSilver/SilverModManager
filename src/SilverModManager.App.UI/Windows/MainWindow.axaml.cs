@@ -32,7 +32,7 @@ public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
 
         this.WhenActivated(disposables =>
         {
-            ViewModel?.Glass.Attach(this, "SurfaceBase").DisposeWith(disposables);
+            ViewModel?.Glass.Attach(this, "SurfaceWindow").DisposeWith(disposables);
 
             var storageProvider = GetTopLevel(this)?.StorageProvider;
             var clipboard = GetTopLevel(this)?.Clipboard;

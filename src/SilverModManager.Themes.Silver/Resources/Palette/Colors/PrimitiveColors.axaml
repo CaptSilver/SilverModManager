@@ -34,6 +34,8 @@
     <Color x:Key="PrimitiveSilver50">#F4F6F8</Color>
 
     <!-- Gunmetal: the icon tile and ink -->
+    <!-- Darker than the icon ramp: only the main window's frame and the gutters between its panels -->
+    <Color x:Key="PrimitiveGunmetal1000">#0E1013</Color>
     <Color x:Key="PrimitiveGunmetal950">#1F2328</Color>
     <Color x:Key="PrimitiveGunmetal900">#23272D</Color>
     <Color x:Key="PrimitiveGunmetal800">#2D323A</Color>

@@ -102,7 +102,7 @@ public class HeadlessRenderTests : AUiTest
             window.OverlayBorder.IsVisible = false;
             ShowRendered(window);
             Render(window);
-            baseColour = ThemeColour(window, "SurfaceBase");
+            baseColour = ThemeColour(window, "SurfaceWindow");
             raised = ThemeColour(window, "SurfaceLow");
 
             using var bitmap = new RenderTargetBitmap(new PixelSize(Width, Height));
