@@ -380,7 +380,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
         if (game is not null && index == dumpBytes.Count) return ServedFromGame(game, relPath, notes, distance, candidates.Count);
 
         var chosen = ranked[index];
-        if (distance is { } measured) notes?.Add(new VanillaNearestChosen(relPath, $"archive {chosen.ArchiveName}", measured, candidates.Count));
+        if (distance is { } measured) notes?.Add(new VanillaNearestChosen($"archive {chosen.ArchiveName}", measured, candidates.Count));
         return ServedFromDumpOf(chosen, relPath, notes);
     }
 
@@ -393,7 +393,7 @@ public class LoadoutMergeSources(IFileStore fileStore, RegulationBaselines basel
     private static byte[] ServedFromGame(byte[] bytes, string relPath, ICollection<IMergeNote>? notes, long? distance = null, int of = 1)
     {
         notes?.Add(new VanillaServedFromGameArchive(relPath));
-        if (distance is { } measured) notes?.Add(new VanillaNearestChosen(relPath, "the game's own archives", measured, of));
+        if (distance is { } measured) notes?.Add(new VanillaNearestChosen("the game's own archives", measured, of));
         return bytes;
     }
 

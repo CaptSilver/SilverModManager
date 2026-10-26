@@ -113,10 +113,10 @@ public sealed record VanillaServedFromGameArchive(string Path) : IVanillaSourceN
 /// <param name="Source">Where the chosen copy came from, as a phrase.</param>
 /// <param name="Distance">How far the contributors' files are from it: differing state groups, text entries or textures, summed over the contributors.</param>
 /// <param name="Of">How many copies were on offer.</param>
-public sealed record VanillaNearestChosen(string Path, string Source, long Distance, int Of) : IMergeNote
+public sealed record VanillaNearestChosen(string Source, long Distance, int Of) : IMergeNote
 {
     public string Describe() =>
-        $"{Path}: {Of} vanilla copies were on offer; compared the mods against {Source}, which they differ from least ({Distance})";
+        $"{Of} vanilla copies were on offer; compared the mods against {Source}, which they differ from least ({Distance})";
 }
 
 /// <summary>

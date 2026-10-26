@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Games.FromSoft.Diagnostics;
 using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.Games.FromSoft.Tests.Fixtures;
 using SilverModManager.Sdk.Loadouts;
@@ -17,6 +19,8 @@ public class LoadoutMergeSourcesNearestVanillaTests(ITestOutputHelper helper) : 
     private LoadoutMergeSources Sources => ServiceProvider.GetRequiredService<LoadoutMergeSources>();
 
     private MergePlanCache Plans => ServiceProvider.GetRequiredService<MergePlanCache>();
+
+    private MergeDiagnosticsEmitter Emitter => ServiceProvider.GetServices<IFromSoftDiagnosticEmitter>().OfType<MergeDiagnosticsEmitter>().Single();
 
     private static byte[] Bytes(string text) => System.Text.Encoding.UTF8.GetBytes(text);
 
@@ -132,10 +136,30 @@ public class LoadoutMergeSourcesNearestVanillaTests(ITestOutputHelper helper) : 
         nearest.Of.Should().Be(2);
         nearest.Distance.Should().BePositive();
         nearest.Describe().Should().Contain("Old.zip").And.Contain(nearest.Distance.ToString());
+        nearest.Describe().Should().NotContain(TalkPath, "the report entry and the Health Check diagnostic already name the path");
         var plan = Plans.Current(loadout, MergeSourceMode.Report);
         plan.Unmerged.Should().BeEmpty();
         plan.Merged.Should().ContainSingle(m => m.Path == TalkPath);
     }
+
+    [Fact]
+    public async Task TheHealthCheckNoteOnTheChosenCopyNamesThePathOnce()
+    {
+        KeepValidatedBaseline(OlderVersion, Regulation(OlderVersion, 0xB0), "Old.zip: Vanilla/regulation.bin");
+        var loadout = await TalkMods(Remover, Adder);
+        await AddDump("Old", Regulation(OlderVersion, 0xB0), Old);
+        await AddDump("Current", EldenRingInstall.RegulationFile, Patched);
+
+        var diagnostics = new List<Diagnostic>();
+        await foreach (var diagnostic in Emitter.Diagnose(Refresh(loadout), CancellationToken.None)) diagnostics.Add(diagnostic);
+
+        var writer = new PlainDiagnosticWriter();
+        var choice = diagnostics.Should().ContainSingle(d => d.FormatSummary(writer, DiagnosticWriterMode.PlainText).Contains("vanilla copies were on offer")).Which;
+        Occurrences(choice.FormatSummary(writer, DiagnosticWriterMode.PlainText), TalkPath).Should().Be(1);
+        Occurrences(choice.FormatDetails(writer, DiagnosticWriterMode.PlainText), TalkPath).Should().Be(1);
+    }
+
+    private static int Occurrences(string text, string value) => text.Split(value).Length - 1;
 
     [Fact]
     public async Task TheNewerCopyAloneStillFailsTheMergeNoBaseCanKeepWhole()
