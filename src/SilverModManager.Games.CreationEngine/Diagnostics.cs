@@ -169,4 +169,26 @@ Turn off "Own the game INIs" for the loadout to leave these files to the game.
             .AddValue<string>("Files")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate GameIniChangesReplaced = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 8))
+        .WithTitle("Game's ini changes will be replaced")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("The game changed settings in {File} that the app sets itself")
+        .WithDetails("""
+Since the loadout was last applied, the game changed settings in **{File}** that the app does not leave to the game:
+
+{Settings}
+
+The next apply writes the app's value over each of them. Settings in the file that nothing else sets are kept: the
+loadout adopts them into its own copy of the file.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("File")
+            .AddValue<string>("Settings")
+        )
+        .Finish();
 }

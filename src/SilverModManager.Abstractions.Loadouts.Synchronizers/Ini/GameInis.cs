@@ -70,10 +70,13 @@ public static class GameInis
         }
     }
 
-    /// <summary>The bytes the game should find at <paramref name="path"/> for <paramref name="loadout"/>.</summary>
-    public static async Task<byte[]> Render(IGameIniFiles game, IFileStore fileStore, Loadout.ReadOnly loadout, GamePath path)
+    /// <summary>
+    /// The bytes the game should find at <paramref name="path"/> for <paramref name="loadout"/>, built from
+    /// <paramref name="baseline"/> when given and from the loadout's stored baseline otherwise.
+    /// </summary>
+    public static async Task<byte[]> Render(IGameIniFiles game, IFileStore fileStore, Loadout.ReadOnly loadout, GamePath path, byte[]? baseline = null)
     {
-        var ini = IniDocument.Parse(await LoadBaseline(fileStore, loadout, path));
+        var ini = IniDocument.Parse(baseline ?? await LoadBaseline(fileStore, loadout, path));
 
         foreach (var layer in IniTweakLayers.For(loadout, path))
             ini.Merge(IniDocument.Parse(await fileStore.Load(layer.Hash)));
@@ -93,6 +96,65 @@ public static class GameInis
             throw new IniBaselineMissingException(path);
         return await fileStore.Load(state.Baseline);
     }
+
+    /// <summary>The loadout's state row for <paramref name="path"/>, or null when it has no copy of that INI.</summary>
+    public static LoadoutIniState.ReadOnly? StateOf(Loadout.ReadOnly loadout, GamePath path) =>
+        StatesByPath(loadout).TryGetValue(path, out var state) ? state : null;
+
+    /// <summary>
+    /// What the app last wrote to <paramref name="path"/>, as the file store holds it: the bytes of
+    /// <paramref name="deployed"/> when the store has them, which is what the disk state recorded for the last
+    /// write, otherwise the bake recorded on the row. Null when the app has not written the file yet.
+    /// </summary>
+    /// <remarks>
+    /// The deployed hash comes first because <see cref="Prepare"/> records the bake for the apply that is about to
+    /// run before an ingest looks at it, so after a tweak was switched the recorded bake describes the next write,
+    /// not the file the game changed.
+    /// </remarks>
+    public static async Task<byte[]?> LastWrittenBytes(IFileStore fileStore, LoadoutIniState.ReadOnly state, Hash? deployed)
+    {
+        if (deployed is { } hash && await fileStore.HaveFile(hash)) return await fileStore.Load(hash);
+        return LoadoutIniState.LastBakedHash.TryGetValue(state, out var baked) && await fileStore.HaveFile(baked)
+            ? await fileStore.Load(baked)
+            : null;
+    }
+
+    /// <summary>
+    /// The settings of the file the game left, <paramref name="live"/>, that differ from what the app last wrote,
+    /// <paramref name="written"/>, sorted by what the next apply does with each. Settings the game removed are
+    /// not changes: the next write puts them back.
+    /// </summary>
+    public static async Task<IReadOnlyList<GameIniChange>> ChangesByGame(
+        IGameIniFiles game, IFileStore fileStore, Loadout.ReadOnly loadout, GamePath path, byte[] live, byte[] written)
+    {
+        var left = IniDocument.Parse(live);
+        var last = IniDocument.Parse(written);
+
+        var managed = game.ManagedKeysFile == path ? game.ManagedKeys(loadout) : [];
+        var tweaks = new List<(string Name, IniDocument Document)>();
+        foreach (var layer in IniTweakLayers.For(loadout, path))
+            tweaks.Add((layer.Name, IniDocument.Parse(await fileStore.Load(layer.Hash))));
+
+        var changes = new List<GameIniChange>();
+        foreach (var section in left.Sections)
+        {
+            foreach (var (key, value) in left.Entries(section).DistinctBy(e => e.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                if (last.Get(section, key) == value) continue;
+
+                if (managed.Any(m => Same(m.Section, section) && Same(m.Key, key)))
+                    changes.Add(new GameIniChange(GameIniChangeKind.ManagedKeyReset, section, key, value));
+                else if (tweaks.LastOrDefault(t => t.Document.Get(section, key) is not null) is { Name: not null } owner)
+                    changes.Add(new GameIniChange(GameIniChangeKind.TweakOverrides, section, key, value, owner.Name));
+                else
+                    changes.Add(new GameIniChange(GameIniChangeKind.Adopted, section, key, value));
+            }
+        }
+
+        return changes;
+    }
+
+    private static bool Same(string a, string b) => a.Equals(b, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The INI files of the game, as the paths the loadout stores them under.</summary>
     public static IReadOnlyList<GamePath> Paths(IGameIniFiles game) => game.IniFiles.FileNames.Select(game.IniPath).ToList();

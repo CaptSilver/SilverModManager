@@ -174,6 +174,7 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
         yield return new MissingMasterEmitter(this);
         yield return new PluginListReplacedEmitter(this);
         yield return new GameInisTakenOverEmitter(this);
+        yield return new GameIniChangedByGameEmitter(this, provider);
         if (TestFileIniFiles.Count > 0)
             yield return new TestFileEntriesEmitter(this);
         foreach (var emitter in base.CreateEmitters(provider))
