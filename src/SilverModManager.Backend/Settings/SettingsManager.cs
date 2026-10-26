@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -18,7 +19,8 @@ internal class SettingsManager : ISettingsManager
     private readonly ILogger _logger;
 
     private readonly Subject<(SettingKey, object)> _subject = new();
-    private readonly Dictionary<SettingKey, object> _values = new();
+    // Read and written from the UI thread, jobs and the task pool alike.
+    private readonly ConcurrentDictionary<SettingKey, object> _values = new();
 
     private readonly FrozenDictionary<SettingKey, Func<object, object>> _overrides;
 
