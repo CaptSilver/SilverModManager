@@ -207,6 +207,16 @@ public class LoadoutMergeSourcesArchiveVanillaTests(ITestOutputHelper helper) : 
         archives.Find(Connection.Db, Formats, OlderVersion, new HashSet<NexusMods.Hashing.xxHash3.Hash>()).Should().ContainSingle().Which.Member.Should().Be(Member);
     }
 
+    [Fact]
+    public async Task AnArchiveRegulationIsNamedByItsLibraryItem()
+    {
+        await RenameLibraryItem(await AddArchive("Randomizer", (Member, Table(OlderVersion))), "Randomizer 1.2");
+
+        ServiceProvider.GetRequiredService<ArchiveVanillas>()
+            .Find(Connection.Db, Formats, OlderVersion, new HashSet<NexusMods.Hashing.xxHash3.Hash>())
+            .Should().ContainSingle().Which.ArchiveName.Should().Be("Randomizer 1.2");
+    }
+
     // Rows 1..60 filled with their own id, with the given rows filled with another byte instead.
     private static byte[] Edited(string version, params (int Id, byte Fill)[] edits)
         => RegulationFixture.Build(new Dictionary<int, (string, IReadOnlyDictionary<int, byte[]>, int)>

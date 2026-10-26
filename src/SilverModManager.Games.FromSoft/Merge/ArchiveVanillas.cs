@@ -8,7 +8,7 @@ using SilverModManager.Sdk.Library;
 namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>A regulation inside a library archive that carries the build stamp being looked for.</summary>
-/// <param name="ArchiveName">The archive's file name.</param>
+/// <param name="ArchiveName">The name of the archive's library item, for display.</param>
 /// <param name="Member">The file's path inside the archive.</param>
 /// <param name="Hash">Its hash in the file store.</param>
 public sealed record ArchiveRegulation(string ArchiveName, string Member, Hash Hash)
@@ -51,7 +51,7 @@ public sealed class ArchiveVanillas(IFileStore fileStore)
             if (except.Contains(hash) || found.ContainsKey(hash)) continue;
             if (!VersionOf(hash, traits).Equals(version, StringComparison.Ordinal)) continue;
 
-            found[hash] = new ArchiveRegulation(entry.Parent.AsLibraryFile().FileName.ToString(), path, hash);
+            found[hash] = new ArchiveRegulation(VanillaDumps.DisplayName(entry.Parent), path, hash);
         }
 
         return found.Values.OrderByDescending(r => r.InVanillaFolder).ToArray();

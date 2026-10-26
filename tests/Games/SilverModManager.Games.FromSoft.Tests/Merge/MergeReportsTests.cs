@@ -223,7 +223,22 @@ public class MergeReportsTests(ITestOutputHelper helper) : AVanillaDumpTest<Merg
         var entry = report.Entries.Should().ContainSingle().Which;
         entry.Outcome.Should().Be(MergeReportOutcome.NotMergeable);
         entry.Reason.Should().Be(MergeOutcome.NoVanillaSource);
-        entry.Notes.Should().Equal($"archive Dump.zip holds a regulation.bin of version {OlderVersion} the app cannot confirm as vanilla");
+        entry.Notes.Should().Equal($"archive Dump.zip holds a regulation.bin of version {OlderVersion} the app cannot confirm as vanilla, so its copy of {Talk} was not used");
+    }
+
+    [Fact]
+    public async Task ADumpNothingVouchesForIsOnlyNamedUnderThePathsItHoldsACopyOf()
+    {
+        var loadout = await CreateLoadout();
+        await AddArchive("Dump", ("Vanilla/regulation.bin", Regulation(OlderVersion, 0xB0)), ("Vanilla/m10.talkesdbnd.dcx", [7, 8, 9]));
+        await InstallPackage(loadout.LoadoutId, "Alpha", (Talk, [1, 2, 3]));
+        await InstallPackage(loadout.LoadoutId, "Beta", (Talk, [4, 5, 6]));
+
+        var report = await Reports.ForLoadout(loadout.LoadoutId, CancellationToken.None);
+
+        var entry = report.Entries.Should().ContainSingle().Which;
+        entry.Reason.Should().Be(MergeOutcome.NoVanillaSource);
+        entry.Notes.Should().BeEmpty("the dump has no copy of this talk file");
     }
 
     [Fact]

@@ -40,6 +40,14 @@ public abstract class AVanillaDumpTest<TTest>(ITestOutputHelper helper) : AModde
         return await RegisterLocalArchive(path);
     }
 
+    /// <summary>Gives the archive's library item a name unlike the file's, as a Nexus download has (its file is stored under a temporary name).</summary>
+    protected async Task RenameLibraryItem(LibraryArchive.ReadOnly archive, string name)
+    {
+        using var tx = Connection.BeginTransaction();
+        tx.Add(archive.Id, LibraryItem.Name, name);
+        await tx.Commit();
+    }
+
     protected async Task<LoadoutItemGroup.ReadOnly> InstallPackage(LoadoutId loadout, string name, params (string Path, byte[] Content)[] files)
     {
         var archive = await AddArchive(name, files);

@@ -48,7 +48,7 @@ public sealed class MergeReports(
         }
 
         var unconfirmed = index.Candidates.Any(c => c.Outcome.Reason == MergeOutcome.NoVanillaSource)
-            ? dumps.Unconfirmed(loadout.Db, loadout.InstallationInstance).Select(d => d.Describe()).ToArray()
+            ? dumps.Unconfirmed(loadout.Db, loadout.InstallationInstance)
             : [];
 
         var entries = index.Candidates
@@ -65,15 +65,17 @@ public sealed class MergeReports(
         return MergeRefusedException.PlanFailed(exception).Message;
     }
 
-    private static MergeReportEntry EntryOf(MergeCandidate candidate, MergePlan? plan, string? refusal, IReadOnlyList<string> unconfirmed)
+    private static MergeReportEntry EntryOf(MergeCandidate candidate, MergePlan? plan, string? refusal, IReadOnlyList<UnconfirmedDump> unconfirmed)
     {
         var strategy = candidate.Strategy is { } s ? MergeStrategies.Name(s) : string.Empty;
         var mods = candidate.Contributors.Select(c => c.ModName).Distinct(StringComparer.Ordinal).ToArray();
 
         if (!candidate.Outcome.Merges)
         {
-            // An unrecognised dump is why a file that looks mergeable has no vanilla source, so it rides on those.
-            var notes = candidate.Outcome.Reason == MergeOutcome.NoVanillaSource ? unconfirmed : [];
+            // An unrecognised dump may be why a file that looks mergeable has no vanilla source, so it rides on the files it holds a copy of.
+            var notes = candidate.Outcome.Reason == MergeOutcome.NoVanillaSource
+                ? unconfirmed.Where(d => d.HoldsCopyOf(candidate.Path)).Select(d => d.Describe(candidate.Path)).ToArray()
+                : [];
             return new MergeReportEntry(candidate.Path, strategy, mods, MergeReportOutcome.NotMergeable, notes, string.Empty, candidate.Outcome.Reason ?? string.Empty);
         }
 

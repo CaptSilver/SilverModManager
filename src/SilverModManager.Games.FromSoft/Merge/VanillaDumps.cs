@@ -14,7 +14,7 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// beside it.
 /// </summary>
 /// <param name="ArchiveId">The library archive.</param>
-/// <param name="ArchiveName">The archive's file name, for display.</param>
+/// <param name="ArchiveName">The name of the archive's library item, for display.</param>
 /// <param name="Root">The folder inside the archive that holds the regulation; empty for the archive's top.</param>
 /// <param name="Version">The build stamp of the dump's regulation.</param>
 /// <param name="Members">Every file under <paramref name="Root"/>, by its path below it.</param>
@@ -49,9 +49,15 @@ public sealed record VanillaDump(EntityId ArchiveId, string ArchiveName, string 
 }
 
 /// <summary>A folder that looks like a vanilla dump but whose regulation the app cannot vouch for.</summary>
-public sealed record UnconfirmedDump(string ArchiveName, string Root, string RegulationName, string Version)
+/// <param name="Members">Every file under <paramref name="Root"/>, by its path below it.</param>
+public sealed record UnconfirmedDump(string ArchiveName, string Root, string RegulationName, string Version, IReadOnlyDictionary<string, Hash> Members)
 {
-    public string Describe() => $"archive {ArchiveName} holds a {RegulationName} of version {Version} the app cannot confirm as vanilla";
+    /// <summary>Whether the folder has a copy of the package-relative <paramref name="path"/>, found the way <see cref="VanillaDump.TryResolve"/> finds one.</summary>
+    public bool HoldsCopyOf(string path) => new VanillaDump(default, ArchiveName, Root, Version, Members).TryResolve(path, out _, out _);
+
+    /// <summary>Says why the copy of <paramref name="path"/> in this folder was not used as the ancestor.</summary>
+    public string Describe(string path)
+        => $"archive {ArchiveName} holds a {RegulationName} of version {Version} the app cannot confirm as vanilla, so its copy of {path} was not used";
 }
 
 /// <summary>
@@ -92,11 +98,11 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
         {
             if (VersionOf(regulation, traits) is not { } version)
             {
-                logger.LogWarning("{Archive} holds a {Regulation} the app vouches for but cannot read, so it is not used as a vanilla dump", archive.AsLibraryFile().FileName, regulationName);
+                logger.LogWarning("{Archive} holds a {Regulation} the app vouches for but cannot read, so it is not used as a vanilla dump", DisplayName(archive), regulationName);
                 continue;
             }
 
-            dumps.Add(new VanillaDump(archiveId, archive.AsLibraryFile().FileName.ToString(), root, version, MembersUnder(archive, root)));
+            dumps.Add(new VanillaDump(archiveId, DisplayName(archive), root, version, MembersUnder(archive, root)));
         }
 
         return dumps;
@@ -121,7 +127,7 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
             if (!VanillaDump.FileName(root).Equals("Vanilla", StringComparison.OrdinalIgnoreCase)) continue;
             if (VersionOf(entry.AsLibraryFile().Hash, traits) is not { } version) continue;
 
-            result.Add(new UnconfirmedDump(entry.Parent.AsLibraryFile().FileName.ToString(), root, regulationName, version));
+            result.Add(new UnconfirmedDump(DisplayName(entry.Parent), root, regulationName, version, MembersUnder(entry.Parent, root)));
         }
 
         return result;
@@ -152,6 +158,12 @@ public sealed class VanillaDumps(IFileStore fileStore, IVouchedRegulations vouch
             throw new MergeException($"archive {dump.ArchiveName} holds no vanilla copy of {path}");
         return ReadBytes(hash);
     }
+
+    /// <summary>
+    /// The name the user knows the archive by. The library file keeps the name it was stored under, which for a
+    /// download is a temporary GUID name; the library item carries the readable one.
+    /// </summary>
+    internal static string DisplayName(LibraryArchive.ReadOnly archive) => archive.AsLibraryFile().AsLibraryItem().Name;
 
     private static string RootOf(string path)
     {

@@ -76,8 +76,33 @@ public class VanillaDumpsTests(ITestOutputHelper helper) : AVanillaDumpTest<Vani
 
         Dumps.Find(Connection.Db, GameInstallation).Should().BeEmpty();
         Dumps.Paths(Connection.Db, GameInstallation, ["msg/x.msgbnd.dcx"]).Should().BeEmpty();
-        Dumps.Unconfirmed(Connection.Db, GameInstallation).Should().ContainSingle().Which.Describe()
-            .Should().Be($"archive Dump.zip holds a regulation.bin of version {OlderVersion} the app cannot confirm as vanilla");
+        Dumps.Unconfirmed(Connection.Db, GameInstallation).Should().ContainSingle().Which.Describe("script/talk/m00.talkesdbnd.dcx")
+            .Should().Be($"archive Dump.zip holds a regulation.bin of version {OlderVersion} the app cannot confirm as vanilla, so its copy of script/talk/m00.talkesdbnd.dcx was not used");
+    }
+
+    [Fact]
+    public async Task AnUnconfirmedDumpSaysWhichPathsItHoldsACopyOf()
+    {
+        await AddDump("Dump", Regulation(OlderVersion, 0xB0));
+
+        var dump = Dumps.Unconfirmed(Connection.Db, GameInstallation).Should().ContainSingle().Subject;
+
+        dump.HoldsCopyOf("script/talk/m00.talkesdbnd.dcx").Should().BeTrue();
+        dump.HoldsCopyOf("msg/x.msgbnd.dcx").Should().BeTrue();
+        dump.HoldsCopyOf("script/talk/m10.talkesdbnd.dcx").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ADumpIsNamedByItsLibraryItemNotByTheNameItsFileIsStoredUnder()
+    {
+        var regulation = Regulation(OlderVersion, 0xB0);
+        KeepBaseline(OlderVersion, regulation);
+        var vouched = await AddDump("Dump", regulation);
+        await RenameLibraryItem(vouched, "Vanilla regulation dump");
+        await RenameLibraryItem(await AddArchive("Third", ("Vanilla/regulation.bin", Regulation("11611000", 0xB2))), "Unvouched dump");
+
+        Dumps.Find(Connection.Db, GameInstallation).Should().ContainSingle().Which.ArchiveName.Should().Be("Vanilla regulation dump");
+        Dumps.Unconfirmed(Connection.Db, GameInstallation).Select(d => d.ArchiveName).Should().Contain("Unvouched dump");
     }
 
     [Fact]
