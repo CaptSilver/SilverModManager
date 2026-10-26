@@ -29,6 +29,13 @@ public static class ReadOnlyTools
             "Shows the steps that would bring a FromSoft loadout's merged regulation onto the installed game build, without changing anything. " +
             "Find the loadout with loadouts_list.",
             readOnly: true, ["fromsoft", "heal"], takesLoadout: true, context.Limits.SlowReadTimeout, flags: ["--dry-run"], reportsExitOne: true),
+        VerbTool.Create(context, "games_list",
+            "Lists, as JSON, the games found on this machine with their store and install folder.",
+            readOnly: true, ["games", "list"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"]),
+        VerbTool.Create(context, "loadout_health_check",
+            "Runs the Health Check on a loadout again and returns, as JSON, the problems and suggestions it finds. " +
+            "Find the loadout with loadouts_list.",
+            readOnly: true, ["loadout", "diagnostics"], takesLoadout: true, context.Limits.SlowReadTimeout, flags: ["--refresh", "--json"]),
         VerbTool.Create(context, "doctor",
             "Reports, as JSON, how each managed game would launch: prefix, Proton, tool runner, Steam launch options and launch lock.",
             readOnly: true, ["doctor"], takesLoadout: false, context.Limits.ReadTimeout, flags: ["--json"], reportsExitOne: true),

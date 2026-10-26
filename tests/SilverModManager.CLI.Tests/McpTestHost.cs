@@ -35,6 +35,7 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddOptionParser<string>(s => (s, null))
             .AddModule("loadout", "Loadout verbs")
             .AddModule("loadouts", "Loadouts verbs")
+            .AddModule("games", "Games verbs")
             .AddModule("fromsoft", "FromSoft verbs")
             .AddModule("fromsoft merge", "Merge verbs")
             .AddModule("fromsoft vanilla", "Vanilla verbs")
@@ -44,6 +45,9 @@ public sealed class McpTestHost : IAsyncDisposable
             .AddVerb(() => Verbs.VanillaList)
             .AddVerb(() => Verbs.Heal)
             .AddVerb(() => Verbs.Doctor)
+            .AddVerb(() => Verbs.ListGames)
+            .AddVerb(() => Verbs.Diagnostics)
+            .AddVerb(() => Verbs.Launch)
             .AddVerb(() => Verbs.Heartbeat)
             .AddSingleton<CommandLineConfigurator>();
         if (withVersionVerb) services.AddVerb(() => Verbs.Version);
@@ -142,6 +146,33 @@ public sealed class McpTestHost : IAsyncDisposable
         [Verb("doctor", "Stand-in for doctor")]
         public static Task<int> Doctor([Injected] IRenderer renderer, [Option("j", "json", "Json", true)] bool json) =>
             throw new InvalidOperationException("sequence contains no elements");
+
+        [Verb("games list", "Stand-in for the games list")]
+        public static async Task<int> ListGames([Injected] IRenderer renderer, [Option("j", "json", "Json", true)] bool json)
+        {
+            await renderer.TextLine(json ? "[{\"store\":\"Steam\",\"name\":\"Elden Ring\"}]" : "Steam Elden Ring");
+            return 0;
+        }
+
+        [Verb("loadout diagnostics", "Stand-in for the Health Check")]
+        public static async Task<int> Diagnostics([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout,
+            [Option("r", "refresh", "Refresh", true)] bool refresh, [Option("j", "json", "Json", true)] bool json)
+        {
+            await renderer.TextLine($"{{\"loadout\":\"{loadout}\",\"refresh\":{(refresh ? "true" : "false")},\"json\":{(json ? "true" : "false")}}}");
+            return 0;
+        }
+
+        [Verb("loadout launch", "Stand-in for the launch verb")]
+        public static async Task<int> Launch([Injected] IRenderer renderer, [Option("l", "loadout", "Loadout")] string loadout)
+        {
+            if (loadout == "no-window")
+            {
+                await renderer.TextLine("Launching needs the SilverModManager window to be open.");
+                return 1;
+            }
+            await renderer.TextLine($"launch in progress for {loadout}");
+            return 0;
+        }
 
         [Verb("version", "Stand-in for version")]
         public static async Task<int> Version([Injected] IRenderer renderer)

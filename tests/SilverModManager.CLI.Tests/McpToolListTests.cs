@@ -17,7 +17,7 @@ public sealed class McpToolListTests : IAsyncDisposable
     public void AFullServer_ListsTheReadOnlyAndTheMutatingTools()
     {
         Tools(readOnly: false).Select(t => t.Name).Should().BeEquivalentTo(
-            "app_status", "app_log_errors", "loadouts_list", "loadout_merge_report", "loadout_vanilla_list", "loadout_heal_plan", "doctor", "loadout_apply");
+            "app_status", "app_log_errors", "loadouts_list", "loadout_merge_report", "loadout_vanilla_list", "loadout_heal_plan", "doctor", "games_list", "loadout_health_check", "loadout_apply", "game_launch");
     }
 
     [Fact]
@@ -34,7 +34,13 @@ public sealed class McpToolListTests : IAsyncDisposable
     {
         var all = Tools(readOnly: false);
 
-        all.Where(t => !t.ReadOnly).Select(t => t.Name).Should().Equal("loadout_apply");
+        all.Where(t => !t.ReadOnly).Select(t => t.Name).Should().BeEquivalentTo("loadout_apply", "game_launch");
+    }
+
+    [Fact]
+    public void AReadOnlyServer_OffersGamesAndTheHealthCheck()
+    {
+        Tools(readOnly: true).Select(t => t.Name).Should().Contain(["games_list", "loadout_health_check"]);
     }
 
     [Fact]

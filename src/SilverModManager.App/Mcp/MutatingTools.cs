@@ -10,5 +10,9 @@ public static class MutatingTools
             "Stopping the call does not stop the apply in the app. Find the loadout with loadouts_list.",
             readOnly: false, ["loadout", "synchronize"], takesLoadout: true, context.Limits.ApplyTimeout,
             emptyText: args => $"Applied {args.String("loadout")}."),
+        VerbTool.Create(context, "game_launch",
+            "Applies a loadout and starts its game, the same as the Play button, and returns once the launch is under way, not when the game exits. " +
+            "It needs the SilverModManager window to be open. Check app_status afterwards for the game process. Find the loadout with loadouts_list.",
+            readOnly: false, ["loadout", "launch"], takesLoadout: true, context.Limits.SlowReadTimeout),
     ];
 }

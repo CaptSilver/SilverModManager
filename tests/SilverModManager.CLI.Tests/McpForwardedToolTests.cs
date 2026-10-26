@@ -88,6 +88,42 @@ public sealed class McpForwardedToolTests : IAsyncDisposable
     }
 
     [Fact(Timeout = TimeoutMs)]
+    public async Task GamesList_AsksForJson()
+    {
+        var result = await McpTestHost.CallAsync(await ToolsAsync(), "games_list");
+
+        result.IsError.Should().BeFalse();
+        result.Text.Should().Be("[{\"store\":\"Steam\",\"name\":\"Elden Ring\"}]\n");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task TheHealthCheck_RunsTheChecksAgain_AndAsksForJson()
+    {
+        var result = await McpTestHost.CallAsync(await ToolsAsync(), "loadout_health_check", Loadout("elden-ring/main"));
+
+        result.IsError.Should().BeFalse();
+        result.Text.Should().Be("{\"loadout\":\"elden-ring/main\",\"refresh\":true,\"json\":true}\n");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task GameLaunch_ReturnsTheVerbsText()
+    {
+        var result = await McpTestHost.CallAsync(await ToolsAsync(), "game_launch", Loadout("elden-ring/main"));
+
+        result.IsError.Should().BeFalse();
+        result.Text.Trim().Should().Be("launch in progress for elden-ring/main");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
+    public async Task GameLaunch_WithoutTheWindow_IsAnError_WithTheRefusal()
+    {
+        var result = await McpTestHost.CallAsync(await ToolsAsync(), "game_launch", Loadout("no-window"));
+
+        result.IsError.Should().BeTrue();
+        result.Text.Should().Contain("needs the SilverModManager window");
+    }
+
+    [Fact(Timeout = TimeoutMs)]
     public async Task ACrash_IsAnError_WithAPointerToTheLogAndNoStackTrace()
     {
         var result = await McpTestHost.CallAsync(await ToolsAsync(), "doctor");
