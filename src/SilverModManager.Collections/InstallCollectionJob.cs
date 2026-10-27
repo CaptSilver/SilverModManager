@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Collections.Json;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts;
@@ -191,6 +192,13 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             await LoadoutManager.ApplyCollectionDownloadRules(collectionGroup);
 
             using var tx = Connection.BeginTransaction();
+
+            // A fresh transaction: SetGroupOrder must be the only priority writer in the one it joins.
+            var containerId = collectionGroup.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId;
+            var order = CollectionOrderReader.Read(Connection.Db, game, root, containerId);
+            ServiceProvider.GetRequiredService<ModOrderImporter>().Import(
+                Loadout.Load(Connection.Db, TargetLoadout), order,
+                new ModOrderSource($"collection {RevisionMetadata.Collection.Name}", containerId, root), tx);
 
             if (allRequiredItemsInstalled)
             {

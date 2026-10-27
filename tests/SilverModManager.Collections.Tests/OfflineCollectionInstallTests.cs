@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.GuidedInstallers;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Collections.Json;
+using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
@@ -129,7 +130,8 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
 
     private async Task<(NexusModsCollectionLibraryFile.ReadOnly File, CollectionRevisionMetadata.ReadOnly Revision, CollectionDownload.ReadOnly[] Items)> CreateCollection(
         (FomodOption[]? Choices, string Name)[] fomodMods, int[]? optionalIndexes = null,
-        (int Source, int Other, CollectionDownloadRuleType Type)[]? rules = null)
+        (int Source, int Other, CollectionDownloadRuleType Type)[]? rules = null,
+        Func<IReadOnlyList<Mod>, SilverLoadOrderEntry[]>? silverLoadOrder = null)
     {
         var folder = TemporaryFileManager.CreateFolder();
         var slug = CollectionSlug.From("offline");
@@ -161,6 +163,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         {
             Info = new CollectionInfo { Name = "Offline", DomainName = GameDomain.From("cyberpunk2077") },
             Mods = mods.ToArray(),
+            SilverLoadOrder = silverLoadOrder?.Invoke(mods),
         };
 
         var collectionJson = folder.Path.Combine("collection.json");
@@ -251,6 +254,39 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
     {
         async Task<NexusCollectionLoadoutGroup.ReadOnly> Run() => await job;
         return await Run().WaitAsync(Timeout);
+    }
+
+    [Fact]
+    public async Task InstallingACollectionWithOurKeyAppliesItsOrder()
+    {
+        var mods = Enumerable.Range(1, 3).Select(i => ((FomodOption[]?)null, $"Plain mod {i}")).ToArray();
+        var (file, revision, items) = await CreateCollection(mods, silverLoadOrder: m =>
+        [
+            new SilverLoadOrderEntry { Md5 = m[2].Source.Md5, Name = m[2].Name },
+            new SilverLoadOrderEntry { Md5 = Md5Value.From((UInt128)12345), Name = "Never downloaded" },
+            new SilverLoadOrderEntry { Md5 = m[0].Source.Md5, Name = m[0].Name },
+            new SilverLoadOrderEntry { Md5 = m[1].Source.Md5, Name = m[1].Name },
+        ]);
+        var loadout = await CreateLoadout();
+
+        var group = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+
+        var db = Connection.Db;
+        var priorities = LoadoutItemGroupPriority.FindByLoadout(db, loadout)
+            .ToDictionary(row => row.TargetId, row => row.Priority.Value);
+        var byPriority = LoadoutItemGroup.Load(db, group.Id).Children
+            .OfTypeLoadoutItemGroup()
+            .OrderByDescending(child => priorities[child.LoadoutItemGroupId])
+            .Select(child => child.AsLoadoutItem().Name)
+            .ToArray();
+        // Installed groups are named after their archives (mod0.zip is "Plain mod 1").
+        byPriority.Should().Equal("mod2.zip", "mod0.zip", "mod1.zip");
+
+        var rows = ModOrderDroppedEntry.FindByLoadout(db, loadout).ToArray();
+        rows.Should().ContainSingle();
+        rows[0].Item.Should().Be("Never downloaded");
+        rows[0].Source.Should().Be("collection Offline");
+        rows[0].ContainerId.Should().Be(group.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId);
     }
 
     [Fact]

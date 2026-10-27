@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 
@@ -20,4 +21,25 @@ public class CollectionRoot
     /// </summary>
     [JsonPropertyName("modRules")]
     public ModRule[] ModRules { get; init; } = [];
+
+    /// <summary>
+    /// Vortex's order key for Witcher 3, kept raw: its shape belongs to the game, and it is written back unchanged.
+    /// </summary>
+    [JsonPropertyName("loadOrder")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? LoadOrder { get; init; }
+
+    /// <summary>
+    /// Vortex's plugin order key for Gamebryo games, kept raw.
+    /// </summary>
+    [JsonPropertyName("plugins")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? Plugins { get; init; }
+
+    /// <summary>
+    /// The app's own mod order, winner first. Vortex ignores keys it does not know, so this does not disturb it.
+    /// </summary>
+    [JsonPropertyName("silverLoadOrder")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SilverLoadOrderEntry[]? SilverLoadOrder { get; init; }
 }
