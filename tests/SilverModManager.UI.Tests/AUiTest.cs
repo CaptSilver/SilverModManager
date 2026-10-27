@@ -94,10 +94,14 @@ public class AUiTest : IAsyncDisposable
     /// machine's real copy of the game, which no test may attach a loadout to. A store the stub does not report
     /// gives a loadout whose install is not found, which is what those tests are about.
     /// </remarks>
-    protected async Task<Loadout.ReadOnly> SeedLoadoutRow(GameStore store, string name)
+    protected Task<Loadout.ReadOnly> SeedLoadoutRow(GameStore store, string name) => SeedLoadoutRow<Cyberpunk2077Game>(store, name);
+
+    /// <inheritdoc cref="SeedLoadoutRow(GameStore, string)"/>
+    /// <typeparam name="TGame">The game whose stub locator reports the folder; the host registers one for it.</typeparam>
+    protected async Task<Loadout.ReadOnly> SeedLoadoutRow<TGame>(GameStore store, string name) where TGame : IGame
     {
         var stubbed = Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations()
-            .Where(located => located.LocatorResult.Locator is UniversalStubbedGameLocator<Cyberpunk2077Game>)
+            .Where(located => located.LocatorResult.Locator is UniversalStubbedGameLocator<TGame>)
             .ToArray();
         var installation = stubbed.FirstOrDefault(located => located.LocatorResult.Store == store) ?? stubbed.First();
         using var tx = Connection.BeginTransaction();

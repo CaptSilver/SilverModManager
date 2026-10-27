@@ -46,6 +46,13 @@ public class SortingSelectionViewModel : AViewModel<ISortingSelectionViewModel>,
 
         // Initialize with current active sort orders
         InitializeSortOrderViewModels(sortOrderVarieties, loadoutId);
+
+        // A game with no variety of its own still has an order: the mod priority rows. It is not tracked in
+        // _managedVarieties, so UpdateActiveSortOrders never adds it twice or removes it.
+        if (sortOrderVarieties.Count == 0)
+        {
+            _rulesViewModels.Add(new LoadOrderViewModel(serviceProvider, serviceProvider.GetRequiredService<ModPriorityOrderVariety>(), loadoutId));
+        }
         
         // Add FileConflictsViewModel
         _rulesViewModels.Add(new FileConflictsViewModel(serviceProvider, windowManager, loadoutId));

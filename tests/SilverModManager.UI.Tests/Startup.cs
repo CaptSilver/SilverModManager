@@ -4,6 +4,7 @@ using SilverModManager.Abstractions.Secrets;
 using SilverModManager.App;
 using SilverModManager.Backend;
 using SilverModManager.DataModel;
+using SilverModManager.Games.FromSoft.EldenRing;
 using SilverModManager.Games.RedEngine.Cyberpunk2077;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
@@ -29,6 +30,8 @@ public class Startup
         // store locators stay out (addStandardGameLocators: false): they read the machine's real Steam,
         // Heroic and Lutris folders.
         services.AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"), stores: [GameStore.Unknown, GameStore.Steam])
+                // A game with no sort order variety of its own, for the pages that fall back to the priority order.
+                .AddUniversalGameLocator<EldenRingGame>(new Version("1.0"), stores: [GameStore.Unknown, GameStore.Steam])
                 .AddApp(addStandardGameLocators: false, startupMode: new StartupMode()
                 {
                     ShowUI = true,

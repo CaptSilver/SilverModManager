@@ -23,6 +23,7 @@ public static class Services
             .AddModOrderDroppedEntryModel()
             .AddSingleton<DefaultPriorityOrderSink>()
             .AddSingleton<ModOrderImporter>()
+            .AddSingleton<ModPriorityOrderVariety>()
             .AddLoadoutGroupRuleModel()
             .AddLoadoutFileWinnerModel()
             .AddLoadoutIniStateModel();
