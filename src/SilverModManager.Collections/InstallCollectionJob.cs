@@ -199,6 +199,10 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             // ApplyCollectionDownloadRules above has already committed its own priority write; SetGroupOrder must be the only priority writer in the transaction it joins.
             var containerId = collectionGroup.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId;
             var order = CollectionOrderReader.Read(Connection.Db, game, root, containerId);
+
+            // The importer replaces the container's rows with one list, so the rule drops ride along (and run even when the collection has no order key).
+            var ruleDrops = CollectionRuleDrops.Read(Connection.Db, root, RevisionMetadata, collectionGroup.AsCollectionGroup());
+            order = ModOrder.Create(order.WinnerToLoser, order.Dropped.Concat(ruleDrops));
             ServiceProvider.GetRequiredService<ModOrderImporter>().Import(
                 Loadout.Load(Connection.Db, TargetLoadout), order,
                 new ModOrderSource($"collection {RevisionMetadata.Collection.Name}", containerId, root), tx);
