@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
@@ -45,6 +46,7 @@ public static class Startup
             .AddLoadoutGroupRuleModel()
             .AddLoadoutFileWinnerModel()
             .AddLoadoutIniStateModel()
+            .AddModOrderDroppedEntryModel()
             .AddSortOrderItemModel()
             .AddDefaultServicesForTesting()
             .AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"))

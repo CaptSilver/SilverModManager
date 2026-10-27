@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Ini;
@@ -35,6 +36,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         "SilverModManager.Loadouts.LoadoutGroupRule/Loadout",
         "SilverModManager.Loadouts.LoadoutFileWinner/Loadout",
         "SilverModManager.Loadouts.LoadoutIniState/Loadout",
+        "SilverModManager.Loadouts.ModOrderDroppedEntry/Loadout",
     ];
 
     /// <summary>
@@ -51,6 +53,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         "SilverModManager.Loadouts.LoadoutGroupRule/Source",
         "SilverModManager.Loadouts.LoadoutGroupRule/Other",
         "SilverModManager.Loadouts.LoadoutFileWinner/WinnerGroup",
+        "SilverModManager.Loadouts.ModOrderDroppedEntry/Container",
         "SilverModManager.Loadouts.GameMetadata/LastSyncedLoadout",
         "SilverModManager.Loadouts.LoadoutSnapshot/Snapshot",
         "SilverModManager.RedEngine.Cyberpunk2077.RedModLoadoutGroup/RedModInfoFile",
@@ -63,7 +66,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
     /// <summary>
     /// The roots of the owned closure: what the loadout owns directly, besides the loadout row itself.
     /// </summary>
-    private static readonly Type[] Roots = [typeof(LoadoutItem), typeof(SortOrder), typeof(SortOrderItem), typeof(LoadoutItemGroupPriority), typeof(LoadoutGroupRule), typeof(LoadoutFileWinner), typeof(LoadoutIniState)];
+    private static readonly Type[] Roots = [typeof(LoadoutItem), typeof(SortOrder), typeof(SortOrderItem), typeof(LoadoutItemGroupPriority), typeof(LoadoutGroupRule), typeof(LoadoutFileWinner), typeof(LoadoutIniState), typeof(ModOrderDroppedEntry)];
 
     [Fact]
     public void EveryReferenceToAnOwnedModelIsClassified()
@@ -115,6 +118,18 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
         var item = await AddLinkedItem(loadout.LoadoutId, "Item");
         var priority = await AddPriority(loadout.LoadoutId, item);
         await AddRedMod(loadout.LoadoutId, "ModA");
+        EntityId dropped;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var id = tx.TempId();
+            tx.Add(id, ModOrderDroppedEntry.Loadout, loadout.LoadoutId);
+            tx.Add(id, ModOrderDroppedEntry.Container, item);
+            tx.Add(id, ModOrderDroppedEntry.Source, "collection X");
+            tx.Add(id, ModOrderDroppedEntry.Item, "Ghost");
+            tx.Add(id, ModOrderDroppedEntry.Reason, "not installed");
+            tx.Add(id, ModOrderDroppedEntry.Page, "Load Order");
+            dropped = (await tx.Commit())[id];
+        }
         var variety = ServiceProvider.GetRequiredService<SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder.RedModSortOrderVariety>();
         var sortOrder = await variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId);
         await variety.ReconcileSortOrder(sortOrder);
@@ -125,6 +140,7 @@ public class LoadoutOwnershipGuardTests(ITestOutputHelper helper) : ANexusCollec
 
         owned.Should().Contain(item.Value, "a LoadoutItem is owned through LoadoutItem/Loadout");
         owned.Should().Contain(priority.Value, "a LoadoutItemGroupPriority is owned through LoadoutItemGroupPriority/Loadout");
+        owned.Should().Contain(dropped, "a ModOrderDroppedEntry is owned through ModOrderDroppedEntry/Loadout");
         owned.Should().Contain(sortOrder.Value, "a SortOrder is owned through SortOrder/Loadout");
         owned.Should().Contain(sortItems, "a SortOrderItem is owned through its SortOrder");
     }

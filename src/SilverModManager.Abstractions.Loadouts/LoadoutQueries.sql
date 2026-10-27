@@ -15,6 +15,8 @@ SELECT Id FROM mdb_LoadoutFileWinner(Db=>db) WHERE Loadout = loadoutId
 UNION ALL
 SELECT Id FROM mdb_LoadoutIniState(Db=>db) WHERE Loadout = loadoutId
 UNION ALL
+SELECT Id FROM mdb_ModOrderDroppedEntry(Db=>db) WHERE Loadout = loadoutId
+UNION ALL
 SELECT Id FROM mdb_SortOrder(Db=>db) WHERE Loadout = loadoutId
 UNION ALL
 SELECT sortItem.Id FROM mdb_SortOrder(Db=>db) sortOrder
