@@ -25,8 +25,4 @@ internal class TestMergeGame : AMergeGame
 
     public override IMergeStrategy StrategyFor(string rel) => TextThreeWayMerge.Instance;
 
-    public override string ReorderHint => "Test Order";
-
-    // The last mod listed wins, as on File Conflicts; HigherWinsGame is the other way round.
-    public override bool WinnerIsLower => true;
-}
+    public override string ReorderHint => "Test Order";}

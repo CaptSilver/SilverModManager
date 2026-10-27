@@ -58,8 +58,6 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
 
     protected override string ReorderPage(Loadout.ReadOnly loadout) => _gameOf(loadout).ReorderHint;
 
-    protected override string ReorderAdvice(Loadout.ReadOnly loadout, string dropped, string kept) => _gameOf(loadout).ReorderAdvice(dropped, kept);
-
     protected override IEnumerable<DroppedItem> ExtraDropped(Loadout.ReadOnly loadout, EngineMergeSnapshot plan)
     {
         var page = ReorderPage(loadout);

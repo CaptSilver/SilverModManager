@@ -42,14 +42,10 @@ public abstract class AMergeDiagnosticsEmitter<TPlan>(ILogger logger) : ADropped
     protected virtual bool RaisesCard(IMergeNote note) => note.Loss is not null && note is not (IVanillaSourceNote or IMergeDetailNote);
 
     /// <summary>
-    /// The bare name of the page where the user reorders the mods that conflict. Every emitter names it: the page has
-    /// to agree with <see cref="ReorderAdvice"/> and with the game's own card wording, which no default can know.
+    /// The bare name of the page where the user reorders the mods that conflict. Every emitter names it: it differs per
+    /// game and has to agree with the game's own card wording, which no default can know.
     /// </summary>
     protected abstract string ReorderPage(Loadout.ReadOnly loadout);
-
-    /// <summary>The instruction that makes <paramref name="dropped"/> win over <paramref name="kept"/> on <see cref="ReorderPage"/>.</summary>
-    protected virtual string ReorderAdvice(Loadout.ReadOnly loadout, string dropped, string kept)
-        => AMergeGame.ReorderAdvice(dropped, kept, winnerIsLower: true);
 
     /// <summary>
     /// The dropped item for the notes of one path that lose the same mod's change to the same other mod, so a mod that
@@ -64,7 +60,7 @@ public abstract class AMergeDiagnosticsEmitter<TPlan>(ILogger logger) : ADropped
             $"{loss.DroppedMod}'s {(notes.Count > 1 ? "changes" : "change")} to `{path}`{lines}",
             loss.DroppedMod,
             $"both {loss.KeptMod} and {loss.DroppedMod} change it and {loss.KeptMod}'s change is used; " +
-            $"to use {loss.DroppedMod}'s instead, {ReorderAdvice(loadout, loss.DroppedMod, loss.KeptMod)}",
+            $"to use {loss.DroppedMod}'s instead, {AMergeGame.ReorderAdvice(loss.DroppedMod, loss.KeptMod)}",
             ReorderPage(loadout));
     }
 

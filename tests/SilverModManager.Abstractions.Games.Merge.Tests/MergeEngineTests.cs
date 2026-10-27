@@ -358,17 +358,7 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
     {
         var (loadout, _, _) = await OverlappingEdits();
 
-        Engine().Report(loadout, MergeSourceMode.Report).PriorityOrderHint.Should().EndWith("on the Test Order page, mods lower in the list win");
-    }
-
-    [Fact]
-    public async Task TheReportHintSaysWhichEndOfTheListWins()
-    {
-        var (loadout, _, _) = await OverlappingEdits();
-        var higher = new MergeEngine(FileStore, _trust, NullLogger<MergeEngine>.Instance, _ => new HigherWinsGame());
-
-        Engine().Report(loadout, MergeSourceMode.Report).PriorityOrderHint.Should().EndWith("mods lower in the list win");
-        higher.Report(loadout, MergeSourceMode.Report).PriorityOrderHint.Should().EndWith("on the Test Order page, mods higher in the list win");
+        Engine().Report(loadout, MergeSourceMode.Report).PriorityOrderHint.Should().EndWith("on the Test Order page, the mod loaded last wins");
     }
 
     [Fact]

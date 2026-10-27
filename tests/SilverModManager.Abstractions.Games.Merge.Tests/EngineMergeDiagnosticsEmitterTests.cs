@@ -69,15 +69,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         var card = cards.Should().ContainSingle().Which;
         card.Severity.Should().Be(DiagnosticSeverity.Warning);
         Summary(card).Should().Contain("Beta's change to `scripts/x.ws` lines 4–7").And.Contain("Alpha's change is used");
-        Details(card).Should().Contain("move Beta below Alpha").And.Contain("Change it on the Test Order page.");
-    }
-
-    [Fact]
-    public async Task AGameWhereTheWinnerIsListedFirstAdvisesMovingTheLoserAbove()
-    {
-        var cards = await Run([Merged()], [Output(Loss)], game: new HigherWinsGame());
-
-        Details(cards.Should().ContainSingle().Which).Should().Contain("move Beta above Alpha");
+        Details(card).Should().Contain("move Beta below Alpha so it loads after it").And.Contain("Change it on the Test Order page.");
     }
 
     [Fact]
@@ -265,7 +257,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         var card = (await Collect(emitter.Diagnose(loadout, CancellationToken.None))).Should().ContainSingle().Which;
 
         Summary(card).Should().Contain("Foo (modB)'s change to").And.Contain("Foo (modA)'s change is used");
-        Details(card).Should().Contain("move Foo (modB) below Foo (modA)");
+        Details(card).Should().Contain("move Foo (modB) below Foo (modA) so it loads after it");
     }
 
     /// <summary>A plan that fails: the base yields the failure card and nothing else.</summary>

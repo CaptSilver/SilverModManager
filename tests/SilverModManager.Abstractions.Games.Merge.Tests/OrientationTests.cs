@@ -4,14 +4,14 @@ using FluentAssertions;
 namespace SilverModManager.Abstractions.Games.Merge.Tests;
 
 /// <summary>
-/// Which end of a game's list wins, and which page the cards send the user to, have no safe default: a wrong guess
-/// tells the user to move a mod the wrong way and nothing fails. Each merge game and emitter has to say.
+/// Every load order page shows the mod loaded last at the bottom, and that one wins, so the advice is the same for
+/// every game. The page the cards send the user to differs per game and has no safe default.
 /// </summary>
 public class OrientationTests
 {
     [Fact]
-    public void EveryMergeGameSaysWhichEndOfItsListWins()
-        => typeof(AMergeGame).GetProperty(nameof(AMergeGame.WinnerIsLower))!.GetMethod!.IsAbstract.Should().BeTrue();
+    public void TheAdviceMovesTheDroppedModBelowTheKeptOne()
+        => AMergeGame.ReorderAdvice("Beta", "Alpha").Should().Be("move Beta below Alpha so it loads after it");
 
     [Fact]
     public void EveryMergeEmitterNamesItsReorderPage()

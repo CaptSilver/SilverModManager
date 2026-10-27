@@ -103,7 +103,7 @@ public sealed class MergeEngine : IMergeEngine
 
     private static MergeReport ReportOf(AMergeGame game, Entry entry)
         => new(entry.Results.Select(Describe).ToArray(), null,
-            $"Contributors are ordered by the loadout's load order; on the {game.ReorderHint} page, mods {(game.WinnerIsLower ? "lower" : "higher")} in the list win");
+            $"Contributors are ordered by the loadout's load order; on the {game.ReorderHint} page, the mod loaded last wins");
 
     private static MergeReportEntry Describe(PathResult result)
     {
