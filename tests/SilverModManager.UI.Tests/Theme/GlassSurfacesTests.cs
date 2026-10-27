@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using FluentAssertions;
 using SilverModManager.App.UI.Controls.Navigation;
 using SilverModManager.App.UI.Controls.TopBar;
@@ -52,6 +53,19 @@ public class GlassSurfacesTests(IServiceProvider provider) : AUiTest(provider)
                 .Be(0, "the minimise, maximise and close buttons show the blurred desktop like the rest of the top bar");
             topBar.FindControl<Grid>("MainGrid")!.ClipToBounds.Should()
                 .BeTrue("in a narrow window the top bar is cut off at the buttons instead of drawing under them");
+        });
+    }
+
+    [Fact]
+    public async Task TheAddPanelDropDownsChevronIsAWash()
+    {
+        await OnUi(() =>
+        {
+            var dropDown = new ComboBox { Classes = { "AddPanelDropDown" } };
+            ShowRendered(Track(new Window { Width = 200, Height = 60, Content = dropDown }));
+
+            var overlay = dropDown.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "DropDownOverlay");
+            Alpha(overlay.Background).Should().BeInRange(1, 254, "the chevron's circle is visible but lets Glass through");
         });
     }
 }

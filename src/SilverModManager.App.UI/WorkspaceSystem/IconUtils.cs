@@ -17,7 +17,6 @@ internal static class IconUtils
 
     private const float Scale = 5f;
 
-    private static readonly SKColor BackgroundColor = SKColor.Parse("#1D1D21");
     private static readonly SKColor FillColor = SKColor.Parse("#D4D4D8");
 
     /// <summary>
@@ -27,7 +26,7 @@ internal static class IconUtils
     {
         using var skPicture = GeneratePicture(state);
         using var skBitmap = skPicture.ToBitmap(
-            background: BackgroundColor,
+            background: SKColors.Transparent,
             scaleX: Scale,
             scaleY: Scale,
             skColorType: SKColorType.Bgra8888,
@@ -44,48 +43,33 @@ internal static class IconUtils
         using var skPictureRecorder = new SKPictureRecorder();
         using var skCanvas = skPictureRecorder.BeginRecording(new SKRect(0f, 0f, IconSize, IconSize));
 
-        // NOTE(erri120): There is probably a better way to do this, but this method works fine for now.
-        // Essentially, we have a path for filled rectangles that is drawn using the fill color, and
-        // a path for the "hollowed" rectangles that is drawn using the background color. The path
-        // for the "hollowed" rectangles simply draws above the filled rectangles. There is probably
-        // a way to do this using clipping or something.
-        using var skPathFilled = new SKPath();
-        using var skPathHollow = new SKPath();
+        // A hollow panel is an outline: its inner rectangle is a hole in the same even-odd path, so whatever is behind
+        // the picture (Glass included) shows through it.
+        using var skPath = new SKPath { FillType = SKPathFillType.EvenOdd };
 
         foreach (var panel in state)
         {
             var (panelId, rect) = panel;
-            DrawRect(skPathFilled, skPathHollow, rect, isHollow: panelId != PanelId.DefaultValue);
+            DrawRect(skPath, rect, isHollow: panelId != PanelId.DefaultValue);
         }
 
         using (var skPaint = new SKPaint())
         {
-            using var skShaderFilled = SKShader.CreateColor(
+            using var skShader = SKShader.CreateColor(
                 FillColor,
                 SKColorSpace.CreateRgb(SKColorSpaceTransferFn.Srgb, SKColorSpaceXyz.Srgb)
             );
 
-            using var skShaderHollow = SKShader.CreateColor(
-                BackgroundColor,
-                SKColorSpace.CreateRgb(SKColorSpaceTransferFn.Srgb, SKColorSpaceXyz.Srgb)
-            );
-
             skPaint.IsAntialias = true;
-
-            // draw the filled rectangles
-            skPaint.Shader = skShaderFilled;
-            skCanvas.DrawPath(skPathFilled, skPaint);
-
-            // draw the hollow rectangles
-            skPaint.Shader = skShaderHollow;
-            skCanvas.DrawPath(skPathHollow, skPaint);
+            skPaint.Shader = skShader;
+            skCanvas.DrawPath(skPath, skPaint);
         }
 
         var skPicture = skPictureRecorder.EndRecording();
         return skPicture;
     }
 
-    private static void DrawRect(SKPath skPathFilled, SKPath skPathHollow, Rect rect, bool isHollow)
+    private static void DrawRect(SKPath skPath, Rect rect, bool isHollow)
     {
         var x = (float)(rect.X * IconSize);
         var y = (float)(rect.Y * IconSize);
@@ -99,7 +83,7 @@ internal static class IconUtils
             bottom: y + height - OuterPadding
         );
 
-        skPathFilled.AddRoundRect(skRect, rx: CornerRadius, ry: CornerRadius);
+        skPath.AddRoundRect(skRect, rx: CornerRadius, ry: CornerRadius);
         if (!isHollow) return;
 
         skRect = new SKRect(
@@ -109,6 +93,6 @@ internal static class IconUtils
             bottom: y + height - InnerPadding
         );
 
-        skPathHollow.AddRect(skRect);
+        skPath.AddRect(skRect);
     }
 }

@@ -72,7 +72,7 @@
 
                         <Border x:Name="DropDownOverlay"
                                 Grid.Column="1"
-                                Background="{StaticResource SurfaceLowBrush}"
+                                Background="{StaticResource SurfaceTranslucentMidBrush}"
                                 Margin="0"
                                 Width="20"
                                 Height="20"
