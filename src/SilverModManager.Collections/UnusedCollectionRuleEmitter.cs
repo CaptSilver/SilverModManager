@@ -30,15 +30,18 @@ public sealed class UnusedCollectionRuleEmitter : ILoadoutDiagnosticEmitter
         await Task.Yield();
 
         var db = loadout.Db;
-        foreach (var item in LoadoutItem.FindByLoadout(db, loadout.LoadoutId))
+        // Starting from the collection groups rather than the loadout's items: a loadout holds every installed file as an item.
+        foreach (var group in NexusCollectionLoadoutGroup.All(db))
         {
-            var group = NexusCollectionLoadoutGroup.Load(db, item.Id);
+            cancellationToken.ThrowIfCancellationRequested();
             if (!group.IsValid()) continue;
+            if (group.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem().LoadoutId != loadout.LoadoutId) continue;
 
             var revision = group.Revision;
             foreach (var download in revision.Downloads)
             {
-                if (!IsNamedByARule(download, db)) continue;
+                // A required mod that is missing is still installing or failed; it is not a declined optional.
+                if (!download.IsOptional || !IsNamedByARule(download, db)) continue;
                 if (CollectionDownloader.GetStatus(download, group.AsCollectionGroup(), db).IsInstalled(out _)) continue;
                 yield return UnusedCollectionRuleDiagnostics.CreateOptionalModRulesNotUsed(download.Name, revision.Collection.Name);
             }

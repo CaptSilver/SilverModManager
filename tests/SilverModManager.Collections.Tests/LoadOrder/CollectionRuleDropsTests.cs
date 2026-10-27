@@ -14,6 +14,7 @@ using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.Jobs;
 using SilverModManager.Sdk.Loadouts;
@@ -149,9 +150,8 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
         await Install(collection, loadout.LoadoutId);
         ModOrderDroppedEntry.FindByLoadout(Connection.Db, loadout.LoadoutId).Should().ContainSingle();
 
-        // The importer replaces the container's rows on every install; this stands in for a corrected revision by
-        // storing the rule row such a fetch would store (the fixture cannot persist a second revision).
-        // What fetching a corrected revision stores: the rule now matches two downloads.
+        // The importer replaces the container's rows on every install. This stands in for a corrected revision by storing
+        // the rule row such a fetch would store: the rule now matches two downloads (the fixture cannot persist a second revision).
         using (var tx = Connection.BeginTransaction())
         {
             var corrected = new CollectionRoot { Info = broken.Info, Mods = broken.Mods, ModRules = [Rule(VortexModRuleType.Before, "tag0", "tag1")] };
@@ -204,6 +204,25 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
         await Install(await Offline.Create(manifest, optionalIndexes: [1]), loadout.LoadoutId);
 
         ModOrderDroppedEntry.FindByLoadout(Connection.Db, loadout.LoadoutId).Should().ContainSingle();
+        (await Diagnose(loadout.LoadoutId)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ARuleOnARequiredModThatIsNotInstalledRaisesNothing()
+    {
+        var manifest = await Manifest(2, Rule(VortexModRuleType.After, "tag0", "tag1"));
+        var collection = await Offline.Create(manifest);
+        var loadout = await CreateLoadout();
+        var group = await Install(collection, loadout.LoadoutId);
+
+        // A required mod that was removed (or has not finished installing) is not an optional the user declined.
+        using (var tx = Connection.BeginTransaction())
+        {
+            var required = LoadoutItemGroup.Load(Connection.Db, group.Id).Children.OfTypeLoadoutItemGroup().First(child => child.AsLoadoutItem().Name == "mod1.zip");
+            tx.Delete(required.Id, recursive: true);
+            await tx.Commit();
+        }
+
         (await Diagnose(loadout.LoadoutId)).Should().BeEmpty();
     }
 }
