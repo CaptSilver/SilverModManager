@@ -101,6 +101,51 @@ public class DiskStateRowTests(ITestOutputHelper helper) : AStubbedGameTest<Disk
         pairs[0].Part.Hash.Should().Be(Hash.From(0x2));
     }
 
+    // The second row reaches the same folder through a link, so its path is spelled differently and the refusal
+    // has to show both for the player to see they are one folder.
+    [Fact]
+    public async Task ApplyingALoadoutOnASecondRowForTheSameFolder_NamesBothRowsPaths()
+    {
+        var first = await CreateLoadout();
+        var canonical = first.Installation;
+        var alias = TestScratch.Combine($"second-spelling-{Guid.NewGuid():N}");
+        Directory.CreateSymbolicLink(alias, canonical.Path);
+        try
+        {
+            EntityId stray;
+            using (var tx = Connection.BeginTransaction())
+            {
+                var row = new GameInstallMetadata.New(tx)
+                {
+                    Store = canonical.Store,
+                    Path = alias,
+                    Game = canonical.Game.Value,
+                    Name = canonical.Name,
+                };
+                var loadout = new Loadout.New(tx)
+                {
+                    Name = "Stray",
+                    ShortName = "s",
+                    InstallationId = row,
+                    LoadoutKind = LoadoutKind.Default,
+                    Revision = 0,
+                    GameVersion = VanityVersion.From("Unknown"),
+                };
+                var result = await tx.Commit();
+                stray = result.Remap(loadout).Id;
+            }
+
+            var act = async () => await Synchronizer.Synchronize(Loadout.Load(Connection.Db, stray));
+
+            var refusal = (await act.Should().ThrowAsync<SynchronizerPreflightException>()).Which.Message;
+            refusal.Should().Contain($"`{alias}`").And.Contain($"`{canonical.Path}`");
+        }
+        finally
+        {
+            File.Delete(alias);
+        }
+    }
+
     [Fact]
     public async Task ApplyingALoadoutOnASecondRowForTheSameFolder_IsRefusedBeforeAnythingIsWritten()
     {

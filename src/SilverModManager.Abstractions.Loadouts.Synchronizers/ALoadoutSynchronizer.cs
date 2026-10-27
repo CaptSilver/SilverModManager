@@ -525,8 +525,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <inheritdoc />
     public async Task<Loadout.ReadOnly> RunActions(Dictionary<GamePath, SyncNode> syncTree, Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
     {
-        var gameMetadataId = MetadataOf(loadout).GameInstallMetadataId;
         await Preflight(loadout.InstallationInstance);
+        var gameMetadataId = MetadataOf(loadout).GameInstallMetadataId;
         RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
         await PreflightActions(syncTree, loadout);
@@ -1025,11 +1025,18 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// </summary>
     private GameInstallMetadata.ReadOnly MetadataOf(Loadout.ReadOnly loadout)
     {
-        var metadata = _gameRegistry.ForceGetMetadata(loadout.InstallationInstance);
+        var installation = loadout.InstallationInstance;
+        if (!_gameRegistry.TryGetMetadata(installation, out var metadata))
+        {
+            throw new SynchronizerPreflightException(
+                $"Loadout `{loadout.Name}` is recorded against the {loadout.Game.DisplayName} install at `{loadout.Installation.Path}`, " +
+                $"but no install record matches the folder found at `{installation.LocatorResult.Path}`. Nothing was changed.");
+        }
         if (metadata.GameInstallMetadataId == loadout.InstallationId) return metadata;
 
         throw new SynchronizerPreflightException(
-            $"Loadout `{loadout.Name}` is recorded against a second copy of the {loadout.Game.DisplayName} install at `{metadata.Path}`, " +
+            $"Loadout `{loadout.Name}` is recorded against a second copy of the {loadout.Game.DisplayName} install: its record names " +
+            $"`{loadout.Installation.Path}` and the install's own record names `{metadata.Path}`, which are the same folder, " +
             "so applying it would mix up which files are tracked. Nothing was changed.");
     }
 
@@ -1043,11 +1050,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <inheritdoc />
     public virtual async Task<Loadout.ReadOnly> Synchronize(Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
     {
-        _ = MetadataOf(loadout);
-
         // Refuse before the locator ids are updated and the game folder is re-indexed: both write to the
         // database, and neither can mean anything when the prefix they read from is gone.
         await Preflight(loadout.InstallationInstance);
+        _ = MetadataOf(loadout);
 
         loadout = loadout.Rebase();
 
