@@ -1,5 +1,6 @@
 using DynamicData;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
@@ -279,6 +280,59 @@ public class ModPriorityOrderVarietyTests(ITestOutputHelper helper) : ACyberpunk
         await Eventually(() => Variety.GetSortOrderItems(SortOrderIdOf(loadout.LoadoutId)).Single().DisplayName.Should().Be("Name 9"));
         await Task.Delay(300);
         notifications.Should().BeLessThan(5, "ten commits in a row are one read, not ten");
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, Exception? Error)> Entries { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            lock (Entries) Entries.Add((logLevel, exception));
+        }
+    }
+
+    [Fact]
+    public async Task AFailedReadIsLoggedAndTheNextRevisionStillUpdatesThePage()
+    {
+        var loadout = await CreateLoadout();
+        var groups = await AddGroupsWithPriorities(loadout.LoadoutId, "A");
+        var logger = new CapturingLogger<ModPriorityOrderVariety>();
+        var failing = false;
+        var variety = new ModPriorityOrderVariety(Connection, LoadoutManager, logger)
+        {
+            ReadItems = (db, id) => failing ? throw new InvalidOperationException("unreadable row") : Variety.GetSortOrderItems(SortOrderIdOf(id), db).ToList(),
+        };
+        var escaped = new List<Exception>();
+        UnhandledExceptionEventHandler onUnhandled = (_, e) => escaped.Add((Exception)e.ExceptionObject);
+        AppDomain.CurrentDomain.UnhandledException += onUnhandled;
+        try
+        {
+            using var subscription = variety.GetSortOrderItemsChangeSet(SortOrderIdOf(loadout.LoadoutId)).Bind(out var bound).Subscribe();
+
+            failing = true;
+            using (var tx = Connection.BeginTransaction())
+            {
+                tx.Add(groups["A"].group.Value, LoadoutItem.Name, "Broken");
+                await tx.Commit();
+            }
+            await Eventually(() => logger.Entries.Should().Contain(entry => entry.Level == LogLevel.Error && entry.Error is InvalidOperationException));
+            bound.Select(item => item.DisplayName).Should().Equal("A");
+
+            failing = false;
+            using (var tx = Connection.BeginTransaction())
+            {
+                tx.Add(groups["A"].group.Value, LoadoutItem.Name, "Fixed");
+                await tx.Commit();
+            }
+            await Eventually(() => bound.Select(item => item.DisplayName).Should().Equal("Fixed"));
+            escaped.Should().BeEmpty();
+        }
+        finally
+        {
+            AppDomain.CurrentDomain.UnhandledException -= onUnhandled;
+        }
     }
 
     [Fact]

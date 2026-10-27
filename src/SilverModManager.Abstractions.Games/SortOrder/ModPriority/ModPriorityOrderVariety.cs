@@ -68,34 +68,49 @@ public sealed class ModPriorityOrderVariety(IConnection connection, ILoadoutMana
     public IObservable<IChangeSet<ModPriorityReactiveSortItem, SortItemKey<EntityId>>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId)
     {
         var loadoutId = LoadoutOf(sortOrderId);
-        var cache = connection.Db.AttributeCache;
+        var attributes = connection.Db.AttributeCache;
         HashSet<AttributeId> shown =
         [
-            cache.GetAttributeId(LoadoutItemGroupPriority.Priority.Id),
-            cache.GetAttributeId(LoadoutItemGroupPriority.Target.Id),
-            cache.GetAttributeId(LoadoutItemGroupPriority.Loadout.Id),
-            cache.GetAttributeId(LoadoutItem.Name.Id),
-            cache.GetAttributeId(LoadoutItem.Disabled.Id),
-            cache.GetAttributeId(LoadoutItem.Parent.Id),
+            attributes.GetAttributeId(LoadoutItemGroupPriority.Priority.Id),
+            attributes.GetAttributeId(LoadoutItemGroupPriority.Target.Id),
+            attributes.GetAttributeId(LoadoutItemGroupPriority.Loadout.Id),
+            attributes.GetAttributeId(LoadoutItem.Name.Id),
+            attributes.GetAttributeId(LoadoutItem.Disabled.Id),
+            attributes.GetAttributeId(LoadoutItem.Parent.Id),
         ];
 
         var revisions = connection.Revisions
             .Publish(shared => shared.Take(1).Merge(
                 shared.Skip(1)
                     .Where(db => TouchesShownAttributes(db, shown))
-                    .Throttle(RevisionThrottle, TaskPoolScheduler.Default)))
-            .Select(db => ItemsOf(db, loadoutId));
+                    .Throttle(RevisionThrottle, TaskPoolScheduler.Default)));
 
         // A cache applies only what differs from the previous read, so a re-read that finds the same rows notifies nobody.
         return ObservableChangeSet.Create<ModPriorityReactiveSortItem, SortItemKey<EntityId>>(
-            cache => revisions.Subscribe(items => cache.Edit(updater =>
+            cache => revisions.Subscribe(db =>
             {
-                var keys = items.Select(static item => item.Key).ToHashSet();
-                updater.Remove(updater.Keys.Where(key => !keys.Contains(key)).ToList());
-                updater.AddOrUpdate(items, ItemComparer.Instance);
-            })),
+                // This runs on the task pool for all but the first read, where an escaping exception would end the
+                // process. A failed read is logged and the page keeps the rows it has; the next revision tries again.
+                try
+                {
+                    var items = ReadItems(db, loadoutId);
+                    cache.Edit(updater =>
+                    {
+                        var keys = items.Select(static item => item.Key).ToHashSet();
+                        updater.Remove(updater.Keys.Where(key => !keys.Contains(key)).ToList());
+                        updater.AddOrUpdate(items, ItemComparer.Instance);
+                    });
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "Reading the load order of loadout {Loadout} failed; the page keeps its last rows", loadoutId);
+                }
+            }),
             static item => item.Key);
     }
+
+    /// <summary>How a revision is turned into rows; replaced in tests to make a read fail.</summary>
+    internal Func<IDb, LoadoutId, List<ModPriorityReactiveSortItem>> ReadItems { get; init; } = ItemsOf;
 
     private static readonly TimeSpan RevisionThrottle = TimeSpan.FromMilliseconds(100);
 
