@@ -64,7 +64,7 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Mer
             if (entry.Contributors.Count == 0) continue;
             var winner = entry.Contributors[0];
             foreach (var loser in entry.Contributors.Skip(1))
-                yield return new DroppedItem($"{loser}'s copy of {entry.Path}", loser, $"{winner}'s copy wins; the files could not be merged", page);
+                yield return new DroppedItem($"{loser}'s copy of {entry.Path}", loser, $"{winner}'s copy wins; the files could not be merged ({entry.Reason})", page);
         }
     }
 
@@ -81,7 +81,8 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Mer
         }
     }
 
-    // Without the game's own copy to compare against, the mods are merged two-way and the higher-ranked one wins every difference.
+    // The game's own copy was changed by another tool, so the mods are merged two-way and the higher-ranked one wins every difference.
+    // A missing copy raises nothing: a file a mod adds has none, and the Merges page already says so.
     private IEnumerable<DroppedItem> VanillaBaseItems(Loadout.ReadOnly loadout, MergeReport plan, string page)
     {
         foreach (var entry in Merged(loadout, plan))
@@ -90,11 +91,6 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Mer
             {
                 switch (note)
                 {
-                    case NoVanillaBase none:
-                        yield return new DroppedItem(
-                            $"the game's own copy of {none.Path}", "the game folder",
-                            $"there is no copy to compare the mods against, so they were merged two-way and {Winner(entry)}'s version wins where they differ", page, DiagnosticSeverity.Suggestion);
-                        break;
                     case VanillaBaseUntrusted untrusted:
                         yield return new DroppedItem(
                             $"the game's own copy of {untrusted.Path}", "the game folder",

@@ -87,7 +87,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         var cards = await Run([NotMergeable("content/foo.xml", "Alpha", "Beta", "Gamma")]);
 
         cards.Should().HaveCount(2).And.OnlyContain(c => c.Severity == DiagnosticSeverity.Warning);
-        Summary(cards[0]).Should().Contain("Beta's copy of content/foo.xml").And.Contain("Alpha's copy wins").And.Contain("could not be merged");
+        Summary(cards[0]).Should().Contain("Beta's copy of content/foo.xml").And.Contain("Alpha's copy wins").And.Contain("could not be merged (not a file the app merges; load order decides)");
         Summary(cards[1]).Should().Contain("Gamma's copy of content/foo.xml").And.Contain("Alpha's copy wins");
         Details(cards[0]).Should().EndWith("Change it on the Load Order page.");
         cards.Select(Summary).Should().NotContain(s => s.Contains("Alpha's copy of"), "the winner's copy is used");
@@ -106,13 +106,13 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
     }
 
     [Fact]
-    public async Task AMergeWithoutTheGamesOwnCopyOrWithAnUntrustedOneIsASuggestion()
+    public async Task AnUntrustedOriginalCopyIsASuggestionAndAMissingOneRaisesNothing()
     {
         var cards = await Run([Merged()], [Output(new NoVanillaBase(Script), new VanillaBaseUntrusted("scripts/y.ws", "edited after install"))]);
 
-        cards.Should().HaveCount(2).And.OnlyContain(c => c.Severity == DiagnosticSeverity.Suggestion);
-        Summary(cards[0]).Should().Contain(Script).And.Contain("no copy");
-        Summary(cards[1]).Should().Contain("scripts/y.ws").And.Contain("edited after install");
+        var card = cards.Should().ContainSingle().Which;
+        card.Severity.Should().Be(DiagnosticSeverity.Suggestion);
+        Summary(card).Should().Contain("scripts/y.ws").And.Contain("edited after install");
     }
 
     [Fact]
@@ -174,6 +174,31 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         var cards = await Collect(new FailingEmitter().Diagnose(loadout, CancellationToken.None));
 
         Summary(cards.Should().ContainSingle().Which).Should().Contain("it from plan is not used: it failed");
+    }
+
+    /// <summary>Cards that are not dropped items come before the note cards.</summary>
+    private sealed class ExtraFirstEmitter : AMergeDiagnosticsEmitter<MergeReport>
+    {
+        public ExtraFirstEmitter() : base(NullLogger.Instance) { }
+        protected override MergeReport? TryPlan(Loadout.ReadOnly loadout, out Diagnostic? failure)
+        {
+            failure = null;
+            return new MergeReport([], null, "hint");
+        }
+        protected override IEnumerable<MergedEntry> Merged(Loadout.ReadOnly loadout, MergeReport plan) => [new MergedEntry(Script, "Alpha, Beta", [Loss])];
+        protected override IEnumerable<Diagnostic> Extra(Loadout.ReadOnly loadout, MergeReport plan) => [Card(new DroppedItem("extra", "x", "r", "Load Order"))];
+    }
+
+    [Fact]
+    public async Task CardsThatAreNotDroppedItemsComeBeforeTheNoteCards()
+    {
+        var loadout = Refresh(await CreateLoadout());
+
+        var cards = await Collect(new ExtraFirstEmitter().Diagnose(loadout, CancellationToken.None));
+
+        cards.Select(Summary).Should().HaveCount(2);
+        Summary(cards[0]).Should().StartWith("extra");
+        Summary(cards[1]).Should().Contain("Beta's change");
     }
 
     /// <summary>EngineMergeDiagnosticsEmitter is sealed, so this stands in for it to reach <c>Dropped</c>.</summary>

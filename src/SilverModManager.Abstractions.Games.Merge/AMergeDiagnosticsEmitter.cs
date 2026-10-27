@@ -87,7 +87,7 @@ public abstract class AMergeDiagnosticsEmitter<TPlan>(ILogger logger) : ADropped
         foreach (var item in ExtraDropped(loadout, plan)) yield return item;
     }
 
-    /// <summary>The plan's failure card, or the note cards, then the dropped items and cards that are not about a note.</summary>
+    /// <summary>The plan's failure card, or the cards that are not dropped items, then the cards for the notes.</summary>
     public override async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Yield();
@@ -101,9 +101,9 @@ public abstract class AMergeDiagnosticsEmitter<TPlan>(ILogger logger) : ADropped
 
         if (plan is null) yield break;
 
+        foreach (var card in Extra(loadout, plan)) yield return card;
+
         await foreach (var card in NoteCards(loadout, plan, syncTree, cancellationToken).WithCancellation(cancellationToken))
             yield return card;
-
-        foreach (var card in Extra(loadout, plan)) yield return card;
     }
 }

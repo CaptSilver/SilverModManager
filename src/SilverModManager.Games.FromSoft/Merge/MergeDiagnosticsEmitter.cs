@@ -57,6 +57,9 @@ public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnost
     protected override IEnumerable<Diagnostic> Extra(Loadout.ReadOnly loadout, MergePlan plan)
         => PackageCollisionEmitter.WinnerWarnings(plan.Unmerged);
 
+    // The cards say "Rules > File Conflicts", so the dropped items point at the same page.
+    protected override string ReorderPage(Loadout.ReadOnly loadout) => "File Conflicts";
+
     protected override bool RaisesCard(IMergeNote note) => RaisesNoteCard(note);
 
     // The cards are FromSoft's own template, which also covers a note that records no loss.
