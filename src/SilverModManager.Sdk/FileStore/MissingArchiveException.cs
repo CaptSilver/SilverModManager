@@ -1,7 +1,7 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 
-namespace SilverModManager.DataModel;
+namespace SilverModManager.Sdk.FileStore;
 
 /// <summary>
 /// Exception for missing archives in the file store.

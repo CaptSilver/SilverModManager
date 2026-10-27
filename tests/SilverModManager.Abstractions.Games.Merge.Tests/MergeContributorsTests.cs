@@ -189,4 +189,44 @@ public class MergeContributorsTests(IServiceProvider provider) : AGameTest<Stubb
 
         Contested(loadout).Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task APinOnTheLowerPriorityModDecidesWhichCopyOfTheSharedTargetContributes()
+    {
+        var loadout = await CreateLoadout();
+        var a = await Mod(loadout, "A", 3, "Mods/shared/scripts/x.txt");
+        var b = await Mod(loadout, "B", 2, "Mods/shared/scripts/x.txt");
+        await Mod(loadout, "C", 1, "Mods/modC/scripts/x.txt");
+        await LoadoutManager.PinFileWinner(loadout.LoadoutId, new GamePath(LocationId.Game, "Mods/shared/scripts/x.txt"), b);
+
+        var contest = Contested(loadout).Should().ContainSingle().Subject;
+
+        a.Should().NotBe(b);
+        contest.Contributors.Select(c => c.ModName).Should().Equal("B", "C");
+    }
+
+    [Fact]
+    public async Task AFileInAGroupWithNoPriorityRowRanksZeroEvenInsideAModThatHasOne()
+    {
+        var loadout = await CreateLoadout();
+        var m = await Mod(loadout, "M", 3);
+        LoadoutItemGroupId child;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = new LoadoutItemGroup.New(tx, out var id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { LoadoutId = loadout.LoadoutId, Name = "M inner", ParentId = m },
+            };
+            AddFile(tx, loadout.LoadoutId, group.Id, new GamePath(LocationId.Game, "Mods/shared/scripts/x.txt"));
+            child = (await tx.Commit())[group.Id];
+        }
+        await Mod(loadout, "N", 2, "Mods/shared/scripts/x.txt");
+        await Mod(loadout, "C", 1, "Mods/modC/scripts/x.txt");
+
+        var contest = Contested(loadout).Should().ContainSingle().Subject;
+
+        child.Should().NotBe(m);
+        contest.Contributors.Select(c => c.ModName).Should().Equal("N", "C");
+    }
 }

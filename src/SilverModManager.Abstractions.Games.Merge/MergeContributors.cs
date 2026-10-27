@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Extensions;
@@ -7,8 +8,8 @@ using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Abstractions.Games.Merge;
 
-/// <summary>One enabled file under a mod folder. <paramref name="Rel"/> is the path below the folder in this file's own spelling; <paramref name="Prioritised"/> is whether the owning mod has a priority row.</summary>
-public readonly record struct ContestedFile(string Package, string Rel, GamePath Target, Hash Hash, ulong Rank, string ModName, LoadoutItemGroupId Owner, bool Prioritised);
+/// <summary>One enabled file under a mod folder. <paramref name="Rel"/> is the path below the folder in this file's own spelling; <paramref name="Prioritised"/> is whether the owning mod has a priority row, and <paramref name="Parent"/> the group the file sits directly in, which is what the synchronizer ranks a file by.</summary>
+public readonly record struct ContestedFile(string Package, string Rel, GamePath Target, Hash Hash, ulong Rank, string ModName, LoadoutItemGroupId Owner, bool Prioritised, LoadoutItemGroupId Parent);
 
 /// <summary>
 /// A path that more than one mod folder ships. <paramref name="Contributors"/> are ranked highest first, then by
@@ -27,8 +28,8 @@ public static class MergeContributors
     /// bytes, so the synchronizer can call it while its winning-files query runs: a database query there would re-enter
     /// the running one.
     /// </summary>
-    public static IReadOnlyList<ContestedPath> Of(Loadout.ReadOnly loadout, AMergeGame game)
-        => Group(loadout, game, contested: true)
+    public static IReadOnlyList<ContestedPath> Of(Loadout.ReadOnly loadout, AMergeGame game, ILogger? logger = null)
+        => Group(loadout, game, contested: true, logger)
             .Select(g => new ContestedPath(g[0].Rel, g, game.Merges(g[0].Target) ? game.StrategyFor(g[0].Rel) : null))
             .ToArray();
 
@@ -37,10 +38,10 @@ public static class MergeContributors
     /// order and shape as <see cref="Of"/> with no strategy. They are not merged and not reported not mergeable, but a
     /// caller can still tell the user that the lower mod's copy of such a path is not used.
     /// </summary>
-    public static IReadOnlyList<ContestedPath> NotContested(Loadout.ReadOnly loadout, AMergeGame game)
-        => Group(loadout, game, contested: false).Select(g => new ContestedPath(g[0].Rel, g, null)).ToArray();
+    public static IReadOnlyList<ContestedPath> NotContested(Loadout.ReadOnly loadout, AMergeGame game, ILogger? logger = null)
+        => Group(loadout, game, contested: false, logger).Select(g => new ContestedPath(g[0].Rel, g, null)).ToArray();
 
-    private static List<ContestedFile[]> Group(Loadout.ReadOnly loadout, AMergeGame game, bool contested)
+    private static List<ContestedFile[]> Group(Loadout.ReadOnly loadout, AMergeGame game, bool contested, ILogger? logger)
     {
         var db = loadout.Db;
         var priorityRows = new Dictionary<LoadoutItemGroupId, bool>();
@@ -74,10 +75,10 @@ public static class MergeContributors
 
             var owner = mod ?? (chain.Length > 1 ? chain[1] : chain[0]);
             var ownerId = LoadoutItemGroupId.From(owner.LoadoutItemId.Value);
-            files.Add(new ContestedFile(package, rel, target, file.Hash, game.Rank(loadout, package, ownerId), owner.Name, ownerId, mod is not null));
+            files.Add(new ContestedFile(package, rel, target, file.Hash, game.Rank(loadout, package, ownerId), owner.Name, ownerId, mod is not null, LoadoutItemGroupId.From((chain.Length > 1 ? chain[1] : chain[0]).LoadoutItemId.Value)));
         }
 
-        return Collapse(files)
+        return Collapse(files, FileWinners.Of(db, loadout.LoadoutId), logger)
             .GroupBy(f => f.Rel, StringComparer.OrdinalIgnoreCase)
             .Where(g => g.Count() > 1)
             .Select(g => g.OrderByDescending(f => f.Rank).ThenBy(f => f.Package, StringComparer.Ordinal).ThenBy(f => f.ModName, StringComparer.Ordinal).ToArray())
@@ -86,19 +87,25 @@ public static class MergeContributors
     }
 
     /// <summary>
-    /// One file per target, the highest-ranked mod's, which is the one the synchronizer deploys (the winner of a path is
-    /// the mod with the greatest priority); then one file per mod and relative path, so a mod that ships the same path
-    /// under two of its package folders does not merge with itself. Ties go to the lower package name, then mod name.
+    /// One file per target, the one the synchronizer deploys (<see cref="FileWinners"/>; equal ranks go to the lower mod
+    /// name, which the synchronizer leaves arbitrary); then one file per mod and relative path, so a mod that ships the
+    /// same path under two of its package folders does not merge with itself. The first of those is the higher-ranked,
+    /// then the lower package name.
     /// </summary>
-    private static IEnumerable<ContestedFile> Collapse(List<ContestedFile> files)
+    private static IEnumerable<ContestedFile> Collapse(List<ContestedFile> files, FileWinners winners, ILogger? logger)
     {
-        var order = files.OrderByDescending(f => f.Rank).ThenBy(f => f.Package, StringComparer.Ordinal).ThenBy(f => f.ModName, StringComparer.Ordinal).ToArray();
-        var targets = new HashSet<GamePath>();
+        var onePerTarget = files
+            .GroupBy(f => f.Target)
+            .Select(g => g.OrderByDescending(f => winners.RankOf(f.Target, f.Parent)).ThenBy(f => f.ModName, StringComparer.Ordinal).ThenBy(f => f.Package, StringComparer.Ordinal).First());
+
         var perMod = new HashSet<(LoadoutItemGroupId, string)>();
-        foreach (var f in order)
+        foreach (var f in onePerTarget.OrderByDescending(f => f.Rank).ThenBy(f => f.Package, StringComparer.Ordinal).ThenBy(f => f.ModName, StringComparer.Ordinal))
         {
-            if (!targets.Add(f.Target)) continue;
-            if (!perMod.Add((f.Owner, f.Rel.ToUpperInvariant()))) continue;
+            if (!perMod.Add((f.Owner, f.Rel.ToUpperInvariant())))
+            {
+                logger?.LogTrace("{Mod} ships {Rel} in more than one package folder; the copy in {Package} is not merged", f.ModName, f.Rel, f.Package);
+                continue;
+            }
             yield return f;
         }
     }

@@ -52,6 +52,7 @@ public interface IFileStore
     /// <param name="files"></param>
     /// <param name="token"></param>
     /// <returns></returns>
+    /// <exception cref="MissingArchiveException">The store has no archive for a requested hash.</exception>
     Task ExtractFiles(IEnumerable<(Hash Hash, AbsolutePath Dest)> files, CancellationToken token = default, Action<(int Current, int Max)>? progress = null);
 
     /// <summary>
@@ -60,6 +61,7 @@ public interface IFileStore
     /// <param name="files"></param>
     /// <param name="token"></param>
     /// <returns></returns>
+    /// <exception cref="MissingArchiveException">The store has no archive for a requested hash.</exception>
     Task<Dictionary<Hash, byte[]>> ExtractFiles(IEnumerable<Hash> files, CancellationToken token = default);
 
     /// <summary>
@@ -68,11 +70,13 @@ public interface IFileStore
     /// <param name="hash"></param>
     /// <param name="token"></param>
     /// <returns></returns>
+    /// <exception cref="MissingArchiveException">The store has no archive for a requested hash.</exception>
     Task<Stream> GetFileStream(Hash hash, CancellationToken token = default);
 
     /// <summary>
     /// Load the given file into memory.
     /// </summary>
+    /// <exception cref="MissingArchiveException">The store has no archive for a requested hash.</exception>
     Task<byte[]> Load(Hash hash, CancellationToken token = default);
 
     /// <summary>

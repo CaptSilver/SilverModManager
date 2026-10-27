@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts;
-using SilverModManager.DataModel;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -40,7 +39,7 @@ public sealed class MergeEngine : IMergeEngine
 
     private readonly Dictionary<LoadoutId, Entry> _latest = [];
     private readonly object _gate = new();
-    private readonly ConcurrentDictionary<string, byte> _unprioritised = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<(LoadoutId, string), byte> _unprioritised = new();
 
     // Kept apart from the entries because PlannedOutputs asks for it on every refresh and must never wait behind a plan
     // that is being made.
@@ -78,7 +77,7 @@ public sealed class MergeEngine : IMergeEngine
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<ContestedPath> NotContested(Loadout.ReadOnly loadout) => MergeContributors.NotContested(loadout, _gameOf(loadout));
+    public IReadOnlyList<ContestedPath> NotContested(Loadout.ReadOnly loadout) => MergeContributors.NotContested(loadout, _gameOf(loadout), _logger);
 
     public MergeReport Report(Loadout.ReadOnly loadout, MergeSourceMode mode)
     {
@@ -100,10 +99,10 @@ public sealed class MergeEngine : IMergeEngine
 
     private IReadOnlyList<ContestedPath> Contested(Loadout.ReadOnly loadout, AMergeGame game)
     {
-        var contested = MergeContributors.Of(loadout, game);
+        var contested = MergeContributors.Of(loadout, game, _logger);
         foreach (var file in contested.SelectMany(p => p.Contributors).Where(f => !f.Prioritised))
         {
-            if (_unprioritised.TryAdd(file.Package, 0))
+            if (_unprioritised.TryAdd((loadout.LoadoutId, file.Package), 0))
                 _logger.LogWarning("Package {Package} is in no mod with a priority, so it ranks below every other mod when its files are merged", file.Package);
         }
         return contested;
