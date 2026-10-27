@@ -20,7 +20,7 @@ public sealed class BethesdaModOrderSink(DefaultPriorityOrderSink inner, IPlugin
     {
         var drops = new List<ModOrderDrop>();
         if (HasPluginRules(source.Manifest?.PluginRules))
-            drops.Add(new ModOrderDrop("pluginRules", "the collection's LOOT plugin rules and groups were not applied"));
+            drops.Add(new ModOrderDrop("LOOT plugin rules and groups", "the app does not apply a collection's LOOT rules"));
 
         if (source.Manifest?.Plugins is not { ValueKind: not JsonValueKind.Null } pluginsKey)
         {

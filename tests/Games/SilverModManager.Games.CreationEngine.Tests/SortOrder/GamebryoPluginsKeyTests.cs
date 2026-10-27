@@ -304,6 +304,6 @@ public class GamebryoPluginsKeyTests(ITestOutputHelper helper)
 
         var drops = await Apply(loadout, container, manifest, a);
 
-        drops.Any(drop => drop.Item == "pluginRules").Should().Be(dropped);
+        drops.Any(drop => drop.Item == "LOOT plugin rules and groups").Should().Be(dropped);
     }
 }
