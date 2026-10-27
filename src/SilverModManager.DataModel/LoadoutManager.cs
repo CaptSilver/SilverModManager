@@ -859,7 +859,7 @@ internal partial class LoadoutManager : ILoadoutManager
         await tx.Commit();
     }
 
-    public GroupOrderResult SetGroupOrder(LoadoutId loadoutId, IReadOnlyList<LoadoutItemGroupId> winnerToLoser, ITransaction tx)
+    public GroupOrderResult SetGroupOrder(LoadoutId loadoutId, IReadOnlyList<LoadoutItemGroupId> winnerToLoser, ITransaction tx, IReadOnlySet<LoadoutItemGroupId>? newGroups = null)
     {
         if (winnerToLoser.Count == 0) return GroupOrderResult.None;
 
@@ -874,7 +874,8 @@ internal partial class LoadoutManager : ILoadoutManager
             .OrderBy(static row => row.Priority)
             .Select(static row => row.TargetId)
             .ToList();
-        var projected = ProjectBlock(current, blockAscending);
+        var unplaced = newGroups is null ? [] : blockAscending.Where(newGroups.Contains).ToImmutableArray();
+        var projected = ProjectBlock(current, blockAscending, unplaced);
 
         // The request is not refused: the resolver in the transaction puts the rules back. The same resolver runs here
         // over the projection to learn which pairs of the requested order end up the other way round because a rule
@@ -917,7 +918,7 @@ internal partial class LoadoutManager : ILoadoutManager
             }
         }
 
-        tx.Add(new ApplyGroupRulesTxFunc(loadoutId, new RuleDelta { BlockAscending = [..blockAscending] }));
+        tx.Add(new ApplyGroupRulesTxFunc(loadoutId, new RuleDelta { BlockAscending = [..blockAscending], UnplacedBlockGroups = unplaced }));
         return new GroupOrderResult(overridden, [..winnerToLoser.OrderByDescending(group => finalPosition[group])]);
     }
 
@@ -986,10 +987,19 @@ internal partial class LoadoutManager : ILoadoutManager
     /// <paramref name="ascending"/> with the groups of <paramref name="blockAscending"/> that have a place in it
     /// re-dealt in the block's order over the places they held; the others keep theirs. A block group without a
     /// place goes in at its listed position (the block grows by one place per such group and what sits above it
-    /// shifts up). When no block group has a place at all, the whole block goes above everything.
+    /// shifts up). When no block group has a place at all, the whole block goes above everything. A group in
+    /// <paramref name="unplaced"/> counts as having no place, whatever row it has.
     /// </summary>
-    internal static List<LoadoutItemGroupId> ProjectBlock(IReadOnlyList<LoadoutItemGroupId> ascending, IReadOnlyList<LoadoutItemGroupId> blockAscending)
+    internal static List<LoadoutItemGroupId> ProjectBlock(
+        IReadOnlyList<LoadoutItemGroupId> ascending, IReadOnlyList<LoadoutItemGroupId> blockAscending, IReadOnlyCollection<LoadoutItemGroupId> unplaced)
     {
+        // A block group whose slot is not the block's is placed like one without a row; its old slot goes away.
+        if (unplaced.Count > 0)
+        {
+            var dropped = unplaced.ToHashSet();
+            ascending = ascending.Where(group => !dropped.Contains(group)).ToList();
+        }
+
         var inOrder = ascending.ToHashSet();
         var blockSet = blockAscending.ToHashSet();
         var heldCount = blockAscending.Count(inOrder.Contains);

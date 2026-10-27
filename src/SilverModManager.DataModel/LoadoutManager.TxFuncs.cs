@@ -247,7 +247,7 @@ internal partial class LoadoutManager
 
             var basisOrder = rowOfGroup.Keys.OrderBy(group => rowOfGroup[group].Priority).ToList();
             if (!delta.BlockAscending.IsEmpty)
-                basisOrder = ProjectBlock(basisOrder, delta.BlockAscending.Where(group => !removed.Contains(group)).ToList());
+                basisOrder = ProjectBlock(basisOrder, delta.BlockAscending.Where(group => !removed.Contains(group)).ToList(), delta.UnplacedBlockGroups);
 
             var resolution = RuleResolver.Resolve(basisOrder, storedRules, expandedDelta);
             if (resolution.Cycle is { } cycle)

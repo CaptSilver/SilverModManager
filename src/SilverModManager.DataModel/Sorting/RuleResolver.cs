@@ -34,6 +34,13 @@ public record RuleDelta
     /// of them has a row the whole block goes above every row, like NewGroups. Groups not listed keep their relative order.
     /// </summary>
     public ImmutableArray<LoadoutItemGroupId> BlockAscending { get; init; } = [];
+
+    /// <summary>
+    /// Groups of <see cref="BlockAscending"/> whose row does not count as a slot of the block: a group the caller has just
+    /// installed has its row on top of the loadout, and dealing the block over that slot would lift the block's winner
+    /// above mods the user installed since. They go in as groups without a row do.
+    /// </summary>
+    public ImmutableArray<LoadoutItemGroupId> UnplacedBlockGroups { get; init; } = [];
 }
 
 /// <summary>

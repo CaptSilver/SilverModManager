@@ -128,8 +128,11 @@ public interface ILoadoutManager
     /// row, the rule for new groups) and then re-applies the loadout's stored rules, so where the requested order breaks
     /// a stored rule the rule wins; those cases are computed before the transaction and come back as Overridden. Writes
     /// no rule rows. The transaction must not already hold a priority writer for this loadout (see ClaimPriorityRows).
+    /// Groups in <paramref name="newGroups"/> were just installed: their own rows are not slots of the block, so they go
+    /// in at their listed place the way a group without a row does, and a block's winner never takes the top slot a new
+    /// install was given above the user's later mods.
     /// </summary>
-    GroupOrderResult SetGroupOrder(LoadoutId loadoutId, IReadOnlyList<LoadoutItemGroupId> winnerToLoser, ITransaction tx);
+    GroupOrderResult SetGroupOrder(LoadoutId loadoutId, IReadOnlyList<LoadoutItemGroupId> winnerToLoser, ITransaction tx, IReadOnlySet<LoadoutItemGroupId>? newGroups = null);
 
     /// <summary>
     /// Removes all groups and installs the new library item.

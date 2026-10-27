@@ -54,10 +54,10 @@ public class DefaultPriorityOrderSinkTests(ITestOutputHelper helper) : ACyberpun
         ContainerOrder.ChildrenWinnerFirst(Connection.Db, container).Select(child => child.AsLoadoutItem().Name).ToArray();
 
     /// <summary>A mod installed after the order was applied: its row goes above every other.</summary>
-    private async Task<LoadoutItemGroupId> InstallOnTop(LoadoutId loadoutId, string name)
+    private async Task<LoadoutItemGroupId> InstallOnTop(LoadoutId loadoutId, string name, LoadoutItemGroupId? parent = null)
     {
         using var tx = Connection.BeginTransaction();
-        var group = AddEmptyGroup(tx, loadoutId, name);
+        var group = AddEmptyGroup(tx, loadoutId, name, parent);
         var top = LoadoutItemGroupPriority.FindByLoadout(Connection.Db, loadoutId).Max(r => r.Priority.Value);
         _ = new LoadoutItemGroupPriority.New(tx) { LoadoutId = loadoutId, TargetId = group, Priority = ConflictPriority.From(top + 1) };
         var result = await tx.Commit();
@@ -137,6 +137,21 @@ public class DefaultPriorityOrderSinkTests(ITestOutputHelper helper) : ACyberpun
 
         PriorityOf(g["b"]).Should().BeGreaterThan(PriorityOf(g["a"]));
         IsDisabled(g["a"]).Should().BeFalse("the key's switch is only applied to groups the run added");
+    }
+
+    [Fact]
+    public async Task ARunThatAddsAGroupLeavesTheUsersOwnModsAboveTheBlock()
+    {
+        var (loadout, container, g) = await Seed("a", "b");
+        await Apply(loadout, container, (g["a"], null), (g["b"], null));
+        g["x"] = await InstallOnTop(loadout.LoadoutId, "x");
+        g["n"] = await InstallOnTop(loadout.LoadoutId, "n", container);
+
+        await ApplyRun(loadout, container, new HashSet<LoadoutItemGroupId> { g["n"] }, (g["a"], null), (g["n"], null), (g["b"], null));
+
+        PriorityOf(g["x"]).Should().BeGreaterThan(new[] { "a", "n", "b" }.Max(name => PriorityOf(g[name])), "the new group's top slot is not the block's to hand out");
+        PriorityOf(g["a"]).Should().BeGreaterThan(PriorityOf(g["n"]));
+        PriorityOf(g["n"]).Should().BeGreaterThan(PriorityOf(g["b"]));
     }
 
     [Fact]

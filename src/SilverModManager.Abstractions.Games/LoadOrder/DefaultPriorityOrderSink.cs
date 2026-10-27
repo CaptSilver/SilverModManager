@@ -27,7 +27,7 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
 
     public IReadOnlyList<ModOrderDrop> Apply(Loadout.ReadOnly loadout, ModOrder order, ModOrderSource source, ITransaction tx)
     {
-        var result = loadouts.SetGroupOrder(loadout.LoadoutId, RequestedOrder(loadout, order, source), tx);
+        var result = loadouts.SetGroupOrder(loadout.LoadoutId, RequestedOrder(loadout, order, source), tx, source.NewGroups);
 
         foreach (var entry in order.WinnerToLoser)
         {

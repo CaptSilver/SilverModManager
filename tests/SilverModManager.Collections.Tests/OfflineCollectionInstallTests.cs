@@ -205,6 +205,30 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
     }
 
     [Fact]
+    public async Task InstallingOneOptionalFromTheCollectionPageLeavesTheUsersOwnModAboveTheCollection()
+    {
+        var (_, revision, group, loadout) = await InstallAndRearrange();
+        LoadoutItemGroupId own;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var added = AddEmptyGroup(tx, loadout, "Own mod");
+            var top = LoadoutItemGroupPriority.FindByLoadout(Connection.Db, loadout).Max(row => row.Priority.Value);
+            _ = new LoadoutItemGroupPriority.New(tx) { LoadoutId = loadout, TargetId = added, Priority = ConflictPriority.From(top + 1) };
+            var result = await tx.Commit();
+            own = LoadoutItemGroupId.From(result[added].Value);
+        }
+        var optional = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional).Single();
+
+        var job = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, optional, CancellationToken.None);
+        async Task Run() => await ServiceProvider.GetRequiredService<IJobMonitor>().Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);
+        await Run().WaitAsync(Timeout);
+
+        var lowestFirst = LoadoutItemGroupPriority.FindByLoadout(Connection.Db, loadout).OrderBy(row => row.Priority).Select(row => row.TargetId).ToList();
+        lowestFirst[^1].Should().Be(own, "a mod the user installed after the collection stays above it");
+        TheUsersOrderAndSwitchHoldAndTheOptionalSitsInItsListedSlot(group);
+    }
+
+    [Fact]
     public async Task InstallingOneOptionalFromTheCollectionPagePutsItInItsListedSlot()
     {
         var (_, revision, group, loadout) = await InstallAndRearrange();

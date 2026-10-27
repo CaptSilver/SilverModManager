@@ -26,10 +26,12 @@ public class SetGroupOrderTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
         return (loadout, added.ToDictionary(pair => pair.Key, pair => LoadoutItemGroupId.From(result[pair.Value].Value)));
     }
 
-    private async Task<GroupOrderResult> Set(LoadoutId loadoutId, params LoadoutItemGroupId[] winnerToLoser)
+    private Task<GroupOrderResult> Set(LoadoutId loadoutId, params LoadoutItemGroupId[] winnerToLoser) => SetAdding(loadoutId, null, winnerToLoser);
+
+    private async Task<GroupOrderResult> SetAdding(LoadoutId loadoutId, IReadOnlySet<LoadoutItemGroupId>? newGroups, params LoadoutItemGroupId[] winnerToLoser)
     {
         using var tx = Connection.BeginTransaction();
-        var result = LoadoutManager.SetGroupOrder(loadoutId, winnerToLoser, tx);
+        var result = LoadoutManager.SetGroupOrder(loadoutId, winnerToLoser, tx, newGroups);
         await tx.Commit();
         return result;
     }
@@ -175,6 +177,17 @@ public class SetGroupOrderTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
         blamed[(g["q"], g["p"])].Should().Be(pOverQ);
         blamed[(g["w"], g["z"])].Should().Be(zAfterU);
         blamed[(g["y"], g["z"])].Should().Be(zAfterU);
+    }
+
+    [Fact]
+    public async Task ANewGroupsOwnSlotIsNotTheBlocksAndItGoesInNextToItsListedNeighbour()
+    {
+        // n was just installed, so its row sits above x, a mod of the user's own installed after the block.
+        var (loadout, g) = await Seed(["b", "a", "x", "n"]);
+
+        await SetAdding(loadout.LoadoutId, new HashSet<LoadoutItemGroupId> { g["n"] }, g["a"], g["n"], g["b"]);
+
+        NamesByPriority(loadout.LoadoutId).Should().Equal("b", "n", "a", "x");
     }
 
     [Fact]
