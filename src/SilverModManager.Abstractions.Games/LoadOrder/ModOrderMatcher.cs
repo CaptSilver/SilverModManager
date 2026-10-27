@@ -28,6 +28,8 @@ public static class ModOrderMatcher
     public static ModOrder Match(IDb db, LoadoutItemGroupId container, IReadOnlyList<ModOrderSourceEntry> entries)
     {
         var index = Index.Build(db, container);
+        // An optional download is installed from the collection's page, whose tab carries the collection's name, as the container does.
+        var containerPage = LoadoutItemGroup.Load(db, container).AsLoadoutItem().Name;
         var placed = new HashSet<LoadoutItemGroupId>();
         var order = new List<ModOrderEntry>();
         var dropped = new List<ModOrderDrop>();
@@ -44,7 +46,7 @@ public static class ModOrderMatcher
             var candidates = index.Find(reference);
             if (candidates.Count == 0)
             {
-                dropped.Add(new ModOrderDrop(reference.Display, NoMatch));
+                dropped.Add(new ModOrderDrop(reference.Display, NoMatch, containerPage));
                 continue;
             }
 

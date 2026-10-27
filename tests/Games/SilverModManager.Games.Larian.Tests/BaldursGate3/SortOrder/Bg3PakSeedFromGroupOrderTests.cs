@@ -52,6 +52,13 @@ public class Bg3PakSeedFromGroupOrderTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public void ADropOfTheDefaultSinkNamesFileConflicts()
+    {
+        // BG3 has its pak order as a sort order, so the generic Load Order tab is not shown.
+        new DefaultPriorityOrderSink(LoadoutManager, NullLogger<DefaultPriorityOrderSink>.Instance).FixPage(Game).Should().Be("File Conflicts");
+    }
+
+    [Fact]
     public async Task TheBg3PakOrderFollowsTheImportedModOrder()
     {
         var loadout = await CreateLoadout();

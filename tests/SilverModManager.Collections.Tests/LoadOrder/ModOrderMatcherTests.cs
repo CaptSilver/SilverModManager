@@ -274,6 +274,7 @@ public class ModOrderMatcherTests(ITestOutputHelper helper) : ACyberpunkIsolated
         var drop = order.Dropped.Should().ContainSingle().Subject;
         drop.Item.Should().Be("Ghost");
         drop.Reason.Should().Contain("optional download not installed");
+        drop.Page.Should().Be("Pack", "an optional download is installed from the collection's own page, which carries its name");
     }
 
     [Fact]

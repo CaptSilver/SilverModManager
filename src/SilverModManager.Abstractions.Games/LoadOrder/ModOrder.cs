@@ -9,7 +9,8 @@ public sealed record ModOrderEntry(LoadoutItemGroupId Group, bool? Enabled);
 
 /// <param name="Item">What the source named, as the user would recognise it (mod name, Vortex key, file name).</param>
 /// <param name="Reason">Why it could not be placed, in words the user can act on.</param>
-public sealed record ModOrderDrop(string Item, string Reason);
+/// <param name="Page">The tab to fix it on, as the UI titles it; null for the sink's own (<see cref="IModOrderSink.FixPage"/>).</param>
+public sealed record ModOrderDrop(string Item, string Reason, string? Page = null);
 
 /// <summary>
 /// An order of installed mod groups handed over by a collection or a Wabbajack list. It is a starting

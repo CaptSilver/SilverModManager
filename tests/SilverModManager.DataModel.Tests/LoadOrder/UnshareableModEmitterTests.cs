@@ -140,7 +140,7 @@ public class UnshareableModEmitterTests(ITestOutputHelper helper) : ACyberpunkIs
 
         cards.Should().HaveCount(2);
         var rule = cards.Should().ContainSingle(card => card.Contains("Nexus mod wins over Plain archive")).Subject;
-        rule.Should().Contain("collection Shared pack").And.Contain("Load Order page");
+        rule.Should().Contain("collection Shared pack").And.Contain("File Conflicts page");
         rule.Should().Contain("sharing the collection leaves this rule out").And.Contain("one of its mods cannot be named");
     }
 

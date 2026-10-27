@@ -45,7 +45,8 @@ public sealed class UnshareableModEmitter : ADroppedItemEmitter
                     _ => null,
                 };
                 if (verdict is not var (why, severity)) continue;
-                yield return new DroppedItem(GroupRuleText.WinsOver(rule), source, $"{RuleReason}: {why}", "Load Order", severity);
+                // Stored rules are edited in the Rules editor of File Conflicts, which every game has.
+                yield return new DroppedItem(GroupRuleText.WinsOver(rule), source, $"{RuleReason}: {why}", "File Conflicts", severity);
             }
         }
     }

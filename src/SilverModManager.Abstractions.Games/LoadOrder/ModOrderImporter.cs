@@ -14,11 +14,12 @@ public sealed class ModOrderImporter(IServiceProvider provider, IConnection conn
     /// Applies <paramref name="order"/> to the loadout through the game's sink (<see cref="IModOrderGame.OrderSink"/>, else
     /// <see cref="DefaultPriorityOrderSink"/>) inside <paramref name="tx"/>, and replaces the loadout's <see cref="ModOrderDroppedEntry"/>
     /// rows whose container is <paramref name="source"/>'s with <see cref="ModOrder.Dropped"/> plus what the sink dropped, each
-    /// row carrying <see cref="ModOrderSource.Name"/> as its source. Each drop is also a Trace log.
+    /// row carrying <see cref="ModOrderSource.Name"/> as its source and the drop's page, else the sink's. Each drop is also a Trace log.
     /// </summary>
     public void Import(Loadout.ReadOnly loadout, ModOrder order, ModOrderSource source, ITransaction tx)
     {
-        var sink = SinkFor(loadout.InstallationInstance.GetGame(), provider);
+        var game = loadout.InstallationInstance.GetGame();
+        var sink = SinkFor(game, provider);
         IReadOnlyList<ModOrderDrop> sinkDrops = sink.Apply(loadout, order, source, tx);
 
         // Read the committed rows rather than loadout.Db, which may predate an earlier import of the same container.
@@ -38,7 +39,7 @@ public sealed class ModOrderImporter(IServiceProvider provider, IConnection conn
                 Source = source.Name,
                 Item = drop.Item,
                 Reason = drop.Reason,
-                Page = sink.FixPage,
+                Page = drop.Page ?? sink.FixPage(game),
             };
         }
     }

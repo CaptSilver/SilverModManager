@@ -28,6 +28,21 @@ public class EldenRingCollectionOrderRoundTripTests(ITestOutputHelper helper) : 
     private static readonly (string Name, UInt128 Md5)[] Mods = [("alpha.zip", 1), ("bravo.zip", 2), ("charlie.zip", 3), ("delta.zip", 4)];
 
     [Fact]
+    public async Task ADropOfTheImportNamesTheLoadOrderPage()
+    {
+        var pack = await Build("Pack", Mods.ToDictionary(mod => mod.Name, _ => 1UL));
+        using (var tx = Connection.BeginTransaction())
+        {
+            new ModOrderImporter(ServiceProvider, Connection, NullLogger<ModOrderImporter>.Instance)
+                .Import(Refresh(pack.Loadout), ModOrder.Create([], [new ModOrderDrop("Ghost", "not installed")]), new ModOrderSource("collection Pack", pack.Container, null), tx);
+            await tx.Commit();
+        }
+
+        // Elden Ring has no sort order of its own, so its mod priority is edited on the generic Load Order tab.
+        ModOrderDroppedEntry.FindByLoadout(Connection.Db, pack.Loadout.LoadoutId).Should().ContainSingle().Which.Page.Should().Be("Load Order");
+    }
+
+    [Fact]
     public async Task RoundTripRestoresTheOrderOnAFreshLoadout()
     {
         // Winner first: charlie, alpha, delta, bravo.

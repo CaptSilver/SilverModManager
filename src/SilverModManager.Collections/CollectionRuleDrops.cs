@@ -31,7 +31,8 @@ public static class CollectionRuleDrops
                 .Any(row => CollectionDownload.Load(db, row.SourceId).CollectionRevisionId == revision.CollectionRevisionMetadataId);
 
             var item = $"rule '{Describe(rule.Source)} {(rule.Type == VortexModRuleType.Before ? "before" : "after")} {Describe(rule.Other)}'";
-            if (!stored) drops.Add(new ModOrderDrop(item, UnresolvedReason));
+            // The collection's own page (its tab is the collection's name) is where its downloads and their rules are shown.
+            if (!stored) drops.Add(new ModOrderDrop(item, UnresolvedReason, revision.Collection.Name));
         }
         return drops;
     }

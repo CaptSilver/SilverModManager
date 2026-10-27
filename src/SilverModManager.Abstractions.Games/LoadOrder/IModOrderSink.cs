@@ -10,6 +10,6 @@ public interface IModOrderSink
     /// <summary>Applies the order inside <paramref name="tx"/>; returns the drops the sink itself produced (rule overrides, items it could not seed).</summary>
     IReadOnlyList<ModOrderDrop> Apply(Loadout.ReadOnly loadout, ModOrder order, ModOrderSource source, ITransaction tx);
 
-    /// <summary>The page a dropped-item card sends the user to; "Load Order" for the default sink.</summary>
-    string FixPage { get; }
+    /// <summary>The page a dropped-item card sends the user to when the drop names none: where the game's mod order is edited.</summary>
+    string FixPage(IGame game);
 }

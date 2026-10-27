@@ -195,7 +195,7 @@ public class GamebryoPluginsKeyTests(ITestOutputHelper helper)
 
         var drops = await ImportRaw(loadout, container, """{"name":"B.esp"}""", a, b);
 
-        drops.Should().ContainSingle(drop => drop.Item == "plugins");
+        drops.Should().ContainSingle(drop => drop.Item == "plugins").Which.Page.Should().Be("Plugin Load Order");
         // Seeding stayed on: the winner-first mod order puts A.esp last.
         StoredNames(loadout).Should().Equal("B.esp", "A.esp");
     }
@@ -205,7 +205,7 @@ public class GamebryoPluginsKeyTests(ITestOutputHelper helper)
     {
         var game = (IModOrderGame)Game;
 
-        game.OrderSink.Should().BeOfType<BethesdaModOrderSink>().Which.FixPage.Should().Be("Load Order");
+        game.OrderSink.Should().BeOfType<BethesdaModOrderSink>().Which.FixPage(Game).Should().Be("File Conflicts", "the plugin order is a sort order, so there is no generic Load Order tab");
         game.OrderSink.Should().BeSameAs(game.OrderSink);
         game.VortexOrderFormat.Should().BeNull();
         await Task.CompletedTask;
@@ -274,6 +274,7 @@ public class GamebryoPluginsKeyTests(ITestOutputHelper helper)
         var a = await AddMod(loadout, "A.esp", container);
         var variety = Substitute.For<IPluginSortOrderVariety>();
         variety.GetSortOrderIdFor(default, default).ReturnsForAnyArgs(Optional<SortOrderId>.None);
+        variety.SortOrderUiMetadata.Returns(Game.PluginVariety().SortOrderUiMetadata);
         var sink = new BethesdaModOrderSink(new DefaultPriorityOrderSink(LoadoutManager, NullLogger<DefaultPriorityOrderSink>.Instance), variety, Game);
         var manifest = new CollectionRoot
         {
@@ -284,7 +285,7 @@ public class GamebryoPluginsKeyTests(ITestOutputHelper helper)
         using var tx = Connection.BeginTransaction();
         var drops = sink.Apply(Refresh(loadout), ModOrder.Create([new ModOrderEntry(a, null)], []), new ModOrderSource("collection Test", container, manifest), tx);
 
-        drops.Should().Contain(drop => drop.Reason == "the plugin order was not created yet");
+        drops.Should().Contain(drop => drop.Reason == "the plugin order was not created yet" && drop.Page == "Plugin Load Order");
     }
 
     [Theory]
@@ -305,5 +306,6 @@ public class GamebryoPluginsKeyTests(ITestOutputHelper helper)
         var drops = await Apply(loadout, container, manifest, a);
 
         drops.Any(drop => drop.Item == "LOOT plugin rules and groups").Should().Be(dropped);
+        drops.Where(drop => drop.Item == "LOOT plugin rules and groups").All(drop => drop.Page == "Plugin Load Order").Should().BeTrue();
     }
 }

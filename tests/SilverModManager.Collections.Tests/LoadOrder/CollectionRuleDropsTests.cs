@@ -86,7 +86,7 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
 
         var drops = CollectionRuleDrops.Read(Connection.Db, manifest, revision);
 
-        drops.Should().Equal(new ModOrderDrop("rule 'tag0 before ghost'", "no mod of the collection matched it"));
+        drops.Should().Equal(new ModOrderDrop("rule 'tag0 before ghost'", "no mod of the collection matched it", "Offline"));
     }
 
     [Fact]
@@ -153,7 +153,7 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
         row.ContainerId.Should().Be(group.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId);
         row.Item.Should().Be("rule 'tag0 before ghost'");
         row.Reason.Should().Be("no mod of the collection matched it");
-        row.Page.Should().Be("Load Order");
+        row.Page.Should().Be("Offline");
         row.Source.Should().Be("collection Offline");
     }
 

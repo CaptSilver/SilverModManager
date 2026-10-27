@@ -25,6 +25,9 @@ public sealed class ModPriorityOrderVariety(IConnection connection, ILoadoutMana
 {
     public static readonly SortOrderVarietyId StaticVarietyId = SortOrderVarietyId.From(new Guid("7f3b1c2e-9a44-4d6b-8e21-5c0f9a7d3b16"));
 
+    /// <summary>The tab this variety appears as.</summary>
+    public const string PageName = "Load Order";
+
     public SortOrderVarietyId SortOrderVarietyId => StaticVarietyId;
 
     public ListSortDirection SortDirectionDefault => ListSortDirection.Ascending;
@@ -33,7 +36,7 @@ public sealed class ModPriorityOrderVariety(IConnection connection, ILoadoutMana
 
     public SortOrderUiMetadata SortOrderUiMetadata { get; } = new()
     {
-        SortOrderName = "Load Order",
+        SortOrderName = PageName,
         OverrideInfoTitle = "Load Order - Last Wins",
         OverrideInfoMessage = """
                               When two mods ship the same file, the one lower in this list is used. Dragging a mod up or down changes which one wins, the same as on File Conflicts.

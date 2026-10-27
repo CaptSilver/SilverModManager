@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.Bethesda.LoadOrder;
@@ -14,13 +15,16 @@ namespace SilverModManager.Games.CreationEngine.SortOrder;
 /// </summary>
 public sealed class BethesdaModOrderSink(DefaultPriorityOrderSink inner, IPluginSortOrderVariety variety, ICreationEngineGame game) : IModOrderSink
 {
-    public string FixPage => "Load Order";
+    public string FixPage(IGame game) => inner.FixPage(game);
+
+    /// <summary>What the plugin drops send the user to: the plugin order's own tab.</summary>
+    private string PluginPage => variety.SortOrderUiMetadata.SortOrderName;
 
     public IReadOnlyList<ModOrderDrop> Apply(Loadout.ReadOnly loadout, ModOrder order, ModOrderSource source, ITransaction tx)
     {
         var drops = new List<ModOrderDrop>();
         if (HasPluginRules(source.Manifest?.PluginRules))
-            drops.Add(new ModOrderDrop("LOOT plugin rules and groups", "the app does not apply a collection's LOOT rules"));
+            drops.Add(new ModOrderDrop("LOOT plugin rules and groups", "the app does not apply a collection's LOOT rules", PluginPage));
 
         if (source.Manifest?.Plugins is not { ValueKind: not JsonValueKind.Null } pluginsKey)
         {
@@ -33,19 +37,19 @@ public sealed class BethesdaModOrderSink(DefaultPriorityOrderSink inner, IPlugin
         {
             // Nothing usable in the key: the plugin order follows the mod order as it would without one.
             drops.InsertRange(0, inner.Apply(loadout, order, source, tx));
-            drops.AddRange(unmapped);
+            drops.AddRange(OnPluginPage(unmapped));
             return drops;
         }
 
         // SeedVarieties=false turns off every variety, which is the plugin variety alone for these games. A plugins key
         // decides the plugin order even when the manifest also has silverLoadOrder: the two order different things.
         drops.InsertRange(0, inner.Apply(loadout, order, source with { SeedVarieties = false }, tx));
-        drops.AddRange(unmapped);
+        drops.AddRange(OnPluginPage(unmapped));
 
         var sortOrderId = variety.GetSortOrderIdFor(loadout.LoadoutId, loadout.Db);
         if (!sortOrderId.HasValue)
         {
-            drops.Add(new ModOrderDrop("plugins", "the plugin order was not created yet"));
+            drops.Add(new ModOrderDrop("plugins", "the plugin order was not created yet", PluginPage));
             return drops;
         }
 
@@ -73,6 +77,8 @@ public sealed class BethesdaModOrderSink(DefaultPriorityOrderSink inner, IPlugin
         result.AddRange(unlisted.Select(name => (name, (bool?)false)));
         return result;
     }
+
+    private IEnumerable<ModOrderDrop> OnPluginPage(IEnumerable<ModOrderDrop> drops) => drops.Select(drop => drop with { Page = PluginPage });
 
     private static bool HasPluginRules(JsonElement? rules) =>
         rules is { ValueKind: JsonValueKind.Object } value
