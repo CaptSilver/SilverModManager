@@ -54,8 +54,7 @@ internal sealed class LightweightDatomSegment<TEnumerator, TDescriptor> : ILight
         {
             if (!MoveNext())
             {
-                _state = State.Finished;
-                _enumerator.Dispose();
+                Finish();
                 return false; // No items to process
             }
         }
@@ -64,8 +63,7 @@ internal sealed class LightweightDatomSegment<TEnumerator, TDescriptor> : ILight
         {
             if (!_enumerator.MoveNext(_descriptor))
             {
-                _enumerator.Dispose();
-                _state = State.Finished;
+                Finish();
                 return false; // No more items
             }
         }
@@ -73,10 +71,17 @@ internal sealed class LightweightDatomSegment<TEnumerator, TDescriptor> : ILight
         return _enumerator.KeyPrefix.E == eid;
     }
 
-    public void Dispose()
+    public void Dispose() => Finish();
+
+    /// <summary>
+    /// Releases the native iterator the first time it is called. Running off the end of the data and the caller's
+    /// Dispose both end up here, so whichever comes second must not free the iterator again.
+    /// </summary>
+    private void Finish()
     {
-        if (_state != State.Finished) 
+        if (_state == State.Finished)
             return;
+        _state = State.Finished;
         _enumerator.Dispose();
     }
 }

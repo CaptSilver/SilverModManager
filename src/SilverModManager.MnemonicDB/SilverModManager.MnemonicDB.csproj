@@ -24,6 +24,9 @@
         <PackageReference Include="NexusMods.Paths"/>
     </ItemGroup>
     <ItemGroup>
+        <InternalsVisibleTo Include="SilverModManager.DataModel.Tests" />
+    </ItemGroup>
+    <ItemGroup>
         <ProjectReference Include="..\SilverModManager.MnemonicDB.Abstractions\SilverModManager.MnemonicDB.Abstractions.csproj"/>
     </ItemGroup>
     <ItemGroup>
