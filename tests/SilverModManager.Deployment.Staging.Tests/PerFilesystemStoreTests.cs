@@ -393,6 +393,110 @@ public class PerFilesystemStoreTests : IDisposable
         _logger.Warnings.Should().ContainSingle();
     }
 
+    // B stands in for a second installation row for A's folder. Its files were deployed with links before the
+    // rows were merged, and the next sweep no longer counts B as an installation.
+    [Fact]
+    public async Task MergeInstallation_LinksDeployedFromTheMergedRowKeepWorkingAfterASweep()
+    {
+        var steam = AddFilesystem("steam", device: 2);
+        var (shared, onlyB, onlyBSteam) = (Add(0x51, "shared"), Add(0x52, "only b"), Add(0x53, "only b on steam"));
+        var store = NewStore();
+        var other = store.ForRoot(steam);
+        var token = TestContext.Current.CancellationToken;
+        var keptShared = await store.Ensure(InstallA, shared, token);
+        await store.Ensure(InstallB, shared, token);
+        var stagedOnlyB = await store.Ensure(InstallB, onlyB, token);
+        var stagedOnlyBSteam = await other.Ensure(InstallB, onlyBSteam, token);
+
+        var game = _temp.Combine("home/games/Game");
+        game.CreateDirectory();
+        var symlinked = game.Combine("symlinked.txt");
+        File.CreateSymbolicLink(symlinked.ToString(), stagedOnlyB.ToString());
+        var hardlinked = steam.Combine("hardlinked.txt");
+        LibcLinks.TryLink(stagedOnlyBSteam.ToString(), hardlinked.ToString()).Should().Be(0);
+        var hardlinkedInode = InodeOf(hardlinked);
+        var keptSharedInode = InodeOf(keptShared);
+
+        store.MergeInstallation(InstallB, InstallA);
+        store.Sweep(() => new Dictionary<GameInstallMetadataId, IReadOnlySet<Hash>>
+        {
+            [InstallA] = new HashSet<Hash> { shared, onlyB, onlyBSteam },
+        });
+
+        File.ReadAllText(symlinked.ToString()).Should().Be("only b", "a symlink to the merged row's file still resolves");
+        InodeOf(other.PathFor(InstallA, onlyBSteam)).Should().Be(hardlinkedInode, "a hard link is still the staged file");
+        InodeOf(store.PathFor(InstallA, shared)).Should().Be(keptSharedInode, "a hash both rows staged keeps the surviving row's file");
+        store.Installations().Should().BeEquivalentTo([InstallA]);
+        other.Installations().Should().BeEquivalentTo([InstallA]);
+    }
+
+    [Fact]
+    public async Task MergeInstallation_RunAgain_ChangesNothing()
+    {
+        var hash = Add(0x61, "b");
+        var store = NewStore();
+        var staged = await store.Ensure(InstallB, hash, TestContext.Current.CancellationToken);
+        store.MergeInstallation(InstallB, InstallA);
+        var inode = InodeOf(store.PathFor(InstallA, hash));
+
+        store.MergeInstallation(InstallB, InstallA);
+
+        InodeOf(store.PathFor(InstallA, hash)).Should().Be(inode);
+        File.ReadAllText(staged.ToString()).Should().Be("b");
+        Directory.EnumerateFileSystemEntries(store.Root.ToString()).Select(Path.GetFileName)
+            .Should().BeEquivalentTo(["a1", "b2"], "nothing is left over beside the installation and its alias");
+    }
+
+    // A crash after B's directory was set aside but before its alias was made.
+    [Fact]
+    public async Task MergeInstallation_AfterACrashPartWay_FinishesTheAlias()
+    {
+        var hash = Add(0x62, "b");
+        var store = NewStore();
+        var staged = await store.Ensure(InstallB, hash, TestContext.Current.CancellationToken);
+        store.MergeInstallation(InstallB, InstallA);
+        File.Delete(store.Root.Combine("b2").ToString());
+        store.Root.Combine(".b2.merged").CreateDirectory();
+
+        store.MergeInstallation(InstallB, InstallA);
+
+        File.ReadAllText(staged.ToString()).Should().Be("b");
+        store.Root.Combine(".b2.merged").DirectoryExists().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task MergeInstallation_NothingStagedForTheMergedRow_CreatesNothing()
+    {
+        var store = NewStore();
+        await store.Ensure(InstallA, Add(0x63), TestContext.Current.CancellationToken);
+
+        store.MergeInstallation(InstallB, InstallA);
+
+        Directory.EnumerateFileSystemEntries(store.Root.ToString()).Select(Path.GetFileName).Should().BeEquivalentTo(["a1"]);
+    }
+
+    [Fact]
+    public async Task Sweep_AliasWhoseInstallationIsGone_IsRemovedAndTakesNothingWithIt()
+    {
+        var hash = Add(0x64, "b");
+        var store = NewStore();
+        await store.Ensure(InstallB, hash, TestContext.Current.CancellationToken);
+        store.MergeInstallation(InstallB, InstallA);
+        var outside = _temp.Combine("home/outside.txt");
+        File.WriteAllText(outside.ToString(), "not the store's");
+
+        store.Sweep(() => Nothing);
+
+        Directory.EnumerateFileSystemEntries(store.Root.ToString()).Should().BeEmpty();
+        outside.FileExists.Should().BeTrue();
+    }
+
+    private static ulong InodeOf(AbsolutePath path)
+    {
+        LibcStat.TryStat(path.ToString(), out var stat).Should().Be(0);
+        return stat.Inode;
+    }
+
     [Fact]
     public void Settings_PerFilesystemStoresAreOnByDefault()
     {

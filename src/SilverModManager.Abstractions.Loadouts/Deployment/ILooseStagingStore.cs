@@ -72,6 +72,18 @@ public interface ILooseStagingStore
     bool Release(GameInstallMetadataId installation, Hash hash);
 
     /// <summary>
+    /// Hands everything staged for <paramref name="from"/> to <paramref name="into"/>, in this store and in every
+    /// per-filesystem store, for two installation rows that turned out to be one folder. Links deployed from
+    /// <paramref name="from"/>'s files keep working: each file is hard linked into <paramref name="into"/>'s
+    /// directory, so a hard link or clone still shares its inode, and <paramref name="from"/>'s directory is
+    /// replaced by a symlink to <paramref name="into"/>'s, so a symlink deploy still resolves. Where both already
+    /// hold a hash, <paramref name="into"/>'s file stays; the names are hashes, so the bytes are the same.
+    /// Running it again after it finished, or after a crash part way, finishes the job without redoing it. A
+    /// per-filesystem store whose filesystem is not mounted is skipped with a warning.
+    /// </summary>
+    void MergeInstallation(GameInstallMetadataId from, GameInstallMetadataId into);
+
+    /// <summary>
     /// Stops <see cref="Sweep"/> from running until the returned handle is disposed. Holds are shared and
     /// reentrant. A hold taken while a sweep runs waits for the sweep to finish. An apply holds one from
     /// before it probes the store directory until its links are recorded, because a sweep in between

@@ -313,6 +313,7 @@ public sealed class LooseStagingStore : ILooseStagingStore
 
         foreach (var directory in Root.EnumerateDirectories(recursive: false))
         {
+            if (IsAlias(directory)) continue;
             if (TryParseInstallation(directory.FileName, out var installation)) yield return installation;
         }
     }
@@ -333,6 +334,76 @@ public sealed class LooseStagingStore : ILooseStagingStore
         path.Delete();
         return true;
     }
+
+    /// <inheritdoc/>
+    public void MergeInstallation(GameInstallMetadataId from, GameInstallMetadataId into)
+    {
+        if (_parent is not null)
+        {
+            _parent.MergeInstallation(from, into);
+            return;
+        }
+
+        using var exclusive = _sweepLock.WriteLock();
+        foreach (var store in new[] { this }.Concat(PerFilesystemStores()))
+        {
+            if (!store.Root.DirectoryExists())
+            {
+                if (store != this)
+                    _logger.LogWarning("Cannot hand the files staged at {Path} for {From} to {Into}: its filesystem is not mounted, so links deployed from them will dangle", store.Root, from, into);
+                continue;
+            }
+            store.MergeOne(from, into);
+        }
+    }
+
+    // Each step leaves a state the next run can finish from: the files are linked before the directory is set
+    // aside, and the set-aside copy is only deleted once the alias stands in for it.
+    private void MergeOne(GameInstallMetadataId from, GameInstallMetadataId into)
+    {
+        var source = InstallationDirectory(from);
+        var target = InstallationDirectory(into);
+        var aside = Root.Combine($".{source.FileName}.merged");
+
+        if (IsAlias(source))
+        {
+            if (aside.DirectoryExists()) aside.DeleteDirectory(recursive: true);
+            return;
+        }
+
+        if (source.DirectoryExists())
+        {
+            foreach (var (hash, file) in Enumerate(from))
+            {
+                var destination = PathFor(into, hash);
+                if (LibcStat.TryLStat(destination.ToString(), out _) == 0) continue;
+
+                destination.Parent.CreateDirectory();
+                var errno = LibcLinks.TryLink(file.ToString(), destination.ToString());
+                if (errno != 0 && errno != LibcLinks.EEXIST)
+                    throw new IOException($"Could not link the staged file {file} to {destination} (errno {errno})");
+            }
+
+            if (aside.DirectoryExists()) aside.DeleteDirectory(recursive: true);
+            Directory.Move(source.ToString(), aside.ToString());
+        }
+        else if (!aside.DirectoryExists())
+        {
+            return;
+        }
+
+        target.CreateDirectory();
+        // Relative, so the alias survives the store being moved or mounted elsewhere.
+        var linked = LibcLinks.TrySymlink(target.FileName, source.ToString());
+        if (linked != 0) throw new IOException($"Could not replace {source} with a link to {target} (errno {linked})");
+        aside.DeleteDirectory(recursive: true);
+
+        _logger.LogInformation("Staged files for {From} in {Root} now belong to {Into}", from, Root, into);
+    }
+
+    // A directory left behind by MergeInstallation: a link to another installation's directory, not one of its own.
+    private static bool IsAlias(AbsolutePath directory)
+        => LibcStat.TryLStat(directory.ToString(), out var stat) == 0 && (stat.Mode & LibcStat.TypeMask) == LibcStat.Symlink;
 
     /// <inheritdoc/>
     public IDisposable Hold() => new SweepHold(_sweepLock.ReadLock());
@@ -420,6 +491,13 @@ public sealed class LooseStagingStore : ILooseStagingStore
 
             if (!directory.EnumerateFiles(recursive: true).Any() && !directory.EnumerateDirectories(recursive: false).Any())
                 directory.DeleteDirectory(recursive: false);
+        }
+
+        // Deployed symlinks resolve through an alias for as long as its installation's directory is there.
+        foreach (var entry in Directory.EnumerateFileSystemEntries(Root.ToString()))
+        {
+            var alias = Root.Combine(Path.GetFileName(entry));
+            if (TryParseInstallation(alias.FileName, out _) && IsAlias(alias) && !Directory.Exists(entry)) File.Delete(entry);
         }
 
         return deleted;
