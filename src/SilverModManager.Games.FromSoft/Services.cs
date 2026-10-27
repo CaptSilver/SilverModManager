@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games.Merge;
@@ -110,7 +111,9 @@ public static class Services
             .AddSingleton<LoadoutMergeSources>()
             .AddSingleton<IMergeIndexSource, LoadoutMergeIndexSource>()
             .AddSingleton<MergePlanCache>()
-            .AddSingleton<IMergeReports, MergeReports>();
+            .AddSingleton<MergeReports>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IMergeEngine, FromSoftMergeEngine>());
+        services.AddMergeEngine();
 
         // Read-only commands over the merges; the apply does the merging
         services.AddVerb(() => MergeVerbs.List)

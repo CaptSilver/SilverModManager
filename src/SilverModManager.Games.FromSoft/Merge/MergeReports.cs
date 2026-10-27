@@ -21,9 +21,10 @@ public sealed class MergeReports(
     private const string HeldBack = "not merged: the apply is refused";
 
     public Task<MergeReport> ForLoadout(LoadoutId id, CancellationToken token)
-        => Task.Run(() => Build(Loadout.Load(connection.Db, id)), token);
+        => Task.Run(() => Report(Loadout.Load(connection.Db, id)), token);
 
-    private MergeReport Build(Loadout.ReadOnly loadout)
+    /// <summary>The report for <paramref name="loadout"/>, built on the calling thread.</summary>
+    public MergeReport Report(Loadout.ReadOnly loadout)
     {
         MergePathIndex index;
         MergePlan? plan = null;

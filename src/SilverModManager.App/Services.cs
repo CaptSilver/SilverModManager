@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.GuidedInstallers;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Secrets;
 using SilverModManager.Abstractions.Serialization;
@@ -177,6 +178,7 @@ public static class Services
             .AddRuntimeDependencies()
             .AddGames()
             .AddGameServices()
+            .AddMergeEngine()
             .AddYamlUserGameInstallStore()
             .AddGenericGameSupport()
             .AddLoadoutAbstractions()
