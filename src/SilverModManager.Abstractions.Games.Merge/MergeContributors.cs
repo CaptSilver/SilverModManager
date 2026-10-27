@@ -45,6 +45,8 @@ public static class MergeContributors
     {
         var db = loadout.Db;
         var priorityRows = new Dictionary<LoadoutItemGroupId, bool>();
+        // A mod ships many files from one folder, and the rank cannot differ between them.
+        var ranks = new Dictionary<(string Package, LoadoutItemGroupId Owner), ulong>();
         var files = new List<ContestedFile>();
 
         foreach (var item in LoadoutItem.FindByLoadout(db, loadout).OfTypeLoadoutItemWithTargetPath())
@@ -75,7 +77,9 @@ public static class MergeContributors
 
             var owner = mod ?? (chain.Length > 1 ? chain[1] : chain[0]);
             var ownerId = LoadoutItemGroupId.From(owner.LoadoutItemId.Value);
-            files.Add(new ContestedFile(package, rel, target, file.Hash, game.Rank(loadout, package, ownerId), owner.Name, ownerId, mod is not null, LoadoutItemGroupId.From((chain.Length > 1 ? chain[1] : chain[0]).LoadoutItemId.Value)));
+            if (!ranks.TryGetValue((package, ownerId), out var rank))
+                ranks[(package, ownerId)] = rank = game.Rank(loadout, package, ownerId);
+            files.Add(new ContestedFile(package, rel, target, file.Hash, rank, owner.Name, ownerId, mod is not null, LoadoutItemGroupId.From((chain.Length > 1 ? chain[1] : chain[0]).LoadoutItemId.Value)));
         }
 
         return Collapse(files, FileWinners.Of(db, loadout.LoadoutId), logger)

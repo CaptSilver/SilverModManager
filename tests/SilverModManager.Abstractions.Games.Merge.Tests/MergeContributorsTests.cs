@@ -56,6 +56,19 @@ public class MergeContributorsTests(IServiceProvider provider) : AGameTest<Stubb
     }
 
     [Fact]
+    public async Task RankIsAskedOncePerModFolderNotOncePerFile()
+    {
+        var loadout = await CreateLoadout();
+        await Mod(loadout, "A", 2, "Mods/modA/scripts/x.txt", "Mods/modA/scripts/y.txt", "Mods/modA/scripts/z.txt");
+        await Mod(loadout, "B", 1, "Mods/modB/scripts/x.txt", "Mods/modB/scripts/y.txt");
+        var game = new CountingMergeGame();
+
+        MergeContributors.Of(Refresh(loadout), game).Should().HaveCount(2);
+
+        game.RankCalls.Should().Be(2);
+    }
+
+    [Fact]
     public async Task CaseOnlySpellingsGroupTogetherAndTheWinnerSpellingIsKept()
     {
         var loadout = await CreateLoadout();
