@@ -92,6 +92,7 @@ public class VortexModReference
     /// <summary>
     /// Corresponds to <see cref="ModSource.Tag"/>.
     /// </summary>
+    [JsonPropertyName("tag")]
     public string? Tag { get; init; }
 
 #endregion

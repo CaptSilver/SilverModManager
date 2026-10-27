@@ -378,7 +378,11 @@ public partial class NexusModsLibrary
         );
     }
 
-    private static void AddCollectionDownloadRules(
+    /// <summary>
+    /// Stores the manifest's <c>modRules</c> as rows between the revision's downloads. A rule's reference is matched to a
+    /// <c>mods[]</c> entry by md5, then tag, then file expression; a rule with an unmatched end is not stored.
+    /// </summary>
+    public static void AddCollectionDownloadRules(
         ITransaction tx,
         CollectionRoot collectionRoot,
         CollectionRevisionMetadata.ReadOnly revisionMetadata)

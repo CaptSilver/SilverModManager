@@ -60,6 +60,13 @@ public static class ModOrderMatcher
         return ModOrder.Create(order, dropped);
     }
 
+    /// <summary>True when a manifest can name the group: its library item is a NexusModsLibraryItem or a DownloadedFile. The one test CollectionCreator and the unshareable-mod card both apply.</summary>
+    public static bool CanIdentify(LibraryLinkedLoadoutItem.ReadOnly item)
+    {
+        var libraryItem = item.LibraryItem;
+        return libraryItem.TryGetAsNexusModsLibraryItem(out _) || libraryItem.TryGetAsDownloadedFile(out _);
+    }
+
     /// <summary>The reference a group would be written out as: md5 and Nexus ids when it has them, always its name.</summary>
     public static ModOrderReference ReferenceOf(LoadoutItemGroup.ReadOnly group)
     {

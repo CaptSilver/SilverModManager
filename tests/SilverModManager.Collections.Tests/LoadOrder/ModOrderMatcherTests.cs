@@ -334,4 +334,30 @@ public class ModOrderMatcherTests(ITestOutputHelper helper) : ACyberpunkIsolated
         new ModOrderReference(Md5Of(1), ModId.From(7), FileId.From(70)).Display.Should().Be("mod 7 file 70");
         new ModOrderReference(Md5Of(1)).Display.Should().Be(Md5Of(1).ToString());
     }
+
+    [Fact]
+    public async Task OnlyANexusItemOrADownloadedFileCanBeIdentifiedByAManifest()
+    {
+        var loadout = await CreateLoadout();
+        using var tx = Connection.BeginTransaction();
+        var container = AddEmptyGroup(tx, loadout.LoadoutId, "Pack");
+        var nexus = Games.TestFramework.Helpers.ShareableMods.AddLinkedGroup(tx, loadout.LoadoutId, container, "Nexus",
+            Games.TestFramework.Helpers.ShareableMods.AddNexusItem(tx, "Nexus", GameId, GameDomain.From("cyberpunk2077"), 1, 10));
+        var downloaded = Games.TestFramework.Helpers.ShareableMods.AddLinkedGroup(tx, loadout.LoadoutId, container, "Downloaded",
+            Games.TestFramework.Helpers.ShareableMods.AddDownloadedFile(tx, "downloaded.zip", Md5Of(5)));
+        var plainFile = new LibraryFile.New(tx, out var plainId)
+        {
+            FileName = "plain.zip",
+            Hash = "plain".xxHash3AsUtf8(),
+            Size = Size.FromLong(1),
+            LibraryItem = new LibraryItem.New(tx, plainId) { Name = "plain.zip" },
+        };
+        var plain = Games.TestFramework.Helpers.ShareableMods.AddLinkedGroup(tx, loadout.LoadoutId, container, "Plain", plainFile.Id);
+        var result = await tx.Commit();
+
+        bool CanIdentify(LoadoutItemGroupId id) =>
+            ModOrderMatcher.CanIdentify(LibraryLinkedLoadoutItem.Load(result.Db, result[id]));
+
+        (CanIdentify(nexus), CanIdentify(downloaded), CanIdentify(plain)).Should().Be((true, true, false));
+    }
 }

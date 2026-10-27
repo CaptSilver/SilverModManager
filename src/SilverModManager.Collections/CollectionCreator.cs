@@ -7,7 +7,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Collections.Json;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.LoadOrder;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.NexusModsLibrary;
@@ -226,12 +229,17 @@ public static class CollectionCreator
         var locatorIds = installation.LocatorResult.LocatorIds.ToArray();
         var vanityVersion = fileHashesService.TryGetVanityVersion((installation.LocatorResult.Store, locatorIds), out var tmpVanityVersion) ? tmpVanityVersion : VanityVersion.From("Unknown");
 
-        var collectionManifest = LoadoutItemGroupToCollectionManifest(
+        var shared = BuildManifest(
             group: group.AsLoadoutItemGroup(),
             mappingCache: mappingCache,
             author: user,
             vanityVersion
         );
+        var collectionManifest = shared.Manifest;
+
+        var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(CollectionCreator));
+        foreach (var skipped in shared.Skipped)
+            logger.LogTrace("'{Mod}' is not in the shared collection: it was not downloaded from Nexus Mods or a download page, so a manifest cannot name it", skipped.AsLoadoutItem().Name);
 
         var archiveFile = temporaryFileManager.CreateFile(ext: Extension.FromPath(".zip"));
         var streamFactory = await CreateArchive(archiveFile, jsonSerializerOptions, collectionManifest, cancellationToken);
@@ -418,43 +426,69 @@ public static class CollectionCreator
         LoadoutItemGroup.ReadOnly group,
         IGameDomainToGameIdMappingCache mappingCache,
         User.ReadOnly author,
+        VanityVersion vanityVersion) => BuildManifest(group, mappingCache, author, vanityVersion).Manifest;
+
+    /// <param name="Manifest">The collection to write out.</param>
+    /// <param name="Skipped">Children of the group a manifest cannot name, so they are in neither <c>mods</c> nor the order.</param>
+    public sealed record SharedManifest(CollectionRoot Manifest, IReadOnlyList<LoadoutItemGroup.ReadOnly> Skipped);
+
+    /// <summary>
+    /// <see cref="LoadoutItemGroupToCollectionManifest"/> plus the children it had to leave out. Besides <c>mods</c> it writes the
+    /// group's order (<c>silverLoadOrder</c>, winner first, absent when no child can be named), the loadout's stored rules between
+    /// the group's children (<c>modRules</c>) and the game's own Vortex order key when it has one.
+    /// </summary>
+    public static SharedManifest BuildManifest(
+        LoadoutItemGroup.ReadOnly group,
+        IGameDomainToGameIdMappingCache mappingCache,
+        User.ReadOnly author,
         VanityVersion vanityVersion)
     {
         Debug.Assert(group.IsValid());
 
-        var installation = group.AsLoadoutItem().Loadout.Installation;
+        var loadout = group.AsLoadoutItem().Loadout;
+        var installation = loadout.Installation;
         if (!Sdk.Games.GameInstallMetadata.GameId.TryGetValue(installation, out var gameId))
             throw new InvalidOperationException($"{installation.Name} has no Nexus Mods id, so a Nexus collection cannot be made for it");
         var gameDomain = mappingCache[gameId];
 
-        var collectionMods = new List<CollectionMod>();
+        var priorities = LoadoutItemGroupPriority.FindByLoadout(group.Db, loadout.LoadoutId)
+            .ToDictionary(row => row.TargetId, row => row.Priority.Value);
 
-        foreach (var libraryLinkedLoadoutItem in group.Children.OfTypeLoadoutItemGroup().OfTypeLibraryLinkedLoadoutItem())
+        // Winner first; a child with no priority row sorts last, in a stable order.
+        var children = group.Children
+            .OfTypeLoadoutItemGroup()
+            .OfTypeLibraryLinkedLoadoutItem()
+            .OrderByDescending(child => priorities.TryGetValue(child.AsLoadoutItemGroup().LoadoutItemGroupId, out var priority) ? (long)priority : -1L)
+            .ThenBy(child => child.Id.Value)
+            .ToArray();
+
+        var shared = new List<LibraryLinkedLoadoutItem.ReadOnly>();
+        var skipped = new List<LoadoutItemGroup.ReadOnly>();
+        foreach (var child in children)
         {
-            var libraryItem = libraryLinkedLoadoutItem.LibraryItem;
+            if (ModOrderMatcher.CanIdentify(child)) shared.Add(child);
+            else skipped.Add(child.AsLoadoutItemGroup());
+        }
+
+        var tags = shared.ToDictionary(child => child.AsLoadoutItemGroup().LoadoutItemGroupId, child => child.Id.ToString());
+        var collectionMods = new List<CollectionMod>();
+        foreach (var child in shared)
+        {
+            var libraryItem = child.LibraryItem;
+            var tag = tags[child.AsLoadoutItemGroup().LoadoutItemGroupId];
             var libraryFile = Optional<LibraryFile.ReadOnly>.None;
             if (libraryItem.TryGetAsDownloadedFile(out var downloadedFile)) libraryFile = downloadedFile.AsLibraryFile();
 
-            CollectionMod collectionMod;
-            if (libraryItem.TryGetAsNexusModsLibraryItem(out var nexusModsLibraryItem))
-            {
-                collectionMod = ToCollectionMod(nexusModsLibraryItem, libraryFile);
-            }
-            else if (libraryItem.TryGetAsDownloadedFile(out downloadedFile))
-            {
-                collectionMod = ToCollectionMod(gameDomain, downloadedFile);
-            }
-            else
-            {
-                continue;
-            }
-
-            collectionMods.Add(collectionMod);
+            collectionMods.Add(libraryItem.TryGetAsNexusModsLibraryItem(out var nexusModsLibraryItem)
+                ? ToCollectionMod(nexusModsLibraryItem, libraryFile, tag)
+                : ToCollectionMod(gameDomain, downloadedFile, tag));
         }
 
-        var collectionManifest = new CollectionRoot
+        var manifest = new CollectionRoot
         {
             Mods = collectionMods.ToArray(),
+            ModRules = StoredRulesBetween(group.Db, loadout.LoadoutId, shared, tags),
+            SilverLoadOrder = SilverOrderOf(shared),
             Info = new CollectionInfo
             {
                 Name = group.AsLoadoutItem().Name,
@@ -465,12 +499,77 @@ public static class CollectionCreator
             },
         };
 
-        return collectionManifest;
+        var ordered = shared.Select(child => child.AsLoadoutItemGroup()).ToArray();
+        manifest = WithVortexOrder(manifest, loadout.InstallationInstance.GetGame(), loadout, ordered);
+        return new SharedManifest(manifest, skipped);
+    }
+
+    /// <summary>
+    /// <paramref name="root"/> with the game's Vortex order key set from <paramref name="winnerToLoser"/>, when the game has a
+    /// <see cref="IVortexOrderFormat"/> and it has something to write. A format whose key the app does not know throws.
+    /// </summary>
+    public static CollectionRoot WithVortexOrder(
+        CollectionRoot root,
+        IGame game,
+        Loadout.ReadOnly loadout,
+        IReadOnlyList<LoadoutItemGroup.ReadOnly> winnerToLoser)
+    {
+        if (game is not IModOrderGame { VortexOrderFormat: { } format }) return root;
+        return format.Write(loadout, winnerToLoser) is { } value ? VortexOrderKeys.With(root, format.Key, value) : root;
+    }
+
+    private static SilverLoadOrderEntry[]? SilverOrderOf(IReadOnlyList<LibraryLinkedLoadoutItem.ReadOnly> winnerToLoser)
+    {
+        // Left out rather than written empty: an empty array counts as present on install and would hide a Vortex key.
+        if (winnerToLoser.Count == 0) return null;
+
+        return winnerToLoser.Select(child =>
+        {
+            var reference = ModOrderMatcher.ReferenceOf(child.AsLoadoutItemGroup());
+            return new SilverLoadOrderEntry
+            {
+                Md5 = reference.Md5,
+                ModId = reference.ModId,
+                FileId = reference.FileId,
+                Name = reference.Name ?? string.Empty,
+                Enabled = !child.AsLoadoutItemGroup().AsLoadoutItem().IsDisabled,
+            };
+        }).ToArray();
+    }
+
+    /// <summary>
+    /// Every stored rule whose two groups are both in <paramref name="shared"/>, referencing each group by its tag (the only thing a
+    /// mod with no local file offers the install side to match on) and by md5 when one is known.
+    /// </summary>
+    private static ModRule[] StoredRulesBetween(
+        IDb db,
+        LoadoutId loadout,
+        IReadOnlyList<LibraryLinkedLoadoutItem.ReadOnly> shared,
+        IReadOnlyDictionary<LoadoutItemGroupId, string> tags)
+    {
+        var byId = shared.ToDictionary(child => child.AsLoadoutItemGroup().LoadoutItemGroupId);
+
+        VortexModReference Reference(LoadoutItemGroupId id) => new()
+        {
+            Tag = tags[id],
+            FileMD5 = ModOrderMatcher.ReferenceOf(byId[id].AsLoadoutItemGroup()).Md5,
+        };
+
+        return LoadoutGroupRule.FindByLoadout(db, loadout)
+            .Where(rule => byId.ContainsKey(rule.SourceId) && byId.ContainsKey(rule.OtherId))
+            .Select(rule => new ModRule
+            {
+                Type = rule.Kind == GroupRuleKind.After ? VortexModRuleType.After : VortexModRuleType.Before,
+                Source = Reference(rule.SourceId),
+                Other = Reference(rule.OtherId),
+            })
+            .ToArray();
     }
 
     private static CollectionMod ToCollectionMod(
         GameDomain gameDomain,
-        DownloadedFile.ReadOnly downloadedFile)
+        DownloadedFile.ReadOnly downloadedFile,
+        string tag)
     {
         var libraryFile = downloadedFile.AsLibraryFile();
 
@@ -484,13 +583,15 @@ public static class CollectionCreator
                 Md5 = libraryFile.Md5.Value,
                 FileSize = libraryFile.Size,
                 Url = downloadedFile.DownloadPageUri,
+                Tag = tag,
             },
         };
     }
 
     private static CollectionMod ToCollectionMod(
         NexusModsLibraryItem.ReadOnly nexusModsLibraryItem,
-        Optional<LibraryFile.ReadOnly> libraryFile)
+        Optional<LibraryFile.ReadOnly> libraryFile,
+        string tag)
     {
         var nexusModsFile = nexusModsLibraryItem.FileMetadata;
         var nexusModsModPage = nexusModsFile.ModPage;
@@ -508,6 +609,7 @@ public static class CollectionCreator
                 UpdatePolicy = UpdatePolicy.ExactVersionOnly,
                 FileSize = libraryFile.Convert(x => x.Size).ValueOr(() => Size.Zero),
                 Md5 = libraryFile.Convert(x => x.Md5).ValueOr(() => Md5Value.From(0)),
+                Tag = tag,
             },
         };
     }
