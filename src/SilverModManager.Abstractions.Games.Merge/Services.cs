@@ -25,6 +25,7 @@ public static class Services
     public static IServiceCollection AddTextMergeEngine(this IServiceCollection services)
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IMergeEngine, MergeEngine>());
+        services.TryAddSingleton<EngineMergeDiagnosticsEmitter>();
         return services;
     }
 }

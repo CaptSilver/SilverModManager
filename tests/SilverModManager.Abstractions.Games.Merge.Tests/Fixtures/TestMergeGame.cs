@@ -3,7 +3,7 @@ using SilverModManager.Sdk.Games;
 namespace SilverModManager.Abstractions.Games.Merge.Tests.Fixtures;
 
 /// <summary>Mods live under <c>Mods/&lt;package&gt;/</c> of the game folder; only <c>.txt</c> files merge.</summary>
-internal sealed class TestMergeGame : AMergeGame
+internal class TestMergeGame : AMergeGame
 {
     public const string Prefix = "Mods/";
 

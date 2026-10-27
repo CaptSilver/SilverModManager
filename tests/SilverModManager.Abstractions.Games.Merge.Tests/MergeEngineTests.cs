@@ -302,6 +302,14 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
     }
 
     [Fact]
+    public async Task TheReportHintSaysWhichEndOfTheListWins()
+    {
+        var (loadout, _, _) = await OverlappingEdits();
+
+        Engine().Report(loadout, MergeSourceMode.Report).PriorityOrderHint.Should().Contain("mods lower in the list win");
+    }
+
+    [Fact]
     public async Task MergedBytesIsThePlannedFileFoundByRelativePathIgnoringCase()
     {
         var (loadout, _, _) = await OverlappingEdits();

@@ -41,6 +41,19 @@ public abstract class AMergeGame
     public abstract string ReorderHint { get; }
 
     /// <summary>
+    /// Whether the mod that wins a conflict sits lower in the reorder page's list. True for the generic Load Order page,
+    /// where the last mod listed has the final say.
+    /// </summary>
+    public virtual bool WinnerIsLower => true;
+
+    /// <summary>The instruction that makes <paramref name="dropped"/> win over <paramref name="kept"/> on the reorder page.</summary>
+    public string ReorderAdvice(string dropped, string kept) => ReorderAdvice(dropped, kept, WinnerIsLower);
+
+    /// <summary>The same instruction for a caller with no <see cref="AMergeGame"/>, given which end of the list wins.</summary>
+    public static string ReorderAdvice(string dropped, string kept, bool winnerIsLower)
+        => $"move {dropped} {(winnerIsLower ? "below" : "above")} {kept}";
+
+    /// <summary>
     /// Higher wins. Defaults to the greatest priority row of <paramref name="owner"/>, or the lowest rank when it has
     /// none. Called once per file while the loadout is listed, from inside the synchronizer's winning-files query, so
     /// an override must not run a database query (it would re-enter the running one) and must not read files.

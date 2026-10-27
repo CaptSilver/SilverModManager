@@ -1,5 +1,4 @@
 using System.Collections.Frozen;
-using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Games.Merge;
@@ -18,72 +17,61 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// says before the apply what the apply would refuse, and it writes nothing: <see cref="MergeSourceMode.Report"/> only
 /// reads. Planning merges the files, which is the cost of the check; the apply that follows finds the plan cached.
 /// </summary>
-public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnosticsEmitter> logger) : IFromSoftDiagnosticEmitter
+public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnosticsEmitter> logger)
+    : AMergeDiagnosticsEmitter<MergePlan>(logger), IFromSoftDiagnosticEmitter
 {
-    public IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
-        => Diagnose(loadout, FrozenDictionary<GamePath, SyncNode>.Empty, cancellationToken);
-
-    public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
+    protected override MergePlan? TryPlan(Loadout.ReadOnly loadout, out Diagnostic? failure)
     {
-        await Task.Yield();
-
-        MergePlan plan;
-        MergeRefusedException? failure = null;
+        failure = null;
         try
         {
-            plan = plans.Current(loadout, MergeSourceMode.Report);
+            var plan = plans.Current(loadout, MergeSourceMode.Report);
+            if (plan.Refusal is not { } refusal) return plan;
+
+            var message = new MergeRefusedException(refusal).Message;
+            // The choices are on the diagnostic rather than in the message, so the apply's dialog and this text stay one sentence.
+            failure = refusal.Missing.Count > 0
+                ? FromSoftDiagnostics.CreateVanillaMissing(message, refusal.Path) with { Actions = [..VanillaMissingActions.For(refusal.Missing)] }
+                : FromSoftDiagnostics.CreateMergeRefused(message, refusal.Path, MergeStrategies.Name(refusal.Strategy));
+            return null;
         }
         catch (MergeRefusedException refused)
         {
-            failure = refused;
-            plan = new MergePlan([], null, []);
+            failure = FromSoftDiagnostics.CreateMergeRefused(refused.Message, "", "");
+            return null;
         }
         catch (Exception exception) when (MergeFailures.IsInputProblem(exception))
         {
-            logger.LogWarning(exception, "Planning the merges of {Loadout} failed", loadout.Name);
-            failure = MergeRefusedException.PlanFailed(exception);
-            plan = new MergePlan([], null, []);
-        }
-
-        if (failure is not null)
-        {
-            yield return FromSoftDiagnostics.CreateMergeRefused(failure.Message, "", "");
-            yield break;
-        }
-
-        if (plan.Refusal is { } refusal)
-        {
-            var message = new MergeRefusedException(refusal).Message;
-            if (refusal.Missing.Count > 0)
-            {
-                // The choices are on the diagnostic rather than in the message, so the apply's dialog and this text stay one sentence.
-                yield return FromSoftDiagnostics.CreateVanillaMissing(message, refusal.Path) with { Actions = [..VanillaMissingActions.For(refusal.Missing)] };
-                yield break;
-            }
-
-            yield return FromSoftDiagnostics.CreateMergeRefused(message, refusal.Path, MergeStrategies.Name(refusal.Strategy));
-            yield break;
-        }
-
-        foreach (var warning in PackageCollisionEmitter.WinnerWarnings(plan.Unmerged)) yield return warning;
-
-        foreach (var merged in plan.Merged)
-        {
-            var mods = string.Join(", ", merged.Contributors.Select(c => c.ModName).Distinct(StringComparer.Ordinal));
-            foreach (var card in NoteCards(merged.Path, mods, merged.Notes)) yield return card;
+            Logger.LogWarning(exception, "Planning the merges of {Loadout} failed", loadout.Name);
+            failure = FromSoftDiagnostics.CreateMergeRefused(MergeRefusedException.PlanFailed(exception).Message, "", "");
+            return null;
         }
     }
+
+    protected override IEnumerable<MergedEntry> Merged(Loadout.ReadOnly loadout, MergePlan plan)
+        => plan.Merged.Select(merged => new MergedEntry(
+            merged.Path,
+            string.Join(", ", merged.Contributors.Select(c => c.ModName).Distinct(StringComparer.Ordinal)),
+            merged.Notes));
+
+    protected override IEnumerable<Diagnostic> Extra(Loadout.ReadOnly loadout, MergePlan plan)
+        => PackageCollisionEmitter.WinnerWarnings(plan.Unmerged);
+
+    protected override bool RaisesCard(IMergeNote note) => RaisesNoteCard(note);
+
+    // The cards are FromSoft's own template, which also covers a note that records no loss.
+    protected override IAsyncEnumerable<Diagnostic> NoteCards(Loadout.ReadOnly loadout, MergePlan plan, FrozenDictionary<GamePath, SyncNode> syncTree, CancellationToken cancellationToken)
+        => Merged(loadout, plan).SelectMany(entry => NoteCards(entry.Path, entry.Mods, entry.Notes)).ToAsyncEnumerable();
+
+    // Which original copy a merge compared against, and what it took whole from one mod, are for the merge report;
+    // the user has nothing to decide about either.
+    private static bool RaisesNoteCard(IMergeNote note) => note is not (IVanillaSourceNote or IMergeDetailNote or VanillaNearestChosen or VanillaAlternateChosen);
 
     /// <summary>The card for each note that records a choice; notes about the source or what was taken without a choice raise none.</summary>
     internal static IEnumerable<Diagnostic> NoteCards(string path, string mods, IEnumerable<IMergeNote> notes)
     {
-        foreach (var note in notes)
-        {
-            // Which original copy a merge compared against, and what it took whole from one mod, are for the merge report;
-            // the user has nothing to decide about either.
-            if (note is IVanillaSourceNote or IMergeDetailNote or VanillaNearestChosen or VanillaAlternateChosen) continue;
+        foreach (var note in notes.Where(RaisesNoteCard))
             yield return FromSoftDiagnostics.CreateMergeNote(MergeSubject(path), path, mods, note.Summary(), Advice(note));
-        }
     }
 
     // The talk archives are named by map and the equipment parts by item, which say more to a player than the file extension does.
