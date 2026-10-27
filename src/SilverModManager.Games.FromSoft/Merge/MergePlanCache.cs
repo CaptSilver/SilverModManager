@@ -21,7 +21,7 @@ namespace SilverModManager.Games.FromSoft.Merge;
 /// Re-entrancy: the index is built from model accessors only, see <see cref="LoadoutMergeSources"/>.
 /// </para>
 /// </summary>
-public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore stamps, RegulationBaselines baselines)
+public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore stamps, RegulationBaselines baselines) : IMergePlanSource
 {
     // A plan made in Report mode that would have kept a baseline is not what an apply needs: the apply keeps it.
     private sealed record Entry(string Key, MergePlan Plan, bool ApplyWouldKeepSomething);
@@ -43,6 +43,10 @@ public sealed class MergePlanCache(LoadoutMergeSources sources, BuildStampStore 
     /// </summary>
     public IReadOnlySet<string> UnmergedPaths(LoadoutId loadout)
         => _unmerged.TryGetValue(loadout, out var paths) ? paths : EmptyPaths;
+
+    public byte[]? MergedBytes(Loadout.ReadOnly loadout, string relPath)
+        => Current(loadout, MergeSourceMode.Apply).Merged
+            .FirstOrDefault(m => m.Path.Equals(relPath, StringComparison.OrdinalIgnoreCase))?.Bytes;
 
     private static readonly IReadOnlySet<string> EmptyPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
