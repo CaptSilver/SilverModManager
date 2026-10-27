@@ -1,6 +1,7 @@
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
@@ -86,7 +87,7 @@ public static class IniEdits
     public static async Task SetTweakSwitch(IConnection connection, EntityId file, bool on)
     {
         using var tx = connection.BeginTransaction();
-        if (on) tx.Retract(file, LoadoutItem.Disabled, Null.Instance);
+        if (on) tx.RetractCurrent(file, LoadoutItem.Disabled);
         else tx.Add(file, LoadoutItem.Disabled, Null.Instance);
         await tx.Commit();
     }

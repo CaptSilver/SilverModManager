@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
@@ -22,10 +23,10 @@ public sealed class DismissGameMovedActionHandler(IConnection connection, IDiagn
     public async Task ExecuteAsync(LoadoutId loadoutId, ImmutableArray<string> arguments)
     {
         var loadout = Loadout.Load(connection.Db, loadoutId);
-        if (loadout.IsValid() && GameInstallMetadata.MovedFrom.TryGetValue(loadout.Installation, out var movedFrom))
+        if (loadout.IsValid() && GameInstallMetadata.MovedFrom.Contains(loadout.Installation))
         {
             using var tx = connection.BeginTransaction();
-            tx.Retract(loadout.Installation.Id, GameInstallMetadata.MovedFrom, movedFrom);
+            tx.RetractCurrent(loadout.Installation.Id, GameInstallMetadata.MovedFrom);
             await tx.Commit();
         }
 

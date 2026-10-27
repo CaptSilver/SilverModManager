@@ -12,6 +12,7 @@ using SilverModManager.App.UI.Resources;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.UI.Sdk;
 using SilverModManager.UI.Sdk.Icons;
@@ -76,7 +77,7 @@ public partial class CollectionLeftMenuItemViewModel : LeftMenuItemViewModel, IL
             
             if (IsEnabled)
             {
-                tx.Retract(CollectionGroupId.Value, LoadoutItem.Disabled, Null.Instance);
+                tx.RetractCurrent(CollectionGroupId.Value, LoadoutItem.Disabled);
             } else
             {
                 tx.Add(CollectionGroupId.Value, LoadoutItem.Disabled, Null.Instance);

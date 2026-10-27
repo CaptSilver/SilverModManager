@@ -725,7 +725,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         {
             if (shouldEnable)
             {
-                tx.Retract(id, LoadoutItem.Disabled, Null.Instance);
+                tx.RetractCurrent(id, LoadoutItem.Disabled);
             }
             else
             {
@@ -827,7 +827,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         foreach (var item in items)
         {
             if (shouldAllow) tx.Add(item.Id, LoadoutItem.ProtectedPathsAllowed, Null.Instance);
-            else tx.Retract(item.Id, LoadoutItem.ProtectedPathsAllowed, Null.Instance);
+            else tx.RetractCurrent(item.Id, LoadoutItem.ProtectedPathsAllowed);
         }
 
         await tx.Commit();

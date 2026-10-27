@@ -21,6 +21,7 @@ using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Collections;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.IndexSegments;
 using SilverModManager.MnemonicDB.Abstractions.Query;
@@ -103,7 +104,7 @@ public partial class CollectionLoadoutViewModel : APageViewModel<ICollectionLoad
                 var shouldEnable = !IsCollectionEnabled;
                 if (shouldEnable)
                 {
-                    tx.Retract(pageContext.GroupId, LoadoutItem.Disabled, Null.Instance);
+                    tx.RetractCurrent(pageContext.GroupId, LoadoutItem.Disabled);
                 } else
                 {
                     tx.Add(pageContext.GroupId, LoadoutItem.Disabled, Null.Instance);

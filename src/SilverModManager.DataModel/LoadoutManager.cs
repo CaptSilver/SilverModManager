@@ -506,13 +506,7 @@ internal partial class LoadoutManager : ILoadoutManager
                     tx.Delete(file, recursive: false);
             }
 
-            // Delete the last applied/scanned disk state data
             metadata = metadata.Rebase();
-
-            foreach (var entry in DiskStateEntry.FindByGame(metadata.Db, metadata))
-            {
-                tx.Delete(entry, recursive: false);
-            }
 
             // The game's metadata outlives UnManage, so rows left here would hand a game that is managed again
             // the backend decision of the install that was just removed.
@@ -521,21 +515,33 @@ internal partial class LoadoutManager : ILoadoutManager
                 tx.Delete(entry, recursive: false);
             }
 
-            if (metadata.Contains(GameInstallMetadata.LastSyncedLoadoutId))
-                tx.Retract(metadata, GameInstallMetadata.LastSyncedLoadoutId, metadata.LastSyncedLoadoutId.Value);
-            if (metadata.Contains(GameInstallMetadata.LastSyncedLoadoutTransactionId))
-                tx.Retract(metadata, GameInstallMetadata.LastSyncedLoadoutTransactionId, metadata.LastSyncedLoadoutTransactionId.Value);
-            if (metadata.Contains(GameInstallMetadata.InitialDiskStateTransactionId))
-                tx.Retract(metadata, GameInstallMetadata.InitialDiskStateTransactionId, metadata.InitialDiskStateTransactionId.Value);
-            if (metadata.Contains(GameInstallMetadata.LastScannedDiskStateTransactionId))
-                tx.Retract(metadata, GameInstallMetadata.LastScannedDiskStateTransactionId, metadata.LastScannedDiskStateTransactionId.Value);
-
+            ClearInstallState(tx, metadata);
             await tx.Commit();
 
             if (runGc) _garbageCollectorRunner.Run();
             return installation;
         });
     }
+
+    /// <summary>
+    /// Deletes the install's disk state and forgets which loadout was applied and which scans were taken.
+    /// </summary>
+    /// <remarks>
+    /// Decided on the database the transaction lands on, not the row the caller read: a rescan can commit in
+    /// between, adding entries and moving the scanned-state id on. Retracting the values the caller saw would
+    /// then refuse the whole transaction after the loadouts were already deleted.
+    /// </remarks>
+    internal static void ClearInstallState(ITransaction tx, GameInstallMetadata.ReadOnly metadata)
+        => tx.Add(metadata.Id, static (tx, db, id) =>
+        {
+            foreach (var entry in DiskStateEntry.FindByGame(db, id))
+                tx.Delete(entry, recursive: false);
+
+            tx.RetractCurrent(id, GameInstallMetadata.LastSyncedLoadout);
+            tx.RetractCurrent(id, GameInstallMetadata.LastSyncedLoadoutTransaction);
+            tx.RetractCurrent(id, GameInstallMetadata.InitialDiskStateTransaction);
+            tx.RetractCurrent(id, GameInstallMetadata.LastScannedDiskStateTransaction);
+        });
 
     public async Task<LoadoutItemGroup.ReadOnly> InstallItemWrapper(LoadoutId targetLoadout, Func<ITransaction, Task<LoadoutItemGroupId>> func)
     {
