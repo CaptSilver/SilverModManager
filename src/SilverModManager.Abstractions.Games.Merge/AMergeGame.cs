@@ -41,10 +41,15 @@ public abstract class AMergeGame
     public abstract string ReorderHint { get; }
 
     /// <summary>
-    /// Whether the mod that wins a conflict sits lower in the reorder page's list. True for the generic Load Order page,
-    /// where the last mod listed has the final say.
+    /// Whether the mod that wins a conflict sits lower in the reorder page's list: true where the last mod listed has
+    /// the final say, false where the list puts the winner first (a sort order whose smaller index wins).
+    /// <para>
+    /// There is no default, and it is not read off the game's sort order: the engine cannot see which page
+    /// <see cref="ReorderHint"/> names, which need not be a sort order at all, and a wrong guess turns every card's
+    /// advice around without anything failing.
+    /// </para>
     /// </summary>
-    public virtual bool WinnerIsLower => true;
+    public abstract bool WinnerIsLower { get; }
 
     /// <summary>The instruction that makes <paramref name="dropped"/> win over <paramref name="kept"/> on the reorder page.</summary>
     public string ReorderAdvice(string dropped, string kept) => ReorderAdvice(dropped, kept, WinnerIsLower);

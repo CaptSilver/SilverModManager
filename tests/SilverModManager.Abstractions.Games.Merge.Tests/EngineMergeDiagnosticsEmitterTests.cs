@@ -261,6 +261,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
     private sealed class FailingEmitter : AMergeDiagnosticsEmitter<MergeReport>
     {
         public FailingEmitter() : base(NullLogger.Instance) { }
+        protected override string ReorderPage(Loadout.ReadOnly loadout) => "File Conflicts";
         protected override MergeReport? TryPlan(Loadout.ReadOnly loadout, out Diagnostic? failure)
         {
             failure = Card(new DroppedItem("it", "plan", "it failed", "Load Order"));
@@ -283,6 +284,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
     private sealed class ExtraFirstEmitter : AMergeDiagnosticsEmitter<MergeReport>
     {
         public ExtraFirstEmitter() : base(NullLogger.Instance) { }
+        protected override string ReorderPage(Loadout.ReadOnly loadout) => "File Conflicts";
         protected override MergeReport? TryPlan(Loadout.ReadOnly loadout, out Diagnostic? failure)
         {
             failure = null;
@@ -308,6 +310,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
     private sealed class FixtureEmitter : AMergeDiagnosticsEmitter<MergeReport>
     {
         public FixtureEmitter() : base(NullLogger.Instance) { }
+        protected override string ReorderPage(Loadout.ReadOnly loadout) => "File Conflicts";
         protected override MergeReport? TryPlan(Loadout.ReadOnly loadout, out Diagnostic? failure)
         {
             failure = null;

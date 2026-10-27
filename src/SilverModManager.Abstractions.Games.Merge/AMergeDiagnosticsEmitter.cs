@@ -42,10 +42,10 @@ public abstract class AMergeDiagnosticsEmitter<TPlan>(ILogger logger) : ADropped
     protected virtual bool RaisesCard(IMergeNote note) => note.Loss is not null && note is not (IVanillaSourceNote or IMergeDetailNote);
 
     /// <summary>
-    /// The bare name of the page where the user reorders the mods that conflict. File Conflicts exists for every game;
-    /// a game with a page of its own says so.
+    /// The bare name of the page where the user reorders the mods that conflict. Every emitter names it: the page has
+    /// to agree with <see cref="ReorderAdvice"/> and with the game's own card wording, which no default can know.
     /// </summary>
-    protected virtual string ReorderPage(Loadout.ReadOnly loadout) => "File Conflicts";
+    protected abstract string ReorderPage(Loadout.ReadOnly loadout);
 
     /// <summary>The instruction that makes <paramref name="dropped"/> win over <paramref name="kept"/> on <see cref="ReorderPage"/>.</summary>
     protected virtual string ReorderAdvice(Loadout.ReadOnly loadout, string dropped, string kept)
