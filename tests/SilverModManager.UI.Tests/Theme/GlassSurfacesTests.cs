@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using FluentAssertions;
 using SilverModManager.App.UI.Controls.Navigation;
+using SilverModManager.App.UI.Controls.TopBar;
 
 namespace SilverModManager.UI.Tests.Theme;
 
@@ -36,6 +37,21 @@ public class GlassSurfacesTests(IServiceProvider provider) : AUiTest(provider)
             ShowRendered(Track(new Window { Width = 300, Height = 100, Content = item }));
 
             Alpha(item.Background).Should().BeInRange(1, 254, $"a {state} item is lifted off the panel but lets Glass through");
+        });
+    }
+
+    [Fact]
+    public async Task TheWindowButtonsSitOnTheWindowBaseRatherThanABlock()
+    {
+        await OnUi(() =>
+        {
+            var topBar = new TopBarView();
+            ShowRendered(Track(new Window { Width = 1000, Height = 100, Content = topBar }));
+
+            Alpha(topBar.FindControl<Border>("SystemButtonsBorder")!.Background).GetValueOrDefault().Should()
+                .Be(0, "the minimise, maximise and close buttons show the blurred desktop like the rest of the top bar");
+            topBar.FindControl<Grid>("MainGrid")!.ClipToBounds.Should()
+                .BeTrue("in a narrow window the top bar is cut off at the buttons instead of drawing under them");
         });
     }
 }
