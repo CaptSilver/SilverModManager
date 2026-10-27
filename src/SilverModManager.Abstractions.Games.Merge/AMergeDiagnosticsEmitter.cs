@@ -11,8 +11,8 @@ using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Abstractions.Games.Merge;
 
-/// <summary>One merged path of a plan: the mods that provide it, joined for a card, and the notes the merge made.</summary>
-public sealed record MergedEntry(string Path, string Mods, IReadOnlyList<IMergeNote> Notes);
+/// <summary>One merged path of a plan: the mods that provide it, highest priority first, and the notes the merge made.</summary>
+public sealed record MergedEntry(string Path, IReadOnlyList<string> Mods, IReadOnlyList<IMergeNote> Notes);
 
 /// <summary>
 /// Turns a merge plan into Health Check cards: one for each note that records a choice, so a merge loss reads like every
@@ -41,20 +41,27 @@ public abstract class AMergeDiagnosticsEmitter<TPlan>(ILogger logger) : ADropped
     /// <summary>Whether a note gets a card: it records a loss, and is neither about the merge's source nor a detail.</summary>
     protected virtual bool RaisesCard(IMergeNote note) => note.Loss is not null && note is not (IVanillaSourceNote or IMergeDetailNote);
 
-    /// <summary>Where the user reorders the mods that conflict.</summary>
-    protected virtual string ReorderPage(Loadout.ReadOnly loadout) => DefaultPriorityOrderSink.PriorityPage(loadout.InstallationInstance.GetGame());
+    /// <summary>
+    /// The bare name of the page where the user reorders the mods that conflict. File Conflicts exists for every game;
+    /// a game with a page of its own says so.
+    /// </summary>
+    protected virtual string ReorderPage(Loadout.ReadOnly loadout) => "File Conflicts";
 
     /// <summary>The instruction that makes <paramref name="dropped"/> win over <paramref name="kept"/> on <see cref="ReorderPage"/>.</summary>
     protected virtual string ReorderAdvice(Loadout.ReadOnly loadout, string dropped, string kept)
         => AMergeGame.ReorderAdvice(dropped, kept, winnerIsLower: true);
 
-    /// <summary>The dropped item for one note that has a loss.</summary>
-    protected virtual DroppedItem ToDroppedItem(Loadout.ReadOnly loadout, string path, string mods, IMergeNote note)
+    /// <summary>
+    /// The dropped item for the notes of one path that lose the same mod's change to the same other mod, so a mod that
+    /// loses several hunks of a file gets one card listing all of them.
+    /// </summary>
+    protected virtual DroppedItem ToDroppedItem(Loadout.ReadOnly loadout, string path, IReadOnlyList<IMergeNote> notes)
     {
-        var loss = note.Loss ?? throw new InvalidOperationException($"The note '{note.Describe()}' records no loss, so there is no dropped item to list");
-        var lines = note is LinesKept kept ? $" lines {kept.FirstLine}–{kept.LastLine}" : "";
+        var loss = notes[0].Loss ?? throw new InvalidOperationException($"The note '{notes[0].Describe()}' records no loss, so there is no dropped item to list");
+        var ranges = notes.OfType<LinesKept>().OrderBy(k => k.FirstLine).Select(k => $"{k.FirstLine}–{k.LastLine}").ToArray();
+        var lines = ranges.Length == 0 ? "" : $" lines {string.Join(", ", ranges)}";
         return new DroppedItem(
-            $"{loss.DroppedMod}'s change to `{path}`{lines}",
+            $"{loss.DroppedMod}'s {(notes.Count > 1 ? "changes" : "change")} to `{path}`{lines}",
             loss.DroppedMod,
             $"both {loss.KeptMod} and {loss.DroppedMod} change it and {loss.KeptMod}'s change is used; " +
             $"to use {loss.DroppedMod}'s instead, {ReorderAdvice(loadout, loss.DroppedMod, loss.KeptMod)}",
@@ -62,29 +69,28 @@ public abstract class AMergeDiagnosticsEmitter<TPlan>(ILogger logger) : ADropped
     }
 
     /// <summary>
-    /// The cards for what the plan dropped: one per <see cref="Dropped"/> item. A game with its own cards for its notes
-    /// overrides it.
+    /// The cards for the plan's notes: one per dropped item. A game with its own cards for its notes overrides it.
     /// </summary>
     protected virtual IAsyncEnumerable<Diagnostic> NoteCards(Loadout.ReadOnly loadout, TPlan plan, FrozenDictionary<GamePath, SyncNode> syncTree, CancellationToken cancellationToken)
-        => DroppedCards(loadout, syncTree, cancellationToken);
+        => Items(loadout, plan).Select(Card).ToAsyncEnumerable();
 
-    // base.Diagnose from the iterator below would be a base call inside an async iterator.
-    private IAsyncEnumerable<Diagnostic> DroppedCards(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, CancellationToken cancellationToken)
-        => base.Diagnose(loadout, syncTree, cancellationToken);
+    private IEnumerable<DroppedItem> Items(Loadout.ReadOnly loadout, TPlan plan)
+    {
+        foreach (var entry in Merged(loadout, plan))
+        {
+            var losses = entry.Notes.Where(n => RaisesCard(n) && n.Loss is not null).GroupBy(n => n.Loss!);
+            foreach (var group in losses) yield return ToDroppedItem(loadout, entry.Path, group.ToArray());
+        }
+
+        foreach (var item in ExtraDropped(loadout, plan)) yield return item;
+    }
 
     protected override async IAsyncEnumerable<DroppedItem> Dropped(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Yield();
 
         if (TryPlan(loadout, out _) is not { } plan) yield break;
-
-        foreach (var entry in Merged(loadout, plan))
-        {
-            foreach (var note in entry.Notes.Where(n => RaisesCard(n) && n.Loss is not null))
-                yield return ToDroppedItem(loadout, entry.Path, entry.Mods, note);
-        }
-
-        foreach (var item in ExtraDropped(loadout, plan)) yield return item;
+        foreach (var item in Items(loadout, plan)) yield return item;
     }
 
     /// <summary>The plan's failure card, or the cards that are not dropped items, then the cards for the notes.</summary>

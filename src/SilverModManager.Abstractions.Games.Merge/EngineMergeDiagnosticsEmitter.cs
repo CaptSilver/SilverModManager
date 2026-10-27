@@ -7,13 +7,18 @@ using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Abstractions.Games.Merge;
 
+/// <summary>What the engine said about a loadout, asked for once so the cards agree with each other.</summary>
+public sealed record EngineMergeSnapshot(MergeReport Report, IReadOnlyList<MergedOutput> Outputs, IReadOnlyList<ContestedPath> NotContested);
+
 /// <summary>
 /// The merge cards of any game served by an <see cref="IMergeEngine"/>: each change a merge dropped, each path that
-/// could not be merged, each path the game loads once per mod, and each merge whose original copy was missing or not
-/// trusted. Reads the engine's report and plan, which the apply that follows finds cached.
+/// could not be merged, each path the game loads once per mod, and the merges whose original copy was not trusted.
+/// Reads the engine's report and plan, which the apply that follows finds cached.
 /// </summary>
-public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<MergeReport>
+public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<EngineMergeSnapshot>
 {
+    private const int MaxNamedPaths = 5;
+
     private readonly MergeEngines _engines;
     private readonly Func<Loadout.ReadOnly, AMergeGame> _gameOf;
 
@@ -30,78 +35,78 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Mer
         _gameOf = gameOf;
     }
 
-    private IMergeEngine? EngineFor(Loadout.ReadOnly loadout) => _engines.For(loadout.InstallationInstance.Game);
-
-    protected override MergeReport? TryPlan(Loadout.ReadOnly loadout, out Diagnostic? failure)
+    protected override EngineMergeSnapshot? TryPlan(Loadout.ReadOnly loadout, out Diagnostic? failure)
     {
         failure = null;
-        return EngineFor(loadout)?.Report(loadout, MergeSourceMode.Report);
-    }
+        if (_engines.For(loadout.InstallationInstance.Game) is not { } engine) return null;
 
-    protected override IEnumerable<MergedEntry> Merged(Loadout.ReadOnly loadout, MergeReport plan)
-    {
-        // The report holds sentences; the notes with their losses are in the plan, which the report just made.
-        var outputs = EngineFor(loadout)!.Plan(loadout, MergeSourceMode.Report)
-            .ToDictionary(o => o.RelPath, o => o, StringComparer.OrdinalIgnoreCase);
-        foreach (var entry in plan.Entries.Where(e => e.Outcome == MergeReportOutcome.Merged))
+        var report = engine.Report(loadout, MergeSourceMode.Report);
+        var outputs = engine.Plan(loadout, MergeSourceMode.Report);
+
+        // Both come from the engine's one cached plan; a report entry with no output means they were made from different
+        // loadout states. The losses are listed from the outputs, so nothing is dropped, but the mismatch is a bug.
+        foreach (var entry in report.Entries.Where(e => e.Outcome == MergeReportOutcome.Merged))
         {
-            if (!outputs.TryGetValue(entry.Path, out var output)) continue;
-            yield return new MergedEntry(entry.Path, string.Join(", ", entry.Contributors), output.Notes);
+            if (!outputs.Any(o => o.RelPath.Equals(entry.Path, StringComparison.OrdinalIgnoreCase)))
+                Logger.LogError("The merge report lists {Path} as merged but the plan has no output for it", entry.Path);
         }
+
+        return new EngineMergeSnapshot(report, outputs, engine.NotContested(loadout));
     }
 
-    protected override IEnumerable<DroppedItem> ExtraDropped(Loadout.ReadOnly loadout, MergeReport plan)
+    protected override IEnumerable<MergedEntry> Merged(Loadout.ReadOnly loadout, EngineMergeSnapshot plan)
+        => plan.Outputs.Select(o => new MergedEntry(o.RelPath, o.Contributors, o.Notes));
+
+    protected override string ReorderPage(Loadout.ReadOnly loadout) => _gameOf(loadout).ReorderHint;
+
+    protected override string ReorderAdvice(Loadout.ReadOnly loadout, string dropped, string kept) => _gameOf(loadout).ReorderAdvice(dropped, kept);
+
+    protected override IEnumerable<DroppedItem> ExtraDropped(Loadout.ReadOnly loadout, EngineMergeSnapshot plan)
     {
         var page = ReorderPage(loadout);
-        return VanillaBaseItems(loadout, plan, page).Concat(NotMergeableItems(plan, page)).Concat(NotContestedItems(loadout, page));
+        foreach (var item in NotMergeableItems(plan.Report, page)) yield return item;
+        if (UntrustedBaseItem(plan, page) is { } untrusted) yield return untrusted;
     }
 
-    // Every loser of a path that could not be merged; the first contributor's copy is the one the game gets.
-    private static IEnumerable<DroppedItem> NotMergeableItems(MergeReport plan, string page)
+    // The game loads every mod's copy, so nothing here is left out: the card says which copy wins where they overlap.
+    protected override IEnumerable<Diagnostic> Extra(Loadout.ReadOnly loadout, EngineMergeSnapshot plan)
     {
-        foreach (var entry in plan.Entries.Where(e => e.Outcome == MergeReportOutcome.NotMergeable))
+        var page = ReorderPage(loadout);
+        foreach (var path in plan.NotContested)
+            yield return MergeDiagnostics.CreateNotContested(path.Rel, string.Join(", ", path.Contributors.Select(c => c.ModName).Distinct()), page);
+    }
+
+    // The first contributor's copy is the one the game gets; every other mod's is the losing one.
+    private static IEnumerable<DroppedItem> NotMergeableItems(MergeReport report, string page)
+    {
+        foreach (var entry in report.Entries.Where(e => e.Outcome == MergeReportOutcome.NotMergeable))
         {
-            if (entry.Contributors.Count == 0) continue;
+            if (entry.Contributors.Count < 2)
+            {
+                // One mod ships the path from more than one folder, so there is no other mod to name.
+                var mod = entry.Contributors.FirstOrDefault() ?? "a mod";
+                yield return new DroppedItem(entry.Path, mod, $"{mod} ships it more than once and the files could not be merged ({entry.Reason})", page);
+                continue;
+            }
+
             var winner = entry.Contributors[0];
             foreach (var loser in entry.Contributors.Skip(1))
                 yield return new DroppedItem($"{loser}'s copy of {entry.Path}", loser, $"{winner}'s copy wins; the files could not be merged ({entry.Reason})", page);
         }
     }
 
-    // A game that loads every mod's copy has no unused copy, so these are a Suggestion about which copy wins where they overlap.
-    private IEnumerable<DroppedItem> NotContestedItems(Loadout.ReadOnly loadout, string page)
+    // The game's own copy was changed by another tool, so the mods are merged two-way and the higher-ranked one wins every
+    // difference. A missing copy raises nothing: a file a mod adds has none, and the Merges page already says so.
+    private static DroppedItem? UntrustedBaseItem(EngineMergeSnapshot plan, string page)
     {
-        foreach (var path in EngineFor(loadout)!.NotContested(loadout))
-        {
-            var mods = string.Join(", ", path.Contributors.Select(c => c.ModName).Distinct());
-            yield return new DroppedItem(
-                path.Rel, mods,
-                $"it ships in {mods}: bundles are not merged, so where they contain the same file the higher-priority mod's copy is used",
-                page, DiagnosticSeverity.Suggestion);
-        }
+        var untrusted = plan.Outputs.SelectMany(o => o.Notes).OfType<VanillaBaseUntrusted>().DistinctBy(n => n.Path).ToArray();
+        if (untrusted.Length == 0) return null;
+
+        var paths = string.Join(", ", untrusted.Take(MaxNamedPaths).Select(n => n.Path));
+        if (untrusted.Length > MaxNamedPaths) paths += $" and {untrusted.Length - MaxNamedPaths} more";
+        var reasons = string.Join("; ", untrusted.Select(n => n.Reason).Distinct());
+        return new DroppedItem(
+            $"the game's own copy of {paths}", "the game folder",
+            $"{reasons}, so the mods were merged without it and where they differ the higher-priority mod's version wins", page, DiagnosticSeverity.Suggestion);
     }
-
-    // The game's own copy was changed by another tool, so the mods are merged two-way and the higher-ranked one wins every difference.
-    // A missing copy raises nothing: a file a mod adds has none, and the Merges page already says so.
-    private IEnumerable<DroppedItem> VanillaBaseItems(Loadout.ReadOnly loadout, MergeReport plan, string page)
-    {
-        foreach (var entry in Merged(loadout, plan))
-        {
-            foreach (var note in entry.Notes)
-            {
-                switch (note)
-                {
-                    case VanillaBaseUntrusted untrusted:
-                        yield return new DroppedItem(
-                            $"the game's own copy of {untrusted.Path}", "the game folder",
-                            $"{untrusted.Reason}, so the mods were merged two-way and {Winner(entry)}'s version wins where they differ", page, DiagnosticSeverity.Suggestion);
-                        break;
-                }
-            }
-        }
-    }
-
-    private static string Winner(MergedEntry entry) => entry.Mods.Split(", ")[0];
-
-    protected override string ReorderAdvice(Loadout.ReadOnly loadout, string dropped, string kept) => _gameOf(loadout).ReorderAdvice(dropped, kept);
 }

@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Hashing.xxHash3;
 using NSubstitute;
@@ -19,12 +20,6 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
 {
     private const string Script = "scripts/x.ws";
 
-    /// <summary>The winner is listed above the loser, so moving a mod up is what makes it win.</summary>
-    private sealed class HigherWinsGame : TestMergeGame
-    {
-        public override bool WinnerIsLower => false;
-    }
-
     private static MergeReportEntry Merged(string path = Script) => new(path, "text", ["Alpha", "Beta"], MergeReportOutcome.Merged, [], "the game's own copy", "");
 
     private static MergeReportEntry NotMergeable(string path, params string[] mods)
@@ -38,16 +33,18 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
     private static ContestedPath Bundle(params string[] mods)
         => new("content/blob0.bundle", mods.Select(m => new ContestedFile(m, "content/blob0.bundle", new GamePath(LocationId.Game, $"Mods/{m}/content/blob0.bundle"), default, 0, m, default, true, default)).ToArray(), null);
 
+    private IMergeEngine _engine = null!;
+
     private async Task<Diagnostic[]> Run(
-        MergeReportEntry[] entries, MergedOutput[]? outputs = null, ContestedPath[]? notContested = null, AMergeGame? game = null, bool engineless = false)
+        MergeReportEntry[] entries, MergedOutput[]? outputs = null, ContestedPath[]? notContested = null, AMergeGame? game = null, bool engineless = false, ILogger<EngineMergeDiagnosticsEmitter>? logger = null)
     {
-        var engine = Substitute.For<IMergeEngine>();
+        var engine = _engine = Substitute.For<IMergeEngine>();
         engine.Serves(Arg.Any<IGameData>()).Returns(!engineless);
         engine.Report(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns(new MergeReport(entries, null, "hint"));
         engine.Plan(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns(outputs ?? []);
         engine.NotContested(Arg.Any<Loadout.ReadOnly>()).Returns(notContested ?? []);
 
-        var emitter = new EngineMergeDiagnosticsEmitter(new MergeEngines([engine]), NullLogger<EngineMergeDiagnosticsEmitter>.Instance, _ => game ?? new TestMergeGame());
+        var emitter = new EngineMergeDiagnosticsEmitter(new MergeEngines([engine]), logger ?? NullLogger<EngineMergeDiagnosticsEmitter>.Instance, _ => game ?? new TestMergeGame());
         var loadout = Refresh(await CreateLoadout());
         return await Collect(emitter.Diagnose(loadout, CancellationToken.None));
     }
@@ -70,7 +67,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         var card = cards.Should().ContainSingle().Which;
         card.Severity.Should().Be(DiagnosticSeverity.Warning);
         Summary(card).Should().Contain("Beta's change to `scripts/x.ws` lines 4–7").And.Contain("Alpha's change is used");
-        Details(card).Should().Contain("move Beta below Alpha").And.Contain("Change it on the Load Order page.");
+        Details(card).Should().Contain("move Beta below Alpha").And.Contain("Change it on the Test Order page.");
     }
 
     [Fact]
@@ -89,20 +86,75 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         cards.Should().HaveCount(2).And.OnlyContain(c => c.Severity == DiagnosticSeverity.Warning);
         Summary(cards[0]).Should().Contain("Beta's copy of content/foo.xml").And.Contain("Alpha's copy wins").And.Contain("could not be merged (not a file the app merges; load order decides)");
         Summary(cards[1]).Should().Contain("Gamma's copy of content/foo.xml").And.Contain("Alpha's copy wins");
-        Details(cards[0]).Should().EndWith("Change it on the Load Order page.");
+        Details(cards[0]).Should().EndWith("Change it on the Test Order page.");
         cards.Select(Summary).Should().NotContain(s => s.Contains("Alpha's copy of"), "the winner's copy is used");
     }
 
     [Fact]
-    public async Task APathTheGameLoadsPerModIsASuggestionThatSaysWhichCopyWins()
+    public async Task APathTheGameLoadsPerModIsASuggestionThatSaysWhichCopyWinsAndNamesEachModOnce()
     {
         var cards = await Run([], notContested: [Bundle("Alpha", "Beta")]);
 
         var card = cards.Should().ContainSingle().Which;
         card.Severity.Should().Be(DiagnosticSeverity.Suggestion);
-        Summary(card).Should().Contain("content/blob0.bundle").And.Contain("Alpha, Beta")
-            .And.Contain("bundles are not merged, so where they contain the same file the higher-priority mod's copy is used");
-        Details(card).Should().Contain("Change it on the Load Order page.");
+        var summary = Summary(card);
+        summary.Should().Contain("content/blob0.bundle ships in Alpha, Beta").And.Contain("the higher-priority mod's copy is used");
+        summary.Should().NotContain("not used", "nothing is left out, so it is not the dropped-item wording");
+        summary.Split("Alpha").Length.Should().Be(2, "each mod is named once");
+        Details(card).Should().Contain("Test Order page").And.NotContain("left out");
+    }
+
+    [Fact]
+    public async Task SeveralHunksLostToTheSameModAreOneWarningListingEveryRange()
+    {
+        var other = new LinesKept(Script, 20, 21, "Gamma", "Alpha");
+        var cards = await Run([Merged()], [Output(Loss, new LinesKept(Script, 12, 15, "Alpha", "Beta"), other)]);
+
+        cards.Should().HaveCount(2).And.OnlyContain(c => c.Severity == DiagnosticSeverity.Warning);
+        Summary(cards[0]).Should().Contain("Beta's changes to `scripts/x.ws` lines 4–7, 12–15");
+        Summary(cards[1]).Should().Contain("Alpha's change to `scripts/x.ws` lines 20–21");
+    }
+
+    [Fact]
+    public async Task ANotMergeablePathWithOneModOnlyStillGetsACard()
+    {
+        var cards = await Run([NotMergeable("content/foo.xml", "Alpha")]);
+
+        Summary(cards.Should().ContainSingle().Which).Should().Contain("content/foo.xml").And.Contain("Alpha ships it more than once");
+    }
+
+    [Fact]
+    public async Task ManyUntrustedOriginalsAreOneSuggestionNamingTheFirstFewPaths()
+    {
+        var notes = Enumerable.Range(1, 7).Select(i => new VanillaBaseUntrusted($"scripts/{i}.ws", "edited after install")).ToArray<IMergeNote>();
+
+        var cards = await Run([Merged()], [Output(notes)]);
+
+        var card = cards.Should().ContainSingle().Which;
+        Summary(card).Should().Contain("scripts/1.ws").And.Contain("scripts/5.ws").And.NotContain("scripts/6.ws").And.Contain("and 2 more")
+            .And.Contain("the higher-priority mod's version wins");
+    }
+
+    [Fact]
+    public async Task TheEngineIsAskedOnceWhateverTheCards()
+    {
+        await Run([Merged(), NotMergeable("content/foo.xml", "Alpha", "Beta")],
+            [Output(Loss, new VanillaBaseUntrusted(Script, "edited after install"))], [Bundle("Alpha", "Beta")]);
+
+        _engine.Received(1).Report(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>());
+        _engine.Received(1).Plan(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>());
+        _engine.Received(1).NotContested(Arg.Any<Loadout.ReadOnly>());
+    }
+
+    [Fact]
+    public async Task AReportEntryWithoutAnOutputIsLoggedAsAnErrorAndTheOtherCardsStillAppear()
+    {
+        var logger = Substitute.For<ILogger<EngineMergeDiagnosticsEmitter>>();
+
+        var cards = await Run([Merged("scripts/lost.ws"), NotMergeable("content/foo.xml", "Alpha", "Beta")], [], logger: logger);
+
+        cards.Should().ContainSingle("the not-mergeable path still gets its card");
+        logger.ReceivedCalls().Should().Contain(c => c.GetMethodInfo().Name == "Log" && (LogLevel)c.GetArguments()[0]! == LogLevel.Error);
     }
 
     [Fact]
@@ -112,7 +164,8 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
 
         var card = cards.Should().ContainSingle().Which;
         card.Severity.Should().Be(DiagnosticSeverity.Suggestion);
-        Summary(card).Should().Contain("scripts/y.ws").And.Contain("edited after install");
+        Summary(card).Should().Contain("scripts/y.ws").And.Contain("edited after install").And.Contain("the higher-priority mod's version wins");
+        Details(card).Should().Contain("Test Order page");
     }
 
     [Fact]
@@ -185,8 +238,8 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
             failure = null;
             return new MergeReport([], null, "hint");
         }
-        protected override IEnumerable<MergedEntry> Merged(Loadout.ReadOnly loadout, MergeReport plan) => [new MergedEntry(Script, "Alpha, Beta", [Loss])];
-        protected override IEnumerable<Diagnostic> Extra(Loadout.ReadOnly loadout, MergeReport plan) => [Card(new DroppedItem("extra", "x", "r", "Load Order"))];
+        protected override IEnumerable<MergedEntry> Merged(Loadout.ReadOnly loadout, MergeReport plan) => [new MergedEntry(Script, ["Alpha", "Beta"], [Loss])];
+        protected override IEnumerable<Diagnostic> Extra(Loadout.ReadOnly loadout, MergeReport plan) => [Card(new DroppedItem("extra", "x", "r", "File Conflicts"))];
     }
 
     [Fact]
@@ -211,7 +264,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
             return new MergeReport([EngineMergeDiagnosticsEmitterTests.Merged()], null, "hint");
         }
         protected override IEnumerable<MergedEntry> Merged(Loadout.ReadOnly loadout, MergeReport plan)
-            => [new MergedEntry(Script, "Alpha, Beta", [Loss, new NoVanillaBase(Script)])];
+            => [new MergedEntry(Script, ["Alpha", "Beta"], [Loss, new NoVanillaBase(Script)])];
 
         public IAsyncEnumerable<DroppedItem> Items(Loadout.ReadOnly loadout) => Dropped(loadout, FrozenDictionary<GamePath, SyncNode>.Empty, CancellationToken.None);
     }
@@ -226,7 +279,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         var dropped = items.Should().ContainSingle().Which;
         dropped.Item.Should().Be("Beta's change to `scripts/x.ws` lines 4–7");
         dropped.Source.Should().Be("Beta");
-        dropped.Page.Should().Be("Load Order");
+        dropped.Page.Should().Be("File Conflicts");
         dropped.Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 }

@@ -51,20 +51,26 @@ public class MergeDiagnosticsEmitter(MergePlanCache plans, ILogger<MergeDiagnost
     protected override IEnumerable<MergedEntry> Merged(Loadout.ReadOnly loadout, MergePlan plan)
         => plan.Merged.Select(merged => new MergedEntry(
             merged.Path,
-            string.Join(", ", merged.Contributors.Select(c => c.ModName).Distinct(StringComparer.Ordinal)),
+            merged.Contributors.Select(c => c.ModName).Distinct(StringComparer.Ordinal).ToArray(),
             merged.Notes));
 
     protected override IEnumerable<Diagnostic> Extra(Loadout.ReadOnly loadout, MergePlan plan)
         => PackageCollisionEmitter.WinnerWarnings(plan.Unmerged);
 
-    // The cards say "Rules > File Conflicts", so the dropped items point at the same page.
-    protected override string ReorderPage(Loadout.ReadOnly loadout) => "File Conflicts";
-
     protected override bool RaisesCard(IMergeNote note) => RaisesNoteCard(note);
 
     // The cards are FromSoft's own template, which also covers a note that records no loss.
     protected override IAsyncEnumerable<Diagnostic> NoteCards(Loadout.ReadOnly loadout, MergePlan plan, FrozenDictionary<GamePath, SyncNode> syncTree, CancellationToken cancellationToken)
-        => Merged(loadout, plan).SelectMany(entry => NoteCards(entry.Path, entry.Mods, entry.Notes)).ToAsyncEnumerable();
+        => Cards(loadout, plan, cancellationToken).ToAsyncEnumerable();
+
+    private IEnumerable<Diagnostic> Cards(Loadout.ReadOnly loadout, MergePlan plan, CancellationToken cancellationToken)
+    {
+        foreach (var entry in Merged(loadout, plan))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var card in NoteCards(entry.Path, string.Join(", ", entry.Mods), entry.Notes)) yield return card;
+        }
+    }
 
     // Which original copy a merge compared against, and what it took whole from one mod, are for the merge report;
     // the user has nothing to decide about either.
