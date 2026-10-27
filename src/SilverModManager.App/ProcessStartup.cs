@@ -244,6 +244,16 @@ public static class ProcessStartup
                     steps.WriteError(StartingMessage);
                     return startupMode.IsHeadlessRun ? RunFailureExitCode : 1;
                 }
+                catch (Exception ex)
+                {
+                    // Opening runs the migrations, so this fails every start until it is fixed. A window or a game
+                    // launch has no terminal, so stderr alone would look like the app never started.
+                    logger.LogFailure(ex, "Could not open the database");
+                    var failure = CliErrors.Describe(ex);
+                    steps.WriteError(failure);
+                    if (startupMode.ShowUI || startupMode.StartsUiWhenNoMainRunning || startupMode.IsHeadlessRun) steps.Notify(services, failure);
+                    return startupMode.IsHeadlessRun ? RunFailureExitCode : 1;
+                }
             }
 
             // Start the CLI server if we are the main process.

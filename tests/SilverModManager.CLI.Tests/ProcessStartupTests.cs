@@ -401,14 +401,32 @@ public class ProcessStartupTests
         errors.Should().BeEmpty();
     }
 
+    // Opening the database runs the migrations, so a failure here blocks every start until it is fixed. It must
+    // stop the start, and a window start has no terminal: the player hears of it from a notification, and the
+    // exception itself goes to the log.
     [Fact]
-    public void DatabaseFailureIsNotSwallowed()
+    public void DatabaseFailureStopsTheStartAndIsReportedInWords()
     {
         var recorder = new Recorder { OpenDatabaseThrows = true };
 
-        var act = () => Run(recorder);
+        Run(recorder).Should().Be(1);
 
-        act.Should().Throw<InvalidOperationException>();
+        recorder.Calls.Should().NotContain("cli-as-main").And.NotContain("ui");
+        recorder.Calls.Should().EndWith("release-main");
+        var line = recorder.Errors.Should().ContainSingle().Which;
+        line.Should().Contain("Details are in the log at").And.NotContain(" at System");
+        recorder.Notifications.Should().Equal([line]);
+    }
+
+    [Fact]
+    public void DatabaseFailureInATerminalStartIsOneLineAndNoNotification()
+    {
+        var recorder = new Recorder { OpenDatabaseThrows = true };
+
+        Run(recorder, "as-main", "some-verb").Should().Be(1);
+
+        recorder.Errors.Should().ContainSingle().Which.Should().Contain("Details are in the log at");
+        recorder.Notifications.Should().BeEmpty();
     }
 
     [Theory]
@@ -617,15 +635,19 @@ public class ProcessStartupTests
         recorder.Calls.Should().NotContain("close-database").And.NotContain("cli-as-main").And.EndWith("release-main");
     }
 
+    // "Starting" is the answer for a headless main racing one that is shutting down. A window has nothing to wait
+    // for, so its start stops and says so like any other database failure.
     [Fact]
     public void LockedDatabaseIsNotSwallowedForTheWindow()
     {
         var recorder = new Recorder { OpenDatabaseException = new IOException("IO error: lock hold by current process") };
 
-        var act = () => Run(recorder);
+        Run(recorder).Should().Be(1);
 
-        act.Should().Throw<IOException>();
-        recorder.Errors.Should().BeEmpty();
+        recorder.Calls.Should().NotContain("ui");
+        var line = recorder.Errors.Should().ContainSingle().Which;
+        line.Should().NotBe(ProcessStartup.StartingMessage).And.Contain("Details are in the log at");
+        recorder.Notifications.Should().Equal([line]);
     }
 
     [Theory]

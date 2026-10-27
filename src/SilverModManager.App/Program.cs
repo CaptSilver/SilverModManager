@@ -175,13 +175,13 @@ public class Program
         var migration = services.GetRequiredService<MigrationService>();
         if (modelExists)
         {
-            // Run the migrations
-            migration.MigrateAll().Wait();
+            // Run the migrations. GetResult rather than Wait, so a failure reaches the startup's report unwrapped.
+            migration.MigrateAll().GetAwaiter().GetResult();
         }
         else
         {
             // Otherwise, perform the initial setup
-            migration.InitialSetup().Wait();
+            migration.InitialSetup().GetAwaiter().GetResult();
         }
 
         // Bounded and never prompting: a keyring that is down leaves the app signed out, it does not stop it starting.
