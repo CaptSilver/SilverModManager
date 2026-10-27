@@ -2,35 +2,39 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Serialization.Attributes;
 using SilverModManager.App.UI.WorkspaceSystem;
-using SilverModManager.Games.FromSoft;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk.Icons;
 
-namespace SilverModManager.App.UI.Pages.FromSoftMerges;
+namespace SilverModManager.App.UI.Pages.Merges;
 
+// The name is a persisted layout key: saved workspaces store it, so it keeps the namespace and type this page was
+// first shipped under.
 [JsonName("SilverModManager.App.UI.Pages.FromSoftMerges.FromSoftMergesPageContext")]
-public record FromSoftMergesPageContext : IPageFactoryContext
+public record MergesPageContext : IPageFactoryContext
 {
     public required LoadoutId LoadoutId { get; init; }
 }
 
 [UsedImplicitly]
-public class FromSoftMergesPageFactory : APageFactory<IFromSoftMergesViewModel, FromSoftMergesPageContext>
+public class MergesPageFactory : APageFactory<IMergesViewModel, MergesPageContext>
 {
     private readonly IConnection _conn;
+    private readonly MergeEngines _engines;
 
-    public FromSoftMergesPageFactory(IServiceProvider serviceProvider) : base(serviceProvider)
+    public MergesPageFactory(IServiceProvider serviceProvider) : base(serviceProvider)
     {
         _conn = serviceProvider.GetRequiredService<IConnection>();
+        _engines = serviceProvider.GetRequiredService<MergeEngines>();
     }
 
     public static readonly PageFactoryId StaticId = PageFactoryId.From(Guid.Parse("6c2e9a41-3d57-4b80-9e14-a7f05b3c8d62"));
     public override PageFactoryId Id => StaticId;
 
-    public override IFromSoftMergesViewModel CreateViewModel(FromSoftMergesPageContext context)
+    public override IMergesViewModel CreateViewModel(MergesPageContext context)
     {
-        var vm = ServiceProvider.GetRequiredService<IFromSoftMergesViewModel>();
+        var vm = ServiceProvider.GetRequiredService<IMergesViewModel>();
         vm.LoadoutId = context.LoadoutId;
         return vm;
     }
@@ -40,7 +44,7 @@ public class FromSoftMergesPageFactory : APageFactory<IFromSoftMergesViewModel, 
         if (workspaceContext is not LoadoutContext loadoutContext) yield break;
 
         var loadout = Loadout.Load(_conn.Db, loadoutContext.LoadoutId);
-        if (loadout.InstallationInstance.Game is not IFromSoftGame) yield break;
+        if (_engines.For(loadout.InstallationInstance.Game) is null) yield break;
 
         yield return new PageDiscoveryDetails
         {
@@ -50,7 +54,7 @@ public class FromSoftMergesPageFactory : APageFactory<IFromSoftMergesViewModel, 
             PageData = new PageData
             {
                 FactoryId = StaticId,
-                Context = new FromSoftMergesPageContext
+                Context = new MergesPageContext
                 {
                     LoadoutId = loadout.LoadoutId,
                 },

@@ -49,7 +49,7 @@ using SilverModManager.App.UI.Pages.DebugControls;
 using SilverModManager.App.UI.Pages.Diagnostics;
 using SilverModManager.App.UI.Pages.Diff.ApplyDiff;
 using SilverModManager.App.UI.Pages.Downloads;
-using SilverModManager.App.UI.Pages.FromSoftMerges;
+using SilverModManager.App.UI.Pages.Merges;
 using SilverModManager.App.UI.Pages.FromSoftSaves;
 using SilverModManager.App.UI.Pages.Ini;
 using SilverModManager.App.UI.Pages.LibraryPage;
@@ -220,8 +220,8 @@ public static class Services
             .AddView<WabbajackGalleryView, IWabbajackGalleryViewModel>()
             .AddViewModel<WabbajackGalleryViewModel, IWabbajackGalleryViewModel>()
             .AddSingleton<IWabbajackGalleryService, WabbajackGalleryService>()
-            .AddView<FromSoftMergesView, IFromSoftMergesViewModel>()
-            .AddViewModel<FromSoftMergesViewModel, IFromSoftMergesViewModel>()
+            .AddView<MergesView, IMergesViewModel>()
+            .AddViewModel<MergesViewModel, IMergesViewModel>()
             .AddView<FromSoftSavesView, IFromSoftSavesViewModel>()
             .AddViewModel<FromSoftSavesViewModel, IFromSoftSavesViewModel>()
             .AddView<IniPageView, IIniPageViewModel>()
@@ -317,7 +317,7 @@ public static class Services
             .AddSingleton<IPageFactory, ApplyDiffPageFactory>()
             .AddSingleton<IPageFactory, SettingsPageFactory>()
             .AddSingleton<IPageFactory, ChangelogPageFactory>()
-            .AddSingleton<IPageFactory, FromSoftMergesPageFactory>()
+            .AddSingleton<IPageFactory, MergesPageFactory>()
             .AddSingleton<IPageFactory, FromSoftSavesPageFactory>()
             .AddSingleton<IPageFactory, IniPageFactory>()
             .AddSingleton<IStoreSortMemory, SettingsStoreSortMemory>()

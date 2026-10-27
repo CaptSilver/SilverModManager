@@ -2,16 +2,15 @@ using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Games.Merge;
-using SilverModManager.Games.FromSoft.Merge;
 using ReactiveUI;
 using R3;
 
-namespace SilverModManager.App.UI.Pages.FromSoftMerges;
+namespace SilverModManager.App.UI.Pages.Merges;
 
 [UsedImplicitly]
-public partial class FromSoftMergesView : ReactiveUserControl<IFromSoftMergesViewModel>
+public partial class MergesView : ReactiveUserControl<IMergesViewModel>
 {
-    public FromSoftMergesView()
+    public MergesView()
     {
         InitializeComponent();
 

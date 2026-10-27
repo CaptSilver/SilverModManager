@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts;
-using SilverModManager.App.UI.Pages.FromSoftMerges;
+using SilverModManager.App.UI.Pages.Merges;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -15,7 +15,7 @@ using Loadout = SilverModManager.Sdk.Loadouts.Loadout;
 
 namespace SilverModManager.UI.Tests;
 
-public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(provider)
+public class MergesViewModelTests(IServiceProvider provider) : AUiTest(provider)
 {
     private static MergeReportEntry Entry(string path, string strategy, string[] contributors, MergeReportOutcome outcome = MergeReportOutcome.Merged,
         string[]? notes = null, string vanilla = "", string reason = "")
@@ -24,8 +24,8 @@ public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(p
     private static MergeReport Report(string? refusal = null, params MergeReportEntry[] entries)
         => new(entries, refusal, MergeReports.PriorityOrderHint);
 
-    private FromSoftMergesViewModel CreateVm(IMergeReports reports)
-        => new(Substitute.For<IWindowManager>(), reports, Provider.GetRequiredService<IConnection>(), NullLogger<FromSoftMergesViewModel>.Instance);
+    private MergesViewModel CreateVm(IMergeReports reports)
+        => new(Substitute.For<IWindowManager>(), reports, Provider.GetRequiredService<IConnection>(), NullLogger<MergesViewModel>.Instance);
 
     private static IMergeReports Reports(params MergeReport[] reports)
     {
@@ -36,10 +36,10 @@ public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(p
         return source;
     }
 
-    private static void Refresh(FromSoftMergesViewModel vm) => vm.RefreshCommand.Execute().Subscribe();
+    private static void Refresh(MergesViewModel vm) => vm.RefreshCommand.Execute().Subscribe();
 
     // The rows appear before the refresh restores the selection; a test that selects a row must wait for the refresh to end.
-    private async Task Loaded(FromSoftMergesViewModel vm, int rows) => await Eventually(() =>
+    private async Task Loaded(MergesViewModel vm, int rows) => await Eventually(() =>
     {
         vm.Entries.Should().HaveCount(rows);
         vm.IsLoading.Should().BeFalse();

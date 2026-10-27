@@ -1,17 +1,16 @@
 using System.Reactive;
 using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.App.UI.WorkspaceSystem;
-using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.Sdk.Loadouts;
 using ReactiveUI;
 
-namespace SilverModManager.App.UI.Pages.FromSoftMerges;
+namespace SilverModManager.App.UI.Pages.Merges;
 
 /// <summary>
-/// The merges page of a FromSoft loadout: every file more than one enabled mod provides, which mods feed it, and
-/// what the apply does with it. Read-only; the merges themselves happen on apply.
+/// The merges page of a loadout whose game has a merge engine: every file more than one enabled mod provides, which
+/// mods feed it, and what the apply does with it. Read-only; the merges themselves happen on apply.
 /// </summary>
-public interface IFromSoftMergesViewModel : IPageViewModelInterface
+public interface IMergesViewModel : IPageViewModelInterface
 {
     LoadoutId LoadoutId { get; set; }
 

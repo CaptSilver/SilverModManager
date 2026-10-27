@@ -7,7 +7,7 @@ using SilverModManager.App.UI.Pages.DebugControls;
 using SilverModManager.App.UI.Pages.Diagnostics;
 using SilverModManager.App.UI.Pages.Diff.ApplyDiff;
 using SilverModManager.App.UI.Pages.Downloads;
-using SilverModManager.App.UI.Pages.FromSoftMerges;
+using SilverModManager.App.UI.Pages.Merges;
 using SilverModManager.App.UI.Pages.FromSoftSaves;
 using SilverModManager.App.UI.Pages.Ini;
 using SilverModManager.App.UI.Pages.Thunderstore;
@@ -52,7 +52,7 @@ internal class TypeFinder : ITypeFinder
         typeof(ProtocolRegistrationTestPageContext),
         typeof(DownloadsPageContext),
         typeof(ToolsPageContext),
-        typeof(FromSoftMergesPageContext),
+        typeof(MergesPageContext),
         typeof(FromSoftSavesPageContext),
         typeof(IniPageContext),
         typeof(ThunderstorePageContext),

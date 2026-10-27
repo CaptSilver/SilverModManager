@@ -9,17 +9,16 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Extensions;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.App.UI.WorkspaceSystem;
-using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.UI.Sdk.Icons;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 
-namespace SilverModManager.App.UI.Pages.FromSoftMerges;
+namespace SilverModManager.App.UI.Pages.Merges;
 
 [UsedImplicitly]
-public partial class FromSoftMergesViewModel : APageViewModel<IFromSoftMergesViewModel>, IFromSoftMergesViewModel
+public partial class MergesViewModel : APageViewModel<IMergesViewModel>, IMergesViewModel
 {
     public const string EmptyStateText = "No file is provided by more than one enabled mod";
 
@@ -29,7 +28,7 @@ public partial class FromSoftMergesViewModel : APageViewModel<IFromSoftMergesVie
 
     private readonly IMergeReports _reports;
     private readonly IConnection _conn;
-    private readonly ILogger<FromSoftMergesViewModel> _logger;
+    private readonly ILogger<MergesViewModel> _logger;
     private int _generation;
 
     [Reactive] public partial LoadoutId LoadoutId { get; set; }
@@ -44,7 +43,7 @@ public partial class FromSoftMergesViewModel : APageViewModel<IFromSoftMergesVie
 
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
 
-    public FromSoftMergesViewModel(IWindowManager windowManager, IMergeReports reports, IConnection conn, ILogger<FromSoftMergesViewModel> logger) : base(windowManager)
+    public MergesViewModel(IWindowManager windowManager, IMergeReports reports, IConnection conn, ILogger<MergesViewModel> logger) : base(windowManager)
     {
         _reports = reports;
         _conn = conn;
