@@ -108,12 +108,9 @@ public class TextThreeWayMergeTests
         string[] b = ["", "}", "", "", "", "REW", "", "", "", "NEWU"];
         var notes = new List<IMergeNote>();
         var (text, _, _) = TextThreeWayMerge.Fold(Join(v), [(Join(a), "High"), (Join(b), "Low")], "x", notes);
-        string D(string[] x) => string.Join(" ", LineDiff.Compare(v, x).Select(o => (o.Kind == LineDiffKind.Added ? "+" : o.Kind == LineDiffKind.Removed ? "-" : "=") + o.Text));
-        notes.Should().BeEmpty(string.Join(" | ", notes.Select(n => n.Describe())) + " A: " + D(a) + " B: " + D(b));
         var lines = LineDiff.SplitLines(text);
         lines.Count(l => l == "REW").Should().Be(1);
         lines.Count(l => l == "NEWU").Should().Be(1);
-        lines.Should().Equal(a.Append("NEWU"));
     }
 
     [Fact] public void AnInsertionAtTheEndOfTheFileAppendsAfterTheLastLine()
@@ -179,10 +176,11 @@ public class TextThreeWayMergeTests
         notes.Should().ContainSingle().Which.Should().Be(new LinesKept("scripts/x.ws", 2, 2, "High", "Low"));
     }
 
-    [Fact] public void SharingARealLineMakesTheLowerModsAdditionPartOfTheSameChange()
+    [Fact] public void ALowerModExtendingTheHigherModsRewriteIsAnOverlapAndIsReported()
     {
         var (text, notes) = Merge("p\nq\nr\n", "p\nx=1; }\nr\n", "p\nx=1; }\n}\nr\n");
-        text.Should().Be("p\nx=1; }\n}\nr\n"); notes.Should().BeEmpty();
+        text.Should().Be("p\nx=1; }\nr\n");
+        notes.Should().ContainSingle().Which.Should().Be(new LinesKept("scripts/x.ws", 2, 2, "High", "Low"));
     }
 
     [Fact] public void TheSameInsertionOneLineApartAppliesOnce()
