@@ -130,6 +130,7 @@ public static class Services
         coll.AddSingleton<IHostedService, ImportedIniFilesPass>();
         coll.AddSingleton<IGameInstalledContentService, GameInstalledContentService>();
         coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, GameInstalledGroupDisabledEmitter>());
+        coll.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticEmitter, ModOrderDroppedEmitter>());
 
         // Verbs
         coll.AddLoadoutManagementVerbs()
