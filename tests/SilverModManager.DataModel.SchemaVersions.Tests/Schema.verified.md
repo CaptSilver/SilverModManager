@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xF2BEB42302CC5587
-   - Total attributes: 354
-   - Total namespaces: 100
+   - Fingerprint: 0x93D2F5C09DCC3AD1
+   - Total attributes: 360
+   - Total namespaces: 101
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -243,6 +243,12 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Loadouts.LoadoutItemWithTargetPath/TargetPath                            | Tuple3_Ref_UShort_Utf8I | True    | False | False     | 
 | SilverModManager.Loadouts.LoadoutOverridesGroup/OverridesFor                              | Reference               | False   | False | False     | 
 | SilverModManager.Loadouts.LoadoutSnapshot/Snapshot                                        | Reference               | False   | True  | False     | 
+| SilverModManager.Loadouts.ModOrderDroppedEntry/Container                                  | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.ModOrderDroppedEntry/Item                                       | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.ModOrderDroppedEntry/Loadout                                    | Reference               | True    | False | False     | 
+| SilverModManager.Loadouts.ModOrderDroppedEntry/Page                                       | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.ModOrderDroppedEntry/Reason                                     | Utf8                    | False   | False | False     | 
+| SilverModManager.Loadouts.ModOrderDroppedEntry/Source                                     | Utf8                    | False   | False | False     | 
 | SilverModManager.Loadouts.SortOrder/Loadout                                               | Reference               | True    | False | False     | 
 | SilverModManager.Loadouts.SortOrder/ParentEntity                                          | UInt128                 | True    | False | False     | 
 | SilverModManager.Loadouts.SortOrder/SortOrderTypeId                                       | UInt128                 | False   | False | False     | 
