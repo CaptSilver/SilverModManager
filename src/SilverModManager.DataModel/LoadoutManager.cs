@@ -865,9 +865,8 @@ internal partial class LoadoutManager : ILoadoutManager
         var projected = ProjectBlock(current, blockAscending);
 
         // The request is not refused: the resolver in the transaction puts the rules back. The same resolver runs here
-        // over the projection to learn which neighbours in the requested order end up the other way round, whether
-        // a rule names the pair or a chain of rules through other groups does. If every neighbouring pair holds, the
-        // whole list does, so checking neighbours finds every reversal.
+        // over the projection to learn which pairs of the requested order end up the other way round because a rule
+        // names the pair or a chain of rules through other groups does.
         var rules = LoadoutGroupRule.FindByLoadout(db, loadoutId).ToList();
         var expanded = ExpandCollectionRules(db, loadoutId, rules.Select(static rule => new GroupRule(rule.SourceId, rule.OtherId, rule.Kind)).ToList());
         var expandedRules = expanded.Select(static e => e.Rule).ToList();
@@ -880,13 +879,18 @@ internal partial class LoadoutManager : ILoadoutManager
 
         var violatedInProjection = RuleResolver.FindViolations(projected, expandedRules).ToHashSet();
         var overridden = new List<OverriddenOrder>();
-        for (var i = 0; i + 1 < winnerToLoser.Count; i++)
+        for (var i = 0; i < winnerToLoser.Count; i++)
         {
-            var (winner, loser) = (winnerToLoser[i], winnerToLoser[i + 1]);
-            if (finalPosition[winner] > finalPosition[loser]) continue;
+            for (var j = i + 1; j < winnerToLoser.Count; j++)
+            {
+                var (winner, loser) = (winnerToLoser[i], winnerToLoser[j]);
+                if (finalPosition[winner] > finalPosition[loser]) continue;
 
-            var blamed = RuleOnPath(expandedRules, winner, loser, violatedInProjection);
-            overridden.Add(new OverriddenOrder(rules[expanded[blamed].Origin], winner, loser));
+                // A pair that comes out reversed with no chain of rules forcing it was only displaced by the sort
+                // making room for a pair that is; that pair is the one reported.
+                if (RuleOnPath(expandedRules, winner, loser, violatedInProjection) is not { } blamed) continue;
+                overridden.Add(new OverriddenOrder(rules[expanded[blamed].Origin], winner, loser));
+            }
         }
 
         tx.Add(new ApplyGroupRulesTxFunc(loadoutId, new RuleDelta { BlockAscending = [..blockAscending] }));
@@ -896,9 +900,10 @@ internal partial class LoadoutManager : ILoadoutManager
     /// <summary>
     /// The index in <paramref name="rules"/> of the rule that keeps <paramref name="winner"/> from ending up above
     /// <paramref name="loser"/>: the one naming the pair, else the first of the chain of rules from winner to loser
-    /// that the projection breaks (any rule of the chain if none is broken there).
+    /// that the projection breaks (any rule of the chain if none is broken there). Null when no chain of rules runs
+    /// from winner to loser.
     /// </summary>
-    private static int RuleOnPath(IReadOnlyList<GroupRule> rules, LoadoutItemGroupId winner, LoadoutItemGroupId loser, HashSet<int> violated)
+    private static int? RuleOnPath(IReadOnlyList<GroupRule> rules, LoadoutItemGroupId winner, LoadoutItemGroupId loser, HashSet<int> violated)
     {
         // An edge runs from the group that must sit lower to the one that must sit higher.
         var edgesFrom = new Dictionary<LoadoutItemGroupId, List<(int Rule, LoadoutItemGroupId To)>>();
@@ -921,7 +926,8 @@ internal partial class LoadoutManager : ILoadoutManager
             }
         }
 
-        // The resolver only reverses a pair through rules, so a path exists.
+        if (!cameBy.ContainsKey(loser)) return null;
+
         var path = new List<int>();
         for (var at = loser; at != winner; at = cameBy[at].From) path.Add(cameBy[at].Rule);
         path.Reverse();

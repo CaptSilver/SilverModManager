@@ -101,7 +101,7 @@ public class SetGroupOrderTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
     public async Task APairTurnedRoundOnlyThroughRulesOnUnlistedGroupsIsReported()
     {
         var (loadout, g) = await Seed(["b", "o", "a"]);
-        var aAfterO = (await LoadoutManager.AddGroupRule(loadout.LoadoutId, g["a"], g["o"], GroupRuleKind.After)).RuleId;
+        await LoadoutManager.AddGroupRule(loadout.LoadoutId, g["a"], g["o"], GroupRuleKind.After);
         var oAfterB = (await LoadoutManager.AddGroupRule(loadout.LoadoutId, g["o"], g["b"], GroupRuleKind.After)).RuleId;
 
         // b above a would put o between them the wrong way for both rules; neither rule names the pair.
@@ -111,7 +111,24 @@ public class SetGroupOrderTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
         var overridden = result.Overridden.Should().ContainSingle().Subject;
         overridden.RequestedWinner.Should().Be(g["b"]);
         overridden.RequestedLoser.Should().Be(g["a"]);
-        overridden.Rule.LoadoutGroupRuleId.Should().BeOneOf(aAfterO, oAfterB);
+        // The chain is b -> o -> a; the first link the projection breaks is blamed.
+        overridden.Rule.LoadoutGroupRuleId.Should().Be(oAfterB);
+    }
+
+    [Fact]
+    public async Task AGroupDisplacedByARuleIsNotReportedOnItsOwn()
+    {
+        var (loadout, g) = await Seed(["x", "z", "y"]);
+        var zAfterX = (await LoadoutManager.AddGroupRule(loadout.LoadoutId, g["z"], g["x"], GroupRuleKind.After)).RuleId;
+
+        // z wins over x by rule, so x above z is turned round; y only moves because the sort makes room.
+        var result = await Set(loadout.LoadoutId, g["x"], g["y"], g["z"]);
+
+        NamesByPriority(loadout.LoadoutId).Should().Equal("y", "x", "z");
+        var overridden = result.Overridden.Should().ContainSingle().Subject;
+        overridden.RequestedWinner.Should().Be(g["x"]);
+        overridden.RequestedLoser.Should().Be(g["z"]);
+        overridden.Rule.LoadoutGroupRuleId.Should().Be(zAfterX);
     }
 
     [Fact]
