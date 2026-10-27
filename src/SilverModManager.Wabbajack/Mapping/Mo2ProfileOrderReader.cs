@@ -10,8 +10,9 @@ public static class Mo2ProfileOrderReader
     /// <summary>
     /// The profile's order, winner first: Overwrite, then the listed mods top-down (the first line of modlist.txt wins),
     /// then mods with no line (alphabetical from the bottom up, so the last one is nearest the settings group; each is
-    /// logged at Warning), then the game settings group, then the game-root groups. A listed name that matches no group is
-    /// dropped. <see cref="ModOrderEntry.Enabled"/> is false for a '-' line, true for a '+' line, and null for a mod with
+    /// logged at Warning), then the game settings group, then the game-root groups. A '+' line that matches no group is
+    /// dropped; a '-' line for a mod the list does not ship is one its author excluded on purpose, so it is not. A line
+    /// named Overwrite does not move it: Overwrite is always first. <see cref="ModOrderEntry.Enabled"/> is false for a '-' line, true for a '+' line, and null for a mod with
     /// no line and for the settings group: modlist.txt never lists it, and a line matching its free-text name is about the mod.
     /// </summary>
     public static ModOrder Read(
@@ -33,6 +34,7 @@ public static class Mo2ProfileOrderReader
 
         var winnerToLoser = new List<ModOrderEntry>(children.Count);
         var dropped = new List<ModOrderDrop>();
+        var droppedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var placed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // Game-root groups claim their names first so a line of the same name cannot lift one out of the bottom of the order.
@@ -51,7 +53,7 @@ public static class Mo2ProfileOrderReader
         {
             listed.Add(line.Name);
             if (byName.ContainsKey(line.Name)) Place(line.Name);
-            else if (dropped.All(d => !d.Item.Equals(line.Name, StringComparison.OrdinalIgnoreCase)))
+            else if (line.Enabled && droppedNames.Add(line.Name))
                 dropped.Add(new ModOrderDrop(line.Name, "no mod of that name was installed"));
         }
 

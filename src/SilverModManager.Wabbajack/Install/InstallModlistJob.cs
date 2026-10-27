@@ -934,7 +934,8 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         // The importer's priority write must be the only one in this transaction, so it opens fresh. The profile's own plugin
         // order is staged below, so the importer must not seed the plugin variety from the mod order as well.
         using var tx = Connection.BeginTransaction();
-        OrderImporter.Import(check.Loadout, order, new ModOrderSource($"Wabbajack list {check.List.Name}", modlistGroup, Manifest: null, SeedVarieties: false), tx);
+        // Read fresh: the groups this run created are not in the loadout the check loaded, and the sink names them in its drops.
+        OrderImporter.Import(Loadout.Load(db, TargetLoadout), order, new ModOrderSource($"Wabbajack list {check.List.Name}", modlistGroup, Manifest: null, SeedVarieties: false), tx);
 
         if (texts.PluginsTxt is not null || texts.LoadorderTxt is not null)
             target.StagePluginList(Loadout.Load(db, TargetLoadout), sortOrderId, texts.PluginsTxt, texts.LoadorderTxt, tx);

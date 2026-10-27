@@ -111,6 +111,27 @@ public class Mo2ProfileOrderReaderTests(ITestOutputHelper helper) : InstallTestB
     }
 
     [Fact]
+    public async Task ADisabledLineForAModTheListDoesNotShipIsNotADrop()
+    {
+        var (groups, children) = await Groups("A");
+
+        var order = Mo2ProfileOrderReader.Read(children, Entries("-Ghost\n+A\n+Missing\n+Missing\n"), NoRoots, "list", NullLogger.Instance);
+
+        order.Dropped.Should().ContainSingle().Which.Item.Should().Be("Missing", "an excluded mod is not a problem, and a repeated line is reported once");
+        order.WinnerToLoser.Select(e => e.Group).Should().Equal(groups["A"].LoadoutItemGroupId);
+    }
+
+    [Fact]
+    public async Task ALineNamedOverwriteDoesNotMoveIt()
+    {
+        var (groups, children) = await Groups("A", "Overwrite");
+
+        var order = Mo2ProfileOrderReader.Read(children, Entries("+A\n+Overwrite\n"), NoRoots, "list", NullLogger.Instance);
+
+        order.WinnerToLoser.Select(e => e.Group).Should().Equal(groups["Overwrite"].LoadoutItemGroupId, groups["A"].LoadoutItemGroupId);
+    }
+
+    [Fact]
     public async Task NoModlistTxtOrdersEveryModAlphabeticallyWithNoDrops()
     {
         var (groups, children) = await Groups("B", "A", "Overwrite");
