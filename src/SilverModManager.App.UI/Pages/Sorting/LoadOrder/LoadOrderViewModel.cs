@@ -95,6 +95,25 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
         }
     }
 
+    /// <summary>
+    /// Where a row dropped at <paramref name="position"/> goes in the stored order, which runs top to bottom only when
+    /// the page is ascending: on a descending page, above the target on screen is after it in the stored order. Null
+    /// for a drop with no target.
+    /// </summary>
+    public static TargetRelativePosition? RelativePositionOf(TreeDataGridRowDropPosition position, ListSortDirection direction, bool pointerInTopHalf)
+    {
+        bool? aboveOnScreen = position switch
+        {
+            TreeDataGridRowDropPosition.Before => true,
+            TreeDataGridRowDropPosition.After => false,
+            TreeDataGridRowDropPosition.Inside => pointerInTopHalf,
+            _ => null,
+        };
+        if (aboveOnScreen is not { } above) return null;
+
+        return above == (direction == ListSortDirection.Ascending) ? TargetRelativePosition.BeforeTarget : TargetRelativePosition.AfterTarget;
+    }
+
     /// <summary>Moves rows dropped on <paramref name="target"/>, showing the error instead of throwing when it fails.</summary>
     internal Task MoveDropped(ISortItemKey[] keys, ISortItemKey target, TargetRelativePosition position, CancellationToken token) =>
         RunEdit(() => _variety.MoveItems(_sortOrderId, keys, target, position, token: token));
@@ -128,8 +147,7 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
         SortDirectionCurrent = sortOrderVariety.SortDirectionDefault;
         IsAscending = SortDirectionCurrent == ListSortDirection.Ascending;
 
-        IsWinnerTop = SortDirectionCurrent == ListSortDirection.Ascending &&
-                      sortOrderVariety.IndexOverrideBehavior == IndexOverrideBehavior.SmallerIndexWins;
+        IsWinnerTop = LoadOrderConvention.WinnerOnTop(SortDirectionCurrent, sortOrderVariety.IndexOverrideBehavior);
 
         var sortDirectionObservable = this.WhenAnyValue(vm => vm.SortDirectionCurrent)
             .Replay(1);
@@ -258,8 +276,7 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
                 sortDirectionObservable.Subscribe(sortDirection =>
                     {
                         IsAscending = sortDirection == ListSortDirection.Ascending;
-                        IsWinnerTop = IsAscending &&
-                                      sortOrderVariety.IndexOverrideBehavior == IndexOverrideBehavior.SmallerIndexWins;
+                        IsWinnerTop = LoadOrderConvention.WinnerOnTop(sortDirection, sortOrderVariety.IndexOverrideBehavior);
                     })
                     .DisposeWith(d);
 
@@ -317,31 +334,10 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
                             // Determine target item
                             var dropTargetKey = targetModel.Key;
                             
-                            // Determine relative position
-                            TargetRelativePosition relativePosition;
-                            switch (eventArgs.Position)
-                            {
-                                case TreeDataGridRowDropPosition.Before when SortDirectionCurrent == ListSortDirection.Ascending:
-                                case TreeDataGridRowDropPosition.After when SortDirectionCurrent == ListSortDirection.Descending:
-                                    relativePosition = TargetRelativePosition.BeforeTarget;
-                                    break;
-                                case TreeDataGridRowDropPosition.After when SortDirectionCurrent == ListSortDirection.Ascending:
-                                case TreeDataGridRowDropPosition.Before when SortDirectionCurrent == ListSortDirection.Descending:
-                                    relativePosition = TargetRelativePosition.AfterTarget;
-                                    break;
-                                case TreeDataGridRowDropPosition.Inside when SortDirectionCurrent == ListSortDirection.Ascending:
-                                    relativePosition = PointerIsInVerticalTopHalf(eventArgs) ? TargetRelativePosition.BeforeTarget : TargetRelativePosition.AfterTarget;
-                                    break;
-                                case TreeDataGridRowDropPosition.Inside when SortDirectionCurrent == ListSortDirection.Descending:
-                                    relativePosition = PointerIsInVerticalTopHalf(eventArgs) ? TargetRelativePosition.AfterTarget : TargetRelativePosition.BeforeTarget;
-                                    break;
-                                case TreeDataGridRowDropPosition.None:
-                                    // Invalid target, no move
-                                    return;
-                                default:
-                                    return;
-                            }
-                            
+                            // Only a drop onto the row itself has a half to read; a drop with no target has no row.
+                            var topHalf = eventArgs.Position == TreeDataGridRowDropPosition.Inside && PointerIsInVerticalTopHalf(eventArgs);
+                            if (RelativePositionOf(eventArgs.Position, SortDirectionCurrent, topHalf) is not { } relativePosition) return;
+
                             await MoveDropped(keysToMove, dropTargetKey, relativePosition, cancellationToken);
                         },
                         awaitOperation: AwaitOperation.Drop)

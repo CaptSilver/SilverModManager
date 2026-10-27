@@ -113,9 +113,9 @@ public interface ISortOrderVariety
     protected static SortOrderUiMetadata StaticSortOrderUiMetadata { get; } = new()
     {
         SortOrderName = "Load Order",
-        OverrideInfoTitle = string.Empty,
+        OverrideInfoTitle = LoadOrderConvention.Title("Load Order"),
         OverrideInfoMessage = string.Empty,
-        WinnerIndexToolTip = "Last Loaded Mod Wins: Items that load last will overwrite changes from items loaded before them.",
+        WinnerIndexToolTip = LoadOrderConvention.WinnerToolTip("items that load last overwrite changes from items loaded before them."),
         IndexColumnHeader = "LOAD ORDER",
         DisplayNameColumnHeader = "NAME",
         EmptyStateMessageTitle = "No Sortable Mods detected",

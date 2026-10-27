@@ -56,12 +56,12 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     public override SortOrderUiMetadata SortOrderUiMetadata { get; } = new()
     {
         SortOrderName = "Plugin Load Order",
-        OverrideInfoTitle = "Plugin Load Order - Last Loaded Wins",
+        OverrideInfoTitle = LoadOrderConvention.Title("Plugin Load Order"),
         OverrideInfoMessage = """
                                When two plugins change the same record, the one that loads later wins. A plugin always loads after the masters it lists, so a move that breaks that is fixed up when the game's plugin list is written.
                                Plugins the game always loads first are locked at the top.
                                """,
-        WinnerIndexToolTip = "Last Loaded Plugin Wins: plugins that load later overwrite records from plugins that load before them.",
+        WinnerIndexToolTip = LoadOrderConvention.WinnerToolTip("plugins that load later overwrite records from plugins that load before them."),
         IndexColumnHeader = "Load Order",
         DisplayNameColumnHeader = "Plugin",
         EmptyStateMessageTitle = "No plugins detected",

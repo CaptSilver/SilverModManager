@@ -37,12 +37,12 @@ public sealed class Bg3PakSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     public override SortOrderUiMetadata SortOrderUiMetadata { get; } = new()
     {
         SortOrderName = "Mod Load Order",
-        OverrideInfoTitle = "Mod Load Order - Last Loaded Wins",
+        OverrideInfoTitle = LoadOrderConvention.Title("Mod Load Order"),
         OverrideInfoMessage = """
                                When two paks change the same data, the one that loads later wins. The game reads the order from its mod list, so a pak that is switched off is left out of it.
                                Paks the game downloaded itself can be moved, but they are switched on and off together.
                                """,
-        WinnerIndexToolTip = "Last Loaded Pak Wins: paks that load later overwrite data from paks that load before them.",
+        WinnerIndexToolTip = LoadOrderConvention.WinnerToolTip("paks that load later overwrite data from paks that load before them."),
         IndexColumnHeader = "Load Order",
         DisplayNameColumnHeader = "Pak",
         EmptyStateMessageTitle = "No paks detected",

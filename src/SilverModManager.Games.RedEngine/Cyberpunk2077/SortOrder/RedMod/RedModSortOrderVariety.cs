@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Kernel;
@@ -26,17 +27,21 @@ public class RedModSortOrderVariety : ASortOrderVariety<
     // The deploy tool writes modlist.txt in ascending index order and the first entry wins.
     public override IndexOverrideBehavior IndexOverrideBehavior => IndexOverrideBehavior.SmallerIndexWins;
 
+    // Shown in reverse so the winner sits at the bottom like on every other load order page: the bottom row is
+    // modlist.txt's first line.
+    public override ListSortDirection SortDirectionDefault => ListSortDirection.Descending;
+
     public RedModSortOrderVariety(IServiceProvider serviceProvider) : base(serviceProvider) { }
     
     public override SortOrderUiMetadata SortOrderUiMetadata { get; } = new()
     {
         SortOrderName = "REDmod Load Order",
-        OverrideInfoTitle = "Load Order for REDmods in Cyberpunk 2077 - First Loaded Wins",
+        OverrideInfoTitle = LoadOrderConvention.Title("REDmod Load Order"),
         OverrideInfoMessage = """
-                               Some Cyberpunk 2077 mods use REDmods modules to alter core gameplay elements. If two REDmods modify the same part of the game, the one loaded first will take priority and overwrite changes from those loaded later.
-                               For example, the 1st position overwrites the 2nd, the 2nd overwrites the 3rd, and so on.
+                               Some Cyberpunk 2077 mods use REDmod modules to alter core gameplay elements. If two REDmods change the same part of the game, the one loaded last, lower in this list, wins.
+                               This page shows modlist.txt in reverse: REDmod lets the first line of that file win, so the mod at the bottom here is its first line.
                                """,
-        WinnerIndexToolTip = "First Loaded RedMOD Wins: Items that load first will overwrite changes from items loaded after them.",
+        WinnerIndexToolTip = LoadOrderConvention.WinnerToolTip("a REDmod lower in the list overwrites changes from the ones above it."),
         IndexColumnHeader = "Load Order",
         DisplayNameColumnHeader = "REDmod Name",
         EmptyStateMessageTitle = "No REDmods detected",

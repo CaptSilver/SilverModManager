@@ -14,7 +14,7 @@ public record SortOrderUiMetadata
     /// Heading for more details load order override information
     /// </summary>
     /// <example>
-    /// "Load Order for REDmods in Cyberpunk 2077 - First Loaded Wins"
+    /// "REDmod Load Order - Last Loaded Wins", built by <see cref="LoadOrderConvention.Title"/>
     /// </example>
     public required string OverrideInfoTitle { get; init; }
     

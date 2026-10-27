@@ -18,6 +18,7 @@ using SilverModManager.UI.Sdk.Dialog;
 using SilverModManager.UI.Sdk.Dialog.Enums;
 using NSubstitute;
 using SilverModManager.Games.RedEngine.Cyberpunk2077;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,8 +51,8 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
     private class FakeVariety(params IReactiveSortItem[] items) : ISortOrderVariety
     {
         public SortOrderVarietyId SortOrderVarietyId { get; } = SortOrderVarietyId.From(Guid.NewGuid());
-        public ListSortDirection SortDirectionDefault => ListSortDirection.Ascending;
-        public IndexOverrideBehavior IndexOverrideBehavior => IndexOverrideBehavior.SmallerIndexWins;
+        public ListSortDirection SortDirectionDefault { get; init; } = ListSortDirection.Ascending;
+        public IndexOverrideBehavior IndexOverrideBehavior { get; init; } = IndexOverrideBehavior.SmallerIndexWins;
         public SortOrderUiMetadata SortOrderUiMetadata => Metadata;
         public Optional<SortOrderId> GetSortOrderIdFor(OneOf<LoadoutId, CollectionGroupId> parentEntity, IDb? db = null) => SortOrder;
         public IReadOnlyList<IReactiveSortItem> GetSortOrderItems(SortOrderId sortOrderId, IDb? db = null) => items;
@@ -60,7 +61,15 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
         public virtual IObservable<IChangeSet<IReactiveSortItem, ISortItemKey>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId) => throw new NotSupportedException();
         public Exception? MoveFailure { get; init; }
         public Task MoveItems(SortOrderId sortOrderId, ISortItemKey[] itemsToMove, ISortItemKey dropTargetItem, TargetRelativePosition relativePosition, IDb? db = null, CancellationToken token = default) => Task.FromException(MoveFailure ?? new NotSupportedException());
-        public Task MoveItemDelta(SortOrderId sortOrderId, ISortItemKey sourceItem, int delta, IDb? db = null, CancellationToken token = default) => Task.FromException(MoveFailure ?? new NotSupportedException());
+        public List<int> Deltas { get; } = [];
+
+        public Task MoveItemDelta(SortOrderId sortOrderId, ISortItemKey sourceItem, int delta, IDb? db = null, CancellationToken token = default)
+        {
+            lock (Deltas) Deltas.Add(delta);
+            return MoveFailure is null && RecordsMoves ? Task.CompletedTask : Task.FromException(MoveFailure ?? new NotSupportedException());
+        }
+
+        public bool RecordsMoves { get; init; }
         public ValueTask ReconcileSortOrder(SortOrderId sortOrderId, IDb? db = null, CancellationToken token = default) => throw new NotSupportedException();
         public ValueTask DeleteSortOrder(SortOrderId sortOrderId, CancellationToken token = default) => throw new NotSupportedException();
     }
@@ -161,6 +170,83 @@ public class LoadOrderViewModelTests(IServiceProvider provider) : AUiTest(provid
     {
         for (var i = 0; i < 200 && !condition(); i++) await Task.Delay(25);
         condition().Should().BeTrue("the view model should have caught up");
+    }
+
+    /// <summary>Every load order page the app can show: each game's own varieties, and the mod priority page for the rest.</summary>
+    private IReadOnlyList<ISortOrderVariety> EveryVariety()
+        => Provider.GetServices<IGame>()
+            .SelectMany(game => game.SortOrderManager.GetSortOrderVarieties())
+            .Append(Provider.GetRequiredService<ModPriorityOrderVariety>())
+            .DistinctBy(variety => variety.SortOrderVarietyId)
+            .ToArray();
+
+    private RedModSortOrderVariety RedMod()
+        => Provider.GetServices<IGame>().OfType<Cyberpunk2077Game>().Single().SortOrderManager.GetSortOrderVarieties().OfType<RedModSortOrderVariety>().Single();
+
+    /// <summary>A page that sorts and resolves like <paramref name="variety"/> but records its moves.</summary>
+    private static FakeVariety ShapedLike(ISortOrderVariety variety)
+        => new() { SortDirectionDefault = variety.SortDirectionDefault, IndexOverrideBehavior = variety.IndexOverrideBehavior, RecordsMoves = true };
+
+    [Fact]
+    public void EveryLoadOrderPageShowsTheWinnerAtTheBottomByDefault()
+    {
+        var varieties = EveryVariety();
+
+        varieties.Select(v => v.SortOrderUiMetadata.SortOrderName).Should().Contain(["REDmod Load Order", "Plugin Load Order", "Mod Load Order", ModPriorityOrderVariety.PageName]);
+        varieties.Where(v => NewViewModel(ShapedLike(v)).IsWinnerTop).Select(v => v.SortOrderUiMetadata.SortOrderName)
+            .Should().BeEmpty("every page lists the mod loaded last, the one that wins, at the bottom");
+    }
+
+    [Fact]
+    public void EveryLoadOrderPageSaysTheModLoadedLastWins()
+    {
+        foreach (var variety in EveryVariety())
+        {
+            var text = variety.SortOrderUiMetadata;
+            text.OverrideInfoTitle.Should().EndWith(" - Last Loaded Wins", text.SortOrderName);
+            text.WinnerIndexToolTip.Should().StartWith("Last Loaded Wins: ", text.SortOrderName);
+        }
+    }
+
+    [Fact]
+    public void ThePageTellsTheWinnerIsOnTopFromTheDirectionAndTheIndexThatWins()
+    {
+        bool OnTop(ListSortDirection direction, IndexOverrideBehavior behavior)
+            => NewViewModel(new FakeVariety { SortDirectionDefault = direction, IndexOverrideBehavior = behavior }).IsWinnerTop;
+
+        OnTop(ListSortDirection.Ascending, IndexOverrideBehavior.SmallerIndexWins).Should().BeTrue();
+        OnTop(ListSortDirection.Descending, IndexOverrideBehavior.GreaterIndexWins).Should().BeTrue();
+        OnTop(ListSortDirection.Ascending, IndexOverrideBehavior.GreaterIndexWins).Should().BeFalse();
+        OnTop(ListSortDirection.Descending, IndexOverrideBehavior.SmallerIndexWins).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task OnTheRedModPageMovingARowUpGivesItALaterModlistLineAndDownAnEarlierOne()
+    {
+        // REDmod's modlist.txt is first-wins and the page lists it in reverse, so a row higher on the page is a later
+        // line, a larger index, and loses to the rows below it.
+        var variety = ShapedLike(RedMod());
+        var vm = NewViewModel(variety);
+        using var _ = vm.Activator.Activate();
+        var adapter = (LoadOrderTreeDataGridAdapter)vm.Adapter;
+
+        adapter.MessageSubject.OnNext(new LoadOrderTreeDataGridAdapter.MoveUpCommandPayload(new CompositeItemModel<ISortItemKey>(PluginKey)));
+        await WaitUntil(() => variety.Deltas.Count == 1);
+        adapter.MessageSubject.OnNext(new LoadOrderTreeDataGridAdapter.MoveDownCommandPayload(new CompositeItemModel<ISortItemKey>(PluginKey)));
+        await WaitUntil(() => variety.Deltas.Count == 2);
+
+        variety.Deltas.Should().Equal(+1, -1);
+    }
+
+    [Fact]
+    public void OnTheRedModPageDroppingARowAboveAnotherPutsItAfterTheTargetInTheStoredOrder()
+    {
+        var direction = RedMod().SortDirectionDefault;
+
+        LoadOrderViewModel.RelativePositionOf(Avalonia.Controls.TreeDataGridRowDropPosition.Before, direction, pointerInTopHalf: true).Should().Be(TargetRelativePosition.AfterTarget);
+        LoadOrderViewModel.RelativePositionOf(Avalonia.Controls.TreeDataGridRowDropPosition.After, direction, pointerInTopHalf: false).Should().Be(TargetRelativePosition.BeforeTarget);
+        LoadOrderViewModel.RelativePositionOf(Avalonia.Controls.TreeDataGridRowDropPosition.Inside, direction, pointerInTopHalf: true).Should().Be(TargetRelativePosition.AfterTarget);
+        LoadOrderViewModel.RelativePositionOf(Avalonia.Controls.TreeDataGridRowDropPosition.None, direction, pointerInTopHalf: true).Should().BeNull();
     }
 
     [Fact]

@@ -37,12 +37,12 @@ public sealed class ModPriorityOrderVariety(IConnection connection, ILoadoutMana
     public SortOrderUiMetadata SortOrderUiMetadata { get; } = new()
     {
         SortOrderName = PageName,
-        OverrideInfoTitle = "Load Order - Last Wins",
+        OverrideInfoTitle = LoadOrderConvention.Title(PageName),
         OverrideInfoMessage = """
                               When two mods ship the same file, the one lower in this list is used. Dragging a mod up or down changes which one wins, the same as on File Conflicts.
                               A rule you stored on the Rules tab always has the last word: a drag that would break one is refused.
                               """,
-        WinnerIndexToolTip = "Last Wins: a mod lower in the list overrides the ones above it.",
+        WinnerIndexToolTip = LoadOrderConvention.WinnerToolTip("a mod lower in the list overrides the ones above it."),
         IndexColumnHeader = "Load Order",
         DisplayNameColumnHeader = "Mod",
         EmptyStateMessageTitle = "No mods yet",
