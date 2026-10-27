@@ -115,7 +115,7 @@ public class ModOrderImporterTests(ITestOutputHelper helper) : ACyberpunkIsolate
 
         Rows(loadout.LoadoutId, a).Should().BeEquivalentTo(
         [
-            ("b above a", "collection A", "the stored rule 'a wins over b' puts them the other way round", "File Conflicts"),
+            ("a wins over b", "collection A", "the imported order breaks it, so it moved a", "File Conflicts"),
             ("reader item", "collection A", "reader reason", "File Conflicts"),
         ]);
     }

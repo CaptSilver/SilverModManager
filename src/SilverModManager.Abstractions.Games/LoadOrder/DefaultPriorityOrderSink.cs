@@ -42,14 +42,34 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
 
         logger.LogTrace("Ordered {Count} groups of '{Source}'; {Overridden} pairs were turned round by stored rules", order.WinnerToLoser.Count, source.Name, result.Overridden.Count);
 
-        return
-        [
-            ..result.Overridden.Select(overridden => new ModOrderDrop(
-                $"{Name(loadout, overridden.RequestedWinner)} above {Name(loadout, overridden.RequestedLoser)}",
-                overridden.Displaced
-                    ? $"the order moved to make room for the stored rule '{GroupRuleText.WinsOver(overridden.Rule)}'"
-                    : $"the stored rule '{GroupRuleText.WinsOver(overridden.Rule)}' puts them the other way round")),
-        ];
+        return RuleDrops(loadout, order, result.Overridden);
+    }
+
+    private const int MaxNamedMods = 5;
+
+    /// <summary>
+    /// One drop per stored rule, however many requested pairs it turned round: a rule on a collection stands for a rule
+    /// on each of its mods, so one rule can reverse many pairs. A pair's loser ended above its winner, so the losers are
+    /// what the rule moved; they are named in the requested order.
+    /// </summary>
+    private static List<ModOrderDrop> RuleDrops(Loadout.ReadOnly loadout, ModOrder order, IReadOnlyList<OverriddenOrder> overridden)
+    {
+        var requested = order.WinnerToLoser.Select(static (entry, index) => (entry.Group, index)).ToDictionary(static p => p.Group, static p => p.index);
+        return overridden
+            .GroupBy(static pair => pair.Rule.LoadoutGroupRuleId)
+            .Select(pairs =>
+            {
+                var moved = pairs.Select(static pair => pair.RequestedLoser).Distinct().OrderBy(group => requested[group]).Select(group => Name(loadout, group)).ToList();
+                return new ModOrderDrop(GroupRuleText.WinsOver(pairs.First().Rule), $"the imported order breaks it, so it moved {NameList(moved)}");
+            })
+            .ToList();
+    }
+
+    /// <summary>"a", "a and b", "a, b and c"; past <see cref="MaxNamedMods"/> names the rest is counted.</summary>
+    private static string NameList(IReadOnlyList<string> names)
+    {
+        if (names.Count > MaxNamedMods) return $"{string.Join(", ", names.Take(MaxNamedMods))} and {names.Count - MaxNamedMods} more";
+        return names.Count == 1 ? names[0] : $"{string.Join(", ", names.Take(names.Count - 1))} and {names[^1]}";
     }
 
     /// <summary>

@@ -162,6 +162,22 @@ public class SetGroupOrderTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
     }
 
     [Fact]
+    public async Task ADisplacedPairIsBlamedOnTheBrokenRuleWhoseRepairMovedOneOfIt()
+    {
+        var (loadout, g) = await Seed(["p", "q", "w", "y", "u", "z"]);
+        var pOverQ = (await LoadoutManager.AddGroupRule(loadout.LoadoutId, g["p"], g["q"], GroupRuleKind.After)).RuleId;
+        var zAfterU = (await LoadoutManager.AddGroupRule(loadout.LoadoutId, g["z"], g["u"], GroupRuleKind.After)).RuleId;
+
+        // Both rules break in the request, but only z after u moves z; p over q only swaps p and q.
+        var result = await Set(loadout.LoadoutId, g["q"], g["p"], g["w"], g["y"], g["z"]);
+
+        var blamed = result.Overridden.ToDictionary(o => (o.RequestedWinner, o.RequestedLoser), o => o.Rule.LoadoutGroupRuleId);
+        blamed[(g["q"], g["p"])].Should().Be(pOverQ);
+        blamed[(g["w"], g["z"])].Should().Be(zAfterU);
+        blamed[(g["y"], g["z"])].Should().Be(zAfterU);
+    }
+
+    [Fact]
     public async Task AGroupListedTwiceIsRefused()
     {
         var (loadout, g) = await Seed(["a", "b"]);

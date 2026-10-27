@@ -128,8 +128,8 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
 
         var rows = ModOrderDroppedEntry.FindByLoadout(group.Db, loadout).ToArray();
         rows.Should().ContainSingle();
-        rows[0].Item.Should().Be("Fomod mod 1 above Fomod mod 0");
-        rows[0].Reason.Should().Contain("wins over");
+        rows[0].Item.Should().Be("Fomod mod 0 wins over Fomod mod 1");
+        rows[0].Reason.Should().Be("the imported order breaks it, so it moved Fomod mod 0");
         rows[0].Source.Should().Be("collection Offline");
     }
 

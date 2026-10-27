@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
@@ -121,12 +122,12 @@ public class DefaultPriorityOrderSinkTests(ITestOutputHelper helper) : ACyberpun
 
         var drops = await Apply(loadout, container, (g["b"], null), (g["a"], null));
 
-        drops.Should().ContainSingle().Which.Should().Be(new ModOrderDrop("b above a", "the stored rule 'a wins over b' puts them the other way round"));
+        drops.Should().ContainSingle().Which.Should().Be(new ModOrderDrop("a wins over b", "the imported order breaks it, so it moved a"));
         PriorityOf(g["a"]).Should().BeGreaterThan(PriorityOf(g["b"]));
     }
 
     [Fact]
-    public async Task ADisplacedPairComesBackWithTheRoomMakingWording()
+    public async Task ADisplacedPairIsPartOfTheDropOfTheRuleThatMovedIt()
     {
         var (loadout, container, g) = await Seed("w", "y", "u", "z");
         await Apply(loadout, container, (g["z"], null), (g["u"], null), (g["y"], null), (g["w"], null));
@@ -134,7 +135,53 @@ public class DefaultPriorityOrderSinkTests(ITestOutputHelper helper) : ACyberpun
 
         var drops = await Apply(loadout, container, (g["w"], null), (g["y"], null), (g["z"], null));
 
-        drops.Should().Contain(new ModOrderDrop("y above z", "the order moved to make room for the stored rule 'z wins over u'"));
+        drops.Should().Equal(new ModOrderDrop("z wins over u", "the imported order breaks it, so it moved z"));
+    }
+
+    /// <summary>A collection container with the named mods in it; a rule that names the collection names each of them.</summary>
+    private async Task<(Loadout.ReadOnly Loadout, LoadoutItemGroupId Container, Dictionary<string, LoadoutItemGroupId> Groups)> SeedCollection(params string[] names)
+    {
+        var loadout = await CreateLoadout();
+        using var tx = Connection.BeginTransaction();
+        var container = new CollectionGroup.New(tx, out var id)
+        {
+            IsReadOnly = false,
+            LoadoutItemGroup = new LoadoutItemGroup.New(tx, id)
+            {
+                IsGroup = true,
+                LoadoutItem = new LoadoutItem.New(tx, id) { Name = "Pack", LoadoutId = loadout.LoadoutId },
+            },
+        };
+        var parent = LoadoutItemGroupId.From(container.Id.Value);
+        var added = names.ToDictionary(name => name, name => AddEmptyGroup(tx, loadout.LoadoutId, name, parent));
+        var result = await tx.Commit();
+        return (loadout, LoadoutItemGroupId.From(result[container.Id].Value), added.ToDictionary(p => p.Key, p => LoadoutItemGroupId.From(result[p.Value].Value)));
+    }
+
+    [Fact]
+    public async Task ARuleThatTurnsRoundSeveralPairsIsOneDropNamingWhatItMoved()
+    {
+        var (loadout, container, g) = await SeedCollection("x", "a", "b", "c");
+        await Apply(loadout, container, (g["a"], null), (g["b"], null), (g["c"], null), (g["x"], null));
+        // The collection wins over x: every other mod of it must sit above x.
+        await LoadoutManager.AddGroupRule(loadout.LoadoutId, container, g["x"], GroupRuleKind.After);
+
+        var drops = await Apply(loadout, container, (g["x"], null), (g["a"], null), (g["b"], null), (g["c"], null));
+
+        drops.Should().Equal(new ModOrderDrop("Pack wins over x", "the imported order breaks it, so it moved a, b and c"));
+    }
+
+    [Fact]
+    public async Task ALongListOfMovedModsIsCut()
+    {
+        string[] mods = ["a", "b", "c", "d", "e", "f", "g"];
+        var (loadout, container, g) = await SeedCollection(["x", ..mods]);
+        await Apply(loadout, container, [..mods.Select(name => (g[name], (bool?)null)), (g["x"], null)]);
+        await LoadoutManager.AddGroupRule(loadout.LoadoutId, container, g["x"], GroupRuleKind.After);
+
+        var drops = await Apply(loadout, container, [(g["x"], null), ..mods.Select(name => (g[name], (bool?)null))]);
+
+        drops.Should().ContainSingle().Which.Reason.Should().Be("the imported order breaks it, so it moved a, b, c, d, e and 2 more");
     }
 
     private async Task<(Loadout.ReadOnly Loadout, LoadoutItemGroupId Container, Dictionary<string, LoadoutItemGroupId> Groups, Func<string, int> IndexOf)> SeedRedMods()

@@ -889,6 +889,9 @@ internal partial class LoadoutManager : ILoadoutManager
         var finalPosition = new Dictionary<LoadoutItemGroupId, int>();
         foreach (var group in resolution.Order) finalPosition[group] = finalPosition.Count;
 
+        var projectedPosition = new Dictionary<LoadoutItemGroupId, int>();
+        foreach (var group in projected) projectedPosition[group] = projectedPosition.Count;
+
         var violatedInProjection = RuleResolver.FindViolations(projected, expandedRules).ToHashSet();
         var edgesFrom = RuleEdges(expandedRules);
         var overridden = new List<OverriddenOrder>();
@@ -906,15 +909,34 @@ internal partial class LoadoutManager : ILoadoutManager
                 }
 
                 // No chain of rules puts the loser above the winner: the sort moved the pair to repair a rule broken
-                // elsewhere in the projection. The first such rule is the one to name.
+                // elsewhere in the projection. Name the broken rule whose repair moved one of the pair.
                 if (violatedInProjection.Count == 0)
                     throw new InvalidOperationException($"The order of loadout {loadoutId.Value} was changed with no rule broken.");
-                overridden.Add(new OverriddenOrder(rules[expanded[violatedInProjection.Min()].Origin], winner, loser, Displaced: true));
+                var displacing = DisplacingRule(expandedRules, violatedInProjection, winner, loser, group => projectedPosition[group] != finalPosition[group]);
+                overridden.Add(new OverriddenOrder(rules[expanded[displacing].Origin], winner, loser, Displaced: true));
             }
         }
 
         tx.Add(new ApplyGroupRulesTxFunc(loadoutId, new RuleDelta { BlockAscending = [..blockAscending] }));
         return new GroupOrderResult(overridden, [..winnerToLoser.OrderByDescending(group => finalPosition[group])]);
+    }
+
+    /// <summary>
+    /// The lowest-index broken rule that names <paramref name="winner"/> or <paramref name="loser"/> and whose end
+    /// there moved, since repairing it is what moved the pair; else the lowest-index broken rule.
+    /// </summary>
+    private static int DisplacingRule(
+        IReadOnlyList<GroupRule> rules, HashSet<int> violated,
+        LoadoutItemGroupId winner, LoadoutItemGroupId loser, Func<LoadoutItemGroupId, bool> moved)
+    {
+        bool MovedEnd(GroupRule rule, LoadoutItemGroupId group) => (rule.Source == group || rule.Other == group) && moved(group);
+
+        foreach (var index in violated.Order())
+        {
+            if (MovedEnd(rules[index], winner) || MovedEnd(rules[index], loser)) return index;
+        }
+
+        return violated.Min();
     }
 
     /// <summary>The rules as edges from the group that must sit lower to the one that must sit higher, with the rule's index.</summary>
