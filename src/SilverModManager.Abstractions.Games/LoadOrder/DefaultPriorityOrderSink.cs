@@ -67,8 +67,8 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
 
     /// <summary>
     /// One drop per stored rule, however many requested pairs it turned round: a rule on a collection stands for a rule
-    /// on each of its mods, so one rule can reverse many pairs. A pair's loser ended above its winner, so the losers are
-    /// what the rule moved; they are named in the requested order.
+    /// on each of its mods, so one rule can reverse many pairs. The drop names every mod of those pairs in the requested
+    /// order, and sends the user to File Conflicts, where stored rules are edited on every game.
     /// </summary>
     private static List<ModOrderDrop> RuleDrops(Loadout.ReadOnly loadout, ModOrder order, IReadOnlyList<OverriddenOrder> overridden)
     {
@@ -77,8 +77,17 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
             .GroupBy(static pair => pair.Rule.LoadoutGroupRuleId)
             .Select(pairs =>
             {
-                var moved = pairs.Select(static pair => pair.RequestedLoser).Distinct().OrderBy(group => requested[group]).Select(group => Name(loadout, group)).ToList();
-                return new ModOrderDrop(GroupRuleText.WinsOver(pairs.First().Rule), $"the imported order breaks it, so it moved {NameList(moved)}");
+                var mods = pairs
+                    .SelectMany(static pair => new[] { pair.RequestedWinner, pair.RequestedLoser })
+                    .Distinct()
+                    .OrderBy(group => requested[group])
+                    .Select(group => Name(loadout, group))
+                    .ToList();
+                var rule = GroupRuleText.WinsOver(pairs.First().Rule);
+                var reason = pairs.All(static pair => pair.Displaced)
+                    ? $"they were moved to make room for the stored rule '{rule}'"
+                    : $"the stored rule '{rule}' puts them the other way round";
+                return new ModOrderDrop($"the listed order of {NameList(mods)}", reason, FileConflictsPage);
             })
             .ToList();
     }

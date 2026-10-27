@@ -104,7 +104,7 @@ public class InstallOrderReinstallTests(ITestOutputHelper helper) : InstallTestB
         var dropped = ModOrderDroppedEntry.FindByLoadout(Connection.Db, loadout.LoadoutId).ToArray();
         dropped.Should().NotBeEmpty("the stored rule overrides the list's order");
         dropped.Should().OnlyContain(d => d.ContainerId == group.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId);
-        dropped.Should().OnlyContain(d => d.Item == "C wins over B", "the first install's note about the missing mod A is replaced");
+        dropped.Should().OnlyContain(d => d.Reason.Contains("the stored rule 'C wins over B'"), "the first install's note about the missing mod A is replaced");
         PrioritiesOf(group).Should().ContainKey("A");
     }
 

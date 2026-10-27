@@ -129,8 +129,8 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
 
         var rows = ModOrderDroppedEntry.FindByLoadout(group.Db, loadout).ToArray();
         rows.Should().ContainSingle();
-        rows[0].Item.Should().Be("Fomod mod 0 wins over Fomod mod 1");
-        rows[0].Reason.Should().Be("the imported order breaks it, so it moved Fomod mod 0");
+        rows[0].Item.Should().Be("the listed order of Fomod mod 1 and Fomod mod 0");
+        rows[0].Reason.Should().Be("the stored rule 'Fomod mod 0 wins over Fomod mod 1' puts them the other way round");
         rows[0].Source.Should().Be("collection Offline");
     }
 
