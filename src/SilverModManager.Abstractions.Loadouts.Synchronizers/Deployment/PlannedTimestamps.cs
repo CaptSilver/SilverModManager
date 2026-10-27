@@ -23,18 +23,21 @@ internal static class PlannedTimestamps
             File.SetLastWriteTimeUtc(file.ToString(), planned.UtcDateTime);
     }
 
+    private const Actions Skipped = Actions.ExtractToDisk | Actions.IngestFromDisk | Actions.DeleteFromDisk | Actions.ForgetDiskState;
+
     /// <summary>
     /// Sets the time on files that were already on disk and writes it to their disk state entry in the apply's
     /// transaction. A file the apply extracts is skipped, it got its time from <see cref="ApplyTo"/>; so is one
     /// the apply ingests, whose disk state entry the ingest already writes in this transaction. That file gets
-    /// its time on the next apply.
+    /// its time on the next apply. A file the apply deletes or stops tracking is skipped too: it is gone or no
+    /// longer ours, and its disk state entry is deleted in this transaction.
     /// </summary>
     internal static void Stamp(DeploymentContext context, IReadOnlyList<(GamePath Path, DateTimeOffset Mtime)> stamps)
     {
         foreach (var (path, mtime) in stamps)
         {
             if (!context.SyncTree.TryGetValue(path, out var node)) continue;
-            if (!node.HaveDisk || node.Actions.HasFlag(Actions.ExtractToDisk) || node.Actions.HasFlag(Actions.IngestFromDisk)) continue;
+            if (!node.HaveDisk || (node.Actions & Skipped) != 0) continue;
 
             var file = context.Locations.ToAbsolutePath(path);
             if (FileFingerprint.Of(file).LastModified.UtcTicks != mtime.UtcTicks)

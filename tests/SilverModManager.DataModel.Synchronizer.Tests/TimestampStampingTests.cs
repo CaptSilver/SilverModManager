@@ -10,6 +10,7 @@ using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
 using SilverModManager.Games.TestFramework;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.IO;
@@ -122,6 +123,32 @@ public class TimestampStampingTests : AIsolatedGameTest<TimestampStampingTests, 
         Synchronizer.ProcessSyncTree(tree);
         tree.Where(e => e.Key == A || e.Key == B || e.Key == C).Select(e => e.Value.Actions)
             .Should().OnlyContain(actions => !actions.HasFlag(Actions.IngestFromDisk));
+    }
+
+    // The game still names a plugin the apply is removing. Stamping it would touch a file on its way out and
+    // write a time onto a disk state entry the same transaction deletes.
+    [Theory]
+    [InlineData("default")]
+    [InlineData("copy")]
+    public async Task AFileTheApplyDeletesIsNotStamped(string backend)
+    {
+        var loadout = await LoadoutOn(backend);
+        StampWith((A, 0), (B, 1), (C, 2));
+        await Synchronizer.Synchronize(loadout);
+        var entry = DiskState(loadout).Single(e => (GamePath)e.Path == A).Id;
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var mod in LoadoutItem.FindByLoadout(Connection.Db, loadout).Where(item => item.Name == "plugins"))
+                tx.Delete(mod.Id, recursive: true);
+            await tx.Commit();
+        }
+        StampWith((A, 5), (B, 6), (C, 7));
+
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        OnDisk(A).FileExists.Should().BeFalse();
+        Connection.Db.Get(entry).Should().BeEmpty("a deleted file keeps no disk state, not even a time");
     }
 
     [Fact]
