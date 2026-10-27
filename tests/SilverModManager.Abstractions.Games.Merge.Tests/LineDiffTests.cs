@@ -128,6 +128,20 @@ public class LineDiffTests
             (LineDiffKind.Unchanged, 0), (LineDiffKind.Unchanged, 1), (LineDiffKind.Added, 2), (LineDiffKind.Unchanged, 3));
     }
 
+    [Fact]
+    public void ALongBlankBlockAfterAChangedLineStaysCheap()
+    {
+        // The changed line sits ahead of a block that doubles in length: sliding marks one step at a time is quadratic here.
+        string[] a = ["A", .. Enumerable.Repeat("", 20_000)];
+        string[] b = ["B", .. Enumerable.Repeat("", 40_000)];
+        var before = System.GC.GetAllocatedBytesForCurrentThread();
+        var ops = LineDiff.Compare(a, b);
+        var allocated = System.GC.GetAllocatedBytesForCurrentThread() - before;
+        ops.Count(o => o.Kind == LineDiffKind.Removed).Should().Be(1);
+        ops.Count(o => o.Kind == LineDiffKind.Added).Should().Be(20_001);
+        allocated.Should().BeLessThan(64L * 1024 * 1024);
+    }
+
     private static int LcsLength(string[] a, string[] b)
     {
         var t = new int[a.Length + 1, b.Length + 1];

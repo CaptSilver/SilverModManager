@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using SilverModManager.Abstractions.Games.Merge;
 
 namespace SilverModManager.App.UI.Pages.Ini;
@@ -25,6 +26,7 @@ public static class IniDiff
                 LineDiffKind.Added => IniDiffKind.Added,
                 LineDiffKind.Removed => IniDiffKind.Removed,
                 LineDiffKind.Unchanged => IniDiffKind.Unchanged,
+                _ => throw new UnreachableException(),
             }, op.Text))
             .ToList();
 }

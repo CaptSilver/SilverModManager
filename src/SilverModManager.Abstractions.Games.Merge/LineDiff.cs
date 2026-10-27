@@ -74,20 +74,22 @@ public static class LineDiff
     /// Moves every changed line to the last position that gives the same result. Inside a block of repeated lines
     /// (blank lines, closing braces) any placement of an insertion or deletion is equally short, and which one the
     /// search picks depends on edits elsewhere in the file. A three-way merge compares where each side's change
-    /// sits in the base, so the placement has to be a function of the lines around the change only. Marks move one
-    /// at a time, last first, so a blank added next to a rewritten line still slides to the end of its block.
+    /// sits in the base, so the placement has to be a function of the lines around the change only. Each maximal
+    /// run of equal text keeps its marks, however many, on its last lines; that is one pass, where moving marks
+    /// one step at a time goes quadratic on a long block.
     /// </summary>
     private static void SlideLate(int[] lines, bool[] changed)
     {
-        for (var i = lines.Length - 2; i >= 0; i--)
+        for (var s = 0; s < lines.Length;)
         {
-            if (!changed[i]) continue;
-            // The unchanged line after a mark with the same text can take the mark's place; the script stays as short.
-            for (var j = i; j + 1 < lines.Length && !changed[j + 1] && lines[j] == lines[j + 1]; j++)
+            int e = s, marks = 0;
+            while (e < lines.Length && lines[e] == lines[s])
             {
-                changed[j] = false;
-                changed[j + 1] = true;
+                if (changed[e]) marks++;
+                e++;
             }
+            for (var i = s; i < e; i++) changed[i] = i >= e - marks;
+            s = e;
         }
     }
 
