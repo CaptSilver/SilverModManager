@@ -1,4 +1,3 @@
-using SilverModManager.Deployment.Links.Native;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Native;
 

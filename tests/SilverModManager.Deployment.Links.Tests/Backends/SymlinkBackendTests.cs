@@ -3,7 +3,7 @@ using FluentAssertions;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Deployment;
 using SilverModManager.Deployment.Links.Backends;
-using SilverModManager.Deployment.Links.Native;
+using SilverModManager.Sdk.Native;
 using SilverModManager.Deployment.Links.Tests.Fixtures;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;

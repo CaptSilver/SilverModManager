@@ -1,18 +1,18 @@
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-namespace SilverModManager.Deployment.Links.Native;
+namespace SilverModManager.Sdk.Native;
 
 /// <summary>
 /// The libc calls the link backends need, each wrapped to return 0 or the errno instead of throwing,
 /// like <c>LibcStat.TryStat</c>. A failed link is an ordinary answer here (EXDEV across devices,
 /// EOPNOTSUPP without reflinks), so callers branch on the number.
 /// </summary>
-internal static partial class LibcLinks
+public static partial class LibcLinks
 {
-    internal const int EXDEV = 18;
-    internal const int EEXIST = 17;
-    internal const int EOPNOTSUPP = 95;
+    public const int EXDEV = 18;
+    public const int EEXIST = 17;
+    public const int EOPNOTSUPP = 95;
 
     // _IOW(0x94, 9, int): direction write (1 << 30), size 4 (4 << 16), type 0x94 (<< 8), number 9.
     // An unsigned long in the kernel headers, so it stays a nuint rather than an int that sign-extends.
@@ -21,18 +21,18 @@ internal static partial class LibcLinks
     private const int BufferSize = 4096;
 
     /// <summary>Creates a hard link at <paramref name="newPath"/>. Returns 0 or the errno.</summary>
-    internal static int TryLink(string existing, string newPath) =>
+    public static int TryLink(string existing, string newPath) =>
         link(existing, newPath) == 0 ? 0 : Marshal.GetLastPInvokeError();
 
     /// <summary>Creates a symlink at <paramref name="linkPath"/> holding <paramref name="target"/> verbatim. Returns 0 or the errno.</summary>
-    internal static int TrySymlink(string target, string linkPath) =>
+    public static int TrySymlink(string target, string linkPath) =>
         symlink(target, linkPath) == 0 ? 0 : Marshal.GetLastPInvokeError();
 
     /// <summary>
     /// Reads the text stored in a symlink without resolving it. Returns 0 or the errno (EINVAL when
     /// <paramref name="path"/> is not a symlink).
     /// </summary>
-    internal static int TryReadLink(string path, out string target)
+    public static int TryReadLink(string path, out string target)
     {
         // readlink does not NUL-terminate and truncates silently, so grow until the result fits.
         var buffer = new byte[BufferSize];
@@ -59,7 +59,7 @@ internal static partial class LibcLinks
     /// Makes <paramref name="destination"/> a copy-on-write clone of <paramref name="source"/>.
     /// Returns 0 or the errno (EOPNOTSUPP on tmpfs and ext4, EXDEV across filesystems).
     /// </summary>
-    internal static int TryClone(SafeFileHandle source, SafeFileHandle destination) =>
+    public static int TryClone(SafeFileHandle source, SafeFileHandle destination) =>
         ioctl(destination.DangerousGetHandle().ToInt32(), FICLONE, source.DangerousGetHandle().ToInt32()) == 0
             ? 0
             : Marshal.GetLastPInvokeError();

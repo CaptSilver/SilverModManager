@@ -1,4 +1,3 @@
-using SilverModManager.Deployment.Links.Native;
 using SilverModManager.Deployment.Links.Tests.Fixtures;
 using SilverModManager.Sdk.Native;
 
