@@ -230,6 +230,17 @@ public class ModOrderMatcherTests(ITestOutputHelper helper) : ACyberpunkIsolated
     }
 
     [Fact]
+    public async Task AModIdAloneIsDroppedWithItsOwnReason()
+    {
+        var built = await Build(c => c.WithIds("B", 7, 70));
+
+        var order = Match(built, Entry(new ModOrderReference(ModId: ModId.From(7))));
+
+        order.WinnerToLoser.Should().BeEmpty();
+        order.Dropped.Should().Equal(new ModOrderDrop("mod 7", "carries a mod id but no file id, md5 or name"));
+    }
+
+    [Fact]
     public async Task NamesMatchIgnoringCase()
     {
         var built = await Build(c => c.Named("Charlie"));

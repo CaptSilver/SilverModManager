@@ -16,6 +16,7 @@ public static class ModOrderMatcher
 {
     private const string NoMatch = "no installed mod matches it (optional download not installed, or install failed)";
     private const string NoReference = "carries no md5, mod id or name";
+    private const string OnlyModId = "carries a mod id but no file id, md5 or name";
     private const string ListedTwice = "the source lists the same installed mod more than once";
 
     /// <summary>
@@ -36,7 +37,7 @@ public static class ModOrderMatcher
             var reference = entry.Reference;
             if (!reference.IsIdentified)
             {
-                dropped.Add(new ModOrderDrop(reference.Display, NoReference));
+                dropped.Add(new ModOrderDrop(reference.Display, reference.HasOnlyModId ? OnlyModId : NoReference));
                 continue;
             }
 
