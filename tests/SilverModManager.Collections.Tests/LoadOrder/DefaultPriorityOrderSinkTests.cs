@@ -1,10 +1,14 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
+using NexusMods.Paths;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 using Xunit;
 
@@ -131,5 +135,32 @@ public class DefaultPriorityOrderSinkTests(ITestOutputHelper helper) : ACyberpun
         var drops = await Apply(loadout, container, (g["w"], null), (g["y"], null), (g["z"], null));
 
         drops.Should().Contain(new ModOrderDrop("y above z", "the order moved to make room for the stored rule 'z wins over u'"));
+    }
+
+    [Fact]
+    public async Task TheRedModOrderFollowsTheImportedModOrder()
+    {
+        var (loadout, container, g) = await Seed("a", "b");
+        using (var tx = Connection.BeginTransaction())
+        {
+            foreach (var name in new[] { "a", "b" })
+                AddFile(tx, loadout.LoadoutId, g[name], new GamePath(LocationId.Game, $"mods/{name}_redmod/info.json"));
+            await tx.Commit();
+        }
+        await GameInstallation.GetGame().SortOrderManager.UpdateLoadOrders(loadout.LoadoutId, token: TestContext.Current.CancellationToken);
+
+        var variety = GameInstallation.GetGame().SortOrderManager.GetSortOrderVarieties().OfType<RedModSortOrderVariety>().Single();
+        var sortOrder = variety.GetSortOrderIdFor(loadout.LoadoutId, Connection.Db).Value;
+        int IndexOf(string name) => variety.GetSortOrderItems(sortOrder, Connection.Db).Single(item => item.Key.Key == $"{name}_redmod").SortIndex;
+        bool Wins(string winner, string loser) => variety.IndexOverrideBehavior == IndexOverrideBehavior.GreaterIndexWins
+            ? IndexOf(winner) > IndexOf(loser)
+            : IndexOf(winner) < IndexOf(loser);
+
+        // Both directions, so the result cannot be the order the variety started in.
+        await Apply(loadout, container, (g["a"], null), (g["b"], null));
+        Wins("a", "b").Should().BeTrue();
+
+        await Apply(loadout, container, (g["b"], null), (g["a"], null));
+        Wins("b", "a").Should().BeTrue();
     }
 }

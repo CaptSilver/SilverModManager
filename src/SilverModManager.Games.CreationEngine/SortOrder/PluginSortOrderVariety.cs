@@ -398,6 +398,36 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
         token.ThrowIfCancellationRequested();
     }
 
+    /// <summary>
+    /// Arranges the visible plugins of the listed groups across the stored indexes they hold. The base class sees
+    /// only the compacted visible rows and would hand a hidden row's index to a visible one, so this works on the
+    /// stored indexes and writes the whole list, hidden rows in place, through <see cref="Stage"/>.
+    /// </summary>
+    public override void SeedFromGroupOrder(SortOrderId sortOrderId, IReadOnlyList<LoadoutItemGroupId> winnerToLoser, ITransaction tx, IDb db)
+    {
+        var stored = StoredRows(sortOrderId, db).Values.OrderBy(row => row.SortIndex).ToList();
+        var groups = GroupsByKey(sortOrderId, db);
+        var visible = RetrieveSortOrder(sortOrderId, db).Select(row => row.Key.Key).ToHashSet();
+
+        // The locked rows are the game's own and never belong to a mod's block.
+        var early = EarlyLoaderIndexes(InstallationOf(LoadoutSortOrder.Load(db, sortOrderId).LoadoutId, db));
+        var rows = stored.Where(row => visible.Contains(row.Key.Key)).ToList();
+        var items = rows
+            .Select(row => (row.SortIndex, (LoadoutItemGroupId?)(!early.ContainsKey(row.Name) && groups.TryGetValue(row.Key, out var group) ? group : null)))
+            .ToList();
+
+        var seeded = GroupOrderSlots.SlotOrder(items, winnerToLoser, IndexOverrideBehavior);
+        if (seeded.SequenceEqual(items.Select(item => item.SortIndex))) return;
+
+        var newIndex = rows.Select((row, i) => (Name: row.Key.Key, Index: seeded[i])).ToDictionary(p => p.Name, p => p.Index);
+        var names = stored
+            .OrderBy(row => newIndex.GetValueOrDefault(row.Key.Key, row.SortIndex))
+            .Select(row => row.Name)
+            .ToList();
+
+        Stage(sortOrderId, names.Select(name => (name, (bool?)null)).ToList(), tx, db);
+    }
+
     private void Stage(SortOrderId sortOrderId, IReadOnlyList<(string Name, bool? IsEnabled)> entries, ITransaction tx, IDb db)
     {
         var stored = StoredRows(sortOrderId, db);

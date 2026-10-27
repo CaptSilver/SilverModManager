@@ -18,7 +18,7 @@ namespace SilverModManager.Abstractions.Games;
 /// <typeparam name="TReactiveSortItem">The type of the ReactiveSortItem implementation used for this variety</typeparam>
 /// <typeparam name="TItemLoadoutData">Represents an item in the loadout that can be sorted but without the sorting information</typeparam>
 /// <typeparam name="TItemSortData">Represents the minimal information for persisting a sort order item inside a Sort Order</typeparam>
-public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutData, TItemSortData> : ISortOrderVariety<TKey, TReactiveSortItem>
+public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutData, TItemSortData> : ISortOrderVariety<TKey, TReactiveSortItem>, IGroupOrderSeedable
     where TKey : IEquatable<TKey>, ISortItemKey
     where TReactiveSortItem : IReactiveSortItem<TReactiveSortItem, TKey>
     where TItemLoadoutData : ISortItemLoadoutData<TKey>
@@ -204,6 +204,26 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Works on the rows <see cref="RetrieveSortOrder"/> returns. A variety that keeps rows it does not return, and
+    /// whose indexes are therefore not the whole story, overrides this.
+    /// </remarks>
+    public virtual void SeedFromGroupOrder(SortOrderId sortOrderId, IReadOnlyList<LoadoutItemGroupId> winnerToLoser, ITransaction tx, IDb db)
+    {
+        var rows = RetrieveSortOrder(sortOrderId, db).OrderBy(row => row.SortIndex).ToList();
+        var groups = GroupsByKey(sortOrderId, db);
+
+        var items = rows.Select(row => (row.SortIndex, (LoadoutItemGroupId?)(groups.TryGetValue(row.Key, out var g) ? g : null))).ToList();
+        var seeded = GroupOrderSlots.SlotOrder(items, winnerToLoser, IndexOverrideBehavior);
+        if (seeded.SequenceEqual(items.Select(item => item.SortIndex))) return;
+
+        for (var i = 0; i < rows.Count; i++)
+            rows[i].SortIndex = seeded[i];
+
+        PersistSortOrderCore(sortOrderId, rows.OrderBy(row => row.SortIndex).ToList(), tx, db);
+    }
+
+    /// <inheritdoc />
     public virtual async ValueTask ReconcileSortOrder(SortOrderId sortOrderId, IDb? referenceDb = null, CancellationToken token = default)
     {
         // If this is passed a specific database, don't retry the reconciliation using the most recent database.
@@ -373,6 +393,22 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
         IReadOnlyList<TItemLoadoutData> loadoutDataItems);
     
     
+    /// <summary>
+    /// The group of the mod that owns each item of the sort order, by item key; items no group owns are absent.
+    /// </summary>
+    protected Dictionary<TKey, LoadoutItemGroupId> GroupsByKey(SortOrderId sortOrderId, IDb db)
+    {
+        var sortOrder = SortOrder.Load(db, sortOrderId);
+        var collectionGroupId = sortOrder.ParentEntity.IsT1 ? sortOrder.ParentEntity.AsT1 : Optional<CollectionGroupId>.None;
+
+        var groups = new Dictionary<TKey, LoadoutItemGroupId>();
+        foreach (var data in RetrieveLoadoutData(sortOrder.LoadoutId, collectionGroupId, db))
+        {
+            if (data.ModGroupId.HasValue) groups.TryAdd(data.Key, data.ModGroupId.Value);
+        }
+        return groups;
+    }
+
     protected static TxId GetMaxTxIdForSortOrder(SortOrderId sortOrderId, IDb db)
     {
         var sortOrder = SortOrder.Load(db, sortOrderId);

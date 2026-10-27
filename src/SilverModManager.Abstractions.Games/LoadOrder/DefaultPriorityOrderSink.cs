@@ -28,6 +28,8 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
             else if (enabled && item.IsDisabled) tx.Retract(item.Id, LoadoutItem.Disabled, Null.Instance);
         }
 
+        if (source.SeedVarieties) SeedVarieties(loadout, order, tx);
+
         logger.LogTrace("Ordered {Count} groups of '{Source}'; {Overridden} pairs were turned round by stored rules", order.WinnerToLoser.Count, source.Name, result.Overridden.Count);
 
         return
@@ -38,6 +40,28 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
                     ? $"the order moved to make room for the stored rule '{GroupRuleText.WinsOver(overridden.Rule)}'"
                     : $"the stored rule '{GroupRuleText.WinsOver(overridden.Rule)}' puts them the other way round")),
         ];
+    }
+
+    /// <summary>
+    /// Seeds each of the game's varieties that has a sort order for the loadout, so a plugin, pak or REDmod list follows
+    /// the mod order the same way the priority rows do. A variety without a stored order yet is left to its first reconcile.
+    /// </summary>
+    private void SeedVarieties(Loadout.ReadOnly loadout, ModOrder order, ITransaction tx)
+    {
+        var groups = order.WinnerToLoser.Select(static entry => entry.Group).ToArray();
+        foreach (var variety in loadout.InstallationInstance.GetGame().SortOrderManager.GetSortOrderVarieties())
+        {
+            if (variety is not IGroupOrderSeedable seedable) continue;
+
+            var sortOrderId = variety.GetSortOrderIdFor(loadout.LoadoutId, loadout.Db);
+            if (!sortOrderId.HasValue)
+            {
+                logger.LogTrace("Variety {Variety} has no sort order for the loadout yet; not seeding it", variety.SortOrderVarietyId);
+                continue;
+            }
+
+            seedable.SeedFromGroupOrder(sortOrderId.Value, groups, tx, loadout.Db);
+        }
     }
 
     private static string Name(Loadout.ReadOnly loadout, LoadoutItemGroupId group) => LoadoutItem.Load(loadout.Db, group).Name;
