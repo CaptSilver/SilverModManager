@@ -5,15 +5,58 @@ using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Abstractions.Games.Merge;
 
-/// <summary>A game class implements this to be served by <see cref="MergeEngine"/>.</summary>
+/// <summary>
+/// A game class implements this to be served by <see cref="MergeEngine"/>. That alone deploys no merged file: a game
+/// makes four hookups, and each one it forgets breaks something different.
+/// <list type="number">
+/// <item><description>
+/// <b>This interface on the game</b>, returning its <see cref="AMergeGame"/>. Without it no engine serves the game: no
+/// Merges page, no merge cards, and every contested file deploys by load order.
+/// </description></item>
+/// <item><description>
+/// <b><see cref="MergeSynchronizerPart.IntrinsicFiles"/> added to the synchronizer's <c>IntrinsicFiles</c>.</b> Without
+/// it the merged files are never in the sync tree, and <see cref="MergeSynchronizerPart.CheckOutputs"/> finds no listing
+/// for the revision and refuses every apply as a loadout that changed.
+/// </description></item>
+/// <item><description>
+/// <b><see cref="MergeSynchronizerPart.PlanOutputs"/> in <c>PreflightLoadout</c> and
+/// <see cref="MergeSynchronizerPart.CheckOutputs"/> in <c>PreflightActions</c>.</b> Without the first, the listing does
+/// not yet know a merge fails, so the first apply after it starts failing is refused once. Without the second, nothing
+/// compares the tree with the plan, the writes read whatever the engine plans at that moment, and a merge that failed
+/// after the listing throws half way through the writes.
+/// </description></item>
+/// <item><description>
+/// <b><see cref="EngineMergeDiagnosticsEmitter"/> in the game's <c>DiagnosticEmitters</c>.</b> Without it Health Check
+/// shows no merge cards, so every change a merge drops is dropped silently. <see cref="AMergeGame.CheckHookups"/> catches
+/// this one; call it from the game's tests.
+/// </description></item>
+/// </list>
+/// </summary>
 public interface IHasMergeGame
 {
     AMergeGame MergeGame { get; }
 }
 
-/// <summary>What a game tells the engine: which files merge, where vanilla lives, where output goes, how a mod folder ranks.</summary>
+/// <summary>
+/// What a game tells the engine: which files merge, where vanilla lives, where output goes, how a mod folder ranks.
+/// <see cref="IHasMergeGame"/> lists what else the game has to hook up.
+/// </summary>
 public abstract class AMergeGame
 {
+    /// <summary>
+    /// Throws when <paramref name="game"/> is served by the merge engine but its Health Check has no
+    /// <see cref="EngineMergeDiagnosticsEmitter"/>, the one hookup the game object itself can show is missing. A game
+    /// the engine does not serve passes.
+    /// </summary>
+    public static void CheckHookups(IGame game)
+    {
+        if (game is not IHasMergeGame) return;
+        if (game.DiagnosticEmitters.OfType<EngineMergeDiagnosticsEmitter>().Any()) return;
+
+        throw new InvalidOperationException(
+            $"{game.DisplayName} implements {nameof(IHasMergeGame)} but has no {nameof(EngineMergeDiagnosticsEmitter)} in its {nameof(IGame.DiagnosticEmitters)}, so the changes its merges drop would raise no Health Check card");
+    }
+
     /// <summary>Whether the game merges the contested file at <paramref name="contested"/> (the winner's path).</summary>
     public abstract bool Merges(GamePath contested);
 
