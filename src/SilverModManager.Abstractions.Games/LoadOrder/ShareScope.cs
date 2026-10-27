@@ -48,15 +48,8 @@ public sealed class ShareScope
 
     public static ShareScope Of(LoadoutItemGroup.ReadOnly collection)
     {
-        var loadout = collection.AsLoadoutItem().LoadoutId;
-        var priorities = LoadoutItemGroupPriority.FindByLoadout(collection.Db, loadout)
-            .ToDictionary(row => row.TargetId, row => row.Priority.Value);
-
-        var groups = collection.Children.OfTypeLoadoutItemGroup().ToArray();
-        var children = groups.OfTypeLibraryLinkedLoadoutItem()
-            .OrderByDescending(child => priorities.TryGetValue(child.AsLoadoutItemGroup().LoadoutItemGroupId, out var priority) ? (long)priority : -1L)
-            .ThenBy(child => child.Id.Value)
-            .ToArray();
+        var groups = ContainerOrder.ChildrenWinnerFirst(collection.Db, collection.LoadoutItemGroupId);
+        var children = groups.OfTypeLibraryLinkedLoadoutItem().ToArray();
 
         var shared = new List<LibraryLinkedLoadoutItem.ReadOnly>();
         var skipped = new List<LoadoutItemGroup.ReadOnly>();

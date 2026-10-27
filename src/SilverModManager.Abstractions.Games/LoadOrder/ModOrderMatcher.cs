@@ -113,20 +113,8 @@ public static class ModOrderMatcher
 
         public static Index Build(IDb db, LoadoutItemGroupId container)
         {
-            var parent = LoadoutItemGroup.Load(db, container);
-            var priorities = LoadoutItemGroupPriority
-                .FindByLoadout(db, parent.AsLoadoutItem().LoadoutId)
-                .ToDictionary(row => row.TargetId, row => row.Priority);
-
-            // Groups with no priority row sort last, in a stable order.
-            var children = parent.Children
-                .OfTypeLoadoutItemGroup()
-                .OrderByDescending(child => priorities.TryGetValue(child.LoadoutItemGroupId, out var priority) ? (long)priority.Value : -1L)
-                .ThenBy(child => child.LoadoutItemGroupId.Value)
-                .ToArray();
-
             var index = new Index();
-            foreach (var child in children)
+            foreach (var child in ContainerOrder.ChildrenWinnerFirst(db, container))
             {
                 var reference = ReferenceOf(child);
                 var id = child.LoadoutItemGroupId;

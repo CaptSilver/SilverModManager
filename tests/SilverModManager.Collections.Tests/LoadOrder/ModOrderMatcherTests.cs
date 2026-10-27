@@ -360,4 +360,42 @@ public class ModOrderMatcherTests(ITestOutputHelper helper) : ACyberpunkIsolated
 
         (CanIdentify(nexus), CanIdentify(downloaded), CanIdentify(plain)).Should().Be((true, true, false));
     }
+
+    /// <summary>Two rows for one group happen (a merge of loadouts, an interrupted move); the higher one is the group's place.</summary>
+    private Task<Built> BuildWithADuplicateRow() => Build(c =>
+    {
+        c.Named("a");
+        c.Named("b");
+        c.Named("Rowless");
+        c.Priority("a", 1);
+        c.Priority("b", 3);
+        c.Priority("a", 5);
+    });
+
+    [Fact]
+    public async Task ChildrenWinnerFirstTakesAGroupsHighestRowAndPutsRowlessGroupsLast()
+    {
+        var built = await BuildWithADuplicateRow();
+
+        ContainerOrder.ChildrenWinnerFirst(Connection.Db, built.Container).Select(child => child.LoadoutItemGroupId)
+            .Should().Equal(built["a"], built["b"], built["Rowless"]);
+    }
+
+    [Fact]
+    public async Task AGroupWithTwoPriorityRowsDoesNotStopTheMatch()
+    {
+        var built = await BuildWithADuplicateRow();
+
+        Match(built, ByName("b"), ByName("a")).WinnerToLoser.Select(e => e.Group).Should().Equal(built["b"], built["a"]);
+    }
+
+    [Fact]
+    public async Task AGroupWithTwoPriorityRowsDoesNotStopTheShareScope()
+    {
+        var built = await BuildWithADuplicateRow();
+
+        var scope = () => ShareScope.Of(LoadoutItemGroup.Load(Connection.Db, built.Container));
+
+        scope.Should().NotThrow();
+    }
 }
