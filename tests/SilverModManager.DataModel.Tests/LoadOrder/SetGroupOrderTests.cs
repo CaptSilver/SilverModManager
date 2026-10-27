@@ -111,6 +111,7 @@ public class SetGroupOrderTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
         var result = await Set(loadout.LoadoutId, g["b"], g["a"]);
 
         NamesByPriority(loadout.LoadoutId).Should().Equal("b", "a");
+        result.Resolved.Should().Equal(g["a"], g["b"]);
         result.Overridden.Should().ContainSingle()
             .Which.Should().Match<OverriddenOrder>(o => o.RequestedWinner == g["b"] && o.RequestedLoser == g["a"] && o.Rule.LoadoutGroupRuleId == ruleId);
     }
@@ -143,6 +144,7 @@ public class SetGroupOrderTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
         var result = await Set(loadout.LoadoutId, g["x"], g["y"], g["z"]);
 
         NamesByPriority(loadout.LoadoutId).Should().Equal("y", "x", "z");
+        result.Resolved.Should().Equal(g["z"], g["x"], g["y"]);
         result.Overridden.Select(o => (o.RequestedWinner, o.RequestedLoser, o.Displaced, o.Rule.LoadoutGroupRuleId))
             .Should().Equal((g["x"], g["z"], false, zAfterX), (g["y"], g["z"], true, zAfterX));
     }

@@ -23,15 +23,17 @@ public class PluginSeedFromGroupOrderTests(ITestOutputHelper helper)
         .AddCreationEngine()
         .AddUniversalGameLocator<CreationEngine.SkyrimSE.SkyrimSE>(new Version("1.6.1170"), locationsFileSystem: IsolatedKnownFolders.Create);
 
-    private record Mod(LoadoutItemGroupId Group, LoadoutFileId File);
+    private record Mod(LoadoutItemGroupId Group, LoadoutFileId[] Files);
 
-    private async Task<Mod> AddMod(Loadout.ReadOnly loadout, string plugin)
+    private async Task<Mod> AddMod(Loadout.ReadOnly loadout, string plugin) => await AddMod(loadout, plugin, plugin);
+
+    private async Task<Mod> AddMod(Loadout.ReadOnly loadout, string name, params string[] plugins)
     {
         using var tx = Connection.BeginTransaction();
-        var group = AddEmptyGroup(tx, loadout.LoadoutId, plugin);
-        var file = AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, $"Data/{plugin}"));
+        var group = AddEmptyGroup(tx, loadout.LoadoutId, name);
+        var files = plugins.Select(plugin => AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, $"Data/{plugin}"))).ToArray();
         var result = await tx.Commit();
-        return new Mod(LoadoutItemGroupId.From(result[group.Value]), LoadoutFileId.From(result[file.Value]));
+        return new Mod(LoadoutItemGroupId.From(result[group.Value]), files.Select(file => LoadoutFileId.From(result[file.Value])).ToArray());
     }
 
     private List<(string PluginName, int SortIndex)> StoredRows(SortOrderId id) =>
@@ -54,7 +56,7 @@ public class PluginSeedFromGroupOrderTests(ITestOutputHelper helper)
 
         using (var remove = Connection.BeginTransaction())
         {
-            remove.Delete(x.File, recursive: false);
+            foreach (var file in x.Files) remove.Delete(file, recursive: false);
             remove.Delete(x.Group, recursive: false);
             await remove.Commit();
         }
@@ -66,5 +68,25 @@ public class PluginSeedFromGroupOrderTests(ITestOutputHelper helper)
 
         // A wins and the greater index wins, so A takes the later of the two slots the visible plugins held.
         StoredRows(id).Should().Equal([("B.esp", 0), ("X.esp", 1), ("A.esp", 2)]);
+    }
+
+    [Fact]
+    public async Task SeedingFromGroupOrderLeavesAnEarlyLoaderInTheLockedBlock()
+    {
+        var loadout = await CreateLoadout();
+        var variety = new PluginSortOrderVariety(ServiceProvider, Game);
+        var id = await variety.GetOrCreateSortOrderFor(loadout.LoadoutId, loadout.LoadoutId, TestContext.Current.CancellationToken);
+
+        // A mod that ships a plugin the game always loads first, next to an ordinary one.
+        var a = await AddMod(loadout, "A", "Skyrim.esm", "A.esp");
+        var b = await AddMod(loadout, "B", "B.esp");
+        await variety.ReconcileSortOrder(id, null, TestContext.Current.CancellationToken);
+        StoredRows(id).Should().Equal([("Skyrim.esm", 0), ("A.esp", 1), ("B.esp", 2)]);
+
+        using var tx = Connection.BeginTransaction();
+        ((IGroupOrderSeedable)variety).SeedFromGroupOrder(id, [a.Group, b.Group], tx, Connection.Db);
+        await tx.Commit();
+
+        StoredRows(id).Should().Equal([("Skyrim.esm", 0), ("B.esp", 1), ("A.esp", 2)]);
     }
 }

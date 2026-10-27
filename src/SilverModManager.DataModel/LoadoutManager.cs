@@ -902,7 +902,7 @@ internal partial class LoadoutManager : ILoadoutManager
         }
 
         tx.Add(new ApplyGroupRulesTxFunc(loadoutId, new RuleDelta { BlockAscending = [..blockAscending] }));
-        return new GroupOrderResult(overridden);
+        return new GroupOrderResult(overridden, [..winnerToLoser.OrderByDescending(group => finalPosition[group])]);
     }
 
     /// <summary>The rules as edges from the group that must sit lower to the one that must sit higher, with the rule's index.</summary>

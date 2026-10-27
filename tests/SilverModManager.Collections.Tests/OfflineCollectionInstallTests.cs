@@ -13,6 +13,8 @@ using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Abstractions.NexusWebApi.Types;
 using SilverModManager.Games.FOMOD;
+using SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
@@ -116,6 +118,7 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
             if (plain)
             {
                 Add($"archive/pc/mod/plain{index}.archive", $"plain mod {index}");
+                Add($"mods/plain{index}/info.json", $$"""{ "name": "plain{{index}}", "version": "1.0.0" }""");
             }
             else
             {
@@ -310,6 +313,22 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
         rows[0].Item.Should().Be("Fomod mod 1 above Fomod mod 0");
         rows[0].Reason.Should().Contain("wins over");
         rows[0].Source.Should().Be("collection Offline");
+    }
+
+    [Fact]
+    public async Task InstallingACollectionSeedsTheRedModOrderFromItsOrderWithoutAnyoneUpdatingTheSortOrders()
+    {
+        var mods = Enumerable.Range(0, 3).Select(i => ((FomodOption[]?)null, $"Plain mod {i}")).ToArray();
+        var (file, revision, items) = await CreateCollection(mods, silverLoadOrder: m => [Order(m[2]), Order(m[0]), Order(m[1])]);
+        var loadout = await CreateLoadout();
+
+        await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+
+        var variety = GameInstallation.GetGame().SortOrderManager.GetSortOrderVarieties().OfType<RedModSortOrderVariety>().Single();
+        var sortOrder = variety.GetSortOrderIdFor(loadout.LoadoutId, Connection.Db).Value;
+        // The first folder in the REDmod list wins, so the collection's first mod takes index 0.
+        variety.GetSortOrderItems(sortOrder, Connection.Db).OrderBy(item => item.SortIndex).Select(item => item.Key.Key)
+            .Should().Equal("plain2", "plain0", "plain1");
     }
 
     private static SilverLoadOrderEntry Order(Mod mod) => new() { Md5 = mod.Source.Md5, Name = mod.Name };

@@ -7,7 +7,8 @@ public sealed record OverriddenOrder(LoadoutGroupRule.ReadOnly Rule, LoadoutItem
 
 /// <summary>What setting a group order did beyond writing it.</summary>
 /// <param name="Overridden">Pairs of the requested order that a stored rule turned round.</param>
-public sealed record GroupOrderResult(IReadOnlyList<OverriddenOrder> Overridden)
+/// <param name="Resolved">The requested groups in the order the priority rows end up with, winner first: the request with the stored rules applied.</param>
+public sealed record GroupOrderResult(IReadOnlyList<OverriddenOrder> Overridden, IReadOnlyList<LoadoutItemGroupId> Resolved)
 {
-    public static readonly GroupOrderResult None = new([]);
+    public static readonly GroupOrderResult None = new([], []);
 }

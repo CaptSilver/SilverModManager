@@ -137,8 +137,7 @@ public class DefaultPriorityOrderSinkTests(ITestOutputHelper helper) : ACyberpun
         drops.Should().Contain(new ModOrderDrop("y above z", "the order moved to make room for the stored rule 'z wins over u'"));
     }
 
-    [Fact]
-    public async Task TheRedModOrderFollowsTheImportedModOrder()
+    private async Task<(Loadout.ReadOnly Loadout, LoadoutItemGroupId Container, Dictionary<string, LoadoutItemGroupId> Groups, Func<string, int> IndexOf)> SeedRedMods()
     {
         var (loadout, container, g) = await Seed("a", "b");
         using (var tx = Connection.BeginTransaction())
@@ -151,16 +150,49 @@ public class DefaultPriorityOrderSinkTests(ITestOutputHelper helper) : ACyberpun
 
         var variety = GameInstallation.GetGame().SortOrderManager.GetSortOrderVarieties().OfType<RedModSortOrderVariety>().Single();
         var sortOrder = variety.GetSortOrderIdFor(loadout.LoadoutId, Connection.Db).Value;
-        int IndexOf(string name) => variety.GetSortOrderItems(sortOrder, Connection.Db).Single(item => item.Key.Key == $"{name}_redmod").SortIndex;
-        bool Wins(string winner, string loser) => variety.IndexOverrideBehavior == IndexOverrideBehavior.GreaterIndexWins
-            ? IndexOf(winner) > IndexOf(loser)
-            : IndexOf(winner) < IndexOf(loser);
+        return (loadout, container, g, name => variety.GetSortOrderItems(sortOrder, Connection.Db).Single(item => item.Key.Key == $"{name}_redmod").SortIndex);
+    }
 
+    [Fact]
+    public async Task TheRedModOrderFollowsTheImportedModOrder()
+    {
+        var (loadout, container, g, indexOf) = await SeedRedMods();
+
+        // REDmod loads first-listed first and the first one wins, so the winner takes the smaller index.
         // Both directions, so the result cannot be the order the variety started in.
         await Apply(loadout, container, (g["a"], null), (g["b"], null));
-        Wins("a", "b").Should().BeTrue();
+        (indexOf("a"), indexOf("b")).Should().Be((0, 1));
 
         await Apply(loadout, container, (g["b"], null), (g["a"], null));
-        Wins("b", "a").Should().BeTrue();
+        (indexOf("b"), indexOf("a")).Should().Be((0, 1));
+    }
+
+    [Fact]
+    public async Task TheRedModOrderFollowsTheResolvedOrderWhereAStoredRuleOverrodeTheImport()
+    {
+        var (loadout, container, g, indexOf) = await SeedRedMods();
+        await Apply(loadout, container, (g["a"], null), (g["b"], null));
+        await LoadoutManager.AddGroupRule(loadout.LoadoutId, g["a"], g["b"], GroupRuleKind.After);
+
+        await Apply(loadout, container, (g["b"], null), (g["a"], null));
+
+        PriorityOf(g["a"]).Should().BeGreaterThan(PriorityOf(g["b"]));
+        (indexOf("a"), indexOf("b")).Should().Be((0, 1), "the rule puts a over b, and the variety agrees with the priority rows");
+    }
+
+    [Fact]
+    public async Task ASourceThatCarriesItsOwnVarietyOrdersIsNotSeeded()
+    {
+        var (loadout, container, g, indexOf) = await SeedRedMods();
+        await Apply(loadout, container, (g["a"], null), (g["b"], null));
+        var before = (indexOf("a"), indexOf("b"));
+
+        using var tx = Connection.BeginTransaction();
+        Sink.Apply(Refresh(loadout), ModOrder.Create([new ModOrderEntry(g["b"], null), new ModOrderEntry(g["a"], null)], []),
+            new ModOrderSource("collection Test", container, null, SeedVarieties: false), tx);
+        await tx.Commit();
+
+        PriorityOf(g["b"]).Should().BeGreaterThan(PriorityOf(g["a"]), "the priority rows still follow the order");
+        (indexOf("a"), indexOf("b")).Should().Be(before);
     }
 }

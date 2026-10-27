@@ -43,9 +43,7 @@ public class SeedFromGroupOrderTests
     {
         var result = GroupOrderSlots.SlotOrder(Items(C, B, C, A), [B, A], IndexOverrideBehavior.GreaterIndexWins);
 
-        result[0].Should().Be(0);
-        result[2].Should().Be(2);
-        result.Should().BeEquivalentTo([0, 3, 2, 1]);
+        result.Should().Equal(0, 3, 2, 1);
     }
 
     [Fact]

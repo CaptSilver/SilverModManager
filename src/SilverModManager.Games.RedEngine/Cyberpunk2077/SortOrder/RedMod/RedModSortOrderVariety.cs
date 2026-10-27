@@ -23,6 +23,9 @@ public class RedModSortOrderVariety : ASortOrderVariety<
     
     public override SortOrderVarietyId SortOrderVarietyId => StaticVarietyId;
 
+    // The deploy tool writes modlist.txt in ascending index order and the first entry wins.
+    public override IndexOverrideBehavior IndexOverrideBehavior => IndexOverrideBehavior.SmallerIndexWins;
+
     public RedModSortOrderVariety(IServiceProvider serviceProvider) : base(serviceProvider) { }
     
     public override SortOrderUiMetadata SortOrderUiMetadata { get; } = new()

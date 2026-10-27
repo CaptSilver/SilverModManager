@@ -63,15 +63,13 @@ public class Bg3PakSeedFromGroupOrderTests(ITestOutputHelper helper)
         var variety = Game.SortOrderManager.GetSortOrderVarieties().OfType<Bg3PakSortOrderVariety>().Single();
         var sortOrder = variety.GetSortOrderIdFor(loadout.LoadoutId, Connection.Db).Value;
         int IndexOf(string pak) => variety.GetSortOrderItems(sortOrder, Connection.Db).Single(item => item.Key.Key == pak).SortIndex;
-        bool Wins(string winner, string loser) => variety.IndexOverrideBehavior == IndexOverrideBehavior.GreaterIndexWins
-            ? IndexOf(winner) > IndexOf(loser)
-            : IndexOf(winner) < IndexOf(loser);
 
+        // The greater index wins for paks, so the winner of the import takes the later index.
         // Both directions, so the result cannot be the order the variety started in.
         await Apply(loadout, container, a, b);
-        Wins("a.pak", "b.pak").Should().BeTrue();
+        (IndexOf("a.pak"), IndexOf("b.pak")).Should().Be((1, 0));
 
         await Apply(loadout, container, b, a);
-        Wins("b.pak", "a.pak").Should().BeTrue();
+        (IndexOf("b.pak"), IndexOf("a.pak")).Should().Be((1, 0));
     }
 }

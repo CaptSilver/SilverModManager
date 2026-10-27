@@ -191,6 +191,9 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         {
             await LoadoutManager.ApplyCollectionDownloadRules(collectionGroup);
 
+            // The sort orders learn about the installed mods from a background subscription; the order below can only seed rows that exist.
+            await game.SortOrderManager.UpdateLoadOrders(TargetLoadout);
+
             using var tx = Connection.BeginTransaction();
 
             // ApplyCollectionDownloadRules above has already committed its own priority write; SetGroupOrder must be the only priority writer in the transaction it joins.

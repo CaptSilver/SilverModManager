@@ -28,7 +28,7 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
             else if (enabled && item.IsDisabled) tx.Retract(item.Id, LoadoutItem.Disabled, Null.Instance);
         }
 
-        if (source.SeedVarieties) SeedVarieties(loadout, order, tx);
+        if (source.SeedVarieties) SeedVarieties(loadout, result.Resolved, tx);
 
         logger.LogTrace("Ordered {Count} groups of '{Source}'; {Overridden} pairs were turned round by stored rules", order.WinnerToLoser.Count, source.Name, result.Overridden.Count);
 
@@ -46,9 +46,8 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
     /// Seeds each of the game's varieties that has a sort order for the loadout, so a plugin, pak or REDmod list follows
     /// the mod order the same way the priority rows do. A variety without a stored order yet is left to its first reconcile.
     /// </summary>
-    private void SeedVarieties(Loadout.ReadOnly loadout, ModOrder order, ITransaction tx)
+    private void SeedVarieties(Loadout.ReadOnly loadout, IReadOnlyList<LoadoutItemGroupId> winnerToLoser, ITransaction tx)
     {
-        var groups = order.WinnerToLoser.Select(static entry => entry.Group).ToArray();
         foreach (var variety in loadout.InstallationInstance.GetGame().SortOrderManager.GetSortOrderVarieties())
         {
             if (variety is not IGroupOrderSeedable seedable) continue;
@@ -60,7 +59,7 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
                 continue;
             }
 
-            seedable.SeedFromGroupOrder(sortOrderId.Value, groups, tx, loadout.Db);
+            seedable.SeedFromGroupOrder(sortOrderId.Value, winnerToLoser, tx, loadout.Db);
         }
     }
 
