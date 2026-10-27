@@ -10,6 +10,7 @@ using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.GC;
 using SilverModManager.Abstractions.Library.Installers;
+using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Sorting;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
@@ -227,6 +228,12 @@ internal partial class LoadoutManager : ILoadoutManager
             entityIdList[iniState.Id] = tx.TempId();
         }
 
+        // So do the order entries an import dropped; the remap points their container at the copy's group.
+        foreach (var dropped in ModOrderDroppedEntry.FindByLoadout(loadout.Db, loadout))
+        {
+            entityIdList[dropped.Id] = tx.TempId();
+        }
+
         foreach (var (oldId, newId) in entityIdList)
         {
             // Get the original entity
@@ -359,6 +366,11 @@ internal partial class LoadoutManager : ILoadoutManager
         foreach (var iniState in LoadoutIniState.FindByLoadout(loadout.Db, loadout))
         {
             tx.Delete(iniState, recursive: false);
+        }
+
+        foreach (var dropped in ModOrderDroppedEntry.FindByLoadout(loadout.Db, loadout))
+        {
+            tx.Delete(dropped, recursive: false);
         }
 
         // A claim is its own entity rather than a loadout item, so the loop above misses it.
