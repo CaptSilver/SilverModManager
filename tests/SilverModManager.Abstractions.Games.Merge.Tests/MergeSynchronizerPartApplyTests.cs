@@ -64,7 +64,7 @@ public class MergeSynchronizerPartApplyTests(IServiceProvider provider) : AGameT
         await Mod(loadout, "A", "modA", 2, (rel, Text("a\nB1\nc\n")), (badRel, [0xFF, 0xFE]));
         await Mod(loadout, "B", "modB", 1, (rel, Text("a\nb\nC\n")), (badRel, Text("text\n")));
         var engine = new MergeEngine(FileStore, new Trusting(), NullLogger<MergeEngine>.Instance, _ => new TestMergeGame());
-        return (new MergeSynchronizerPart(engine), Refresh(loadout), new GamePath(LocationId.Game, $"Mods/merged/{rel}"), new GamePath(LocationId.Game, $"Mods/merged/{badRel}"));
+        return (new MergeSynchronizerPart(engine, NullLogger.Instance), Refresh(loadout), new GamePath(LocationId.Game, $"Mods/merged/{rel}"), new GamePath(LocationId.Game, $"Mods/merged/{badRel}"));
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public class MergeSynchronizerPartApplyTests(IServiceProvider provider) : AGameT
         loadout = Refresh(loadout);
         var strategy = new CountingStrategy();
         var game = new CountingMergeGame { Strategy = strategy };
-        var part = new MergeSynchronizerPart(new MergeEngine(FileStore, new Trusting(), NullLogger<MergeEngine>.Instance, _ => game));
+        var part = new MergeSynchronizerPart(new MergeEngine(FileStore, new Trusting(), NullLogger<MergeEngine>.Instance, _ => game), NullLogger.Instance);
 
         // What one apply does: plan in the loadout preflight, list, build the tree, check it, write every merged file.
         part.PlanOutputs(loadout);

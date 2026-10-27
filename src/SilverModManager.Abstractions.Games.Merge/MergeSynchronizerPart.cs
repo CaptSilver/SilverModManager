@@ -44,7 +44,7 @@ public sealed class MergeApplyRefusedException(string reason) : SynchronizerPref
 /// contested original once per file, and could hand a write bytes that were never checked.
 /// </para>
 /// </summary>
-public sealed class MergeSynchronizerPart(IMergeEngine engine) : IMergePlanSource
+public sealed class MergeSynchronizerPart(IMergeEngine engine, ILogger logger) : IMergePlanSource
 {
     // The latest revision of each loadout plus the one most recently listed, which differs when something lists an
     // older revision (a reset renders the last synced one). CheckOutputs reads the entry of the revision it checks.
@@ -91,9 +91,10 @@ public sealed class MergeSynchronizerPart(IMergeEngine engine) : IMergePlanSourc
 
     /// <summary>
     /// Plans in Apply mode, the one mode that reads file bytes. Called from the synchronizer's loadout preflight so
-    /// the engine has recorded which merges failed before the listing is asked for. A strategy's refusal of its input
-    /// surfaces as a readable preflight exception. The real <see cref="MergeEngine"/> catches those per path and
-    /// reports the path as not mergeable, so this is only reachable through another <see cref="IMergeEngine"/>.
+    /// the engine has recorded which merges failed before the listing is asked for. Anything planning throws becomes a
+    /// readable preflight refusal. The real <see cref="MergeEngine"/> catches a strategy's refusal of its input per
+    /// path and reports the path as not mergeable, so what reaches here from it is a bug in a strategy, which is
+    /// logged with its stack.
     /// </summary>
     public IReadOnlyList<MergedOutput> PlanOutputs(Loadout.ReadOnly loadout)
     {
@@ -103,6 +104,11 @@ public sealed class MergeSynchronizerPart(IMergeEngine engine) : IMergePlanSourc
         }
         catch (MergeInputException exception)
         {
+            throw MergeApplyRefusedException.PlanFailed(exception);
+        }
+        catch (Exception exception) when (exception is not (OperationCanceledException or SynchronizerPreflightException))
+        {
+            logger.LogError(exception, "Planning the merges of {Loadout} failed", loadout.Name);
             throw MergeApplyRefusedException.PlanFailed(exception);
         }
     }

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
@@ -37,7 +38,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     public async Task OneIntrinsicFilePerPlannedOutputAtItsOutputPath()
     {
         var loadout = await CreateLoadout();
-        var files = new MergeSynchronizerPart(Engine()).IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        var files = new MergeSynchronizerPart(Engine(), NullLogger.Instance).IntrinsicFiles(loadout, Substitute.For<ILogger>());
 
         files.Keys.Should().BeEquivalentTo([OutA, OutB]);
         files.Values.Should().AllBeOfType<MergedIntrinsicFile>();
@@ -52,7 +53,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         var loadout = await CreateLoadout();
         var engine = Engine();
 
-        new MergeSynchronizerPart(engine).IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        new MergeSynchronizerPart(engine, NullLogger.Instance).IntrinsicFiles(loadout, Substitute.For<ILogger>());
 
         engine.DidNotReceiveWithAnyArgs().Plan(default, default);
         engine.Received(1).PlannedOutputs(Arg.Any<Loadout.ReadOnly>());
@@ -66,7 +67,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         engine.PlannedOutputs(Arg.Any<Loadout.ReadOnly>()).Returns(_ => throw new InvalidOperationException("rows unreadable"));
         var logger = Substitute.For<ILogger>();
 
-        var files = new MergeSynchronizerPart(engine).IntrinsicFiles(loadout, logger);
+        var files = new MergeSynchronizerPart(engine, NullLogger.Instance).IntrinsicFiles(loadout, logger);
 
         files.Should().BeEmpty();
         logger.ReceivedWithAnyArgs().Log(LogLevel.Error, default, default(object), default, default!);
@@ -76,7 +77,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     public async Task CheckOutputsPassesWhenEveryOutputIsIntrinsicInTheTree()
     {
         var loadout = await CreateLoadout();
-        var part = new MergeSynchronizerPart(Engine());
+        var part = new MergeSynchronizerPart(Engine(), NullLogger.Instance);
         part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
         var act = () => part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), loadout);
 
@@ -87,7 +88,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     public async Task CheckOutputsRefusesAnOutputMissingFromTheTree()
     {
         var loadout = await CreateLoadout();
-        var part = new MergeSynchronizerPart(Engine());
+        var part = new MergeSynchronizerPart(Engine(), NullLogger.Instance);
         part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
         var act = () => part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA), loadout);
 
@@ -101,7 +102,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         var tree = Tree(LoadoutSourceItemType.Intrinsic, OutA);
         tree[OutB] = new SyncNode { SourceItemType = LoadoutSourceItemType.Loadout };
 
-        var part = new MergeSynchronizerPart(Engine());
+        var part = new MergeSynchronizerPart(Engine(), NullLogger.Instance);
         part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
         var act = () => part.CheckOutputs(tree, loadout);
 
@@ -114,7 +115,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         var loadout = await CreateLoadout();
         var engine = Engine();
 
-        var part = new MergeSynchronizerPart(engine);
+        var part = new MergeSynchronizerPart(engine, NullLogger.Instance);
         part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
         part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), loadout);
 
@@ -127,7 +128,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         var loadout = await CreateLoadout();
         var engine = Engine();
 
-        new MergeSynchronizerPart(engine).PlanOutputs(loadout);
+        new MergeSynchronizerPart(engine, NullLogger.Instance).PlanOutputs(loadout);
 
         engine.Received(1).Plan(Arg.Any<Loadout.ReadOnly>(), MergeSourceMode.Apply);
     }
@@ -143,7 +144,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     {
         var loadout = await CreateLoadout();
         var engine = Engine();
-        var part = new MergeSynchronizerPart(engine);
+        var part = new MergeSynchronizerPart(engine, NullLogger.Instance);
         part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
         // The merge of b.txt failed after the listing was made.
         engine.Plan(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns([new MergedOutput(OutA, "scripts/a.txt", [1], ["A", "B"], [], "text-3way")]);
@@ -159,7 +160,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         var loadout = await CreateLoadout();
         var engine = Engine();
         engine.PlannedOutputs(Arg.Any<Loadout.ReadOnly>()).Returns([Planned[0]]);
-        var part = new MergeSynchronizerPart(engine);
+        var part = new MergeSynchronizerPart(engine, NullLogger.Instance);
         part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
 
         var act = () => part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA), loadout);
@@ -173,7 +174,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         var loadout = await CreateLoadout();
         var engine = Engine();
         engine.PlannedOutputs(Arg.Any<Loadout.ReadOnly>()).Returns(_ => throw new InvalidOperationException("rows unreadable"));
-        var part = new MergeSynchronizerPart(engine);
+        var part = new MergeSynchronizerPart(engine, NullLogger.Instance);
         part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
 
         var act = () => part.CheckOutputs([], loadout);
@@ -188,7 +189,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         var engine = Engine();
         engine.Plan(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns(_ => throw new MergeInputException("A's x.txt is not UTF-8"));
 
-        var act = () => new MergeSynchronizerPart(engine).PlanOutputs(loadout);
+        var act = () => new MergeSynchronizerPart(engine, NullLogger.Instance).PlanOutputs(loadout);
 
         act.Should().Throw<SynchronizerPreflightException>().WithMessage("*A's x.txt is not UTF-8*");
     }
@@ -198,7 +199,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     {
         var loadout = await CreateLoadout();
         var engine = Engine();
-        var part = new MergeSynchronizerPart(engine);
+        var part = new MergeSynchronizerPart(engine, NullLogger.Instance);
         var files = part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
         part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), loadout);
         engine.Plan(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns(
@@ -225,7 +226,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         var loadout = await CreateLoadout();
         var engine = Engine();
         engine.MergedBytes(Arg.Any<Loadout.ReadOnly>(), Arg.Any<string>()).Returns([7]);
-        var part = new MergeSynchronizerPart(engine);
+        var part = new MergeSynchronizerPart(engine, NullLogger.Instance);
         part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
         part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), loadout);
 
@@ -241,14 +242,29 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         var engine = Engine();
         engine.MergedBytes(Arg.Any<Loadout.ReadOnly>(), "scripts/a.txt").Returns([7]);
 
-        new MergeSynchronizerPart(engine).MergedBytes(loadout, "scripts/a.txt").Should().Equal(7);
+        new MergeSynchronizerPart(engine, NullLogger.Instance).MergedBytes(loadout, "scripts/a.txt").Should().Equal(7);
+    }
+
+    [Fact]
+    public async Task AnUnexpectedFailureWhilePlanningIsAReadablePreflightRefusal()
+    {
+        var loadout = await CreateLoadout();
+        var engine = Engine();
+        engine.Plan(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns(_ => throw new InvalidOperationException("the fold ran off the end of a line list"));
+
+        var logger = Substitute.For<ILogger>();
+
+        var act = () => new MergeSynchronizerPart(engine, logger).PlanOutputs(loadout);
+
+        act.Should().Throw<MergeApplyRefusedException>().WithMessage("The files the mods provide could not be merged: the fold ran off the end of a line list");
+        logger.Received(1).Log(LogLevel.Error, Arg.Any<EventId>(), Arg.Any<object>(), Arg.Is<Exception>(e => e is InvalidOperationException), Arg.Any<Func<object, Exception?, string>>());
     }
 
     [Fact]
     public async Task AddingToAListingDoesNotChangeTheNextOne()
     {
         var loadout = await CreateLoadout();
-        var part = new MergeSynchronizerPart(Engine());
+        var part = new MergeSynchronizerPart(Engine(), NullLogger.Instance);
         var first = part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
         first[new GamePath(LocationId.Game, "Mods/loader/own.dll")] = Substitute.For<IIntrinsicFile>();
 
@@ -259,7 +275,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     public async Task ACheckAtARevisionThatWasNeverListedIsRefusedAsAChangedLoadout()
     {
         var loadout = await CreateLoadout();
-        var part = new MergeSynchronizerPart(Engine());
+        var part = new MergeSynchronizerPart(Engine(), NullLogger.Instance);
         part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
         using (var tx = Connection.BeginTransaction())
         {
@@ -278,7 +294,7 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     {
         var loadout = await CreateLoadout();
         var engine = Engine();
-        var part = new MergeSynchronizerPart(engine);
+        var part = new MergeSynchronizerPart(engine, NullLogger.Instance);
         engine.PlannedOutputs(Arg.Any<Loadout.ReadOnly>()).Returns(_ => throw new InvalidOperationException("rows unreadable"));
         part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
         engine.PlannedOutputs(Arg.Any<Loadout.ReadOnly>()).Returns(Planned);
