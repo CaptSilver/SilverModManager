@@ -1034,10 +1034,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
         if (metadata.GameInstallMetadataId == loadout.InstallationId) return metadata;
 
+        var second = loadout.Installation.Path == metadata.Path
+            ? $"a second record of the {loadout.Game.DisplayName} install at `{metadata.Path}`"
+            : $"a second record of the {loadout.Game.DisplayName} install: its record names `{loadout.Installation.Path}` " +
+              $"and the install's own record names `{metadata.Path}`, which are the same folder";
         throw new SynchronizerPreflightException(
-            $"Loadout `{loadout.Name}` is recorded against a second copy of the {loadout.Game.DisplayName} install: its record names " +
-            $"`{loadout.Installation.Path}` and the install's own record names `{metadata.Path}`, which are the same folder, " +
-            "so applying it would mix up which files are tracked. Nothing was changed.");
+            $"Loadout `{loadout.Name}` is recorded against {second}, so applying it would mix up which files are tracked. Nothing was changed.");
     }
 
     public record struct AddedEntry
