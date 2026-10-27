@@ -77,15 +77,25 @@ public class GamebryoPluginsKeyTests(ITestOutputHelper helper)
         return await Apply(loadout, container, manifest, winnerToLoser);
     }
 
-    private async Task<IReadOnlyList<ModOrderDrop>> Apply(Loadout.ReadOnly loadout, LoadoutItemGroupId container, CollectionRoot manifest, params LoadoutItemGroupId[] winnerToLoser)
+    private Task<IReadOnlyList<ModOrderDrop>> Apply(Loadout.ReadOnly loadout, LoadoutItemGroupId container, CollectionRoot manifest, params LoadoutItemGroupId[] winnerToLoser) =>
+        ApplyRun(loadout, container, manifest, newGroups: null, winnerToLoser);
+
+    /// <summary>A run that installed only <paramref name="newGroups"/> into the container; null is a run where every group is new.</summary>
+    private async Task<IReadOnlyList<ModOrderDrop>> ApplyRun(Loadout.ReadOnly loadout, LoadoutItemGroupId container, CollectionRoot manifest, IReadOnlySet<LoadoutItemGroupId>? newGroups, params LoadoutItemGroupId[] winnerToLoser)
     {
         var sink = (IModOrderSink)new BethesdaModOrderSink(new DefaultPriorityOrderSink(LoadoutManager, NullLogger<DefaultPriorityOrderSink>.Instance), Game.PluginVariety(), Game);
         using var tx = Connection.BeginTransaction();
         var drops = sink.Apply(Refresh(loadout), ModOrder.Create(winnerToLoser.Select(group => new ModOrderEntry(group, null)), []),
-            new ModOrderSource("collection Test", container, manifest), tx);
+            new ModOrderSource("collection Test", container, manifest, NewGroups: newGroups), tx);
         await tx.Commit();
         return drops;
     }
+
+    private static CollectionRoot PluginsManifest(string pluginsJson) => new()
+    {
+        Info = new CollectionInfo { Name = "Test", DomainName = GameDomain.From("skyrimspecialedition") },
+        Plugins = Json(pluginsJson),
+    };
 
     private async Task ReconcilePlugins(Loadout.ReadOnly loadout)
     {
@@ -167,6 +177,37 @@ public class GamebryoPluginsKeyTests(ITestOutputHelper helper)
         // B.esp is listed (so on, though the entry has no switch), A.esp is shipped but unlisted, C.esp is not the collection's.
         StoredNames(loadout).Should().Equal("B.esp", "A.esp", "C.esp");
         StoredSwitches(loadout).Should().Equal(true, false, true);
+    }
+
+    [Fact]
+    public async Task ARunThatAddsAModKeepsTheUsersPluginOrderAndSwitchesAndSlotsOnlyTheNewPlugins()
+    {
+        var loadout = await CreateLoadout();
+        var container = await AddContainer(loadout);
+        var a = await AddMod(loadout, "A.esp", container);
+        var b = await AddMod(loadout, "B.esp", container);
+        await ReconcilePlugins(loadout);
+        await ImportRaw(loadout, container, """[{"name":"B.esp"}]""", a, b);
+        StoredNames(loadout).Should().Equal("B.esp", "A.esp");
+        StoredSwitches(loadout).Should().Equal(true, false);
+
+        // The user puts A.esp first and switches it on, though the collection leaves it unlisted.
+        var variety = Game.PluginVariety();
+        using (var tx = Connection.BeginTransaction())
+        {
+            variety.StageOrder(variety.SortOrderOf(loadout, Connection), ["A.esp", "B.esp"], tx);
+            await tx.Commit();
+        }
+        await variety.SetEnabled(variety.SortOrderOf(loadout, Connection), PluginSortData.KeyFor("A.esp"), true, token: TestContext.Current.CancellationToken);
+
+        // "Install optional mods" adds N.esp and U.esp; the key lists N.esp before B.esp and leaves U.esp out.
+        var n = await AddMod(loadout, "N.esp", container);
+        var u = await AddMod(loadout, "U.esp", container);
+        await ReconcilePlugins(loadout);
+        await ApplyRun(loadout, container, PluginsManifest("""[{"name":"N.esp"},{"name":"B.esp"}]"""), new HashSet<LoadoutItemGroupId> { n, u }, n, a, b, u);
+
+        StoredNames(loadout).Should().Equal("A.esp", "N.esp", "B.esp", "U.esp");
+        StoredSwitches(loadout).Should().Equal(true, true, true, false);
     }
 
     [Fact]

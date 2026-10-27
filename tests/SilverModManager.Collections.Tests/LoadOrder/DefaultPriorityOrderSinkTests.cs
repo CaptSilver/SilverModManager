@@ -8,6 +8,7 @@ using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -29,14 +30,28 @@ public class DefaultPriorityOrderSinkTests(ITestOutputHelper helper) : ACyberpun
         return (loadout, LoadoutItemGroupId.From(result[container].Value), added.ToDictionary(p => p.Key, p => LoadoutItemGroupId.From(result[p.Value].Value)));
     }
 
-    private async Task<IReadOnlyList<ModOrderDrop>> Apply(Loadout.ReadOnly loadout, LoadoutItemGroupId container, params (LoadoutItemGroupId Group, bool? Enabled)[] winnerToLoser)
+    private Task<IReadOnlyList<ModOrderDrop>> Apply(Loadout.ReadOnly loadout, LoadoutItemGroupId container, params (LoadoutItemGroupId Group, bool? Enabled)[] winnerToLoser) =>
+        ApplyRun(loadout, container, newGroups: null, winnerToLoser);
+
+    /// <summary>A run that added only <paramref name="newGroups"/> to the container; null is a run where every group is new.</summary>
+    private async Task<IReadOnlyList<ModOrderDrop>> ApplyRun(Loadout.ReadOnly loadout, LoadoutItemGroupId container, IReadOnlySet<LoadoutItemGroupId>? newGroups, params (LoadoutItemGroupId Group, bool? Enabled)[] winnerToLoser)
     {
         using var tx = Connection.BeginTransaction();
         var drops = Sink.Apply(Refresh(loadout), ModOrder.Create(winnerToLoser.Select(e => new ModOrderEntry(e.Group, e.Enabled)), []),
-            new ModOrderSource("collection Test", container, null), tx);
+            new ModOrderSource("collection Test", container, null, NewGroups: newGroups), tx);
         await tx.Commit();
         return drops;
     }
+
+    /// <summary>The user drags <paramref name="winner"/> above <paramref name="loser"/> on File Conflicts.</summary>
+    private async Task UserMovesAbove(LoadoutId loadoutId, LoadoutItemGroupId winner, LoadoutItemGroupId loser)
+    {
+        var rows = LoadoutItemGroupPriority.FindByLoadout(Connection.Db, loadoutId).ToDictionary(r => r.TargetId, r => r.LoadoutItemGroupPriorityId);
+        (await LoadoutManager.ResolveFileConflicts([rows[winner]], rows[loser])).IsRuleViolation.Should().BeFalse();
+    }
+
+    private string[] ChildrenWinnerFirst(LoadoutItemGroupId container) =>
+        ContainerOrder.ChildrenWinnerFirst(Connection.Db, container).Select(child => child.AsLoadoutItem().Name).ToArray();
 
     /// <summary>A mod installed after the order was applied: its row goes above every other.</summary>
     private async Task<LoadoutItemGroupId> InstallOnTop(LoadoutId loadoutId, string name)
@@ -97,20 +112,52 @@ public class DefaultPriorityOrderSinkTests(ITestOutputHelper helper) : ACyberpun
     }
 
     [Fact]
-    public async Task ARepeatApplyOverwritesAReorderTheUserMadeInsideTheBlock()
+    public async Task AnOrderWhoseGroupsAreAllNewPutsTheBlockInTheListedOrder()
     {
         var (loadout, container, g) = await Seed("a", "b");
         await Apply(loadout, container, (g["a"], null), (g["b"], null));
-
-        // The user puts b above a.
-        var rows = LoadoutItemGroupPriority.FindByLoadout(Connection.Db, loadout.LoadoutId).ToDictionary(r => r.TargetId, r => r.LoadoutItemGroupPriorityId);
-        (await LoadoutManager.ResolveFileConflicts([rows[g["b"]]], rows[g["a"]])).IsRuleViolation.Should().BeFalse();
+        await UserMovesAbove(loadout.LoadoutId, g["b"], g["a"]);
         PriorityOf(g["b"]).Should().BeGreaterThan(PriorityOf(g["a"]));
 
-        // The collection's order is the designed winner of a re-install: the user's reorder inside the block does not survive it.
+        // A first install, a reinstall into a new group and a Wabbajack list bring every group new: the listed order is the starting order.
         await Apply(loadout, container, (g["a"], null), (g["b"], null));
 
         PriorityOf(g["a"]).Should().BeGreaterThan(PriorityOf(g["b"]));
+    }
+
+    [Fact]
+    public async Task ARunThatAddsNoGroupKeepsAReorderTheUserMadeInsideTheBlock()
+    {
+        var (loadout, container, g) = await Seed("a", "b");
+        await Apply(loadout, container, (g["a"], null), (g["b"], null));
+        await UserMovesAbove(loadout.LoadoutId, g["b"], g["a"]);
+
+        // "Install optional mods" runs the collection's install again over what is there; the user's order stays.
+        await ApplyRun(loadout, container, new HashSet<LoadoutItemGroupId>(), (g["a"], false), (g["b"], null));
+
+        PriorityOf(g["b"]).Should().BeGreaterThan(PriorityOf(g["a"]));
+        IsDisabled(g["a"]).Should().BeFalse("the key's switch is only applied to groups the run added");
+    }
+
+    [Fact]
+    public async Task ARunThatAddsAGroupKeepsTheUsersOrderAndSwitchesAndSlotsTheNewGroupWhereItIsListed()
+    {
+        var (loadout, container, g) = await Seed("a", "b", "c", "n");
+        await Apply(loadout, container, (g["a"], null), (g["b"], null), (g["c"], null));
+        await UserMovesAbove(loadout.LoadoutId, g["c"], g["a"]);
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(g["b"], LoadoutItem.Disabled, Null.Instance);
+            await tx.Commit();
+        }
+        ChildrenWinnerFirst(container).Take(3).Should().Equal("c", "a", "b");
+
+        // The collection lists n between a and b, switched off, and b switched on.
+        await ApplyRun(loadout, container, new HashSet<LoadoutItemGroupId> { g["n"] }, (g["a"], null), (g["n"], false), (g["b"], true), (g["c"], null));
+
+        ChildrenWinnerFirst(container).Should().Equal("c", "a", "n", "b");
+        IsDisabled(g["b"]).Should().BeTrue("the user's switch on an existing group stays");
+        IsDisabled(g["n"]).Should().BeTrue("the new group takes the key's switch");
     }
 
     [Fact]

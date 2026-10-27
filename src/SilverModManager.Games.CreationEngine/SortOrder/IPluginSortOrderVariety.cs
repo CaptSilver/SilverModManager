@@ -26,9 +26,10 @@ public interface IPluginSortOrderVariety : ISortOrderVariety
 
     /// <summary>
     /// The names of the loadout's plugins that come from mods installed directly under <paramref name="container"/>
-    /// (a collection's group), whether or not the order has a row for them yet.
+    /// (a collection's group), whether or not the order has a row for them yet; only from the mods in
+    /// <paramref name="mods"/> when it is given.
     /// </summary>
-    IReadOnlySet<string> PluginsShippedBy(Loadout.ReadOnly loadout, LoadoutItemGroupId container);
+    IReadOnlySet<string> PluginsShippedBy(Loadout.ReadOnly loadout, LoadoutItemGroupId container, IReadOnlySet<LoadoutItemGroupId>? mods = null);
 
     /// <summary>
     /// Writes the position of each plugin in <paramref name="names"/> (index in the list) into

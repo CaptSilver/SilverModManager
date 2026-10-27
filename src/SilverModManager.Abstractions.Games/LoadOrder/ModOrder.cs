@@ -40,4 +40,9 @@ public sealed record ModOrder(IReadOnlyList<ModOrderEntry> WinnerToLoser, IReadO
 /// <param name="Container">The collection or Wabbajack group the order was for.</param>
 /// <param name="Manifest">The collection.json when the source is a collection; null for a Wabbajack list.</param>
 /// <param name="SeedVarieties">Whether the sink may derive the game's sort orders from this mod order; false when the source carries its own (a Wabbajack profile).</param>
-public sealed record ModOrderSource(string Name, LoadoutItemGroupId Container, CollectionRoot? Manifest, bool SeedVarieties = true);
+/// <param name="NewGroups">
+/// The groups of <paramref name="Container"/> this run installed, when it ran over groups an earlier run installed ("install
+/// optional mods"); null when every group is new (a first install, a Wabbajack list). The sink keeps the order and switches
+/// the user has for the other groups and puts only these at their listed slots.
+/// </param>
+public sealed record ModOrderSource(string Name, LoadoutItemGroupId Container, CollectionRoot? Manifest, bool SeedVarieties = true, IReadOnlySet<LoadoutItemGroupId>? NewGroups = null);

@@ -27,11 +27,12 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
 
     public IReadOnlyList<ModOrderDrop> Apply(Loadout.ReadOnly loadout, ModOrder order, ModOrderSource source, ITransaction tx)
     {
-        var result = loadouts.SetGroupOrder(loadout.LoadoutId, [..order.WinnerToLoser.Select(static entry => entry.Group)], tx);
+        var result = loadouts.SetGroupOrder(loadout.LoadoutId, RequestedOrder(loadout, order, source), tx);
 
         foreach (var entry in order.WinnerToLoser)
         {
             if (entry.Enabled is not { } enabled) continue;
+            if (source.NewGroups is { } added && !added.Contains(entry.Group)) continue;
 
             var item = LoadoutItem.Load(loadout.Db, entry.Group);
             if (!enabled && !item.IsDisabled) tx.Add(item.Id, LoadoutItem.Disabled, Null.Instance);
@@ -43,6 +44,23 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
         logger.LogTrace("Ordered {Count} groups of '{Source}'; {Overridden} pairs were turned round by stored rules", order.WinnerToLoser.Count, source.Name, result.Overridden.Count);
 
         return RuleDrops(loadout, order, result.Overridden);
+    }
+
+    /// <summary>
+    /// The order as listed when every group is new. Otherwise the groups an earlier run installed keep the order they have
+    /// now, which may be the user's, and each new group goes in at its listed slot among them.
+    /// </summary>
+    private static List<LoadoutItemGroupId> RequestedOrder(Loadout.ReadOnly loadout, ModOrder order, ModOrderSource source)
+    {
+        var listed = order.WinnerToLoser.Select(static entry => entry.Group).ToList();
+        if (source.NewGroups is not { } added) return listed;
+
+        var listedSet = listed.ToHashSet();
+        var current = ContainerOrder.ChildrenWinnerFirst(loadout.Db, source.Container)
+            .Select(static child => child.LoadoutItemGroupId)
+            .Where(listedSet.Contains)
+            .ToList();
+        return ListedOrder.InsertNew(listed, current, added.Contains);
     }
 
     private const int MaxNamedMods = 5;

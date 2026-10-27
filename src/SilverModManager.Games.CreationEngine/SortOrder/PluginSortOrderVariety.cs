@@ -196,9 +196,10 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     }
 
     /// <inheritdoc />
-    public IReadOnlySet<string> PluginsShippedBy(Loadout.ReadOnly loadout, LoadoutItemGroupId container) =>
+    public IReadOnlySet<string> PluginsShippedBy(Loadout.ReadOnly loadout, LoadoutItemGroupId container, IReadOnlySet<LoadoutItemGroupId>? mods = null) =>
         QueryLoadoutPlugins(loadout.LoadoutId, loadout.Db)
-            .Where(row => row.ModGroupId is { } group && IsDirectChild(loadout.Db, group, container))
+            .Where(row => row.ModGroupId is { } group && IsDirectChild(loadout.Db, group, container)
+                          && (mods is null || mods.Contains(LoadoutItemGroupId.From(group))))
             .Select(row => row.Name)
             .ToHashSet(PluginNameComparer.Instance);
 
