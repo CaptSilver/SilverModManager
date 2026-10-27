@@ -77,6 +77,12 @@ public sealed class MergeEngine : IMergeEngine
 
     public IReadOnlyList<MergedOutput> Plan(Loadout.ReadOnly loadout, MergeSourceMode mode) => Current(loadout).Outputs;
 
+    public MergePlanReport PlanAndReport(Loadout.ReadOnly loadout, MergeSourceMode mode)
+    {
+        var entry = Current(loadout);
+        return new MergePlanReport(ReportOf(_gameOf(loadout), entry), entry.Outputs);
+    }
+
     public byte[]? MergedBytes(Loadout.ReadOnly loadout, string relPath)
         => Plan(loadout, MergeSourceMode.Apply).FirstOrDefault(o => o.RelPath.Equals(relPath, StringComparison.OrdinalIgnoreCase))?.Bytes;
 
@@ -93,12 +99,11 @@ public sealed class MergeEngine : IMergeEngine
     /// <inheritdoc />
     public IReadOnlyList<ContestedPath> NotContested(Loadout.ReadOnly loadout) => MergeContributors.NotContested(loadout, _gameOf(loadout), _logger);
 
-    public MergeReport Report(Loadout.ReadOnly loadout, MergeSourceMode mode)
-    {
-        var game = _gameOf(loadout);
-        var entries = Current(loadout).Results.Select(Describe).ToArray();
-        return new MergeReport(entries, null, $"Contributors are ordered by the loadout's load order; on the {game.ReorderHint} page, mods {(game.WinnerIsLower ? "lower" : "higher")} in the list win");
-    }
+    public MergeReport Report(Loadout.ReadOnly loadout, MergeSourceMode mode) => ReportOf(_gameOf(loadout), Current(loadout));
+
+    private static MergeReport ReportOf(AMergeGame game, Entry entry)
+        => new(entry.Results.Select(Describe).ToArray(), null,
+            $"Contributors are ordered by the loadout's load order; on the {game.ReorderHint} page, mods {(game.WinnerIsLower ? "lower" : "higher")} in the list win");
 
     private static MergeReportEntry Describe(PathResult result)
     {

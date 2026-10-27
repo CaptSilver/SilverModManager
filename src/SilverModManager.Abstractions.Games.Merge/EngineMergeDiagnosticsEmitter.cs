@@ -40,11 +40,10 @@ public sealed class EngineMergeDiagnosticsEmitter : AMergeDiagnosticsEmitter<Eng
         failure = null;
         if (_engines.For(loadout.InstallationInstance.Game) is not { } engine) return null;
 
-        var report = engine.Report(loadout, MergeSourceMode.Report);
-        var outputs = engine.Plan(loadout, MergeSourceMode.Report);
+        var (report, outputs) = engine.PlanAndReport(loadout, MergeSourceMode.Report);
 
-        // Both come from the engine's one cached plan; a report entry with no output means they were made from different
-        // loadout states. The losses are listed from the outputs, so nothing is dropped, but the mismatch is a bug.
+        // Both come from one plan, so a report entry with no output is a bug in the engine. The losses are listed from
+        // the outputs, so nothing is dropped.
         foreach (var entry in report.Entries.Where(e => e.Outcome == MergeReportOutcome.Merged))
         {
             if (!outputs.Any(o => o.RelPath.Equals(entry.Path, StringComparison.OrdinalIgnoreCase)))

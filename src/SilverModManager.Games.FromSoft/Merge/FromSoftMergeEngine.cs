@@ -18,6 +18,11 @@ public sealed class FromSoftMergeEngine(MergeReports reports, MergePlanCache pla
             .Select(m => new MergedOutput(Me3Path(m.Path), m.Path, m.Bytes, m.Contributors.Select(c => c.ModName).Distinct().ToArray(), m.Notes, MergeStrategies.Name(m.Strategy)))
             .ToArray();
 
+    // MergeReports builds its report from MergePlanCache's plan of the loadout, which Plan then finds cached, so the two
+    // are one plan unless the loadout moves between the calls. Health Check reads FromSoft's plan through its own
+    // MergeDiagnosticsEmitter, not through this.
+    public MergePlanReport PlanAndReport(Loadout.ReadOnly loadout, MergeSourceMode mode) => new(Report(loadout, mode), Plan(loadout, mode));
+
     public IReadOnlyList<PlannedOutput> PlannedOutputs(Loadout.ReadOnly loadout)
     {
         var unmerged = plans.UnmergedPaths(loadout.LoadoutId);

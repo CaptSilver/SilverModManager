@@ -9,8 +9,11 @@ using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games.Merge.Tests.Fixtures;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
 using SilverModManager.Games.TestFramework;
+using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
@@ -40,8 +43,7 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
     {
         var engine = _engine = Substitute.For<IMergeEngine>();
         engine.Serves(Arg.Any<IGameData>()).Returns(!engineless);
-        engine.Report(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns(new MergeReport(entries, null, "hint"));
-        engine.Plan(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns(outputs ?? []);
+        engine.PlanAndReport(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns(new MergePlanReport(new MergeReport(entries, null, "hint"), outputs ?? []));
         engine.NotContested(Arg.Any<Loadout.ReadOnly>()).Returns(notContested ?? []);
 
         var emitter = new EngineMergeDiagnosticsEmitter(new MergeEngines([engine]), logger ?? NullLogger<EngineMergeDiagnosticsEmitter>.Instance, _ => game ?? new TestMergeGame());
@@ -141,8 +143,9 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         await Run([Merged(), NotMergeable("content/foo.xml", "Alpha", "Beta")],
             [Output(Loss, new VanillaBaseUntrusted(Script, "edited after install"))], [Bundle("Alpha", "Beta")]);
 
-        _engine.Received(1).Report(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>());
-        _engine.Received(1).Plan(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>());
+        _engine.Received(1).PlanAndReport(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>());
+        _engine.DidNotReceiveWithAnyArgs().Report(default, default);
+        _engine.DidNotReceiveWithAnyArgs().Plan(default, default);
         _engine.Received(1).NotContested(Arg.Any<Loadout.ReadOnly>());
     }
 
@@ -186,8 +189,8 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
     {
         var engine = Substitute.For<IMergeEngine>();
         engine.Serves(Arg.Any<IGameData>()).Returns(true);
-        engine.Report(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns(new MergeReport([Merged(), NotMergeable("content/foo.xml", "Alpha", "Beta")], null, "hint"));
-        engine.Plan(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns([Output(Loss)]);
+        engine.PlanAndReport(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns(
+            new MergePlanReport(new MergeReport([Merged(), NotMergeable("content/foo.xml", "Alpha", "Beta")], null, "hint"), [Output(Loss)]));
         engine.NotContested(Arg.Any<Loadout.ReadOnly>()).Returns([Bundle("Alpha", "Beta")]);
         var emitter = new EngineMergeDiagnosticsEmitter(new MergeEngines([engine]), NullLogger<EngineMergeDiagnosticsEmitter>.Instance, _ => new TestMergeGame());
         var loadout = Refresh(await CreateLoadout());
@@ -205,6 +208,53 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         var cards = await Run([Merged()], [Output(Loss)], engineless: true);
 
         cards.Should().BeEmpty();
+    }
+
+    private sealed class Trusting : IVanillaTrust
+    {
+        public bool IsTrusted(GameInstallation installation, GamePath path, Hash currentHash, out string reason)
+        {
+            reason = "";
+            return true;
+        }
+    }
+
+    /// <summary>A loadout where two mods rewrite line 2 of their own rel, run through the real engine.</summary>
+    private async Task<(EngineMergeDiagnosticsEmitter Emitter, CountingMergeGame Game, Loadout.ReadOnly Loadout)> RealEngine(string first, string second)
+    {
+        var loadout = await CreateLoadout();
+        var rel = $"scripts/cards-{Guid.NewGuid():N}.txt";
+        var vanilla = GameInstallation.Locations[LocationId.Game].Path.Combine($"vanilla/{rel}");
+        vanilla.Parent.CreateDirectory();
+        await vanilla.WriteAllTextAsync("a\nb\nc\n");
+        await RealMod(loadout, first, "modA", 2, rel, "a\nB1\nc\n");
+        await RealMod(loadout, second, "modB", 1, rel, "a\nB2\nc\n");
+        var game = new CountingMergeGame();
+        var engine = new MergeEngine(FileStore, new Trusting(), NullLogger<MergeEngine>.Instance, _ => game);
+        return (new EngineMergeDiagnosticsEmitter(new MergeEngines([new ServingEveryGame(engine)]), NullLogger<EngineMergeDiagnosticsEmitter>.Instance, _ => game), game, Refresh(loadout));
+    }
+
+    private async Task RealMod(Loadout.ReadOnly loadout, string name, string package, ulong priority, string rel, string text)
+    {
+        using var tx = Connection.BeginTransaction();
+        var group = AddEmptyGroup(tx, loadout.LoadoutId, name);
+        var path = new GamePath(LocationId.Game, $"Mods/{package}/{rel}");
+        var bytes = System.Text.Encoding.UTF8.GetBytes(text);
+        AddFile(tx, loadout.LoadoutId, group, path, bytes, out var hash, out var size);
+        await FileStore.BackupFiles([new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(bytes)), hash, size)]);
+        _ = new LoadoutItemGroupPriority.New(tx) { LoadoutId = loadout.LoadoutId, TargetId = group, Priority = ConflictPriority.From(priority) };
+        await tx.Commit();
+    }
+
+    [Fact]
+    public async Task TheReportAndThePlanAreReadFromOneScanOfTheLoadout()
+    {
+        var (emitter, game, loadout) = await RealEngine("Alpha", "Beta");
+
+        var cards = await Collect(emitter.Diagnose(loadout, CancellationToken.None));
+
+        cards.Should().ContainSingle();
+        game.MergesCalls.Should().Be(1, "the report and the plan are two views of one plan, so the loadout is scanned for contests once");
     }
 
     /// <summary>A plan that fails: the base yields the failure card and nothing else.</summary>

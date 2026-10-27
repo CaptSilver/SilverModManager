@@ -7,6 +7,9 @@ namespace SilverModManager.Abstractions.Games.Merge;
 public sealed record MergedOutput(
     GamePath Output, string RelPath, byte[] Bytes, IReadOnlyList<string> Contributors, IReadOnlyList<IMergeNote> Notes, string Strategy);
 
+/// <summary>The report and the outputs of one plan, for a caller that shows both and must not see two loadout states.</summary>
+public sealed record MergePlanReport(MergeReport Report, IReadOnlyList<MergedOutput> Outputs);
+
 /// <summary>Where one merged file will be written, known without reading any file bytes.</summary>
 public readonly record struct PlannedOutput(GamePath Output, string RelPath);
 
@@ -24,6 +27,12 @@ public interface IMergeEngine : IMergePlanSource
 
     /// <summary>The files the next apply writes, with their bytes.</summary>
     IReadOnlyList<MergedOutput> Plan(Loadout.ReadOnly loadout, MergeSourceMode mode);
+
+    /// <summary>
+    /// <see cref="Report"/> and <see cref="Plan"/> made from one plan. Two separate calls each look at the loadout
+    /// again, and a change in between gives a report that lists merges the plan has no output for.
+    /// </summary>
+    MergePlanReport PlanAndReport(Loadout.ReadOnly loadout, MergeSourceMode mode);
 
     /// <summary>
     /// The paths the next <c>Plan(Apply)</c> writes: every contested path with a strategy, minus the paths whose latest

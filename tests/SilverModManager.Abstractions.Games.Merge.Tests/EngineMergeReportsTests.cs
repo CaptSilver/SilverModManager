@@ -22,6 +22,7 @@ public class EngineMergeReportsTests(IServiceProvider provider) : AGameTest<Stub
         }
 
         public IReadOnlyList<MergedOutput> Plan(Loadout.ReadOnly loadout, MergeSourceMode mode) => throw new NotSupportedException();
+        public MergePlanReport PlanAndReport(Loadout.ReadOnly loadout, MergeSourceMode mode) => throw new NotSupportedException();
         public IReadOnlyList<PlannedOutput> PlannedOutputs(Loadout.ReadOnly loadout) => throw new NotSupportedException();
         public IReadOnlyList<ContestedPath> NotContested(Loadout.ReadOnly loadout) => throw new NotSupportedException();
         public byte[]? MergedBytes(Loadout.ReadOnly loadout, string relPath) => throw new NotSupportedException();
