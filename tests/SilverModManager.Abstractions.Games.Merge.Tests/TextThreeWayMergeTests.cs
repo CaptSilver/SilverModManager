@@ -46,21 +46,31 @@ public class TextThreeWayMergeTests
         owners.Should().Equal("A", "B", "A");   // a vanilla line is owned by the first contributor
         notes.Should().ContainSingle().Which.Should().Be(new LinesKept("scripts/x.ws", 2, 2, "B", "C"));
     }
-    [Fact] public void AnInsertionAtTheEdgeOfAChangeIsNotAConflict()
+    [Fact] public void AnInsertionAtTheEdgeOfAChangeIsAConflict()
     {
-        // Other inserts between vanilla lines 1 and 2 (i == 1); preferred changes vanilla lines 2..2 ([1, 2)): the insertion goes before the change.
+        // The diff decides which side of a changed line an inserted line sits on, and two mods' diffs can decide differently;
+        // applying both then repeats or reorders the higher mod's lines, so the lower insertion loses with a note.
+        // Other inserts between vanilla lines 1 and 2 (i == 1); preferred changes vanilla line 2 ([1, 2)).
         var before = Merge(V, "a\nB\nc\nd\ne\n", "a\nX\nb\nc\nd\ne\n");
-        before.Text.Should().Be("a\nX\nB\nc\nd\ne\n"); before.Notes.Should().BeEmpty();
-        // Insertion at i == 2 == end of the change: it goes after.
+        before.Text.Should().Be("a\nB\nc\nd\ne\n");
+        before.Notes.Should().Equal(new LinesKept("scripts/x.ws", 2, 2, "High", "Low"));
+        // Insertion at i == 2 == end of the change.
         var after = Merge(V, "a\nB\nc\nd\ne\n", "a\nb\nX\nc\nd\ne\n");
-        after.Text.Should().Be("a\nB\nX\nc\nd\ne\n"); after.Notes.Should().BeEmpty();
+        after.Text.Should().Be("a\nB\nc\nd\ne\n");
+        after.Notes.Should().Equal(new LinesKept("scripts/x.ws", 3, 3, "High", "Low"));
+    }
+    [Fact] public void ChangesToNeighbouringLinesBothApply()
+    {
+        var (text, notes) = Merge(V, "a\nB\nc\nd\ne\n", "a\nb\nC\nd\ne\n");
+        text.Should().Be("a\nB\nC\nd\ne\n"); notes.Should().BeEmpty();
     }
     [Fact] public void AnInsertionStrictlyInsideAChangeIsAConflict()
     {
         // Preferred rewrites vanilla lines 2..3 ([1, 3)); other inserts between them (i == 2).
         var (text, notes) = Merge(V, "a\nB\nC\nd\ne\n", "a\nb\nX\nc\nd\ne\n");
         text.Should().Be("a\nB\nC\nd\ne\n");
-        notes.Should().ContainSingle().Which.Should().Be(new LinesKept("scripts/x.ws", 2, 3, "High", "Low"));
+        // The note points at the dropped insertion, which sits before vanilla line 3.
+        notes.Should().ContainSingle().Which.Should().Be(new LinesKept("scripts/x.ws", 3, 3, "High", "Low"));
     }
     [Fact] public void TwoDifferentInsertionsAtOnePointConflictAndIdenticalOnesApplyOnce()
     {
@@ -74,8 +84,8 @@ public class TextThreeWayMergeTests
         => TextThreeWayMerge.Fold("a\nb\nc\n", [("A\nb\nc\n", "A"), ("a\nB\nc\n", "B"), ("a\nb\nC\n", "C")], "x", []).Hunks.Should().Be(3);
     [Fact] public void ThePreferredSidesLineEndingIsKept()
     {
-        var (text, _) = Merge("a\r\nb\r\n", "a\r\nB\r\n", "a\nb\nc\n");
-        text.Should().Be("a\r\nB\r\nc\r\n");
+        var (text, _) = Merge("a\r\nb\r\nc\r\n", "a\r\nB\r\nc\r\n", "a\nb\nc\nd\n");
+        text.Should().Be("a\r\nB\r\nc\r\nd\r\n");
     }
     [Fact] public void AModShippingVanillaUnchangedLosesNothing()
     {
@@ -131,7 +141,8 @@ public class TextThreeWayMergeTests
     {
         var notes = new List<IMergeNote>();
         TextThreeWayMerge.Fold("a\nb\nc\nd\n", [("A\nb\nc\nd\n", "A"), ("a\nb\nC\nd\n", "B"), ("A2\nB2\nC2\nd\n", "C")], "p", notes);
-        notes.Should().Equal(new LinesKept("p", 1, 1, "A", "C"), new LinesKept("p", 3, 3, "B", "C"));
+        // C's rewrite of lines 1-3 lost to both; each note covers the lines C changed.
+        notes.Should().Equal(new LinesKept("p", 1, 3, "A", "C"), new LinesKept("p", 1, 3, "B", "C"));
     }
 
     [Fact] public void NoVanillaNotesDescribeThemselves()
@@ -205,6 +216,65 @@ public class TextThreeWayMergeTests
 
     private static string Join(IEnumerable<string> lines) => string.Concat(lines.Select(l => l + "\n"));
 
+    private static (string[] Lines, List<IMergeNote> Notes) FoldLines(string[] vanilla, params string[][] mods)
+    {
+        var notes = new List<IMergeNote>();
+        var text = TextThreeWayMerge.Fold(Join(vanilla), mods.Select((m, i) => (Join(m), $"M{i}")).ToArray(), "p", notes).Text;
+        return (LineDiff.SplitLines(text), notes);
+    }
+
+    [Fact] public void AHigherHunkStandsInForOnlyOneMatchingHunkOfEachLowerMod()
+    {
+        // Low inserts s0 on both sides of High's s0. The first is the same change as High's; the second is a line of Low's that High's copy does not account for.
+        var (lines, notes) = FoldLines(["p", "q", "r", "s"], ["p", "q", "s0", "r", "s"], ["p", "s0", "q", "r", "s0", "s"]);
+        lines.Should().Equal("p", "q", "s0", "r", "s");
+        notes.Should().Equal(new LinesKept("p", 4, 4, "M0", "M1"));
+    }
+
+    [Fact] public void ASecondLowerModsRepeatedInsertionIsReportedWhenTheTopModHasItOnce()
+    {
+        string[] v = ["", "}", "", "u0", "u1", "u2", "", "}", "}"];
+        string[] m0 = ["", "}", "", "u0", "s1", "s2", "m0_0", "}", "u2", "s0", "", "}", "}"];
+        string[] m1 = ["{", "m1_0", "m1_1", "{", "m1_2", "{", "m1_3", "m1_4", "m1_5", "s2", "s1", "s0", "", "m1_6", "m1_7", "m1_8", "m1_9"];
+        string[] m2 = ["", "}", "", "u1", "s0", "u2", "", "}", "s0", "}"];
+        var (lines, notes) = FoldLines(v, m0, m1, m2);
+        lines.Should().Equal(m0);
+        notes.OfType<LinesKept>().Should().Contain(k => k.DroppedMod == "M2");
+    }
+
+    [Fact] public void AHunkJustBeforeOneThatLostGoesWithIt()
+    {
+        // M1's insertion of u2, m1x, m0_1 comes before its hunk that loses to M0; applied alone it would repeat M0's lines.
+        string[] m0 = ["m0_0", "s2", "", "u2", "m0_1", "{"];
+        var (lines, notes) = FoldLines(["u0", "", "{", "u1", "u2", "u3", "u4", "}"], m0, ["m0_0", "s2", "", "u2", "m1x", "m0_1", "{"]);
+        lines.Should().Equal(m0);
+        notes.OfType<LinesKept>().Should().Contain(k => k.DroppedMod == "M1");
+    }
+
+    [Fact] public void ALossNoteCoversTheDroppedHunksOwnLines()
+    {
+        // M1 rewrites lines 1-4, which loses to M0's deletion of line 1, and appends at the end, which goes with it.
+        var (lines, notes) = FoldLines(["u0", "}", "u1", "u2", ""], ["}", "u1", "u2", ""], ["", "s2", "s1"]);
+        lines.Should().Equal("}", "u1", "u2", "");
+        notes.Should().Equal(new LinesKept("p", 1, 4, "M0", "M1"), new LinesKept("p", 5, 5, "M0", "M1"));
+    }
+
+    [Fact] public void InsertionsOnTheEdgeOfTheTopModsChangesLoseInsteadOfReorderingIt()
+    {
+        string[] m0 = ["", "}", "u0", "}"];
+        var (lines, notes) = FoldLines(["", "u0", "}", "}"], m0, ["", "m1x", "}", "u0", "}"]);
+        lines.Should().Equal(m0);
+        notes.Should().Equal(new LinesKept("p", 2, 2, "M0", "M1"), new LinesKept("p", 4, 4, "M0", "M1"));
+    }
+
+    [Fact] public void ACopyOfTheTopModWithOneMoreLineNeverDoublesItsLines()
+    {
+        string[] m0 = ["", "u0", "}"];
+        var (lines, notes) = FoldLines(["}", "u0", "{"], m0, ["", "m1x", "u0", "}"]);
+        lines.Should().Equal(m0);
+        notes.Should().Equal(new LinesKept("p", 1, 1, "M0", "M1"), new LinesKept("p", 2, 3, "M0", "M1"));
+    }
+
     [Fact] public void EditsToDisjointRegionsAllApplyAndLoseNothing()
     {
         for (var seed = 0; seed < 300; seed++)
@@ -217,9 +287,9 @@ public class TextThreeWayMergeTests
             var lineOwner = Enumerable.Range(0, n).Select(_ => rng.Next(-1, mods)).ToArray();
             var lineEdit = Enumerable.Range(0, n).Select(_ => rng.Next(0, 2)).ToArray();   // 0 replace, 1 delete
             var slotOwner = Enumerable.Range(0, n + 1).Select(_ => rng.Next(-1, mods)).ToArray();
-            // An insertion strictly inside another mod's changed block is a real conflict, not what this test is about.
-            for (var i = 1; i < n; i++)
-                if (lineOwner[i - 1] >= 0 && lineOwner[i - 1] == lineOwner[i] && slotOwner[i] != lineOwner[i]) slotOwner[i] = -1;
+            // An insertion inside or at the edge of another mod's changed lines is a real conflict, not what this test is about.
+            for (var i = 0; i <= n; i++)
+                if ((i > 0 && lineOwner[i - 1] >= 0 && lineOwner[i - 1] != slotOwner[i]) || (i < n && lineOwner[i] >= 0 && lineOwner[i] != slotOwner[i])) slotOwner[i] = -1;
 
             var expected = new List<string>();
             var texts = Enumerable.Range(0, mods).Select(_ => new List<string>()).ToArray();
@@ -258,16 +328,17 @@ public class TextThreeWayMergeTests
             var n = rng.Next(1, 12);
             var vanilla = Enumerable.Range(0, n).Select(i => $"v{i}").ToList();
             List<string> edited = [], third = [], expected = [];
+            var kinds = Enumerable.Range(0, n + 1).Select(_ => rng.Next(0, 4)).ToArray();   // 0 untouched, 1 replace, 2 delete, 3 insert before
             for (var i = 0; i <= n; i++)
             {
-                var kind = rng.Next(0, 4);   // 0 untouched, 1 replace, 2 delete, 3 insert before
+                var kind = kinds[i];
                 if (kind == 3) edited.Add($"ins{i}");
                 if (kind == 3) expected.Add($"ins{i}");
                 if (i == n) break;
                 if (kind == 1) { edited.Add($"rep{i}"); expected.Add($"rep{i}"); }
                 else if (kind != 2) edited.Add(vanilla[i]);
-                // a third mod edits some lines the first two leave alone
-                var mine = kind == 0 && rng.Next(0, 2) == 0;
+                // a third mod edits some lines the first two leave alone, away from their insertions: an insertion at the edge of a changed line conflicts
+                var mine = kind == 0 && kinds[i + 1] != 3 && rng.Next(0, 2) == 0;
                 third.Add(mine ? $"mine{i}" : vanilla[i]);
                 if (kind == 3) third.Insert(third.Count - 1, "");
                 if (kind == 0) expected.Add(mine ? $"mine{i}" : vanilla[i]);

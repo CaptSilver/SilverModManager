@@ -85,13 +85,17 @@ public sealed class TextThreeWayMerge : IMergeStrategy
 
         public bool SameEdit(Hunk other) => Start == other.Start && End == other.End && Lines.AsSpan().SequenceEqual(other.Lines);
 
-        /// <summary>Whether the two edits touch the same vanilla lines, or an insertion lands strictly inside a change, or two different insertions share a point.</summary>
+        /// <summary>
+        /// Whether the two edits touch the same vanilla lines, or an insertion lands inside or at either edge of a change, or two different insertions share a point.
+        /// An insertion on the edge counts because the diff picks the side of a changed line an added line goes on, and two mods' diffs can pick differently:
+        /// applying both would repeat or reorder the higher mod's lines.
+        /// </summary>
         public bool Conflicts(Hunk k)
         {
             if (!IsInsertion && !k.IsInsertion) return Start < k.End && k.Start < End;
             if (IsInsertion && k.IsInsertion) return Start == k.Start && !SameEdit(k);
             var (ins, change) = IsInsertion ? (this, k) : (k, this);
-            return change.Start < ins.Start && ins.Start < change.End;
+            return change.Start <= ins.Start && ins.Start <= change.End;
         }
 
         /// <summary>Whether at most <paramref name="gap"/> vanilla lines lie between the two hunks.</summary>
@@ -132,32 +136,44 @@ public sealed class TextThreeWayMerge : IMergeStrategy
         var walked = 0;
         var last = Math.Max(vanilla.Length, 1);
         var reported = new HashSet<LinesKept>();
-        void Report(Hunk winner, string loser)
+        // The note covers the dropped hunk's own lines: those are what the reader goes looking for in the lower mod.
+        void Report(Hunk dropped, string winner)
         {
-            var note = new LinesKept(path, Math.Min(winner.Start + 1, last), Math.Min(Math.Max(winner.End, winner.Start + 1), last), winner.Owner, loser);
+            var note = new LinesKept(path, Math.Min(dropped.Start + 1, last), Math.Min(Math.Max(dropped.End, dropped.Start + 1), last), winner, dropped.Owner);
             if (reported.Add(note)) notes.Add(note);
         }
 
         foreach (var (text, mod) in contributors)
         {
             var lost = new List<(Hunk Hunk, Hunk Winner)>();
+            var clear = new List<Hunk>();
+            // A higher hunk stands in for at most one hunk of each lower mod: a mod making the same insertion twice near it has a copy the output lacks.
+            var used = new HashSet<Hunk>();
             foreach (var h in HunksOf(vanilla, text, mod))
             {
                 walked++;
                 // The diff places a change canonically only inside a run of equal text, so two mods making the same edit can land a line or two apart.
                 // Nothing is lost by applying it once.
-                var twins = applied.Where(k => IsSameChange(vanilla, h, k)).ToList();
+                var twins = applied.Where(k => !used.Contains(k) && IsSameChange(vanilla, h, k)).ToList();
                 var losing = applied.Where(k => !twins.Contains(k) && (h.Conflicts(k) || (twins.Count == 0 && RepeatsNearby(h, k)))).ToList();
-                if (losing.Count == 0 && twins.Count > 0) continue;
-                // A hunk right beside one that lost is most likely the rest of the same edit cut in two, and applying it alone could repeat lines the winner already has.
-                var beside = lost.FirstOrDefault(l => h.IsWithin(l.Hunk, ClusterGap)).Winner;
-                if (losing.Count == 0 && beside is null)
+                if (losing.Count == 0 && twins.Count > 0)
                 {
-                    applied.Add(h);
+                    used.Add(twins[0]);
+                    continue;
+                }
+                if (losing.Count == 0)
+                {
+                    clear.Add(h);
                     continue;
                 }
                 if (losing.FirstOrDefault(h.Conflicts) is { } beaten) lost.Add((h, beaten));
-                foreach (var k in losing.Count > 0 ? losing : [beside!]) Report(k, mod);
+                foreach (var k in losing) Report(h, k.Owner);
+            }
+            // A hunk right beside one that lost, on either side, is most likely the rest of the same edit cut in two, and applying it alone could repeat lines the winner already has.
+            foreach (var h in clear)
+            {
+                if (lost.FirstOrDefault(l => h.IsWithin(l.Hunk, ClusterGap)).Winner is { } beside) Report(h, beside.Owner);
+                else applied.Add(h);
             }
         }
 
