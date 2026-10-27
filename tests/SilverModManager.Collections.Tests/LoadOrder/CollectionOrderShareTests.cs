@@ -151,6 +151,17 @@ public class CollectionOrderShareTests(ITestOutputHelper helper) : ACyberpunkIso
     }
 
     [Fact]
+    public async Task ARuleOfAnUnknownKindRefusesToBeWritten()
+    {
+        var pack = await BuildNexusPack(("A", 1), ("B", 2));
+        await AddRule(pack, "B", "A", (GroupRuleKind)7);
+
+        var act = async () => await Manifest(pack);
+
+        await act.Should().ThrowAsync<System.Diagnostics.UnreachableException>();
+    }
+
+    [Fact]
     public async Task RulesInvolvingAModOutsideTheCollectionAreNotWritten()
     {
         var pack = await BuildNexusPack(("A", 1), ("B", 2));

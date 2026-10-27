@@ -451,24 +451,9 @@ public static class CollectionCreator
             throw new InvalidOperationException($"{installation.Name} has no Nexus Mods id, so a Nexus collection cannot be made for it");
         var gameDomain = mappingCache[gameId];
 
-        var priorities = LoadoutItemGroupPriority.FindByLoadout(group.Db, loadout.LoadoutId)
-            .ToDictionary(row => row.TargetId, row => row.Priority.Value);
-
-        // Winner first; a child with no priority row sorts last, in a stable order.
-        var children = group.Children
-            .OfTypeLoadoutItemGroup()
-            .OfTypeLibraryLinkedLoadoutItem()
-            .OrderByDescending(child => priorities.TryGetValue(child.AsLoadoutItemGroup().LoadoutItemGroupId, out var priority) ? (long)priority : -1L)
-            .ThenBy(child => child.Id.Value)
-            .ToArray();
-
-        var shared = new List<LibraryLinkedLoadoutItem.ReadOnly>();
-        var skipped = new List<LoadoutItemGroup.ReadOnly>();
-        foreach (var child in children)
-        {
-            if (ModOrderMatcher.CanIdentify(child)) shared.Add(child);
-            else skipped.Add(child.AsLoadoutItemGroup());
-        }
+        var scope = ShareScope.Of(group);
+        var shared = scope.Shared;
+        var skipped = scope.Skipped;
 
         var tags = shared.ToDictionary(child => child.AsLoadoutItemGroup().LoadoutItemGroupId, child => child.Id.ToString());
         var collectionMods = new List<CollectionMod>();
@@ -487,7 +472,7 @@ public static class CollectionCreator
         var manifest = new CollectionRoot
         {
             Mods = collectionMods.ToArray(),
-            ModRules = StoredRulesBetween(group.Db, loadout.LoadoutId, shared, tags),
+            ModRules = StoredRulesBetween(group.Db, loadout.LoadoutId, scope, tags),
             SilverLoadOrder = SilverOrderOf(shared),
             Info = new CollectionInfo
             {
@@ -538,16 +523,16 @@ public static class CollectionCreator
     }
 
     /// <summary>
-    /// Every stored rule whose two groups are both in <paramref name="shared"/>, referencing each group by its tag (the only thing a
+    /// Every stored rule <paramref name="scope"/> says a share keeps, referencing each group by its tag (the only thing a
     /// mod with no local file offers the install side to match on) and by md5 when one is known.
     /// </summary>
     private static ModRule[] StoredRulesBetween(
         IDb db,
         LoadoutId loadout,
-        IReadOnlyList<LibraryLinkedLoadoutItem.ReadOnly> shared,
+        ShareScope scope,
         IReadOnlyDictionary<LoadoutItemGroupId, string> tags)
     {
-        var byId = shared.ToDictionary(child => child.AsLoadoutItemGroup().LoadoutItemGroupId);
+        var byId = scope.Shared.ToDictionary(child => child.AsLoadoutItemGroup().LoadoutItemGroupId);
 
         VortexModReference Reference(LoadoutItemGroupId id) => new()
         {
@@ -556,10 +541,15 @@ public static class CollectionCreator
         };
 
         return LoadoutGroupRule.FindByLoadout(db, loadout)
-            .Where(rule => byId.ContainsKey(rule.SourceId) && byId.ContainsKey(rule.OtherId))
+            .Where(rule => scope.Classify(rule) == RuleShare.Written)
             .Select(rule => new ModRule
             {
-                Type = rule.Kind == GroupRuleKind.After ? VortexModRuleType.After : VortexModRuleType.Before,
+                Type = rule.Kind switch
+                {
+                    GroupRuleKind.After => VortexModRuleType.After,
+                    GroupRuleKind.Before => VortexModRuleType.Before,
+                    _ => throw new UnreachableException(),
+                },
                 Source = Reference(rule.SourceId),
                 Other = Reference(rule.OtherId),
             })
