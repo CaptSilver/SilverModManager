@@ -107,7 +107,7 @@ public sealed class MergeEngine : IMergeEngine
 
     private static MergeReportEntry Describe(PathResult result)
     {
-        var contributors = result.Path.Contributors.Select(c => c.ModName).Distinct().ToArray();
+        var contributors = result.Path.Contributors.Select(c => c.ModName).ToArray();
         if (result.Output is not { } output)
             return new MergeReportEntry(result.Path.Rel, result.Path.Strategy?.Name ?? "", contributors, MergeReportOutcome.NotMergeable, [], "", result.NotMergedReason!);
 
@@ -224,7 +224,7 @@ public sealed class MergeEngine : IMergeEngine
             var result = strategy.Fold(inputs, vanilla.Bytes ?? [], vanilla.Bytes is not null, path.Rel, notes);
             _logger.LogTrace("Merged {Path} from {Contributors} contributors in {Hunks} hunks", path.Rel, inputs.Length, result.Hunks);
 
-            var output = new MergedOutput(game.OutputFor(path.Rel), path.Rel, result.Bytes, path.Contributors.Select(c => c.ModName).Distinct().ToArray(), notes, strategy.Name);
+            var output = new MergedOutput(game.OutputFor(path.Rel), path.Rel, result.Bytes, path.Contributors.Select(c => c.ModName).ToArray(), notes, strategy.Name);
             return new PathResult(path, output, null);
         }
         catch (Exception exception) when (exception is MergeInputException or MissingArchiveException or IOException or UnauthorizedAccessException)

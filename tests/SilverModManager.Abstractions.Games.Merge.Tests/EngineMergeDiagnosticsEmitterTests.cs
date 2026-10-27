@@ -257,6 +257,17 @@ public class EngineMergeDiagnosticsEmitterTests(IServiceProvider provider) : AGa
         game.MergesCalls.Should().Be(1, "the report and the plan are two views of one plan, so the loadout is scanned for contests once");
     }
 
+    [Fact]
+    public async Task TwoModsWithTheSameNameGetACardThatTellsThemApart()
+    {
+        var (emitter, _, loadout) = await RealEngine("Foo", "Foo");
+
+        var card = (await Collect(emitter.Diagnose(loadout, CancellationToken.None))).Should().ContainSingle().Which;
+
+        Summary(card).Should().Contain("Foo (modB)'s change to").And.Contain("Foo (modA)'s change is used");
+        Details(card).Should().Contain("move Foo (modB) below Foo (modA)");
+    }
+
     /// <summary>A plan that fails: the base yields the failure card and nothing else.</summary>
     private sealed class FailingEmitter : AMergeDiagnosticsEmitter<MergeReport>
     {

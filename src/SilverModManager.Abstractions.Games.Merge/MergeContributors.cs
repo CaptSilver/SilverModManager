@@ -13,7 +13,8 @@ public readonly record struct ContestedFile(string Package, string Rel, GamePath
 
 /// <summary>
 /// A path that more than one mod folder ships. <paramref name="Contributors"/> are ranked highest first, then by
-/// package name; <paramref name="Rel"/> is the first one's spelling. <paramref name="Strategy"/> is null when the game
+/// package name, and no two of them share a <see cref="ContestedFile.ModName"/>; <paramref name="Rel"/> is the first
+/// one's spelling. <paramref name="Strategy"/> is null when the game
 /// does not merge the path.
 /// </summary>
 public sealed record ContestedPath(string Rel, IReadOnlyList<ContestedFile> Contributors, IMergeStrategy? Strategy);
@@ -85,9 +86,25 @@ public static class MergeContributors
         return Collapse(files, FileWinners.Of(db, loadout.LoadoutId), logger)
             .GroupBy(f => f.Rel, StringComparer.OrdinalIgnoreCase)
             .Where(g => g.Count() > 1)
-            .Select(g => g.OrderByDescending(f => f.Rank).ThenBy(f => f.Package, StringComparer.Ordinal).ThenBy(f => f.ModName, StringComparer.Ordinal).ToArray())
+            .Select(g => Named(g.OrderByDescending(f => f.Rank).ThenBy(f => f.Package, StringComparer.Ordinal).ThenBy(f => f.ModName, StringComparer.Ordinal).ToArray()))
             .OrderBy(g => g[0].Rel, StringComparer.Ordinal)
             .ToList();
+    }
+
+    /// <summary>
+    /// Two different mods with one name would read as one contributor in the notes, the report and the cards ("move Foo
+    /// below Foo"), so within a contest each of them is named with its folder as well. A name used once is left alone.
+    /// </summary>
+    private static ContestedFile[] Named(ContestedFile[] contest)
+    {
+        var shared = contest
+            .GroupBy(f => f.ModName, StringComparer.Ordinal)
+            .Where(g => g.Select(f => f.Owner).Distinct().Count() > 1)
+            .Select(g => g.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        if (shared.Count == 0) return contest;
+
+        return contest.Select(f => shared.Contains(f.ModName) ? f with { ModName = $"{f.ModName} ({f.Package})" } : f).ToArray();
     }
 
     /// <summary>

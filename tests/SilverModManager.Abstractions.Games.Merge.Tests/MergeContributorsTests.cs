@@ -69,6 +69,19 @@ public class MergeContributorsTests(IServiceProvider provider) : AGameTest<Stubb
     }
 
     [Fact]
+    public async Task ModsThatShareANameAreToldApartByTheirFolderAndOthersKeepTheirName()
+    {
+        var loadout = await CreateLoadout();
+        await Mod(loadout, "Foo", 3, "Mods/modA/scripts/x.txt");
+        await Mod(loadout, "Foo", 2, "Mods/modB/scripts/x.txt");
+        await Mod(loadout, "Bar", 1, "Mods/modC/scripts/x.txt");
+
+        var contest = Contested(loadout).Should().ContainSingle().Subject;
+
+        contest.Contributors.Select(c => c.ModName).Should().Equal("Foo (modA)", "Foo (modB)", "Bar");
+    }
+
+    [Fact]
     public async Task CaseOnlySpellingsGroupTogetherAndTheWinnerSpellingIsKept()
     {
         var loadout = await CreateLoadout();

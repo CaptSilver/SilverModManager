@@ -233,6 +233,23 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
         AsText(second.Single()).Should().Be("A\nb\nc\n", "against the new copy B's line 3 is the original and A's change back to c is the edit");
     }
 
+    [Fact]
+    public async Task TwoModsWithTheSameNameAreTwoContributorsNamedByTheirFolders()
+    {
+        var loadout = await CreateLoadout();
+        await WriteVanilla(X, Vanilla);
+        await Mod(loadout, "Foo", "modA", 2, Text(X, "a\nB1\nc\n"));
+        await Mod(loadout, "Foo", "modB", 1, Text(X, "a\nB2\nc\n"));
+        loadout = Refresh(loadout);
+        var engine = Engine();
+
+        var output = engine.Plan(loadout, MergeSourceMode.Apply).Should().ContainSingle().Subject;
+
+        output.Contributors.Should().Equal("Foo (modA)", "Foo (modB)");
+        output.Notes.OfType<LinesKept>().Should().ContainSingle().Which.Should().Match<LinesKept>(n => n.KeptMod == "Foo (modA)" && n.DroppedMod == "Foo (modB)");
+        engine.Report(loadout, MergeSourceMode.Report).Entries.Single().Contributors.Should().Equal("Foo (modA)", "Foo (modB)");
+    }
+
     private async Task<Loadout.ReadOnly> WithBinaryContributor()
     {
         var loadout = await CreateLoadout();
