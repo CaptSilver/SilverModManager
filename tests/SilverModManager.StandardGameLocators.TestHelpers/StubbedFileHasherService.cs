@@ -23,44 +23,53 @@ namespace SilverModManager.StandardGameLocators.TestHelpers;
 public class StubbedFileHasherService : IFileHashesService
 {
     private readonly IServiceProvider _provider;
-    private DatomStore _datomStore;
-    private Connection _connection;
+    private DatomStore? _datomStore;
+    private Connection? _connection;
     private DatomStore? _localStore;
     private Connection? _localConnection;
-    private IDb? _current;
+    private readonly object _localLock = new();
     private readonly IFileStore _fileStore;
     private readonly TemporaryFileManager _temporaryFileManager;
-    private readonly Dictionary<LocatorId, EntityId[]> _versionFiles;
+
+    // Loadouts are created from several tasks at once, and each asks for the database; the first caller builds it and
+    // the rest wait for that same build. The map is published whole, after both states are loaded.
+    private readonly Lazy<Task<IDb>> _db;
+    private volatile IReadOnlyDictionary<LocatorId, EntityId[]> _versionFiles = new Dictionary<LocatorId, EntityId[]>();
 
     public StubbedFileHasherService(IServiceProvider provider, IFileStore fileStore, TemporaryFileManager temporaryFileManager)
     {
         _provider = provider;
         _fileStore = fileStore;
         _temporaryFileManager = temporaryFileManager;
-        _versionFiles = new Dictionary<LocatorId, EntityId[]>();
+        _db = new Lazy<Task<IDb>>(SetupDb, LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
     // Writable and empty, registered as "local_hashes" so queries that name the local store bind in graphs
     // that never use the real service.
     private IDb EnsureLocal()
     {
-        if (_localConnection is null)
+        lock (_localLock)
         {
-            var backend = new MnemonicDB.Storage.RocksDbBackend.Backend();
-            _localStore = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), DatomStoreSettings.InMemory, backend);
-            _localConnection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), _localStore, _provider, [], prefix: "local_hashes", queryEngine: _provider.GetRequiredService<IQueryEngine>());
-        }
+            if (_localConnection is null)
+            {
+                var backend = new MnemonicDB.Storage.RocksDbBackend.Backend();
+                _localStore = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), DatomStoreSettings.InMemory, backend);
+                _localConnection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), _localStore, _provider, [], prefix: "local_hashes", queryEngine: _provider.GetRequiredService<IQueryEngine>());
+            }
 
-        return _localConnection.Db;
+            return _localConnection.Db;
+        }
     }
 
-    private async Task SetupDb()
+    private async Task<IDb> SetupDb()
     {
         EnsureLocal();
         var backend = new MnemonicDB.Storage.RocksDbBackend.Backend();
         var settings = DatomStoreSettings.InMemory;
         _datomStore = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), settings, backend);
         _connection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), _datomStore, _provider, [], prefix: "hashes", queryEngine: _provider.GetRequiredService<IQueryEngine>());
+        var versionFiles = new Dictionary<LocatorId, EntityId[]>();
+        IDb db = _connection.Db;
 
         foreach (var file in new[] {"StubbedGameState.zip", "StubbedGameState_game_v2.zip"})
         {
@@ -115,9 +124,12 @@ public class StubbedFileHasherService : IFileHashesService
             await _fileStore.BackupFiles(archiveFiles);
             var results = await tx.Commit();
 
-            _versionFiles[LocatorId.From(file)] = pathIds.Select(id => results[id]).ToArray();
-            _current = results.Db;
+            versionFiles[LocatorId.From(file)] = pathIds.Select(id => results[id]).ToArray();
+            db = results.Db;
         }
+
+        _versionFiles = versionFiles;
+        return db;
     }
 
     public Task CheckForUpdate(bool forceUpdate = false)
@@ -130,28 +142,25 @@ public class StubbedFileHasherService : IFileHashesService
         return [VanityVersion.From("1.0.Stubbed"), VanityVersion.From("1.1.Stubbed")];
     }
 
-    public async ValueTask<IDb> GetFileHashesDb()
-    {
-        if (_current is not null)
-            return _current;
-        await SetupDb();
-        return _current!;
-    }
+    public async ValueTask<IDb> GetFileHashesDb() => await _db.Value;
 
     public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore)
     {
         var (_, locatorIds) = locatorIdsWithGameStore;
 
+        // Reading the database first makes sure the map is built.
+        var db = Current;
+        var versionFiles = _versionFiles;
         var firstLocatorId = locatorIds.First();
-        if (!_versionFiles.TryGetValue(firstLocatorId, out var fileIds))
+        if (!versionFiles.TryGetValue(firstLocatorId, out var fileIds))
         {
             if (firstLocatorId == "3976631895")
-                fileIds = _versionFiles[LocatorId.From("StubbedGameState.zip")];
+                fileIds = versionFiles[LocatorId.From("StubbedGameState.zip")];
         }
         
         foreach (var fileId in fileIds!)
         {
-            var file = PathHashRelation.Load(Current, fileId);
+            var file = PathHashRelation.Load(db, fileId);
             yield return new GameFileRecord
             {
                 Path = new GamePath(LocationId.Game, file.Path),
@@ -195,7 +204,7 @@ public class StubbedFileHasherService : IFileHashesService
     // No build ever runs here.
     public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-    public IDb Current => _current!;
+    public IDb Current => _db.Value.GetAwaiter().GetResult();
 
     public IDb Local => EnsureLocal();
 
