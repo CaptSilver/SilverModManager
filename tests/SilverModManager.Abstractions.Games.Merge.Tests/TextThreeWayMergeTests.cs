@@ -77,12 +77,12 @@ public class TextThreeWayMergeTests
         var (text, _) = Merge("a\r\nb\r\n", "a\r\nB\r\n", "a\nb\nc\n");
         text.Should().Be("a\r\nB\r\nc\r\n");
     }
-    [Fact] public void AModShippingVanillaUnchangedLosesNothing()          // Review Focus 3
+    [Fact] public void AModShippingVanillaUnchangedLosesNothing()
     {
         var (text, notes) = Merge(V, V, "a\nB\nc\nd\ne\n");
         text.Should().Be("a\nB\nc\nd\ne\n"); notes.Should().BeEmpty();
     }
-    [Fact] public void TrailingNewlineStateFollowsThePreferredSide()        // Review Focus 4
+    [Fact] public void TrailingNewlineStateFollowsThePreferredSide()
     {
         Merge("a\nb", "a\nB", "a\nb\n").Text.Should().Be("a\nB");
         Merge("", "", "x\n").Text.Should().Be("x\n");   // an insertion against an empty vanilla applies; the empty preferred side has no ending to impose
@@ -156,6 +156,53 @@ public class TextThreeWayMergeTests
     {
         var act = () => TextThreeWayMerge.Instance.Fold([new("a"u8.ToArray(), "High")], [0xFF, 0xFE], hasVanilla: true, "x", []);
         act.Should().Throw<MergeInputException>().WithMessage("the game's copy*UTF-8*");
+    }
+
+    [Fact] public void AHigherDeletionOfALineTheLowerModRewroteKeepsTheDeletionAndNotesTheLoss()
+    {
+        var (text, notes) = Merge("p\nq\nr\n", "p\nr\n", "p\nQ\nr\n");
+        text.Should().Be("p\nr\n");
+        notes.Should().ContainSingle().Which.Should().Be(new LinesKept("scripts/x.ws", 2, 2, "High", "Low"));
+    }
+
+    [Fact] public void AHigherRewriteOfALineTheLowerModDeletedKeepsTheRewriteAndNotesTheLoss()
+    {
+        var (text, notes) = Merge("p\nq\nr\n", "p\nQ\nr\n", "p\nr\n");
+        text.Should().Be("p\nQ\nr\n");
+        notes.Should().ContainSingle().Which.Should().Be(new LinesKept("scripts/x.ws", 2, 2, "High", "Low"));
+    }
+
+    [Fact] public void SharingOnlyALoneBraceDoesNotMakeTwoRewritesOneChange()
+    {
+        var (text, notes) = Merge("p\nq\nr\n", "p\n}\nr\n", "p\n}\nx=1; }\nr\n");
+        text.Should().Be("p\n}\nr\n");
+        notes.Should().ContainSingle().Which.Should().Be(new LinesKept("scripts/x.ws", 2, 2, "High", "Low"));
+    }
+
+    [Fact] public void SharingARealLineMakesTheLowerModsAdditionPartOfTheSameChange()
+    {
+        var (text, notes) = Merge("p\nq\nr\n", "p\nx=1; }\nr\n", "p\nx=1; }\n}\nr\n");
+        text.Should().Be("p\nx=1; }\n}\nr\n"); notes.Should().BeEmpty();
+    }
+
+    [Fact] public void TheSameInsertionOneLineApartAppliesOnce()
+    {
+        string[] fn = ["function f() {", "  return 1;", "}"];
+        var vanilla = "a\n}\n\nb\n";
+        var high = "a\n}\n" + Join(fn) + "\nb\n";
+        var low = "a\n}\n\n" + Join(fn) + "b\n";
+        var (text, notes) = Merge(vanilla, high, low);
+        notes.Should().BeEmpty();
+        LineDiff.SplitLines(text).Count(l => l == "function f() {").Should().Be(1);
+    }
+
+    [Fact] public void ALaterModDeletingLinesAChainOfEarlierModsCoveredStillReportsTheLoss()
+    {
+        // The second mod extends the first mod's rewrite; the third deletes lines inside what both keep.
+        var notes = new List<IMergeNote>();
+        var (text, _, _) = TextThreeWayMerge.Fold("u0\nu1\n", [("s0\nm0\n", "A"), ("s0\nm0\nm1x\n", "B"), ("m2x\n", "C")], "p", notes);
+        LineDiff.SplitLines(text).Should().Contain(["s0", "m0"]);
+        LineDiff.SplitLines(text).Count(l => l == "s0").Should().Be(1);
     }
 
     private static string Join(IEnumerable<string> lines) => string.Concat(lines.Select(l => l + "\n"));
@@ -240,6 +287,92 @@ public class TextThreeWayMergeTests
             var merged = LineDiff.SplitLines(TextThreeWayMerge.Fold(Join(vanilla), all, "p", notes).Text);
             notes.Should().BeEmpty($"seed {seed}");
             merged.Should().Equal(expected, $"seed {seed}");
+        }
+    }
+
+    [Fact] public void BlankAndBraceHeavyEditsNeverDoubleOrSilentlyLoseTheHigherModsLines()
+    {
+        for (var seed = 0; seed < 2000; seed++)
+        {
+            var rng = new Random(seed);
+            var n = rng.Next(0, 12);
+            var uid = 0;
+            string Common() => rng.Next(3) switch { 0 => "", 1 => "}", _ => "{" };
+            var vanilla = Enumerable.Range(0, n).Select(_ => rng.Next(2) == 0 ? Common() : $"u{uid++}").ToArray();
+            var mods = rng.Next(2, 4);
+            var texts = new List<string>[mods];
+            for (var m = 0; m < mods; m++)
+            {
+                if (m > 0 && rng.Next(4) == 0)
+                {
+                    // a chain: a copy of an earlier mod, sometimes with one more line
+                    texts[m] = [.. texts[rng.Next(m)]];
+                    if (rng.Next(2) == 0) texts[m].Insert(rng.Next(texts[m].Count + 1), $"m{m}x");
+                    continue;
+                }
+                texts[m] = [];
+                var k = 0;
+                for (var i = 0; i <= n; i++)
+                {
+                    if (rng.Next(5) == 0) texts[m].Add(rng.Next(3) == 0 ? Common() : $"m{m}_{k++}");
+                    if (i == n) break;
+                    var r = rng.Next(5);
+                    if (r == 1) texts[m].Add($"m{m}_{k++}"); else if (r != 0) texts[m].Add(vanilla[i]);
+                }
+            }
+            var notes = new List<IMergeNote>();
+            var (text, owners, _) = TextThreeWayMerge.Fold(Join(vanilla), texts.Select((t, m) => (Join(t), $"M{m}")).ToArray(), "p", notes);
+            var merged = LineDiff.SplitLines(text);
+            owners.Should().HaveCount(merged.Length, $"seed {seed}");
+            // the top mod's own new lines are all present
+            foreach (var x in texts[0].Where(x => x.StartsWith("m0"))) merged.Should().Contain(x, $"seed {seed}");
+            // a line is never in the output more often than the vanilla and the mods can account for
+            foreach (var g in merged.GroupBy(x => x))
+                g.Count().Should().BeLessThanOrEqualTo(vanilla.Count(x => x == g.Key) + texts.Sum(t => t.Count(x => x == g.Key)), $"seed {seed}");
+            // a lower mod whose new unique line is missing is named in a loss note
+            for (var m = 1; m < mods; m++)
+                foreach (var x in texts[m].Where(x => x.StartsWith($"m{m}_")).Distinct())
+                    if (!merged.Contains(x))
+                        notes.OfType<LinesKept>().Should().Contain(k => k.DroppedMod == $"M{m}", $"seed {seed}: M{m}'s '{x}' vanished");
+        }
+    }
+
+    [Fact] public void ChainedModsThatExtendTheTopModAreEachAppliedOnce()
+    {
+        for (var seed = 0; seed < 2000; seed++)
+        {
+            var rng = new Random(seed);
+            var n = rng.Next(1, 10);
+            var uid = 0;
+            string Common() => rng.Next(3) switch { 0 => "", 1 => "}", _ => "{" };
+            var vanilla = Enumerable.Range(0, n).Select(_ => rng.Next(2) == 0 ? Common() : $"u{uid++}").ToArray();
+            // A adds a few lines of its own and keeps the rest; deleting lines would make a later insertion beside them a real conflict.
+            var a = new List<string>();
+            for (var i = 0; i <= n; i++)
+            {
+                if (rng.Next(4) == 0) a.Add($"a{i}");
+                if (i == n) break;
+                a.Add(vanilla[i]);
+            }
+            if (a.Count < 3) continue;
+            // B is A with x added, C is A with y added, at places several lines apart.
+            var px = rng.Next(0, a.Count + 1);
+            var py = rng.Next(0, a.Count + 1);
+            if (Math.Abs(px - py) < 5) continue;
+            var b = new List<string>(a); b.Insert(px, "xx");
+            var c = new List<string>(a); c.Insert(py, "yy");
+
+            var notes = new List<IMergeNote>();
+            var text = TextThreeWayMerge.Fold(Join(vanilla), [(Join(a), "A"), (Join(b), "B"), (Join(c), "C")], "p", notes).Text;
+            var merged = LineDiff.SplitLines(text);
+            var detail = $"seed {seed}: v=[{string.Join(",", vanilla)}] A=[{string.Join(",", a)}] x@{px} y@{py} -> [{string.Join(",", merged)}] {string.Join("|", notes.Select(x => x.Describe()))}";
+            merged.Where(l => l != "xx" && l != "yy").Should().Equal(a, detail);
+            // An extension that lands next to the top mod's own insertion may be read as a conflict; it is then reported, never doubled or dropped quietly.
+            foreach (var (extra, mod) in new[] { ("xx", "B"), ("yy", "C") })
+            {
+                merged.Count(l => l == extra).Should().BeLessThanOrEqualTo(1, detail);
+                if (!merged.Contains(extra)) notes.OfType<LinesKept>().Should().Contain(k => k.DroppedMod == mod, detail);
+            }
         }
     }
 }

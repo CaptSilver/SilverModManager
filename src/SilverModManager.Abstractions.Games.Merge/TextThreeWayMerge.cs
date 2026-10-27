@@ -99,7 +99,8 @@ public sealed class TextThreeWayMerge : IMergeStrategy
             return change.Start < ins.Start && ins.Start < change.End;
         }
 
-        public bool Touches(Hunk k) => Start <= k.End && k.Start <= End;
+        /// <summary>Whether at most <paramref name="gap"/> vanilla lines lie between the two hunks.</summary>
+        public bool IsWithin(Hunk k, int gap) => Math.Max(Start, k.Start) - Math.Min(End, k.End) <= gap;
     }
 
     private static List<Hunk> HunksOf(string[] vanilla, string text, string owner)
@@ -131,9 +132,23 @@ public sealed class TextThreeWayMerge : IMergeStrategy
     {
         var applied = new List<Hunk>();
         var walked = 0;
+        var lossesByMod = new Dictionary<string, List<LinesKept>>();
         foreach (var (text, mod) in contributors)
         {
             var own = HunksOf(vanilla, text, mod);
+            var losses = lossesByMod[mod] = [];
+            // A mod shipping byte-for-byte what a higher one ships fares exactly as that one did; replaying its hunks against a merge they already shaped only invites double counting.
+            var twin = contributors.TakeWhile(c => c.ModName != mod).FirstOrDefault(c => c.Text == text);
+            if (twin.ModName is not null)
+            {
+                walked += own.Count;
+                foreach (var l in lossesByMod[twin.ModName])
+                {
+                    losses.Add(l with { DroppedMod = mod });
+                    notes.Add(losses[^1]);
+                }
+                continue;
+            }
             for (var i = 0; i < own.Count; i++)
             {
                 var h = own[i];
@@ -141,8 +156,9 @@ public sealed class TextThreeWayMerge : IMergeStrategy
                 // The same edit from two mods is one edit. Applied hunks never conflict with each other, so an identical one is the only overlap there can be.
                 if (applied.Any(k => k.SameEdit(h))) continue;
                 var losing = applied.Where(h.Conflicts).ToList();
-                var near = applied.Where(h.Touches).ToList();
-                if (near.Count > 0 && TryMergeCluster(vanilla, contributors[0].ModName, own, i, applied, near) is { } consumed)
+                if (losing.Count == 0 && applied.Any(k => IsNearbyRepeat(h, k))) continue;
+                var near = applied.Where(k => h.IsWithin(k, ClusterGap)).ToList();
+                if (TryMergeClusters(vanilla, contributors[0].ModName, own, i, applied, near) is { } consumed)
                 {
                     walked += consumed - 1;
                     i += consumed - 1;
@@ -153,13 +169,17 @@ public sealed class TextThreeWayMerge : IMergeStrategy
                     applied.Add(h);
                     continue;
                 }
+                var last = Math.Max(vanilla.Length, 1);
                 foreach (var k in losing)
-                    notes.Add(new LinesKept(path, k.Start + 1, Math.Max(k.End, k.Start + 1), k.Owner, h.Owner));
+                {
+                    losses.Add(new LinesKept(path, Math.Min(k.Start + 1, last), Math.Min(Math.Max(k.End, k.Start + 1), last), k.Owner, h.Owner));
+                    notes.Add(losses[^1]);
+                }
             }
         }
 
         // An insertion sorts before a change that starts at the same line, so it lands in front of it.
-        applied.Sort((x, y) => x.Start != y.Start ? x.Start.CompareTo(y.Start) : x.End.CompareTo(y.End));
+        applied = [.. applied.OrderBy(k => k.Start).ThenBy(k => k.End)];
         var first = contributors[0].ModName;
         List<string> lines = [], owners = [];
         var next = 0;
@@ -178,23 +198,54 @@ public sealed class TextThreeWayMerge : IMergeStrategy
         return (lines, owners, walked);
     }
 
+    /// <summary>
+    /// Tries the stretch with every nearby applied hunk, then with each applied mod's hunks alone: a third mod's
+    /// unrelated change a line or two away would otherwise make the comparison fail.
+    /// </summary>
+    private static int? TryMergeClusters(string[] vanilla, string firstMod, List<Hunk> own, int at, List<Hunk> applied, List<Hunk> near)
+    {
+        if (near.Count == 0) return null;
+        // Widest stretch first, then narrower: a later hunk of the lower mod, a line or two on, may belong to a different change.
+        for (var limit = Math.Min(own.Count, at + MaxClusterHunks); limit > at; limit--)
+        {
+            if (TryMergeCluster(vanilla, firstMod, own, at, limit, applied, applied, near) is { } all) return all;
+            foreach (var owner in near.Select(k => k.Owner).Distinct().ToList())
+            {
+                var theirs = near.Where(k => k.Owner == owner).ToList();
+                if (applied.Any(k => k.Owner != owner) && TryMergeCluster(vanilla, firstMod, own, at, limit, applied, applied.Where(k => k.Owner == owner).ToList(), theirs) is { } one) return one;
+            }
+        }
+        return null;
+    }
+
     /// <summary>How many unchanged lines may separate two hunks of one change; see <see cref="TryMergeCluster"/>.</summary>
     private const int ClusterGap = 2;
+
+    /// <summary>How many of the lower mod's consecutive hunks one comparison may span.</summary>
+    private const int MaxClusterHunks = 32;
+
+    /// <summary>A line made only of braces, brackets, semicolons, commas and blanks says nothing about which change it belongs to.</summary>
+    private static bool IsTrivial(string line) => line.All(c => char.IsWhiteSpace(c) || "{}()[];,".Contains(c));
+
+    /// <summary>The same non-trivial lines inserted a line or two apart: one change that two diffs placed differently.</summary>
+    private static bool IsNearbyRepeat(Hunk h, Hunk k)
+        => h.Owner != k.Owner && h.IsInsertion && k.IsInsertion && h.Lines.AsSpan().SequenceEqual(k.Lines)
+            && !h.Lines.All(IsTrivial) && Math.Abs(h.Start - k.Start) <= ClusterGap + 1;
 
     /// <summary>
     /// The line diff places a change canonically only within a run of equal text. When a line is rewritten next to
     /// an inserted blank, or one copy of a repeated line is rewritten, two mods that made the same change can end up
     /// with hunks cut differently: one hunk on one side, a deletion plus an insertion a line apart on the other. So
-    /// when a hunk touches what is applied, the stretch around them (grown over hunks at most <see cref="ClusterGap"/>
-    /// lines apart) is compared as text. If the lower mod's version of that stretch is the applied one plus
-    /// additions of its own, or is already contained in it, the two are one change: the additions are kept and the
-    /// shared lines stay with the mod that had them. Anything else is left to the overlap rule.
+    /// when a hunk lies within a couple of lines of what is applied, the stretch around them (grown over hunks at most <see cref="ClusterGap"/>
+    /// lines apart) is compared as text. If the lower mod's version of that stretch is the applied one plus lines of
+    /// its own, or is already contained in it, the two are one change: the lower mod's extra lines are added as an
+    /// insertion hunk of their own and the applied hunks stay as they are. That only holds when the lines the two
+    /// share include one of the applied mod's own that is not a blank or a lone brace; otherwise sharing proves
+    /// nothing (a pure deletion against a rewrite "contains" it vacuously) and the overlap rule decides.
     /// </summary>
     /// <returns>How many of <paramref name="own"/>'s hunks from <paramref name="at"/> on were consumed, or null when the stretch is a real difference.</returns>
-    private static int? TryMergeCluster(string[] vanilla, string firstMod, List<Hunk> own, int at, List<Hunk> applied, List<Hunk> near)
+    private static int? TryMergeCluster(string[] vanilla, string firstMod, List<Hunk> own, int at, int limit, List<Hunk> applied, List<Hunk> candidates, List<Hunk> near)
     {
-        var keptOwner = near[0].Owner;
-        if (near.Any(k => k.Owner != keptOwner)) return null;
 
         var from = Math.Min(own[at].Start, near.Min(k => k.Start));
         var to = Math.Max(own[at].End, near.Max(k => k.End));
@@ -210,52 +261,86 @@ public sealed class TextThreeWayMerge : IMergeStrategy
                 from = Math.Min(from, own[lo - 1].Start);
                 grew = true;
             }
-            for (; end < own.Count && own[end].Start <= to + ClusterGap; end++)
+            for (; end < limit && own[end].Start <= to + ClusterGap; end++)
             {
                 to = Math.Max(to, own[end].End);
                 grew = true;
             }
-            foreach (var k in applied)
+            foreach (var k in candidates)
             {
                 if (inside.Contains(k) || k.Start > to + ClusterGap || from > k.End + ClusterGap) continue;
-                if (k.Owner != keptOwner)
-                {
-                    // Another mod's hunk close by is none of this comparison's business, unless it sits in the stretch.
-                    if (k.Touches(new Hunk(from, to, [], ""))) return null;
-                    continue;
-                }
                 inside.Add(k);
                 from = Math.Min(from, k.Start);
                 to = Math.Max(to, k.End);
                 grew = true;
             }
         }
+
+        // Applied hunks the comparison left out must stay clear of the stretch, or the lines placed in it would ignore them.
+        if (applied.Any(k => !inside.Contains(k) && (k.IsInsertion ? from <= k.Start && k.Start <= to : k.Start < to && from < k.End))) return null;
+
         var keptHunks = inside.OrderBy(k => k.Start).ThenBy(k => k.End).ToList();
         var kept = Stretch(vanilla, from, to, keptHunks, firstMod);
-        var lower = Stretch(vanilla, from, to, own.GetRange(lo, end - lo), firstMod);
+        var lowerHunks = own.GetRange(lo, end - lo);
+        var lower = Stretch(vanilla, from, to, lowerHunks, firstMod);
 
         var prefix = 0;
         while (prefix < kept.Count && prefix < lower.Count && kept[prefix].Text == lower[prefix].Text) prefix++;
         var suffix = 0;
         while (suffix < kept.Count - prefix && suffix < lower.Count - prefix
             && kept[^(suffix + 1)].Text == lower[^(suffix + 1)].Text) suffix++;
-        var keptMiddle = kept.Count - prefix - suffix;
-        var lowerMiddle = lower.GetRange(prefix, lower.Count - prefix - suffix);
+        var keptMiddle = kept.Skip(prefix).Take(kept.Count - prefix - suffix).ToList();
+        var lowerMiddle = lower.Skip(prefix).Take(lower.Count - prefix - suffix).ToList();
 
+        var anchored = kept.Take(prefix).Concat(kept.Skip(kept.Count - suffix)).Any(l => l.Own && l.Owner != own[at].Owner && !IsTrivial(l.Text));
+        if (!anchored) return null;
         // Only a mod's own lines count as its additions; a vanilla line it kept where the other mod removed one is a difference.
-        if (lowerMiddle.Count == 0 && kept.Skip(prefix).Take(keptMiddle).All(l => l.Own))
-            return end - at;
-        if (keptMiddle == 0 && lowerMiddle.All(l => l.Own))
+        if (!keptMiddle.All(l => l.Own) && keptMiddle.Count > 0) return null;
+        if (keptMiddle.Count > 0 && lowerMiddle.Count > 0) return null;
+        if (lowerMiddle.Count == 0) return end - at;
+        if (!lowerMiddle.All(l => l.Own)) return null;
+
+        // Where the lower mod's extra lines go, read off the applied side: inside the lines of one applied hunk, or at a vanilla boundary of their own.
+        var texts = lower.Select(l => l.Text).ToList();
+        var extraLines = lowerMiddle.Select(l => l.Text).ToArray();
+        var extraOwners = lowerMiddle.Select(l => l.Owner).ToArray();
+        Hunk? grown = null, replaced = null, extra = null;
+        if (prefix > 0 && prefix < kept.Count && kept[prefix].Hunk is { } inner && kept[prefix - 1].Hunk == inner)
         {
-            var merged = lower.Select((l, j) => j >= prefix && j < prefix + lowerMiddle.Count ? l : kept[j < prefix ? j : kept.Count - (lower.Count - j)]).ToList();
-            foreach (var k in keptHunks) applied.Remove(k);
-            applied.Add(new Hunk(from, to, [.. merged.Select(l => l.Text)], [.. merged.Select(l => l.Owner)], keptOwner));
+            var offset = kept[prefix].Offset;
+            replaced = inner;
+            grown = inner with
+            {
+                Lines = [.. inner.Lines[..offset], .. extraLines, .. inner.Lines[offset..]],
+                LineOwners = [.. inner.LineOwners[..offset], .. extraOwners, .. inner.LineOwners[offset..]],
+            };
+        }
+        else
+        {
+            var at0 = prefix == 0 ? from : kept[prefix - 1].Hunk?.End ?? kept[prefix - 1].Pos + 1;
+            extra = new Hunk(at0, at0, extraLines, extraOwners, own[at].Owner);
+            if (keptHunks.Any(k => k.Start < at0 && at0 < k.End)) return null;
+        }
+
+        var rest = keptHunks.Where(k => k != replaced).Concat(grown is null ? [] : [grown]).ToList();
+        // Two insertions at one point keep the order they were applied in, so the extra lines go before or after the applied ones; whichever reproduces the lower mod's text is right.
+        var tie = extra is null ? null : rest.FirstOrDefault(k => k.IsInsertion && k.Start == extra.Start);
+        foreach (var before in tie is null ? new[] { false } : new[] { false, true })
+        {
+            var candidate = extra is null ? rest : before ? [.. rest.TakeWhile(k => k != tie), extra, .. rest.SkipWhile(k => k != tie)] : [.. rest, extra];
+            var ordered = candidate.OrderBy(k => k.Start).ThenBy(k => k.End).ToList();
+            if (!Stretch(vanilla, from, to, ordered, firstMod).Select(l => l.Text).SequenceEqual(texts)) continue;
+            if (replaced is not null) applied.Remove(replaced);
+            if (extra is null) applied.Add(grown!);
+            else if (before) applied.Insert(applied.IndexOf(tie!), extra);
+            else applied.Add(extra);
             return end - at;
         }
         return null;
     }
 
-    private readonly record struct StretchLine(string Text, bool Own, string Owner);
+    /// <summary>One line of a stretch: who contributed it, and the vanilla position an insertion before it would take.</summary>
+    private readonly record struct StretchLine(string Text, bool Own, string Owner, int Pos, Hunk? Hunk, int Offset);
 
     /// <summary>The vanilla lines [from, to) with <paramref name="hunks"/> (sorted, inside the stretch) applied, each line marked with who contributed it.</summary>
     private static List<StretchLine> Stretch(string[] vanilla, int from, int to, List<Hunk> hunks, string firstMod)
@@ -264,11 +349,11 @@ public sealed class TextThreeWayMerge : IMergeStrategy
         var next = from;
         foreach (var k in hunks)
         {
-            for (; next < k.Start; next++) result.Add(new StretchLine(vanilla[next], false, firstMod));
-            for (var j = 0; j < k.Lines.Length; j++) result.Add(new StretchLine(k.Lines[j], true, k.LineOwners[j]));
+            for (; next < k.Start; next++) result.Add(new StretchLine(vanilla[next], false, firstMod, next, null, 0));
+            for (var j = 0; j < k.Lines.Length; j++) result.Add(new StretchLine(k.Lines[j], true, k.LineOwners[j], k.Start, k, j));
             next = k.End;
         }
-        for (; next < to; next++) result.Add(new StretchLine(vanilla[next], false, firstMod));
+        for (; next < to; next++) result.Add(new StretchLine(vanilla[next], false, firstMod, next, null, 0));
         return result;
     }
 
