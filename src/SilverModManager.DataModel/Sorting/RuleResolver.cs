@@ -30,7 +30,8 @@ public record RuleDelta
 
     /// <summary>
     /// Groups that take, in this order (lowest priority first), the slots they jointly hold in the current order; a group
-    /// among them with no row is appended above every row, like NewGroups. Groups not listed keep their slots.
+    /// among them with no row takes its place in that order and the slots above the block move up to make room; when none
+    /// of them has a row the whole block goes above every row, like NewGroups. Groups not listed keep their relative order.
     /// </summary>
     public ImmutableArray<LoadoutItemGroupId> BlockAscending { get; init; } = [];
 }

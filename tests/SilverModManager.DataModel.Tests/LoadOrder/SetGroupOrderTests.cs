@@ -98,6 +98,34 @@ public class SetGroupOrderTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
     }
 
     [Fact]
+    public async Task APairTurnedRoundOnlyThroughRulesOnUnlistedGroupsIsReported()
+    {
+        var (loadout, g) = await Seed(["b", "o", "a"]);
+        var aAfterO = (await LoadoutManager.AddGroupRule(loadout.LoadoutId, g["a"], g["o"], GroupRuleKind.After)).RuleId;
+        var oAfterB = (await LoadoutManager.AddGroupRule(loadout.LoadoutId, g["o"], g["b"], GroupRuleKind.After)).RuleId;
+
+        // b above a would put o between them the wrong way for both rules; neither rule names the pair.
+        var result = await Set(loadout.LoadoutId, g["b"], g["a"]);
+
+        NamesByPriority(loadout.LoadoutId).Should().Equal("b", "o", "a");
+        var overridden = result.Overridden.Should().ContainSingle().Subject;
+        overridden.RequestedWinner.Should().Be(g["b"]);
+        overridden.RequestedLoser.Should().Be(g["a"]);
+        overridden.Rule.LoadoutGroupRuleId.Should().BeOneOf(aAfterO, oAfterB);
+    }
+
+    [Fact]
+    public async Task AGroupListedTwiceIsRefused()
+    {
+        var (loadout, g) = await Seed(["a", "b"]);
+        using var tx = Connection.BeginTransaction();
+
+        var act = () => LoadoutManager.SetGroupOrder(loadout.LoadoutId, [g["a"], g["b"], g["a"]], tx);
+
+        act.Should().Throw<ArgumentException>().WithMessage("*listed twice*");
+    }
+
+    [Fact]
     public async Task ARuleTheRequestedOrderKeepsIsNotReported()
     {
         var (loadout, g) = await Seed(["a", "b"]);

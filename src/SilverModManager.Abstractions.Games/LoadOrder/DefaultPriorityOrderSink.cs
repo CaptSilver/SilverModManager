@@ -34,7 +34,7 @@ public sealed class DefaultPriorityOrderSink(ILoadoutManager loadouts, ILogger<D
         [
             ..result.Overridden.Select(overridden => new ModOrderDrop(
                 $"{Name(loadout, overridden.RequestedWinner)} above {Name(loadout, overridden.RequestedLoser)}",
-                $"the collection's rule '{GroupRuleText.WinsOver(overridden.Rule)}' puts them the other way round")),
+                $"the stored rule '{GroupRuleText.WinsOver(overridden.Rule)}' puts them the other way round")),
         ];
     }
 

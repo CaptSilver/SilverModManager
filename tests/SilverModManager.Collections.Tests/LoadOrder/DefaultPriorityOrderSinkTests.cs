@@ -117,7 +117,7 @@ public class DefaultPriorityOrderSinkTests(ITestOutputHelper helper) : ACyberpun
 
         var drops = await Apply(loadout, container, (g["b"], null), (g["a"], null));
 
-        drops.Should().ContainSingle().Which.Should().Be(new ModOrderDrop("b above a", "the collection's rule 'a wins over b' puts them the other way round"));
+        drops.Should().ContainSingle().Which.Should().Be(new ModOrderDrop("b above a", "the stored rule 'a wins over b' puts them the other way round"));
         PriorityOf(g["a"]).Should().BeGreaterThan(PriorityOf(g["b"]));
     }
 }

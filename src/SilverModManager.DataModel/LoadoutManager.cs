@@ -856,7 +856,6 @@ internal partial class LoadoutManager : ILoadoutManager
 
         var db = _connection.Db;
         var blockAscending = winnerToLoser.Reverse().ToList();
-        var inBlock = blockAscending.ToHashSet();
         var current = LoadoutItemGroupPriority
             .FindByLoadout(db, loadoutId)
             .Where(static row => row.Target.IsValid())
@@ -865,24 +864,68 @@ internal partial class LoadoutManager : ILoadoutManager
             .ToList();
         var projected = ProjectBlock(current, blockAscending);
 
-        // Same check as a priority move, but the request is not refused: the resolver in the transaction puts the rule
-        // back and the caller is told which pairs it turned round. A rule that names a group outside the list is not
-        // the caller's to hear about; the resolver settles it silently as it does for any install.
+        // The request is not refused: the resolver in the transaction puts the rules back. The same resolver runs here
+        // over the projection to learn which neighbours in the requested order end up the other way round, whether
+        // a rule names the pair or a chain of rules through other groups does. If every neighbouring pair holds, the
+        // whole list does, so checking neighbours finds every reversal.
         var rules = LoadoutGroupRule.FindByLoadout(db, loadoutId).ToList();
         var expanded = ExpandCollectionRules(db, loadoutId, rules.Select(static rule => new GroupRule(rule.SourceId, rule.OtherId, rule.Kind)).ToList());
-        var overridden = new List<OverriddenOrder>();
-        foreach (var index in RuleResolver.FindViolations(projected, expanded.Select(static e => e.Rule).ToList()))
-        {
-            var (rule, origin) = expanded[index];
-            if (!inBlock.Contains(rule.Source) || !inBlock.Contains(rule.Other)) continue;
+        var expandedRules = expanded.Select(static e => e.Rule).ToList();
+        var resolution = RuleResolver.Resolve(projected, expandedRules);
+        if (resolution.Cycle is { } cycle)
+            throw new InvalidOperationException($"The group rules of loadout {loadoutId.Value} contradict each other: {cycle.First.Value} and {cycle.Second.Value}.");
 
-            // After wants the source above, so a broken After means the caller put the other group on top.
-            var (winner, loser) = rule.Kind == GroupRuleKind.After ? (rule.Other, rule.Source) : (rule.Source, rule.Other);
-            overridden.Add(new OverriddenOrder(rules[origin], winner, loser));
+        var finalPosition = new Dictionary<LoadoutItemGroupId, int>();
+        foreach (var group in resolution.Order) finalPosition[group] = finalPosition.Count;
+
+        var violatedInProjection = RuleResolver.FindViolations(projected, expandedRules).ToHashSet();
+        var overridden = new List<OverriddenOrder>();
+        for (var i = 0; i + 1 < winnerToLoser.Count; i++)
+        {
+            var (winner, loser) = (winnerToLoser[i], winnerToLoser[i + 1]);
+            if (finalPosition[winner] > finalPosition[loser]) continue;
+
+            var blamed = RuleOnPath(expandedRules, winner, loser, violatedInProjection);
+            overridden.Add(new OverriddenOrder(rules[expanded[blamed].Origin], winner, loser));
         }
 
         tx.Add(new ApplyGroupRulesTxFunc(loadoutId, new RuleDelta { BlockAscending = [..blockAscending] }));
         return new GroupOrderResult(overridden);
+    }
+
+    /// <summary>
+    /// The index in <paramref name="rules"/> of the rule that keeps <paramref name="winner"/> from ending up above
+    /// <paramref name="loser"/>: the one naming the pair, else the first of the chain of rules from winner to loser
+    /// that the projection breaks (any rule of the chain if none is broken there).
+    /// </summary>
+    private static int RuleOnPath(IReadOnlyList<GroupRule> rules, LoadoutItemGroupId winner, LoadoutItemGroupId loser, HashSet<int> violated)
+    {
+        // An edge runs from the group that must sit lower to the one that must sit higher.
+        var edgesFrom = new Dictionary<LoadoutItemGroupId, List<(int Rule, LoadoutItemGroupId To)>>();
+        for (var i = 0; i < rules.Count; i++)
+        {
+            var (from, to) = rules[i].Kind == GroupRuleKind.After ? (rules[i].Other, rules[i].Source) : (rules[i].Source, rules[i].Other);
+            if (!edgesFrom.TryGetValue(from, out var list)) edgesFrom[from] = list = [];
+            list.Add((i, to));
+        }
+
+        var cameBy = new Dictionary<LoadoutItemGroupId, (int Rule, LoadoutItemGroupId From)>();
+        var queue = new Queue<LoadoutItemGroupId>([winner]);
+        while (queue.TryDequeue(out var at) && !cameBy.ContainsKey(loser))
+        {
+            if (!edgesFrom.TryGetValue(at, out var edges)) continue;
+            foreach (var (rule, to) in edges)
+            {
+                if (to == winner || !cameBy.TryAdd(to, (rule, at))) continue;
+                queue.Enqueue(to);
+            }
+        }
+
+        // The resolver only reverses a pair through rules, so a path exists.
+        var path = new List<int>();
+        for (var at = loser; at != winner; at = cameBy[at].From) path.Add(cameBy[at].Rule);
+        path.Reverse();
+        return path.Count == 1 ? path[0] : path.Cast<int?>().FirstOrDefault(rule => violated.Contains(rule!.Value)) ?? path[0];
     }
 
     /// <summary>
