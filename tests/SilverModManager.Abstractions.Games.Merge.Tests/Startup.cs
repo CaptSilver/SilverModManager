@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Backend;
@@ -17,7 +18,20 @@ public class Startup
             .AddLoadoutAbstractions()
             .AddGames()
             .AddRecordingDeploymentBackend()
+            .AddMergeEngine()
+            .AddTextMergeEngine()
+            .AddSingleton<IVanillaTrust, AlwaysTrusted>()
             .AddGame<StubbedGame>()
             .AddUniversalGameLocator<StubbedGame>(Version.Parse("0.0.0"));
+    }
+
+    /// <summary>Resolves the engine in the service graph; tests that care about trust build their own engine with their own answer.</summary>
+    private sealed class AlwaysTrusted : IVanillaTrust
+    {
+        public bool IsTrusted(GameInstallation installation, GamePath path, out string reason)
+        {
+            reason = "";
+            return true;
+        }
     }
 }

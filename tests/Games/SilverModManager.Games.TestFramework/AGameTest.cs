@@ -118,12 +118,16 @@ public abstract class AGameTest<TGame> where TGame : IGame
     /// of the name, and the size will be the length of the name. 
     /// </summary>
     public LoadoutFileId AddFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, string? content, out Hash hash, out Size size)
-    {
-        content ??= path.Path.ToString();
-        var contentArray = Encoding.UTF8.GetBytes(content);
+        => AddFile(tx, loadoutId, groupId, path, Encoding.UTF8.GetBytes(content ?? path.Path.ToString()), out hash, out size);
 
-        hash = contentArray.xxHash3();
-        size = Size.FromLong(contentArray.Length);
+    /// <summary>
+    /// Creates a file in the loadout for the given mod with exactly these bytes. Like the string overload it writes rows
+    /// only; back the bytes up with <see cref="FileStore"/> when the test reads them.
+    /// </summary>
+    public LoadoutFileId AddFile(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, byte[] content, out Hash hash, out Size size)
+    {
+        hash = content.xxHash3();
+        size = Size.FromLong(content.Length);
         return AddFileInternal(tx, loadoutId, groupId, path, hash, size).Id;
     }
     private static LoadoutFile.New AddFileInternal(ITransaction tx, LoadoutId loadoutId, LoadoutItemGroupId groupId, GamePath path, Hash hash, Size size) => new(tx, out var id)

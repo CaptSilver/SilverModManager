@@ -16,4 +16,15 @@ public static class Services
         services.TryAddSingleton<IMergeReports, EngineMergeReports>();
         return services;
     }
+
+    /// <summary>
+    /// Adds <see cref="MergeEngine"/>, which serves every game that implements <see cref="IHasMergeGame"/>. It needs an
+    /// <see cref="IVanillaTrust"/>, so it is not part of <see cref="AddMergeEngine"/>: a host that has none must not
+    /// register it, or <see cref="MergeEngines"/> cannot be resolved.
+    /// </summary>
+    public static IServiceCollection AddTextMergeEngine(this IServiceCollection services)
+    {
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IMergeEngine, MergeEngine>());
+        return services;
+    }
 }
