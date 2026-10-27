@@ -337,8 +337,75 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
     }
 
     [Fact]
-    public void TheAppGraphResolvesTheEngineOnceTheTextEngineIsAdded()
+    public void TheTestHostsGraphResolvesTheEngineOnceTheTextEngineIsAdded()
     {
         ServiceProvider.GetServices<IMergeEngine>().Should().ContainSingle(e => e is MergeEngine);
+    }
+
+    [Fact]
+    public async Task AContributorWhoseBlobIsMissingFromTheStoreIsNotMergeableAndTheOtherPathsStillMerge()
+    {
+        var loadout = await CreateLoadout();
+        await WriteVanilla(X, Vanilla);
+        await Mod(loadout, "A", "modA", 2, Text(X, "a\nB1\nc\n"));
+        await Mod(loadout, "B", "modB", 1, Text(X, "a\nb\nC\n"));
+        // Rows only: the blob is never backed up, as when the archive was garbage collected.
+        using (var tx = Connection.BeginTransaction())
+        {
+            var group = AddEmptyGroup(tx, loadout.LoadoutId, "C");
+            AddFile(tx, loadout.LoadoutId, group, new GamePath(LocationId.Game, "Mods/modC/scripts/lost.txt"), "gone", out _, out _);
+            var other = AddEmptyGroup(tx, loadout.LoadoutId, "D");
+            AddFile(tx, loadout.LoadoutId, other, new GamePath(LocationId.Game, "Mods/modD/scripts/lost.txt"), "gone too", out _, out _);
+            _ = new LoadoutItemGroupPriority.New(tx) { LoadoutId = loadout.LoadoutId, TargetId = group, Priority = ConflictPriority.From(5) };
+            await tx.Commit();
+        }
+        loadout = Refresh(loadout);
+        var engine = Engine();
+
+        var report = engine.Report(loadout, MergeSourceMode.Report);
+
+        report.Entries.Single(e => e.Path == "scripts/lost.txt").Reason.Should().StartWith("the merge failed:");
+        report.Entries.Single(e => e.Path == X).Outcome.Should().Be(MergeReportOutcome.Merged);
+        engine.PlannedOutputs(loadout).Select(p => p.RelPath).Should().Equal(X);
+    }
+
+    [Fact]
+    public async Task AVanillaFileThatCannotBeReadMakesThatPathNotMergeable()
+    {
+        // root reads any file, so the permission cannot be provoked there.
+        Assert.SkipWhen(Environment.IsPrivilegedProcess, "a privileged process can read a file with no permissions");
+        var loadout = await CreateLoadout();
+        const string rel = "scripts/vanilla-without-permission.txt";
+        await WriteVanilla(rel, Vanilla);
+        var vanilla = GameInstallation.Locations[LocationId.Game].Path.Combine($"vanilla/{rel}").GetFullPath();
+        await Mod(loadout, "A", "modA", 2, Text(rel, "a\n"));
+        await Mod(loadout, "B", "modB", 1, Text(rel, "b\n"));
+        File.SetUnixFileMode(vanilla, UnixFileMode.None);
+        try
+        {
+            var entry = Engine().Report(Refresh(loadout), MergeSourceMode.Report).Entries.Should().ContainSingle().Subject;
+
+            entry.Outcome.Should().Be(MergeReportOutcome.NotMergeable);
+            entry.Reason.Should().Contain("could not be read");
+        }
+        finally
+        {
+            File.SetUnixFileMode(vanilla, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+    }
+
+    [Fact]
+    public async Task AVanillaPathThatIsAFolderIsTreatedAsNoVanillaCopy()
+    {
+        var loadout = await CreateLoadout();
+        const string rel = "scripts/vanilla-is-a-folder.txt";
+        GameInstallation.Locations[LocationId.Game].Path.Combine($"vanilla/{rel}").CreateDirectory();
+        await Mod(loadout, "A", "modA", 2, Text(rel, "a\n"));
+        await Mod(loadout, "B", "modB", 1, Text(rel, "b\n"));
+
+        var entry = Engine().Report(Refresh(loadout), MergeSourceMode.Report).Entries.Should().ContainSingle().Subject;
+
+        entry.Outcome.Should().Be(MergeReportOutcome.Merged);
+        entry.VanillaSource.Should().Contain("no vanilla copy");
     }
 }

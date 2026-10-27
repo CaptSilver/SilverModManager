@@ -144,4 +144,49 @@ public class MergeContributorsTests(IServiceProvider provider) : AGameTest<Stubb
         ignored.Strategy.Should().BeNull();
         ignored.Contributors.Select(c => c.ModName).Should().Equal("A", "B");
     }
+
+    [Fact]
+    public async Task OneModShippingThePathInTwoPackageFoldersDoesNotContestItself()
+    {
+        var loadout = await CreateLoadout();
+        await Mod(loadout, "A", 2, "Mods/modA1/scripts/x.txt", "Mods/modA2/scripts/x.txt");
+
+        Contested(loadout).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task OneModInTwoPackageFoldersCountsOnceAgainstAnotherMod()
+    {
+        var loadout = await CreateLoadout();
+        await Mod(loadout, "A", 2, "Mods/modA1/scripts/x.txt", "Mods/modA2/scripts/x.txt");
+        await Mod(loadout, "B", 1, "Mods/modB/scripts/x.txt");
+
+        var contest = Contested(loadout).Should().ContainSingle().Subject;
+
+        contest.Contributors.Select(c => c.ModName).Should().Equal("A", "B");
+        contest.Contributors[0].Package.Should().Be("modA1");
+    }
+
+    [Fact]
+    public async Task TwoModsShippingTheSameExactTargetCollapseToTheHigherRankedOne()
+    {
+        var loadout = await CreateLoadout();
+        await Mod(loadout, "A", 3, "Mods/shared/scripts/x.txt");
+        await Mod(loadout, "B", 2, "Mods/shared/scripts/x.txt");
+        await Mod(loadout, "C", 1, "Mods/modC/scripts/x.txt");
+
+        var contest = Contested(loadout).Should().ContainSingle().Subject;
+
+        contest.Contributors.Select(c => c.ModName).Should().Equal("A", "C");
+    }
+
+    [Fact]
+    public async Task TwoModsShippingOnlyTheSameExactTargetAreNotContestedHere()
+    {
+        var loadout = await CreateLoadout();
+        await Mod(loadout, "A", 2, "Mods/shared/scripts/x.txt");
+        await Mod(loadout, "B", 1, "Mods/shared/scripts/x.txt");
+
+        Contested(loadout).Should().BeEmpty();
+    }
 }

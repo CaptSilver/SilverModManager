@@ -27,6 +27,9 @@ public sealed class FromSoftMergeEngine(MergeReports reports, MergePlanCache pla
             .ToArray();
     }
 
+    // Every path a FromSoft package ships is merged or reported; none is an accepted overlap.
+    public IReadOnlyList<ContestedPath> NotContested(Loadout.ReadOnly loadout) => [];
+
     public byte[]? MergedBytes(Loadout.ReadOnly loadout, string relPath) => plans.MergedBytes(loadout, relPath);
 
     private static GamePath Me3Path(string rel) => new(LocationId.Me3Mods, $"{Me3ModsLayout.MergedPackageId}/{rel}");

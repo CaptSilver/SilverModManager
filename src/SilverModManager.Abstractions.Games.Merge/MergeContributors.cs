@@ -7,8 +7,8 @@ using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Abstractions.Games.Merge;
 
-/// <summary>One enabled file under a mod folder. <paramref name="Rel"/> is the path below the folder in this file's own spelling.</summary>
-public readonly record struct ContestedFile(string Package, string Rel, GamePath Target, Hash Hash, ulong Rank, string ModName, LoadoutItemGroupId Owner);
+/// <summary>One enabled file under a mod folder. <paramref name="Rel"/> is the path below the folder in this file's own spelling; <paramref name="Prioritised"/> is whether the owning mod has a priority row.</summary>
+public readonly record struct ContestedFile(string Package, string Rel, GamePath Target, Hash Hash, ulong Rank, string ModName, LoadoutItemGroupId Owner, bool Prioritised);
 
 /// <summary>
 /// A path that more than one mod folder ships. <paramref name="Contributors"/> are ranked highest first, then by
@@ -22,8 +22,10 @@ public static class MergeContributors
 {
     /// <summary>
     /// Every enabled file under a mod folder that the game contests, grouped by Rel case-insensitively, only groups
-    /// provided by more than one package. Sorted by Rel ordinal. Reads model accessors only, never file bytes or a
-    /// database query, so the synchronizer can call it while its winning-files query runs.
+    /// provided by more than one mod. A mod counts once per path, and when several mods ship the very same target only
+    /// the one the synchronizer deploys counts. Sorted by Rel ordinal. Reads rows through the model accessors and no file
+    /// bytes, so the synchronizer can call it while its winning-files query runs: a database query there would re-enter
+    /// the running one.
     /// </summary>
     public static IReadOnlyList<ContestedPath> Of(Loadout.ReadOnly loadout, AMergeGame game)
         => Group(loadout, game, contested: true)
@@ -72,14 +74,32 @@ public static class MergeContributors
 
             var owner = mod ?? (chain.Length > 1 ? chain[1] : chain[0]);
             var ownerId = LoadoutItemGroupId.From(owner.LoadoutItemId.Value);
-            files.Add(new ContestedFile(package, rel, target, file.Hash, game.Rank(loadout, package, ownerId), owner.Name, ownerId));
+            files.Add(new ContestedFile(package, rel, target, file.Hash, game.Rank(loadout, package, ownerId), owner.Name, ownerId, mod is not null));
         }
 
-        return files
+        return Collapse(files)
             .GroupBy(f => f.Rel, StringComparer.OrdinalIgnoreCase)
-            .Where(g => g.Select(f => f.Package).Distinct(StringComparer.Ordinal).Count() > 1)
-            .Select(g => g.OrderByDescending(f => f.Rank).ThenBy(f => f.Package, StringComparer.Ordinal).ThenBy(f => f.Rel, StringComparer.Ordinal).ToArray())
+            .Where(g => g.Count() > 1)
+            .Select(g => g.OrderByDescending(f => f.Rank).ThenBy(f => f.Package, StringComparer.Ordinal).ThenBy(f => f.ModName, StringComparer.Ordinal).ToArray())
             .OrderBy(g => g[0].Rel, StringComparer.Ordinal)
             .ToList();
+    }
+
+    /// <summary>
+    /// One file per target, the highest-ranked mod's, which is the one the synchronizer deploys (the winner of a path is
+    /// the mod with the greatest priority); then one file per mod and relative path, so a mod that ships the same path
+    /// under two of its package folders does not merge with itself. Ties go to the lower package name, then mod name.
+    /// </summary>
+    private static IEnumerable<ContestedFile> Collapse(List<ContestedFile> files)
+    {
+        var order = files.OrderByDescending(f => f.Rank).ThenBy(f => f.Package, StringComparer.Ordinal).ThenBy(f => f.ModName, StringComparer.Ordinal).ToArray();
+        var targets = new HashSet<GamePath>();
+        var perMod = new HashSet<(LoadoutItemGroupId, string)>();
+        foreach (var f in order)
+        {
+            if (!targets.Add(f.Target)) continue;
+            if (!perMod.Add((f.Owner, f.Rel.ToUpperInvariant()))) continue;
+            yield return f;
+        }
     }
 }

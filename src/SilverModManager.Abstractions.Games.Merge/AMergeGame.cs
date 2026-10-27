@@ -42,8 +42,8 @@ public abstract class AMergeGame
 
     /// <summary>
     /// Higher wins. Defaults to the greatest priority row of <paramref name="owner"/>, or the lowest rank when it has
-    /// none. Read through the model accessors only: the engine lists its outputs from inside the synchronizer's
-    /// winning-files query, where a database query would re-enter the one that is running.
+    /// none. Called once per file while the loadout is listed, from inside the synchronizer's winning-files query, so
+    /// an override must not run a database query (it would re-enter the running one) and must not read files.
     /// </summary>
     public virtual ulong Rank(Loadout.ReadOnly loadout, string package, LoadoutItemGroupId owner)
         => LoadoutItemGroupPriority.FindByTarget(loadout.Db, owner)

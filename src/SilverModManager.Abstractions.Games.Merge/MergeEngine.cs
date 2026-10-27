@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.DataModel;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
@@ -39,13 +40,14 @@ public sealed class MergeEngine : IMergeEngine
 
     private readonly Dictionary<LoadoutId, Entry> _latest = [];
     private readonly object _gate = new();
+    private readonly ConcurrentDictionary<string, byte> _unprioritised = new(StringComparer.Ordinal);
 
     // Kept apart from the entries because PlannedOutputs asks for it on every refresh and must never wait behind a plan
     // that is being made.
     private readonly ConcurrentDictionary<LoadoutId, IReadOnlySet<string>> _failed = new();
 
     public MergeEngine(IFileStore fileStore, IVanillaTrust trust, ILogger<MergeEngine> logger)
-        : this(fileStore, trust, logger, loadout => ((IHasMergeGame)loadout.InstallationInstance.GetGame()).MergeGame)
+        : this(fileStore, trust, logger, loadout => ((IHasMergeGame)loadout.InstallationInstance.Game).MergeGame)
     {
     }
 
@@ -69,17 +71,13 @@ public sealed class MergeEngine : IMergeEngine
     {
         var game = _gameOf(loadout);
         var failed = _failed.TryGetValue(loadout.LoadoutId, out var paths) ? paths : EmptyPaths;
-        return MergeContributors.Of(loadout, game)
+        return Contested(loadout, game)
             .Where(p => p.Strategy is not null && !failed.Contains(p.Rel))
             .Select(p => new PlannedOutput(game.OutputFor(p.Rel), p.Rel))
             .ToArray();
     }
 
-    /// <summary>
-    /// The paths several mod folders ship that the game loads per mod folder (<see cref="AMergeGame.Contests"/> false).
-    /// They are not merged and the report leaves them out, but the lower-ranked mod's copy of each does lose to the
-    /// higher one's where the game picks one, so a Health Check card can name them.
-    /// </summary>
+    /// <inheritdoc />
     public IReadOnlyList<ContestedPath> NotContested(Loadout.ReadOnly loadout) => MergeContributors.NotContested(loadout, _gameOf(loadout));
 
     public MergeReport Report(Loadout.ReadOnly loadout, MergeSourceMode mode)
@@ -100,13 +98,24 @@ public sealed class MergeEngine : IMergeEngine
         return new MergeReportEntry(result.Path.Rel, output.Strategy, output.Contributors, MergeReportOutcome.Merged, notes, source, "");
     }
 
+    private IReadOnlyList<ContestedPath> Contested(Loadout.ReadOnly loadout, AMergeGame game)
+    {
+        var contested = MergeContributors.Of(loadout, game);
+        foreach (var file in contested.SelectMany(p => p.Contributors).Where(f => !f.Prioritised))
+        {
+            if (_unprioritised.TryAdd(file.Package, 0))
+                _logger.LogWarning("Package {Package} is in no mod with a priority, so it ranks below every other mod when its files are merged", file.Package);
+        }
+        return contested;
+    }
+
     private static readonly IReadOnlySet<string> EmptyPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     private Entry Current(Loadout.ReadOnly loadout)
     {
         var game = _gameOf(loadout);
         var installation = loadout.InstallationInstance;
-        var contested = MergeContributors.Of(loadout, game);
+        var contested = Contested(loadout, game);
 
         lock (_gate)
         {
@@ -174,7 +183,7 @@ public sealed class MergeEngine : IMergeEngine
             var output = new MergedOutput(game.OutputFor(path.Rel), path.Rel, result.Bytes, path.Contributors.Select(c => c.ModName).Distinct().ToArray(), notes, strategy.Name);
             return new PathResult(path, output, null);
         }
-        catch (Exception exception) when (exception is MergeInputException or IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is MergeInputException or MissingArchiveException or IOException or UnauthorizedAccessException)
         {
             return Failed(path, exception.Message);
         }

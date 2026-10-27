@@ -31,4 +31,11 @@ public interface IMergeEngine : IMergePlanSource
     /// only, never file bytes: the synchronizer calls it on every refresh inside the winning-files query.
     /// </summary>
     IReadOnlyList<PlannedOutput> PlannedOutputs(Loadout.ReadOnly loadout);
+
+    /// <summary>
+    /// The paths several mod folders ship that the game loads per mod folder, so nothing is merged or reported for
+    /// them (<see cref="AMergeGame.Contests"/> false). Contributors are ranked, so the first is the copy that wins where
+    /// the game picks one and a Health Check card can name the others. Empty for an engine with no such notion.
+    /// </summary>
+    IReadOnlyList<ContestedPath> NotContested(Loadout.ReadOnly loadout);
 }
