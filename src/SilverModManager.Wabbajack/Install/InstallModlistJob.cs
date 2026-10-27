@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Games.Modlists;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
@@ -56,6 +57,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     public required GeneratedFileWriter Writer { get; init; }
     public required IReadOnlyList<INestedArchiveOpener> Openers { get; init; }
     public required ILogger Logger { get; init; }
+    public required ModOrderImporter OrderImporter { get; init; }
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 
     /// <summary>
@@ -88,6 +90,7 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             Writer = new GeneratedFileWriter(fileStore, provider.GetRequiredService<TemporaryFileManager>()),
             Openers = provider.GetServices<INestedArchiveOpener>().ToArray(),
             Logger = provider.GetRequiredService<ILogger<InstallModlistJob>>(),
+            OrderImporter = provider.GetRequiredService<ModOrderImporter>(),
         };
         return provider.GetRequiredService<IJobMonitor>().Begin<InstallModlistJob, WabbajackModlistLoadoutGroup.ReadOnly>(job);
     }
@@ -908,9 +911,9 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
     private sealed record ProfileTexts(string? ModlistTxt, string? PluginsTxt, string? LoadorderTxt);
 
     /// <summary>
-    /// Puts the mod groups in the order MO2 would give them, stages the profile's plugin list on the loadout's own plugin
-    /// order, and enables the list when every directive was executed. Every write is in one transaction, so a failure
-    /// leaves the list disabled and the next run does it again.
+    /// Puts the mod groups in the order MO2 would give them and switches off the ones its modlist.txt disables, stages the
+    /// profile's plugin list on the loadout's own plugin order, and enables the list when every directive was executed.
+    /// Every write is in one transaction, so a failure leaves the list disabled and the next run does it again.
     /// </summary>
     private async Task Order(Checked check, LoadoutItemGroupId modlistGroup, CancellationToken cancellationToken)
     {
@@ -925,23 +928,13 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
         var db = Connection.Db;
         var children = LoadoutItem.FindByParent(db, modlistGroup).OfTypeLoadoutItemGroup().ToArray();
         var entries = texts.ModlistTxt is null ? [] : ModlistTxt.Parse(texts.ModlistTxt);
-        var ordered = PriorityOrder(check, children, entries);
+        var rootNames = check.Placements.Select(p => p.Target).OfType<Mo2Target.GameRootFile>().Select(t => t.GroupName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var order = Mo2ProfileOrderReader.Read(children, entries, rootNames, check.List.Name, Logger);
 
+        // The importer's priority write must be the only one in this transaction, so it opens fresh. The profile's own plugin
+        // order is staged below, so the importer must not seed the plugin variety from the mod order as well.
         using var tx = Connection.BeginTransaction();
-        WritePriorities(db, tx, ordered);
-
-        var disabledByList = entries.Where(e => !e.Enabled && !e.IsSeparator && !e.IsForeign).Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var enabledByList = entries.Where(e => e.Enabled && !e.IsSeparator && !e.IsForeign).Select(e => e.Name)
-            .Where(name => !disabledByList.Contains(name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        // modlist.txt never lists the settings group; a mod line that matches its free-text name is about the mod.
-        foreach (var child in children.Where(c => !c.IsGameSettingsGroup))
-        {
-            var name = child.AsLoadoutItem().Name;
-            if (disabledByList.Contains(name))
-                tx.Add(child.Id, LoadoutItem.Disabled, Null.Instance);
-            else if (enabledByList.Contains(name) && child.AsLoadoutItem().IsDisabled)
-                tx.Retract(child.Id, LoadoutItem.Disabled, Null.Instance);
-        }
+        OrderImporter.Import(check.Loadout, order, new ModOrderSource($"Wabbajack list {check.List.Name}", modlistGroup, Manifest: null, SeedVarieties: false), tx);
 
         if (texts.PluginsTxt is not null || texts.LoadorderTxt is not null)
             target.StagePluginList(Loadout.Load(db, TargetLoadout), sortOrderId, texts.PluginsTxt, texts.LoadorderTxt, tx);
@@ -953,77 +946,6 @@ public sealed class InstallModlistJob : IJobDefinitionWithStart<InstallModlistJo
             tx.Retract(modlistGroup.Value, LoadoutItem.Disabled, Null.Instance);
 
         await tx.Commit();
-    }
-
-    /// <summary>
-    /// The groups from lowest priority to highest: game-root groups, the game settings group, mods with no line in modlist.txt,
-    /// the listed mods bottom-up (modlist.txt is written top-down, and the first line wins), then Overwrite.
-    /// </summary>
-    private List<LoadoutItemGroup.ReadOnly> PriorityOrder(Checked check, IReadOnlyList<LoadoutItemGroup.ReadOnly> children, IReadOnlyList<ModlistTxtEntry> entries)
-    {
-        // The settings group goes by its marker: its name is free text and may match a mod's.
-        var settingsGroups = children.Where(c => c.IsGameSettingsGroup).ToArray();
-        var mods = children.Where(c => !c.IsGameSettingsGroup).ToArray();
-        var byName = mods.ToDictionary(c => c.AsLoadoutItem().Name, StringComparer.OrdinalIgnoreCase);
-        var rootNames = check.Placements.Select(p => p.Target).OfType<Mo2Target.GameRootFile>().Select(t => t.GroupName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var ordered = new List<LoadoutItemGroup.ReadOnly>(children.Count);
-        var placed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        void Place(string name)
-        {
-            if (byName.TryGetValue(name, out var group) && placed.Add(name)) ordered.Add(group);
-        }
-
-        foreach (var name in rootNames.Order(StringComparer.OrdinalIgnoreCase)) Place(name);
-        ordered.AddRange(settingsGroups);
-
-        var listed = entries.Where(e => !e.IsSeparator && !e.IsForeign).Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var unlisted = mods
-            .Select(c => c.AsLoadoutItem().Name)
-            .Where(name => !placed.Contains(name) && !listed.Contains(name) && !name.Equals(Mo2Layout.OverwriteGroup, StringComparison.OrdinalIgnoreCase))
-            .Order(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-        foreach (var name in unlisted)
-        {
-            Logger.LogWarning("Mod '{Mod}' of '{List}' has no line in modlist.txt, so it is placed below the listed mods", name, check.List.Name);
-            Place(name);
-        }
-
-        foreach (var entry in entries.Reverse().Where(e => !e.IsSeparator && !e.IsForeign)) Place(entry.Name);
-        Place(Mo2Layout.OverwriteGroup);
-        return ordered;
-    }
-
-    /// <summary>
-    /// Gives each group one priority row. A first install counts up from above every row the loadout holds for other
-    /// groups. A repeat install hands the same values back out in the new order, so the list keeps its place below mods
-    /// installed since; only groups past the count it already held take fresh values above every row.
-    /// </summary>
-    private void WritePriorities(IDb db, ITransaction tx, IReadOnlyList<LoadoutItemGroup.ReadOnly> ordered)
-    {
-        var own = ordered.Select(g => g.LoadoutItemGroupId).ToHashSet();
-        var rows = LoadoutItemGroupPriority.FindByLoadout(db, TargetLoadout).ToArray();
-        var held = rows.Where(r => own.Contains(r.TargetId)).Select(r => r.Priority.Value).Order().ToArray();
-        var next = rows.Select(r => r.Priority.Value).DefaultIfEmpty(0UL).Max() + 1;
-        var mine = rows.Where(r => own.Contains(r.TargetId)).ToLookup(r => r.TargetId);
-
-        for (var i = 0; i < ordered.Count; i++)
-        {
-            var group = ordered[i];
-            var priority = ConflictPriority.From(i < held.Length ? held[i] : next++);
-            if (mine.Contains(group.LoadoutItemGroupId))
-            {
-                tx.Add(mine[group.LoadoutItemGroupId].First().Id, LoadoutItemGroupPriority.Priority, priority);
-                continue;
-            }
-
-            _ = new LoadoutItemGroupPriority.New(tx)
-            {
-                LoadoutId = TargetLoadout,
-                TargetId = group.LoadoutItemGroupId,
-                Priority = priority,
-            };
-        }
     }
 
     private async Task<ProfileTexts> ReadProfileTexts(Checked check, CancellationToken cancellationToken)
