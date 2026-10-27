@@ -3,6 +3,7 @@ using SilverModManager.Abstractions.Secrets;
 using SilverModManager.App;
 using SilverModManager.Backend;
 using SilverModManager.DataModel;
+using SilverModManager.Deployment.Staging;
 using SilverModManager.Games.FileHashes;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
@@ -26,6 +27,11 @@ internal sealed class OnDiskDataFolder : IDisposable
 
     private ConfigurablePath DatabasePath => new(null, TestScratch.Combine($"{_name}/MnemonicDB.rocksdb"));
 
+    private ConfigurablePath StagingPath => new(null, TestScratch.Combine($"{_name}/LooseStaging"));
+
+    /// <summary>Where the provider's loose staging store keeps its files.</summary>
+    public AbsolutePath StagingFolder => StagingPath.ToPath(FileSystem.Shared);
+
     public static StartupMode Gui => new() { RunAsMain = true, ShowUI = true, SecretBackend = SecretBackendChoice.Memory };
     public static StartupMode Headless => new() { RunAsMain = true, ShowUI = false, SecretBackend = SecretBackendChoice.Memory };
 
@@ -44,6 +50,11 @@ internal sealed class OnDiskDataFolder : IDisposable
                 UseInMemoryDataModel = false,
                 MnemonicDBPath = DatabasePath,
                 ArchiveLocations = [new ConfigurablePath(null, TestScratch.Combine($"{_name}/Archives"))],
+            })
+            .OverrideSettingsForTests<LooseStagingStoreSettings>(settings => settings with
+            {
+                Location = StagingPath,
+                PerFilesystemStores = false,
             });
 
         services.RemoveRuntimeDependencyChecker();
