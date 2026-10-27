@@ -54,7 +54,8 @@ public interface ILooseStagingStore
     IEnumerable<(Hash Hash, AbsolutePath Path)> Enumerate(GameInstallMetadataId installation);
 
     /// <summary>
-    /// The installations that have a staging directory.
+    /// The installations that have a staging directory. The link <see cref="MergeInstallation"/> leaves in place of
+    /// a merged installation's directory is not one of them.
     /// </summary>
     IEnumerable<GameInstallMetadataId> Installations();
 
