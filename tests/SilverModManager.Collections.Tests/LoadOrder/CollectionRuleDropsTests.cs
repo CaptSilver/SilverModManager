@@ -1,6 +1,10 @@
-using DynamicData.Kernel;
+using System.Collections.Frozen;
 using NexusMods.Paths;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Collections.Json;
 using SilverModManager.Abstractions.Games.LoadOrder;
@@ -73,15 +77,13 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
         return await Run().WaitAsync(Timeout);
     }
 
-    private static Optional<CollectionGroup.ReadOnly> NoGroup => default;
-
     [Fact]
     public async Task AnOrderRuleNamingNoDownloadComesBackAsADrop()
     {
         var manifest = await Manifest(2, Rule(VortexModRuleType.Before, "tag0", "ghost"));
         var (_, revision, _) = await Offline.Create(manifest);
 
-        var drops = CollectionRuleDrops.Read(Connection.Db, manifest, revision, NoGroup);
+        var drops = CollectionRuleDrops.Read(Connection.Db, manifest, revision);
 
         drops.Should().Equal(new ModOrderDrop("rule 'tag0 before ghost'", "it names a mod that is not in the collection"));
     }
@@ -97,7 +99,7 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
         }, new ModRule { Type = VortexModRuleType.After, Source = new VortexModReference(), Other = new VortexModReference { FileMD5 = Md5Value.From((UInt128)255) } });
         var (_, revision, _) = await Offline.Create(manifest);
 
-        var items = CollectionRuleDrops.Read(Connection.Db, manifest, revision, NoGroup).Select(drop => drop.Item).ToArray();
+        var items = CollectionRuleDrops.Read(Connection.Db, manifest, revision).Select(drop => drop.Item).ToArray();
 
         items.Should().Equal("rule 'Logical.zip after Other*'", $"rule 'an unnamed mod after {Md5Value.From((UInt128)255)}'");
     }
@@ -108,29 +110,16 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
         var manifest = await Manifest(2, Rule(VortexModRuleType.Requires, "tag0", "ghost"), Rule(VortexModRuleType.Conflicts, "ghost", "tag1"));
         var (_, revision, _) = await Offline.Create(manifest);
 
-        CollectionRuleDrops.Read(Connection.Db, manifest, revision, NoGroup).Should().BeEmpty();
+        CollectionRuleDrops.Read(Connection.Db, manifest, revision).Should().BeEmpty();
     }
 
     [Fact]
     public async Task ARuleBetweenTwoCollectionModsIsNotReported()
     {
         var manifest = await Manifest(2, Rule(VortexModRuleType.Before, "tag0", "tag1"));
-        var collection = await Offline.Create(manifest);
-        var group = await Install(collection, (await CreateLoadout()).LoadoutId);
+        var (_, revision, _) = await Offline.Create(manifest);
 
-        CollectionRuleDrops.Read(Connection.Db, manifest, collection.Revision, group.AsCollectionGroup()).Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task ARuleOnAnOptionalModThatWasNotInstalledIsReportedAsNotInstalled()
-    {
-        var manifest = await Manifest(2, Rule(VortexModRuleType.After, "tag0", "tag1"));
-        var collection = await Offline.Create(manifest, optionalIndexes: [1]);
-        var group = await Install(collection, (await CreateLoadout()).LoadoutId);
-
-        var drops = CollectionRuleDrops.Read(Connection.Db, manifest, collection.Revision, group.AsCollectionGroup());
-
-        drops.Should().Equal(new ModOrderDrop("rule 'tag0 after tag1'", "one of its mods is not installed"));
+        CollectionRuleDrops.Read(Connection.Db, manifest, revision).Should().BeEmpty();
     }
 
     [Fact]
@@ -152,7 +141,7 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
     }
 
     [Fact]
-    public async Task InstallingAgainOnceTheRuleResolvesClearsTheRuleDrop()
+    public async Task ReinstallingReplacesTheStoredRuleDropsWithWhatTheRulesNowResolveTo()
     {
         var broken = await Manifest(2, Rule(VortexModRuleType.Before, "tag0", "ghost"));
         var loadout = await CreateLoadout();
@@ -160,6 +149,8 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
         await Install(collection, loadout.LoadoutId);
         ModOrderDroppedEntry.FindByLoadout(Connection.Db, loadout.LoadoutId).Should().ContainSingle();
 
+        // The importer replaces the container's rows on every install; this stands in for a corrected revision by
+        // storing the rule row such a fetch would store (the fixture cannot persist a second revision).
         // What fetching a corrected revision stores: the rule now matches two downloads.
         using (var tx = Connection.BeginTransaction())
         {
@@ -170,5 +161,49 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
         await Install(collection, loadout.LoadoutId);
 
         ModOrderDroppedEntry.FindByLoadout(Connection.Db, loadout.LoadoutId).Should().BeEmpty();
+    }
+
+    private async Task<Diagnostic[]> Diagnose(LoadoutId loadout)
+    {
+        var emitter = new UnusedCollectionRuleEmitter();
+        var result = new List<Diagnostic>();
+        await foreach (var diagnostic in emitter.Diagnose(Loadout.Load(Connection.Db, loadout), FrozenDictionary<GamePath, SyncNode>.Empty, CancellationToken.None))
+            result.Add(diagnostic);
+        return result.ToArray();
+    }
+
+    [Fact]
+    public async Task ADeclinedOptionalNamedInTwoRulesGetsOneCardThatLeavesOnceItIsInstalled()
+    {
+        var manifest = await Manifest(3, Rule(VortexModRuleType.After, "tag0", "tag2"), Rule(VortexModRuleType.Before, "tag1", "tag2"));
+        var collection = await Offline.Create(manifest, optionalIndexes: [2]);
+        var loadout = await CreateLoadout();
+        await Install(collection, loadout.LoadoutId);
+
+        var cards = await Diagnose(loadout.LoadoutId);
+
+        var card = cards.Should().ContainSingle().Subject;
+        card.Severity.Should().Be(DiagnosticSeverity.Suggestion);
+        card.FormatSummary(new PlainDiagnosticWriter()).Should().Contain("Mod 2");
+
+        // The collection page installs a single download on its own; nothing rewrites stored rows on that path.
+        var optional = collection.Revision.Downloads.Single(download => download.Name == "Mod 2");
+        var job = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout.LoadoutId, optional, CancellationToken.None);
+        var running = ServiceProvider.GetRequiredService<IJobMonitor>().Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);
+        async Task Run() => await running;
+        await Run().WaitAsync(Timeout);
+
+        (await Diagnose(loadout.LoadoutId)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AnUnresolvedRuleStaysAStoredRowAndIsNotACardOfTheLiveEmitter()
+    {
+        var manifest = await Manifest(2, Rule(VortexModRuleType.Before, "tag0", "ghost"));
+        var loadout = await CreateLoadout();
+        await Install(await Offline.Create(manifest, optionalIndexes: [1]), loadout.LoadoutId);
+
+        ModOrderDroppedEntry.FindByLoadout(Connection.Db, loadout.LoadoutId).Should().ContainSingle();
+        (await Diagnose(loadout.LoadoutId)).Should().BeEmpty();
     }
 }

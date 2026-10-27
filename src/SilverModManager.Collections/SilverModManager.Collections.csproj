@@ -5,10 +5,12 @@
     <ItemGroup>
       <ProjectReference Include="..\SilverModManager.Abstractions.Collections\SilverModManager.Abstractions.Collections.csproj" />
       <ProjectReference Include="..\SilverModManager.Abstractions.Games.FileHashes\SilverModManager.Abstractions.Games.FileHashes.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />
       <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
       <ProjectReference Include="..\SilverModManager.Abstractions.Library\SilverModManager.Abstractions.Library.csproj" />
       <ProjectReference Include="..\SilverModManager.Games.FOMOD\SilverModManager.Games.FOMOD.csproj" />
       <ProjectReference Include="..\\SilverModManager.Networking.NexusWebApi\SilverModManager.Networking.NexusWebApi.csproj" />
+      <ProjectReference Include="..\SilverModManager.App.Generators.Diagnostics\SilverModManager.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
       <ProjectReference Include="..\SilverModManager.MnemonicDB.SourceGenerator\SilverModManager.MnemonicDB.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 
