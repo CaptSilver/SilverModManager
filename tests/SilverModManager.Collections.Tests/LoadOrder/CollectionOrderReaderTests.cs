@@ -137,6 +137,56 @@ public class CollectionOrderReaderTests(ITestOutputHelper helper) : ACyberpunkIs
         bare.TryGetProperty("silverLoadOrder", out _).Should().BeFalse();
     }
 
+    private static readonly string[] CoveredRootProperties = ["Info", "LoadOrder", "ModRules", "Mods", "Plugins", "SilverLoadOrder"];
+
+    private static CollectionRoot FullRoot() => new()
+    {
+        Info = new CollectionInfo { Name = "Test", DomainName = GameDomain.From("cyberpunk2077") },
+        // Placeholder arrays: only their identity matters, and a fresh array is never the shared empty one.
+        Mods = new Mod[1],
+        ModRules = new ModRule[1],
+        LoadOrder = Json("""{"a":1}"""),
+        Plugins = Json("""[{"name":"p.esp"}]"""),
+        SilverLoadOrder = [Entry("a")],
+    };
+
+    [Fact]
+    public void EveryCollectionRootPropertyIsCoveredByTheCopyTest()
+    {
+        typeof(CollectionRoot).GetProperties().Select(p => p.Name).Order()
+            .Should().Equal(CoveredRootProperties, "a new CollectionRoot property must be copied by VortexOrderKeys.With and added to FullRoot");
+    }
+
+    [Theory]
+    [InlineData("loadOrder")]
+    [InlineData("plugins")]
+    public void WithCopiesEveryPropertyOfTheRoot(string key)
+    {
+        var source = FullRoot();
+        var replacement = Json("""{"replaced":true}""");
+
+        var copy = VortexOrderKeys.With(source, key, replacement);
+
+        foreach (var property in typeof(CollectionRoot).GetProperties())
+        {
+            var expected = property.Name == (key == "loadOrder" ? "LoadOrder" : "Plugins") ? (object)replacement : property.GetValue(source);
+            var actual = property.GetValue(copy);
+            if (expected is JsonElement e) ((JsonElement)actual!).GetRawText().Should().Be(e.GetRawText(), property.Name);
+            else actual.Should().BeSameAs(expected, property.Name);
+        }
+    }
+
+    [Fact]
+    public async Task AnEmptyOursStillWinsOverAVortexKey()
+    {
+        var container = await SeedContainer("a", "b");
+        var game = new VortexGame(ServiceProvider, new FakeFormat("b", "a"));
+
+        var order = CollectionOrderReader.Read(Connection.Db, game, Root([], Json("{}")), container);
+
+        order.Should().Be(ModOrder.Empty);
+    }
+
     [Fact]
     public void VortexKeysMapToTheirPropertiesInOnePlace()
     {

@@ -193,7 +193,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
 
             using var tx = Connection.BeginTransaction();
 
-            // A fresh transaction: SetGroupOrder must be the only priority writer in the one it joins.
+            // ApplyCollectionDownloadRules above has already committed its own priority write; SetGroupOrder must be the only priority writer in the transaction it joins.
             var containerId = collectionGroup.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId;
             var order = CollectionOrderReader.Read(Connection.Db, game, root, containerId);
             ServiceProvider.GetRequiredService<ModOrderImporter>().Import(

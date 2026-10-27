@@ -290,6 +290,30 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
     }
 
     [Fact]
+    public async Task ARuleThatContradictsTheCollectionsOrderWinsAndIsReported()
+    {
+        var mods = Enumerable.Range(0, 3).Select(i => (Choices(), $"Fomod mod {i}")).ToArray();
+        // The rule puts mod 0 over mod 1; the order key lists mod 1 first.
+        var (file, revision, items) = await CreateCollection(mods,
+            rules: [(0, 1, CollectionDownloadRuleType.After)],
+            silverLoadOrder: m => [Order(m[1]), Order(m[0]), Order(m[2])]);
+        var loadout = await CreateLoadout();
+
+        var group = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+
+        var nameOf = (LoadoutItemGroupId id) => LoadoutItem.Load(group.Db, id).Name;
+        var order = LoadoutItemGroupPriority.FindByLoadout(group.Db, loadout).OrderBy(p => p.Priority).Select(p => nameOf(p.TargetId)).ToList();
+        order.IndexOf("Fomod mod 0").Should().BeGreaterThan(order.IndexOf("Fomod mod 1"), "the stored rule overrides the imported order");
+
+        var rows = ModOrderDroppedEntry.FindByLoadout(group.Db, loadout).ToArray();
+        rows.Should().ContainSingle();
+        rows[0].Reason.Should().Contain("wins over");
+        rows[0].Source.Should().Be("collection Offline");
+    }
+
+    private static SilverLoadOrderEntry Order(Mod mod) => new() { Md5 = mod.Source.Md5, Name = mod.Name };
+
+    [Fact]
     public async Task FomodModsWithSavedChoices_AllInstall()
     {
         var mods = Enumerable.Range(0, 6).Select(i => (Choices(), $"Fomod mod {i}")).ToArray();
