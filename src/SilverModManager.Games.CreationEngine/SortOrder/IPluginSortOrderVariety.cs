@@ -25,6 +25,12 @@ public interface IPluginSortOrderVariety : ISortOrderVariety
     IReadOnlyList<PluginSortData> StoredOrder(Loadout.ReadOnly loadout);
 
     /// <summary>
+    /// The names of the loadout's plugins that come from mods installed directly under <paramref name="container"/>
+    /// (a collection's group), whether or not the order has a row for them yet.
+    /// </summary>
+    IReadOnlySet<string> PluginsShippedBy(Loadout.ReadOnly loadout, LoadoutItemGroupId container);
+
+    /// <summary>
     /// Writes the position of each plugin in <paramref name="names"/> (index in the list) into
     /// <paramref name="tx"/>, creating an enabled row for a name that has none. Rows of plugins not named are left
     /// as they are, so pass the complete visible order.

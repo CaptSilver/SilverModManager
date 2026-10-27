@@ -7,13 +7,14 @@ namespace SilverModManager.Games.CreationEngine.SortOrder;
 public static class GamebryoPluginsKey
 {
     /// <summary>
-    /// Vortex's collections-gamebryo <c>plugins</c> value. Assumed shape, not yet checked against a real Gamebryo
-    /// collection.json: an array of <c>{ "name": "X.esp", "enabled": true }</c>. Anything else in the array is
-    /// returned as a drop; so is a value that is not an array.
+    /// The <c>plugins</c> value Vortex's collections-gamebryo extension writes (see <c>src/util/gameSupport/gamebryo.tsx</c>
+    /// in github.com/Nexus-Mods/extension-collections): <c>Array&lt;{ name, enabled? }&gt;</c>, listing only the enabled
+    /// plugins, first-loading first. A listed entry without <c>enabled</c> is on. An entry without a name, and a value
+    /// that is not an array, are returned as drops.
     /// </summary>
-    public static (IReadOnlyList<(string Name, bool? IsEnabled)> Plugins, IReadOnlyList<ModOrderDrop> Unmapped) Read(JsonElement plugins)
+    public static (IReadOnlyList<(string Name, bool IsEnabled)> Plugins, IReadOnlyList<ModOrderDrop> Unmapped) Read(JsonElement plugins)
     {
-        var read = new List<(string Name, bool? IsEnabled)>();
+        var read = new List<(string Name, bool IsEnabled)>();
         var unmapped = new List<ModOrderDrop>();
         if (plugins.ValueKind != JsonValueKind.Array)
         {
@@ -27,9 +28,7 @@ public static class GamebryoPluginsKey
                 && entry.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String
                 && name.GetString() is { Length: > 0 } pluginName)
             {
-                bool? enabled = entry.TryGetProperty("enabled", out var flag) && flag.ValueKind is JsonValueKind.True or JsonValueKind.False
-                    ? flag.GetBoolean()
-                    : null;
+                var enabled = !entry.TryGetProperty("enabled", out var flag) || flag.ValueKind != JsonValueKind.False;
                 read.Add((pluginName, enabled));
             }
             else

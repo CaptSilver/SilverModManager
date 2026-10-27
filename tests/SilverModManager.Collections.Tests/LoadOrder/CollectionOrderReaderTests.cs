@@ -145,6 +145,7 @@ public class CollectionOrderReaderTests(ITestOutputHelper helper) : ACyberpunkIs
         ModRules = new ModRule[1],
         LoadOrder = Json("""{"a":1}"""),
         Plugins = Json("""[{"name":"p.esp"}]"""),
+        PluginRules = Json("""{"plugins":[],"groups":[]}"""),
         SilverLoadOrder = [Entry("a")],
     };
 

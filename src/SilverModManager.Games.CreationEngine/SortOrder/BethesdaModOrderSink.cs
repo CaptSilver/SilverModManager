@@ -18,13 +18,28 @@ public sealed class BethesdaModOrderSink(DefaultPriorityOrderSink inner, IPlugin
 
     public IReadOnlyList<ModOrderDrop> Apply(Loadout.ReadOnly loadout, ModOrder order, ModOrderSource source, ITransaction tx)
     {
-        if (source.Manifest?.Plugins is not { ValueKind: not JsonValueKind.Null } pluginsKey)
-            return inner.Apply(loadout, order, source, tx);
+        var drops = new List<ModOrderDrop>();
+        if (HasPluginRules(source.Manifest?.PluginRules))
+            drops.Add(new ModOrderDrop("pluginRules", "the collection's LOOT plugin rules and groups were not applied"));
 
-        // The inner sink would seed the plugin order from the mod order through the same staging path, and two
-        // passes on one sort order in a transaction are not wanted; the manifest's own list replaces that pass.
-        var drops = inner.Apply(loadout, order, source with { SeedVarieties = false }, tx).ToList();
+        if (source.Manifest?.Plugins is not { ValueKind: not JsonValueKind.Null } pluginsKey)
+        {
+            drops.InsertRange(0, inner.Apply(loadout, order, source, tx));
+            return drops;
+        }
+
         var (plugins, unmapped) = GamebryoPluginsKey.Read(pluginsKey);
+        if (pluginsKey.ValueKind != JsonValueKind.Array)
+        {
+            // Nothing usable in the key: the plugin order follows the mod order as it would without one.
+            drops.InsertRange(0, inner.Apply(loadout, order, source, tx));
+            drops.AddRange(unmapped);
+            return drops;
+        }
+
+        // SeedVarieties=false turns off every variety, which is the plugin variety alone for these games. A plugins key
+        // decides the plugin order even when the manifest also has silverLoadOrder: the two order different things.
+        drops.InsertRange(0, inner.Apply(loadout, order, source with { SeedVarieties = false }, tx));
         drops.AddRange(unmapped);
 
         var sortOrderId = variety.GetSortOrderIdFor(loadout.LoadoutId, loadout.Db);
@@ -34,9 +49,35 @@ public sealed class BethesdaModOrderSink(DefaultPriorityOrderSink inner, IPlugin
             return drops;
         }
 
-        // Rows the list does not name keep their order after the listed ones, and the early loaders stay locked in front.
-        var early = game.EarlyLoadingPlugins(loadout.InstallationInstance).ToHashSet(PluginNameComparer.Instance);
-        variety.StageOrder(sortOrderId.Value, PluginOrderMerge.Build(variety.StoredOrder(loadout), plugins, early), tx);
+        variety.StageOrder(sortOrderId.Value, Merge(loadout, source, plugins), tx);
         return drops;
     }
+
+    /// <summary>
+    /// The complete order to store. Vortex lists only the plugins that are on, and its reader switches off every plugin
+    /// of the collection's mods that the list leaves out, so those are staged off; plugins of other mods keep their switch.
+    /// </summary>
+    private List<(string Name, bool? IsEnabled)> Merge(Loadout.ReadOnly loadout, ModOrderSource source, IReadOnlyList<(string Name, bool IsEnabled)> plugins)
+    {
+        var early = game.EarlyLoadingPlugins(loadout.InstallationInstance).ToHashSet(PluginNameComparer.Instance);
+        var listed = plugins.Select(plugin => (plugin.Name, (bool?)plugin.IsEnabled)).ToList();
+        var merged = PluginOrderMerge.Build(variety.StoredOrder(loadout), listed, early);
+
+        var unlisted = variety.PluginsShippedBy(loadout, source.Container)
+            .Except(plugins.Select(plugin => plugin.Name), PluginNameComparer.Instance)
+            .Where(name => !early.Contains(name))
+            .ToHashSet(PluginNameComparer.Instance);
+
+        var result = merged.Select(entry => unlisted.Remove(entry.Name) ? (entry.Name, (bool?)false) : entry).ToList();
+        // A shipped plugin the order has no row for yet is staged hidden and off, so it arrives off.
+        result.AddRange(unlisted.Select(name => (name, (bool?)false)));
+        return result;
+    }
+
+    private static bool HasPluginRules(JsonElement? rules) =>
+        rules is { ValueKind: JsonValueKind.Object } value
+        && (HasItems(value, "plugins") || HasItems(value, "groups"));
+
+    private static bool HasItems(JsonElement rules, string property) =>
+        rules.TryGetProperty(property, out var items) && items.ValueKind == JsonValueKind.Array && items.GetArrayLength() > 0;
 }

@@ -37,6 +37,13 @@ public class CollectionRoot
     public JsonElement? Plugins { get; init; }
 
     /// <summary>
+    /// Vortex's LOOT rules for the collection's plugins (<c>{ plugins: [...], groups: [...] }</c>), kept raw. Not an order key.
+    /// </summary>
+    [JsonPropertyName("pluginRules")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? PluginRules { get; init; }
+
+    /// <summary>
     /// The app's own mod order, winner first. Vortex ignores keys it does not know, so this does not disturb it.
     /// </summary>
     [JsonPropertyName("silverLoadOrder")]

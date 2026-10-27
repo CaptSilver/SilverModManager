@@ -28,6 +28,7 @@ public static class VortexOrderKeys
         ModRules = root.ModRules,
         LoadOrder = loadOrder,
         Plugins = plugins,
+        PluginRules = root.PluginRules,
         SilverLoadOrder = root.SilverLoadOrder,
     };
 

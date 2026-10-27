@@ -196,6 +196,13 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     }
 
     /// <inheritdoc />
+    public IReadOnlySet<string> PluginsShippedBy(Loadout.ReadOnly loadout, LoadoutItemGroupId container) =>
+        QueryLoadoutPlugins(loadout.LoadoutId, loadout.Db)
+            .Where(row => row.ModGroupId is { } group && IsDirectChild(loadout.Db, group, container))
+            .Select(row => row.Name)
+            .ToHashSet(PluginNameComparer.Instance);
+
+    /// <inheritdoc />
     public void StageOrder(SortOrderId sortOrderId, IReadOnlyList<string> names, ITransaction tx) =>
         Stage(sortOrderId, names.Select(name => (name, (bool?)null)).ToList(), tx, Connection.Db);
 
@@ -480,6 +487,12 @@ public sealed class PluginSortOrderVariety : ASortOrderVariety<SortItemKey<strin
     private IEnumerable<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)> QueryLoadoutPlugins(LoadoutId loadoutId, IDb db) =>
         db.Connection.Query<(string Name, Hash Hash, bool IsEnabled, string ModName, EntityId? ModGroupId, bool IsGameInstalled)>(
             $"SELECT * FROM plugins.LoadoutPlugins({db}, {loadoutId}, {DataLocation}, {DataFolder})");
+
+    private static bool IsDirectChild(IDb db, EntityId group, LoadoutItemGroupId container)
+    {
+        var item = LoadoutItem.Load(db, group);
+        return item.IsValid() && item.HasParent() && item.ParentId.Value == container.Value;
+    }
 
     private static GameInstallation InstallationOf(LoadoutId loadoutId, IDb db) => Loadout.Load(db, loadoutId).InstallationInstance;
 
