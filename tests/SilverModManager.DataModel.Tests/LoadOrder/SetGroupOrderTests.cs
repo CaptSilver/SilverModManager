@@ -116,19 +116,29 @@ public class SetGroupOrderTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
     }
 
     [Fact]
-    public async Task AGroupDisplacedByARuleIsNotReportedOnItsOwn()
+    public async Task AGroupDisplacedByARuleIsReportedAsDisplaced()
     {
         var (loadout, g) = await Seed(["x", "z", "y"]);
         var zAfterX = (await LoadoutManager.AddGroupRule(loadout.LoadoutId, g["z"], g["x"], GroupRuleKind.After)).RuleId;
 
-        // z wins over x by rule, so x above z is turned round; y only moves because the sort makes room.
+        // z wins over x by rule, so x above z is forced round; y only ends below z because the sort made room.
         var result = await Set(loadout.LoadoutId, g["x"], g["y"], g["z"]);
 
         NamesByPriority(loadout.LoadoutId).Should().Equal("y", "x", "z");
-        var overridden = result.Overridden.Should().ContainSingle().Subject;
-        overridden.RequestedWinner.Should().Be(g["x"]);
-        overridden.RequestedLoser.Should().Be(g["z"]);
-        overridden.Rule.LoadoutGroupRuleId.Should().Be(zAfterX);
+        result.Overridden.Select(o => (o.RequestedWinner, o.RequestedLoser, o.Displaced, o.Rule.LoadoutGroupRuleId))
+            .Should().Equal((g["x"], g["z"], false, zAfterX), (g["y"], g["z"], true, zAfterX));
+    }
+
+    [Fact]
+    public async Task AGroupMovedToRepairARuleOnAnUnlistedGroupIsReportedAsDisplaced()
+    {
+        var (loadout, g) = await Seed(["w", "y", "u", "z"]);
+        var zAfterU = (await LoadoutManager.AddGroupRule(loadout.LoadoutId, g["z"], g["u"], GroupRuleKind.After)).RuleId;
+
+        var result = await Set(loadout.LoadoutId, g["w"], g["y"], g["z"]);
+
+        NamesByPriority(loadout.LoadoutId).Should().Equal("y", "u", "z", "w");
+        result.Overridden.Should().Contain(o => o.RequestedWinner == g["y"] && o.RequestedLoser == g["z"] && o.Displaced && o.Rule.LoadoutGroupRuleId == zAfterU);
     }
 
     [Fact]

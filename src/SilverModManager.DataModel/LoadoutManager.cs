@@ -878,6 +878,7 @@ internal partial class LoadoutManager : ILoadoutManager
         foreach (var group in resolution.Order) finalPosition[group] = finalPosition.Count;
 
         var violatedInProjection = RuleResolver.FindViolations(projected, expandedRules).ToHashSet();
+        var edgesFrom = RuleEdges(expandedRules);
         var overridden = new List<OverriddenOrder>();
         for (var i = 0; i < winnerToLoser.Count; i++)
         {
@@ -886,10 +887,17 @@ internal partial class LoadoutManager : ILoadoutManager
                 var (winner, loser) = (winnerToLoser[i], winnerToLoser[j]);
                 if (finalPosition[winner] > finalPosition[loser]) continue;
 
-                // A pair that comes out reversed with no chain of rules forcing it was only displaced by the sort
-                // making room for a pair that is; that pair is the one reported.
-                if (RuleOnPath(expandedRules, winner, loser, violatedInProjection) is not { } blamed) continue;
-                overridden.Add(new OverriddenOrder(rules[expanded[blamed].Origin], winner, loser));
+                if (RuleOnPath(edgesFrom, winner, loser, violatedInProjection) is { } forcing)
+                {
+                    overridden.Add(new OverriddenOrder(rules[expanded[forcing].Origin], winner, loser));
+                    continue;
+                }
+
+                // No chain of rules puts the loser above the winner: the sort moved the pair to repair a rule broken
+                // elsewhere in the projection. The first such rule is the one to name.
+                if (violatedInProjection.Count == 0)
+                    throw new InvalidOperationException($"The order of loadout {loadoutId.Value} was changed with no rule broken.");
+                overridden.Add(new OverriddenOrder(rules[expanded[violatedInProjection.Min()].Origin], winner, loser, Displaced: true));
             }
         }
 
@@ -897,15 +905,9 @@ internal partial class LoadoutManager : ILoadoutManager
         return new GroupOrderResult(overridden);
     }
 
-    /// <summary>
-    /// The index in <paramref name="rules"/> of the rule that keeps <paramref name="winner"/> from ending up above
-    /// <paramref name="loser"/>: the one naming the pair, else the first of the chain of rules from winner to loser
-    /// that the projection breaks (any rule of the chain if none is broken there). Null when no chain of rules runs
-    /// from winner to loser.
-    /// </summary>
-    private static int? RuleOnPath(IReadOnlyList<GroupRule> rules, LoadoutItemGroupId winner, LoadoutItemGroupId loser, HashSet<int> violated)
+    /// <summary>The rules as edges from the group that must sit lower to the one that must sit higher, with the rule's index.</summary>
+    private static Dictionary<LoadoutItemGroupId, List<(int Rule, LoadoutItemGroupId To)>> RuleEdges(IReadOnlyList<GroupRule> rules)
     {
-        // An edge runs from the group that must sit lower to the one that must sit higher.
         var edgesFrom = new Dictionary<LoadoutItemGroupId, List<(int Rule, LoadoutItemGroupId To)>>();
         for (var i = 0; i < rules.Count; i++)
         {
@@ -914,6 +916,18 @@ internal partial class LoadoutManager : ILoadoutManager
             list.Add((i, to));
         }
 
+        return edgesFrom;
+    }
+
+    /// <summary>
+    /// The index of the rule that keeps <paramref name="winner"/> from ending up above <paramref name="loser"/>: the
+    /// one naming the pair, else the first of the chain of rules from winner to loser that the projection breaks (any
+    /// rule of the chain if none is broken there). Null when no chain of rules runs from winner to loser.
+    /// </summary>
+    private static int? RuleOnPath(
+        Dictionary<LoadoutItemGroupId, List<(int Rule, LoadoutItemGroupId To)>> edgesFrom,
+        LoadoutItemGroupId winner, LoadoutItemGroupId loser, HashSet<int> violated)
+    {
         var cameBy = new Dictionary<LoadoutItemGroupId, (int Rule, LoadoutItemGroupId From)>();
         var queue = new Queue<LoadoutItemGroupId>([winner]);
         while (queue.TryDequeue(out var at) && !cameBy.ContainsKey(loser))

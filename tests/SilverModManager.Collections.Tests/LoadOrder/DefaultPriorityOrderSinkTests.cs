@@ -120,4 +120,16 @@ public class DefaultPriorityOrderSinkTests(ITestOutputHelper helper) : ACyberpun
         drops.Should().ContainSingle().Which.Should().Be(new ModOrderDrop("b above a", "the stored rule 'a wins over b' puts them the other way round"));
         PriorityOf(g["a"]).Should().BeGreaterThan(PriorityOf(g["b"]));
     }
+
+    [Fact]
+    public async Task ADisplacedPairComesBackWithTheRoomMakingWording()
+    {
+        var (loadout, container, g) = await Seed("w", "y", "u", "z");
+        await Apply(loadout, container, (g["z"], null), (g["u"], null), (g["y"], null), (g["w"], null));
+        await LoadoutManager.AddGroupRule(loadout.LoadoutId, g["z"], g["u"], GroupRuleKind.After);
+
+        var drops = await Apply(loadout, container, (g["w"], null), (g["y"], null), (g["z"], null));
+
+        drops.Should().Contain(new ModOrderDrop("y above z", "the order moved to make room for the stored rule 'z wins over u'"));
+    }
 }
