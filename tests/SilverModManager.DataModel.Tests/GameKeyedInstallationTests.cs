@@ -8,6 +8,7 @@ using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -44,6 +45,32 @@ public class GameKeyedInstallationTests(ITestOutputHelper helper) : AStubbedGame
         metadata.Game.Value.Should().Be(StubbedGame.GameId);
         GameInstallMetadata.GameId.TryGetValue(metadata, out var nexusId).Should().BeTrue();
         nexusId.Should().Be(StubbedGame.NexusModsGameId.Value);
+    }
+
+    [Fact]
+    public async Task ManageInstallation_CallsThatAllStartBeforeTheRowLands_ShareOneRow()
+    {
+        var install = Installs()[0];
+
+        // Tx functions run on the store's one writer thread. Holding one there keeps every row these calls
+        // commit from landing until all of them have looked for it.
+        using var writerHeld = new ManualResetEventSlim();
+        Task held;
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(writerHeld, static (_, _, gate) => gate.Wait(TimeSpan.FromSeconds(30)));
+            held = tx.Commit();
+        }
+
+        var calls = Enumerable.Range(0, 8).Select(_ => LoadoutManager.ManageInstallation(install).AsTask()).ToArray();
+        writerHeld.Set();
+        await held;
+        var results = await Task.WhenAll(calls);
+
+        results.Select(row => row.Id).Distinct().Should().ContainSingle();
+        GameInstallMetadata.FindByGame(Connection.Db, StubbedGame.GameId)
+            .Where(row => row.Path == FolderOf(install))
+            .Should().ContainSingle("one folder is one install");
     }
 
     [Fact]

@@ -44,6 +44,10 @@ internal partial class LoadoutManager : ILoadoutManager
     private readonly IGarbageCollectorRunner _garbageCollectorRunner;
     private readonly IGameRegistry _gameRegistry;
 
+    // Nothing in the database makes a folder's row unique, so the check and the create have to happen as one
+    // step: two callers that both miss would each commit a row for the same install.
+    private readonly SemaphoreSlim _manageInstallationLock = new(1, 1);
+
     public LoadoutManager(IServiceProvider serviceProvider)
     {
         _logger = serviceProvider.GetRequiredService<ILogger<LoadoutManager>>();
@@ -58,8 +62,13 @@ internal partial class LoadoutManager : ILoadoutManager
 
     public async ValueTask<GameInstallMetadata.ReadOnly> ManageInstallation(GameInstallation installation)
     {
-        if (!_gameRegistry.TryGetMetadata(installation, out var metadata))
+        if (_gameRegistry.TryGetMetadata(installation, out var existing)) return existing;
+
+        await _manageInstallationLock.WaitAsync();
+        try
         {
+            if (_gameRegistry.TryGetMetadata(installation, out var metadata)) return metadata;
+
             using var metadataTx = _connection.BeginTransaction();
             var newMetadata = new GameInstallMetadata.New(metadataTx)
             {
@@ -73,10 +82,12 @@ internal partial class LoadoutManager : ILoadoutManager
             if (installation.Game.NexusModsGameId.HasValue) newMetadata.GameId = installation.Game.NexusModsGameId.Value;
 
             var metadataResult = await metadataTx.Commit();
-            metadata = metadataResult.Remap(newMetadata);
+            return metadataResult.Remap(newMetadata);
         }
-
-        return metadata;
+        finally
+        {
+            _manageInstallationLock.Release();
+        }
     }
 
     public IJobTask<CreateLoadoutJob, Loadout.ReadOnly> CreateLoadout(GameInstallation installation, string? suggestedName = null)
