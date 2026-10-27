@@ -95,6 +95,7 @@
         <ProjectReference Include="..\SilverModManager.Abstractions.Logging\SilverModManager.Abstractions.Logging.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.NexusModsLibrary\SilverModManager.Abstractions.NexusModsLibrary.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />
+        <ProjectReference Include="..\SilverModManager.Abstractions.Games.Merge\SilverModManager.Abstractions.Games.Merge.csproj" />
         <ProjectReference Include="..\SilverModManager.Abstractions.GuidedInstallers\SilverModManager.Abstractions.GuidedInstallers.csproj" />
         <ProjectReference Include="..\SilverModManager.Networking.NexusWebApi\SilverModManager.Networking.NexusWebApi.csproj" />
         <ProjectReference Include="..\SilverModManager.App.Cli\SilverModManager.App.Cli.csproj" />
