@@ -9,6 +9,8 @@ public class MergeLossTests
     {
         MergeLoss.Between(MergeNames.OtherMod, "Alpha").Should().BeNull();
         MergeLoss.Between("Beta", MergeNames.Game).Should().BeNull();
+        MergeLoss.Between(MergeNames.PreferredMod, "Alpha").Should().BeNull();
+        MergeLoss.Between("Beta", MergeNames.PreferredMod).Should().BeNull();
     }
 
     [Fact]

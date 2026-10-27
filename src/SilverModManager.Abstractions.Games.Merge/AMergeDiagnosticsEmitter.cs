@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
-using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Sdk.Games;
@@ -81,6 +80,11 @@ public abstract class AMergeDiagnosticsEmitter<TPlan>(ILogger logger) : ADropped
         foreach (var item in ExtraDropped(loadout, plan)) yield return item;
     }
 
+    /// <summary>
+    /// The <see cref="ADroppedItemEmitter"/> contract, for a caller that only knows dropped items: the same items the
+    /// cards are made from (<see cref="Items"/>). <see cref="Diagnose(Loadout.ReadOnly, FrozenDictionary{GamePath, SyncNode}, CancellationToken)"/>
+    /// does not go through it, because it also yields the plan's failure card and the cards that are not dropped items.
+    /// </summary>
     protected override async IAsyncEnumerable<DroppedItem> Dropped(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Yield();

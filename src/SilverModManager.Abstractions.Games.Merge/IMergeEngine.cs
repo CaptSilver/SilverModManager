@@ -36,8 +36,9 @@ public interface IMergeEngine : IMergePlanSource
 
     /// <summary>
     /// The paths the next <c>Plan(Apply)</c> writes: every contested path with a strategy, minus the paths whose latest
-    /// plan failed (empty until a plan has been made, as <c>MergePlanCache.UnmergedPaths</c> is). Reads loadout rows
-    /// only, never file bytes: the synchronizer calls it on every refresh inside the winning-files query.
+    /// plan failed. Before any plan the failed set is empty (as <c>MergePlanCache.UnmergedPaths</c> is), so every
+    /// contested path with a strategy is listed. Reads loadout rows only, never file bytes: the synchronizer calls it on
+    /// every refresh inside the winning-files query.
     /// </summary>
     IReadOnlyList<PlannedOutput> PlannedOutputs(Loadout.ReadOnly loadout);
 
