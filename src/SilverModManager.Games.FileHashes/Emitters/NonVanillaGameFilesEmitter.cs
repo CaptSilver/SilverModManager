@@ -45,10 +45,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         var installation = loadout.Installation;
         var db = _fileHashes.Local;
 
-        var baseline = LocalBaseline.FindByGamePath(db, installation.Path)
-            .Where(b => b.Store == installation.Store)
-            .Cast<LocalBaseline.ReadOnly?>()
-            .FirstOrDefault();
+        var baseline = LocalBaselineCoordinator.FindBaseline(db, installation.Store, installation.Path);
         if (baseline is null) yield break;
 
         var overridesGroup = LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var found)

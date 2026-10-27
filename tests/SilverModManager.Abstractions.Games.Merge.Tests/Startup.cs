@@ -1,3 +1,4 @@
+using NexusMods.Hashing.xxHash3;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Abstractions.Games;
@@ -28,7 +29,7 @@ public class Startup
     /// <summary>Resolves the engine in the service graph; tests that care about trust build their own engine with their own answer.</summary>
     private sealed class AlwaysTrusted : IVanillaTrust
     {
-        public bool IsTrusted(GameInstallation installation, GamePath path, out string reason)
+        public bool IsTrusted(GameInstallation installation, GamePath path, Hash currentHash, out string reason)
         {
             reason = "";
             return true;

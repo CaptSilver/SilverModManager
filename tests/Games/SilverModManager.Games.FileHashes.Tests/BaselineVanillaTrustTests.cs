@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Text;
+using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NSubstitute;
 using SilverModManager.Abstractions.Games.FileHashes;
@@ -63,12 +65,40 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     }
 
     [Fact]
-    public async Task AFileNotListedIsTrusted()
+    public async Task AListedFileWhoseHashMatchesIsTrusted()
     {
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
-        await AddReport(baseline, "other.ws", NonVanillaReason.HashDiffers);
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("content/content0/scripts/x.ws", "vanilla")]);
 
-        IsTrusted("content/content0/scripts/x.ws", out var reason).Should().BeTrue();
+        IsTrusted("content/content0/Scripts/X.ws", out var reason).Should().BeTrue();
+        reason.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AListedFileEditedAfterTheBaselineWasBuiltIsUntrusted()
+    {
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("x.ws", "vanilla")]);
+
+        IsTrusted("x.ws", out var reason, content: "edited later").Should().BeFalse();
+        reason.Should().Be("the game's copy differs from the checked baseline");
+    }
+
+    [Fact]
+    public async Task AFileTheBaselineNeverListedIsUntrusted()
+    {
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("other.ws", "vanilla")]);
+
+        IsTrusted("x.ws", out var reason).Should().BeFalse();
+        reason.Should().Be("the baseline never checked this file");
+    }
+
+    [Fact]
+    public async Task TheBaselineIsFoundUnderTheFolderItWasWrittenFor()
+    {
+        // The baseline is keyed by the game registry's folder (Locations[Game]), which can differ from the locator's.
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/moved/test", LocalBaselineKind.DepotManifests, [("x.ws", "vanilla")]);
+
+        IsTrusted("x.ws", out _).Should().BeFalse("only the locator's folder was searched");
+        IsTrusted("x.ws", out var reason, gameFolder: FileSystem.Shared.FromUnsanitizedFullPath("/mnt/moved/test")).Should().BeTrue();
         reason.Should().BeEmpty();
     }
 
@@ -88,14 +118,16 @@ public sealed class BaselineVanillaTrustTests : IDisposable
         await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         var path = new GamePath(LocationId.From("WitcherDocuments"), RelativePath.FromUnsanitizedInput("user.settings"));
 
-        _trust.IsTrusted(Installation(), path, out var reason).Should().BeFalse();
+        _trust.IsTrusted(Installation(), path, HashOf("vanilla"), out var reason).Should().BeFalse();
         reason.Should().Be("outside the game folder");
     }
 
-    private bool IsTrusted(string relative, out string reason)
-        => _trust.IsTrusted(Installation(), new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(relative)), out reason);
+    private bool IsTrusted(string relative, out string reason, string content = "vanilla", AbsolutePath? gameFolder = null)
+        => _trust.IsTrusted(Installation(gameFolder), new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(relative)), HashOf(content), out reason);
 
-    private static GameInstallation Installation()
+    private static Hash HashOf(string content) => Encoding.UTF8.GetBytes(content).xxHash3();
+
+    private static GameInstallation Installation(AbsolutePath? gameFolder = null)
     {
         var result = new GameLocatorResult
         {
@@ -106,7 +138,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
             LocatorIds = [],
             Locator = Substitute.For<IGameLocator>(),
         };
-        return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, result.Path)));
+        return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, gameFolder ?? result.Path)));
     }
 
     private async Task AddReport(EntityId baseline, string path, NonVanillaReason reason)

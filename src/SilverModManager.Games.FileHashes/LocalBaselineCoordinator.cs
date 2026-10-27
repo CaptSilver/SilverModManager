@@ -163,7 +163,7 @@ internal sealed class LocalBaselineCoordinator : IDisposable
     /// </summary>
     internal static string GamePathOf(GameInstallation installation) => installation.Locations[LocationId.Game].Path.ToString();
 
-    private static LocalBaseline.ReadOnly? FindBaseline(IDb db, GameStore store, string gamePath)
+    internal static LocalBaseline.ReadOnly? FindBaseline(IDb db, GameStore store, string gamePath)
     {
         foreach (var baseline in LocalBaseline.FindByGamePath(db, gamePath))
         {

@@ -142,9 +142,6 @@ public sealed class MergeEngine : IMergeEngine
     {
         if (game.VanillaFor(rel, installation) is not { } vanillaPath) return new VanillaBase(null, new NoVanillaBase(rel), "none");
 
-        if (!_trust.IsTrusted(installation, vanillaPath, out var reason))
-            return new VanillaBase(null, new VanillaBaseUntrusted(rel, reason), $"untrusted:{reason}");
-
         var file = installation.Locations[vanillaPath.LocationId].Path.Combine(vanillaPath.Path);
         if (!file.FileExists) return new VanillaBase(null, new NoVanillaBase(rel), "none");
 
@@ -155,7 +152,13 @@ public sealed class MergeEngine : IMergeEngine
             using var buffer = new MemoryStream();
             stream.CopyTo(buffer);
             var bytes = buffer.ToArray();
-            return new VanillaBase(bytes, null, bytes.xxHash3().ToString());
+            var hash = bytes.xxHash3();
+
+            // Trust is judged on the bytes just read, so a copy edited after the baseline was built cannot pass.
+            if (!_trust.IsTrusted(installation, vanillaPath, hash, out var reason))
+                return new VanillaBase(null, new VanillaBaseUntrusted(rel, reason), $"untrusted:{reason}");
+
+            return new VanillaBase(bytes, null, hash.ToString());
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

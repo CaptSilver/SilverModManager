@@ -29,7 +29,7 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
         public bool Trusted = true;
         public string Reason = "listed as modified";
 
-        public bool IsTrusted(GameInstallation installation, GamePath path, out string reason)
+        public bool IsTrusted(GameInstallation installation, GamePath path, Hash currentHash, out string reason)
         {
             reason = Trusted ? "" : Reason;
             return Trusted;
