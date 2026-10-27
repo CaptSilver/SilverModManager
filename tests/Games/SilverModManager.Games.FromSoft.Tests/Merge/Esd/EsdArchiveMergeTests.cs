@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Games.FromSoft.EldenRing;
 using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Merge;

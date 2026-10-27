@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.FromSoft.Me3;
 using SilverModManager.MnemonicDB.Abstractions;

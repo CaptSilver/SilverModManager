@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Games.FromSoft.Formats;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Loadouts;

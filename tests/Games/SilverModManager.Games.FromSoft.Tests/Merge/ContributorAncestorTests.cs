@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NexusMods.Hashing.xxHash3;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Games.FromSoft.Build;
 using SilverModManager.Games.FromSoft.EldenRing;
 using SilverModManager.Games.FromSoft.Formats;

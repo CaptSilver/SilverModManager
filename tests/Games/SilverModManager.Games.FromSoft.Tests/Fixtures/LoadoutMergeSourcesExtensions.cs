@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.Sdk.Loadouts;
 

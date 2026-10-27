@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.FromSoft;
@@ -114,7 +115,7 @@ public class MergeVerbsTests(ITestOutputHelper helper) : AIsolatedGameTest<Merge
         row[2].Should().Be("merged");
         row[3].Should().Contain("Alpha.zip").And.Contain("Beta.zip");
         output.Should().Contain("both mods ship it and differ");
-        output.TrimEnd().Split('\n').Last().Should().Be(MergeReport.DefaultPriorityOrderHint);
+        output.TrimEnd().Split('\n').Last().Should().Be(MergeReports.PriorityOrderHint);
         DataRootListing().Should().Equal(before);
     }
 

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Extensions;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
@@ -14,16 +15,6 @@ using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Games.FromSoft.Merge;
-
-/// <summary>Whether a read of the merge inputs may keep anything on disk.</summary>
-public enum MergeSourceMode
-{
-    /// <summary>The deployment is being built, so a vanilla regulation worth keeping is kept.</summary>
-    Apply,
-
-    /// <summary>Planning, Health Check or a report: nothing is written.</summary>
-    Report,
-}
 
 /// <summary>
 /// Everything the merge index and the merge planner need from the app: which enabled files provide each path and at

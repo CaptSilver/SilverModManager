@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Games.FromSoft.Merge;
 
 namespace SilverModManager.Games.FromSoft.Tests.Merge;

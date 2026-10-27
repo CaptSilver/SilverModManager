@@ -1,4 +1,5 @@
 using System.Reactive;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.App.UI.WorkspaceSystem;
 using SilverModManager.Games.FromSoft.Merge;
 using SilverModManager.Sdk.Loadouts;

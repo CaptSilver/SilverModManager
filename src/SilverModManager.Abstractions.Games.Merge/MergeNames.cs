@@ -1,4 +1,4 @@
-namespace SilverModManager.Games.FromSoft.Merge;
+namespace SilverModManager.Abstractions.Games.Merge;
 
 /// <summary>What a merge calls its sides in a note when the caller names neither, and what it calls the installed game.</summary>
 public static class MergeNames

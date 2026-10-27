@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Loadouts;
@@ -13,6 +14,10 @@ namespace SilverModManager.Games.FromSoft.Merge;
 public sealed class MergeReports(
     IConnection connection, LoadoutMergeSources sources, MergePlanCache plans, VanillaDumps dumps, ILogger<MergeReports> logger) : IMergeReports
 {
+    /// <summary>The sentence that tells the user how the contributor order is changed.</summary>
+    public const string PriorityOrderHint =
+        "Contributors are ordered by the loadout's mod priority; change it under Rules, File Conflicts on the loadout page (Move up / Move down), which allows edits in a loadout with a single collection";
+
     private const string HeldBack = "not merged: the apply is refused";
 
     public Task<MergeReport> ForLoadout(LoadoutId id, CancellationToken token)
@@ -30,7 +35,7 @@ public sealed class MergeReports(
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             // Without an index there are no paths to list, only the reason the apply would stop.
-            return new MergeReport([], Failed(loadout, exception), MergeReport.DefaultPriorityOrderHint);
+            return new MergeReport([], Failed(loadout, exception), PriorityOrderHint);
         }
 
         try
@@ -57,7 +62,7 @@ public sealed class MergeReports(
             .Select(c => EntryOf(c, plan, refusal, unconfirmed, archiveFailure))
             .OrderBy(e => e.Path, StringComparer.Ordinal)
             .ToArray();
-        return new MergeReport(entries, refusal, MergeReport.DefaultPriorityOrderHint);
+        return new MergeReport(entries, refusal, PriorityOrderHint);
     }
 
     // Same words Health Check and the apply use for a plan that could not be made at all.

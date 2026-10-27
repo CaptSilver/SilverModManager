@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Games.FromSoft.Merge;
 using ReactiveUI;
 using R3;

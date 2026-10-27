@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SilverModManager.Abstractions.Cli;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Sdk.Loadouts;
 using SilverModManager.Sdk.ProxyConsole;
 using Table = SilverModManager.Sdk.ProxyConsole.Table;

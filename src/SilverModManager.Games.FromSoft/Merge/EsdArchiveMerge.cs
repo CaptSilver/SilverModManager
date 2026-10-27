@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Games.FromSoft.Formats;
 using EsdFormat = SilverModManager.Games.FromSoft.Formats.Esd;
 

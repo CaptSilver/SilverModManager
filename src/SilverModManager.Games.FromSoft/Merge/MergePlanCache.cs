@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.ExceptionServices;
 using System.Text;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Games.FromSoft.Build;
 using SilverModManager.Games.FromSoft.Formats;
 using SilverModManager.Games.FromSoft.Heal;

@@ -2,6 +2,7 @@ using System.Reactive.Linq;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.App.UI.Pages.FromSoftMerges;
 using SilverModManager.App.UI.Windows;
@@ -21,7 +22,7 @@ public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(p
         => new(path, strategy, contributors, outcome, notes ?? [], vanilla, reason);
 
     private static MergeReport Report(string? refusal = null, params MergeReportEntry[] entries)
-        => new(entries, refusal, MergeReport.DefaultPriorityOrderHint);
+        => new(entries, refusal, MergeReports.PriorityOrderHint);
 
     private FromSoftMergesViewModel CreateVm(IMergeReports reports)
         => new(Substitute.For<IWindowManager>(), reports, Provider.GetRequiredService<IConnection>(), NullLogger<FromSoftMergesViewModel>.Instance);
@@ -56,7 +57,7 @@ public class FromSoftMergesViewModelTests(IServiceProvider provider) : AUiTest(p
         vm.Entries.Select(e => (e.Path, e.Strategy)).Should().Equal(("regulation.bin", "param-rows"), ("msg/engus/item.msgbnd.dcx", "fmg-union"));
         vm.Entries[0].Contributors.Should().Equal("High", "Low");
         vm.Entries[1].Contributors.Should().Equal("Low", "High");
-        vm.PriorityOrderHint.Should().Be(MergeReport.DefaultPriorityOrderHint);
+        vm.PriorityOrderHint.Should().Be(MergeReports.PriorityOrderHint);
         vm.EmptyState.Should().BeEmpty();
         vm.IsLoading.Should().BeFalse();
     }

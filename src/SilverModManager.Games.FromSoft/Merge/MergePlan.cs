@@ -1,3 +1,5 @@
+using SilverModManager.Abstractions.Games.Merge;
+
 namespace SilverModManager.Games.FromSoft.Merge;
 
 /// <summary>A note and the merged path it is about; one apply merges several paths and a bare note would not say which.</summary>

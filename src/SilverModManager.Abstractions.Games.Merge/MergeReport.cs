@@ -1,6 +1,6 @@
 using SilverModManager.Sdk.Loadouts;
 
-namespace SilverModManager.Games.FromSoft.Merge;
+namespace SilverModManager.Abstractions.Games.Merge;
 
 /// <summary>What the apply would do with one path that more than one mod provides.</summary>
 public enum MergeReportOutcome
@@ -29,7 +29,7 @@ public static class MergeReportOutcomes
 
 /// <summary>One path of a <see cref="MergeReport"/>.</summary>
 /// <param name="Path">The package-relative path.</param>
-/// <param name="Strategy">The strategy's name as <see cref="MergeStrategies.Name"/> spells it; empty when the engine has none.</param>
+/// <param name="Strategy">The strategy's name as the game's strategy names spell it; empty when the engine has none.</param>
 /// <param name="Contributors">The mods that provide the path, the highest priority first, which is the order they are folded in.</param>
 /// <param name="Outcome">What the apply does with the path.</param>
 /// <param name="Notes">What the merge kept, dropped or took whole, as sentences.</param>
@@ -51,11 +51,7 @@ public sealed record MergeReportEntry(
 /// <param name="Entries">Every path more than one mod provides, sorted by path.</param>
 /// <param name="Refusal">The message the apply would stop with; null when it goes ahead.</param>
 /// <param name="PriorityOrderHint">The sentence that tells the user how the contributor order is changed.</param>
-public sealed record MergeReport(IReadOnlyList<MergeReportEntry> Entries, string? Refusal, string PriorityOrderHint)
-{
-    public const string DefaultPriorityOrderHint =
-        "Contributors are ordered by the loadout's mod priority; change it under Rules, File Conflicts on the loadout page (Move up / Move down), which allows edits in a loadout with a single collection";
-}
+public sealed record MergeReport(IReadOnlyList<MergeReportEntry> Entries, string? Refusal, string PriorityOrderHint);
 
 /// <summary>Reads the merge report of a loadout without writing anything.</summary>
 public interface IMergeReports
