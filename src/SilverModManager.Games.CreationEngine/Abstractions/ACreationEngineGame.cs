@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games;
+using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Games.Modlists;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Sorting;
@@ -30,12 +31,13 @@ namespace SilverModManager.Games.CreationEngine.Abstractions;
 /// A Bethesda title whose plugin headers the load order reader can parse: adds the Plugins.txt intrinsic file and the
 /// missing-master check on top of <see cref="ABethesdaGame{TSelf}"/>.
 /// </summary>
-public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IGameIniFiles, IPerLoadoutSaves, IWinePrefixRequirements
+public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreationEngineGame, IMo2InstanceTarget, IModOrderGame, IGameIniFiles, IPerLoadoutSaves, IWinePrefixRequirements
     where TSelf : ACreationEngineGame<TSelf>, IGameData<TSelf>
 {
     private readonly IStreamSourceDispatcher _streamSource;
     private readonly IServiceProvider _provider;
     private readonly GamePath? _scriptExtenderLoader;
+    private BethesdaModOrderSink? _orderSink;
 
     protected ACreationEngineGame(IServiceProvider provider) : base(provider)
     {
@@ -177,6 +179,14 @@ public abstract class ACreationEngineGame<TSelf> : ABethesdaGame<TSelf>, ICreati
             this,
             SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single(),
             loadout, sortOrderId, pluginsTxt, loadorderTxt, tx);
+
+    // Built once: the sink holds the game's plugin variety, which owns a header cache.
+    IModOrderSink? IModOrderGame.OrderSink => _orderSink ??= new BethesdaModOrderSink(
+        _provider.GetRequiredService<DefaultPriorityOrderSink>(),
+        SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single(),
+        this);
+
+    IVortexOrderFormat? IModOrderGame.VortexOrderFormat => null;
 
     // One instance per game: it owns a header cache, so it is never a shared service.
     protected override ISortOrderVariety[] CreateSortOrderVarieties(IServiceProvider provider) => [new PluginSortOrderVariety(provider, this)];
