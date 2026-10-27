@@ -122,6 +122,16 @@ public interface ILoadoutManager
     ValueTask ApplyCollectionDownloadRules(NexusCollectionLoadoutGroupId collectionId);
 
     /// <summary>
+    /// Adds one ApplyGroupRulesTxFunc to <paramref name="tx"/> whose delta reorders <paramref name="winnerToLoser"/>
+    /// (highest priority first) within the slots those groups already occupy (a group without a row takes its listed
+    /// place in the block, which grows by one slot per such group; with no row among them the block goes above every
+    /// row, the rule for new groups) and then re-applies the loadout's stored rules, so where the requested order breaks
+    /// a stored rule the rule wins; those cases are computed before the transaction and come back as Overridden. Writes
+    /// no rule rows. The transaction must not already hold a priority writer for this loadout (see ClaimPriorityRows).
+    /// </summary>
+    GroupOrderResult SetGroupOrder(LoadoutId loadoutId, IReadOnlyList<LoadoutItemGroupId> winnerToLoser, ITransaction tx);
+
+    /// <summary>
     /// Removes all groups and installs the new library item.
     /// </summary>
     ValueTask ReplaceItems(LoadoutId loadoutId, LoadoutItemGroupId[] groupsToRemove, LibraryItem.ReadOnly libraryItemToInstall);

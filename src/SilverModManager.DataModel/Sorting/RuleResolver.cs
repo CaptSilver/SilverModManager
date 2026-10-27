@@ -27,6 +27,12 @@ public record RuleDelta
 
     /// <summary>Groups that are about to be removed.</summary>
     public ImmutableArray<LoadoutItemGroupId> RemovedGroups { get; init; } = [];
+
+    /// <summary>
+    /// Groups that take, in this order (lowest priority first), the slots they jointly hold in the current order; a group
+    /// among them with no row is appended above every row, like NewGroups. Groups not listed keep their slots.
+    /// </summary>
+    public ImmutableArray<LoadoutItemGroupId> BlockAscending { get; init; } = [];
 }
 
 /// <summary>

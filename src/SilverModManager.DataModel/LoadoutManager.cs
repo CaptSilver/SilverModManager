@@ -847,6 +847,88 @@ internal partial class LoadoutManager : ILoadoutManager
         await tx.Commit();
     }
 
+    public GroupOrderResult SetGroupOrder(LoadoutId loadoutId, IReadOnlyList<LoadoutItemGroupId> winnerToLoser, ITransaction tx)
+    {
+        if (winnerToLoser.Count == 0) return GroupOrderResult.None;
+
+        var duplicate = winnerToLoser.GroupBy(static group => group).FirstOrDefault(static g => g.Count() > 1);
+        if (duplicate is not null) throw new ArgumentException($"Group {duplicate.Key.Value} is listed twice.", nameof(winnerToLoser));
+
+        var db = _connection.Db;
+        var blockAscending = winnerToLoser.Reverse().ToList();
+        var inBlock = blockAscending.ToHashSet();
+        var current = LoadoutItemGroupPriority
+            .FindByLoadout(db, loadoutId)
+            .Where(static row => row.Target.IsValid())
+            .OrderBy(static row => row.Priority)
+            .Select(static row => row.TargetId)
+            .ToList();
+        var projected = ProjectBlock(current, blockAscending);
+
+        // Same check as a priority move, but the request is not refused: the resolver in the transaction puts the rule
+        // back and the caller is told which pairs it turned round. A rule that names a group outside the list is not
+        // the caller's to hear about; the resolver settles it silently as it does for any install.
+        var rules = LoadoutGroupRule.FindByLoadout(db, loadoutId).ToList();
+        var expanded = ExpandCollectionRules(db, loadoutId, rules.Select(static rule => new GroupRule(rule.SourceId, rule.OtherId, rule.Kind)).ToList());
+        var overridden = new List<OverriddenOrder>();
+        foreach (var index in RuleResolver.FindViolations(projected, expanded.Select(static e => e.Rule).ToList()))
+        {
+            var (rule, origin) = expanded[index];
+            if (!inBlock.Contains(rule.Source) || !inBlock.Contains(rule.Other)) continue;
+
+            // After wants the source above, so a broken After means the caller put the other group on top.
+            var (winner, loser) = rule.Kind == GroupRuleKind.After ? (rule.Other, rule.Source) : (rule.Source, rule.Other);
+            overridden.Add(new OverriddenOrder(rules[origin], winner, loser));
+        }
+
+        tx.Add(new ApplyGroupRulesTxFunc(loadoutId, new RuleDelta { BlockAscending = [..blockAscending] }));
+        return new GroupOrderResult(overridden);
+    }
+
+    /// <summary>
+    /// <paramref name="ascending"/> with the groups of <paramref name="blockAscending"/> that have a place in it
+    /// re-dealt in the block's order over the places they held; the others keep theirs. A block group without a
+    /// place goes in at its listed position (the block grows by one place per such group and what sits above it
+    /// shifts up). When no block group has a place at all, the whole block goes above everything.
+    /// </summary>
+    internal static List<LoadoutItemGroupId> ProjectBlock(IReadOnlyList<LoadoutItemGroupId> ascending, IReadOnlyList<LoadoutItemGroupId> blockAscending)
+    {
+        var inOrder = ascending.ToHashSet();
+        var blockSet = blockAscending.ToHashSet();
+        var heldCount = blockAscending.Count(inOrder.Contains);
+        if (heldCount == 0) return [..ascending, ..blockAscending];
+
+        var result = new List<LoadoutItemGroupId>(ascending.Count + blockAscending.Count - heldCount);
+        var next = 0;
+        var seen = 0;
+        foreach (var group in ascending)
+        {
+            if (!blockSet.Contains(group))
+            {
+                result.Add(group);
+                continue;
+            }
+
+            // Each held place takes block groups up to the next group that also had a place, so a group without
+            // one lands right below the place of the group that follows it in the block.
+            seen++;
+            while (next < blockAscending.Count)
+            {
+                var candidate = blockAscending[next++];
+                result.Add(candidate);
+                if (inOrder.Contains(candidate)) break;
+            }
+
+            // The last place also takes whatever without a place trails the block.
+            if (seen == heldCount)
+            {
+                while (next < blockAscending.Count) result.Add(blockAscending[next++]);
+            }
+        }
+
+        return result;
+    }
+
     private static LoadoutItemGroupId[] PriorityOrder(IDb db, LoadoutId loadoutId) => LoadoutItemGroupPriority
         .FindByLoadout(db, loadoutId)
         .OrderBy(static p => p.Priority)

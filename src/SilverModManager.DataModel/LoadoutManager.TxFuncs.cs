@@ -245,7 +245,11 @@ internal partial class LoadoutManager
                 Candidates = [..RuleResolver.ExpandCollections(delta.Candidates, collections).Select(static expanded => expanded.Rule)],
             };
 
-            var resolution = RuleResolver.Resolve(rowOfGroup.Keys.OrderBy(group => rowOfGroup[group].Priority).ToArray(), storedRules, expandedDelta);
+            var basisOrder = rowOfGroup.Keys.OrderBy(group => rowOfGroup[group].Priority).ToList();
+            if (!delta.BlockAscending.IsEmpty)
+                basisOrder = ProjectBlock(basisOrder, delta.BlockAscending.Where(group => !removed.Contains(group)).ToList());
+
+            var resolution = RuleResolver.Resolve(basisOrder, storedRules, expandedDelta);
             if (resolution.Cycle is { } cycle)
                 throw new InvalidOperationException($"The group rules of loadout {loadoutId.Value} contradict each other: {cycle.First.Value} and {cycle.Second.Value}.");
 
