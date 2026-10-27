@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using NexusMods.Hashing.xxHash3;
+using NexusMods.Paths;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
@@ -29,8 +30,17 @@ public sealed class MergeEngine : IMergeEngine
 
     private sealed record Entry(string Key, IReadOnlyList<MergedOutput> Outputs, IReadOnlyList<PathResult> Results);
 
-    /// <summary>The ancestor of one merge: its bytes when trusted and present, the note that says why not otherwise, and what the cache key records of it.</summary>
-    private sealed record VanillaBase(byte[]? Bytes, IMergeNote? Note, string Fingerprint, string? Failure = null);
+    /// <summary>
+    /// The ancestor of one merge: its bytes when trusted and present, the note that says why not otherwise, and what the
+    /// cache key records of it. A trusted copy whose hash came from its fingerprint has no bytes until a merge needs them.
+    /// </summary>
+    private sealed record VanillaBase(byte[]? Bytes, IMergeNote? Note, string Fingerprint, string? Failure = null)
+    {
+        public bool TrustedWithoutBytes => Bytes is null && Note is null && Failure is null;
+    }
+
+    /// <summary>The hash of an original copy as last read, which stands until its size or modified time moves.</summary>
+    private sealed record FileFingerprint(Size Size, DateTime Modified, Hash Hash);
 
     private readonly IFileStore _fileStore;
     private readonly IVanillaTrust _trust;
@@ -39,6 +49,10 @@ public sealed class MergeEngine : IMergeEngine
 
     private readonly Dictionary<LoadoutId, Entry> _latest = [];
     private readonly object _gate = new();
+
+    // Under _gate. Every plan asks after every contested original copy, and reading and hashing each of them on every
+    // refresh is most of what a plan costs once the merges themselves are cached.
+    private readonly Dictionary<AbsolutePath, FileFingerprint> _fingerprints = [];
     private readonly ConcurrentDictionary<(LoadoutId, string), byte> _unprioritised = new();
 
     // Kept apart from the entries because PlannedOutputs asks for it on every refresh and must never wait behind a plan
@@ -118,11 +132,15 @@ public sealed class MergeEngine : IMergeEngine
 
         lock (_gate)
         {
-            // The key needs each vanilla copy's fingerprint, so those are read (and trust asked) on every call; the
-            // merging is what the cache saves.
-            var vanillas = contested.Select(p => p.Strategy is null ? null : VanillaFor(game, installation, p.Rel)).ToArray();
-            var key = string.Concat(contested.Select((p, i) => KeyOf(p, vanillas[i])));
+            // The key needs each vanilla copy's hash, and trust is asked on every call because a baseline rebuild changes
+            // the answer without touching the file; the merging is what the cache saves.
+            var vanillas = contested.Select(p => p.Strategy is null ? null : VanillaFor(game, installation, p.Rel, withBytes: false)).ToArray();
+            var key = KeyOf(contested, vanillas);
             if (_latest.TryGetValue(loadout.LoadoutId, out var cached) && cached.Key == key) return cached;
+
+            // A merge runs on bytes read now and judged again, so its base is exactly what trust vouched for.
+            vanillas = vanillas.Select((v, i) => v is { TrustedWithoutBytes: true } ? VanillaFor(game, installation, contested[i].Rel, withBytes: true) : v).ToArray();
+            key = KeyOf(contested, vanillas);
 
             var results = contested.Select((p, i) => MergePath(game, p, vanillas[i])).ToArray();
             var entry = new Entry(key, results.Where(r => r.Output is not null).Select(r => r.Output!).ToArray(), results);
@@ -132,13 +150,20 @@ public sealed class MergeEngine : IMergeEngine
         }
     }
 
+    private static string KeyOf(IReadOnlyList<ContestedPath> contested, VanillaBase?[] vanillas)
+        => string.Concat(contested.Select((p, i) => KeyOf(p, vanillas[i])));
+
     private static string KeyOf(ContestedPath path, VanillaBase? vanilla)
     {
         var contributors = string.Concat(path.Contributors.Select(c => $"c:{c.Package}/{c.Rel}={c.Hash}@{c.Rank} {c.ModName}|"));
         return $"{path.Rel}|{path.Strategy?.Name}|{contributors}v:{vanilla?.Fingerprint}\n";
     }
 
-    private VanillaBase VanillaFor(AMergeGame game, GameInstallation installation, string rel)
+    /// <summary>
+    /// The ancestor of <paramref name="rel"/>. Without <paramref name="withBytes"/> an unchanged fingerprint stands in
+    /// for reading the file, and a trusted copy comes back without its bytes.
+    /// </summary>
+    private VanillaBase VanillaFor(AMergeGame game, GameInstallation installation, string rel, bool withBytes)
     {
         if (game.VanillaFor(rel, installation) is not { } vanillaPath) return new VanillaBase(null, new NoVanillaBase(rel), "none");
 
@@ -147,14 +172,26 @@ public sealed class MergeEngine : IMergeEngine
 
         try
         {
-            // Read synchronously: planning is a pure function over byte sources and runs where nothing awaits.
-            using var stream = file.Read();
-            using var buffer = new MemoryStream();
-            stream.CopyTo(buffer);
-            var bytes = buffer.ToArray();
-            var hash = bytes.xxHash3();
+            var info = file.FileInfo;
+            var (size, modified) = (info.Size, info.LastWriteTimeUtc);
+            byte[]? bytes = null;
+            Hash hash;
+            if (!withBytes && _fingerprints.TryGetValue(file, out var known) && known.Size == size && known.Modified == modified)
+            {
+                hash = known.Hash;
+            }
+            else
+            {
+                // Read synchronously: planning is a pure function over byte sources and runs where nothing awaits.
+                using var stream = file.Read();
+                using var buffer = new MemoryStream();
+                stream.CopyTo(buffer);
+                bytes = buffer.ToArray();
+                hash = bytes.xxHash3();
+                _fingerprints[file] = new FileFingerprint(size, modified, hash);
+            }
 
-            // Trust is judged on the bytes just read, so a copy edited after the baseline was built cannot pass.
+            // Trust is judged on the hash of the bytes on disk, so a copy edited after the baseline was built cannot pass.
             if (!_trust.IsTrusted(installation, vanillaPath, hash, out var reason))
                 return new VanillaBase(null, new VanillaBaseUntrusted(rel, reason), $"untrusted:{reason}");
 

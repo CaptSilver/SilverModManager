@@ -190,6 +190,49 @@ public class MergeEngineTests(IServiceProvider provider) : AGameTest<StubbedGame
         AsText(engine.Plan(loadout, MergeSourceMode.Apply).Single()).Should().Be("A\nb\nc\n");
     }
 
+    /// <summary>A contest over its own rel whose result depends on the vanilla copy: A edits line 1, B line 3.</summary>
+    private async Task<(Loadout.ReadOnly Loadout, string VanillaPath)> TwoEditsOverOwnVanilla()
+    {
+        var loadout = await CreateLoadout();
+        var rel = $"scripts/fingerprint-{Guid.NewGuid():N}.txt";
+        await WriteVanilla(rel, Vanilla);
+        await Mod(loadout, "A", "modA", 2, Text(rel, "A\nb\nc\n"));
+        await Mod(loadout, "B", "modB", 1, Text(rel, "a\nb\nC\n"));
+        return (Refresh(loadout), GameInstallation.Locations[LocationId.Game].Path.Combine($"vanilla/{rel}").ToString());
+    }
+
+    [Fact]
+    public async Task AVanillaRewrittenWithItsSizeAndTimeKeptIsNotReadAgain()
+    {
+        var (loadout, vanilla) = await TwoEditsOverOwnVanilla();
+        var engine = Engine();
+        var first = engine.Plan(loadout, MergeSourceMode.Apply);
+        AsText(first.Single()).Should().Be("A\nb\nC\n");
+
+        // Same length, same time: nothing the fingerprint looks at has moved, so the cached hash and plan stand.
+        var time = File.GetLastWriteTimeUtc(vanilla);
+        await File.WriteAllTextAsync(vanilla, "a\nb\nC\n");
+        File.SetLastWriteTimeUtc(vanilla, time);
+
+        engine.Plan(loadout, MergeSourceMode.Apply).Should().BeSameAs(first);
+    }
+
+    [Fact]
+    public async Task AVanillaWithANewModifiedTimeIsReadAgainAndReplanned()
+    {
+        var (loadout, vanilla) = await TwoEditsOverOwnVanilla();
+        var engine = Engine();
+        var first = engine.Plan(loadout, MergeSourceMode.Apply);
+
+        var time = File.GetLastWriteTimeUtc(vanilla);
+        await File.WriteAllTextAsync(vanilla, "a\nb\nC\n");
+        File.SetLastWriteTimeUtc(vanilla, time.AddMinutes(1));
+
+        var second = engine.Plan(loadout, MergeSourceMode.Apply);
+        second.Should().NotBeSameAs(first);
+        AsText(second.Single()).Should().Be("A\nb\nc\n", "against the new copy B's line 3 is the original and A's change back to c is the edit");
+    }
+
     private async Task<Loadout.ReadOnly> WithBinaryContributor()
     {
         var loadout = await CreateLoadout();
