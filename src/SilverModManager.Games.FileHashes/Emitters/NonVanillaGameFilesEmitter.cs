@@ -27,10 +27,12 @@ namespace SilverModManager.Games.FileHashes.Emitters;
 public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
 {
     private readonly IFileHashesService _fileHashes;
+    private readonly IGameRegistry _registry;
 
-    public NonVanillaGameFilesEmitter(IFileHashesService fileHashes)
+    public NonVanillaGameFilesEmitter(IFileHashesService fileHashes, IGameRegistry registry)
     {
         _fileHashes = fileHashes;
+        _registry = registry;
     }
 
     // Without a sync tree nothing is known to be managed, so every non-vanilla row is listed. The
@@ -45,7 +47,7 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
         var installation = loadout.Installation;
         var db = _fileHashes.Local;
 
-        var baseline = LocalBaselineCoordinator.FindBaseline(db, installation.Store, installation.Path);
+        var baseline = FindBaseline(db, loadout);
         if (baseline is null) yield break;
 
         var overridesGroup = LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id).TryGetFirst(out var found)
@@ -84,6 +86,20 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
             FileCount: files.Length,
             Files: list.ToString()
         );
+    }
+
+    /// <summary>
+    /// The baseline is keyed by the folder the game registry located, which can be spelled differently from the
+    /// installation row (on this host /home is a link to /var/home), so it is looked up the way it was written. A game
+    /// the registry cannot find falls back to the row's folder, the one it was managed in.
+    /// </summary>
+    private LocalBaseline.ReadOnly? FindBaseline(IDb db, Loadout.ReadOnly loadout)
+    {
+        if (_registry.TryGetGameInstallation(loadout, out var located))
+            return LocalBaselineCoordinator.FindBaseline(db, located.LocatorResult.Store, LocalBaselineCoordinator.GamePathOf(located));
+
+        var row = loadout.Installation;
+        return LocalBaselineCoordinator.FindBaseline(db, row.Store, row.Path);
     }
 
     // A game this build doesn't know (an old installation) has no synchronizer to ask, so the shared rule applies.

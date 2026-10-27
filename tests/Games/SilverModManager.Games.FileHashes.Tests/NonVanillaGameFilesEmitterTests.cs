@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Collections.Immutable;
 using System.Reflection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Games.FileHashes;
@@ -29,17 +30,29 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     private readonly NonVanillaGameFilesEmitter _emitter;
     private readonly SubstitutableGame _game = Substitute.For<SubstitutableGame>();
     private readonly ILoadoutSynchronizer _synchronizer = Substitute.For<ILoadoutSynchronizer>();
+    private readonly IGameRegistry _registry = Substitute.For<IGameRegistry>();
+
+    // The folder the registry reports the game in; null for the installation row's own folder, which is what the
+    // registry finds for a game that has not moved.
+    private string? _locatedFolder;
+    private bool _registryKnowsTheGame = true;
 
     public NonVanillaGameFilesEmitterTests()
     {
-        _host = new RealQueryEngineHost(services => services.AddSingleton<IGameData>(_game));
+        _host = new RealQueryEngineHost(services => services.AddSingleton<IGameData>(_game).AddSingleton(_registry));
+        _registry.TryGetGameInstallation(Arg.Any<Loadout.ReadOnly>(), out Arg.Any<GameInstallation?>()).Returns(call =>
+        {
+            var row = call.Arg<Loadout.ReadOnly>().Installation;
+            call[1] = _registryKnowsTheGame ? Installation(row.Store, _locatedFolder ?? row.Path) : null;
+            return _registryKnowsTheGame;
+        });
         _game.Synchronizer.Returns(_synchronizer);
         _synchronizer.IsGameWrittenPath(Arg.Any<GamePath>()).Returns(call => GameWrittenFiles.IsLogOrCrashFile(call.Arg<GamePath>()));
         _main = _host.OpenInMemory("main");
         _local = _host.OpenInMemory("local_hashes");
         var hashes = Substitute.For<IFileHashesService>();
         hashes.Local.Returns(_ => _local.Db);
-        _emitter = new NonVanillaGameFilesEmitter(hashes);
+        _emitter = new NonVanillaGameFilesEmitter(hashes, _registry);
     }
 
     public void Dispose() => _host.Dispose();
@@ -86,6 +99,30 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
             await tx.Commit();
         }
         loadout = Loadout.Load(_main.Db, loadout.Id);
+
+        (await Diagnose(loadout)).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task TheBaselineIsFoundUnderTheFolderTheRegistryLocated_WhenTheRowSpellsItDifferently()
+    {
+        // On an ostree host /home is a link to /var/home: the registry can report the game under one spelling while
+        // the installation row holds the other, and the baseline was written under the registry's.
+        _locatedFolder = "/var/home/user/games/test";
+        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/var/home/user/games/test", LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, "/home/user/games/test");
+
+        (await Diagnose(loadout)).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AGameTheRegistryCannotFind_IsLookedUpByTheInstallationRowsFolder()
+    {
+        _registryKnowsTheGame = false;
+        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest));
+        var loadout = await LoadoutFor(GameStore.Steam, GamePath);
 
         (await Diagnose(loadout)).Should().ContainSingle();
     }
@@ -377,6 +414,21 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
             };
         }
         await tx.Commit();
+    }
+
+    private static GameInstallation Installation(GameStore store, string folder)
+    {
+        var path = FileSystem.Shared.FromUnsanitizedFullPath(folder);
+        var result = new GameLocatorResult
+        {
+            Game = Substitute.For<IGameData>(),
+            Path = path,
+            Store = store,
+            StoreIdentifier = "1",
+            LocatorIds = [],
+            Locator = Substitute.For<IGameLocator>(),
+        };
+        return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, path)));
     }
 
     private async Task<Loadout.ReadOnly> LoadoutFor(GameStore store, string gamePath)
