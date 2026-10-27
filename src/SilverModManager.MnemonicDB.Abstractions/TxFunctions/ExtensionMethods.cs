@@ -42,6 +42,26 @@ public static class ExtensionMethods
         }
     }
 
+    /// <summary>
+    /// Retracts whatever <paramref name="attribute"/> holds on <paramref name="id"/> when the transaction runs, and
+    /// nothing when it holds none.
+    /// </summary>
+    /// <remarks>
+    /// For a clear or a toggle decided from a database read earlier. A plain retraction names the value that read
+    /// saw, and the store refuses it when another commit changed or removed that value in between.
+    /// </remarks>
+    public static void RetractCurrent(this ITransaction tx, EntityId id, IAttribute attribute)
+        => tx.Add(id, attribute, RetractCurrentValues);
+
+    private static void RetractCurrentValues(ITransaction tx, IDb db, EntityId id, IAttribute attribute)
+    {
+        if (!db.AttributeCache.TryGetAttributeId(attribute.Id, out var attributeId)) return;
+        foreach (var datom in db.Get(id))
+        {
+            if (datom.A == attributeId) tx.Add(datom.Retract());
+        }
+    }
+
     private static void DeleteRecursive(ITransaction tx, IDb db, EntityId eid)
     {
         HashSet<EntityId> seen = [];

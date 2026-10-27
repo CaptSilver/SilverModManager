@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.MnemonicDB;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Storage;
 using SilverModManager.MnemonicDB.Storage.Abstractions;
 using SilverModManager.Sdk.Games;
@@ -79,5 +80,38 @@ public class DatomStoreRetractionTests
         }
 
         GameInstallMetadata.Load(connection.Db, id).Name.Should().Be("v0");
+    }
+
+    // A toggle decides from what it last saw. By the time its transaction lands the value may have changed or gone.
+    [Fact]
+    public async Task RetractCurrent_ValueReplacedBeforeTheCommit_RetractsTheValueThenHeld()
+    {
+        await using var provider = CreateProvider();
+        var connection = provider.GetRequiredService<IConnection>();
+        var id = await EntityNamed(connection, "v0");
+
+        using var tx = connection.BeginTransaction();
+        tx.RetractCurrent(id, GameInstallMetadata.Name);
+        await Rename(connection, id, "v1");
+        await tx.Commit();
+
+        GameInstallMetadata.Name.Contains(GameInstallMetadata.Load(connection.Db, id)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RetractCurrent_ValueAlreadyGone_CommitsAndChangesNothing()
+    {
+        await using var provider = CreateProvider();
+        var connection = provider.GetRequiredService<IConnection>();
+        var id = await EntityNamed(connection, "v0");
+        using var first = connection.BeginTransaction();
+        using var second = connection.BeginTransaction();
+        first.RetractCurrent(id, GameInstallMetadata.Name);
+        second.RetractCurrent(id, GameInstallMetadata.Name);
+        await first.Commit();
+
+        await second.Commit();
+
+        connection.Db.Get(id).Should().BeEmpty();
     }
 }
