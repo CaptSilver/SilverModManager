@@ -194,6 +194,57 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     }
 
     [Fact]
+    public async Task TheWritesCopyTheBytesCheckOutputsVerifiedEvenIfThePlanMovesAfterwards()
+    {
+        var loadout = await CreateLoadout();
+        var engine = Engine();
+        var part = new MergeSynchronizerPart(engine);
+        var files = part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), loadout);
+        engine.Plan(Arg.Any<Loadout.ReadOnly>(), Arg.Any<MergeSourceMode>()).Returns(
+        [
+            new MergedOutput(OutA, "scripts/a.txt", [9], ["A", "B"], [], "text-3way"),
+            new MergedOutput(OutB, "scripts/b.txt", [9], ["A", "B"], [], "text-3way"),
+        ]);
+        engine.MergedBytes(Arg.Any<Loadout.ReadOnly>(), Arg.Any<string>()).Returns([9]);
+
+        var a = new MemoryStream();
+        var b = new MemoryStream();
+        await files[OutA].Write(a, loadout, []);
+        await files[OutB].Write(b, loadout, []);
+
+        a.ToArray().Should().Equal(1);
+        b.ToArray().Should().Equal(2);
+        engine.DidNotReceiveWithAnyArgs().MergedBytes(default, default!);
+        engine.Received(1).Plan(Arg.Any<Loadout.ReadOnly>(), MergeSourceMode.Apply);
+    }
+
+    [Fact]
+    public async Task ACheckedPlanAnswersByRelativePathIgnoringCaseAndAPathItLacksHasNoBytes()
+    {
+        var loadout = await CreateLoadout();
+        var engine = Engine();
+        engine.MergedBytes(Arg.Any<Loadout.ReadOnly>(), Arg.Any<string>()).Returns([7]);
+        var part = new MergeSynchronizerPart(engine);
+        part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), loadout);
+
+        part.MergedBytes(loadout, "SCRIPTS/A.TXT").Should().Equal(1);
+        part.MergedBytes(loadout, "scripts/c.txt").Should().BeNull("the plan that was checked has no merge for it, whatever the engine says now");
+        engine.DidNotReceiveWithAnyArgs().MergedBytes(default, default!);
+    }
+
+    [Fact]
+    public async Task ARevisionNoCheckPassedForIsAnsweredByTheEngine()
+    {
+        var loadout = await CreateLoadout();
+        var engine = Engine();
+        engine.MergedBytes(Arg.Any<Loadout.ReadOnly>(), "scripts/a.txt").Returns([7]);
+
+        new MergeSynchronizerPart(engine).MergedBytes(loadout, "scripts/a.txt").Should().Equal(7);
+    }
+
+    [Fact]
     public async Task AddingToAListingDoesNotChangeTheNextOne()
     {
         var loadout = await CreateLoadout();

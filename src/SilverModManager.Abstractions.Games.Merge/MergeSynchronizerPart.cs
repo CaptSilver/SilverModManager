@@ -38,13 +38,22 @@ public sealed class MergeApplyRefusedException(string reason) : SynchronizerPref
 /// failed. It refuses a tree that disagrees with the plan, in either direction: a planned file the tree lacks would
 /// deploy its contributors whole, and a listed file the plan lacks would crash the write half way through.
 /// </para>
+/// <para>
+/// The merged files it lists read their bytes from here, and the bytes are the plan <see cref="CheckOutputs"/>
+/// verified for that revision. Asking the engine again from each write would scan the loadout and read every
+/// contested original once per file, and could hand a write bytes that were never checked.
+/// </para>
 /// </summary>
-public sealed class MergeSynchronizerPart(IMergeEngine engine)
+public sealed class MergeSynchronizerPart(IMergeEngine engine) : IMergePlanSource
 {
     // The latest revision of each loadout plus the one most recently listed, which differs when something lists an
     // older revision (a reset renders the last synced one). CheckOutputs reads the entry of the revision it checks.
     private readonly ConcurrentDictionary<(LoadoutId Loadout, TxId Revision), (IReadOnlyList<PlannedOutput> Outputs, Dictionary<GamePath, IIntrinsicFile> Files)> _listed = new();
     private readonly ConcurrentDictionary<LoadoutId, (TxId Revision, string Reason)> _listingFailures = new();
+
+    // The plan the latest passing CheckOutputs of each loadout verified, by relative path. Only the next passing check
+    // replaces it, never a listing: a refresh that lands while an apply writes must not take the bytes from under it.
+    private readonly ConcurrentDictionary<LoadoutId, (TxId Revision, IReadOnlyDictionary<string, MergedOutput> Outputs)> _checked = new();
 
     /// <summary>
     /// One <see cref="MergedIntrinsicFile"/> per path the engine will write, keyed by its output path. This runs on
@@ -65,7 +74,7 @@ public sealed class MergeSynchronizerPart(IMergeEngine engine)
 
             var files = new Dictionary<GamePath, IIntrinsicFile>();
             foreach (var output in planned)
-                files[output.Output] = new MergedIntrinsicFile(engine, output.Output, output.RelPath);
+                files[output.Output] = new MergedIntrinsicFile(this, output.Output, output.RelPath);
             _listed[(loadout.LoadoutId, revision)] = (planned, files);
             foreach (var key in _listed.Keys.Where(k => k.Loadout == loadout.LoadoutId && k.Revision < revision).ToArray())
                 _listed.TryRemove(key, out _);
@@ -130,5 +139,18 @@ public sealed class MergeSynchronizerPart(IMergeEngine engine)
             if (!planned.Contains(path) && tree.TryGetValue(path, out var node) && node.SourceItemType == LoadoutSourceItemType.Intrinsic)
                 throw MergeApplyRefusedException.Changed();
         }
+
+        _checked[loadout.LoadoutId] = (loadout.Db.BasisTxId, plan.ToDictionary(o => o.RelPath, StringComparer.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// The bytes <see cref="CheckOutputs"/> verified for <paramref name="relPath"/> at this revision, or null when that
+    /// plan has no merge for it. Only a revision no check passed for (nothing an apply writes) asks the engine.
+    /// </summary>
+    public byte[]? MergedBytes(Loadout.ReadOnly loadout, string relPath)
+    {
+        if (_checked.TryGetValue(loadout.LoadoutId, out var verified) && verified.Revision == loadout.Db.BasisTxId)
+            return verified.Outputs.TryGetValue(relPath, out var output) ? output.Bytes : null;
+        return engine.MergedBytes(loadout, relPath);
     }
 }

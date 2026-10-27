@@ -68,6 +68,43 @@ public class MergeSynchronizerPartApplyTests(IServiceProvider provider) : AGameT
     }
 
     [Fact]
+    public async Task AnApplyFoldsEachPathOnceAndItsWritesPlanNothing()
+    {
+        var loadout = await CreateLoadout();
+        var rels = Enumerable.Range(0, 3).Select(i => $"scripts/count-{i}-{Guid.NewGuid():N}.txt").ToArray();
+        foreach (var rel in rels)
+        {
+            var vanilla = GameInstallation.Locations[LocationId.Game].Path.Combine($"vanilla/{rel}");
+            vanilla.Parent.CreateDirectory();
+            await vanilla.WriteAllTextAsync("a\nb\nc\n");
+        }
+        await Mod(loadout, "A", "modA", 2, rels.Select(r => (r, Text("a\nB1\nc\n"))).ToArray());
+        await Mod(loadout, "B", "modB", 1, rels.Select(r => (r, Text("a\nb\nC\n"))).ToArray());
+        loadout = Refresh(loadout);
+        var strategy = new CountingStrategy();
+        var game = new CountingMergeGame { Strategy = strategy };
+        var part = new MergeSynchronizerPart(new MergeEngine(FileStore, new Trusting(), NullLogger<MergeEngine>.Instance, _ => game));
+
+        // What one apply does: plan in the loadout preflight, list, build the tree, check it, write every merged file.
+        part.PlanOutputs(loadout);
+        var files = part.IntrinsicFiles(loadout, NullLogger.Instance);
+        var tree = files.Keys.ToDictionary(p => p, _ => new SyncNode { SourceItemType = LoadoutSourceItemType.Intrinsic });
+        part.CheckOutputs(tree, loadout);
+        var scansBeforeTheWrites = game.MergesCalls;
+
+        foreach (var file in files.Values)
+        {
+            var stream = new MemoryStream();
+            await file.Write(stream, loadout, tree);
+            Encoding.UTF8.GetString(stream.ToArray()).Should().Be("a\nB1\nC\n");
+        }
+
+        files.Should().HaveCount(rels.Length);
+        strategy.Folds.Should().Be(rels.Length);
+        game.MergesCalls.Should().Be(scansBeforeTheWrites, "the writes copy the plan the check verified instead of scanning the loadout again");
+    }
+
+    [Fact]
     public async Task AFailedMergeIsNotListedOnceThePreflightHasPlanned()
     {
         var (part, loadout, good, bad) = await FirstApplyWithOneFailingPath();
