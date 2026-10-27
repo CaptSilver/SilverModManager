@@ -12,7 +12,7 @@ namespace SilverModManager.Collections;
 /// </summary>
 public static class CollectionRuleDrops
 {
-    private const string UnresolvedReason = "it names a mod that is not in the collection";
+    private const string UnresolvedReason = "no mod of the collection matched it";
 
     /// <summary>
     /// A rule the revision stored no <see cref="CollectionDownloadRules"/> row for (the resolver skips a rule when one end
@@ -36,12 +36,15 @@ public static class CollectionRuleDrops
         return drops;
     }
 
-    /// <summary>Same fields the resolver matches on, most readable first.</summary>
+    /// <summary>
+    /// The logical file name when the rule has one, because it reads best; else the field the resolver tries first
+    /// (md5, then tag, then file expression), so the card names what was actually looked for.
+    /// </summary>
     private static string Describe(VortexModReference reference)
     {
         if (!string.IsNullOrWhiteSpace(reference.LogicalFileName)) return reference.LogicalFileName;
-        if (!string.IsNullOrWhiteSpace(reference.FileExpression)) return reference.FileExpression;
+        if (reference.FileMD5 != default) return reference.FileMD5.ToString();
         if (!string.IsNullOrWhiteSpace(reference.Tag)) return reference.Tag;
-        return reference.FileMD5 != default ? reference.FileMD5.ToString() : "an unnamed mod";
+        return !string.IsNullOrWhiteSpace(reference.FileExpression) ? reference.FileExpression : "an unnamed mod";
     }
 }

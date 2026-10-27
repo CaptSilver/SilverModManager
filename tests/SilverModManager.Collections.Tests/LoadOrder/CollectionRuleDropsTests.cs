@@ -86,7 +86,7 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
 
         var drops = CollectionRuleDrops.Read(Connection.Db, manifest, revision);
 
-        drops.Should().Equal(new ModOrderDrop("rule 'tag0 before ghost'", "it names a mod that is not in the collection"));
+        drops.Should().Equal(new ModOrderDrop("rule 'tag0 before ghost'", "no mod of the collection matched it"));
     }
 
     [Fact]
@@ -103,6 +103,22 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
         var items = CollectionRuleDrops.Read(Connection.Db, manifest, revision).Select(drop => drop.Item).ToArray();
 
         items.Should().Equal("rule 'Logical.zip after Other*'", $"rule 'an unnamed mod after {Md5Value.From((UInt128)255)}'");
+    }
+
+    [Fact]
+    public async Task WithoutALogicalNameARuleIsDescribedByTheFieldTheResolverTriesFirst()
+    {
+        var md5 = Md5Value.From((UInt128)255);
+        var manifest = await Manifest(1, new ModRule
+        {
+            Type = VortexModRuleType.Before,
+            Source = new VortexModReference { FileExpression = "expr*", Tag = "t" },
+            Other = new VortexModReference { FileExpression = "Other*", FileMD5 = md5 },
+        });
+        var (_, revision, _) = await Offline.Create(manifest);
+
+        CollectionRuleDrops.Read(Connection.Db, manifest, revision).Select(drop => drop.Item)
+            .Should().Equal($"rule 't before {md5}'");
     }
 
     [Fact]
@@ -136,7 +152,7 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
         var row = ModOrderDroppedEntry.FindByLoadout(Connection.Db, loadout.LoadoutId).Should().ContainSingle().Subject;
         row.ContainerId.Should().Be(group.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId);
         row.Item.Should().Be("rule 'tag0 before ghost'");
-        row.Reason.Should().Be("it names a mod that is not in the collection");
+        row.Reason.Should().Be("no mod of the collection matched it");
         row.Page.Should().Be("Load Order");
         row.Source.Should().Be("collection Offline");
     }
