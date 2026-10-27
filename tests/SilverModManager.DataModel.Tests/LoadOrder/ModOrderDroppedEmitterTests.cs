@@ -1,10 +1,14 @@
+using System.Collections.Frozen;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.DataModel.Tests.LoadOrder;
@@ -36,9 +40,9 @@ public class ModOrderDroppedEmitterTests(ITestOutputHelper helper) : ACyberpunkI
 
     private async Task<Diagnostic[]> Diagnose(Loadout.ReadOnly loadout)
     {
-        var emitter = new ModOrderDroppedEmitter(Connection);
+        var emitter = new ModOrderDroppedEmitter();
         var result = new List<Diagnostic>();
-        await foreach (var diagnostic in emitter.Diagnose(Loadout.Load(Connection.Db, loadout.LoadoutId), CancellationToken.None)) result.Add(diagnostic);
+        await foreach (var diagnostic in emitter.Diagnose(Loadout.Load(Connection.Db, loadout.LoadoutId), FrozenDictionary<GamePath, SyncNode>.Empty, CancellationToken.None)) result.Add(diagnostic);
         return result.ToArray();
     }
 
@@ -85,5 +89,11 @@ public class ModOrderDroppedEmitterTests(ITestOutputHelper helper) : ACyberpunkI
     {
         var card = ADroppedItemEmitter.Card(new("Ghost", "collection X", "no installed mod matches it", "Load Order"));
         card.FormatDetails(new PlainDiagnosticWriter()).Should().Contain("Load Order page");
+    }
+
+    [Fact]
+    public void TheEmitterIsRegisteredForEveryGame()
+    {
+        ServiceProvider.GetServices<IDiagnosticEmitter>().OfType<ModOrderDroppedEmitter>().Should().ContainSingle();
     }
 }

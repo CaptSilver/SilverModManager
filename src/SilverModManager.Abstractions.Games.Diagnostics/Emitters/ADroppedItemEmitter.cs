@@ -26,7 +26,6 @@ public abstract class ADroppedItemEmitter : ILoadoutDiagnosticEmitter
     public static Diagnostic Card(DroppedItem item) => DroppedItemDiagnostics.CreateDroppedItem(item.Item, item.Source, item.Reason, item.Page);
 
     /// <inheritdoc />
-    [Obsolete("To be replaced with the overload that takes in the sync tree")]
     public virtual IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
         return Diagnose(loadout, FrozenDictionary<GamePath, SyncNode>.Empty, cancellationToken);
