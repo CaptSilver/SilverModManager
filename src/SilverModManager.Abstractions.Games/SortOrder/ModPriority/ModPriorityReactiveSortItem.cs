@@ -5,7 +5,7 @@ using SilverModManager.MnemonicDB.Abstractions;
 namespace SilverModManager.Abstractions.Games;
 
 /// <summary>A mod's priority row as a line of the Load Order page. The key is the row's entity id.</summary>
-public class ModPriorityReactiveSortItem : IReactiveSortItem<ModPriorityReactiveSortItem, SortItemKey<EntityId>>
+public sealed class ModPriorityReactiveSortItem : IReactiveSortItem<ModPriorityReactiveSortItem, SortItemKey<EntityId>>
 {
     public ModPriorityReactiveSortItem(int sortIndex, EntityId priorityRow, LoadoutItemGroupId group, string modName, bool isActive)
     {

@@ -69,6 +69,14 @@ public class ModPriorityOrderVarietyTests(ITestOutputHelper helper) : ACyberpunk
     }
 
     [Fact]
+    public void PlanRefusesADragOutsideTheOrder()
+    {
+        var plan = () => ModPriorityOrderVariety.Plan([Row(1), Row(2)], [Row(9).Value], Row(1).Value, TargetRelativePosition.BeforeTarget);
+
+        plan.Should().Throw<InvalidOperationException>().WithMessage("The mods you moved are no longer*");
+    }
+
+    [Fact]
     public void PlanRefusesATargetOutsideTheOrder()
     {
         var plan = () => ModPriorityOrderVariety.Plan([Row(1)], [Row(1).Value], Row(9).Value, TargetRelativePosition.BeforeTarget);
@@ -77,20 +85,20 @@ public class ModPriorityOrderVarietyTests(ITestOutputHelper helper) : ACyberpunk
     }
 
     [Fact]
-    public async Task ItemsListTheLoadoutsRowsHighestPriorityFirst()
+    public async Task ItemsListTheLoadoutsRowsLowestPriorityFirst()
     {
         var loadout = await CreateLoadout();
         var groups = await AddGroupsWithPriorities(loadout.LoadoutId, "A", "B", "C");
 
         var items = Variety.GetSortOrderItems(SortOrderIdOf(loadout.LoadoutId));
 
-        items.Select(item => item.DisplayName).Should().Equal("C", "B", "A");
+        items.Select(item => item.DisplayName).Should().Equal("A", "B", "C");
         items.Select(item => item.SortIndex).Should().Equal(0, 1, 2);
-        items.Select(item => item.ModGroupId.Value).Should().Equal(groups["C"].group, groups["B"].group, groups["A"].group);
+        items.Select(item => item.ModGroupId.Value).Should().Equal(groups["A"].group, groups["B"].group, groups["C"].group);
         items.Select(item => item.Key).Should().Equal(
-            new SortItemKey<EntityId>(groups["C"].priority.Value),
+            new SortItemKey<EntityId>(groups["A"].priority.Value),
             new SortItemKey<EntityId>(groups["B"].priority.Value),
-            new SortItemKey<EntityId>(groups["A"].priority.Value));
+            new SortItemKey<EntityId>(groups["C"].priority.Value));
     }
 
     [Fact]
@@ -120,14 +128,14 @@ public class ModPriorityOrderVarietyTests(ITestOutputHelper helper) : ACyberpunk
         var variety = Variety;
         var sortOrder = SortOrderIdOf(loadout.LoadoutId);
         var items = variety.GetSortOrderItems(sortOrder);
-        items.Select(item => item.ModGroupId.Value).Should().Equal(high, low);
+        items.Select(item => item.ModGroupId.Value).Should().Equal(low, high);
 
-        // High is on top of the list; dropping it under Low hands the file to Low.
-        await variety.MoveItems(sortOrder, [items[0].Key], items[1].Key, TargetRelativePosition.AfterTarget);
+        // High is last in the list; dropping it above Low hands the file to Low.
+        await variety.MoveItems(sortOrder, [items[1].Key], items[0].Key, TargetRelativePosition.BeforeTarget);
 
         WinnerOf(low).Should().BeTrue();
         WinnerOf(high).Should().BeFalse();
-        variety.GetSortOrderItems(sortOrder).Select(item => item.ModGroupId.Value).Should().Equal(low, high);
+        variety.GetSortOrderItems(sortOrder).Select(item => item.ModGroupId.Value).Should().Equal(high, low);
     }
 
     [Fact]
@@ -138,13 +146,13 @@ public class ModPriorityOrderVarietyTests(ITestOutputHelper helper) : ACyberpunk
         var variety = Variety;
         var sortOrder = SortOrderIdOf(loadout.LoadoutId);
         var items = variety.GetSortOrderItems(sortOrder);
-        items.Select(item => item.DisplayName).Should().Equal("D", "C", "B", "A");
+        items.Select(item => item.DisplayName).Should().Equal("A", "B", "C", "D");
 
         await variety.MoveItemDelta(sortOrder, items[0].Key, 2);
-        variety.GetSortOrderItems(sortOrder).Select(item => item.DisplayName).Should().Equal("C", "B", "D", "A");
+        variety.GetSortOrderItems(sortOrder).Select(item => item.DisplayName).Should().Equal("B", "C", "A", "D");
 
         await variety.MoveItemDelta(sortOrder, variety.GetSortOrderItems(sortOrder)[2].Key, -2);
-        variety.GetSortOrderItems(sortOrder).Select(item => item.DisplayName).Should().Equal("D", "C", "B", "A");
+        variety.GetSortOrderItems(sortOrder).Select(item => item.DisplayName).Should().Equal("A", "B", "C", "D");
     }
 
     [Fact]
@@ -157,7 +165,7 @@ public class ModPriorityOrderVarietyTests(ITestOutputHelper helper) : ACyberpunk
         var items = variety.GetSortOrderItems(sortOrder);
 
         await variety.MoveItemDelta(sortOrder, items[0].Key, 10);
-        variety.GetSortOrderItems(sortOrder).Select(item => item.DisplayName).Should().Equal("B", "A", "C");
+        variety.GetSortOrderItems(sortOrder).Select(item => item.DisplayName).Should().Equal("B", "C", "A");
     }
 
     [Fact]
@@ -169,13 +177,14 @@ public class ModPriorityOrderVarietyTests(ITestOutputHelper helper) : ACyberpunk
         var variety = Variety;
         var sortOrder = SortOrderIdOf(loadout.LoadoutId);
         var items = variety.GetSortOrderItems(sortOrder);
-        items.Select(item => item.DisplayName).Should().Equal("a", "b");
+        items.Select(item => item.DisplayName).Should().Equal("b", "a");
 
-        var move = () => variety.MoveItems(sortOrder, [items[1].Key], items[0].Key, TargetRelativePosition.BeforeTarget);
+        // Dropping b below a in the list puts it above a in priority.
+        var move = () => variety.MoveItems(sortOrder, [items[0].Key], items[1].Key, TargetRelativePosition.AfterTarget);
 
         (await move.Should().ThrowAsync<InvalidOperationException>())
             .WithMessage("That move would break the rule 'a wins over b'.");
-        variety.GetSortOrderItems(sortOrder).Select(item => item.DisplayName).Should().Equal("a", "b");
+        variety.GetSortOrderItems(sortOrder).Select(item => item.DisplayName).Should().Equal("b", "a");
     }
 
     [Fact]
@@ -187,7 +196,105 @@ public class ModPriorityOrderVarietyTests(ITestOutputHelper helper) : ACyberpunk
         await LoadoutManager.ResolveFileConflicts([groups["A"].priority], groups["C"].priority);
 
         Variety.GetSortOrderItems(SortOrderIdOf(loadout.LoadoutId)).Select(item => item.DisplayName)
-            .Should().Equal("A", "C", "B");
+            .Should().Equal("B", "C", "A");
+    }
+
+    [Fact]
+    public async Task AStaleDragIsRefusedWithReadableText()
+    {
+        var loadout = await CreateLoadout();
+        await AddGroupsWithPriorities(loadout.LoadoutId, "A", "B");
+        var variety = Variety;
+        var sortOrder = SortOrderIdOf(loadout.LoadoutId);
+        var items = variety.GetSortOrderItems(sortOrder);
+
+        var gone = new SortItemKey<EntityId>(EntityId.From(0xDEAD));
+        var staleDrag = () => variety.MoveItems(sortOrder, [gone], items[0].Key, TargetRelativePosition.BeforeTarget);
+        var staleTarget = () => variety.MoveItems(sortOrder, [items[0].Key], gone, TargetRelativePosition.BeforeTarget);
+        var staleDelta = () => variety.MoveItemDelta(sortOrder, gone, 1);
+
+        (await staleDrag.Should().ThrowAsync<InvalidOperationException>()).WithMessage("The mods you moved are no longer in the load order.*");
+        (await staleTarget.Should().ThrowAsync<InvalidOperationException>()).WithMessage("The mod you dropped on is no longer in the load order.*");
+        (await staleDelta.Should().ThrowAsync<InvalidOperationException>()).WithMessage("The mod you moved is no longer in the load order.*");
+    }
+
+    [Fact]
+    public async Task AModInADisabledCollectionIsListedAsInactive()
+    {
+        var loadout = await CreateLoadout();
+        using var tx = Connection.BeginTransaction();
+        var collection = AddEmptyGroup(tx, loadout.LoadoutId, "Pack");
+        var child = new LoadoutItemGroup.New(tx, out var childId)
+        {
+            IsGroup = true,
+            LoadoutItem = new LoadoutItem.New(tx, childId) { LoadoutId = loadout.LoadoutId, Name = "Packed", ParentId = collection.Value },
+        };
+        _ = new LoadoutItemGroupPriority.New(tx) { LoadoutId = loadout.LoadoutId, TargetId = child.Id, Priority = ConflictPriority.From(1) };
+        tx.Add(collection.Value, LoadoutItem.Disabled, Null.Instance);
+        await tx.Commit();
+
+        Variety.GetSortOrderItems(SortOrderIdOf(loadout.LoadoutId)).Should().ContainSingle()
+            .Which.IsActive.Should().BeFalse("the mod's own switch is on but its collection is off");
+    }
+
+    [Fact]
+    public async Task ARenameAndAnEnableToggleReachTheChangeSet()
+    {
+        var loadout = await CreateLoadout();
+        var groups = await AddGroupsWithPriorities(loadout.LoadoutId, "A", "B");
+        using var subscription = Variety.GetSortOrderItemsChangeSet(SortOrderIdOf(loadout.LoadoutId)).Bind(out var bound).Subscribe();
+        bound.Select(item => item.DisplayName).Should().BeEquivalentTo("A", "B");
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(groups["A"].group.Value, LoadoutItem.Name, "Renamed");
+            await tx.Commit();
+        }
+        await Eventually(() => bound.Select(item => item.DisplayName).Should().BeEquivalentTo("Renamed", "B"));
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(groups["B"].group.Value, LoadoutItem.Disabled, Null.Instance);
+            await tx.Commit();
+        }
+        await Eventually(() => bound.Single(item => item.DisplayName == "B").IsActive.Should().BeFalse());
+    }
+
+    [Fact]
+    public async Task ABurstOfCommitsIsReadAsOneChange()
+    {
+        var loadout = await CreateLoadout();
+        var groups = await AddGroupsWithPriorities(loadout.LoadoutId, "A");
+        var notifications = 0;
+        using var subscription = Variety.GetSortOrderItemsChangeSet(SortOrderIdOf(loadout.LoadoutId)).Subscribe(_ => Interlocked.Increment(ref notifications));
+        notifications.Should().Be(1, "the subscription starts with the current order");
+
+        for (var i = 0; i < 10; i++)
+        {
+            using var tx = Connection.BeginTransaction();
+            tx.Add(groups["A"].group.Value, LoadoutItem.Name, $"Name {i}");
+            await tx.Commit();
+        }
+
+        await Eventually(() => Variety.GetSortOrderItems(SortOrderIdOf(loadout.LoadoutId)).Single().DisplayName.Should().Be("Name 9"));
+        await Task.Delay(300);
+        notifications.Should().BeLessThan(5, "ten commits in a row are one read, not ten");
+    }
+
+    [Fact]
+    public async Task ACommitToAnotherLoadoutIsNotAChangeHere()
+    {
+        var loadout = await CreateLoadout();
+        var other = await CreateLoadout();
+        await AddGroupsWithPriorities(loadout.LoadoutId, "A");
+        var notifications = 0;
+        using var subscription = Variety.GetSortOrderItemsChangeSet(SortOrderIdOf(loadout.LoadoutId)).Subscribe(_ => Interlocked.Increment(ref notifications));
+        notifications.Should().Be(1);
+
+        await AddGroupsWithPriorities(other.LoadoutId, "X", "Y");
+        await Task.Delay(400);
+
+        notifications.Should().Be(1, "the other loadout's mods are not on this page");
     }
 
     [Fact]
@@ -198,11 +305,11 @@ public class ModPriorityOrderVarietyTests(ITestOutputHelper helper) : ACyberpunk
         using var subscription = Variety.GetSortOrderItemsChangeSet(SortOrderIdOf(loadout.LoadoutId))
             .Bind(out var bound)
             .Subscribe();
-        bound.OrderBy(item => item.SortIndex).Select(item => item.DisplayName).Should().Equal("C", "B", "A");
+        bound.OrderBy(item => item.SortIndex).Select(item => item.DisplayName).Should().Equal("A", "B", "C");
 
         await LoadoutManager.ResolveFileConflicts([groups["A"].priority], groups["C"].priority);
 
-        bound.OrderBy(item => item.SortIndex).Select(item => item.DisplayName).Should().Equal("A", "C", "B");
+        await Eventually(() => bound.OrderBy(item => item.SortIndex).Select(item => item.DisplayName).Should().Equal("B", "C", "A"));
     }
 
     [Fact]
@@ -227,14 +334,32 @@ public class ModPriorityOrderVarietyTests(ITestOutputHelper helper) : ACyberpunk
         await variety.ReconcileSortOrder(sortOrder);
         await variety.DeleteSortOrder(sortOrder);
 
-        variety.GetSortOrderItems(sortOrder).Select(item => item.DisplayName).Should().Equal("B", "A");
+        variety.GetSortOrderItems(sortOrder).Select(item => item.DisplayName).Should().Equal("A", "B");
     }
 
     [Fact]
-    public void ItShowsTheWinnerOnTop()
+    public void TheWinnerIsAtTheBottomLikeOnFileConflicts()
     {
-        Variety.IndexOverrideBehavior.Should().Be(IndexOverrideBehavior.SmallerIndexWins);
+        // Rules > File Conflicts says mods lower in the list win; this page lists the same rows, so it must agree.
+        Variety.IndexOverrideBehavior.Should().Be(IndexOverrideBehavior.GreaterIndexWins);
         Variety.SortDirectionDefault.Should().Be(System.ComponentModel.ListSortDirection.Ascending);
+    }
+
+    private static async Task Eventually(Action assertion)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (true)
+        {
+            try
+            {
+                assertion();
+                return;
+            }
+            catch (Exception) when (DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(50);
+            }
+        }
     }
 
     private static SortOrderId SortOrderIdOf(LoadoutId loadoutId) => SortOrderId.From(loadoutId.Value);

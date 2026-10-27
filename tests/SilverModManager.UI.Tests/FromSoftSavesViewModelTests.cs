@@ -52,7 +52,7 @@ public class FromSoftSavesViewModelTests(IServiceProvider provider) : AUiTest(pr
             };
         }
 
-        // The UI host locates no FromSoft game, so the located installation is rebuilt around Elden Ring's game class.
+        // Any located stub folder will do; the installation is rebuilt around Elden Ring's game class so the test needs no Elden Ring layout.
         private static GameInstallation EldenRingInstallation(IServiceProvider provider)
         {
             var located = provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First();

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Kernel;
@@ -15,7 +16,7 @@ namespace SilverModManager.Abstractions.Games;
 
 /// <summary>
 /// The Load Order page of a game with no sort-order variety: a view over LoadoutItemGroupPriority. Index 0 is the
-/// highest priority (SmallerIndexWins, winner on top). It stores nothing: the SortOrderId it hands out is the loadout's
+/// lowest priority (GreaterIndexWins, winner at the bottom, as on Rules > File Conflicts). It stores nothing: the SortOrderId it hands out is the loadout's
 /// own id, which LoadOrderViewModel only passes back here. Moves go through ILoadoutManager, so a move a stored rule
 /// forbids is refused with the rule's text, as on Rules > File Conflicts.
 /// </summary>
@@ -28,17 +29,17 @@ public sealed class ModPriorityOrderVariety(IConnection connection, ILoadoutMana
 
     public ListSortDirection SortDirectionDefault => ListSortDirection.Ascending;
 
-    public IndexOverrideBehavior IndexOverrideBehavior => IndexOverrideBehavior.SmallerIndexWins;
+    public IndexOverrideBehavior IndexOverrideBehavior => IndexOverrideBehavior.GreaterIndexWins;
 
     public SortOrderUiMetadata SortOrderUiMetadata { get; } = new()
     {
         SortOrderName = "Load Order",
-        OverrideInfoTitle = "Load Order - Higher Wins",
+        OverrideInfoTitle = "Load Order - Last Wins",
         OverrideInfoMessage = """
-                              When two mods ship the same file, the one higher in this list is used. Dragging a mod up or down changes which one wins, the same as on File Conflicts.
+                              When two mods ship the same file, the one lower in this list is used. Dragging a mod up or down changes which one wins, the same as on File Conflicts.
                               A rule you stored on the Rules tab always has the last word: a drag that would break one is refused.
                               """,
-        WinnerIndexToolTip = "First Wins: a mod higher in the list overrides the ones below it.",
+        WinnerIndexToolTip = "Last Wins: a mod lower in the list overrides the ones above it.",
         IndexColumnHeader = "Load Order",
         DisplayNameColumnHeader = "Mod",
         EmptyStateMessageTitle = "No mods yet",
@@ -60,14 +61,51 @@ public sealed class ModPriorityOrderVariety(IConnection connection, ILoadoutMana
     public IReadOnlyList<ModPriorityReactiveSortItem> GetSortOrderItems(SortOrderId sortOrderId, IDb? db = null)
         => ItemsOf(db ?? connection.Db, LoadoutOf(sortOrderId));
 
-    // Every revision, not only the priority rows': a mod's name and enabled state show on the page too.
+    // Rebuilt from the database rather than from the priority rows alone: a mod's name and enabled state show on the
+    // page too. A revision is read on the task pool, a burst of them (a bulk install) as one read, and one that wrote
+    // none of the attributes the page shows is skipped. A re-read that finds the same rows (another loadout's commit)
+    // is not a change. The subscription's first value is the current revision.
     public IObservable<IChangeSet<ModPriorityReactiveSortItem, SortItemKey<EntityId>>> GetSortOrderItemsChangeSet(SortOrderId sortOrderId)
     {
         var loadoutId = LoadoutOf(sortOrderId);
-        return connection.Revisions
-            .Select(db => (IEnumerable<ModPriorityReactiveSortItem>)ItemsOf(db, loadoutId))
-            .StartWith(ItemsOf(connection.Db, loadoutId))
-            .EditDiff(static item => item.Key, ItemComparer.Instance);
+        var cache = connection.Db.AttributeCache;
+        HashSet<AttributeId> shown =
+        [
+            cache.GetAttributeId(LoadoutItemGroupPriority.Priority.Id),
+            cache.GetAttributeId(LoadoutItemGroupPriority.Target.Id),
+            cache.GetAttributeId(LoadoutItemGroupPriority.Loadout.Id),
+            cache.GetAttributeId(LoadoutItem.Name.Id),
+            cache.GetAttributeId(LoadoutItem.Disabled.Id),
+            cache.GetAttributeId(LoadoutItem.Parent.Id),
+        ];
+
+        var revisions = connection.Revisions
+            .Publish(shared => shared.Take(1).Merge(
+                shared.Skip(1)
+                    .Where(db => TouchesShownAttributes(db, shown))
+                    .Throttle(RevisionThrottle, TaskPoolScheduler.Default)))
+            .Select(db => ItemsOf(db, loadoutId));
+
+        // A cache applies only what differs from the previous read, so a re-read that finds the same rows notifies nobody.
+        return ObservableChangeSet.Create<ModPriorityReactiveSortItem, SortItemKey<EntityId>>(
+            cache => revisions.Subscribe(items => cache.Edit(updater =>
+            {
+                var keys = items.Select(static item => item.Key).ToHashSet();
+                updater.Remove(updater.Keys.Where(key => !keys.Contains(key)).ToList());
+                updater.AddOrUpdate(items, ItemComparer.Instance);
+            })),
+            static item => item.Key);
+    }
+
+    private static readonly TimeSpan RevisionThrottle = TimeSpan.FromMilliseconds(100);
+
+    private static bool TouchesShownAttributes(IDb db, HashSet<AttributeId> shown)
+    {
+        foreach (var datom in db.RecentlyAdded)
+        {
+            if (shown.Contains(datom.A)) return true;
+        }
+        return false;
     }
 
     public async Task MoveItems(
@@ -80,10 +118,15 @@ public sealed class ModPriorityOrderVariety(IConnection connection, ILoadoutMana
     {
         token.ThrowIfCancellationRequested();
         var highestFirst = PriorityRows(db ?? connection.Db, LoadoutOf(sortOrderId));
-        var (moved, loser) = Plan(highestFirst, itemsToMove.Select(static key => key.Key).ToArray(), dropTargetItem.Key, relativePosition);
+        var dragged = itemsToMove.Select(static key => key.Key).ToArray();
+
+        // The list shows the lowest priority first, so a drop before the target is below it in priority.
+        var inPriorityTerms = relativePosition == TargetRelativePosition.BeforeTarget ? TargetRelativePosition.AfterTarget : TargetRelativePosition.BeforeTarget;
+        var (moved, loser) = Plan(highestFirst, dragged, dropTargetItem.Key, inPriorityTerms);
         if (moved.Length == 0)
         {
-            logger.LogTrace("Nothing to move in loadout {Loadout}: the dropped rows are the drop target or no longer exist", LoadoutOf(sortOrderId));
+            // The target is one of the dragged rows: the order stays as it is.
+            logger.LogTrace("Dropped rows onto one of themselves in loadout {Loadout}; nothing to move", LoadoutOf(sortOrderId));
             return;
         }
 
@@ -96,9 +139,11 @@ public sealed class ModPriorityOrderVariety(IConnection connection, ILoadoutMana
 
     public async Task MoveItemDelta(SortOrderId sortOrderId, SortItemKey<EntityId> sourceItem, int delta, IDb? db = null, CancellationToken token = default)
     {
+        // Index order, lowest priority first: a positive delta moves the row toward the winning end.
         var rows = PriorityRows(db ?? connection.Db, LoadoutOf(sortOrderId));
-        var from = rows.ToList().FindIndex(row => row.Value == sourceItem.Key);
-        if (from < 0) throw new InvalidOperationException($"Row {sourceItem.Key} is not in the priority order of loadout {LoadoutOf(sortOrderId).Value}.");
+        rows.Reverse();
+        var from = rows.FindIndex(row => row.Value == sourceItem.Key);
+        if (from < 0) throw new InvalidOperationException("The mod you moved is no longer in the load order. Check the list and try again.");
 
         var to = Math.Clamp(from + delta, 0, rows.Count - 1);
         if (to == from) return;
@@ -121,13 +166,14 @@ public sealed class ModPriorityOrderVariety(IConnection connection, ILoadoutMana
     }
 
     /// <summary>
-    /// Works out the call to ILoadoutManager for a drop. The list is highest priority first, so dropping before the
+    /// Works out the call to ILoadoutManager for a drop, in priority terms: <paramref name="highestFirst"/> is the rows
+    /// highest priority first, so dropping before the
     /// target puts the moved rows over it (the target becomes the loser), and dropping after it puts them over the
     /// next row down that is not itself moving, or at the bottom when there is none.
     /// </summary>
     /// <returns>
     /// The moved rows in list order, and the row they land over. No moved rows when the target is among the dragged
-    /// ones or none of the dragged rows is in the order.
+    /// ones. Throws when none of the dragged rows, or the target, is in the order any more (the list was stale).
     /// </returns>
     internal static (LoadoutItemGroupPriorityId[] Moved, LoadoutItemGroupPriorityId? Loser) Plan(
         IReadOnlyList<LoadoutItemGroupPriorityId> highestFirst,
@@ -135,13 +181,16 @@ public sealed class ModPriorityOrderVariety(IConnection connection, ILoadoutMana
         EntityId target,
         TargetRelativePosition position)
     {
-        var targetIndex = highestFirst.ToList().FindIndex(row => row.Value == target);
-        if (targetIndex < 0) throw new InvalidOperationException($"Row {target} is not in the priority order.");
-
         var movedSet = moved.ToHashSet();
-        if (movedSet.Contains(target)) return ([], null);
-
         var movedRows = highestFirst.Where(row => movedSet.Contains(row.Value)).ToArray();
+        if (movedRows.Length == 0)
+            throw new InvalidOperationException("The mods you moved are no longer in the load order. Check the list and try again.");
+
+        var targetIndex = highestFirst.ToList().FindIndex(row => row.Value == target);
+        if (targetIndex < 0)
+            throw new InvalidOperationException("The mod you dropped on is no longer in the load order. Check the list and try again.");
+
+        if (movedSet.Contains(target)) return ([], null);
         if (position == TargetRelativePosition.BeforeTarget) return (movedRows, highestFirst[targetIndex]);
 
         for (var i = targetIndex + 1; i < highestFirst.Count; i++)
@@ -158,10 +207,11 @@ public sealed class ModPriorityOrderVariety(IConnection connection, ILoadoutMana
         .Select(static row => row.LoadoutItemGroupPriorityId)
         .ToList();
 
+    // Lowest priority first, so the index grows toward the winner.
     private static List<ModPriorityReactiveSortItem> ItemsOf(IDb db, LoadoutId loadoutId) => LoadoutItemGroupPriority
         .FindByLoadout(db, loadoutId)
         .Where(static row => row.Target.IsValid())
-        .OrderByDescending(static row => row.Priority)
+        .OrderBy(static row => row.Priority)
         .Select(static (row, index) =>
         {
             var item = row.Target.AsLoadoutItem();
