@@ -397,11 +397,15 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // For each entry in the main iterator
         while (iterator.MoveNext())
         {
-            // Fast-forward the other iterators to the same entry
-            pathIterator.FastForwardTo(iterator.KeyPrefix.E);
-            hashIterator.FastForwardTo(iterator.KeyPrefix.E);
-            sizeIterator.FastForwardTo(iterator.KeyPrefix.E);
-            lastModifiedIterator.FastForwardTo(iterator.KeyPrefix.E);
+            // Fast-forward the other iterators to the same entry. One that lands past it means the entry lacks that
+            // attribute, and reading on would lend it the next entry's value.
+            var entry = iterator.KeyPrefix.E;
+            if (!pathIterator.FastForwardTo(entry) || !hashIterator.FastForwardTo(entry)
+                || !sizeIterator.FastForwardTo(entry) || !lastModifiedIterator.FastForwardTo(entry))
+            {
+                Logger.LogWarning("Skipping disk state entry {Entry} of {Installation}: it is missing its path, hash, size or time", entry, metadata.Id);
+                continue;
+            }
             
             // Get the location id for the path
             var locationId = MemoryMarshal.Read<LocationId>(pathIterator.ValueSpan.SliceFast(sizeof(EntityId)));

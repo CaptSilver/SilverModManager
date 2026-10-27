@@ -57,6 +57,50 @@ public class DiskStateRowTests(ITestOutputHelper helper) : AStubbedGameTest<Disk
         Connection.Db.Get(entry).Should().BeEmpty("a file that is gone from disk keeps no disk state");
     }
 
+    // An earlier build could leave an entry with its path but not its hash, size or time. Reading the disk
+    // state must not lend it the next entry's values.
+    [Fact]
+    public async Task ReadingDiskState_AnEntryMissingItsHash_IsLeftOutAndTheNextEntryKeepsItsOwn()
+    {
+        EntityId row, whole;
+        using (var tx = Connection.BeginTransaction())
+        {
+            var r = new GameInstallMetadata.New(tx)
+            {
+                Store = GameStore.Steam,
+                Path = "/not-a-folder/half-written",
+                Game = GameId.From("HalfWritten"),
+                Name = "Half Written",
+            };
+            var result = await tx.Commit();
+            row = result.Remap(r).Id;
+        }
+        using (var tx = Connection.BeginTransaction())
+        {
+            var half = tx.TempId(DiskStateEntry.EntryPartition);
+            tx.Add(half, DiskStateEntry.Path, new GamePath(LocationId.Game, "half.txt").ToGamePathParentTuple(row));
+            tx.Add(half, DiskStateEntry.Game, row);
+            var w = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
+            {
+                Path = new GamePath(LocationId.Game, "whole.txt").ToGamePathParentTuple(row),
+                Hash = Hash.From(0x2),
+                Size = Size.From(2),
+                LastModified = DateTimeOffset.UnixEpoch,
+                GameId = row,
+            };
+            var result = await tx.Commit();
+            whole = result.Remap(w).Id;
+            result[half].Value.Should().BeLessThan(whole.Value, "the half entry has to come first in the merge join");
+        }
+
+        var pairs = Synchronizer.GetDiskStateForGame(GameInstallMetadata.Load(Connection.Db, row));
+
+        pairs.Should().ContainSingle();
+        pairs[0].Part.EntityId.Should().Be(whole);
+        pairs[0].Path.Should().Be(new GamePath(LocationId.Game, "whole.txt"));
+        pairs[0].Part.Hash.Should().Be(Hash.From(0x2));
+    }
+
     [Fact]
     public async Task ApplyingALoadoutOnASecondRowForTheSameFolder_IsRefusedBeforeAnythingIsWritten()
     {
