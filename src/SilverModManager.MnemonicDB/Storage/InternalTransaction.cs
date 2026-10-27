@@ -15,7 +15,11 @@ namespace SilverModManager.MnemonicDB.Storage;
 
 internal class InternalTransaction(IDb basisDb, IndexSegmentBuilder datoms) : ITransaction
 {
-    private ulong _tempId = PartitionId.Temp.MakeEntityId(0).Value;
+    private const ulong TempIdBase = 1UL << 32;
+
+    // A transaction function runs after the caller's own temporary entities were numbered from the low end of the same
+    // range, and the two sets of datoms are concatenated, so both counting from the bottom would merge unrelated entities.
+    private ulong _tempId = PartitionId.Temp.MakeEntityId(TempIdBase).Value;
     private List<ITemporaryEntity>? _temporaryEntities = null;
 
     /// <inheritdoc />

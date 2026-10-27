@@ -41,6 +41,24 @@ public class SetGroupOrderTests(ITestOutputHelper helper) : ACyberpunkIsolatedGa
         .ToArray();
 
     [Fact]
+    public async Task RowsTheOrderCreatesDoNotMergeWithEntitiesTheSameTransactionAdds()
+    {
+        var (loadout, g) = await Seed(["a"], "n", "m");
+
+        // The transaction creates its own entities as well as the rows SetGroupOrder makes for n and m.
+        using var tx = Connection.BeginTransaction();
+        var extra = AddEmptyGroup(tx, loadout.LoadoutId, "extra");
+        LoadoutManager.SetGroupOrder(loadout.LoadoutId, [g["n"], g["m"], g["a"]], tx);
+        var result = await tx.Commit();
+
+        var extraId = LoadoutItemGroupId.From(result[extra].Value);
+        LoadoutItem.Load(Connection.Db, extraId).Name.Should().Be("extra");
+        LoadoutItemGroupPriority.FindByLoadout(Connection.Db, loadout.LoadoutId).Select(row => row.Id)
+            .Should().NotContain(extraId.Value, "a priority row is its own entity, not the group the transaction added");
+        NamesByPriority(loadout.LoadoutId).Should().Equal("a", "m", "n");
+    }
+
+    [Fact]
     public async Task GroupsWithRowsAreReorderedWithinTheirOwnSlots()
     {
         var (loadout, g) = await Seed(["a", "b", "c", "d"]);
