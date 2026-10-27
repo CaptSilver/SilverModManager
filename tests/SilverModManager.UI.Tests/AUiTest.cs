@@ -96,14 +96,23 @@ public class AUiTest : IAsyncDisposable
     /// </remarks>
     protected Task<Loadout.ReadOnly> SeedLoadoutRow(GameStore store, string name) => SeedLoadoutRow<Cyberpunk2077Game>(store, name);
 
+    /// <summary>
+    /// The located install of <typeparamref name="TGame"/>'s stub, preferring <paramref name="store"/>. Metadata rows
+    /// seeded from it name a folder a located install owns, so the registry never mistakes them for a game that moved.
+    /// </summary>
+    internal static GameInstallation LocateStubbedInstallation<TGame>(IServiceProvider provider, GameStore? store = null) where TGame : IGame
+    {
+        var stubbed = provider.GetRequiredService<IGameRegistry>().LocateGameInstallations()
+            .Where(located => located.LocatorResult.Locator is UniversalStubbedGameLocator<TGame>)
+            .ToArray();
+        return stubbed.FirstOrDefault(located => located.LocatorResult.Store == store) ?? stubbed.First();
+    }
+
     /// <inheritdoc cref="SeedLoadoutRow(GameStore, string)"/>
     /// <typeparam name="TGame">The game whose stub locator reports the folder; the host registers one for it.</typeparam>
     protected async Task<Loadout.ReadOnly> SeedLoadoutRow<TGame>(GameStore store, string name) where TGame : IGame
     {
-        var stubbed = Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations()
-            .Where(located => located.LocatorResult.Locator is UniversalStubbedGameLocator<TGame>)
-            .ToArray();
-        var installation = stubbed.FirstOrDefault(located => located.LocatorResult.Store == store) ?? stubbed.First();
+        var installation = LocateStubbedInstallation<TGame>(Provider, store);
         using var tx = Connection.BeginTransaction();
         var metadata = new GameInstallMetadata.New(tx)
         {

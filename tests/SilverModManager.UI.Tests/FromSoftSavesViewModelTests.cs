@@ -48,32 +48,8 @@ public class FromSoftSavesViewModelTests(IServiceProvider provider) : AUiTest(pr
             var saves = new FromSoftSavesService(settings, fileSystem, prefixes, Tracker, TimeProvider.System, NullLogger<FromSoftSavesService>.Instance);
             Vm = new FromSoftSavesViewModel(Substitute.For<IWindowManager>(), provider.GetRequiredService<SilverModManager.MnemonicDB.Abstractions.IConnection>(), saves, NullLogger<FromSoftSavesViewModel>.Instance)
             {
-                Installation = EldenRingInstallation(provider),
+                Installation = LocateStubbedInstallation<EldenRingGame>(provider),
             };
-        }
-
-        // Any located stub folder will do; the installation is rebuilt around Elden Ring's game class so the test needs no Elden Ring layout.
-        private static GameInstallation EldenRingInstallation(IServiceProvider provider)
-        {
-            var located = provider.GetRequiredService<IGameRegistry>().LocateGameInstallations().First();
-            var result = located.LocatorResult;
-            return new GameInstallation(new GameLocatorResult
-            {
-                Game = provider.GetRequiredService<EldenRingGame>(),
-                Path = result.Path,
-                Store = result.Store,
-                StoreIdentifier = result.StoreIdentifier,
-                LocatorIds = result.LocatorIds,
-                Locator = result.Locator,
-                Platform = result.Platform,
-                LinuxCompatabilityDataProvider = result.LinuxCompatabilityDataProvider,
-                WinePrefixPath = result.WinePrefixPath,
-                Compatibility = result.Compatibility,
-                StoreRoot = result.StoreRoot,
-                StoreBuildId = result.StoreBuildId,
-                StoreUpdatePending = result.StoreUpdatePending,
-                StoreLastWrite = result.StoreLastWrite,
-            }, located.Locations);
         }
 
         public string Write(string name, string content)
@@ -109,6 +85,20 @@ public class FromSoftSavesViewModelTests(IServiceProvider provider) : AUiTest(pr
         };
         var result = await tx.Commit();
         return LoadoutSaveSlot.IdOf(result.Remap(loadout));
+    }
+
+    [Fact]
+    public async Task TheFixtureInstallationIsOneTheRegistryLocates()
+    {
+        using var fixture = new Fixture(Provider, steamRunning: false);
+        await SeedLoadoutSlot(fixture, "Saves Group Located");
+        var seeded = fixture.Vm.Installation!.LocatorResult;
+
+        // A row naming a folder no located install owns reads as a game that moved, and the registry rewrites its path.
+        Provider.GetRequiredService<IGameRegistry>().LocateGameInstallations()
+            .Should().Contain(located => located.Game.GameId == fixture.Vm.Installation.Game.GameId
+                                         && located.LocatorResult.Store == seeded.Store
+                                         && located.LocatorResult.Path == seeded.Path);
     }
 
     [Fact]
