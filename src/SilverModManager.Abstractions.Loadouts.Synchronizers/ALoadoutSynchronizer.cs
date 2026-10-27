@@ -521,6 +521,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <inheritdoc />
     public async Task<Loadout.ReadOnly> RunActions(Dictionary<GamePath, SyncNode> syncTree, Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
     {
+        var gameMetadataId = MetadataOf(loadout).GameInstallMetadataId;
         await Preflight(loadout.InstallationInstance);
         RefuseTraversalPaths(syncTree);
         KeepNeverWrittenPathsOffDisk(syncTree);
@@ -529,7 +530,6 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
-        var gameMetadataId = loadout.InstallationId;
 
         // Held from before the chain probes the store directory until the links are recorded: a sweep in
         // between cannot see the files this apply is staging and would delete them.
@@ -605,7 +605,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                     break;
 
                 case Actions.ForgetDiskState:
-                    ActionForgetDiskState(syncTree, tx, gameMetadataId);
+                    ActionForgetDiskState(syncTree, tx);
                     break;
                 
                 default:
@@ -830,7 +830,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                     break;
 
                 case Actions.ForgetDiskState:
-                    ActionForgetDiskState(syncTree, tx, metadata);
+                    ActionForgetDiskState(syncTree, tx);
                     break;
 
                 default:
@@ -1004,15 +1004,29 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
     }
 
-    private void ActionForgetDiskState(Dictionary<GamePath, SyncNode> syncTree, ITransaction tx, GameInstallMetadataId gameMetadataId)
+    private void ActionForgetDiskState(Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
     {
         foreach (var (path, node) in syncTree)
         {
             if (!node.Actions.HasFlag(Actions.ForgetDiskState)) continue;
 
             Logger.LogWarning("Leaving `{Path}` on disk: it differs from what the loadout deployed, so it is the player's and no longer tracked", path);
-            DiskStateEntries.Retract(tx, gameMetadataId, path, node);
+            DiskStateEntries.Retract(tx, node);
         }
+    }
+
+    /// <summary>
+    /// The install's row, which the rescan indexes and the apply writes. A loadout on any other row for the same
+    /// folder is refused: its sync would read one row's disk state and record the result on another.
+    /// </summary>
+    private GameInstallMetadata.ReadOnly MetadataOf(Loadout.ReadOnly loadout)
+    {
+        var metadata = _gameRegistry.ForceGetMetadata(loadout.InstallationInstance);
+        if (metadata.GameInstallMetadataId == loadout.InstallationId) return metadata;
+
+        throw new SynchronizerPreflightException(
+            $"Loadout `{loadout.Name}` is recorded against a second copy of the {loadout.Game.DisplayName} install at `{metadata.Path}`, " +
+            "so applying it would mix up which files are tracked. Nothing was changed.");
     }
 
     public record struct AddedEntry
@@ -1025,6 +1039,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// <inheritdoc />
     public virtual async Task<Loadout.ReadOnly> Synchronize(Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
     {
+        _ = MetadataOf(loadout);
+
         // Refuse before the locator ids are updated and the game folder is re-indexed: both write to the
         // database, and neither can mean anything when the prefix they read from is gone.
         await Preflight(loadout.InstallationInstance);

@@ -7,15 +7,12 @@ namespace SilverModManager.Abstractions.Loadouts.Synchronizers.Deployment;
 internal static class DiskStateEntries
 {
     /// <summary>
-    /// Removes a path's disk state entry, using the values the sync tree last saw for it.
+    /// Removes a path's disk state entry.
     /// </summary>
-    internal static void Retract(ITransaction tx, GameInstallMetadataId gameMetadataId, GamePath path, SyncNode node)
-    {
-        var id = node.Disk.EntityId;
-        tx.Retract(id, DiskStateEntry.Path, ((EntityId)gameMetadataId, path.LocationId, path.Path));
-        tx.Retract(id, DiskStateEntry.Hash, node.Disk.Hash);
-        tx.Retract(id, DiskStateEntry.Size, node.Disk.Size);
-        tx.Retract(id, DiskStateEntry.LastModified, new DateTimeOffset(node.Disk.LastModifiedTicks, TimeSpan.Zero));
-        tx.Retract(id, DiskStateEntry.Game, (EntityId)gameMetadataId);
-    }
+    /// <remarks>
+    /// By entity, so what is retracted is what the entry holds when the transaction runs. Values rebuilt from
+    /// the sync tree go stale when a rescan lands after the tree was built, and a retraction that names a value
+    /// the entry no longer has leaves the entry half there.
+    /// </remarks>
+    internal static void Retract(ITransaction tx, SyncNode node) => tx.Delete(node.Disk.EntityId, recursive: false);
 }

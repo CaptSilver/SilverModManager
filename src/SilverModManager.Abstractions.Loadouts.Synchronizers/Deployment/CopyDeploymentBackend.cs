@@ -192,7 +192,7 @@ public sealed class CopyDeploymentBackend : IDeploymentBackend
             {
                 foldersWithDeletedFiles.Add(path.Parent);
 
-                DiskStateEntries.Retract(tx, context.MetadataId, path, node);
+                DiskStateEntries.Retract(tx, node);
             }
         }
 

@@ -218,7 +218,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
             if (!node.Actions.HasFlag(Actions.ExtractToDisk))
             {
                 foldersWithDeletedFiles.Add(path.Parent);
-                DiskStateEntries.Retract(context.Transaction, context.MetadataId, path, node);
+                DiskStateEntries.Retract(context.Transaction, node);
             }
         }
 
