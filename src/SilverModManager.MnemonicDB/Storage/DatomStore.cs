@@ -616,11 +616,10 @@ public sealed partial class DatomStore : IDatomStore
             .Select(d => d.Clone())
             .FirstOrDefault();
 
-        #if DEBUG
-            // In debug mode, we perform additional checks to make sure the retraction found a datom to retract
-            // The only time this fails is if the datom lookup functions `.Datoms()` are broken
-            RetractionSantiyCheck(datom, prevDatom);
-        #endif
+        // A miss means the caller named a value the entity did not hold before this transaction: one replaced or
+        // retracted earlier, or one added in this same transaction. Committing it would leave the value current and
+        // write a retraction of nothing into history, so the transaction is refused before its batch is written.
+        if (!prevDatom.Valid) throw MismatchedRetraction(attrId, datom, iterator);
 
         // Delete the datom from the current indexes
         batch.Delete(EAVTCurrent, prevDatom);
@@ -659,21 +658,16 @@ public sealed partial class DatomStore : IDatomStore
         }
     }
 
-    private static unsafe void RetractionSantiyCheck(Datom datom, Datom prevDatom)
+    private RetractionMismatchException MismatchedRetraction(AttributeId attrId, Datom datom, ISnapshot iterator)
     {
-        Debug.Assert(prevDatom.Valid, "Previous datom should exist");
-        var debugKey = prevDatom.Prefix;
-
-        var otherPrefix = datom.Prefix;
-        Debug.Assert(debugKey.E == otherPrefix.E, "Entity should match");
-        Debug.Assert(debugKey.A == otherPrefix.A, "Attribute should match");
-
-        fixed (byte* aTmp = prevDatom.ValueSpan)
-        fixed (byte* bTmp = datom.ValueSpan)
-        {
-            var cmp = Serializer.Compare(prevDatom.Prefix.ValueTag, aTmp, prevDatom.ValueSpan.Length, otherPrefix.ValueTag, bTmp, datom.ValueSpan.Length);
-            Debug.Assert(cmp == 0, "Values should match");
-        }
+        var current = iterator.Datoms(SliceDescriptor.Create(EAVTCurrent, datom.E))
+            .Where(d => d.A == attrId)
+            .Select(d => d.Prefix.ValueTag.Read<object>(d.ValueSpan)?.ToString())
+            .ToArray();
+        var retracted = datom.Prefix.ValueTag.Read<object>(datom.ValueSpan);
+        var holds = current.Length == 0 ? "no value" : string.Join(", ", current.Select(v => $"`{v}`"));
+        return new RetractionMismatchException(
+            $"Retraction of `{retracted}` from {_attributeCache.GetSymbol(attrId)} on {datom.E} does not match what the entity holds ({holds}); the transaction was not committed");
     }
 
     private void ProcessAssert(IWriteBatch batch, AttributeId attributeId, Datom datom)

@@ -37,6 +37,7 @@ public class UserFacingExceptionGuardTests
         ["SilverModManager.Games.FromSoft.Merge.EsdMergeException"] = "A talk-script merge refusal; handled the same way as MergeException.",
         ["SilverModManager.Backend.FileExtractor.FileExtractionException"] = "An archive that cannot be unpacked; the install job reports the archive by name around it.",
         ["SilverModManager.MnemonicDB.Abstractions.UniqueConstraintException"] = "A database invariant broken by a bug in a writer.",
+        ["SilverModManager.MnemonicDB.Abstractions.RetractionMismatchException"] = "A writer retracting a value the entity does not hold: a bug in that writer, refused before anything is written.",
         ["SilverModManager.Sdk.Hashes.HashCollisionException"] = DeveloperFacing,
         ["SilverModManager.SingleProcess.Exceptions.SingleProcessLockException"] = "Startup finds the lock held and switches to the running instance; it never reaches a dialog.",
         ["SilverModManager.Games.Unity.BepInEx.BepInExLayoutException"] = "Raised by the installer's layout detection and turned into the installer declining the archive.",
