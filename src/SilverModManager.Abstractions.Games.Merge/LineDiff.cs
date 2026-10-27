@@ -31,6 +31,8 @@ public static class LineDiff
         var removed = new bool[ia.Length];
         var added = new bool[ib.Length];
         Diff(ia, 0, ia.Length, ib, 0, ib.Length, removed, added, new Scratch());
+        SlideLate(ia, removed);
+        SlideLate(ib, added);
 
         var ops = new List<LineDiffOp>(Math.Max(a.Count, b.Count));
         int x = 0, y = 0;
@@ -66,6 +68,27 @@ public static class LineDiff
         var lines = text.Replace("\r\n", "\n").Split('\n');
         // A trailing line ending leaves an empty last element that is not a line.
         return lines[^1].Length == 0 ? lines[..^1] : lines;
+    }
+
+    /// <summary>
+    /// Moves every changed line to the last position that gives the same result. Inside a block of repeated lines
+    /// (blank lines, closing braces) any placement of an insertion or deletion is equally short, and which one the
+    /// search picks depends on edits elsewhere in the file. A three-way merge compares where each side's change
+    /// sits in the base, so the placement has to be a function of the lines around the change only. Marks move one
+    /// at a time, last first, so a blank added next to a rewritten line still slides to the end of its block.
+    /// </summary>
+    private static void SlideLate(int[] lines, bool[] changed)
+    {
+        for (var i = lines.Length - 2; i >= 0; i--)
+        {
+            if (!changed[i]) continue;
+            // The unchanged line after a mark with the same text can take the mark's place; the script stays as short.
+            for (var j = i; j + 1 < lines.Length && !changed[j + 1] && lines[j] == lines[j + 1]; j++)
+            {
+                changed[j] = false;
+                changed[j + 1] = true;
+            }
+        }
     }
 
     private static int[] Intern(IReadOnlyList<string> lines, Dictionary<string, int> ids)
@@ -134,8 +157,9 @@ public static class LineDiff
     private static (int X, int Y) MiddleSnake(int[] a, int aLo, int aHi, int[] b, int bLo, int bHi, Scratch scratch)
     {
         int n = aHi - aLo, m = bHi - bLo;
-        // Each direction needs up to ceil((n + m) / 2) edits for the paths to cross; the extra slot of slack on
-        // either side keeps the k +/- 1 reads inside the arrays.
+        // Each direction needs up to ceil((n + m) / 2) edits for the paths to cross, and the loop below runs
+        // through d == maxD; stopping at ceil((n + m) / 2) - 1 misses the crossing when n + m is odd. The slack
+        // slots keep the k +/- 1 reads inside the arrays.
         var maxD = (n + m + 1) / 2 + 1;
         var offset = maxD;
         var length = 2 * maxD + 2;

@@ -20,6 +20,11 @@ public static class IniDiff
     /// </summary>
     public static IReadOnlyList<IniDiffLine> Lines(string before, string after)
         => LineDiff.Compare(LineDiff.SplitLines(before), LineDiff.SplitLines(after))
-            .Select(op => new IniDiffLine(Enum.Parse<IniDiffKind>(op.Kind.ToString()), op.Text))
+            .Select(op => new IniDiffLine(op.Kind switch
+            {
+                LineDiffKind.Added => IniDiffKind.Added,
+                LineDiffKind.Removed => IniDiffKind.Removed,
+                LineDiffKind.Unchanged => IniDiffKind.Unchanged,
+            }, op.Text))
             .ToList();
 }

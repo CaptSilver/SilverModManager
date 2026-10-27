@@ -87,6 +87,47 @@ public class LineDiffTests
         }
     }
 
+    // How many base lines precede the run of changes holding the added copy of `inserted`.
+    private static int InsertionPoint(string[] baseLines, string[] changed, string inserted)
+    {
+        var ops = LineDiff.Compare(baseLines, changed);
+        var at = ops.Select((o, i) => (o, i)).Single(t => t.o.Kind == LineDiffKind.Added && t.o.Text == inserted).i;
+        // A merge looks at the whole run of changes, so measure from where the run starts.
+        while (at > 0 && ops[at - 1].Kind != LineDiffKind.Unchanged) at--;
+        return ops.Take(at).Count(o => o.IndexA >= 0);
+    }
+
+    [Fact]
+    public void AnInsertionInARepeatedRunDoesNotMoveWhenAnUnrelatedLineChanges()
+    {
+        string[] baseLines = ["u1", "", "", "", "}", "}", "u2", "", "}", "", "}", "u3", "x", "u4"];
+        for (var at = 0; at <= baseLines.Length; at++)
+        {
+            foreach (var line in new[] { "", "}" })
+            {
+                var one = baseLines.Take(at).Append(line).Concat(baseLines.Skip(at)).ToArray();
+                var before = InsertionPoint(baseLines, one, line);
+                // Change a unique line at least two lines from the insertion.
+                for (var k = 0; k < one.Length; k++)
+                {
+                    if (!one[k].StartsWith('u') && one[k] != "x" || Math.Abs(k - at) < 2) continue;
+                    var two = (string[])one.Clone();
+                    two[k] += "!";
+                    InsertionPoint(baseLines, two, line).Should().Be(before, $"inserting '{line}' at {at}, editing line {k}");
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void ARunOfChangesSitsAtTheLateEdgeOfARepeatedBlock()
+    {
+        // Either blank could be the added one; the canonical choice is the last, so the run abuts what follows.
+        var ops = LineDiff.Compare(["a", "", "b"], ["a", "", "", "b"]);
+        ops.Select(o => (o.Kind, o.IndexB)).Should().Equal(
+            (LineDiffKind.Unchanged, 0), (LineDiffKind.Unchanged, 1), (LineDiffKind.Added, 2), (LineDiffKind.Unchanged, 3));
+    }
+
     private static int LcsLength(string[] a, string[] b)
     {
         var t = new int[a.Length + 1, b.Length + 1];
