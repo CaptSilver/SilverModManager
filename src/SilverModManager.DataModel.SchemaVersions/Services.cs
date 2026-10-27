@@ -13,6 +13,7 @@ public static class Services
         // Migrations go here, numbered from _0001. Existing databases are at version 0 until the first one runs.
         services.AddMigration<_0001_KeyInstallsByGameId>();
         services.AddMigration<_0002_MarkProfileSettingsGroups>();
+        services.AddMigration<_0003_MergeDuplicateInstalls>();
 
         return services;
     }
