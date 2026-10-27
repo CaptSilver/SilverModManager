@@ -157,7 +157,7 @@ public abstract class LinkedGameTest<TTest>(ITestOutputHelper helper, Placement 
         {
             using var from = File.OpenHandle(source);
             using var to = File.OpenHandle(destination, FileMode.Create, FileAccess.Write);
-            return Native.LibcLinks.TryClone(from, to) == 0;
+            return LibcLinks.TryClone(from, to) == 0;
         }
         finally
         {
