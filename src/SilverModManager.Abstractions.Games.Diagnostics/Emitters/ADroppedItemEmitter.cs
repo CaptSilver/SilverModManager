@@ -7,7 +7,8 @@ using SilverModManager.Sdk.Loadouts;
 namespace SilverModManager.Abstractions.Diagnostics.Emitters;
 
 /// <summary>One card shape for everything the app leaves out on purpose: what, why, and where to fix it.</summary>
-public sealed record DroppedItem(string Item, string Source, string Reason, string Page);
+/// <param name="Severity">A Warning unless leaving the item out is normal and the card is only there to say so.</param>
+public sealed record DroppedItem(string Item, string Source, string Reason, string Page, DiagnosticSeverity Severity = DiagnosticSeverity.Warning);
 
 /// <summary>
 /// Turns what a loadout's next apply will not use into one Health Check warning per item.
@@ -23,7 +24,8 @@ public abstract class ADroppedItemEmitter : ILoadoutDiagnosticEmitter
     protected abstract IAsyncEnumerable<DroppedItem> Dropped(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, CancellationToken cancellationToken);
 
     /// <summary>The Health Check card for one dropped item.</summary>
-    public static Diagnostic Card(DroppedItem item) => DroppedItemDiagnostics.CreateDroppedItem(item.Item, item.Source, item.Reason, item.Page);
+    public static Diagnostic Card(DroppedItem item) =>
+        DroppedItemDiagnostics.CreateDroppedItem(item.Item, item.Source, item.Reason, item.Page) with { Severity = item.Severity };
 
     /// <inheritdoc />
     public virtual IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)

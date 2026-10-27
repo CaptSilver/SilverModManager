@@ -92,15 +92,23 @@ public class UnshareableModEmitterTests(ITestOutputHelper helper) : ACyberpunkIs
         await tx.Commit();
     }
 
-    private async Task<string[]> Summaries(Built built)
+    private async Task<Diagnostic[]> Cards(Built built)
     {
         var emitter = new UnshareableModEmitter();
-        var result = new List<string>();
+        var result = new List<Diagnostic>();
         var loadout = Loadout.Load(Connection.Db, built.Loadout.LoadoutId);
         await foreach (var diagnostic in emitter.Diagnose(loadout, FrozenDictionary<GamePath, SyncNode>.Empty, CancellationToken.None))
-            result.Add(diagnostic.FormatSummary(new PlainDiagnosticWriter()) + " | " + diagnostic.FormatDetails(new PlainDiagnosticWriter()));
+            result.Add(diagnostic);
         return result.ToArray();
     }
+
+    private static string Text(Diagnostic diagnostic) =>
+        diagnostic.FormatSummary(new PlainDiagnosticWriter()) + " | " + diagnostic.FormatDetails(new PlainDiagnosticWriter());
+
+    private async Task<string[]> Summaries(Built built) => (await Cards(built)).Select(Text).ToArray();
+
+    private async Task<Diagnostic> RuleCard(Built built, string ruleText) =>
+        (await Cards(built)).Should().ContainSingle(card => Text(card).Contains(ruleText)).Subject;
 
     [Fact]
     public async Task AChildWithNoNexusFileOrDownloadGetsACard()
@@ -134,6 +142,25 @@ public class UnshareableModEmitterTests(ITestOutputHelper helper) : ACyberpunkIs
         var rule = cards.Should().ContainSingle(card => card.Contains("Nexus mod wins over Plain archive")).Subject;
         rule.Should().Contain("collection Shared pack").And.Contain("Load Order page");
         rule.Should().Contain("sharing the collection leaves this rule out").And.Contain("one of its mods cannot be named");
+    }
+
+    [Fact]
+    public async Task ARuleToAChildThatCannotBeNamedIsAWarning()
+    {
+        var built = await Build();
+        await AddRule(built, built.Nexus, built.Plain);
+
+        (await RuleCard(built, "Nexus mod wins over Plain archive")).Severity.Should().Be(DiagnosticSeverity.Warning);
+    }
+
+    [Fact]
+    public async Task ARuleToAGroupOutsideTheCollectionIsASuggestion()
+    {
+        var built = await Build();
+        await AddRule(built, built.Nexus, built.Outside);
+
+        // A personal rule between a shared mod and one outside is normal, and no manifest could carry it.
+        (await RuleCard(built, "Nexus mod wins over Outside mod")).Severity.Should().Be(DiagnosticSeverity.Suggestion);
     }
 
     [Fact]

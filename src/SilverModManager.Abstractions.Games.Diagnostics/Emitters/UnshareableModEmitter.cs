@@ -37,14 +37,15 @@ public sealed class UnshareableModEmitter : ADroppedItemEmitter
 
             foreach (var rule in rules)
             {
-                var why = scope.Classify(rule) switch
+                // A rule between a shared mod and one of the user's own is normal, and no manifest could carry it.
+                (string Why, DiagnosticSeverity Severity)? verdict = scope.Classify(rule) switch
                 {
-                    RuleShare.UnnameableEnd => "one of its mods cannot be named",
-                    RuleShare.OutsideEnd => "it names a mod outside the collection",
+                    RuleShare.UnnameableEnd => ("one of its mods cannot be named", DiagnosticSeverity.Warning),
+                    RuleShare.OutsideEnd => ("it names a mod outside the collection", DiagnosticSeverity.Suggestion),
                     _ => null,
                 };
-                if (why is null) continue;
-                yield return new DroppedItem(GroupRuleText.WinsOver(rule), source, $"{RuleReason}: {why}", "Load Order");
+                if (verdict is not var (why, severity)) continue;
+                yield return new DroppedItem(GroupRuleText.WinsOver(rule), source, $"{RuleReason}: {why}", "Load Order", severity);
             }
         }
     }
