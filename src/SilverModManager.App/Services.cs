@@ -202,6 +202,7 @@ public static class Services
             .AddSteamCli()
             .AddGOG()
             .AddFileHashes()
+            .AddTextMergeEngine()
             .AddGitHubApi()
             .AddThunderstore()
             .AddWabbajack();

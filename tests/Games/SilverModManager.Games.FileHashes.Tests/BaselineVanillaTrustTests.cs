@@ -1,0 +1,124 @@
+using System.Collections.Immutable;
+using NexusMods.Paths;
+using NSubstitute;
+using SilverModManager.Abstractions.Games.FileHashes;
+using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Games.Merge;
+using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Loadouts;
+
+namespace SilverModManager.Games.FileHashes.Tests;
+
+/// <summary>
+/// Whether a game folder's copy of a file may stand in for the vanilla ancestor of a merge, read from baseline rows
+/// written into an in-memory local store.
+/// </summary>
+public sealed class BaselineVanillaTrustTests : IDisposable
+{
+    private const string GamePath = "/games/test";
+
+    private readonly RealQueryEngineHost _host = new();
+    private readonly IConnection _local;
+    private readonly BaselineVanillaTrust _trust;
+
+    public BaselineVanillaTrustTests()
+    {
+        _local = _host.OpenInMemory("local_hashes");
+        var hashes = Substitute.For<IFileHashesService>();
+        hashes.Local.Returns(_ => _local.Db);
+        _trust = new BaselineVanillaTrust(hashes);
+    }
+
+    public void Dispose() => _host.Dispose();
+
+    [Fact]
+    public void NoBaselineIsUntrusted()
+    {
+        IsTrusted("content/content0/scripts/x.ws", out var reason).Should().BeFalse();
+        reason.Should().Contain("not been checked");
+    }
+
+    [Fact]
+    public async Task AFileListedNonVanillaIsUntrusted()
+    {
+        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReport(baseline, "content/content0/scripts/x.ws", NonVanillaReason.HashDiffers);
+
+        IsTrusted("content/content0/Scripts/X.ws", out var reason).Should().BeFalse();
+        reason.Should().Be("listed as modified");
+    }
+
+    [Theory]
+    [InlineData(NonVanillaReason.NotInManifest, "listed as not a file the store installed")]
+    [InlineData(NonVanillaReason.SizeDiffers, "listed as a different size from the store's copy")]
+    [InlineData(NonVanillaReason.HashDiffers, "listed as modified")]
+    public async Task TheReasonNamesWhyTheFileIsListed(NonVanillaReason listed, string expected)
+    {
+        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReport(baseline, "x.ws", listed);
+
+        IsTrusted("x.ws", out var reason).Should().BeFalse();
+        reason.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task AFileNotListedIsTrusted()
+    {
+        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReport(baseline, "other.ws", NonVanillaReason.HashDiffers);
+
+        IsTrusted("content/content0/scripts/x.ws", out var reason).Should().BeTrue();
+        reason.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ABaselineOfAnotherInstallationDoesNotCount()
+    {
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/other", LocalBaselineKind.DepotManifests, [], "x.ws");
+        await HashRows.AddLocalBaseline(_local, GameStore.GOG, GamePath, LocalBaselineKind.DepotManifests, [], "x.ws");
+
+        IsTrusted("x.ws", out var reason).Should().BeFalse();
+        reason.Should().Contain("not been checked");
+    }
+
+    [Fact]
+    public async Task APathOutsideTheGameFolderIsUntrusted()
+    {
+        await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var path = new GamePath(LocationId.From("WitcherDocuments"), RelativePath.FromUnsanitizedInput("user.settings"));
+
+        _trust.IsTrusted(Installation(), path, out var reason).Should().BeFalse();
+        reason.Should().Be("outside the game folder");
+    }
+
+    private bool IsTrusted(string relative, out string reason)
+        => _trust.IsTrusted(Installation(), new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(relative)), out reason);
+
+    private static GameInstallation Installation()
+    {
+        var result = new GameLocatorResult
+        {
+            Game = Substitute.For<IGameData>(),
+            Path = FileSystem.Shared.FromUnsanitizedFullPath(GamePath),
+            Store = GameStore.Steam,
+            StoreIdentifier = "1",
+            LocatorIds = [],
+            Locator = Substitute.For<IGameLocator>(),
+        };
+        return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, result.Path)));
+    }
+
+    private async Task AddReport(EntityId baseline, string path, NonVanillaReason reason)
+    {
+        using var tx = _local.BeginTransaction();
+        _ = new NonVanillaFile.New(tx)
+        {
+            BaselineId = baseline,
+            Path = RelativePath.FromUnsanitizedInput(path),
+            Reason = reason,
+            Size = Size.From(1),
+        };
+        await tx.Commit();
+    }
+}

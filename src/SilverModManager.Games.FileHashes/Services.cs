@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
+using SilverModManager.Abstractions.Games.Merge;
 using SilverModManager.Games.FileHashes.Emitters;
 using SilverModManager.Sdk.Settings;
 
@@ -36,6 +37,7 @@ public static class Services
             .AddEpicGameStoreBuildModel()
             .AddFileHashesQueriesSql()
             .AddSingleton<IFileHashesService, FileHashesService>()
+            .AddSingleton<IVanillaTrust, BaselineVanillaTrust>()
             .AddSingleton<IHostedService>(s => (IHostedService)s.GetRequiredService<IFileHashesService>())
             .AddSettings<FileHashesServiceSettings>()
             .AddHashRelationModel();

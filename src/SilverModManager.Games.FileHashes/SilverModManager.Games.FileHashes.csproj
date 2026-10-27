@@ -18,6 +18,7 @@
       <ProjectReference Include="..\SilverModManager.Abstractions.Cli\SilverModManager.Abstractions.Cli.csproj" />
       <ProjectReference Include="..\SilverModManager.Abstractions.Games.Diagnostics\SilverModManager.Abstractions.Games.Diagnostics.csproj" />
       <ProjectReference Include="..\SilverModManager.Abstractions.Games.FileHashes\SilverModManager.Abstractions.Games.FileHashes.csproj" />
+      <ProjectReference Include="..\SilverModManager.Abstractions.Games.Merge\SilverModManager.Abstractions.Games.Merge.csproj" />
       <ProjectReference Include="..\SilverModManager.Abstractions.Games\SilverModManager.Abstractions.Games.csproj" />
       <ProjectReference Include="..\SilverModManager.App.Generators.Diagnostics\SilverModManager.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"  />
       <ProjectReference Include="..\SilverModManager.Networking.EpicGameStore\SilverModManager.Networking.EpicGameStore.csproj" />
