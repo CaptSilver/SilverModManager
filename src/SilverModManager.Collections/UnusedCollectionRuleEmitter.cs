@@ -14,8 +14,8 @@ namespace SilverModManager.Collections;
 
 /// <summary>
 /// One suggestion per collection download that stored ordering rules name but the collection group holds no install of
-/// (an optional download the user declined). Computed on every run rather than stored at install, because the collection
-/// page installs a single download on its own and nothing would rewrite a stored row then.
+/// (an optional download the user declined). Computed on every run rather than stored at install, because removing the
+/// download's mod by hand changes the answer and no import runs then to rewrite a stored row.
 /// </summary>
 public sealed class UnusedCollectionRuleEmitter : ILoadoutDiagnosticEmitter
 {

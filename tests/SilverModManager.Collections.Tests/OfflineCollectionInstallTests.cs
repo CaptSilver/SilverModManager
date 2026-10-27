@@ -17,6 +17,7 @@ using SilverModManager.Games.RedEngine.Cyberpunk2077.SortOrder;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
@@ -150,6 +151,71 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
     }
 
     private static SilverLoadOrderEntry Order(Mod mod) => new() { Md5 = mod.Source.Md5, Name = mod.Name };
+
+    private static SilverLoadOrderEntry Order(Mod mod, bool enabled) => new() { Md5 = mod.Source.Md5, Name = mod.Name, Enabled = enabled };
+
+    private string[] ChildrenWinnerFirst(NexusCollectionLoadoutGroup.ReadOnly group) => ContainerOrder
+        .ChildrenWinnerFirst(Connection.Db, group.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId)
+        .Select(child => child.AsLoadoutItem().Name)
+        .ToArray();
+
+    private LoadoutItemGroup.ReadOnly Child(NexusCollectionLoadoutGroup.ReadOnly group, string name) =>
+        LoadoutItemGroup.Load(Connection.Db, group.Id).Children.OfTypeLoadoutItemGroup().Single(child => child.AsLoadoutItem().Name == name);
+
+    /// <summary>
+    /// A collection of four plain mods whose order key lists mod0, mod2 (optional, switched off), mod1, mod3, installed
+    /// without its optional; then the user puts mod3 first and switches mod1 off.
+    /// </summary>
+    private async Task<(NexusModsCollectionLibraryFile.ReadOnly File, CollectionRevisionMetadata.ReadOnly Revision, NexusCollectionLoadoutGroup.ReadOnly Group, LoadoutId Loadout)> InstallAndRearrange()
+    {
+        var mods = Enumerable.Range(0, 4).Select(i => ((FomodOption[]?)null, $"Plain mod {i}")).ToArray();
+        var (file, revision, items) = await CreateCollection(mods, optionalIndexes: [2],
+            silverLoadOrder: m => [Order(m[0], true), Order(m[2], false), Order(m[1], true), Order(m[3], true)]);
+        var loadout = await CreateLoadout();
+        var group = await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, items));
+        ChildrenWinnerFirst(group).Should().Equal("mod0.zip", "mod1.zip", "mod3.zip");
+
+        var rows = LoadoutItemGroupPriority.FindByLoadout(Connection.Db, loadout).ToDictionary(r => r.TargetId, r => r.LoadoutItemGroupPriorityId);
+        (await LoadoutManager.ResolveFileConflicts([rows[Child(group, "mod3.zip").LoadoutItemGroupId]], rows[Child(group, "mod0.zip").LoadoutItemGroupId])).IsRuleViolation.Should().BeFalse();
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(Child(group, "mod1.zip").Id, LoadoutItem.Disabled, Null.Instance);
+            await tx.Commit();
+        }
+        ChildrenWinnerFirst(group).Should().Equal("mod3.zip", "mod0.zip", "mod1.zip");
+        return (file, revision, group, loadout);
+    }
+
+    private void TheUsersOrderAndSwitchHoldAndTheOptionalSitsInItsListedSlot(NexusCollectionLoadoutGroup.ReadOnly group)
+    {
+        // mod2 is listed right after mod0, so it lands below it, inside the user's order.
+        ChildrenWinnerFirst(group).Should().Equal("mod3.zip", "mod0.zip", "mod2.zip", "mod1.zip");
+        Child(group, "mod1.zip").AsLoadoutItem().IsDisabled.Should().BeTrue("the user switched it off and the key's switch is for new mods only");
+        Child(group, "mod2.zip").AsLoadoutItem().IsDisabled.Should().BeTrue("the key lists the new mod switched off");
+    }
+
+    [Fact]
+    public async Task InstallingTheOptionalModsKeepsTheUsersOrderAndSwitchesAndSlotsTheNewMod()
+    {
+        var (file, revision, group, loadout) = await InstallAndRearrange();
+
+        await AwaitJob(InstallCollectionJob.Create(ServiceProvider, loadout, file, revision, CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional)));
+
+        TheUsersOrderAndSwitchHoldAndTheOptionalSitsInItsListedSlot(group);
+    }
+
+    [Fact]
+    public async Task InstallingOneOptionalFromTheCollectionPagePutsItInItsListedSlot()
+    {
+        var (_, revision, group, loadout) = await InstallAndRearrange();
+        var optional = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Optional).Single();
+
+        var job = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout, optional, CancellationToken.None);
+        async Task Run() => await ServiceProvider.GetRequiredService<IJobMonitor>().Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);
+        await Run().WaitAsync(Timeout);
+
+        TheUsersOrderAndSwitchHoldAndTheOptionalSitsInItsListedSlot(group);
+    }
 
     [Fact]
     public async Task FomodModsWithSavedChoices_AllInstall()

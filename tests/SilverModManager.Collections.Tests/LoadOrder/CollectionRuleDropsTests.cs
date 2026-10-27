@@ -202,7 +202,7 @@ public class CollectionRuleDropsTests(ITestOutputHelper helper) : ACyberpunkIsol
         card.Severity.Should().Be(DiagnosticSeverity.Suggestion);
         card.FormatSummary(new PlainDiagnosticWriter()).Should().Contain("Mod 2");
 
-        // The collection page installs a single download on its own; nothing rewrites stored rows on that path.
+        // The collection page installs a single download on its own.
         var optional = collection.Revision.Downloads.Single(download => download.Name == "Mod 2");
         var job = await InstallCollectionDownloadJob.Create(ServiceProvider, loadout.LoadoutId, optional, CancellationToken.None);
         var running = ServiceProvider.GetRequiredService<IJobMonitor>().Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);

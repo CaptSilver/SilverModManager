@@ -53,6 +53,12 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
     public ILibraryItemInstaller? FallbackInstaller { get; init; }
     public Optional<GamePath> FallbackCollectionInstallDirectory { get; init; }
 
+    /// <summary>
+    /// Set when the download is installed on its own (from the collection page): the job then places it in the collection's
+    /// order. A whole-collection install leaves it null and imports the order once, after all its downloads.
+    /// </summary>
+    public CollectionRoot? OrderManifest { get; init; }
+
     public static async ValueTask<InstallCollectionDownloadJob> Create(
         IServiceProvider serviceProvider,
         LoadoutId targetLoadout,
@@ -79,6 +85,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             Group = collectionGroup,
             TargetLoadout = targetLoadout,
             SourceCollection = sourceCollection,
+            OrderManifest = root,
 
             ServiceProvider = serviceProvider,
             Connection = connection,
@@ -114,7 +121,25 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         tx.Add(group.Id, NexusCollectionItemLoadoutGroup.IsRequired, Item.IsRequired);
 
         var result = await tx.Commit();
-        return new LoadoutItemGroup.ReadOnly(result.Db, group.Id);
+        if (OrderManifest is not { } root) return new LoadoutItemGroup.ReadOnly(result.Db, group.Id);
+
+        return await PlaceInOrder(root, group.LoadoutItemGroupId);
+    }
+
+    /// <summary>Puts the one download in its listed slot of the collection's order, leaving the rest of the collection as the user has it.</summary>
+    private async ValueTask<LoadoutItemGroup.ReadOnly> PlaceInOrder(CollectionRoot root, LoadoutItemGroupId installed)
+    {
+        var game = Loadout.Load(Connection.Db, TargetLoadout).InstallationInstance.GetGame();
+
+        // The sort orders learn about the installed mod from a background subscription; seeding can only move rows that exist.
+        await game.SortOrderManager.UpdateLoadOrders(TargetLoadout);
+
+        // A fresh transaction: the install committed its own priority write, and SetGroupOrder must be the only writer in the one it joins.
+        using var tx = Connection.BeginTransaction();
+        CollectionOrderImport.Import(ServiceProvider, Connection.Db, TargetLoadout, game, root, Item.CollectionRevision,
+            Group.AsLoadoutItemGroup().LoadoutItemGroupId, new HashSet<LoadoutItemGroupId> { installed }, tx);
+        var result = await tx.Commit();
+        return LoadoutItemGroup.Load(result.Db, installed);
     }
 
     private async ValueTask<(LoadoutItemGroup.ReadOnly, PatchedFile[])> Install(IJobContext<InstallCollectionDownloadJob> context)

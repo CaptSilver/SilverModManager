@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Collections;
 using SilverModManager.Abstractions.Collections.Json;
 using SilverModManager.Abstractions.Games;
-using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Library;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts;
@@ -162,6 +161,9 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             collectionGroup = groupResult.Remap(group);
         }
 
+        var containerId = collectionGroup.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId;
+        var installedBefore = CollectionOrderImport.Children(Connection.Db, containerId);
+
         var loadout = Loadout.Load(Connection.Db, TargetLoadout);
         var game = (loadout.InstallationInstance.Game as IGame)!;
         var fallbackInstaller = FallbackCollectionDownloadInstaller.Create(ServiceProvider, loadout, game);
@@ -196,16 +198,13 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
 
             using var tx = Connection.BeginTransaction();
 
-            // ApplyCollectionDownloadRules above has already committed its own priority write; SetGroupOrder must be the only priority writer in the transaction it joins.
-            var containerId = collectionGroup.AsCollectionGroup().AsLoadoutItemGroup().LoadoutItemGroupId;
-            var order = CollectionOrderReader.Read(Connection.Db, game, root, containerId);
+            // A run over mods an earlier run installed ("install optional mods") must keep what the user did with those.
+            IReadOnlySet<LoadoutItemGroupId>? newGroups = installedBefore.Count == 0
+                ? null
+                : CollectionOrderImport.Children(Connection.Db, containerId).Except(installedBefore).ToHashSet();
 
-            // The importer replaces the container's rows with one list, so the rule drops ride along (and run even when the collection has no order key).
-            var ruleDrops = CollectionRuleDrops.Read(Connection.Db, root, RevisionMetadata);
-            order = ModOrder.Create(order.WinnerToLoser, order.Dropped.Concat(ruleDrops));
-            ServiceProvider.GetRequiredService<ModOrderImporter>().Import(
-                Loadout.Load(Connection.Db, TargetLoadout), order,
-                new ModOrderSource($"collection {RevisionMetadata.Collection.Name}", containerId, root), tx);
+            // ApplyCollectionDownloadRules above has already committed its own priority write; SetGroupOrder must be the only priority writer in the transaction it joins.
+            CollectionOrderImport.Import(ServiceProvider, Connection.Db, TargetLoadout, game, root, RevisionMetadata, containerId, newGroups, tx);
 
             if (allRequiredItemsInstalled)
             {
