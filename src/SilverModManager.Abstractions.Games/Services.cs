@@ -21,6 +21,8 @@ public static class Services
             .AddSortOrderQueriesSql()
             .AddLoadoutItemGroupPriorityModel()
             .AddModOrderDroppedEntryModel()
+            .AddSingleton<DefaultPriorityOrderSink>()
+            .AddSingleton<ModOrderImporter>()
             .AddLoadoutGroupRuleModel()
             .AddLoadoutFileWinnerModel()
             .AddLoadoutIniStateModel();
