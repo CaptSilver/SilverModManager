@@ -3,7 +3,7 @@ using SilverModManager.Sdk.Loadouts;
 
 namespace SilverModManager.Abstractions.Games.Merge;
 
-/// <summary>One merged file the next apply writes.</summary>
+/// <summary>One merged file the next apply writes. <paramref name="Contributors"/> are mod names, highest priority first.</summary>
 public sealed record MergedOutput(
     GamePath Output, string RelPath, byte[] Bytes, IReadOnlyList<string> Contributors, IReadOnlyList<IMergeNote> Notes, string Strategy);
 

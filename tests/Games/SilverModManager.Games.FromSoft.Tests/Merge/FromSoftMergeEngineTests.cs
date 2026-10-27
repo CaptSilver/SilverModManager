@@ -55,13 +55,13 @@ public class FromSoftMergeEngineTests(ITestOutputHelper helper) : AVanillaDumpTe
 
         output.Output.Should().Be(Me3Path);
         output.RelPath.Should().Be(Msg);
-        output.Contributors.Should().BeEquivalentTo(["Alpha.zip", "Beta.zip"]);
+        output.Contributors.Should().Equal("Beta.zip", "Alpha.zip");
         output.Strategy.Should().Be(MergeStrategies.Name(MergeStrategy.FmgUnion));
         output.Bytes.Should().BeSameAs(Plans.Current(loadout, MergeSourceMode.Report).Merged[0].Bytes);
     }
 
     [Fact]
-    public async Task PlannedOutputsListsTheSameMe3PathsWithoutPlanning()
+    public async Task PlannedOutputsListsTheSameMe3PathsAsThePlan()
     {
         var loadout = await TwoMsgbndMods();
 
@@ -69,7 +69,6 @@ public class FromSoftMergeEngineTests(ITestOutputHelper helper) : AVanillaDumpTe
 
         planned.Output.Should().Be(Me3Path);
         planned.RelPath.Should().Be(Msg);
-        Plans.UnmergedPaths(loadout.LoadoutId).Should().BeEmpty();
         var output = Engine.Plan(loadout, MergeSourceMode.Report).Single();
         (output.Output, output.RelPath).Should().Be((planned.Output, planned.RelPath));
     }

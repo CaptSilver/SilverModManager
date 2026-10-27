@@ -19,10 +19,13 @@ public sealed class FromSoftMergeEngine(MergeReports reports, MergePlanCache pla
             .ToArray();
 
     public IReadOnlyList<PlannedOutput> PlannedOutputs(Loadout.ReadOnly loadout)
-        => sources.Index(loadout).Candidates
-            .Where(c => c.Outcome.Merges && !plans.UnmergedPaths(loadout.LoadoutId).Contains(c.Path))
+    {
+        var unmerged = plans.UnmergedPaths(loadout.LoadoutId);
+        return sources.Index(loadout).Candidates
+            .Where(c => c.Outcome.Merges && !unmerged.Contains(c.Path))
             .Select(c => new PlannedOutput(Me3Path(c.Path), c.Path))
             .ToArray();
+    }
 
     public byte[]? MergedBytes(Loadout.ReadOnly loadout, string relPath) => plans.MergedBytes(loadout, relPath);
 
