@@ -76,7 +76,9 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     public async Task CheckOutputsPassesWhenEveryOutputIsIntrinsicInTheTree()
     {
         var loadout = await CreateLoadout();
-        var act = () => new MergeSynchronizerPart(Engine()).CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), loadout);
+        var part = new MergeSynchronizerPart(Engine());
+        part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        var act = () => part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), loadout);
 
         act.Should().NotThrow();
     }
@@ -85,7 +87,9 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     public async Task CheckOutputsRefusesAnOutputMissingFromTheTree()
     {
         var loadout = await CreateLoadout();
-        var act = () => new MergeSynchronizerPart(Engine()).CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA), loadout);
+        var part = new MergeSynchronizerPart(Engine());
+        part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        var act = () => part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA), loadout);
 
         act.Should().Throw<MergeOutputMissingException>().WithMessage("*scripts/b.txt*");
     }
@@ -97,7 +101,9 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         var tree = Tree(LoadoutSourceItemType.Intrinsic, OutA);
         tree[OutB] = new SyncNode { SourceItemType = LoadoutSourceItemType.Loadout };
 
-        var act = () => new MergeSynchronizerPart(Engine()).CheckOutputs(tree, loadout);
+        var part = new MergeSynchronizerPart(Engine());
+        part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        var act = () => part.CheckOutputs(tree, loadout);
 
         act.Should().Throw<MergeOutputMissingException>().WithMessage("*scripts/b.txt*");
     }
@@ -108,7 +114,9 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
         var loadout = await CreateLoadout();
         var engine = Engine();
 
-        new MergeSynchronizerPart(engine).CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), loadout);
+        var part = new MergeSynchronizerPart(engine);
+        part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), loadout);
 
         engine.Received(1).Plan(Arg.Any<Loadout.ReadOnly>(), MergeSourceMode.Apply);
     }
@@ -125,9 +133,8 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     }
 
     [Fact]
-    public async Task AMissingOutputIsAReadablePreflightRefusal()
+    public void AMissingOutputIsAReadablePreflightRefusal()
     {
-        var loadout = await CreateLoadout();
         new MergeOutputMissingException("scripts/b.txt").Should().BeAssignableTo<SynchronizerPreflightException>();
     }
 
@@ -187,11 +194,47 @@ public class MergeSynchronizerPartTests(IServiceProvider provider) : AGameTest<S
     }
 
     [Fact]
-    public async Task TheSameRevisionAndOutputsListTheSameFiles()
+    public async Task AddingToAListingDoesNotChangeTheNextOne()
     {
         var loadout = await CreateLoadout();
         var part = new MergeSynchronizerPart(Engine());
+        var first = part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        first[new GamePath(LocationId.Game, "Mods/loader/own.dll")] = Substitute.For<IIntrinsicFile>();
 
-        part.IntrinsicFiles(loadout, Substitute.For<ILogger>()).Should().BeSameAs(part.IntrinsicFiles(loadout, Substitute.For<ILogger>()));
+        part.IntrinsicFiles(loadout, Substitute.For<ILogger>()).Keys.Should().BeEquivalentTo([OutA, OutB]);
+    }
+
+    [Fact]
+    public async Task ACheckAtARevisionThatWasNeverListedIsRefusedAsAChangedLoadout()
+    {
+        var loadout = await CreateLoadout();
+        var part = new MergeSynchronizerPart(Engine());
+        part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        using (var tx = Connection.BeginTransaction())
+        {
+            AddEmptyGroup(tx, loadout.LoadoutId, "later");
+            await tx.Commit();
+        }
+        var other = Refresh(loadout);
+
+        var act = () => part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), other);
+
+        act.Should().Throw<SynchronizerPreflightException>().WithMessage("*changed while it was being applied*");
+    }
+
+    [Fact]
+    public async Task AListingThatSucceedsAgainClearsTheEarlierFailure()
+    {
+        var loadout = await CreateLoadout();
+        var engine = Engine();
+        var part = new MergeSynchronizerPart(engine);
+        engine.PlannedOutputs(Arg.Any<Loadout.ReadOnly>()).Returns(_ => throw new InvalidOperationException("rows unreadable"));
+        part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
+        engine.PlannedOutputs(Arg.Any<Loadout.ReadOnly>()).Returns(Planned);
+        part.IntrinsicFiles(loadout, Substitute.For<ILogger>());
+
+        var act = () => part.CheckOutputs(Tree(LoadoutSourceItemType.Intrinsic, OutA, OutB), loadout);
+
+        act.Should().NotThrow();
     }
 }

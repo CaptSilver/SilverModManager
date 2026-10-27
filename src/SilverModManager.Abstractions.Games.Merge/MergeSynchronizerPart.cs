@@ -41,15 +41,16 @@ public sealed class MergeApplyRefusedException(string reason) : SynchronizerPref
 /// </summary>
 public sealed class MergeSynchronizerPart(IMergeEngine engine)
 {
-    // Only the latest revision of each loadout is kept; an older one is never asked for again.
-    private readonly ConcurrentDictionary<LoadoutId, (TxId Revision, IReadOnlyList<PlannedOutput> Outputs, Dictionary<GamePath, IIntrinsicFile> Files)> _listed = new();
+    // The latest revision of each loadout plus the one most recently listed, which differs when something lists an
+    // older revision (a reset renders the last synced one). CheckOutputs reads the entry of the revision it checks.
+    private readonly ConcurrentDictionary<(LoadoutId Loadout, TxId Revision), (IReadOnlyList<PlannedOutput> Outputs, Dictionary<GamePath, IIntrinsicFile> Files)> _listed = new();
     private readonly ConcurrentDictionary<LoadoutId, (TxId Revision, string Reason)> _listingFailures = new();
 
     /// <summary>
     /// One <see cref="MergedIntrinsicFile"/> per path the engine will write, keyed by its output path. This runs on
     /// every refresh, inside the winning-files query, so it reads loadout rows and no file bytes and never plans.
     /// It never throws: a failure is logged and nothing is listed, and <see cref="CheckOutputs"/> refuses the apply
-    /// of that revision with the reason.
+    /// of that revision with the reason. The result is the caller's to add to.
     /// </summary>
     public Dictionary<GamePath, IIntrinsicFile> IntrinsicFiles(Loadout.ReadOnly loadout, ILogger logger)
     {
@@ -57,20 +58,24 @@ public sealed class MergeSynchronizerPart(IMergeEngine engine)
         try
         {
             var planned = engine.PlannedOutputs(loadout);
-            if (_listed.TryGetValue(loadout.LoadoutId, out var known) && known.Revision == revision && known.Outputs.SequenceEqual(planned))
-                return known.Files;
+            if (_listingFailures.TryGetValue(loadout.LoadoutId, out var failed) && failed.Revision == revision)
+                _listingFailures.TryRemove(loadout.LoadoutId, out _);
+            if (_listed.TryGetValue((loadout.LoadoutId, revision), out var known) && known.Outputs.SequenceEqual(planned))
+                return new Dictionary<GamePath, IIntrinsicFile>(known.Files);
 
             var files = new Dictionary<GamePath, IIntrinsicFile>();
             foreach (var output in planned)
                 files[output.Output] = new MergedIntrinsicFile(engine, output.Output, output.RelPath);
-            _listed[loadout.LoadoutId] = (revision, planned, files);
-            return files;
+            _listed[(loadout.LoadoutId, revision)] = (planned, files);
+            foreach (var key in _listed.Keys.Where(k => k.Loadout == loadout.LoadoutId && k.Revision < revision).ToArray())
+                _listed.TryRemove(key, out _);
+            return new Dictionary<GamePath, IIntrinsicFile>(files);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             logger.LogError(exception, "The merged files of {Loadout} could not be listed, so applying it is refused until they can be", loadout.Name);
             _listingFailures[loadout.LoadoutId] = (revision, exception.Message);
-            _listed.TryRemove(loadout.LoadoutId, out _);
+            _listed.TryRemove((loadout.LoadoutId, revision), out _);
             return [];
         }
     }
@@ -78,7 +83,8 @@ public sealed class MergeSynchronizerPart(IMergeEngine engine)
     /// <summary>
     /// Plans in Apply mode, the one mode that reads file bytes. Called from the synchronizer's loadout preflight so
     /// the engine has recorded which merges failed before the listing is asked for. A strategy's refusal of its input
-    /// surfaces as a readable preflight exception.
+    /// surfaces as a readable preflight exception. The real <see cref="MergeEngine"/> catches those per path and
+    /// reports the path as not mergeable, so this is only reachable through another <see cref="IMergeEngine"/>.
     /// </summary>
     public IReadOnlyList<MergedOutput> PlanOutputs(Loadout.ReadOnly loadout)
     {
@@ -96,8 +102,8 @@ public sealed class MergeSynchronizerPart(IMergeEngine engine)
     /// Compares the tree with the plan. Throws <see cref="MergeOutputMissingException"/> for the first planned output
     /// that is not an <see cref="LoadoutSourceItemType.Intrinsic"/> node in <paramref name="tree"/>, and
     /// <see cref="MergeApplyRefusedException"/> when the revision's listing failed or the tree holds a merged file
-    /// the plan no longer has (the plan moved after the listing). Outputs of a merge that failed are not in the
-    /// plan, so they are not asked for.
+    /// the plan no longer has, or no listing was made for this revision (the plan moved after the listing). Outputs of
+    /// a merge that failed are not in the plan, so they are not asked for.
     /// </summary>
     public void CheckOutputs(Dictionary<GamePath, SyncNode> tree, Loadout.ReadOnly loadout)
     {
@@ -105,17 +111,19 @@ public sealed class MergeSynchronizerPart(IMergeEngine engine)
             throw MergeApplyRefusedException.ListingFailed(failed.Reason);
 
         var plan = PlanOutputs(loadout);
-        var listed = _listed.TryGetValue(loadout.LoadoutId, out var known) ? known.Files : null;
+        // The tree is built from the listing of this revision. Without one, or if the plan has since moved, the two
+        // cannot be compared and the write could meet a file the plan lacks.
+        if (!_listed.TryGetValue((loadout.LoadoutId, loadout.Db.BasisTxId), out var known)) throw MergeApplyRefusedException.Changed();
+        var listed = known.Files;
 
         foreach (var output in plan)
         {
             if (tree.TryGetValue(output.Output, out var node) && node.SourceItemType == LoadoutSourceItemType.Intrinsic) continue;
-            throw listed is not null && !listed.ContainsKey(output.Output)
+            throw !listed.ContainsKey(output.Output)
                 ? MergeApplyRefusedException.Changed()
                 : new MergeOutputMissingException(output.RelPath);
         }
 
-        if (listed is null) return;
         var planned = plan.Select(o => o.Output).ToHashSet();
         foreach (var path in listed.Keys)
         {

@@ -8,6 +8,11 @@ using SilverModManager.Games.TestFramework;
 using SilverModManager.StandardGameLocators.TestHelpers;
 using SilverModManager.StandardGameLocators.TestHelpers.StubbedGames;
 
+// Every game test creates its loadout through a real synchronize over the one stub game folder, and the engine tests
+// write and replace files in it; run side by side they trip each other (a vanilla file vanishing mid-merge, a
+// database assertion landing in whichever test happens to be running).
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 namespace SilverModManager.Abstractions.Games.Merge.Tests;
 
 public class Startup

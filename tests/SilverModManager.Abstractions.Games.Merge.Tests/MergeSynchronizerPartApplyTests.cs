@@ -31,18 +31,6 @@ public class MergeSynchronizerPartApplyTests(IServiceProvider provider) : AGameT
         }
     }
 
-    /// <summary>
-    /// Has no vanilla copy, so the merge is two-way and never reads the game folder, which the engine tests share
-    /// and rewrite while they run in parallel.
-    /// </summary>
-    private sealed class NoVanillaGame : TestMergeGame
-    {
-        public override GamePath? VanillaFor(string rel, GameInstallation installation) => null;
-    }
-
-    private static readonly GamePath Good = new(LocationId.Game, "Mods/merged/scripts/part.txt");
-    private static readonly GamePath Bad = new(LocationId.Game, "Mods/merged/scripts/part-bad.txt");
-
     private async Task Mod(Loadout.ReadOnly loadout, string name, string package, ulong priority, params (string Rel, byte[] Bytes)[] files)
     {
         using var tx = Connection.BeginTransaction();
@@ -64,36 +52,42 @@ public class MergeSynchronizerPartApplyTests(IServiceProvider provider) : AGameT
 
     private static byte[] Text(string text) => Encoding.UTF8.GetBytes(text);
 
-    private async Task<(MergeSynchronizerPart Part, MergeEngine Engine, Loadout.ReadOnly Loadout)> FirstApplyWithOneFailingPath()
+    private async Task<(MergeSynchronizerPart Part, Loadout.ReadOnly Loadout, GamePath Good, GamePath Bad)> FirstApplyWithOneFailingPath()
     {
         var loadout = await CreateLoadout();
-        await Mod(loadout, "A", "modA", 2, ("scripts/part.txt", Text("a\nB1\nc\n")), ("scripts/part-bad.txt", [0xFF, 0xFE]));
-        await Mod(loadout, "B", "modB", 1, ("scripts/part.txt", Text("a\nb\nC\n")), ("scripts/part-bad.txt", Text("text\n")));
-        var engine = new MergeEngine(FileStore, new Trusting(), NullLogger<MergeEngine>.Instance, _ => new NoVanillaGame());
-        return (new MergeSynchronizerPart(engine), engine, Refresh(loadout));
+        // A rel of its own: the engine tests share the game folder and rewrite their vanilla files while running in parallel.
+        var rel = $"scripts/part-{Guid.NewGuid():N}.txt";
+        var badRel = $"scripts/bad-{Guid.NewGuid():N}.txt";
+        var vanilla = GameInstallation.Locations[LocationId.Game].Path.Combine($"vanilla/{rel}");
+        vanilla.Parent.CreateDirectory();
+        await vanilla.WriteAllTextAsync("a\nb\nc\n");
+        await Mod(loadout, "A", "modA", 2, (rel, Text("a\nB1\nc\n")), (badRel, [0xFF, 0xFE]));
+        await Mod(loadout, "B", "modB", 1, (rel, Text("a\nb\nC\n")), (badRel, Text("text\n")));
+        var engine = new MergeEngine(FileStore, new Trusting(), NullLogger<MergeEngine>.Instance, _ => new TestMergeGame());
+        return (new MergeSynchronizerPart(engine), Refresh(loadout), new GamePath(LocationId.Game, $"Mods/merged/{rel}"), new GamePath(LocationId.Game, $"Mods/merged/{badRel}"));
     }
 
     [Fact]
     public async Task AFailedMergeIsNotListedOnceThePreflightHasPlanned()
     {
-        var (part, _, loadout) = await FirstApplyWithOneFailingPath();
+        var (part, loadout, good, bad) = await FirstApplyWithOneFailingPath();
 
-        // Before any plan the engine cannot know bad.txt fails, which is why the preflight plans first.
-        part.IntrinsicFiles(loadout, NullLogger.Instance).Keys.Should().BeEquivalentTo([Good, Bad]);
+        // Before any plan the engine cannot know the bad file fails, which is why the preflight plans first.
+        part.IntrinsicFiles(loadout, NullLogger.Instance).Keys.Should().BeEquivalentTo([good, bad]);
 
         part.PlanOutputs(loadout);
         var files = part.IntrinsicFiles(loadout, NullLogger.Instance);
 
-        files.Keys.Should().BeEquivalentTo([Good]);
+        files.Keys.Should().BeEquivalentTo([good]);
         var stream = new MemoryStream();
-        await files[Good].Write(stream, loadout, []);
-        Encoding.UTF8.GetString(stream.ToArray()).Should().Be("a\nB1\nc\n");
+        await files[good].Write(stream, loadout, []);
+        Encoding.UTF8.GetString(stream.ToArray()).Should().Be("a\nB1\nC\n");
     }
 
     [Fact]
     public async Task CheckOutputsPassesATreeWithoutTheFailedPathSoTheApplyGoesAhead()
     {
-        var (part, _, loadout) = await FirstApplyWithOneFailingPath();
+        var (part, loadout, good, bad) = await FirstApplyWithOneFailingPath();
         part.PlanOutputs(loadout);
         var tree = part.IntrinsicFiles(loadout, NullLogger.Instance).Keys
             .ToDictionary(p => p, _ => new SyncNode { SourceItemType = LoadoutSourceItemType.Intrinsic });
@@ -106,7 +100,7 @@ public class MergeSynchronizerPartApplyTests(IServiceProvider provider) : AGameT
     [Fact]
     public async Task ATreeBuiltFromAListingThatWasNeverPlannedIsRefusedNotLeftToCrashTheWrite()
     {
-        var (part, _, loadout) = await FirstApplyWithOneFailingPath();
+        var (part, loadout, good, bad) = await FirstApplyWithOneFailingPath();
         var tree = part.IntrinsicFiles(loadout, NullLogger.Instance).Keys
             .ToDictionary(p => p, _ => new SyncNode { SourceItemType = LoadoutSourceItemType.Intrinsic });
 
