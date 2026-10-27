@@ -137,8 +137,6 @@ public class CollectionOrderReaderTests(ITestOutputHelper helper) : ACyberpunkIs
         bare.TryGetProperty("silverLoadOrder", out _).Should().BeFalse();
     }
 
-    private static readonly string[] CoveredRootProperties = ["Info", "LoadOrder", "ModRules", "Mods", "Plugins", "SilverLoadOrder"];
-
     private static CollectionRoot FullRoot() => new()
     {
         Info = new CollectionInfo { Name = "Test", DomainName = GameDomain.From("cyberpunk2077") },
@@ -151,10 +149,21 @@ public class CollectionOrderReaderTests(ITestOutputHelper helper) : ACyberpunkIs
     };
 
     [Fact]
-    public void EveryCollectionRootPropertyIsCoveredByTheCopyTest()
+    public void FullRootSetsEveryPropertyToANonDefaultValue()
     {
-        typeof(CollectionRoot).GetProperties().Select(p => p.Name).Order()
-            .Should().Equal(CoveredRootProperties, "a new CollectionRoot property must be copied by VortexOrderKeys.With and added to FullRoot");
+        var root = FullRoot();
+        foreach (var property in typeof(CollectionRoot).GetProperties())
+        {
+            var value = property.GetValue(root);
+            var isDefault = value switch
+            {
+                null => true,
+                JsonElement element => element.ValueKind == JsonValueKind.Undefined,
+                Array array => array.Length == 0,
+                _ => false,
+            };
+            isDefault.Should().BeFalse($"{property.Name} must be filled in FullRoot so the copy test covers it");
+        }
     }
 
     [Theory]
@@ -184,7 +193,8 @@ public class CollectionOrderReaderTests(ITestOutputHelper helper) : ACyberpunkIs
 
         var order = CollectionOrderReader.Read(Connection.Db, game, Root([], Json("{}")), container);
 
-        order.Should().Be(ModOrder.Empty);
+        order.WinnerToLoser.Should().BeEmpty();
+        order.Dropped.Should().BeEmpty();
     }
 
     [Fact]

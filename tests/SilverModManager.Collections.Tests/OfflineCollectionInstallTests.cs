@@ -303,10 +303,11 @@ public class OfflineCollectionInstallTests(ITestOutputHelper helper) : ACyberpun
 
         var nameOf = (LoadoutItemGroupId id) => LoadoutItem.Load(group.Db, id).Name;
         var order = LoadoutItemGroupPriority.FindByLoadout(group.Db, loadout).OrderBy(p => p.Priority).Select(p => nameOf(p.TargetId)).ToList();
-        order.IndexOf("Fomod mod 0").Should().BeGreaterThan(order.IndexOf("Fomod mod 1"), "the stored rule overrides the imported order");
+        order.Should().Equal("Fomod mod 2", "Fomod mod 1", "Fomod mod 0");
 
         var rows = ModOrderDroppedEntry.FindByLoadout(group.Db, loadout).ToArray();
         rows.Should().ContainSingle();
+        rows[0].Item.Should().Be("Fomod mod 1 above Fomod mod 0");
         rows[0].Reason.Should().Contain("wins over");
         rows[0].Source.Should().Be("collection Offline");
     }
