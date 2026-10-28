@@ -1,0 +1,12 @@
+﻿[
+  {
+    FromPath: CookedPC/en0.w2speech,
+    Hash: 0xBB2A9143AE62D04C,
+    ToGamePath: {Game}/CookedPC/en0.w2speech
+  },
+  {
+    FromPath: CookedPC/pack0.dzip,
+    Hash: 0x600053D673943866,
+    ToGamePath: {Game}/CookedPC/pack0.dzip
+  }
+]

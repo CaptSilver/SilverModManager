@@ -1,0 +1,7 @@
+﻿[
+  {
+    FromPath: pack0.dzip,
+    Hash: 0xA3D879F06FBF7720,
+    ToGamePath: {Game}/CookedPC/pack0.dzip
+  }
+]

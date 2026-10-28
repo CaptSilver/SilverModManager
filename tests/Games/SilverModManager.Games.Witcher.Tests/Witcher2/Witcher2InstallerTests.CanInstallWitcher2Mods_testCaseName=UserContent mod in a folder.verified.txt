@@ -1,0 +1,12 @@
+﻿[
+  {
+    FromPath: MyMod/cook.hash,
+    Hash: 0x0FC1AAB8CAF569A2,
+    ToGamePath: {Game}/UserContent/cook.hash
+  },
+  {
+    FromPath: MyMod/pack0.dzip,
+    Hash: 0xBC5950B71CBCF340,
+    ToGamePath: {Game}/UserContent/pack0.dzip
+  }
+]

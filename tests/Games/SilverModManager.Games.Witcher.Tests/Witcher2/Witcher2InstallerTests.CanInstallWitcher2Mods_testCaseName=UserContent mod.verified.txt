@@ -1,0 +1,17 @@
+﻿[
+  {
+    FromPath: cook.hash,
+    Hash: 0x5C2DC668173C5797,
+    ToGamePath: {Game}/UserContent/cook.hash
+  },
+  {
+    FromPath: pack0.dzip,
+    Hash: 0xA3D879F06FBF7720,
+    ToGamePath: {Game}/UserContent/pack0.dzip
+  },
+  {
+    FromPath: strings.w2strings,
+    Hash: 0xA373D3E630D2E6E3,
+    ToGamePath: {Game}/UserContent/strings.w2strings
+  }
+]

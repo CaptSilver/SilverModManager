@@ -1,5 +1,6 @@
 using DynamicData.Kernel;
 using NexusMods.Paths;
+using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
 
@@ -12,5 +13,6 @@ public sealed class Witcher2Game(IServiceProvider provider) : AWitcherGame<Witch
     public static Optional<NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(153);
 
     protected override StoreIdentifiers CreateStoreIdentifiers() => new(GameId) { SteamAppIds = [20920] };
+    protected override ILibraryItemInstaller[] CreateInstallers(IServiceProvider provider) => Witcher2Installers.Create(provider);
     protected override RelativePath PrimaryExe => "bin/witcher2.exe";
 }
