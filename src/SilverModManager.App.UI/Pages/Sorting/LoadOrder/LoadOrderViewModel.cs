@@ -180,14 +180,19 @@ public partial class LoadOrderViewModel : AViewModel<ILoadOrderViewModel>, ILoad
                     throw new InvalidOperationException($"{sortOrderVariety.SortOrderVarietyId} has no switches to toggle");
 
                 // The row can be gone by the time a click is handled, as when its mod was just removed.
-                var item = sortOrderVariety.GetSortOrderItems(sortOrderId).FirstOrDefault(item => item.Key.Equals(key));
-                if (item is null) return;
-                if (item is not ISortItemDetails details)
-                    throw new InvalidOperationException($"Item {key} of {sortOrderVariety.SortOrderVarietyId} has no switch");
+                // The lookup scans every item of the order, which on a large loadout is too long to hold the UI thread
+                // once per click, so it runs inside the same pool hop as the edit.
+                await RunEdit(async () =>
+                {
+                    var item = await Task.Run(() => sortOrderVariety.GetSortOrderItems(sortOrderId).FirstOrDefault(item => item.Key.Equals(key)));
+                    if (item is null) return;
+                    if (item is not ISortItemDetails details)
+                        throw new InvalidOperationException($"Item {key} of {sortOrderVariety.SortOrderVarietyId} has no switch");
 
-                // The switch is disabled for these rows already; this covers a stale click.
-                if (details.IsLocked || details.LockReason is not null) return;
-                await RunEdit(() => toggleable.SetEnabled(sortOrderId, key, !details.IsEnabled));
+                    // The switch is disabled for these rows already; this covers a stale click.
+                    if (details.IsLocked || details.LockReason is not null) return;
+                    await toggleable.SetEnabled(sortOrderId, key, !details.IsEnabled);
+                });
             },
             canExecute: System.Reactive.Linq.Observable.Return(SupportsToggle)
         );

@@ -42,11 +42,9 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
         var refCountedItemsChangeSet = sortOrderVariety.GetSortOrderItemsChangeSet(sortOrderId.Value)
             .RefCount();
         
-        var initialLastIndex = GetLastIndex(sortOrderVariety.GetSortOrderItems(sortOrderId.Value));
         var lastIndexObservable = refCountedItemsChangeSet
-            .QueryWhenChanged(query => GetLastIndex(query.Items.ToList()))
+            .QueryWhenChanged(query => GetLastIndex(query.Items.Select(item => item.SortIndex)))
             .ToObservable()
-            .Prepend(initialLastIndex)
             .Replay(1)
             .RefCount();
         
@@ -64,15 +62,27 @@ public class LoadOrderDataProvider : ILoadOrderDataProvider
                 (sortDirection, lastIndex) => sortDirection == ListSortDirection.Ascending ? lastIndex : 0
             )
             .Replay(1)
-            .RefCount();;
+            .RefCount();
 
-        return refCountedItemsChangeSet
-            .Transform(item => ToLoadOrderItemModel(item, sortOrderVariety, topMostIndexObservable, bottomMostIndexObservable, lastIndexObservable, initialLastIndex, _connection, _thumbnailLoader));
+        // Scanning the order for its last index would run on the caller's thread, the UI thread when the page opens.
+        // The first change set already carries every row, so the index is read from it and the query is subscribed on
+        // the task pool.
+        return System.Reactive.Linq.Observable.Defer(() =>
+            {
+                var initialLastIndex = 0;
+                var seeded = false;
+                return refCountedItemsChangeSet
+                    .Do(changes =>
+                    {
+                        if (seeded) return;
+                        seeded = true;
+                        initialLastIndex = GetLastIndex(changes.Select(change => change.Current.SortIndex));
+                    })
+                    .Transform(item => ToLoadOrderItemModel(item, sortOrderVariety, topMostIndexObservable, bottomMostIndexObservable, lastIndexObservable, initialLastIndex, _connection, _thumbnailLoader));
+            })
+            .SubscribeOn(RxApp.TaskpoolScheduler);
 
-        static int GetLastIndex(IReadOnlyList<IReactiveSortItem> items)
-        {
-            return items.Count == 0 ? 0 : items.Max(item => item.SortIndex);
-        }
+        static int GetLastIndex(IEnumerable<int> sortIndexes) => sortIndexes.DefaultIfEmpty(0).Max();
     }
 
     private static CompositeItemModel<ISortItemKey> ToLoadOrderItemModel(
