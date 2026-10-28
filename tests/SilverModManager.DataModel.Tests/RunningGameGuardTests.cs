@@ -52,6 +52,18 @@ public class RunningGameGuardTests(ITestOutputHelper helper) : ACyberpunkIsolate
     }
 
     [Fact]
+    public async Task CreateLoadout_ThrowsWhileRunning_AndLeavesNoHalfCreatedLoadout()
+    {
+        LaunchSession.Running = true;
+
+        var act = async () => await LoadoutManager.CreateLoadout(GameInstallation, "Refused First Sync");
+
+        await act.Should().ThrowAsync<ExecutableInUseException>();
+        Loadout.All(Connection.Db).Where(l => l.IsVisible()).Should().BeEmpty("a loadout whose first sync was refused is a half-added game");
+        LastSynced().Should().BeNull();
+    }
+
+    [Fact]
     public async Task Synchronize_RunsWhenNothingIsRunning()
     {
         var active = await LoadoutManager.CreateLoadout(GameInstallation, "Active Loadout");

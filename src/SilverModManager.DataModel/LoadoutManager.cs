@@ -14,6 +14,7 @@ using SilverModManager.Abstractions.GC;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Games.LoadOrder;
 using SilverModManager.Abstractions.Loadouts;
+using SilverModManager.Abstractions.Loadouts.Exceptions;
 using SilverModManager.Abstractions.Loadouts.Sorting;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Conflicts;
@@ -180,11 +181,11 @@ internal partial class LoadoutManager : ILoadoutManager
         {
             await _synchronizerService.Synchronize(loadout.LoadoutId, largeFiles, cancellationToken);
         }
-        catch (Exception e) when (e is BackupOverflowException or SynchronizerPreflightException or OperationCanceledException)
+        catch (Exception e) when (e is BackupOverflowException or SynchronizerPreflightException or ExecutableInUseException or OperationCanceledException)
         {
             try
             {
-                await DeleteLoadout(loadout.LoadoutId, deactivateIfActive: false);
+                await DeleteLoadoutRows(loadout.LoadoutId, GarbageCollectorRunMode.DoNotRun, deactivateIfActive: false, CancellationToken.None);
 
                 var metadata = GameInstallMetadata.Load(_connection.Db, loadout.InstallationId);
                 using var tx = _connection.BeginTransaction();
@@ -351,7 +352,16 @@ internal partial class LoadoutManager : ILoadoutManager
     public async ValueTask DeleteLoadout(LoadoutId loadoutId, GarbageCollectorRunMode gcRunMode = GarbageCollectorRunMode.DoNotRun, bool deactivateIfActive = true, CancellationToken cancellationToken = default)
     {
         RunningGameGuard.ThrowIfRunning(_serviceProvider, Loadout.Load(_connection.Db, loadoutId));
+        await DeleteLoadoutRows(loadoutId, gcRunMode, deactivateIfActive, cancellationToken);
+    }
 
+    /// <summary>
+    /// <see cref="DeleteLoadout"/> without the running-game check, for removing a loadout that never wrote to the
+    /// game folder: the check protects the folder, and a first sync refused because the game is running is the
+    /// case that has to clean up while it is still running.
+    /// </summary>
+    private async ValueTask DeleteLoadoutRows(LoadoutId loadoutId, GarbageCollectorRunMode gcRunMode, bool deactivateIfActive, CancellationToken cancellationToken)
+    {
         // Refuse before the loadout is hidden: a refusal later on would leave it hidden but not deleted.
         if (deactivateIfActive)
         {
