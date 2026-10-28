@@ -272,7 +272,8 @@ internal class GameLocationsService : IGameLocationsService
         CancellationToken cancellationToken)
     {
         var fingerprint = FileFingerprint.Of(file);
-        var newHash = await HashFile(installation, file, gamePath, fingerprint, tally, forceRead, cancellationToken);
+        var allDigests = attested is not null || installation.LocatorResult.Store == GameStore.Steam;
+        var newHash = await HashFile(installation, file, gamePath, fingerprint, tally, forceRead, allDigests, cancellationToken);
 
         // The rows outlive the disk state, so one is written only for bytes read under a fingerprint that held.
         // A file written during the read would otherwise keep a hash of mixed bytes under its old size and time.
@@ -280,7 +281,7 @@ internal class GameLocationsService : IGameLocationsService
         if (after != fingerprint)
         {
             fingerprint = after;
-            newHash = await HashFile(installation, file, gamePath, fingerprint, tally, forceRead, cancellationToken);
+            newHash = await HashFile(installation, file, gamePath, fingerprint, tally, forceRead, allDigests, cancellationToken);
             after = FileFingerprint.Of(file);
             if (after != fingerprint)
             {
@@ -296,7 +297,7 @@ internal class GameLocationsService : IGameLocationsService
     }
 
     internal async ValueTask<Hash> HashFile(AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
-        => (await HashFile(null, file, gamePath, FileFingerprint.Of(file), new IndexTally(), forceRead: false, cancellationToken)).XxHash3;
+        => (await HashFile(null, file, gamePath, FileFingerprint.Of(file), new IndexTally(), forceRead: false, allDigests: false, cancellationToken)).XxHash3;
 
     /// <param name="XxHash3">The file's xxHash3.</param>
     /// <param name="Hashes">Every digest of the bytes, set when this call read the file in full to get them.</param>
@@ -304,7 +305,8 @@ internal class GameLocationsService : IGameLocationsService
     private readonly record struct HashedFile(Hash XxHash3, MultiHash? Hashes = null, bool FromFingerprint = false);
 
     /// <param name="forceRead">Skip the remembered and stored hashes, because the caller needs every digest of the bytes.</param>
-    private async ValueTask<HashedFile> HashFile(GameInstallation? installation, AbsolutePath file, GamePath gamePath, FileFingerprint fingerprint, IndexTally tally, bool forceRead, CancellationToken cancellationToken)
+    /// <param name="allDigests">Take every digest in the same pass when a game-folder file is read in full.</param>
+    private async ValueTask<HashedFile> HashFile(GameInstallation? installation, AbsolutePath file, GamePath gamePath, FileFingerprint fingerprint, IndexTally tally, bool forceRead, bool allDigests, CancellationToken cancellationToken)
     {
         var miss = StoredHashMiss.NoRowForPath;
         if (!forceRead)
@@ -328,10 +330,11 @@ internal class GameLocationsService : IGameLocationsService
         _logger.LogDebug("Didn't find matching hash data for file `{Path}` ({Reason}), falling back to a full hash", file, miss);
         tally.FullyHashed(miss, fingerprint.Size);
 
-        // A full read of a game-folder file takes every digest in the same pass. They are recorded as a relation, so
-        // the next baseline can resolve this file from its hashes instead of reading it, and the store's SHA-1 can
-        // be joined to the xxHash3 the file is archived under. Other locations only need the xxHash3.
-        if (gamePath.LocationId == LocationId.Game)
+        // A full read of a game-folder file of a Steam install, or of a file the store vouches for, takes every digest
+        // in the same pass. They are recorded as a relation, so the next baseline can resolve this file from its
+        // hashes instead of reading it, and the manifest's SHA-1 can be joined to the xxHash3 the file is archived
+        // under. Nothing reads a relation for the other stores, and MD5 and SHA-1 would only slow their first manage.
+        if (gamePath.LocationId == LocationId.Game && allDigests)
         {
             var hashes = await _fullHasher.HashAll(file, cancellationToken);
             return new HashedFile(hashes.XxHash3, hashes);

@@ -130,6 +130,28 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
     }
 
     [Fact]
+    public async Task AFullReadOfAGameFile_OfAnInstallWithNoSha1Manifests_TakesOnlyTheXxHash3()
+    {
+        await WriteGameFiles(2);
+        var gog = new GameInstallation(new GameLocatorResult
+        {
+            Game = _installation.LocatorResult.Game,
+            Path = _gameDir,
+            Store = GameStore.GOG,
+            StoreIdentifier = "1",
+            LocatorIds = [LocatorId.From("1")],
+            Locator = Substitute.For<IGameLocator>(),
+        }, _installation.Locations);
+        var service = CreateService();
+
+        var result = await service.IndexGame(gog, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        result.NewFiles.Should().HaveCount(2);
+        HashRelation.All(_connection.Db).Should().BeEmpty("a relation exists to join a store's SHA-1 to the bytes, and this store has none");
+        LocalRows().Should().HaveCount(2, "the fingerprint rows still save the next index its reads");
+    }
+
+    [Fact]
     public async Task ReindexAfterAnUnchangedIndex_HashesNothing()
     {
         await WriteGameFiles(20);
