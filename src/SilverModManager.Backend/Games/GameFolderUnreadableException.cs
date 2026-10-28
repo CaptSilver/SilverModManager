@@ -28,17 +28,9 @@ public sealed class GameFolderUnreadableException : UserFacingException
     public override string Title => $"{_installation.Game.DisplayName}'s folder could not be read";
 
     /// <summary>
-    /// Whether the error means the device cannot deliver bytes (EIO and its relatives, or their Windows
-    /// counterparts), as opposed to a problem with one file such as a socket, a symlink loop or a permission.
-    /// The runtime reports the raw error number as the exception's HResult on Unix and wraps the Win32 code
-    /// in an HRESULT on Windows.
+    /// Whether the error means the device cannot deliver bytes (EIO and its relatives: ENOTCONN, ESTALE, EUCLEAN,
+    /// EREMOTEIO, ENOMEDIUM), as opposed to a problem with one file such as a socket, a symlink loop or a permission.
+    /// The runtime reports the raw error number as the exception's HResult on Unix.
     /// </summary>
-    public static bool IsDeviceFailure(IOException error)
-    {
-        var code = error.HResult;
-        if (!OperatingSystem.IsWindows()) return code is 5 or 107 or 116 or 117 or 121 or 123; // EIO, ENOTCONN, ESTALE, EUCLEAN, EREMOTEIO, ENOMEDIUM
-
-        if ((uint)code >> 16 != 0x8007) return false;
-        return (code & 0xFFFF) is 23 or 1117 or 1167 or 1393; // CRC, IO device, device not connected, corrupt disk
-    }
+    public static bool IsDeviceFailure(IOException error) => error.HResult is 5 or 107 or 116 or 117 or 121 or 123;
 }
