@@ -474,4 +474,51 @@ public class WitcherModSortOrderVarietyTests(ITestOutputHelper helper)
 
         StoredRows(id).Single(r => r.Folder == "modA").Should().Be(("modA", false, before));
     }
+
+    [Fact]
+    public async Task APatchFolderDraggedAheadOfAnotherMod_MovesWhenItsGroupAlsoFillsAHigherFolder()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        var g1 = await AddMod(loadout, "G1", 5, "Mods/modBase/a.ws");
+        var g2 = await AddMod(loadout, "G2", 3, "Mods/modOther/o.ws");
+        var g3 = await AddMod(loadout, "G3", 1, "Mods/modBase/p.ws", "Mods/modPatch/q.ws");
+        await variety.ReconcileSortOrder(id);
+        Folders(variety.GetSortOrderItems(id, Db)).Should().Equal(Merged, "modBase", "modOther", "modPatch");
+
+        await variety.MoveItems(id, [Key("modPatch")], Key("modOther"), TargetRelativePosition.BeforeTarget, Db);
+
+        PriorityOf(g3).Should().BeGreaterThan(PriorityOf(g2));
+        PriorityOf(g1).Should().BeGreaterThan(PriorityOf(g3));
+        Folders(variety.GetSortOrderItems(id, Db)).Should().Equal(Merged, "modBase", "modPatch", "modOther");
+    }
+
+    [Fact]
+    public async Task TheRefusalNamesOnlyTheFoldersOfThatDrag()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        await AddMod(loadout, "G", 4, "Mods/modFoo/a.ws", "Mods/modFooUI/b.ws");
+        await AddMod(loadout, "K", 2, "Mods/modBaz/a.ws", "Mods/modBazUI/b.ws");
+        await variety.ReconcileSortOrder(id);
+
+        var act = async () => await variety.MoveItems(id, [Key("modFoo")], Key("modFooUI"), TargetRelativePosition.AfterTarget, Db);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage("modFoo and modFooUI come from the same mod and move together.");
+    }
+
+    [Fact]
+    public async Task ADragBuiltOnAnOutdatedRevision_IsRefusedWithAReadableMessage()
+    {
+        var (loadout, variety, id) = await Reconciled();
+        var a = await AddMod(loadout, "A", 1, "Mods/modA/a.ws");
+        var b = await AddMod(loadout, "B", 2, "Mods/modB/b.ws");
+        await variety.ReconcileSortOrder(id);
+        var outdated = Db;
+        await variety.SetEnabled(id, Key("modB"), false);
+
+        var act = async () => await variety.MoveItems(id, [Key("modA")], Key("modB"), TargetRelativePosition.BeforeTarget, outdated);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage("The load order changed while you were moving it; try again.");
+        PriorityOf(a).Should().BeLessThan(PriorityOf(b));
+        variety.StoredOrder(Fresh(loadout)).Should().Equal((Merged, true), ("modB", false), ("modA", true));
+    }
 }

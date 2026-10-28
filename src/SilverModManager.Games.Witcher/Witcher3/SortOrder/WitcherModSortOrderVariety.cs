@@ -40,6 +40,8 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
     // Reconciling stores an order too, but it is the app tidying up, not the user dragging a row.
     private static readonly AsyncLocal<bool> Reconciling = new();
 
+    private const string ChangedMessage = "Unable to complete transaction:";
+
     private static readonly TimeSpan RevisionThrottle = TimeSpan.FromMilliseconds(100);
 
     private readonly ILoadoutManager _loadouts;
@@ -244,16 +246,17 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
 
         // A mod that puts files in two folders is one group; it takes the place of the first folder that lists it.
         var winnerToLoser = proposed.SelectMany(key => groupsOf[key]).Distinct().ToArray();
-        var current = shownKeys.SelectMany(key => groupsOf[key]).Distinct();
 
-        // Priorities belong to groups, so a move that only rearranges folders of one group cannot be stored.
+        // Priorities belong to groups, so a move that leaves the groups in the order their priority rows already have
+        // changes nothing. The shown folder order is not that order when a group's files fill several folders.
+        var requested = winnerToLoser.ToHashSet();
+        var current = LoadoutItemGroupPriority.FindByLoadout(startingDb, loadoutId)
+            .Where(row => row.Target.IsValid() && requested.Contains(row.TargetId))
+            .OrderByDescending(row => row.Priority)
+            .ThenBy(row => row.TargetId.Value)
+            .Select(row => row.TargetId);
         if (winnerToLoser.SequenceEqual(current))
-        {
-            var folderOf = newOrder.ToDictionary(row => row.Key, row => row.Folder);
-            var shared = shownKeys.Where(key => groupsOf[key].Any(group => shownKeys.Any(other => !other.Equals(key) && groupsOf[other].Contains(group))))
-                .Select(key => folderOf[key]).ToList();
-            throw new InvalidOperationException($"{string.Join(" and ", shared)} come from the same mod and move together.");
-        }
+            throw new InvalidOperationException($"{string.Join(" and ", SharedFoldersInDrag(shownKeys, proposed, groupsOf, newOrder))} come from the same mod and move together.");
 
         using var tx = Connection.BeginTransaction();
         var result = _loadouts.SetGroupOrder(loadoutId, winnerToLoser, tx);
@@ -269,20 +272,38 @@ public sealed class WitcherModSortOrderVariety : ASortOrderVariety<SortItemKey<s
         {
             var currentTxId = GetMaxTxIdForSortOrder(orderId, txDb);
             if (currentTxId > oldTxId || currentTxId == default(TxId))
-                throw new InvalidOperationException($"Unable to complete transaction: Sort Order {orderId} changed, Current TxId: {currentTxId}, Old TxId: {oldTxId}");
+                throw new InvalidOperationException($"{ChangedMessage} Sort Order {orderId}, Current TxId: {currentTxId}, Old TxId: {oldTxId}");
         });
 
         try
         {
             await tx.Commit();
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException ex) when (ex.Message.StartsWith(ChangedMessage, StringComparison.Ordinal))
         {
-            _logger.LogError(ex, "Failed to persist the Witcher 3 load order {SortOrderId}", sortOrderId);
-            return false;
+            _logger.LogWarning(ex, "The Witcher 3 load order {SortOrderId} changed during a move", sortOrderId);
+            throw new InvalidOperationException("The load order changed while you were moving it; try again.");
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// The folders of this drag that share a mod with another folder: those whose place changed, and the folders they
+    /// share a group with, in page order.
+    /// </summary>
+    private static List<string> SharedFoldersInDrag(
+        IReadOnlyList<SortItemKey<string>> shown,
+        IReadOnlyList<SortItemKey<string>> proposed,
+        IReadOnlyDictionary<SortItemKey<string>, IReadOnlyList<LoadoutItemGroupId>> groupsOf,
+        IReadOnlyList<WitcherModSortData> rows)
+    {
+        var moved = shown.Where(key => shown.IndexOf(key) != proposed.IndexOf(key)).ToHashSet();
+        bool Together(SortItemKey<string> x, SortItemKey<string> y) =>
+            !x.Equals(y) && groupsOf[x].Intersect(groupsOf[y]).Any() && (moved.Contains(x) || moved.Contains(y));
+
+        var names = rows.ToDictionary(row => row.Key, row => row.Folder);
+        return shown.Where(key => shown.Any(other => Together(key, other))).Select(key => names[key]).ToList();
     }
 
     /// <summary>The rows the page shows now; see <see cref="ReadView"/>.</summary>
