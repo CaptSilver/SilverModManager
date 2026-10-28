@@ -30,6 +30,33 @@ public class Witcher3PathFilterTests(IServiceProvider serviceProvider)
         _filter.ShouldFilter(new GamePath(WitcherConstants.WitcherDocuments, "user.settings")).Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData("mods.settings")]
+    [InlineData("input.settings")]
+    [InlineData("user.settings")]
+    [InlineData("dx12user.settings")]
+    public void Documents_KeepsTheFourManagedFiles(string file)
+    {
+        _filter.ShouldFilter(new GamePath(WitcherConstants.WitcherDocuments, file)).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("screenshots/shot.png")]
+    [InlineData("user.settings.bak")]
+    [InlineData("gamesaves/nested/x.sav")]
+    [InlineData("scripts.log")]
+    [InlineData("sub/mods.settings")]
+    public void Documents_IgnoresEverythingElseTheGameWritesThere(string path)
+    {
+        _filter.ShouldFilter(new GamePath(WitcherConstants.WitcherDocuments, path)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void TheGameFolder_IsNotTouchedByTheDocumentsFilter()
+    {
+        _filter.ShouldFilter(new GamePath(LocationId.Game, "Mods/modA/content/scripts/a.ws")).Should().BeFalse();
+    }
+
     // Already true of the base filter; guards against a synchronizer that replaces it.
     [Fact]
     public void SavesLocation_IsFiltered()

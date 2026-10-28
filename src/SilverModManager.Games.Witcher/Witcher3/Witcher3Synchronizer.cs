@@ -18,12 +18,13 @@ public sealed class Witcher3Synchronizer(IServiceProvider provider, IGame game) 
     // Built on first use: the engine is registered by the host and has no business being resolved while the game is created.
     private readonly Lazy<MergeSynchronizerPart> _merge = new(() => CreateMergePart(provider, game));
 
-    private static readonly GamePath SavesFolder = new(WitcherConstants.WitcherDocuments, WitcherConstants.W3GameSaves);
+    // The files in Documents/The Witcher 3 the loadout writes. The game and other tools put saves, screenshots, logs and
+    // backups in the same folder, and none of that belongs to the loadout, so the folder is an allow-list.
+    private static readonly HashSet<GamePath> ManagedDocuments =
+        [WitcherConstants.W3ModsSettings, .. WitcherConstants.W3SettingsFiles.Select(file => new GamePath(WitcherConstants.WitcherDocuments, file))];
 
-    // Saves sit in the same Documents folder as mods.settings, which has to stay managed, so the location can't be
-    // filtered whole.
     protected override IGamePathFilter GameSpecificPathFilter { get; } =
-        GamePathFilters.Create(path => path.InFolder(SavesFolder));
+        GamePathFilters.Create(path => path.LocationId == WitcherConstants.WitcherDocuments && !ManagedDocuments.Contains(path));
 
     // INI tweaks (a menu mod's *.part.txt) live in the loadout to be merged into the game's settings; the folder
     // means nothing to the game, so none of it is written.

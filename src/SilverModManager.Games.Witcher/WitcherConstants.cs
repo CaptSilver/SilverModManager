@@ -11,7 +11,6 @@ public static class WitcherConstants
     public const string W3ModsFolder = "Mods";
     public const string W3DlcFolder = "dlc";
     public const string W3MergedFolder = "mod0000_MergedFiles";
-    public const string W3GameSaves = "gamesaves";
 
     public static readonly GamePath W3ModsSettings = new(WitcherDocuments, "mods.settings");
     public static readonly GamePath W3MenuConfigFolder = new(LocationId.Game, "bin/config/r4game/user_config_matrix/pc");
