@@ -109,7 +109,8 @@ public sealed class MergeEngine : IMergeEngine
     {
         var contributors = result.Path.Contributors.Select(c => c.ModName).ToArray();
         if (result.Output is not { } output)
-            return new MergeReportEntry(result.Path.Rel, result.Path.Strategy?.Name ?? "", contributors, MergeReportOutcome.NotMergeable, [], "", result.NotMergedReason!);
+            return new MergeReportEntry(result.Path.Rel, result.Path.Strategy?.Name ?? "", contributors, MergeReportOutcome.NotMergeable, [], "",
+                result.NotMergedReason ?? throw new InvalidOperationException($"`{result.Path.Rel}` has neither a merged output nor a reason it wasn't merged"));
 
         var source = output.Notes.OfType<IVanillaSourceNote>().FirstOrDefault()?.Describe() ?? GamesOwnCopy;
         var notes = output.Notes.Where(n => n is not IVanillaSourceNote).Select(n => n.Describe()).ToArray();
@@ -148,7 +149,7 @@ public sealed class MergeEngine : IMergeEngine
             key = KeyOf(contested, vanillas);
 
             var results = contested.Select((p, i) => MergePath(game, p, vanillas[i])).ToArray();
-            var entry = new Entry(key, results.Where(r => r.Output is not null).Select(r => r.Output!).ToArray(), results);
+            var entry = new Entry(key, results.Select(r => r.Output).OfType<MergedOutput>().ToArray(), results);
             _latest[loadout.LoadoutId] = entry;
             _failed[loadout.LoadoutId] = results.Where(r => r.Output is null && r.Path.Strategy is not null).Select(r => r.Path.Rel).ToHashSet(StringComparer.OrdinalIgnoreCase);
             return entry;
@@ -211,7 +212,8 @@ public sealed class MergeEngine : IMergeEngine
     private PathResult MergePath(AMergeGame game, ContestedPath path, VanillaBase? vanilla)
     {
         if (path.Strategy is not { } strategy) return new PathResult(path, null, NotMerged);
-        if (vanilla!.Failure is { } unreadable) return Failed(path, unreadable);
+        if (vanilla is null) throw new InvalidOperationException($"No vanilla base was looked up for `{path.Rel}`, which has a merge strategy");
+        if (vanilla.Failure is { } unreadable) return Failed(path, unreadable);
 
         try
         {

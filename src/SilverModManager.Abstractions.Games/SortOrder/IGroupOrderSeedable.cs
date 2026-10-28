@@ -27,17 +27,19 @@ public static class GroupOrderSlots
         var rank = new Dictionary<LoadoutItemGroupId, int>();
         foreach (var group in winnerToLoser) rank.TryAdd(group, rank.Count);
 
+        // Each listed item with its group's rank; items of unlisted groups keep their place.
         var block = Enumerable.Range(0, items.Count)
-            .Where(i => items[i].Group is { } group && rank.ContainsKey(group))
+            .Select(i => (Item: i, Rank: items[i].Group is { } group && rank.TryGetValue(group, out var r) ? r : -1))
+            .Where(x => x.Rank >= 0)
             .ToList();
 
-        var slots = block.Select(i => items[i].Index).Order().ToList();
+        var slots = block.Select(x => items[x.Item].Index).Order().ToList();
 
         // Losers come first when the greater index wins; OrderBy is stable, so a group keeps its own order.
-        var arranged = block.OrderBy(i => items[i].Index).ToList();
-        arranged = behavior == IndexOverrideBehavior.GreaterIndexWins
-            ? arranged.OrderByDescending(i => rank[items[i].Group!.Value]).ToList()
-            : arranged.OrderBy(i => rank[items[i].Group!.Value]).ToList();
+        var byIndex = block.OrderBy(x => items[x.Item].Index).ToList();
+        var arranged = (behavior == IndexOverrideBehavior.GreaterIndexWins
+            ? byIndex.OrderByDescending(x => x.Rank)
+            : byIndex.OrderBy(x => x.Rank)).Select(x => x.Item).ToList();
 
         var result = items.Select(item => item.Index).ToArray();
         for (var slot = 0; slot < arranged.Count; slot++)

@@ -10,7 +10,10 @@ public sealed record ModOrderReference(Md5Value Md5 = default, ModId? ModId = nu
     public bool IsIdentified => Md5 != default || HasIds || !string.IsNullOrWhiteSpace(Name);
 
     /// <summary>Both ids are needed to pick out a file; a mod id alone would match every file of the mod page.</summary>
-    internal bool HasIds => ModId is not null && FileId is not null;
+    internal bool HasIds => Ids is not null;
+
+    /// <summary>The mod and file id together, or null unless both are present.</summary>
+    internal (ModId Mod, FileId File)? Ids => ModId is { } mod && FileId is { } file ? (mod, file) : null;
 
     /// <summary>A mod id with nothing else: it names a mod page, not a file, so it identifies nothing.</summary>
     internal bool HasOnlyModId => ModId is not null && !IsIdentified;
@@ -21,7 +24,7 @@ public sealed record ModOrderReference(Md5Value Md5 = default, ModId? ModId = nu
         get
         {
             if (!string.IsNullOrWhiteSpace(Name)) return Name;
-            if (HasIds) return $"mod {ModId!.Value.Value} file {FileId!.Value.Value}";
+            if (Ids is var (mod, file)) return $"mod {mod.Value} file {file.Value}";
             if (Md5 != default) return Md5.ToString();
             return ModId is { } modId ? $"mod {modId.Value}" : "an unnamed entry";
         }

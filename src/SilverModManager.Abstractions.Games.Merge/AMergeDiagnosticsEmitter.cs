@@ -73,7 +73,7 @@ public abstract class AMergeDiagnosticsEmitter<TPlan>(ILogger logger) : ADropped
     {
         foreach (var entry in Merged(loadout, plan))
         {
-            var losses = entry.Notes.Where(n => RaisesCard(n) && n.Loss is not null).GroupBy(n => n.Loss!);
+            var losses = entry.Notes.Where(n => RaisesCard(n) && n.Loss is not null).GroupBy(n => n.Loss);
             foreach (var group in losses) yield return ToDroppedItem(loadout, entry.Path, group.ToArray());
         }
 

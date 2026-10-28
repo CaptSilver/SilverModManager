@@ -122,7 +122,7 @@ public static class ModOrderMatcher
                 var reference = ReferenceOf(child);
                 var id = child.LoadoutItemGroupId;
                 if (reference.Md5 != default) Add(index._byMd5, reference.Md5, id);
-                if (reference.HasIds) Add(index._byIds, (reference.ModId!.Value, reference.FileId!.Value), id);
+                if (reference.Ids is { } ids) Add(index._byIds, ids, id);
                 if (!string.IsNullOrWhiteSpace(reference.Name)) Add(index._byName, reference.Name, id);
             }
             return index;
@@ -131,7 +131,7 @@ public static class ModOrderMatcher
         public IReadOnlyList<LoadoutItemGroupId> Find(ModOrderReference reference)
         {
             if (reference.Md5 != default && _byMd5.TryGetValue(reference.Md5, out var byMd5)) return byMd5;
-            if (reference.HasIds && _byIds.TryGetValue((reference.ModId!.Value, reference.FileId!.Value), out var byIds)) return byIds;
+            if (reference.Ids is { } ids && _byIds.TryGetValue(ids, out var byIds)) return byIds;
             if (!string.IsNullOrWhiteSpace(reference.Name) && _byName.TryGetValue(reference.Name, out var byName)) return byName;
             return [];
         }

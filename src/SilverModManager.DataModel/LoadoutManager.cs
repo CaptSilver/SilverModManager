@@ -997,7 +997,8 @@ internal partial class LoadoutManager : ILoadoutManager
         var path = new List<int>();
         for (var at = loser; at != winner; at = cameBy[at].From) path.Add(cameBy[at].Rule);
         path.Reverse();
-        return path.Count == 1 ? path[0] : path.Cast<int?>().FirstOrDefault(rule => violated.Contains(rule!.Value)) ?? path[0];
+        var firstViolated = path.FindIndex(violated.Contains);
+        return path[firstViolated >= 0 ? firstViolated : 0];
     }
 
     /// <summary>
