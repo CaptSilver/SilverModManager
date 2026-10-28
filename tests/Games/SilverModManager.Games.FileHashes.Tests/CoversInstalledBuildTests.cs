@@ -65,6 +65,17 @@ public sealed class CoversInstalledBuildTests : IDisposable
     }
 
     [Fact]
+    public async Task CoversInstalledBuild_IsTrueForAnAttestedOnlyBaseline()
+    {
+        var service = await ServiceWithCentral(c => HashRows.AddSteamManifest(c, 1001, ("a.esm", "a")));
+        await HashRows.AddBaselineOwningManifest(service.Local.Connection, LocalBaselineKind.DepotManifests, 1002);
+        await HashRows.AddAttestedFile(service.Local.Connection, 1002, "b.esm", "b");
+
+        service.CoversInstalledBuild((GameStore.Steam, [LocatorId.From("1002")]))
+            .Should().BeTrue("the baseline classified a file, it just recorded it from the manifest instead of reading it");
+    }
+
+    [Fact]
     public async Task CoversInstalledBuildDoesNotCountALocalManifestNoBaselineOwns()
     {
         var service = await ServiceWithCentral(c => HashRows.AddSteamManifest(c, 1001, ("a.esm", "a")));

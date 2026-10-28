@@ -231,6 +231,9 @@ public class ModelTableFunction : ATableFunction, IRevisableFromAttributes
             case ValueTag.Reference:
                 WriteUnmanagedColumn<TVector, ulong>(ids, vector, datoms);
                 break;
+            case ValueTag.Blob:
+                WriteBlobColumn(ids, vector, datoms);
+                break;
             case ValueTag.Tuple2_UShort_Utf8I:
                 WriteTuple2Column(ids, vector, datoms);
                 break;
@@ -364,6 +367,26 @@ public class ModelTableFunction : ATableFunction, IRevisableFromAttributes
             var rowId = ids[rowIdx];
             if (datoms.FastForwardTo(rowId))
             {
+                vector.WriteUtf8((ulong)rowIdx, datoms.ValueSpan);
+                mask[(ulong)rowIdx] = true;
+            }
+            else
+            {
+                mask[(ulong)rowIdx] = false;
+            }
+        }
+    }
+
+    private static void WriteBlobColumn<TVector>(ReadOnlySpan<EntityId> ids, TVector vector, ILightweightDatomSegment datoms)
+        where TVector : IWritableVector, allows ref struct
+    {
+        var mask = vector.GetValidityMask();
+        for (var rowIdx = 0; rowIdx < ids.Length; rowIdx++)
+        {
+            var rowId = ids[rowIdx];
+            if (datoms.FastForwardTo(rowId))
+            {
+                // The vector API has one string writer; DuckDB assigns the bytes the same way for a BLOB vector.
                 vector.WriteUtf8((ulong)rowIdx, datoms.ValueSpan);
                 mask[(ulong)rowIdx] = true;
             }

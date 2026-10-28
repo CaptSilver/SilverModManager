@@ -18,11 +18,13 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
 using SilverModManager.MnemonicDB;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Storage;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.NexusModsApi;
 using NSubstitute;
 using Connection = SilverModManager.MnemonicDB.Connection;
@@ -51,6 +53,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
             .AddHashRelationModel()
             .AddPathHashRelationModel()
             .AddLocalFileHashModel()
+            .AddAttestedFileModel()
             .AddLocalBaselineModel()
             .AddNonVanillaFileModel()
             .AddSteamManifestModel()
@@ -250,7 +253,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         // The index keys files by GamePath, which ignores case, so only one of two such files reaches the row writer
         // per index. The rows must still keep them apart: they come from the case-insensitive path index and a lookup
         // that ignored the spelling would hand one file the other's hash.
-        var hashes = new LocalRowsFileHashes(_connection, _gameDir.ToString(), [], Task.CompletedTask);
+        var hashes = new LocalRowsFileHashes(_connection, _gameDir.ToString(), [], Task.CompletedTask, NullLogger.Instance);
         var upper = new GamePath(LocationId.Game, "Mods/x.bin");
         var lower = new GamePath(LocationId.Game, "mods/x.bin");
         var size = Size.From(10);
@@ -338,6 +341,265 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         _logs.Value("FromStored").Should().Be(0L);
     }
 
+    [Fact]
+    public async Task AttestedFileWhoseSizeAndTimeMatch_GetsItsSha1IdentityWithoutARead()
+    {
+        await WriteGameFiles(3);
+        await BuildAttestedBaseline(3);
+
+        var result = await CreateService().IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        _hasher.Calls.Should().Be(0);
+        result.NewFiles[Path(1)].Identity.Should().Be(FileIdentity.Sha1((await MultiHasher.HashStream(new MemoryStream(Content(1)))).Sha1));
+        _logs.Value("FromAttested").Should().Be(3L);
+        LocalFileHash.All(_connection.Db).Should().BeEmpty("nothing was read, so nothing is remembered as read");
+    }
+
+    [Fact]
+    public async Task AnUnchangedXxHash3Row_IsNeverFlippedToSha1ByTheIndex()
+    {
+        await WriteGameFiles(3);
+        var service = CreateService();
+        var diskState = await Record(await service.IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty));
+        await BuildAttestedBaseline(3);
+        _hasher.Reset();
+
+        var second = await service.IndexGame(_installation, diskState, GamePathFilters.Empty);
+
+        // The full reads recorded a relation for each file, and it says the bytes are the store's, so a rebuild resolves them.
+        second.NewFiles.Should().BeEmpty();
+        second.ModifiedFiles.Should().BeEmpty();
+        _hasher.Calls.Should().Be(0);
+        AttestedFile.All(_connection.Db).Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task AnUnchangedXxHash3RowWithNoRelation_IsReadOnceAndPromoted()
+    {
+        await WriteGameFiles(1);
+        var diskState = await SeedDiskState(0);
+        await BuildAttestedBaseline(1);
+        var service = CreateService();
+
+        var result = await service.IndexGame(_installation, diskState, GamePathFilters.Empty);
+
+        _hasher.Calls.Should().Be(1);
+        result.ModifiedFiles.Should().BeEmpty("the bytes are the ones the row names");
+        result.NewFiles.Should().BeEmpty();
+        AttestedFile.All(_connection.Db).Should().BeEmpty("the SHA-1 matched, so the row was promoted");
+        var baseline = LocalBaseline.All(_connection.Db).Single();
+        baseline.Files.Should().ContainSingle().Which.Path.ToString().Should().Be("data/file0.bin");
+        baseline.Manifests.Single().Files.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AnUnchangedXxHash3RowWhoseRelationContradictsTheStore_IsLeftAloneWithoutARead()
+    {
+        await WriteGameFiles(1);
+        var diskState = await SeedDiskState(0);
+        await BuildAttestedBaseline(1);
+        var real = await MultiHasher.HashStream(new MemoryStream(Content(0)));
+        using (var tx = _connection.BeginTransaction())
+        {
+            // The bytes the row names have another SHA-1 than the store's for the path: they are not the store's.
+            _ = new HashRelation.New(tx)
+            {
+                MinimalHash = real.MinimalHash, XxHash3 = real.XxHash3, Sha1 = (await MultiHasher.HashStream(new MemoryStream(Content(99)))).Sha1,
+                XxHash64 = real.XxHash64, Md5 = real.Md5, Crc32 = real.Crc32, Size = real.Size,
+            };
+            await tx.Commit();
+        }
+
+        var result = await CreateService().IndexGame(_installation, diskState, GamePathFilters.Empty);
+
+        _hasher.Calls.Should().Be(0);
+        result.NewFiles.Should().BeEmpty();
+        result.ModifiedFiles.Should().BeEmpty();
+        AttestedFile.All(_connection.Db).Should().ContainSingle("the row still describes the store's copy");
+    }
+
+    [Fact]
+    public async Task TouchedAttestedFileWhoseBytesStillMatch_IsReadOnceAndPromoted()
+    {
+        await WriteGameFiles(3);
+        await BuildAttestedBaseline(3);
+        File.SetLastWriteTimeUtc(_gameDir.Combine("data/file1.bin").GetFullPath(), DateTime.UtcNow.AddMinutes(1));
+        var service = CreateService();
+
+        var result = await service.IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        _hasher.Paths.Should().ContainSingle().Which.Should().Be(_gameDir.Combine("data/file1.bin"));
+        var hashes = await MultiHasher.HashStream(new MemoryStream(Content(1)));
+        result.NewFiles[Path(1)].Identity.Should().Be(FileIdentity.XxHash3(hashes.XxHash3));
+        result.NewFiles[Path(0)].Identity.Kind.Should().Be(HashKind.Sha1);
+        AttestedFile.All(_connection.Db).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["data/file0.bin", "data/file2.bin"]);
+        var baseline = LocalBaseline.All(_connection.Db).Single();
+        baseline.Files.Should().ContainSingle().Which.Path.ToString().Should().Be("data/file1.bin");
+        baseline.Manifests.Single().Files.Should().ContainSingle();
+        LocalFileHash.All(_connection.Db).Should().ContainSingle().Which.XxHash3.Should().Be(hashes.XxHash3);
+
+        _hasher.Reset();
+        var again = await service.IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+        _hasher.Calls.Should().Be(0);
+        again.NewFiles[Path(1)].Identity.Should().Be(FileIdentity.XxHash3(hashes.XxHash3));
+    }
+
+    [Fact]
+    public async Task TouchedAttestedFileWhoseBytesDiffer_KeepsTheAttestedRowAndGetsAnXxHash3()
+    {
+        await WriteGameFiles(2);
+        await BuildAttestedBaseline(2);
+        var changed = _gameDir.Combine("data/file1.bin");
+        var edited = Content(1);
+        edited[0] ^= 0xFF;
+        await changed.WriteAllBytesAsync(edited);
+        File.SetLastWriteTimeUtc(changed.GetFullPath(), DateTime.UtcNow.AddMinutes(1));
+
+        var result = await CreateService().IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        var hashes = await MultiHasher.HashStream(new MemoryStream(edited));
+        result.NewFiles[Path(1)].Identity.Should().Be(FileIdentity.XxHash3(hashes.XxHash3));
+        AttestedFile.All(_connection.Db).Should().HaveCount(2, "the store's description of the path stands");
+        NonVanillaFile.All(_connection.Db).Should().BeEmpty();
+        LocalFileHash.All(_connection.Db).Should().ContainSingle().Which.XxHash3.Should().Be(hashes.XxHash3);
+        HashRelation.FindByXxHash3(_connection.Db, hashes.XxHash3).Should().ContainSingle();
+        _logs.Messages.Should().Contain(m => m.Contains("file1.bin") && m.Contains("no longer matches the store's copy"));
+    }
+
+    [Fact]
+    public async Task SameSizeSameTimeReplacement_OfAFileTheIndexNeverSaw_IsTakenAsVanilla()
+    {
+        // The accepted trade-off, pinned so it is deliberate: nothing opens a file whose size and time match the
+        // store's row, so bytes that were swapped in before the app first indexed the path pass as the store's.
+        await WriteGameFiles(1);
+        await BuildAttestedBaseline(1);
+        var file = _gameDir.Combine("data/file0.bin");
+        var stamp = File.GetLastWriteTimeUtc(file.GetFullPath());
+        var replaced = Content(0);
+        replaced[0] ^= 0xFF;
+        await file.WriteAllBytesAsync(replaced);
+        File.SetLastWriteTimeUtc(file.GetFullPath(), stamp);
+
+        var result = await CreateService().IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        _hasher.Calls.Should().Be(0);
+        result.NewFiles[Path(0)].Identity.Should().Be(FileIdentity.Sha1((await MultiHasher.HashStream(new MemoryStream(Content(0)))).Sha1));
+    }
+
+    [Fact]
+    public async Task Sha1RowWhoseAttestedRowIsGone_IsResolvedFromRowsWithoutARead()
+    {
+        await WriteGameFiles(1);
+        await BuildAttestedBaseline(1);
+        var service = CreateService();
+        var first = await service.IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+        var diskState = await Record(first);
+        first.NewFiles[Path(0)].Identity.Kind.Should().Be(HashKind.Sha1);
+        // A rebuild resolved the file instead: the attested row is gone and a fingerprint row holds the bytes' xxHash3.
+        var hashes = await MultiHasher.HashStream(new MemoryStream(Content(0)));
+        var info = new FileInfo(_gameDir.Combine("data/file0.bin").GetFullPath());
+        using (var tx = _connection.BeginTransaction())
+        {
+            foreach (var row in AttestedFile.All(_connection.Db)) tx.Delete(row.Id, recursive: false);
+            await tx.Commit();
+        }
+        await new LocalRowsFileHashes(_connection, _gameDir.ToString(), [], Task.CompletedTask, NullLogger.Instance)
+            .RecordIndexedFiles(_installation, [new IndexedFileHash(Path(0), Size.FromLong(info.Length), new DateTimeOffset(info.LastWriteTimeUtc), hashes.XxHash3)]);
+
+        var second = await service.IndexGame(_installation, diskState, GamePathFilters.Empty);
+
+        _hasher.Calls.Should().Be(0);
+        second.ModifiedFiles[Path(0)].Identity.Should().Be(FileIdentity.XxHash3(hashes.XxHash3));
+    }
+
+    [Fact]
+    public async Task FileWrittenDuringTheRead_IsNeitherRememberedNorPromoted()
+    {
+        await WriteGameFiles(1);
+        await BuildAttestedBaseline(1);
+        var moving = _gameDir.Combine("data/file0.bin");
+        File.SetLastWriteTimeUtc(moving.GetFullPath(), DateTime.UtcNow.AddMinutes(1));
+        var tick = 0;
+        _hasher.OnHash = file => File.SetLastWriteTimeUtc(file.GetFullPath(), DateTime.UtcNow.AddMinutes(10 + ++tick));
+
+        await CreateService().IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        AttestedFile.All(_connection.Db).Should().ContainSingle("a read of bytes that were moving settles nothing");
+        LocalFileHash.All(_connection.Db).Should().BeEmpty();
+        PathHashRelation.All(_connection.Db).Should().BeEmpty();
+    }
+
+    private static GamePath Path(int i) => new(LocationId.Game, $"data/file{i}.bin");
+
+    /// <summary>
+    /// A disk state that names the files by their xxHash3 with no relation or fingerprint row behind it, the shape an
+    /// index left before full reads recorded a relation.
+    /// </summary>
+    private async Task<FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>> SeedDiskState(params int[] files)
+    {
+        using var tx = _connection.BeginTransaction();
+        foreach (var i in files)
+        {
+            var info = new FileInfo(_gameDir.Combine($"data/file{i}.bin").GetFullPath());
+            var hash = (await MultiHasher.HashStream(new MemoryStream(Content(i)))).XxHash3;
+            _ = new DiskStateEntry.New(tx, tx.TempId(DiskStateEntry.EntryPartition))
+            {
+                Path = Path(i).ToGamePathParentTuple(_metadataId),
+                Identity = FileIdentity.XxHash3(hash),
+                XxHash3 = hash,
+                Size = Size.FromLong(info.Length),
+                LastModified = new DateTimeOffset(info.LastWriteTimeUtc),
+                GameId = _metadataId,
+            };
+        }
+
+        var committed = await tx.Commit();
+        return DiskStateEntry.FindByGame(committed.Db, _metadataId).ToFrozenDictionary(e => (GamePath)e.Path);
+    }
+
+    /// <summary>
+    /// Writes the baseline a settled Steam install gets when nothing is read: an attested row for each of the first
+    /// <paramref name="count"/> game files, with the size and time the files have now.
+    /// </summary>
+    private async Task BuildAttestedBaseline(int count)
+    {
+        using var tx = _connection.BeginTransaction();
+        var manifest = new SteamManifest.New(tx)
+        {
+            AppId = AppId.From(1u),
+            DepotId = DepotId.From(2u),
+            ManifestId = ManifestId.From(1),
+            Name = "public",
+            FilesIds = [],
+        };
+        var baseline = new LocalBaseline.New(tx)
+        {
+            Store = GameStore.Steam,
+            GamePath = _gameDir.ToString(),
+            LocatorIds = ["1"],
+            Kind = LocalBaselineKind.DepotManifests,
+            VersionName = "",
+            BuiltAt = DateTimeOffset.UtcNow,
+            FilesIds = [],
+            ManifestsIds = [manifest.Id],
+        };
+        for (var i = 0; i < count; i++)
+        {
+            var info = new FileInfo(_gameDir.Combine($"data/file{i}.bin").GetFullPath());
+            _ = new AttestedFile.New(tx)
+            {
+                BaselineId = baseline.Id,
+                ManifestId = manifest.Id,
+                Path = RelativePath.FromUnsanitizedInput($"data/file{i}.bin"),
+                Sha1 = (await MultiHasher.HashStream(new MemoryStream(Content(i)))).Sha1,
+                Size = Size.FromLong(info.Length),
+                ModifiedUtc = new DateTimeOffset(info.LastWriteTimeUtc),
+            };
+        }
+
+        await tx.Commit();
+    }
+
     private IReadOnlyList<LocalFileHash.ReadOnly> LocalRows() => LocalFileHash.All(_connection.Db).ToList();
 
     private async Task WriteGameFiles(int count)
@@ -367,7 +629,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
             {
                 Path = gamePath.ToGamePathParentTuple(_metadataId),
                 Identity = file.Identity,
-                XxHash3 = file.Identity.XxHash3(),
+                XxHash3 = file.Identity.TryXxHash3(out var xxHash3) ? xxHash3 : null,
                 Size = file.Size,
                 LastModified = file.LastModified,
                 GameId = _metadataId,
@@ -400,7 +662,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
 
     private GameLocationsService CreateService(Task? waitForBuild = null, IDb[]? stores = null)
     {
-        var hashes = new LocalRowsFileHashes(_connection, _gameDir.ToString(), stores ?? [], waitForBuild ?? Task.CompletedTask);
+        var hashes = new LocalRowsFileHashes(_connection, _gameDir.ToString(), stores ?? [], waitForBuild ?? Task.CompletedTask, _logs.CreateLogger("IndexFixture"));
 
         var services = new ServiceCollection()
             .AddLogging(b => b.AddProvider(_logs))
@@ -415,7 +677,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
     /// Keeps the fingerprint rows in the fixture's connection through the same row code the real service runs. NSubstitute
     /// cannot stand in for it: matching a <see cref="Size"/> argument makes it construct one, which throws.
     /// </summary>
-    private sealed class LocalRowsFileHashes(IConnection local, string gameKey, IDb[] stores, Task waitForBuild) : IFileHashesService
+    private sealed class LocalRowsFileHashes(IConnection local, string gameKey, IDb[] stores, Task waitForBuild, ILogger logger) : IFileHashesService
     {
         public IDb Current => local.Db;
         public IDb Local => local.Db;
@@ -431,6 +693,15 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
 
         public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3)
             => LocalFileHashRows.TryGet(local.Db, gameKey, path, size, modifiedUtc, out xxHash3);
+
+        public FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation)
+            => AttestedFileRows.Find(local.Db, installation.LocatorResult.Store, gameKey);
+
+        public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default)
+            => AttestedFileRows.Settle(local, gameKey, read, logger);
+
+        public bool TryFindRelation(Hash xxHash3, out (Sha1Value Sha1, Size Size) relation)
+            => AttestedFileRows.TryFindRelation([local.Db, ..stores], xxHash3, out relation);
 
         public ValueTask<IDb> GetFileHashesDb() => throw new NotSupportedException();
         public Task CheckForUpdate(bool forceUpdate = false) => throw new NotSupportedException();
@@ -503,22 +774,27 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
     private sealed class CapturingLoggerProvider : ILoggerProvider
     {
         private readonly ConcurrentBag<IReadOnlyList<KeyValuePair<string, object?>>> _states = [];
+        private readonly ConcurrentBag<string> _messages = [];
+
+        /// <summary>Every formatted line any logger of this provider wrote.</summary>
+        public IReadOnlyCollection<string> Messages => _messages;
 
         /// <summary>The named argument of the index summary line.</summary>
         public object? Value(string name) => _states
             .Select(s => s.FirstOrDefault(kv => kv.Key == name))
             .Single(kv => kv.Key == name).Value;
 
-        public ILogger CreateLogger(string categoryName) => new Capture(_states);
+        public ILogger CreateLogger(string categoryName) => new Capture(_states, _messages);
         public void Dispose() { }
 
-        private sealed class Capture(ConcurrentBag<IReadOnlyList<KeyValuePair<string, object?>>> states) : ILogger
+        private sealed class Capture(ConcurrentBag<IReadOnlyList<KeyValuePair<string, object?>>> states, ConcurrentBag<string> messages) : ILogger
         {
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
             public bool IsEnabled(LogLevel logLevel) => true;
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {
+                messages.Add(formatter(state, exception));
                 if (state is IReadOnlyList<KeyValuePair<string, object?>> values && values.Any(kv => kv.Key == "FromFingerprint")) states.Add(values);
             }
         }

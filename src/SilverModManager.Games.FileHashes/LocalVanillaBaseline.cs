@@ -79,7 +79,8 @@ internal sealed record BaselineRequest
 
 internal readonly record struct NonVanillaEntry(RelativePath Path, NonVanillaReason Reason, Size Size);
 
-internal sealed record BaselineBuild(EntityId BaselineId, IReadOnlyList<NonVanillaEntry> NonVanilla)
+/// <param name="Attested">The vanilla files recorded from the manifest without being read.</param>
+internal sealed record BaselineBuild(EntityId BaselineId, IReadOnlyList<NonVanillaEntry> NonVanilla, int Attested = 0)
 {
     public int Count(NonVanillaReason reason) => NonVanilla.Count(e => e.Reason == reason);
 }
@@ -150,12 +151,12 @@ internal sealed class LocalVanillaBaseline
 
         var stopwatch = Stopwatch.StartNew();
         var stats = new RebuildStats();
-        var (resolved, toRead) = TakeStoredHashes(request, candidates, localStore.Db, stats);
+        var (resolved, attested, toRead) = TakeStoredHashes(request, candidates, localStore.Db, stats);
         var hashed = await HashCandidates(toRead, stats, cancellationToken);
         hashed.AddRange(resolved);
         _logger.LogInformation(
-            "Baseline of {Root}: {Trusted} files vouched for by the store ({Stored} with stored hashes, {TrustedRead} read because no hash was stored), {Read} read in all ({Bytes} bytes), {Elapsed}",
-            request.GameRoot, stats.Trusted, resolved.Count, stats.TrustedWithoutStoredHash, stats.Read, stats.BytesRead, stopwatch.Elapsed);
+            "Baseline of {Root}: {Trusted} files vouched for by the store ({Stored} with stored hashes, {Attested} recorded from the manifest and not read), {Read} read in all ({Bytes} bytes), {Elapsed}",
+            request.GameRoot, stats.Trusted, resolved.Count, attested.Count, stats.Read, stats.BytesRead, stopwatch.Elapsed);
 
         using var tx = localStore.BeginTransaction();
         RetractAt(tx, localStore.Db, request.Store, request.GamePath);
@@ -206,10 +207,35 @@ internal sealed class LocalVanillaBaseline
 
         // A partial baseline writes them too: the version is the install's build id whatever the coverage,
         // and the readable manifests describe their depots exactly.
+        var manifestIds = Array.Empty<EntityId>();
         if (kind != LocalBaselineKind.Snapshot)
-            baseline.ManifestsIds = AddManifestRows(tx, request, pathIdsByManifest);
+            baseline.ManifestsIds = manifestIds = AddManifestRows(tx, request, pathIdsByManifest);
 
         baseline.FilesIds = pathIds;
+
+        var attestedWritten = 0;
+        foreach (var candidate in attested)
+        {
+            if (!StillUnchanged(candidate))
+            {
+                _logger.LogWarning("{Path} changed while the baseline was being built, leaving it out of the baseline", candidate.DiskPath);
+                continue;
+            }
+
+            // The manifest's spelling, as PathHashRelation.Path gets: the shipped database's row for the same file
+            // is dropped by a string compare, so a disk-spelled row would leave the tree two game rows for one path.
+            var entry = candidate.Entry ?? throw new InvalidOperationException($"{candidate.DiskPath} was attested without a manifest entry");
+            _ = new AttestedFile.New(tx)
+            {
+                BaselineId = baseline.Id,
+                ManifestId = manifestIds[entry.ManifestIndex],
+                Path = entry.Spelling,
+                Sha1 = entry.Sha1,
+                Size = candidate.Size,
+                ModifiedUtc = new DateTimeOffset(candidate.ModifiedUtc, TimeSpan.Zero),
+            };
+            attestedWritten++;
+        }
         // Left out of RetractAt on purpose: the index writes rows under the same install path for files that
         // are not vanilla, and a rebuild after every game update must not cost that read again. Both writers
         // replace by key, so rows do not pile up.
@@ -226,7 +252,7 @@ internal sealed class LocalVanillaBaseline
         }
 
         var result = await tx.Commit();
-        return new BaselineBuild(result[baseline.Id], nonVanilla);
+        return new BaselineBuild(result[baseline.Id], nonVanilla, attestedWritten);
     }
 
     private static Dictionary<RelativePath, IndexEntry> BuildIndex(IReadOnlyList<Manifest> manifests)
@@ -326,9 +352,6 @@ internal sealed class LocalVanillaBaseline
         /// <summary>Files the store vouches for, whether or not a stored hash was found for them.</summary>
         public int Trusted { get; set; }
 
-        /// <summary>The vouched files that had to be read anyway because no row held their hashes.</summary>
-        public int TrustedWithoutStoredHash { get; set; }
-
         public int Read => _read;
 
         public long BytesRead => Interlocked.Read(ref _bytesRead);
@@ -344,17 +367,20 @@ internal sealed class LocalVanillaBaseline
     /// Takes a file as the manifest describes it, without reading it, when the store vouches for it: the
     /// install is settled, the size matched (<see cref="Classify"/> only lets those through) and the file
     /// was not modified after the store's last write. The hashes come from an existing <see cref="HashRelation"/>
-    /// with the manifest's SHA-1 and the file's size, from this store or the others; a file with no such
-    /// row is read, because a row needs every hash and none is made up.
+    /// with the manifest's SHA-1 and the file's size, from this store or the others (the file was resolved);
+    /// a file with no such row becomes an <see cref="AttestedFile"/>, which is not read: the manifest's SHA-1
+    /// describes it and the stat confirms it.
     /// <para>
     /// The trade-off is a file replaced by one of the same size that kept a modification time from before the
-    /// store's last write (for Steam, the appmanifest's update time), which goes unnoticed.
+    /// store's last write (for Steam, the appmanifest's update time), which goes unnoticed until something reads
+    /// the file.
     /// </para>
     /// </summary>
-    private (List<Hashed> Resolved, List<Candidate> ToRead) TakeStoredHashes(BaselineRequest request, List<Candidate> candidates, IDb localDb, RebuildStats stats)
+    private (List<Hashed> Resolved, List<Candidate> Attested, List<Candidate> ToRead) TakeStoredHashes(BaselineRequest request, List<Candidate> candidates, IDb localDb, RebuildStats stats)
     {
         var resolved = new List<Hashed>();
-        if (!request.StoreSettled || request.StoreLastWrite is not { } lastWrite) return (resolved, candidates);
+        var attested = new List<Candidate>();
+        if (!request.StoreSettled || request.StoreLastWrite is not { } lastWrite) return (resolved, attested, candidates);
 
         var trustedUntil = lastWrite.UtcDateTime + StoreWriteTolerance;
         var databases = new List<IDb> { localDb };
@@ -371,14 +397,10 @@ internal sealed class LocalVanillaBaseline
 
             stats.Trusted++;
             if (FindStoredHash(databases, entry.Sha1, candidate.Size) is { } hash) resolved.Add(new Hashed(candidate, hash));
-            else
-            {
-                stats.TrustedWithoutStoredHash++;
-                toRead.Add(candidate);
-            }
+            else attested.Add(candidate);
         }
 
-        return (resolved, toRead);
+        return (resolved, attested, toRead);
     }
 
     private static MultiHash? FindStoredHash(List<IDb> databases, Sha1Value sha1, Size size)
@@ -480,6 +502,7 @@ internal sealed class LocalVanillaBaseline
         {
             any = true;
             foreach (var file in NonVanillaFile.FindByBaseline(db, old.Id)) tx.Delete(file.Id, recursive: false);
+            foreach (var file in AttestedFile.FindByBaseline(db, old.Id)) tx.Delete(file.Id, recursive: false);
             foreach (var pathId in old.FilesIds) tx.Delete(pathId, recursive: false);
 
             var manifestIds = old.ManifestsIds.ToHashSet();

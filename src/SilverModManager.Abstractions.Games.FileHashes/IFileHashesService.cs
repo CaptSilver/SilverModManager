@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
@@ -6,6 +7,8 @@ using NexusMods.Paths;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.NexusModsApi;
 
 namespace SilverModManager.Abstractions.Games.FileHashes;
@@ -54,12 +57,16 @@ public interface IFileHashesService
     public IEnumerable<VanityVersion> GetKnownVanityVersions(NexusModsGameId nexusModsGameId);
 
     /// <summary>
-    /// Gets the game files the depot manifests of the installation's own locator IDs list.
+    /// Gets the game files of the installation: the depot manifests of its own locator IDs, and the files its
+    /// baseline recorded from the manifest without reading them (<see cref="AttestedFiles"/>), which carry a SHA-1
+    /// identity. Attested rows belong to the installation's baseline, not to a manifest id, because two installs
+    /// can share a manifest id.
     /// </summary>
     public IEnumerable<GameFileRecord> GetGameFiles(GameInstallation installation);
 
     /// <summary>
-    /// Gets all game files the depot manifests of the provided locator IDs list.
+    /// Gets all game files the depot manifests of the provided locator IDs list. Manifest rows only: attested
+    /// files are found through an installation, see <see cref="GetGameFiles(GameInstallation)"/>.
     /// </summary>
     public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore);
 
@@ -122,6 +129,35 @@ public interface IFileHashesService
     /// file and the full read after any other change are what close those.
     /// </summary>
     public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3);
+
+    /// <summary>
+    /// The files the store vouches for that the installation's baseline recorded from the manifest without reading
+    /// them, keyed by their path in the game folder. Empty when the installation has no baseline.
+    /// <para>
+    /// A row is the store's description of the path, confirmed by the size and modified time the file had when the
+    /// row was written. A same-size replacement that kept the modified time, made before the app first indexed the
+    /// path, is therefore taken for the vanilla file until something reads it (a mod that covers the file, a merge,
+    /// a recognizer). That is accepted: reading every vanilla file to rule it out is what these rows exist to avoid.
+    /// </para>
+    /// </summary>
+    public FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation);
+
+    /// <summary>
+    /// Records what reading attested files found, in one transaction on <see cref="Local"/>. A file whose SHA-1 and
+    /// size match its row is promoted: the hashes become a <see cref="HashRelation"/> with a
+    /// <see cref="PathHashRelation"/> in the baseline and the manifest, and the row is deleted. One that does not
+    /// match keeps its row, gets a <see cref="HashRelation"/> for the bytes read and is logged as an external change.
+    /// Every item also gets a <see cref="LocalFileHash"/> row for <c>After</c>, the fingerprint taken after the
+    /// read. A row that is gone (a rebuild replaced it) still gets the fingerprint row and the relation, so the new
+    /// baseline resolves the path. The caller drops an item whose file changed while it was read.
+    /// </summary>
+    public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The SHA-1 and size of the bytes an xxHash3 names, from a <see cref="HashRelation"/> in any store (local first).
+    /// A relation is computed from bytes, so it is the one place an xxHash3 and a SHA-1 may be joined.
+    /// </summary>
+    public bool TryFindRelation(Hash xxHash3, out (Sha1Value Sha1, Size Size) relation);
 
     /// <summary>
     /// Suggest version data for a given game installation and files.

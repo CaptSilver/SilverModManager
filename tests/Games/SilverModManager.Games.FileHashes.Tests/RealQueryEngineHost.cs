@@ -51,6 +51,7 @@ internal sealed class RealQueryEngineHost : IDisposable
             .AddLocalBaselineModel()
             .AddNonVanillaFileModel()
             .AddLocalFileHashModel()
+            .AddAttestedFileModel()
             .AddEpicGameStoreBuildModel()
             .AddLoadoutModel()
             .AddLoadoutItemModel()

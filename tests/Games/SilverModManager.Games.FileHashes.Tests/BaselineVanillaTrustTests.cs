@@ -85,6 +85,26 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     }
 
     [Fact]
+    public async Task AnAttestedFileWhoseSha1Matches_IsTrusted()
+    {
+        await HashRows.AddBaselineOwningManifest(_local, LocalBaselineKind.DepotManifests, 1002);
+        await HashRows.AddAttestedFile(_local, 1002, "Data/x.esm", "vanilla");
+
+        IsTrusted("data/X.esm", out var reason).Should().BeTrue("the merge read the bytes, and they are the store's");
+        reason.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AnAttestedFileWhoseSha1Differs_IsUntrustedAsDifferingFromTheBaseline()
+    {
+        await HashRows.AddBaselineOwningManifest(_local, LocalBaselineKind.DepotManifests, 1002);
+        await HashRows.AddAttestedFile(_local, 1002, "x.esm", "vanilla");
+
+        IsTrusted("x.esm", out var reason, content: "edited later").Should().BeFalse();
+        reason.Should().Be("the game's copy differs from the checked baseline");
+    }
+
+    [Fact]
     public async Task AFileTheBaselineNeverListedIsUntrusted()
     {
         await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("other.ws", "vanilla")]);

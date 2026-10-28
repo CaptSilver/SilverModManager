@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.IO.Compression;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
@@ -145,7 +146,32 @@ public class StubbedFileHasherService : IFileHashesService
     public async ValueTask<IDb> GetFileHashesDb() => await _db.Value;
 
     public IEnumerable<GameFileRecord> GetGameFiles(GameInstallation installation)
-        => GetGameFiles((installation.LocatorResult.Store, installation.LocatorResult.LocatorIds.ToArray()));
+    {
+        foreach (var file in GetGameFiles((installation.LocatorResult.Store, installation.LocatorResult.LocatorIds.ToArray())))
+            yield return file;
+
+        foreach (var attested in AttestedFiles(installation).Values)
+        {
+            yield return new GameFileRecord
+            {
+                Path = new GamePath(LocationId.Game, attested.Path),
+                Size = attested.Size,
+                Identity = FileIdentity.Sha1(attested.Sha1),
+            };
+        }
+    }
+
+    public FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation)
+        => AttestedFileRows.Find(EnsureLocal(), installation.LocatorResult.Store, GameKey(installation));
+
+    public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default)
+    {
+        EnsureLocal();
+        return AttestedFileRows.Settle(_localConnection!, GameKey(installation), read, _provider.GetRequiredService<ILogger<StubbedFileHasherService>>());
+    }
+
+    public bool TryFindRelation(Hash xxHash3, out (Sha1Value Sha1, Size Size) relation)
+        => AttestedFileRows.TryFindRelation(Databases, xxHash3, out relation);
 
     public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore)
     {

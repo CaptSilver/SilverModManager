@@ -121,6 +121,7 @@ public static class DependencyInjectionHelper
                 .AddLocalBaselineModel()
                 .AddNonVanillaFileModel()
                 .AddLocalFileHashModel()
+                .AddAttestedFileModel()
                 .AddEpicGameStoreBuildModel()
                 .AddFileHashesQueriesSql()
                 .AddHashRelationModel()

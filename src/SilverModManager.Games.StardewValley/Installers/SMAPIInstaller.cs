@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using DynamicData.Kernel;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using SilverModManager.Abstractions.Games.FileHashes;
@@ -12,6 +13,7 @@ using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.FileStore;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.Hashes;
 using SilverModManager.Sdk.IO;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -28,6 +30,7 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
     private readonly IFileStore _fileStore;
     private readonly IFileHashesService _fileHashesService;
     private readonly IStreamSourceDispatcher _streamSource;
+    private readonly IFullFileHasher _fullHasher;
 
     public SMAPIInstaller(
         IServiceProvider serviceProvider,
@@ -42,6 +45,7 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
         _fileStore = fileStore;
         _fileHashesService = fileHashesService;
         _streamSource = streamSourceDispatcher;
+        _fullHasher = serviceProvider.GetService<IFullFileHasher>() ?? MultiHashFileHasher.Instance;
     }
 
     public override async ValueTask<InstallerResult> ExecuteAsync(
@@ -159,12 +163,13 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
         var srcPath = new GamePath(LocationId.Game, "Stardew Valley.deps.json");
         await _fileHashesService.GetFileHashesDb();
 
-        if (!TryGetGameFile(srcPath, loadout, out var fileHash, out var fileSize))
+        if (await TryGetGameFile(srcPath, loadout, cancellationToken) is not { } gameFile)
         {
             Logger.LogWarning("Can't find the file `{Path}` SMAPI might not work properly", srcPath);
         }
         else
         {
+            var (fileHash, fileSize, onDisk) = gameFile;
             var to = new GamePath(LocationId.Game, "StardewModdingAPI.deps.json");
             _ = new LoadoutFile.New(transaction, out var id)
             {
@@ -184,7 +189,11 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
 
             if (!await _fileStore.HaveFile(fileHash))
             {
-                var streamFactory = new SourceDispatcherStreamFactory(to.FileName, fileHash, _streamSource);
+                // A file read from disk is archived from disk: the stream sources find a game file by the xxHash3 of
+                // a disk state row, which a file the store vouched for does not have until something reads it.
+                IStreamFactory streamFactory = onDisk is { } file
+                    ? new NativeFileStreamFactory(file)
+                    : new SourceDispatcherStreamFactory(to.FileName, fileHash, _streamSource);
                 await _fileStore.BackupFiles([new ArchivedFileEntry(streamFactory, fileHash, fileSize)], deduplicate: false, token: cancellationToken);
             }
         }
@@ -199,31 +208,37 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
         return new Success();
     }
 
-    private bool TryGetGameFile(GamePath path, Loadout.ReadOnly loadout, out Hash hash, out Size size)
+    /// <summary>
+    /// The game file's xxHash3 and size, and the file on disk when the hash had to be read from it. A game file the
+    /// store vouched for is known by its SHA-1 alone, so it is read once here and the attestation settled.
+    /// </summary>
+    private async ValueTask<(Hash Hash, Size Size, AbsolutePath? OnDisk)?> TryGetGameFile(GamePath path, Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
-        hash = default(Hash);
-        size = default(Size);
-
-        if (_fileHashesService.GetGameFiles((loadout.Installation.Store, loadout.LocatorIds.Distinct().ToArray()))
+        if (_fileHashesService.GetGameFiles(loadout.InstallationInstance, loadout.LocatorIds)
             .Where(f => f.Path == path)
             .TryGetFirst(out var gameFileRecord))
         {
             // The caller looks the file up in the library and the file store, which are keyed by xxHash3.
-            hash = gameFileRecord.Identity.XxHash3();
-            size = gameFileRecord.Size;
-            return true;
+            if (gameFileRecord.Identity.TryXxHash3(out var recorded)) return (recorded, gameFileRecord.Size, null);
+
+            var file = loadout.InstallationInstance.Locations.ToAbsolutePath(path);
+            if (file.FileExists)
+            {
+                var (hashes, fingerprint) = await StableFileRead.Read(_fullHasher, file, cancellationToken);
+                if (_fileHashesService.AttestedFiles(loadout.InstallationInstance).TryGetValue(path, out var attested))
+                    await _fileHashesService.SettleAttested(loadout.InstallationInstance, [(attested, hashes, fingerprint)], cancellationToken);
+                return (hashes.XxHash3, hashes.Size, file);
+            }
         }
 
         Logger.LogWarning("Failed to find game file `{Path}` in the game file hashes, using Loadout as fallback", path);
         var entities = LoadoutItemWithTargetPath.FindByTargetPath(loadout.Db, path.ToGamePathParentTuple(loadout.Id));
-        if (!entities.TryGetFirst(x => x.IsLoadoutFile(), out var entity)) return false;
+        if (!entities.TryGetFirst(x => x.IsLoadoutFile(), out var entity)) return null;
         Logger.LogInformation("Using game file `{Path}` found in the Loadout", path);
 
         var loadoutFile = LoadoutFile.Load(loadout.Db, entity.Id);
         Debug.Assert(loadoutFile.IsValid());
 
-        hash = loadoutFile.Hash;
-        size = loadoutFile.Size;
-        return true;
+        return (loadoutFile.Hash, loadoutFile.Size, null);
     }
 }

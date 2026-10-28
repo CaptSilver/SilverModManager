@@ -69,6 +69,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private readonly IFileHashesService _fileHashService;
     private readonly IBackupOverflowPrompt _backupOverflowPrompt;
     private readonly BackupLimit _backupLimit;
+    private readonly IFullFileHasher _fullHasher;
 
     /// <summary>
     /// Loadout synchronizer base constructor.
@@ -96,6 +97,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         _stagingStore = serviceProvider.GetRequiredService<ILooseStagingStore>();
         _backupOverflowPrompt = serviceProvider.GetRequiredService<IBackupOverflowPrompt>();
         _backupLimit = serviceProvider.GetRequiredService<BackupLimit>();
+        _fullHasher = serviceProvider.GetService<IFullFileHasher>() ?? MultiHashFileHasher.Instance;
 
         _fileHashService = fileHashService;
 
@@ -510,30 +512,37 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         {
             // TODO: sucks that we have to do a lookup here, but we have no way to get the ref to the value otherwise
             ref var item = ref CollectionsMarshal.GetValueRefOrNullRef(tree, path);
-            
-            var signature = SignatureBuilder.Build(
-                diskHash: item.HaveDisk ? item.Disk.Identity : Optional<FileIdentity>.None,
-                prevHash: item.HavePrevious ? item.Previous.Identity : Optional<FileIdentity>.None,
-                loadoutHash: item.HaveLoadout ? item.Loadout.Identity : Optional<FileIdentity>.None,
-                diskArchived: item.HaveDisk && HaveArchive(item.Disk.Identity, item.Disk.Size),
-                prevArchived: item.HavePrevious && HaveArchive(item.Previous.Identity, item.Previous.Size),
-                loadoutArchived: item.HaveLoadout && HaveArchive(item.Loadout.Identity, item.Loadout.Size),
-                pathIsIgnored: IsIgnoredBackupPath(path),
-                item.SourceItemType);
-
-            item.Signature = signature;
-            item.Actions = ActionMapping.MapActions(signature);
-
-            // A deployed file on a protected path that no longer matches what the last sync wrote has been
-            // rewritten by the game. It is the player's now: whether or not the loadout still provides it, the
-            // generic rules would delete it or write the mod's copy over it. Dropping the disk state entry also
-            // keeps the verdict: once the entry's hash follows the rewrite, the rewrite would look like a change
-            // the loadout has not caught up with.
-            if (item.HaveDisk && item.HavePrevious && item.Disk.Identity != item.Previous.Identity && GamePathFilter.ShouldFilter(path))
-                item.Actions = Actions.ForgetDiskState;
+            MapActions(path, ref item);
         }
 
         AdjustActions(tree);
+    }
+
+    /// <summary>
+    /// Signs one node and gives it the actions that signature maps to.
+    /// </summary>
+    private void MapActions(GamePath path, ref SyncNode item)
+    {
+        var signature = SignatureBuilder.Build(
+            diskHash: item.HaveDisk ? item.Disk.Identity : Optional<FileIdentity>.None,
+            prevHash: item.HavePrevious ? item.Previous.Identity : Optional<FileIdentity>.None,
+            loadoutHash: item.HaveLoadout ? item.Loadout.Identity : Optional<FileIdentity>.None,
+            diskArchived: item.HaveDisk && HaveArchive(item.Disk.Identity, item.Disk.Size),
+            prevArchived: item.HavePrevious && HaveArchive(item.Previous.Identity, item.Previous.Size),
+            loadoutArchived: item.HaveLoadout && HaveArchive(item.Loadout.Identity, item.Loadout.Size),
+            pathIsIgnored: IsIgnoredBackupPath(path),
+            item.SourceItemType);
+
+        item.Signature = signature;
+        item.Actions = ActionMapping.MapActions(signature);
+
+        // A deployed file on a protected path that no longer matches what the last sync wrote has been
+        // rewritten by the game. It is the player's now: whether or not the loadout still provides it, the
+        // generic rules would delete it or write the mod's copy over it. Dropping the disk state entry also
+        // keeps the verdict: once the entry's hash follows the rewrite, the rewrite would look like a change
+        // the loadout has not caught up with.
+        if (item.HaveDisk && item.HavePrevious && item.Disk.Identity != item.Previous.Identity && GamePathFilter.ShouldFilter(path))
+            item.Actions = Actions.ForgetDiskState;
     }
 
     /// <inheritdoc />
@@ -549,6 +558,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
+
+        // Before the backends copy the tree: a vanilla file the store vouched for is read here, once, so what is
+        // archived and recorded is the bytes' xxHash3 and the attestation is settled before anything is written.
+        await ResolveDiskIdentitiesForWrites(syncTree, loadout.InstallationInstance, tx, choice);
 
         // Held from before the chain probes the store directory until the links are recorded: a sweep in
         // between cannot see the files this apply is staging and would delete them.
@@ -727,7 +740,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     {
         // Make a lookup set of the new files based on current locator IDs
         var versionFiles = _fileHashService
-            .GetGameFiles((loadout.Installation.Store, loadout.LocatorIds.ToArray()))
+            .GetGameFiles(loadout.InstallationInstance, loadout.LocatorIds)
             .Select(file => file.Path)
             .ToHashSet();
 
@@ -782,6 +795,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         using var _ = await _lock.LockAsync();
         using var tx = Connection.BeginTransaction();
+
+        await ResolveDiskIdentitiesForWrites(syncTree, gameInstallation, tx, choice);
 
         var metadata = _gameRegistry.ForceGetMetadata(gameInstallation);
 
@@ -1193,15 +1208,22 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private async ValueTask<bool> HaveArchiveAsync(FileIdentity identity, Size? size = null)
     {
         if (identity.TryXxHash3(out var hash)) return await _fileStore.HaveFile(hash);
-        if (identity.Kind != HashKind.Sha1) return false;
+        return identity.Kind == HashKind.Sha1 && await ArchiveKeyOfSha1Async(identity, size) is not null;
+    }
 
-        foreach (var relation in HashRelation.FindBySha1(_fileHashService.Local, Sha1Value.From(identity.Digest)))
+    /// <summary>
+    /// The xxHash3 an archived copy of the bytes a SHA-1 names is stored under, from a relation the app computed from
+    /// them. Null when no relation joins the two or the store holds none of its keys.
+    /// </summary>
+    private async ValueTask<Hash?> ArchiveKeyOfSha1Async(FileIdentity sha1, Size? size)
+    {
+        foreach (var relation in HashRelation.FindBySha1(_fileHashService.Local, Sha1Value.From(sha1.Digest)))
         {
             if (size is { } expected && relation.Size != expected) continue;
-            if (await _fileStore.HaveFile(relation.XxHash3)) return true;
+            if (await _fileStore.HaveFile(relation.XxHash3)) return relation.XxHash3;
         }
 
-        return false;
+        return null;
     }
 
     private static FileIdentity ParseIdentity(string? hex) => string.IsNullOrEmpty(hex) ? FileIdentity.None : FileIdentity.ParseHex(hex);
@@ -1763,7 +1785,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     /// </summary>
     private async Task<Dictionary<GamePath, SyncNode>> BuildResetTree(GameInstallation installation, LocatorId[] locatorIds)
     {
-        var gameState = _fileHashService.GetGameFiles((installation.LocatorResult.Store, locatorIds));
+        var gameState = _fileHashService.GetGameFiles(installation, locatorIds);
         var metadata = await ReindexState(installation);
 
         var diskStateEntries = DiskStateEntry.FindByGame(metadata.Db, metadata);

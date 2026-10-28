@@ -144,15 +144,76 @@ public sealed class TrustedBaselineTests : IDisposable
     }
 
     [Fact]
-    public async Task TrustedFileWithoutAStoredHash_IsReadOnce()
+    public async Task VouchedFileWithNoStoredHash_IsRecordedFromTheManifestWithoutBeingOpened()
     {
         WriteFile("a.esm", "vanilla", InstallTime.AddDays(-1));
 
         var result = await Build([Manifest(1, ("a.esm", "vanilla"))], trust: true);
 
-        _opened.Should().ContainSingle().Which.Should().EndWith("a.esm");
-        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().ContainSingle()
-            .Which.Hash.Sha1.Should().Be((await Hash("vanilla")).Sha1);
+        _opened.Should().BeEmpty();
+        result.Attested.Should().Be(1);
+        var row = AttestedFile.FindByBaseline(_store.Db, result.BaselineId).Should().ContainSingle().Subject;
+        row.Sha1.Should().Be((await Hash("vanilla")).Sha1);
+        row.Size.Should().Be(Size.FromLong(7));
+        row.ModifiedUtc.Should().Be(InstallTime.AddDays(-1));
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().BeEmpty();
+        LocalFileHash.All(_store.Db).Should().BeEmpty("nothing was read, so nothing is remembered as read");
+    }
+
+    [Fact]
+    public async Task AttestedRow_UsesTheManifestsSpellingOfThePath()
+    {
+        WriteFile("Data/Skyrim.ESM", "vanilla", InstallTime.AddDays(-1));
+
+        var result = await Build([Manifest(1, ("Data/Skyrim.esm", "vanilla"))], trust: true);
+
+        AttestedFile.FindByBaseline(_store.Db, result.BaselineId).Should().ContainSingle()
+            .Which.Path.ToString().Should().Be("Data/Skyrim.esm");
+    }
+
+    [Fact]
+    public async Task AttestedRow_RecordsTheManifestItIsListedIn()
+    {
+        WriteFile("a.esm", "vanilla", InstallTime.AddDays(-1));
+
+        var result = await Build([Manifest(1, ("a.esm", "vanilla"))], trust: true);
+
+        var row = AttestedFile.FindByBaseline(_store.Db, result.BaselineId).Single();
+        row.ManifestId.Value.Should().Be(LocalBaseline.Load(_store.Db, result.BaselineId).Manifests.Single().Id);
+    }
+
+    [Fact]
+    public async Task AFileTheAppHashedInFullSinceTheLastBuild_IsResolvedNotAttested()
+    {
+        WriteFile("a.esm", "vanilla", InstallTime.AddDays(-1));
+        var real = await Hash("vanilla");
+        using (var tx = _store.BeginTransaction())
+        {
+            _ = new HashRelation.New(tx)
+            {
+                MinimalHash = real.MinimalHash, XxHash3 = real.XxHash3, Sha1 = real.Sha1, XxHash64 = real.XxHash64,
+                Md5 = real.Md5, Crc32 = real.Crc32, Size = real.Size,
+            };
+            await tx.Commit();
+        }
+
+        var result = await Build([Manifest(1, ("a.esm", "vanilla"))], trust: true);
+
+        result.Attested.Should().Be(0);
+        AttestedFile.FindByBaseline(_store.Db, result.BaselineId).Should().BeEmpty();
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Rebuild_DeletesTheOldBaselinesAttestedRows()
+    {
+        WriteFile("a.esm", "vanilla", InstallTime.AddDays(-1));
+        var manifests = new[] { Manifest(1, ("a.esm", "vanilla")) };
+        await Build(manifests, trust: true);
+
+        var rebuilt = await Build(manifests, trust: true);
+
+        AttestedFile.All(_store.Db).Should().ContainSingle().Which.BaselineId.Value.Should().Be(rebuilt.BaselineId);
     }
 
     [Fact]
@@ -172,13 +233,16 @@ public sealed class TrustedBaselineTests : IDisposable
             await tx.Commit();
         }
 
-        await Build(manifests, trust: true);
+        var result = await Build(manifests, trust: true);
 
-        _opened.Should().ContainSingle();
+        // The row is no description of this file, so nothing is resolved from it; the file is recorded from the manifest.
+        _opened.Should().BeEmpty();
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().BeEmpty();
+        result.Attested.Should().Be(1);
     }
 
     [Fact]
-    public async Task Rebuild_LogsHowManyFilesWereTrustedStoredAndRead()
+    public async Task Rebuild_LogsHowManyFilesWereRecordedFromTheManifest()
     {
         WriteFile("a.esm", "vanilla", InstallTime.AddDays(-1));
         await Build([Manifest(1, ("a.esm", "vanilla"))], trust: false);
@@ -188,7 +252,8 @@ public sealed class TrustedBaselineTests : IDisposable
         await Build([Manifest(1, ("a.esm", "vanilla"), ("b.esm", "other"))], trust: true);
 
         _logger.Lines.Should().ContainSingle(l =>
-            l.Contains("2 files vouched for by the store") && l.Contains("1 with stored hashes") && l.Contains("1 read because no hash was stored"));
+            l.Contains("2 files vouched for by the store") && l.Contains("1 with stored hashes")
+            && l.Contains("1 recorded from the manifest and not read") && l.Contains("0 read in all"));
     }
 
     [Fact]

@@ -119,7 +119,15 @@ WITH
 SELECT files.Loadout, relations.Path, relations.Hash, relations.Identity, relations.Size FROM files
 INNER JOIN file_hashes.store_path_hashes('local_hashes') relations ON files.PathId = relations.Id;
 
--- the paths a loadout's local baseline has an opinion on: the ones it found vanilla and the ones it found modified
+-- the files each loadout's local baseline recorded from the depot manifest without reading them. They have no
+-- xxHash3, so Hash is NULL; the identity is the kind byte 02 and the SHA-1 as the attribute stores it.
+CREATE OR REPLACE MACRO file_hashes.local_baseline_attested(db) AS TABLE
+SELECT baselines.Loadout, attested.Path, CAST(NULL AS UBIGINT) Hash, '02' || hex(attested.Sha1) AS Identity, attested.Size
+FROM file_hashes.loadout_baselines(db) baselines
+         INNER JOIN MDB_ATTESTEDFILE(DbName=>'local_hashes') attested ON attested.Baseline = baselines.BaselineId;
+
+-- the paths a loadout's local baseline has an opinion on: the ones it found vanilla, the ones it recorded from the
+-- manifest and the ones it found modified
 CREATE OR REPLACE MACRO file_hashes.local_baseline_paths(db) AS TABLE
 SELECT files.Loadout, relations.Path
 FROM (SELECT Loadout, unnest(baseline.Files) PathId
@@ -127,12 +135,14 @@ FROM (SELECT Loadout, unnest(baseline.Files) PathId
                INNER JOIN MDB_LOCALBASELINE(DbName=>'local_hashes') baseline ON baseline.Id = baselines.BaselineId) files
          INNER JOIN file_hashes.store_path_hashes('local_hashes') relations ON files.PathId = relations.Id
 UNION
+SELECT Loadout, Path FROM file_hashes.local_baseline_attested(db)
+UNION
 SELECT baselines.Loadout, nonVanilla.Path
 FROM file_hashes.loadout_baselines(db) baselines
          INNER JOIN MDB_NONVANILLAFILE(DbName=>'local_hashes') nonVanilla ON nonVanilla.Baseline = baselines.BaselineId;
 
 -- gets all the paths and hashes for game files in loadouts, from the downloaded hash store, the local one
--- and the loadout's local baseline. Where the baseline classified a path, only its own row survives, so a
+-- and the loadout's local baseline (the files it hashed and the ones it recorded from the manifest). Where the baseline classified a path, only its own row survives, so a
 -- file it found modified has no row and a hash taken from disk is not contradicted by the downloaded store.
 -- Paths compare as strings, case-sensitively.
 CREATE MACRO file_hashes.loadout_files(db) AS TABLE
@@ -144,4 +154,6 @@ WITH
 SELECT Loadout, Path, Hash, Identity, Size FROM stored
 WHERE NOT EXISTS (SELECT 1 FROM classified WHERE classified.Loadout = stored.Loadout AND classified.Path = stored.Path)
 UNION
-SELECT Loadout, Path, Hash, Identity, Size FROM file_hashes.local_baseline_files(db);
+SELECT Loadout, Path, Hash, Identity, Size FROM file_hashes.local_baseline_files(db)
+UNION
+SELECT Loadout, Path, Hash, Identity, Size FROM file_hashes.local_baseline_attested(db);

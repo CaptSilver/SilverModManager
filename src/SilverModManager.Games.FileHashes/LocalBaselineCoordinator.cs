@@ -184,7 +184,9 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         var current = locator.LocatorIds.Select(id => id.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (!current.SetEquals(baseline.LocatorIds)) return true;
         // A build that classified nothing is never a finished one; one recorded before that was refused is replaced.
-        if (baseline.FilesIds.Count == 0 && !NonVanillaFile.FindByBaseline(baseline.Db, baseline.Id).Any()) return true;
+        // A file recorded from the manifest without being read counts as classified.
+        if (baseline.FilesIds.Count == 0 && !NonVanillaFile.FindByBaseline(baseline.Db, baseline.Id).Any()
+            && !AttestedFile.FindByBaseline(baseline.Db, baseline.Id).Any()) return true;
         // Under older classification rules a file those rules skipped is in neither list, so the loadout shows
         // it as an external change (and a clean-up would delete it). Only a depot-manifest baseline is rebuilt
         // for that: it checks every file against its manifest, so mods deployed since land as non-vanilla. A

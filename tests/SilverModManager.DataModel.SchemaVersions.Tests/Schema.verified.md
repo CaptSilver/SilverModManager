@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xB1630AA4E8F369C5
-   - Total attributes: 373
-   - Total namespaces: 105
+   - Fingerprint: 0x6C5D2383BBDA0EC1
+   - Total attributes: 379
+   - Total namespaces: 106
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -123,6 +123,12 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Games.CreationEngine.PluginSortableEntry/IsEnabled                       | UInt8                   | False   | False | False     | 
 | SilverModManager.Games.CreationEngine.PluginSortableEntry/PluginName                      | Utf8                    | False   | False | False     | 
 | SilverModManager.Games.FOMOD.EmptyDirectory/EmptyDirectory                                | UInt8                   | False   | False | False     | 
+| SilverModManager.Games.FileHashes.AttestedFile/Baseline                                   | Reference               | True    | False | False     | 
+| SilverModManager.Games.FileHashes.AttestedFile/Manifest                                   | Reference               | True    | False | False     | 
+| SilverModManager.Games.FileHashes.AttestedFile/ModifiedUtc                                | Int64                   | False   | False | False     | 
+| SilverModManager.Games.FileHashes.AttestedFile/Path                                       | Utf8Insensitive         | True    | False | False     | 
+| SilverModManager.Games.FileHashes.AttestedFile/Sha1                                       | Blob                    | False   | False | False     | 
+| SilverModManager.Games.FileHashes.AttestedFile/Size                                       | UInt64                  | False   | False | False     | 
 | SilverModManager.Games.FileHashes.LocalBaseline/BuiltAt                                   | Int64                   | False   | False | False     | 
 | SilverModManager.Games.FileHashes.LocalBaseline/ClassificationVersion                     | Int32                   | False   | False | False     | 
 | SilverModManager.Games.FileHashes.LocalBaseline/Files                                     | Reference               | False   | True  | False     | 

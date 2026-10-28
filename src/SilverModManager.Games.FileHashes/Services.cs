@@ -35,6 +35,7 @@ public static class Services
             .AddLocalBaselineModel()
             .AddNonVanillaFileModel()
             .AddLocalFileHashModel()
+            .AddAttestedFileModel()
             .AddEpicGameStoreBuildModel()
             .AddFileHashesQueriesSql()
             .AddSingleton<IFileHashesService, FileHashesService>()

@@ -159,6 +159,25 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     }
 
     [Fact]
+    public async Task AnAttestedOnlyBaseline_IsNotRebuiltOnTheNextEnsure()
+    {
+        // A settled install whose files are older than the store's last write is recorded from the manifest and
+        // nothing is read, so the baseline holds attested rows and no path rows at all.
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+        var storeLastWrite = DateTimeOffset.UtcNow.AddDays(1);
+        var first = await _coordinator.Ensure(Make(["101"], storeLastWrite: storeLastWrite));
+        AttestedFile.All(_store.Db).Should().ContainSingle();
+        _source.Reads.Clear();
+
+        var second = await _coordinator.Ensure(Make(["101"], storeLastWrite: storeLastWrite));
+
+        first.Rebuilt.Should().BeTrue();
+        second.Rebuilt.Should().BeFalse("a baseline that holds only attested rows is a finished one");
+        _source.Reads.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task LocatorIdsInAnotherOrder_DoNotRebuild()
     {
         WriteGameFile("a.esm", "vanilla");

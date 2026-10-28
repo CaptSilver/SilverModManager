@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Text.Json;
@@ -16,6 +17,7 @@ using SilverModManager.Games.FileHashes.DTOs;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Hashing.xxHash3.Paths;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using SilverModManager.MnemonicDB.Storage;
 using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
 using NexusMods.Paths;
@@ -100,7 +102,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         // Networking.Steam registers the source; without it every baseline is a snapshot.
         _baselineCoordinator = new LocalBaselineCoordinator(
             () => _local.Connection,
-            new LocalVanillaBaseline(_fileSystem, provider.GetRequiredService<ILogger<LocalVanillaBaseline>>(), storedHashes: () => Databases),
+            new LocalVanillaBaseline(_fileSystem, provider.GetRequiredService<ILogger<LocalVanillaBaseline>>(), provider.GetService<IBaselineFileOpener>() is { } opener ? opener.OpenRead : null, () => Databases),
             provider.GetService<IDepotManifestSource>(),
             provider.GetRequiredService<ILogger<LocalBaselineCoordinator>>());
 
@@ -492,7 +494,32 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
     /// <inheritdoc/>
     public IEnumerable<GameFileRecord> GetGameFiles(GameInstallation installation)
-        => GetGameFiles((installation.LocatorResult.Store, installation.LocatorResult.LocatorIds.ToArray()));
+    {
+        foreach (var file in GetGameFiles((installation.LocatorResult.Store, installation.LocatorResult.LocatorIds.ToArray())))
+            yield return file;
+
+        foreach (var attested in AttestedFiles(installation).Values)
+        {
+            yield return new GameFileRecord
+            {
+                Path = (LocationId.Game, attested.Path),
+                Size = attested.Size,
+                Identity = FileIdentity.Sha1(attested.Sha1),
+            };
+        }
+    }
+
+    /// <inheritdoc />
+    public FrozenDictionary<GamePath, AttestedLookup> AttestedFiles(GameInstallation installation)
+        => AttestedFileRows.Find(Local, installation.LocatorResult.Store, LocalBaselineCoordinator.GamePathOf(installation));
+
+    /// <inheritdoc />
+    public Task SettleAttested(GameInstallation installation, IReadOnlyList<(AttestedLookup Attested, MultiHash Hashes, FileFingerprint After)> read, CancellationToken cancellationToken = default)
+        => AttestedFileRows.Settle(_local.Connection, LocalBaselineCoordinator.GamePathOf(installation), read, _logger);
+
+    /// <inheritdoc />
+    public bool TryFindRelation(Hash xxHash3, out (Sha1Value Sha1, Size Size) relation)
+        => AttestedFileRows.TryFindRelation(Databases, xxHash3, out relation);
 
     /// <inheritdoc/>
     public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore)
@@ -661,7 +688,8 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         {
             if (!baseline.ManifestsIds.Contains(manifest.Id)) continue;
             if (baseline.Kind == LocalBaselineKind.Snapshot) continue;
-            if (baseline.FilesIds.Count > 0 || NonVanillaFile.FindByBaseline(manifest.Db, baseline.Id).Any()) return true;
+            if (baseline.FilesIds.Count > 0 || NonVanillaFile.FindByBaseline(manifest.Db, baseline.Id).Any()
+                || AttestedFile.FindByBaseline(manifest.Db, baseline.Id).Any()) return true;
         }
 
         return false;

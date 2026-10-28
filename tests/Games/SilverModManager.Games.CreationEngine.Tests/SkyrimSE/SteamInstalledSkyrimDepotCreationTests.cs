@@ -1,8 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SilverModManager.Abstractions.Diagnostics;
+using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers.Rules;
+using SilverModManager.Games.CreationEngine.SortOrder;
 using SilverModManager.Games.CreationEngine.Tests.Creations;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.TestFramework.Helpers;
@@ -27,6 +30,8 @@ public class SteamInstalledSkyrimDepotCreationTests(ITestOutputHelper helper)
     private static readonly GamePath Plugin = new(LocationId.Game, "Data/ccinvented001-garden.esm");
 
     protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services).AddCreationEngine();
+
+    protected override bool StoreVouchesForTheFiles => true;
 
     protected override SteamInstall InstallGame(SteamLibraryFixture library)
     {
@@ -81,5 +86,43 @@ public class SteamInstalledSkyrimDepotCreationTests(ITestOutputHelper helper)
         await Synchronizer.ResetToOriginalGameState(GameInstallation, GameInstallation.LocatorResult.LocatorIds.ToArray());
 
         (await File.ReadAllBytesAsync(GameFolder.Combine("Data/ccinvented001-garden.esm").ToString())).Should().Equal(updated);
+    }
+
+    [Fact]
+    public async Task ADepotShippedCreation_IsReadOnceWhenRecognisedAndKeepsBothRows()
+    {
+        FullHashes.Reset();
+        await AppliedLoadout();
+
+        // The game-installed row is keyed by xxHash3, which a file the store vouched for does not have until it is read.
+        FullHashes.Paths.Select(p => Path.GetRelativePath(GameFolder.ToString(), p.ToString())).Should().Equal("Data/ccinvented001-garden.esm");
+        GameInstalledFile.All(Connection.Db).Select(f => ((GamePath)f.Path).Path.ToString()).Should().Contain("Data/ccinvented001-garden.esm");
+        Hashes.GetGameFiles(GameInstallation).Select(f => f.Path).Should().Contain(Plugin, "the depot still lists the file");
+
+        FullHashes.Reset();
+        await Synchronizer.Synchronize(Refresh(await AppliedLoadout()));
+        FullHashes.Paths.Should().BeEmpty("the read is remembered");
+    }
+
+    [Fact]
+    public async Task AnAttestedVanillaMaster_KeepsItsHeaderAndSorts()
+    {
+        var loadout = await AppliedLoadout();
+
+        var variety = Game.SortOrderManager.GetSortOrderVarieties().OfType<IPluginSortOrderVariety>().Single();
+        string[] stored = [];
+        await WaitUntil(() => (stored = variety.StoredOrder(Refresh(loadout)).Select(row => row.Name).ToArray()).Length >= 4);
+        stored.Should().Equal("Skyrim.esm", "Update.esm", "Dawnguard.esm", "ccinvented001-garden.esm");
+        (await RunEveryEmitter(loadout)).Select(d => d.Id).Should().NotContain(new DiagnosticId("SilverModManager.Games.CreationEngine", number: 1), "every master of the Creation has a header");
+    }
+
+    private IFileHashesService Hashes => ServiceProvider.GetRequiredService<IFileHashesService>();
+
+    // Gives up quietly at the deadline so the assertion after it reports what was stored, not a cancellation.
+    private static async Task WaitUntil(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(20);
+        while (!condition() && DateTime.UtcNow < deadline)
+            await Task.Delay(25);
     }
 }

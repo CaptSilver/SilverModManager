@@ -54,21 +54,14 @@ public class GameFileStreamSource : IIdentityStreamSource
     public AbsolutePath? Resolve(FileIdentity identity)
     {
         // An xxHash3 row keeps its digest in the Hash column, which is also all a row written before identities
-        // carried their kind has. The query engine cannot read a blob column, so any other kind is found by
-        // comparing the identity in C#. Callers keep what they read (the plugin header cache), so this scan is one
-        // per file per session.
-        IEnumerable<(EntityId Game, LocationId Location, RelativePath Path, DateTimeOffset LastModified, Size Size)> options = identity.TryXxHash3(out var hash)
+        // carried their kind has. Any other kind is found by its stored identity, compared as hex because the
+        // query engine has no blob comparison.
+        var options = identity.TryXxHash3(out var hash)
             ? _conn.Query<(EntityId Game, LocationId Location, RelativePath Path, DateTimeOffset LastModified, Size Size)>(
                 // Path is (owning game, location, relative path); the owning game is already the Game column.
                 $"select Game, Path.Item2, Path.Item3, LastModified, Size from mdb_DiskStateEntry(Db=>{_conn}) WHERE Hash = {hash} ORDER BY LastModified DESC").ToList()
-            : DiskStateEntry.All(_conn.Db)
-                .Where(entry => DiskStateEntry.Identity.TryGetValue(entry, out var stored) && stored == identity)
-                .Select(entry =>
-                {
-                    GamePath path = entry.Path;
-                    return (Game: (EntityId)entry.GameId, Location: path.LocationId, Path: path.Path, entry.LastModified, entry.Size);
-                })
-                .OrderByDescending(entry => entry.LastModified);
+            : _conn.Query<(EntityId Game, LocationId Location, RelativePath Path, DateTimeOffset LastModified, Size Size)>(
+                $"select Game, Path.Item2, Path.Item3, LastModified, Size from mdb_DiskStateEntry(Db=>{_conn}) WHERE hex(Identity) = {identity.ToHex()} ORDER BY LastModified DESC").ToList();
 
         foreach (var option in options)
         {

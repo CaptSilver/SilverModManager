@@ -141,6 +141,14 @@ public interface ILoadoutSynchronizer
     Task<Sdk.Games.GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation, SynchronizeLoadoutJob? job = null);
 
     /// <summary>
+    /// Gives every node in <paramref name="tree"/> that is about to be archived or ingested an xxHash3 disk identity,
+    /// reading the files the index named by the store's SHA-1 and settling what the read found. Run it before the
+    /// nodes reach anything keyed by xxHash3 (the file store, a loadout file). The disk state rows of the nodes it
+    /// changes are updated in <paramref name="tx"/>; the attestation is committed on its own before this returns.
+    /// </summary>
+    Task ResolveDiskIdentitiesForWrites(Dictionary<GamePath, SyncNode> tree, GameInstallation installation, ITransaction tx, BackupOverflowChoice choice = BackupOverflowChoice.BackUpAnyway, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Reindexes the game folder, then removes the loadout's External Changes that were on disk at the last sync and
     /// are gone now. Unlike a sync it deploys and deletes nothing.
     /// </summary>

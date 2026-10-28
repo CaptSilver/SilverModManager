@@ -41,6 +41,12 @@ public abstract class ASteamInstalledGameTest<TTest, TGame>(ITestOutputHelper he
 
     protected override bool UseStubbedFileHashService => false;
 
+    /// <summary>
+    /// True makes the app manifest record that Steam finished writing the files after they were laid down, so the
+    /// baseline takes the vanilla files from the depot manifests without opening them. Off, it reads every one.
+    /// </summary>
+    protected virtual bool StoreVouchesForTheFiles => false;
+
     protected override AbsolutePath TemporaryFilesPrefix => Library.Root / "tmp";
 
     /// <summary>Installs the game into <see cref="Library"/> before the locators run.</summary>
@@ -54,6 +60,8 @@ public abstract class ASteamInstalledGameTest<TTest, TGame>(ITestOutputHelper he
         if (!string.IsNullOrEmpty(xdgDataHome) && Directory.Exists(Path.Combine(xdgDataHome, "Steam")))
             throw new InvalidOperationException($"'{xdgDataHome}/Steam' exists, and the Steam locator would read it. Run the tests through scripts/test.sh, which isolates XDG_DATA_HOME.");
 
+        // An hour on, so every file the fixture writes now is older than the store's last write.
+        if (StoreVouchesForTheFiles) Library.LastUpdated = DateTimeOffset.UtcNow.AddHours(1);
         _install = InstallGame(Library);
         return ValueTask.CompletedTask;
     }

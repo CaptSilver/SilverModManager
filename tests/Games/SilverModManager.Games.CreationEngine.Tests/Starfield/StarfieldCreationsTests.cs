@@ -28,6 +28,8 @@ public class StarfieldCreationsTests(ITestOutputHelper helper)
 
     protected override IServiceCollection AddServices(IServiceCollection services) => base.AddServices(services).AddCreationEngine();
 
+    protected override bool StoreVouchesForTheFiles => true;
+
     protected override SteamInstall InstallGame(SteamLibraryFixture library)
     {
         var game = new SteamDepot(GameDepotId, GameManifestId,

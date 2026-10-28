@@ -99,6 +99,13 @@ public sealed class SteamLibraryFixture : IDisposable
         (Library / "steamapps").CreateDirectory();
     }
 
+    /// <summary>
+    /// When Steam last wrote the installed files, as the app manifest's <c>LastUpdated</c> records it. Left null the
+    /// manifest carries none, which makes the baseline read every file instead of taking the store's word for it.
+    /// Set it before <see cref="AddGame"/>.
+    /// </summary>
+    public DateTimeOffset? LastUpdated { get; set; }
+
     /// <summary>The temp folder everything lives in, for a test that wants its own files beside the library.</summary>
     public AbsolutePath Root => _root;
 
@@ -135,7 +142,7 @@ public sealed class SteamLibraryFixture : IDisposable
         }
 
         var appManifest = Library / "steamapps" / $"appmanifest_{appId}.acf";
-        File.WriteAllText(appManifest.ToString(), AppManifest(appId, installDir, name, buildId, depots));
+        File.WriteAllText(appManifest.ToString(), AppManifest(appId, installDir, name, buildId, depots, LastUpdated));
 
         // A Windows game Steam has run once: Proton has written its registry and the user's folders.
         var prefix = Library / "steamapps" / "compatdata" / appId.ToString() / "pfx";
@@ -222,13 +229,14 @@ public sealed class SteamLibraryFixture : IDisposable
         text.Append("\t\t}\n\t}\n");
     }
 
-    private static string AppManifest(uint appId, string installDir, string name, ulong buildId, IReadOnlyList<SteamDepot> depots)
+    private static string AppManifest(uint appId, string installDir, string name, ulong buildId, IReadOnlyList<SteamDepot> depots, DateTimeOffset? lastUpdated)
     {
         var text = new StringBuilder();
         text.Append("\"AppState\"\n{\n");
         text.Append($"\t\"appid\"\t\t\"{appId}\"\n\t\"Universe\"\t\t\"1\"\n\t\"name\"\t\t\"{name}\"\n");
         text.Append($"\t\"StateFlags\"\t\t\"4\"\n\t\"installdir\"\t\t\"{installDir}\"\n");
         text.Append($"\t\"LastOwner\"\t\t\"76561198000000000\"\n\t\"BuildID\"\t\t\"{buildId}\"\n");
+        if (lastUpdated is { } updated) text.Append($"\t\"LastUpdated\"\t\t\"{updated.ToUnixTimeSeconds()}\"\n");
         text.Append("\t\"InstalledDepots\"\n\t{\n");
         foreach (var depot in depots)
         {

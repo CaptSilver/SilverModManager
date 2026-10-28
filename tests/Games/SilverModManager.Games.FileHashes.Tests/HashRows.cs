@@ -94,7 +94,11 @@ internal static class HashRows
     /// A baseline of the given kind that owns the manifest <paramref name="manifestId"/>, the way a build from
     /// depot manifests links them. Without <paramref name="files"/> it classified nothing.
     /// </summary>
-    public static async Task AddBaselineOwningManifest(IConnection store, LocalBaselineKind kind, ulong manifestId, params (string Path, string Content)[] files)
+    public static Task AddBaselineOwningManifest(IConnection store, LocalBaselineKind kind, ulong manifestId, params (string Path, string Content)[] files)
+        => AddBaselineOwningManifestAt(store, "/games/test", kind, manifestId, files);
+
+    /// <summary>As <see cref="AddBaselineOwningManifest"/>, for the install at <paramref name="gamePath"/>.</summary>
+    public static async Task AddBaselineOwningManifestAt(IConnection store, string gamePath, LocalBaselineKind kind, ulong manifestId, params (string Path, string Content)[] files)
     {
         var hashes = await LocalBaselineRows.HashAll(files);
         using var tx = store.BeginTransaction();
@@ -110,7 +114,7 @@ internal static class HashRows
         _ = new LocalBaseline.New(tx)
         {
             Store = GameStore.Steam,
-            GamePath = "/games/test",
+            GamePath = gamePath,
             LocatorIds = [manifestId.ToString()],
             Kind = kind,
             VersionName = "",
@@ -119,6 +123,29 @@ internal static class HashRows
             ManifestsIds = [manifest.Id],
         };
         await tx.Commit();
+    }
+
+    /// <summary>
+    /// An <see cref="AttestedFile"/> of the baseline that owns manifest <paramref name="manifestId"/>, for a file
+    /// with <paramref name="content"/> as the manifest describes it.
+    /// </summary>
+    public static async Task<EntityId> AddAttestedFile(IConnection store, ulong manifestId, string path, string content, DateTimeOffset? modified = null, string gamePath = "/games/test")
+    {
+        var hash = (await LocalBaselineRows.HashAll([(path, content)])).Single().Hash;
+        var baseline = LocalBaseline.FindByGamePath(store.Db, gamePath).Single();
+        var manifest = baseline.Manifests.Single(m => m.ManifestId == ManifestId.From(manifestId));
+        using var tx = store.BeginTransaction();
+        var row = new AttestedFile.New(tx)
+        {
+            BaselineId = baseline.Id,
+            ManifestId = manifest.Id,
+            Path = RelativePath.FromUnsanitizedInput(path),
+            Sha1 = hash.Sha1,
+            Size = hash.Size,
+            ModifiedUtc = modified ?? DateTimeOffset.UnixEpoch,
+        };
+        var result = await tx.Commit();
+        return result[row.Id];
     }
 
     public static readonly NexusModsGameId GameId = NexusModsGameId.From(1234);

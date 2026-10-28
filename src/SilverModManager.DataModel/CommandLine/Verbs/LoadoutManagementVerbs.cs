@@ -131,15 +131,24 @@ public static class LoadoutManagementVerbs
         [Injected] IRenderer renderer,
         [Option("l", "loadout", "Loadout to backup files for")]
         Loadout.ReadOnly loadout,
+        [Injected] IConnection connection,
         [Injected] IFileStore fileStore)
     {
         var game = loadout.InstallationInstance.GetGame();
         var gameInstallation = loadout.InstallationInstance;
         var tree = await game.Synchronizer.BuildSyncTree(loadout);
         game.Synchronizer.ProcessSyncTree(tree);
-        var toBackup = tree.Where(f => f.Value.HaveDisk && 
-                                       !f.Value.Signature.HasFlag(Signature.DiskArchived) && 
-                                       f.Value.SourceItemType == LoadoutSourceItemType.Game)
+        var wanted = tree.Where(f => f.Value.HaveDisk &&
+                                     !f.Value.Signature.HasFlag(Signature.DiskArchived) &&
+                                     f.Value.SourceItemType == LoadoutSourceItemType.Game)
+            .ToDictionary(f => f.Key, f => f.Value with { Actions = Actions.BackupFile });
+
+        // A file the store vouched for is named by its SHA-1 until something reads it, and the file store is keyed by xxHash3.
+        using var tx = connection.BeginTransaction();
+        await game.Synchronizer.ResolveDiskIdentitiesForWrites(wanted, gameInstallation, tx);
+        await tx.Commit();
+
+        var toBackup = wanted
             .Select(f => (Path: gameInstallation.Locations.ToAbsolutePath(f.Key), f.Value.Disk.Size, Hash: f.Value.Disk.Identity.XxHash3()))
             .ToArray();
         await renderer.TextLine("Backing up {0} files for a total of {1}", toBackup.Length, toBackup.Aggregate(Size.Zero, (a, b) => a + b.Size));

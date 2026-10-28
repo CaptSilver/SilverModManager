@@ -63,6 +63,10 @@ public partial class ALoadoutSynchronizer
         }
 
         var db = loadout.Db;
+
+        // GameInstalledFile rows are keyed by xxHash3, so a claimed file the store vouched for is read first.
+        var resolvedParts = await ResolveClaimedParts(db, loadout, recognition.Items, diskState, token);
+
         var desired = ClaimRecognisedContent(db, loadout, recognition.Items, diskState);
         var current = ReadGameInstalledGroup(db, loadout);
         var recordPaths = recognizer.RecordPaths;
@@ -71,16 +75,18 @@ public partial class ALoadoutSynchronizer
         var overridesToDelete = FindOverridesRowsOfTheGame(db, loadout, recognisedPaths, recordPaths);
         var removedFiles = current.Files.Where(file => !recognisedPaths.Contains(file.Path)).ToArray();
         var demoted = removedFiles.Where(file => diskState.ContainsKey(file.Path)).ToArray();
+        resolvedParts.AddRange(await ResolveParts(loadout.InstallationInstance, demoted.Select(file => file.Path), diskState, token));
 
         var depotFiles = desired.Count == 0 ? null : GameFilePathsOfTheDepot(db, loadout);
         var itemsDiffer = GameInstalledItemsDiffer(desired, current, depotFiles);
 
         if (!itemsDiffer && removedFiles.Length == 0 && overridesToDelete.Count == 0)
-            return loadout;
+            return await RecordResolvedParts(loadout, resolvedParts);
 
         await BackUpDemotedFiles(loadout, demoted, diskState);
 
         using var tx = Connection.BeginTransaction();
+        WriteResolvedParts(tx, resolvedParts);
         var groupId = current.GroupId ?? CreateGameInstalledGroup(tx, loadout);
 
         foreach (var item in current.Items)
@@ -108,6 +114,65 @@ public partial class ALoadoutSynchronizer
 
         foreach (var row in overridesToDelete) tx.Delete(row, recursive: false);
 
+        var result = await tx.Commit();
+        return loadout.Rebase(result.Db);
+    }
+
+    /// <summary>
+    /// Reads the disk parts a recognizer claimed that the index named by the store's SHA-1, so the rows written for
+    /// them can be keyed by xxHash3. Only paths the claim would keep are read: one the user claimed or a mod provides
+    /// is left alone. The parts in <paramref name="diskState"/> are replaced by the resolved ones.
+    /// </summary>
+    private async Task<List<(EntityId Entry, FileIdentity Identity)>> ResolveClaimedParts(IDb db, Loadout.ReadOnly loadout, IReadOnlyList<GameInstalledContent> items, Dictionary<GamePath, SyncNodePart> diskState, CancellationToken token)
+    {
+        var claimed = GameInstalledClaim.FindByLoadout(db, loadout.Id).Select(claim => (GamePath)claim.Path).ToHashSet();
+        var paths = items
+            .SelectMany(content => content.Files)
+            .Where(path => diskState.ContainsKey(path) && !claimed.Contains(path) && !ProvidedByAMod(db, loadout, path))
+            .Distinct();
+        return await ResolveParts(loadout.InstallationInstance, paths, diskState, token);
+    }
+
+    /// <summary>
+    /// Reads the files among <paramref name="paths"/> whose disk part is not an xxHash3 and replaces those parts in
+    /// <paramref name="diskState"/> with the xxHash3 of the bytes. Returns the disk state rows that now name them.
+    /// </summary>
+    private async Task<List<(EntityId Entry, FileIdentity Identity)>> ResolveParts(GameInstallation installation, IEnumerable<GamePath> paths, Dictionary<GamePath, SyncNodePart> diskState, CancellationToken token)
+    {
+        var unnamed = paths.Where(path => diskState.TryGetValue(path, out var part) && !part.Identity.IsNone && part.Identity.Kind != HashKind.XxHash3).ToList();
+        var resolved = new List<(EntityId Entry, FileIdentity Identity)>();
+        if (unnamed.Count == 0) return resolved;
+
+        foreach (var read in await ReadAndSettle(unnamed, installation, token))
+        {
+            var identity = FileIdentity.XxHash3(read.Hashes.XxHash3);
+            var part = diskState[read.Path] with { Identity = identity };
+            diskState[read.Path] = part;
+            if (part.HaveEntityId) resolved.Add((part.EntityId, identity));
+        }
+
+        return resolved;
+    }
+
+    private static void WriteResolvedParts(ITransaction tx, List<(EntityId Entry, FileIdentity Identity)> resolved)
+    {
+        foreach (var (entry, identity) in resolved)
+        {
+            tx.Add(entry, DiskStateEntry.Identity, identity);
+            tx.Add(entry, DiskStateEntry.XxHash3, identity.XxHash3());
+        }
+    }
+
+    /// <summary>
+    /// Saves the disk state rows of files the reconcile read when it changed nothing else, so the next one does not
+    /// read them again.
+    /// </summary>
+    private async Task<Loadout.ReadOnly> RecordResolvedParts(Loadout.ReadOnly loadout, List<(EntityId Entry, FileIdentity Identity)> resolved)
+    {
+        if (resolved.Count == 0) return loadout;
+
+        using var tx = Connection.BeginTransaction();
+        WriteResolvedParts(tx, resolved);
         var result = await tx.Commit();
         return loadout.Rebase(result.Db);
     }

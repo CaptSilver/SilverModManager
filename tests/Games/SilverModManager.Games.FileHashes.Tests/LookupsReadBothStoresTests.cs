@@ -1,3 +1,4 @@
+using SilverModManager.Abstractions.Games.FileHashes;
 using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
@@ -105,6 +106,42 @@ public sealed class LookupsReadBothStoresTests : IDisposable
         files.Select(f => f.Path.Path.ToString()).Should().BeEquivalentTo(["b.esm"]);
         files.Should().OnlyContain(f => f.Identity.Kind == HashKind.XxHash3);
         files.Single().Identity.Should().Be(FileIdentity.XxHash3((await MultiHasher.HashStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("local file")))).XxHash3));
+    }
+
+    [Fact]
+    public async Task TwoInstallsSharingAManifestId_EachGetTheirOwnAttestedRows()
+    {
+        var service = await ServiceWithCentral(c => HashRows.AddSteamManifest(c, 1009, ("unrelated.esm", "unrelated")));
+        var local = service.Local.Connection;
+        await HashRows.AddBaselineOwningManifestAt(local, "/games/a", LocalBaselineKind.DepotManifests, 1001);
+        await HashRows.AddBaselineOwningManifestAt(local, "/games/b", LocalBaselineKind.DepotManifests, 1001);
+        await HashRows.AddAttestedFile(local, 1001, "only-a.esm", "a", gamePath: "/games/a");
+        await HashRows.AddAttestedFile(local, 1001, "only-b.esm", "b", gamePath: "/games/b");
+
+        var filesOfA = service.GetGameFiles(InstallationAt("/games/a", "1001")).ToList();
+        var filesOfB = service.GetGameFiles(InstallationAt("/games/b", "1001")).ToList();
+
+        // Which of the two local manifest rows answers the shared id is not defined; the attested rows are.
+        filesOfA.Where(f => f.Identity.Kind == HashKind.Sha1).Select(f => f.Path.Path.ToString()).Should().BeEquivalentTo(["only-a.esm"]);
+        filesOfB.Where(f => f.Identity.Kind == HashKind.Sha1).Select(f => f.Path.Path.ToString()).Should().BeEquivalentTo(["only-b.esm"]);
+        var attested = filesOfA.Single(f => f.Path.Path.ToString() == "only-a.esm");
+        attested.Identity.Should().Be(FileIdentity.Sha1((await MultiHasher.HashStream(new MemoryStream("a"u8.ToArray()))).Sha1));
+        service.AttestedFiles(InstallationAt("/games/a", "1001")).Keys.Select(k => k.Path.ToString()).Should().BeEquivalentTo(["only-a.esm"]);
+        service.AttestedFiles(InstallationAt("/games/other", "1001")).Should().BeEmpty();
+    }
+
+    private static GameInstallation InstallationAt(string gamePath, params string[] locatorIds)
+    {
+        var result = new GameLocatorResult
+        {
+            Game = Substitute.For<IGameData>(),
+            Path = FileSystem.Shared.FromUnsanitizedFullPath(gamePath),
+            Store = GameStore.Steam,
+            StoreIdentifier = "1",
+            LocatorIds = [..locatorIds.Select(LocatorId.From)],
+            Locator = Substitute.For<IGameLocator>(),
+        };
+        return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, result.Path)));
     }
 
     [Fact]

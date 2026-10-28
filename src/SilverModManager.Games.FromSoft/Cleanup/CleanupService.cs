@@ -210,7 +210,7 @@ public sealed class CleanupService(
         var ids = (loadout.InstallationInstance.LocatorResult.Store, loadout.LocatorIds.ToArray());
         if (!fileHashes.CoversInstalledBuild(ids)) return null;
 
-        return fileHashes.GetGameFiles(ids)
+        return fileHashes.GetGameFiles(loadout.InstallationInstance, loadout.LocatorIds)
             .Select(f => f.Path)
             .Where(p => FromSoftPaths.IsInGameFolder(layout, p))
             .Select(p => p.Path.Path[(layout.GameSubfolder.Length + 1)..])
