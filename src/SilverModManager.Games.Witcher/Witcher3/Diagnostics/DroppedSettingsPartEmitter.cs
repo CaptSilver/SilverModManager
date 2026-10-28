@@ -12,7 +12,8 @@ namespace SilverModManager.Games.Witcher.Witcher3.Diagnostics;
 /// A mod's <c>.part.txt</c> names the settings file its keys belong in. The game reads three of them, and only those
 /// are baked, so a fragment for any other name (a typo, a file a patch added, <c>input.xml.part.txt</c>) would
 /// otherwise leave its menu unmodded without a word. A fragment for one of the three that is not on disk yet has no
-/// player copy to build on, so it waits for the game to create the file.
+/// player copy to build on, so it waits for the game to create the file. When the loadout does not own the game's
+/// INIs none of the fragments is merged, and each mod that has any gets a card saying so.
 /// </summary>
 public sealed class DroppedSettingsPartEmitter : ADroppedItemEmitter
 {
@@ -30,7 +31,15 @@ public sealed class DroppedSettingsPartEmitter : ADroppedItemEmitter
             yield return new DroppedItem($"the {target} fragment", fragment.SourceName, reason, "Library");
         }
 
-        if (!Loadout.OwnsGameInis.Get(loadout) || !loadout.IsValid()) yield break;
+        if (!loadout.IsValid()) yield break;
+
+        // The fragments are merged into the settings files the loadout writes. Without that there is nothing to merge
+        // them into, so each mod's say so rather than going unused without a word.
+        if (!Loadout.OwnsGameInis.Get(loadout))
+        {
+            foreach (var card in NotOwned(loadout)) yield return card;
+            yield break;
+        }
 
         // user.settings belongs to DX11 and dx12user.settings to DX12, so a player has one of them. The other renderer's
         // fragments are not waiting for anything; they only wait when the game was never started.
@@ -47,6 +56,21 @@ public sealed class DroppedSettingsPartEmitter : ADroppedItemEmitter
             var what = files.Length == 1 ? $"{files[0]} doesn't exist yet" : $"neither {files[0]} nor {files[1]} exists yet";
             yield return new DroppedItem($"the settings for {string.Join(" and ", files)}", string.Join(", ", mods),
                 $"{what}. Start the game once, then Apply again", null);
+        }
+    }
+
+    private static IEnumerable<DroppedItem> NotOwned(Loadout.ReadOnly loadout)
+    {
+        var filesByMod = WitcherConstants.W3SettingsFiles
+            .SelectMany(file => IniTweakLayers.All(loadout, new GamePath(WitcherConstants.WitcherDocuments, file)).Where(t => t.IsEnabled).Select(t => (Mod: t.SourceName, File: file)))
+            .GroupBy(t => t.Mod, t => t.File, StringComparer.Ordinal)
+            .OrderBy(g => g.Key, StringComparer.Ordinal);
+
+        foreach (var mod in filesByMod)
+        {
+            var files = mod.Distinct().Order(StringComparer.Ordinal).ToArray();
+            yield return new DroppedItem($"the {string.Join(" and ", files)} fragment", mod.Key,
+                "this loadout does not own the game's settings files, so nothing is merged into them. Turn on \"Own the game INIs\" in the loadout's settings", null);
         }
     }
 

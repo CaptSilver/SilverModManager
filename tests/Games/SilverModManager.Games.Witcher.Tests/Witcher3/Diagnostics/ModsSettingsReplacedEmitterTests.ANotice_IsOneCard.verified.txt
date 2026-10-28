@@ -1,7 +1,7 @@
-﻿[Id] the copy in Documents/The Witcher 3: 1
-[Title] Something was left out
-[Summary] mods.settings from the copy in Documents/The Witcher 3 is not used: the file on disk differed from your Load Order (in a different order: modA, modB)
+﻿[Id] SilverModManager.Games.Witcher.Witcher3: 1
+[Title] mods.settings was replaced
+[Summary] The mods.settings in Documents/The Witcher 3 was replaced by the one built from your Load Order, because the file on disk differed from your Load Order (in a different order: modA, modB)
 [Details]
-**mods.settings** (the copy in Documents/The Witcher 3) was left out: the file on disk differed from your Load Order (in a different order: modA, modB).
+The Witcher 3 reads **mods.settings** to decide which Mods folders load and in what order. The app writes it from your Load Order on every Apply, so the copy in Documents/The Witcher 3 was replaced, because the file on disk differed from your Load Order (in a different order: modA, modB).
 
-Change it on the Load Order page.
+To keep a different order or switch, set it on the Load Order page.

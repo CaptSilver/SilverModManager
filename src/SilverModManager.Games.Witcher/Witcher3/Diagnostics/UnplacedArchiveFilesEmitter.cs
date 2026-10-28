@@ -29,7 +29,8 @@ public sealed class UnplacedArchiveFilesEmitter : ADroppedItemEmitter
             if (ScriptMergerArchive.IsScriptMerger(archive)) continue;
 
             var item = group.AsLoadoutItemGroup();
-            var entries = archive.Children.ToArray();
+            // The installer plans over the paths in ordinal order, and the plan depends on which path comes first.
+            var entries = archive.Children.OrderBy(e => e.Path.Path, StringComparer.Ordinal).ToArray();
             var paths = entries.Select(e => e.Path.Path).ToArray();
             var plan = Witcher3InstallPlan.Plan(paths, archive.AsLibraryFile().FileName.ToString());
             if (plan is null) continue;
@@ -44,7 +45,7 @@ public sealed class UnplacedArchiveFilesEmitter : ADroppedItemEmitter
 
             var placed = actual.Select(a => a.Hash).ToHashSet();
             var skippedCopies = Witcher3InstallPlan.SkippedMenuXmlCopies(paths);
-            foreach (var entry in entries.OrderBy(e => e.Path.Path, StringComparer.Ordinal))
+            foreach (var entry in entries)
             {
                 if (placed.Contains(entry.AsLibraryFile().Hash)) continue;
                 if (skippedCopies.Contains(entry.Path.Path)) continue;

@@ -103,6 +103,19 @@ public class ModsSettingsReplacedEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task TheCardSaysTheFileWasReplacedAndNotThatItWasLeftOut()
+    {
+        var (loadout, _, _, _) = await TwoMods();
+        await IngestFromDisk(loadout, Swapped);
+
+        var diagnostic = await GetSingleDiagnostic(loadout);
+
+        var writer = new PlainDiagnosticWriter();
+        diagnostic.FormatSummary(writer).Should().Contain("replaced").And.NotContain("is not used");
+        diagnostic.FormatDetails(writer).Should().Contain("replaced").And.NotContain("left out").And.Contain("Load Order page");
+    }
+
+    [Fact]
     public async Task ANoticeFromIngest_ReachesTheHealthCheckThroughTheGamesEmitters()
     {
         var (loadout, _, _, _) = await TwoMods();

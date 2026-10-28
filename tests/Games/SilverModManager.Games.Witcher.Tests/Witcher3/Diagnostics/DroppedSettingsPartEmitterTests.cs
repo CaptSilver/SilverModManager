@@ -9,6 +9,7 @@ using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Games.TestFramework;
 using SilverModManager.Games.Witcher.Witcher3;
 using SilverModManager.Games.Witcher.Witcher3.Diagnostics;
+using SilverModManager.MnemonicDB.Abstractions.ElementComparers;
 using SilverModManager.StandardGameLocators.TestHelpers;
 
 namespace SilverModManager.Games.Witcher.Tests.Witcher3.Diagnostics;
@@ -149,6 +150,57 @@ public class DroppedSettingsPartEmitterTests(ITestOutputHelper helper)
         await AddPart(loadout, "modA", "input.settings");
 
         (await GetSingleDiagnostic(loadout)).FormatSummary(new PlainDiagnosticWriter()).Should().Contain("input.settings doesn't exist yet");
+    }
+
+    private async Task StopOwningTheInis(LoadoutId loadout)
+    {
+        using var tx = Connection.BeginTransaction();
+        tx.Add(loadout.Value, Loadout.OwnsGameInis, false);
+        await tx.Commit();
+    }
+
+    [Fact]
+    public async Task WhenTheLoadoutDoesNotOwnTheInis_EachModWithFragmentsGetsACardNamingTheSetting()
+    {
+        var loadout = await CreateLoadout();
+        await StopOwningTheInis(loadout);
+        await AddPart(loadout, "modA", "input.settings");
+        await AddPart(loadout, "modB", "user.settings");
+
+        var cards = await GetAllDiagnostics(loadout);
+
+        cards.Should().HaveCount(2);
+        var summaries = cards.Select(card => card.FormatSummary(new PlainDiagnosticWriter())).Order().ToArray();
+        summaries[0].Should().StartWith("the input.settings fragment from modA is not used").And.Contain("Own the game INIs");
+        summaries[1].Should().StartWith("the user.settings fragment from modB is not used").And.Contain("Own the game INIs");
+    }
+
+    [Fact]
+    public async Task WhenTheLoadoutDoesNotOwnTheInis_AModWithFragmentsForTwoFilesGetsOneCard()
+    {
+        var loadout = await CreateLoadout();
+        await StopOwningTheInis(loadout);
+        await Witcher3Fixtures.AddMod(Connection, FileStore, loadout, "modA", 1,
+            ("INI Tweaks/modA [input.settings].ini", "[SDL]\nIK_F=1\n"), ("INI Tweaks/modA [user.settings].ini", "[SDL]\nIK_G=1\n"));
+
+        var summary = (await GetSingleDiagnostic(loadout)).FormatSummary(new PlainDiagnosticWriter());
+
+        summary.Should().Contain("modA").And.Contain("input.settings").And.Contain("user.settings").And.Contain("Own the game INIs");
+    }
+
+    [Fact]
+    public async Task WhenTheLoadoutDoesNotOwnTheInis_ADisabledModsFragmentsGetNoCard()
+    {
+        var loadout = await CreateLoadout();
+        await StopOwningTheInis(loadout);
+        var group = await AddPart(loadout, "modA", "input.settings");
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(group.Value, LoadoutItem.Disabled, Null.Instance);
+            await tx.Commit();
+        }
+
+        await ShouldHaveNoDiagnostics(loadout);
     }
 
     private async Task WriteSettings(string name)

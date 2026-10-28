@@ -50,6 +50,20 @@ public class UnplacedArchiveFilesEmitterTests(ITestOutputHelper helper)
     }
 
     [Fact]
+    public async Task TheCheckPlansOverThePathsInOrdinalOrderLikeTheInstaller()
+    {
+        // Two roots both holding the menu folder: the mod root is the first one found, which only agrees with the
+        // installer when the paths are walked in ordinal order (Z before a), not the archive's own order.
+        const string Menu = "bin/config/r4game/user_config_matrix/pc/sdl.xml";
+        var loadout = await CreateLoadout();
+        await Install(loadout, "Two roots.zip", null, $"Zroot/{Menu}", $"aroot/{Menu}", "aroot/extra.bin");
+
+        var card = (await GetSingleDiagnostic(loadout)).FormatSummary(new PlainDiagnosticWriter());
+
+        card.Should().Contain("aroot/extra.bin");
+    }
+
+    [Fact]
     public async Task DocumentationAndParts_GetNoCard()
     {
         var loadout = await CreateLoadout();
