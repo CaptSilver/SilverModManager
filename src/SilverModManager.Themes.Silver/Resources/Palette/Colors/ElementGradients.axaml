@@ -24,9 +24,9 @@
         <GradientStop Color="{StaticResource BrandPremium400}" Offset="1" />
     </LinearGradientBrush>
 
-    <!-- SurfaceLow 75% to SurfaceLow 100% -->
-    <Color x:Key="CollectionHeaderImageLinearGradientStartColor">#BF23272D</Color>
-    <Color x:Key="CollectionHeaderImageLinearGradientEndColor">#FA23272D</Color>
+    <!-- SurfaceLow 40% to clear: keeps the title readable over the banner without hiding Glass behind it -->
+    <Color x:Key="CollectionHeaderImageLinearGradientStartColor">#6623272D</Color>
+    <Color x:Key="CollectionHeaderImageLinearGradientEndColor">#0023272D</Color>
     
     <LinearGradientBrush x:Key="CollectionHeaderImageLinearGradientBrush" StartPoint="0%,0%" EndPoint="0%,100%">
         <GradientStop Offset="0" Color="{StaticResource CollectionHeaderImageLinearGradientStartColor}" />

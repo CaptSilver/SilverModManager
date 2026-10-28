@@ -16,22 +16,22 @@
         </DataTemplate>
     </UserControl.Resources>
 
+    <!-- the instructions are the whole tab, so the sections are plain headings rather than expanders -->
     <ScrollViewer>
-        <StackPanel Orientation="Vertical">
+        <StackPanel Orientation="Vertical" Margin="24" Spacing="24">
 
-            <Expander Header="Collection Instructions" x:Name="CollectionInstructionsExpander"
-                      IsVisible="False" IsExpanded="True">
+            <StackPanel x:Name="CollectionInstructionsSection" IsVisible="False" Spacing="8">
+                <TextBlock Theme="{StaticResource BodyMDSemiTheme}" Text="Collection Instructions" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" MaxWidth="1024" />
                     </Grid.ColumnDefinitions>
                     <reactiveUi:ViewModelViewHost x:Name="CollectionInstructionsRendererHost" />
                 </Grid>
-            </Expander>
+            </StackPanel>
 
-            <Expander Header="Mod Instructions" x:Name="RequiredModsInstructionsExpander"
-                      IsVisible="False"
-                      IsExpanded="True">
+            <StackPanel x:Name="RequiredModsInstructionsSection" IsVisible="False" Spacing="8">
+                <TextBlock Theme="{StaticResource BodyMDSemiTheme}" Text="Mod Instructions" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" MaxWidth="1024" />
@@ -45,11 +45,10 @@
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>
                 </Grid>
-            </Expander>
+            </StackPanel>
 
-            <Expander Header="Optional Mod Instructions" x:Name="OptionalModsInstructionsExpander"
-                      IsVisible="False"
-                      IsExpanded="True">
+            <StackPanel x:Name="OptionalModsInstructionsSection" IsVisible="False" Spacing="8">
+                <TextBlock Theme="{StaticResource BodyMDSemiTheme}" Text="Optional Mod Instructions" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" MaxWidth="1024" />
@@ -63,7 +62,7 @@
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>
                 </Grid>
-            </Expander>
+            </StackPanel>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

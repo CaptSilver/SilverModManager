@@ -125,10 +125,13 @@
         </DockPanel>
     </reactive:ReactiveUserControl.Resources>
 
-    <Border x:Name="HeaderBorderBackground">
+    <Border>
 
         <!-- header, tabcontrol -->
         <Grid x:Name="Body" RowDefinitions="Auto, *">
+
+            <!-- the collection's banner, behind the header only so the rest of the page keeps the panel (and Glass) -->
+            <Border x:Name="HeaderImageBorder" Grid.Row="0" />
 
             <!-- first row (header) -->
             <Border x:Name="HeaderBorder" Grid.Row="0">

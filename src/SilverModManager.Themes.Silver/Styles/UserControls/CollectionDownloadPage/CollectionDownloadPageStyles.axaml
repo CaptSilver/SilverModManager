@@ -21,6 +21,17 @@
 
         <Style Selector="^ Grid#Body">
 
+            <!-- the banner is a wash over the page panel (so Glass still shows through it) that fades out
+                 towards the tabs instead of ending in a hard edge -->
+            <Style Selector="^ Border#HeaderImageBorder">
+                <Setter Property="OpacityMask">
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#66000000" />
+                        <GradientStop Offset="1" Color="Transparent" />
+                    </LinearGradientBrush>
+                </Setter>
+            </Style>
+
             <Style Selector="^ Border#HeaderBorder">
                 <!-- darkens underlying background image -->
                 <Setter Property="Background" Value="{StaticResource CollectionHeaderImageLinearGradientBrush}" />
@@ -212,83 +223,55 @@
 
         <Style Selector="^ TabControl">
             <Setter Property="panels:Flex.AlignSelf" Value="Stretch" />
-            <Setter Property="Background" Value="{StaticResource CollectionHeaderImageLinearGradientEndColor}" />
+            <!-- no fill of its own, so the page panel (and Glass) shows behind the tabs -->
+            <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
             
             <Style Selector="^ /template/ ContentPresenter#PART_SelectedContentHost">
                 <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
             </Style>
-            
 
-                <!-- tab content -->
-            <Style Selector="^ TabItem#InstructionsTab">
 
-                <!-- all expanders -->
-                <Style Selector="^ > ScrollViewer > StackPanel > Expander">
-                    <Setter Property="HorizontalAlignment" Value="Stretch" />
-                    <Setter Property="CornerRadius" Value="0" />
-                    <Setter Property="Padding" Value="24 12" />
+            <!-- the author's instructions; the view sits inside the tab, so select it rather than the tab's own children -->
+            <Style Selector="^ collections|CollectionInstructionsView">
 
-                    <!-- header -->
-                    <Style Selector="^ ToggleButton#ExpanderHeader">
-                        <Setter Property="Padding" Value="24 12" />
+                <!-- collection instructions -->
+                <Style Selector="^ markdownRenderer|MarkdownRendererView">
+                    <Setter Property="Padding" Value="0" />
+                </Style>
 
-                        <Style Selector="^ TextBlock">
-                            <Setter Property="Theme" Value="{StaticResource BodyMDSemiTheme}" />
-                            <!-- <Setter Property="Background" Value="DarkSlateBlue" /> -->
-                        </Style>
+                <!-- required and optional mods instructions -->
+                <Style Selector="^ ItemsControl">
+
+                    <!-- all mods -->
+                    <Style Selector="^ /template/ ItemsPresenter#PART_ItemsPresenter > StackPanel">
+                        <Setter Property="Spacing" Value="8" />
                     </Style>
 
-                    <!-- content -->
-                    <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
-                        <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
-                    </Style>
+                    <!-- each mod -->
+                    <Style Selector="^ Border.ModInstructionBorder">
+                        <Setter Property="Padding" Value="0,4,0,12" />
+                        <Setter Property="BorderThickness" Value="0,0,0,1" />
+                        <Setter Property="BorderBrush" Value="{StaticResource StrokeTranslucentWeakBrush}" />
 
-                    <!-- collections instructions -->
-                    <Style Selector="^ markdownRenderer|MarkdownRendererView">
-                        <Setter Property="Padding" Value="24 24 24 12" />
-                    </Style>
+                        <Style Selector="^ > StackPanel">
+                            <Setter Property="Spacing" Value="{StaticResource Spacing-0.5}" />
 
-                    <!-- required and optional mods instructions -->
-                    <Style Selector="^ ItemsControl">
-                        <Setter Property="Padding" Value="24,12" />
+                            <Style Selector="^ TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap" />
+                            </Style>
 
-                        <!-- all mods -->
-                        <Style Selector="^ /template/ ItemsPresenter#PART_ItemsPresenter">
-                            <Setter Property="Margin" Value="0" />
+                            <!-- mod name -->
+                            <Style Selector="^ TextBlock:nth-child(1)">
+                                <Setter Property="Theme" Value="{StaticResource BodyMDSemiTheme}" />
+                                <Setter Property="Foreground" Value="{StaticResource NeutralModerateBrush}" />
+                            </Style>
 
-                            <Style Selector="^ > StackPanel">
-                                <Setter Property="Spacing" Value="8" />
+                            <!-- mod instruction -->
+                            <Style Selector="^ TextBlock:nth-last-child(1)">
+                                <Setter Property="Theme" Value="{StaticResource BodySMNormalTheme}" />
+                                <Setter Property="Foreground" Value="{StaticResource NeutralModerateBrush}" />
                             </Style>
                         </Style>
-
-                        <!-- each mod -->
-                        <Style Selector="^ Border.ModInstructionBorder">
-                            <Setter Property="Padding" Value="0,4,0,12" />
-                            <Setter Property="Margin" Value="0" />
-                            <Setter Property="BorderThickness" Value="0,0,0,1" />
-                            <Setter Property="BorderBrush" Value="{StaticResource StrokeTranslucentWeakBrush}" />
-
-                            <Style Selector="^ > StackPanel">
-                                <Setter Property="Spacing" Value="{StaticResource Spacing-0.5}" />
-
-                                <Style Selector="^ TextBlock">
-                                    <Setter Property="TextWrapping" Value="Wrap" />
-                                </Style>
-
-                                <!-- mod name -->
-                                <Style Selector="^ TextBlock:nth-child(1)">
-                                    <Setter Property="Theme" Value="{StaticResource BodyMDSemiTheme}" />
-                                    <Setter Property="Foreground" Value="{StaticResource NeutralModerateBrush}" />
-                                </Style>
-
-                                <!-- mod instruction -->
-                                <Style Selector="^ TextBlock:nth-last-child(1)">
-                                    <Setter Property="Theme" Value="{StaticResource BodySMNormalTheme}" />
-                                    <Setter Property="Foreground" Value="{StaticResource NeutralModerateBrush}" />
-                                </Style>
-                            </Style>
-                        </Style>
-
                     </Style>
                 </Style>
             </Style>

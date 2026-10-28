@@ -62,7 +62,7 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
 
                 this.WhenAnyValue(view => view.ViewModel!.BackgroundImage)
                     .WhereNotNull()
-                    .SubscribeWithErrorLogging(image => HeaderBorderBackground.Background = new ImageBrush { Source = image, Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top })
+                    .SubscribeWithErrorLogging(image => HeaderImageBorder.Background = new ImageBrush { Source = image, Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top })
                     .DisposeWith(d);
 
                 this.WhenAnyValue(view => view.ViewModel!.TileImage)

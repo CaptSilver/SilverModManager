@@ -141,7 +141,7 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
             
             this.WhenAnyValue(view => view.ViewModel!.BackgroundImage)
                 .WhereNotNull()
-                .SubscribeWithErrorLogging(image => HeaderBorderBackground.Background = new ImageBrush { Source = image, Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top})
+                .SubscribeWithErrorLogging(image => HeaderImageBorder.Background = new ImageBrush { Source = image, Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top})
                 .DisposeWith(disposables);
         });
     }

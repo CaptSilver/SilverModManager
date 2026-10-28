@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Collections.Json;
 using SilverModManager.App.UI.Controls.MarkdownRenderer;
@@ -8,7 +9,7 @@ namespace SilverModManager.App.UI.Pages.CollectionDownload;
 /// <summary>
 /// What a collection's author wrote for the person installing it: a text for the whole collection and notes on single mods.
 /// </summary>
-public record CollectionInstructions(
+public partial record CollectionInstructions(
     IMarkdownRendererViewModel? Collection,
     ModInstructions[] RequiredMods,
     ModInstructions[] OptionalMods)
@@ -41,9 +42,19 @@ public record CollectionInstructions(
         var collectionText = collectionRoot.Info.InstallInstructions;
 
         return new CollectionInstructions(
-            Collection: string.IsNullOrWhiteSpace(collectionText) ? null : createRenderer(collectionText),
+            Collection: string.IsNullOrWhiteSpace(collectionText) ? null : createRenderer(KeepLineBreaks(collectionText)),
             RequiredMods: modsInstructions.Where(static x => x.ItemType == CollectionDownloader.ItemType.Required).ToArray(),
             OptionalMods: modsInstructions.Where(static x => x.ItemType == CollectionDownloader.ItemType.Optional).ToArray()
         );
     }
+
+    /// <summary>
+    /// Authors write the collection's instructions in a plain text box, one note per line, but markdown joins single
+    /// lines into one paragraph. A trailing double space makes each line break a real one; blank lines stay paragraph breaks.
+    /// </summary>
+    private static string KeepLineBreaks(string text) =>
+        SingleLineBreak().Replace(text.ReplaceLineEndings("\n"), "  \n");
+
+    [GeneratedRegex(@"(?<!\n)\n(?!\n)")]
+    private static partial Regex SingleLineBreak();
 }

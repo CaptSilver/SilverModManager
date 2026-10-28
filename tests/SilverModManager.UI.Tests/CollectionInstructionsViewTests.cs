@@ -35,8 +35,8 @@ public class CollectionInstructionsViewTests(IServiceProvider provider) : AUiTes
         });
     }
 
-    private static Expander Section(CollectionInstructionsView view, string name) =>
-        view.FindControl<Expander>(name) ?? throw new InvalidOperationException($"No control `{name}`");
+    private static Control Section(CollectionInstructionsView view, string name) =>
+        view.FindControl<Control>(name) ?? throw new InvalidOperationException($"No control `{name}`");
 
     [Fact]
     public void NoInstructionsIsEmpty()
@@ -85,6 +85,19 @@ public class CollectionInstructionsViewTests(IServiceProvider provider) : AUiTes
         instructions.OptionalMods.Should().Equal(new ModInstructions("Extra mod", "Pick 1080p", CollectionDownloader.ItemType.Optional));
     }
 
+    /// <summary>
+    /// Authors write these in a plain text box, one note per line; markdown would run single lines together.
+    /// </summary>
+    [Fact]
+    public void KeepsTheAuthorsLineBreaks()
+    {
+        var instructions = CollectionInstructions.From(
+            Collection("First note\r\nSecond note\n\nLast paragraph"),
+            static text => new MarkdownRendererViewModel { Contents = text });
+
+        instructions.Collection!.Contents.Should().Be("First note  \nSecond note\n\nLast paragraph");
+    }
+
     [Fact]
     public void BlankTextIsNoInstructions()
     {
@@ -117,9 +130,9 @@ public class CollectionInstructionsViewTests(IServiceProvider provider) : AUiTes
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            Section(view, "CollectionInstructionsExpander").IsVisible.Should().BeTrue();
-            Section(view, "RequiredModsInstructionsExpander").IsVisible.Should().BeTrue();
-            Section(view, "OptionalModsInstructionsExpander").IsVisible.Should().BeTrue();
+            Section(view, "CollectionInstructionsSection").IsVisible.Should().BeTrue();
+            Section(view, "RequiredModsInstructionsSection").IsVisible.Should().BeTrue();
+            Section(view, "OptionalModsInstructionsSection").IsVisible.Should().BeTrue();
 
             var texts = view.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
             texts.Should().Contain("Core mod").And.Contain("Needs the patch applied");
@@ -135,6 +148,26 @@ public class CollectionInstructionsViewTests(IServiceProvider provider) : AUiTes
         viewer.Should().NotBeNull("the collection's own text goes through the markdown renderer");
     }
 
+    /// <summary>
+    /// The instructions are the whole tab, so there is nothing to fold away.
+    /// </summary>
+    [Fact]
+    public async Task ShowsSectionsWithoutExpanders()
+    {
+        var view = await Show(() => new CollectionInstructions(
+            CreateRenderer("Read me"),
+            [new ModInstructions("Core mod", "Needs the patch applied", CollectionDownloader.ItemType.Required)],
+            [new ModInstructions("Extra mod", "Pick the 1080p variant", CollectionDownloader.ItemType.Optional)]
+        ));
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            view.GetVisualDescendants().OfType<Expander>().Should().BeEmpty();
+            var texts = view.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+            texts.Should().Contain(["Collection Instructions", "Mod Instructions", "Optional Mod Instructions"]);
+        });
+    }
+
     [Fact]
     public async Task HidesTheSectionsTheCollectionLacks()
     {
@@ -146,9 +179,9 @@ public class CollectionInstructionsViewTests(IServiceProvider provider) : AUiTes
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            Section(view, "CollectionInstructionsExpander").IsVisible.Should().BeFalse();
-            Section(view, "RequiredModsInstructionsExpander").IsVisible.Should().BeTrue();
-            Section(view, "OptionalModsInstructionsExpander").IsVisible.Should().BeFalse();
+            Section(view, "CollectionInstructionsSection").IsVisible.Should().BeFalse();
+            Section(view, "RequiredModsInstructionsSection").IsVisible.Should().BeTrue();
+            Section(view, "OptionalModsInstructionsSection").IsVisible.Should().BeFalse();
         });
     }
 }

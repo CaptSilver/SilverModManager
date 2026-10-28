@@ -12,6 +12,10 @@ using ImageMagick;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using SilverModManager.Abstractions.Loadouts;
+using Markdown.Avalonia;
+using SilverModManager.Abstractions.Collections.Json;
+using SilverModManager.Abstractions.NexusWebApi.Types;
+using SilverModManager.App.UI.Pages.CollectionDownload;
 using SilverModManager.App.UI.Controls;
 using SilverModManager.App.UI.Pages.LoadoutPage;
 using SilverModManager.App.UI.Pages.MyGames;
@@ -114,6 +118,33 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
         {
             DataContext = new LoadoutViewModel(Substitute.For<IWindowManager>(), Provider, loadout.LoadoutId, collection.CollectionGroupId),
         }, isReady: window => DateComponentsIn(window).Length == 2, beforeCapture: PinInstallDates);
+        await VerifyPng(png);
+    }
+
+    /// <summary>
+    /// A collection's instructions tab: plain section headings, the author's line breaks kept, and the mod notes styled.
+    /// </summary>
+    [Fact]
+    public async Task Test_CollectionInstructions()
+    {
+        var root = new CollectionRoot
+        {
+            Info = new CollectionInfo
+            {
+                Name = "Test",
+                DomainName = GameDomain.From("cyberpunk2077"),
+                InstallInstructions = "Refer to our [Discord](https://example.invalid) for change logs.\n⚠ Install new revisions to a separate profile.\n⚠ Verify game files before deploying.\n\nHave a good game!",
+            },
+            Mods =
+            [
+                new Mod { Name = "Core mod", Instructions = "Apply the patch after installing.", DomainName = GameDomain.From("cyberpunk2077"), Source = new ModSource { Type = ModSourceType.Direct } },
+                new Mod { Name = "Extra mod", Instructions = "Pick the 1080p variant.", Optional = true, DomainName = GameDomain.From("cyberpunk2077"), Source = new ModSource { Type = ModSourceType.Direct } },
+            ],
+        };
+
+        var png = await Capture(
+            () => new CollectionInstructionsView { Instructions = CollectionInstructions.From(root, Provider) },
+            isReady: window => window.GetVisualDescendants().OfType<MarkdownScrollViewer>().Any());
         await VerifyPng(png);
     }
 

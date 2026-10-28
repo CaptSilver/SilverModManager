@@ -29,13 +29,13 @@ public partial class CollectionInstructionsView : UserControl
 
         var instructions = Instructions;
 
-        CollectionInstructionsExpander.IsVisible = instructions.Collection is not null;
+        CollectionInstructionsSection.IsVisible = instructions.Collection is not null;
         CollectionInstructionsRendererHost.ViewModel = instructions.Collection;
 
-        RequiredModsInstructionsExpander.IsVisible = instructions.RequiredMods.Length > 0;
+        RequiredModsInstructionsSection.IsVisible = instructions.RequiredMods.Length > 0;
         RequiredModsInstructions.ItemsSource = instructions.RequiredMods;
 
-        OptionalModsInstructionsExpander.IsVisible = instructions.OptionalMods.Length > 0;
+        OptionalModsInstructionsSection.IsVisible = instructions.OptionalMods.Length > 0;
         OptionalModsInstructions.ItemsSource = instructions.OptionalMods;
     }
 }
