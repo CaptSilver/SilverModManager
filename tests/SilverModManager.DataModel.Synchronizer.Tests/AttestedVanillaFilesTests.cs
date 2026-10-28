@@ -1,6 +1,11 @@
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using SilverModManager.Games.FileHashes;
+using SilverModManager.MnemonicDB.Storage;
+using SilverModManager.MnemonicDB.Storage.RocksDbBackend;
+using SilverModManager.Sdk.Settings;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using SilverModManager.Abstractions.Games.FileHashes;
@@ -505,6 +510,78 @@ public class AttestedVanillaFilesTests(ITestOutputHelper helper) : ASteamInstall
 
         await act.Should().ThrowAsync<UserFacingException>();
         await EveryVanillaFileIsOnDiskAndNoneWasBackedUp();
+    }
+
+    [Fact]
+    public async Task AGameUpdatedToABuildOnlyTheStoreLaterDescribes_NeverTakesTheDeployedModForTheGamesOwnFile()
+    {
+        var loadout = await CreateLoadout();
+        await AddMod(loadout, Vanilla);
+        await Synchronizer.Synchronize(Refresh(loadout));
+        SteamUpdatesTheGame(cachesTheNewManifests: false);
+
+        var refused = () => Synchronizer.Synchronize(Refresh(loadout));
+
+        await refused.Should().ThrowAsync<UserFacingException>();
+        LocalBaseline.All(Hashes.Local).Single().LocatorIds.Should().NotContain(NewGameManifestId.ToString(),
+            "a snapshot of a folder with a mod deployed is not the vanilla list of the new build");
+
+        await TheDownloadedStoreLearnsTheNewBuild();
+        await RemoveMod(loadout);
+        await Synchronizer.Synchronize(Refresh(loadout));
+
+        Refresh(loadout).LocatorIds.Select(id => id.Value).Should().Contain(NewGameManifestId.ToString());
+        (await ReadGameFile(Vanilla)).Should().Be(VanillaText, "disabling the mod restores the vanilla bytes");
+        Overrides(Refresh(loadout)).Should().NotContain(Vanilla);
+    }
+
+    // The store's own data: a newer downloaded database on disk, which the service connects when it checks for one.
+    private async Task TheDownloadedStoreLearnsTheNewBuild()
+    {
+        var location = ServiceProvider.GetRequiredService<ISettingsManager>().Get<FileHashesServiceSettings>()
+            .HashDatabaseLocation.ToPath(ServiceProvider.GetRequiredService<IFileSystem>());
+        var path = location / $"{Guid.NewGuid()}_{DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds()}";
+        using (var backend = new SilverModManager.MnemonicDB.Storage.RocksDbBackend.Backend())
+        using (var store = new DatomStore(NullLogger<DatomStore>.Instance, new DatomStoreSettings { Path = path }, backend))
+        using (var downloaded = new SilverModManager.MnemonicDB.Connection(NullLogger<SilverModManager.MnemonicDB.Connection>.Instance, store, ServiceProvider, []))
+        {
+            await AddDownloadedManifest(downloaded, CyberpunkSteamInstall.GameDepotId, NewGameManifestId, CyberpunkSteamInstall.GameFiles);
+            await AddDownloadedManifest(downloaded, CyberpunkSteamInstall.ExpansionDepotId, NewExpansionManifestId, CyberpunkSteamInstall.ExpansionFiles);
+        }
+
+        await Hashes.CheckForUpdate();
+        Hashes.Current.Connection.Should().NotBeSameAs(Hashes.Local.Connection, "the downloaded database is connected");
+    }
+
+    private static async Task AddDownloadedManifest(IConnection store, uint depotId, ulong manifestId, SteamFile[] files)
+    {
+        using var tx = store.BeginTransaction();
+        var paths = new List<EntityId>();
+        foreach (var file in files)
+        {
+            var hashes = await MultiHasher.HashStream(new MemoryStream(file.Content));
+            var relation = new HashRelation.New(tx)
+            {
+                MinimalHash = hashes.MinimalHash,
+                XxHash3 = hashes.XxHash3,
+                Sha1 = hashes.Sha1,
+                XxHash64 = hashes.XxHash64,
+                Md5 = hashes.Md5,
+                Size = hashes.Size,
+                Crc32 = hashes.Crc32,
+            };
+            paths.Add(new PathHashRelation.New(tx) { Path = file.Path, HashId = relation }.Id);
+        }
+
+        _ = new SteamManifest.New(tx)
+        {
+            AppId = SilverModManager.Abstractions.Steam.Values.AppId.From(CyberpunkSteamInstall.AppId),
+            DepotId = SilverModManager.Abstractions.Steam.Values.DepotId.From(depotId),
+            ManifestId = SilverModManager.Abstractions.Steam.Values.ManifestId.From(manifestId),
+            Name = "public",
+            FilesIds = paths,
+        };
+        await tx.Commit();
     }
 
     private async Task NoVanillaFileWasBackedUp()

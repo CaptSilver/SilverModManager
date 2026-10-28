@@ -210,6 +210,76 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         NonVanillaFile.All(_store.Db).Should().BeEmpty();
     }
 
+    private LocalBaselineCoordinator ManagedCoordinator() => new(
+        () => _store,
+        new LocalVanillaBaseline(FileSystem.Shared, NullLogger<LocalVanillaBaseline>.Instance),
+        _source,
+        _coordinatorLog,
+        _ => true);
+
+    [Fact]
+    public async Task ManagedFolder_ChangedLocatorIdsWithoutAManifest_KeepTheOldBaseline()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        var coordinator = ManagedCoordinator();
+        _source.Add(101, ("a.esm", "vanilla"));
+        await coordinator.Ensure(Installation("101"));
+        WriteGameFile("mod.esp", "deployed mod");
+
+        var result = await coordinator.Ensure(Installation("102"));
+
+        result.Rebuilt.Should().BeFalse();
+        result.Kind.Should().Be(LocalBaselineKind.DepotManifests);
+        var baseline = LocalBaseline.All(_store.Db).Should().ContainSingle().Subject;
+        baseline.LocatorIds.Should().Equal("101");
+        baseline.Files.Select(f => f.Path.ToString()).Should().NotContain("mod.esp");
+        _coordinatorLog.Lines.Should().Contain(l => l.Contains("Keeping the baseline"));
+    }
+
+    [Fact]
+    public async Task ManagedFolder_ChangedLocatorIdsWithAPartlyCoveredBuild_KeepTheOldBaseline()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        var coordinator = ManagedCoordinator();
+        _source.Add(101, ("a.esm", "vanilla"));
+        await coordinator.Ensure(Installation("101"));
+        _source.Add(102, ("a.esm", "vanilla"));
+
+        var result = await coordinator.Ensure(Installation("102", "103"));
+
+        result.Rebuilt.Should().BeFalse();
+        LocalBaseline.All(_store.Db).Single().LocatorIds.Should().Equal("101");
+    }
+
+    [Fact]
+    public async Task ManagedFolder_ChangedLocatorIdsWithTheManifestCached_RebuildFromIt()
+    {
+        WriteGameFile("a.esm", "vanilla v2");
+        var coordinator = ManagedCoordinator();
+        _source.Add(101, ("a.esm", "vanilla"));
+        _source.Add(102, ("a.esm", "vanilla v2"));
+        await coordinator.Ensure(Installation("101"));
+
+        var result = await coordinator.Ensure(Installation("102"));
+
+        result.Rebuilt.Should().BeTrue();
+        result.Kind.Should().Be(LocalBaselineKind.DepotManifests);
+        LocalBaseline.All(_store.Db).Should().ContainSingle().Which.LocatorIds.Should().Equal("102");
+    }
+
+    [Fact]
+    public async Task UnmanagedFolder_ChangedLocatorIdsWithoutAManifest_TakeASnapshot()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        _source.Add(101, ("a.esm", "vanilla"));
+        await _coordinator.Ensure(Installation("101"));
+
+        var result = await _coordinator.Ensure(Installation("102"));
+
+        result.Rebuilt.Should().BeTrue();
+        result.Kind.Should().Be(LocalBaselineKind.Snapshot);
+    }
+
     [Fact]
     public async Task ManifestNeedingADepotKey_CountsAsUncovered()
     {

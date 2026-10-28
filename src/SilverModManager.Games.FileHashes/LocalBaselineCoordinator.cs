@@ -28,6 +28,7 @@ internal sealed class LocalBaselineCoordinator : IDisposable
     private readonly Func<IConnection> _localStore;
     private readonly LocalVanillaBaseline _baseline;
     private readonly IDepotManifestSource? _manifestSource;
+    private readonly Func<GameInstallation, bool> _isManaged;
     private readonly ILogger<LocalBaselineCoordinator> _logger;
     private readonly ConcurrentDictionary<(GameStore Store, string Path), Lazy<Task<LocalBaselineResult>>> _inFlight = new();
 
@@ -39,8 +40,10 @@ internal sealed class LocalBaselineCoordinator : IDisposable
 
     /// <param name="localStore">The connection the baseline rows are written to, read on each call so it is never held across a replacement.</param>
     /// <param name="manifestSource">Null when no Steam services are registered; every baseline is then a snapshot.</param>
-    public LocalBaselineCoordinator(Func<IConnection> localStore, LocalVanillaBaseline baseline, IDepotManifestSource? manifestSource, ILogger<LocalBaselineCoordinator> logger)
+    /// <param name="isManaged">Whether a loadout has been applied to the installation's folder. Null counts every folder as unmanaged.</param>
+    public LocalBaselineCoordinator(Func<IConnection> localStore, LocalVanillaBaseline baseline, IDepotManifestSource? manifestSource, ILogger<LocalBaselineCoordinator> logger, Func<GameInstallation, bool>? isManaged = null)
     {
+        _isManaged = isManaged ?? (_ => false);
         _localStore = localStore;
         _baseline = baseline;
         _manifestSource = manifestSource;
@@ -129,6 +132,18 @@ internal sealed class LocalBaselineCoordinator : IDisposable
             return Describe(store.Db, baseline, rebuilt: false);
 
         var (manifests, allCovered) = ResolveManifests(installation);
+
+        // A folder a loadout was applied to has mods in it. A baseline not built from complete depot manifests
+        // takes the folder as it is, so for another build than the old baseline's it would call those mods vanilla.
+        // The old baseline stays until a manifest covers the new build.
+        if (existing is { } old && !BuiltFor(old, locator.LocatorIds.Select(id => id.Value))
+            && (manifests.Count == 0 || !allCovered) && _isManaged(installation))
+        {
+            _logger.LogInformation("Keeping the baseline of {Game} built for its previous build: no manifest covers the new one and the folder has mods deployed, so a baseline taken from it would count them as the game's own files",
+                installation.Game.DisplayName);
+            return Describe(store.Db, old, rebuilt: false);
+        }
+
         var synchronizer = installation.GetGame().Synchronizer;
         var request = new BaselineRequest
         {

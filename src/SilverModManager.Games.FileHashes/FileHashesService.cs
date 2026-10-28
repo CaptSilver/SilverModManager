@@ -104,11 +104,18 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             () => _local.Connection,
             new LocalVanillaBaseline(_fileSystem, provider.GetRequiredService<ILogger<LocalVanillaBaseline>>(), provider.GetService<IBaselineFileOpener>() is { } opener ? opener.OpenRead : null, () => Databases),
             provider.GetService<IDepotManifestSource>(),
-            provider.GetRequiredService<ILogger<LocalBaselineCoordinator>>());
+            provider.GetRequiredService<ILogger<LocalBaselineCoordinator>>(),
+            IsManaged);
 
         // Only when nothing is on disk: with a database there, opening it is what registers the name.
         if (!ExistingDBs().Any()) EnsureHashesNameResolves();
     }
+
+    // The registry is resolved on use: it depends on this service.
+    private bool IsManaged(GameInstallation installation)
+        => _provider.GetService<IGameRegistry>() is { } registry
+            && registry.TryGetMetadata(installation, out var metadata)
+            && GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out _);
 
     private void EnsureHashesNameResolves()
     {
