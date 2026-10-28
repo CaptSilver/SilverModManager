@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.App.UI.Controls.Settings.SettingEntries;
@@ -8,10 +9,12 @@ namespace SilverModManager.UI.Tests;
 
 /// <summary>
 /// The text box behind a free-text setting, built the way the Settings page builds it, for the HTTP proxy setting.
+/// It's a UI view model, so it is built and used on the UI thread of the running test app: building it anywhere else
+/// first would tie the shared dispatcher to the wrong thread and crash the whole test host.
 /// </summary>
-public class SettingTextControlTests(IServiceProvider provider)
+public class SettingTextControlTests(IServiceProvider provider) : AUiTest(provider)
 {
-    private ISettingsManager Settings => provider.GetRequiredService<ISettingsManager>();
+    private ISettingsManager Settings => Provider.GetRequiredService<ISettingsManager>();
 
     private PropertyConfig ProxyProperty() => Settings.Configs[typeof(HttpProxySettings)].Properties.Single(p => p.Name == nameof(HttpProxySettings.HttpProxy));
 
@@ -19,11 +22,11 @@ public class SettingTextControlTests(IServiceProvider provider)
     {
         var property = ProxyProperty();
         property.ContainerOptions.Should().BeOfType<TextContainerOptions>();
-        return (SettingTextViewModel)new SettingTextFactory().Create(provider, Settings, (TextContainerOptions)property.ContainerOptions!, property);
+        return (SettingTextViewModel)new SettingTextFactory().Create(Provider, Settings, (TextContainerOptions)property.ContainerOptions!, property);
     }
 
     [Fact]
-    public void ItShowsTheCurrentValueOfTheSetting()
+    public Task ItShowsTheCurrentValueOfTheSetting() => Dispatcher.UIThread.InvokeAsync(() =>
     {
         Settings.Update<HttpProxySettings>(s => s with { HttpProxy = "http://127.0.0.1:8888" });
         try
@@ -38,10 +41,10 @@ public class SettingTextControlTests(IServiceProvider provider)
         {
             Settings.Update<HttpProxySettings>(s => s with { HttpProxy = "" });
         }
-    }
+    }).GetTask();
 
     [Fact]
-    public void EditingTheTextMarksItChanged_AndSavingWritesItToTheSetting()
+    public Task EditingTheTextMarksItChanged_AndSavingWritesItToTheSetting() => Dispatcher.UIThread.InvokeAsync(() =>
     {
         var viewModel = CreateViewModel();
         try
@@ -60,10 +63,10 @@ public class SettingTextControlTests(IServiceProvider provider)
         {
             Settings.Update<HttpProxySettings>(s => s with { HttpProxy = "" });
         }
-    }
+    }).GetTask();
 
     [Fact]
-    public void ResettingToDefaultEmptiesTheText()
+    public Task ResettingToDefaultEmptiesTheText() => Dispatcher.UIThread.InvokeAsync(() =>
     {
         var viewModel = CreateViewModel();
         viewModel.TextContainer.CurrentValue = "http://proxy.example:3128";
@@ -72,5 +75,5 @@ public class SettingTextControlTests(IServiceProvider provider)
 
         viewModel.TextContainer.CurrentValue.Should().BeEmpty();
         viewModel.TextContainer.IsDefault.Should().BeTrue();
-    }
+    }).GetTask();
 }

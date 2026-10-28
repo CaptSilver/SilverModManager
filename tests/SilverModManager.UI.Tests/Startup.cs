@@ -19,6 +19,13 @@ namespace SilverModManager.UI.Tests;
 
 public class Startup
 {
+    /// <summary>
+    /// Starts the headless app before any test runs. Dispatcher.UIThread is created on first use and keeps whatever
+    /// platform existed then; a test class that touched it (directly or through ReactiveUI/R3) before the first UI
+    /// test started the app left a dispatcher without the headless platform, and MainLoop then crashed the test host.
+    /// </summary>
+    public void Configure(AvaloniaApp app) { }
+
     public void ConfigureServices(IServiceCollection services)
     {
         var baseDirectory = $"SilverModManager.UI.Tests.Tests-{Guid.NewGuid()}";
