@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\SilverModManager.Abstractions.GuidedInstallers\SilverModManager.Abstractions.GuidedInstallers.csproj" />
+    <ProjectReference Include="..\..\..\src\SilverModManager.Games.Witcher\SilverModManager.Games.Witcher.csproj" />
+    <ProjectReference Include="..\SilverModManager.Games.TestFramework\SilverModManager.Games.TestFramework.csproj" />
+  </ItemGroup>
+</Project>

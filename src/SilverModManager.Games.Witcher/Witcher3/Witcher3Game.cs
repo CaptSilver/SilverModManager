@@ -1,0 +1,41 @@
+using DynamicData.Kernel;
+using NexusMods.Paths;
+using SilverModManager.Abstractions.Loadouts.Synchronizers;
+using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk.NexusModsApi;
+
+namespace SilverModManager.Games.Witcher.Witcher3;
+
+public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witcher3Game>(provider), IGameData<Witcher3Game>
+{
+    private static readonly RelativePath Dx12Exe = "bin/x64_dx12/witcher3.exe";
+    private static readonly RelativePath Dx11Exe = "bin/x64/witcher3.exe";
+
+    public static GameId GameId { get; } = GameId.From("Witcher.Witcher3");
+    public static string DisplayName => "The Witcher 3: Wild Hunt";
+    public static Optional<NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(952);
+
+    private StoreIdentifiers? _storeIdentifiers;
+
+    // 292030 is the base game, 499450 the Game of the Year edition.
+    protected override uint SteamAppId => 292030;
+
+    public override StoreIdentifiers StoreIdentifiers => _storeIdentifiers ??= new StoreIdentifiers(GameId)
+    {
+        SteamAppIds = [499450u, 292030u],
+        GOGProductIds = [1207664663L, 1495134320L, 1207664643L, 1640424747L],
+        EGSCatalogItemId = ["725a22e15ed74735bb0d6a19f3cc82d0"],
+    };
+
+    protected override RelativePath PrimaryExe => Dx12Exe;
+    protected override string? DocumentsFolderName => "The Witcher 3";
+
+    protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new Witcher3Synchronizer(provider, this);
+
+    // Older installs and the Steam default for some editions ship only the original executable.
+    public override GamePath GetPrimaryFile(GameInstallation installation)
+    {
+        var dx12 = new GamePath(LocationId.Game, Dx12Exe);
+        return installation.Locations.ToAbsolutePath(dx12).FileExists ? dx12 : new GamePath(LocationId.Game, Dx11Exe);
+    }
+}

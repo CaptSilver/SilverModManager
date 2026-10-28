@@ -256,6 +256,7 @@ public static class Services
         Games.MountAndBlade2Bannerlord.Services.AddMountAndBlade2Bannerlord(services);
         Games.FromSoft.Services.AddFromSoftGames(services);
         Games.Unity.Services.AddUnityGames(services);
+        Games.Witcher.Services.AddWitcherGames(services);
         return services;
     }
 }
