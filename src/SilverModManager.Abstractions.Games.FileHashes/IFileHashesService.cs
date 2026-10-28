@@ -2,6 +2,7 @@ using DynamicData.Kernel;
 using JetBrains.Annotations;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
 using NexusMods.Hashing.xxHash3;
+using NexusMods.Paths;
 using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -101,6 +102,21 @@ public interface IFileHashesService
     /// end, so anything that looks hashes up while one runs sees none of them and reads every file instead.
     /// </summary>
     public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Remembers the xxHash3 of files that were read in full and found unchanged by a second stat, replacing the
+    /// rows of the same location and path, in one transaction on <see cref="Local"/>.
+    /// </summary>
+    public Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gives the hash recorded by <see cref="RecordIndexedFiles"/> for this exact location, path, size and modified time.
+    /// Accepts a row only for a file the app itself read and re-stat'ed unchanged, found by location and by the
+    /// ordinal spelling of the path. It still accepts a same-size rewrite that restored the modified time, and on
+    /// FAT/exFAT libraries (2 s timestamps) such a rewrite is easier to produce; the SHA-1 check of an attested
+    /// file and the full read after any other change are what close those.
+    /// </summary>
+    public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3);
 
     /// <summary>
     /// Suggest version data for a given game installation and files.

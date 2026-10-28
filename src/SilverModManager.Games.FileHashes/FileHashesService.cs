@@ -714,6 +714,20 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         => _baselineCoordinator.WaitForBuild(installation, cancellationToken);
 
     /// <inheritdoc />
+    public async Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default)
+    {
+        if (files.Count == 0) return;
+        var connection = _local.Connection;
+        using var tx = connection.BeginTransaction();
+        LocalFileHashRows.Record(tx, connection.Db, LocalBaselineCoordinator.GamePathOf(installation), files);
+        await tx.Commit();
+    }
+
+    /// <inheritdoc />
+    public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3)
+        => LocalFileHashRows.TryGet(Local, LocalBaselineCoordinator.GamePathOf(installation), path, size, modifiedUtc, out xxHash3);
+
+    /// <inheritdoc />
     public IDb Current => _currentDb?.Db ?? Local;
 
     /// <inheritdoc />

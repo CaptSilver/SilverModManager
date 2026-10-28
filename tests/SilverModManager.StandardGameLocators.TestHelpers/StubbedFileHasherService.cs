@@ -204,6 +204,21 @@ public class StubbedFileHasherService : IFileHashesService
     // No build ever runs here.
     public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
+    public async Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default)
+    {
+        if (files.Count == 0) return;
+        EnsureLocal();
+        var connection = _localConnection!;
+        using var tx = connection.BeginTransaction();
+        LocalFileHashRows.Record(tx, connection.Db, GameKey(installation), files);
+        await tx.Commit();
+    }
+
+    public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3)
+        => LocalFileHashRows.TryGet(EnsureLocal(), GameKey(installation), path, size, modifiedUtc, out xxHash3);
+
+    private static string GameKey(GameInstallation installation) => installation.Locations[LocationId.Game].Path.ToString();
+
     public IDb Current => _db.Value.GetAwaiter().GetResult();
 
     public IDb Local => EnsureLocal();

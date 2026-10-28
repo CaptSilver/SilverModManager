@@ -38,10 +38,12 @@ internal sealed class IndexTally
     private readonly long[] _misses = new long[Enum.GetValues<StoredHashMiss>().Length];
     private long _unchanged;
     private long _fromStoredHash;
+    private long _fromFingerprint;
     private long _bytesHashed;
 
     public void Unchanged() => Interlocked.Increment(ref _unchanged);
     public void FromStoredHash() => Interlocked.Increment(ref _fromStoredHash);
+    public void FromFingerprint() => Interlocked.Increment(ref _fromFingerprint);
 
     public void FullyHashed(StoredHashMiss reason, Size size)
     {
@@ -51,6 +53,7 @@ internal sealed class IndexTally
 
     public long UnchangedCount => Interlocked.Read(ref _unchanged);
     public long FromStoredHashCount => Interlocked.Read(ref _fromStoredHash);
+    public long FromFingerprintCount => Interlocked.Read(ref _fromFingerprint);
     public long FullyHashedCount => _misses.Sum();
     public long MissCount(StoredHashMiss reason) => Interlocked.Read(ref _misses[(int)reason]);
     public Size BytesHashed => Size.From((ulong)Interlocked.Read(ref _bytesHashed));
@@ -59,9 +62,9 @@ internal sealed class IndexTally
     {
         logger.LogInformation(
             "Indexed {Game}: {Unchanged} unchanged by size and time, {New} new, {Modified} modified, {Removed} removed. " +
-            "{FromStored} hashes taken from stored rows; {Hashed} files ({Bytes}) read in full ({NoRow} without a row, {SizeDiffers} of another size, {ContentDiffers} with other content, {Disagree} with disagreeing stores)",
+            "{FromFingerprint} hashes taken from the fingerprint of an earlier read, {FromStored} from stored rows; {Hashed} files ({Bytes}) read in full ({NoRow} without a row, {SizeDiffers} of another size, {ContentDiffers} with other content, {Disagree} with disagreeing stores)",
             game, UnchangedCount, newFiles, modifiedFiles, removedFiles,
-            FromStoredHashCount, FullyHashedCount, BytesHashed,
+            FromFingerprintCount, FromStoredHashCount, FullyHashedCount, BytesHashed,
             MissCount(StoredHashMiss.NoRowForPath), MissCount(StoredHashMiss.SizeDiffers), MissCount(StoredHashMiss.ContentDiffers), MissCount(StoredHashMiss.StoresDisagree));
     }
 }

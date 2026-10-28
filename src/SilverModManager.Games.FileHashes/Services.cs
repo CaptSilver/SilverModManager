@@ -34,6 +34,7 @@ public static class Services
             .AddSteamManifestModel()
             .AddLocalBaselineModel()
             .AddNonVanillaFileModel()
+            .AddLocalFileHashModel()
             .AddEpicGameStoreBuildModel()
             .AddFileHashesQueriesSql()
             .AddSingleton<IFileHashesService, FileHashesService>()

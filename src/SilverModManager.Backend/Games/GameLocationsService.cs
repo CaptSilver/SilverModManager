@@ -53,6 +53,7 @@ internal class GameLocationsService : IGameLocationsService
         var seenPaths = new ConcurrentDictionary<GamePath, bool>();
         var newFiles = new ConcurrentDictionary<GamePath, IndexFileResult>();
         var modifiedFiles = new ConcurrentDictionary<GamePath, IndexFileResult>();
+        var readFiles = new ConcurrentBag<IndexedFileHash>();
 
         var options = new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = outerToken };
         await Parallel.ForEachAsync(enumerable, options, async (file, token) =>
@@ -67,7 +68,7 @@ internal class GameLocationsService : IGameLocationsService
                 {
                     if (HasFileChanged(file, previousDiskStateEntry))
                     {
-                        var indexFileResult = await IndexFile(file, gamePath, tally, token);
+                        var indexFileResult = await IndexFile(installation, file, gamePath, tally, readFiles, token);
                         modifiedFiles[gamePath] = indexFileResult;
                     }
                     else
@@ -77,7 +78,7 @@ internal class GameLocationsService : IGameLocationsService
                 }
                 else
                 {
-                    var indexFileResult = await IndexFile(file, gamePath, tally, token);
+                    var indexFileResult = await IndexFile(installation, file, gamePath, tally, readFiles, token);
                     newFiles[gamePath] = indexFileResult;
                 }
             }
@@ -90,6 +91,8 @@ internal class GameLocationsService : IGameLocationsService
                 progress?.Invoke(Interlocked.Increment(ref filesDone), totalFiles);
             }
         });
+
+        await _fileHashesService.RecordIndexedFiles(installation, readFiles.ToArray(), outerToken);
 
         var removedFiles = previousDiskState.Keys.Except(seenPaths.Keys).ToFrozenSet();
         tally.Log(_logger, installation.Game.DisplayName, newFiles.Count, modifiedFiles.Count, removedFiles.Count);
@@ -109,22 +112,46 @@ internal class GameLocationsService : IGameLocationsService
     }
 
     private async ValueTask<IndexFileResult> IndexFile(
+        GameInstallation installation,
         AbsolutePath file,
         GamePath gamePath,
         IndexTally tally,
+        ConcurrentBag<IndexedFileHash> readFiles,
         CancellationToken cancellationToken)
     {
         var fingerprint = FileFingerprint.Of(file);
+        var newHash = await HashFile(installation, file, gamePath, fingerprint, tally, cancellationToken);
 
-        var newHash = await HashFile(file, gamePath, tally, cancellationToken);
+        // The rows outlive the disk state, so one is written only for bytes read under a fingerprint that held.
+        // A file written during the read would otherwise keep a hash of mixed bytes under its old size and time.
+        var after = FileFingerprint.Of(file);
+        if (after != fingerprint)
+        {
+            fingerprint = after;
+            newHash = await HashFile(installation, file, gamePath, fingerprint, tally, cancellationToken);
+            after = FileFingerprint.Of(file);
+            if (after != fingerprint)
+            {
+                _logger.LogDebug("File `{Path}` changed while it was read, not remembering its hash", file);
+                return new IndexFileResult(gamePath, newHash, fingerprint.Size, fingerprint.LastModified);
+            }
+        }
+
+        readFiles.Add(new IndexedFileHash(gamePath, fingerprint.Size, fingerprint.LastModified, newHash));
         return new IndexFileResult(gamePath, newHash, fingerprint.Size, fingerprint.LastModified);
     }
 
     internal ValueTask<Hash> HashFile(AbsolutePath file, GamePath gamePath, CancellationToken cancellationToken)
-        => HashFile(file, gamePath, new IndexTally(), cancellationToken);
+        => HashFile(null, file, gamePath, FileFingerprint.Of(file), new IndexTally(), cancellationToken);
 
-    private async ValueTask<Hash> HashFile(AbsolutePath file, GamePath gamePath, IndexTally tally, CancellationToken cancellationToken)
+    private async ValueTask<Hash> HashFile(GameInstallation? installation, AbsolutePath file, GamePath gamePath, FileFingerprint fingerprint, IndexTally tally, CancellationToken cancellationToken)
     {
+        if (installation is not null && _fileHashesService.TryGetFingerprintedHash(installation, gamePath, fingerprint.Size, fingerprint.LastModified, out var remembered))
+        {
+            tally.FromFingerprint();
+            return remembered;
+        }
+
         var lookup = await GetExistingHash(_fileHashesService.Databases, file, gamePath, cancellationToken);
         if (lookup.Hash.HasValue)
         {
@@ -133,7 +160,7 @@ internal class GameLocationsService : IGameLocationsService
         }
 
         _logger.LogDebug("Didn't find matching hash data for file `{Path}` ({Reason}), falling back to a full hash", file, lookup.Miss);
-        tally.FullyHashed(lookup.Miss, FileFingerprint.Of(file).Size);
+        tally.FullyHashed(lookup.Miss, fingerprint.Size);
         return await _fullHasher.Hash(file, cancellationToken);
     }
 

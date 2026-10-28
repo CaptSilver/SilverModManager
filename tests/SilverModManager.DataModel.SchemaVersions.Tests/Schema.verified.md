@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x3C64FCF0D3E8C577
-   - Total attributes: 366
-   - Total namespaces: 104
+   - Fingerprint: 0xA3B0B1B9997373E8
+   - Total attributes: 372
+   - Total namespaces: 105
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -133,6 +133,12 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Games.FileHashes.LocalBaseline/Manifests                                 | Reference               | False   | True  | False     | 
 | SilverModManager.Games.FileHashes.LocalBaseline/Store                                     | Ascii                   | True    | False | False     | 
 | SilverModManager.Games.FileHashes.LocalBaseline/VersionName                               | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.FileHashes.LocalFileHash/GamePath                                  | Utf8                    | True    | False | False     | 
+| SilverModManager.Games.FileHashes.LocalFileHash/Location                                  | UInt16                  | False   | False | False     | 
+| SilverModManager.Games.FileHashes.LocalFileHash/ModifiedUtc                               | Int64                   | False   | False | False     | 
+| SilverModManager.Games.FileHashes.LocalFileHash/Path                                      | Utf8Insensitive         | True    | False | False     | 
+| SilverModManager.Games.FileHashes.LocalFileHash/Size                                      | UInt64                  | False   | False | False     | 
+| SilverModManager.Games.FileHashes.LocalFileHash/XxHash3                                   | UInt64                  | False   | False | False     | 
 | SilverModManager.Games.FileHashes.NonVanillaFile/Baseline                                 | Reference               | True    | False | False     | 
 | SilverModManager.Games.FileHashes.NonVanillaFile/Path                                     | Utf8Insensitive         | True    | False | False     | 
 | SilverModManager.Games.FileHashes.NonVanillaFile/Reason                                   | UInt8                   | False   | False | False     | 

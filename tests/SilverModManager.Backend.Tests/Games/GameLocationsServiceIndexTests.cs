@@ -17,7 +17,9 @@ using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.MnemonicDB.Storage;
 using NexusMods.Paths;
 using SilverModManager.Sdk.Games;
+using SilverModManager.Sdk;
 using SilverModManager.Sdk.Hashes;
+using SilverModManager.Sdk.NexusModsApi;
 using NSubstitute;
 using Connection = SilverModManager.MnemonicDB.Connection;
 
@@ -43,6 +45,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
             .AddGameInstallMetadataModel()
             .AddHashRelationModel()
             .AddPathHashRelationModel()
+            .AddLocalFileHashModel()
             .BuildServiceProvider();
 
         var backend = new MnemonicDB.Storage.RocksDbBackend.Backend();
@@ -177,6 +180,86 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         (await index).NewFiles.Should().HaveCount(5);
     }
 
+    [Fact]
+    public async Task SecondIndexWithEmptyDiskState_DoesNotRehashAnUnchangedFile()
+    {
+        await WriteGameFiles(5);
+        var service = CreateService();
+        await service.IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+        _hasher.Calls.Should().Be(5);
+        _hasher.Reset();
+
+        var second = await service.IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        second.NewFiles.Should().HaveCount(5);
+        _hasher.Calls.Should().Be(0);
+        second.NewFiles[new GamePath(LocationId.Game, "data/file2.bin")].Hash.Should().Be((await MultiHasher.HashStream(new MemoryStream(Content(2)))).XxHash3);
+    }
+
+    [Fact]
+    public async Task TouchedFile_IsRehashedDespiteItsFingerprintRow()
+    {
+        await WriteGameFiles(3);
+        var service = CreateService();
+        await service.IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+        _hasher.Reset();
+        File.SetLastWriteTimeUtc(_gameDir.Combine("data/file1.bin").GetFullPath(), DateTime.UtcNow.AddMinutes(1));
+
+        await service.IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        _hasher.Paths.Should().ContainSingle().Which.Should().Be(_gameDir.Combine("data/file1.bin"));
+    }
+
+    [Fact]
+    public async Task PathsDifferingOnlyInCase_GetTheirOwnRows()
+    {
+        // The index keys files by GamePath, which ignores case, so only one of two such files reaches the row writer
+        // per index. The rows must still keep them apart: they come from the case-insensitive path index and a lookup
+        // that ignored the spelling would hand one file the other's hash.
+        var hashes = new LocalRowsFileHashes(_connection, _gameDir.ToString(), [], Task.CompletedTask);
+        var upper = new GamePath(LocationId.Game, "Mods/x.bin");
+        var lower = new GamePath(LocationId.Game, "mods/x.bin");
+        var size = Size.From(10);
+        var stamp = DateTimeOffset.UtcNow.AddHours(-1);
+        var upperHash = Hash.From(1);
+        var lowerHash = Hash.From(2);
+
+        await hashes.RecordIndexedFiles(_installation, [new IndexedFileHash(upper, size, stamp, upperHash)]);
+        await hashes.RecordIndexedFiles(_installation, [new IndexedFileHash(lower, size, stamp, lowerHash)]);
+
+        hashes.TryGetFingerprintedHash(_installation, upper, size, stamp, out var foundUpper).Should().BeTrue();
+        hashes.TryGetFingerprintedHash(_installation, lower, size, stamp, out var foundLower).Should().BeTrue();
+        foundUpper.Should().Be(upperHash);
+        foundLower.Should().Be(lowerHash);
+        LocalRows().Select(r => r.Path.Path).Should().BeEquivalentTo(["Mods/x.bin", "mods/x.bin"]);
+    }
+
+    [Fact]
+    public async Task FileRewrittenWhileItIsRead_GetsNoFingerprintRow()
+    {
+        await WriteGameFiles(2);
+        var moving = _gameDir.Combine("data/file0.bin");
+        var tick = 0;
+        _hasher.OnHash = file =>
+        {
+            if (file != moving) return;
+            File.SetLastWriteTimeUtc(file.GetFullPath(), DateTime.UtcNow.AddMinutes(10 + ++tick));
+        };
+        var service = CreateService();
+
+        await service.IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        LocalRows().Select(r => r.Path.Path).Should().BeEquivalentTo(["data/file1.bin"]);
+        _hasher.OnHash = null;
+        _hasher.Reset();
+
+        await service.IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        _hasher.Paths.Should().ContainSingle().Which.Should().Be(moving);
+    }
+
+    private IReadOnlyList<LocalFileHash.ReadOnly> LocalRows() => LocalFileHash.All(_connection.Db).ToList();
+
     private async Task WriteGameFiles(int count)
     {
         for (var i = 0; i < count; i++)
@@ -236,17 +319,49 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
 
     private GameLocationsService CreateService(Task? waitForBuild = null, IDb[]? stores = null)
     {
-        var hashes = Substitute.For<IFileHashesService>();
-        hashes.Databases.Returns(stores ?? []);
-        hashes.WaitForLocalBaselineBuild(Arg.Any<GameInstallation>(), Arg.Any<CancellationToken>()).Returns(waitForBuild ?? Task.CompletedTask);
+        var hashes = new LocalRowsFileHashes(_connection, _gameDir.ToString(), stores ?? [], waitForBuild ?? Task.CompletedTask);
 
         var services = new ServiceCollection()
             .AddLogging()
-            .AddSingleton(hashes)
+            .AddSingleton<IFileHashesService>(hashes)
             .AddSingleton<IFullFileHasher>(_hasher)
             .BuildServiceProvider();
         _owned.Add(services);
         return new GameLocationsService(services);
+    }
+
+    /// <summary>
+    /// Keeps the fingerprint rows in the fixture's connection through the same row code the real service runs. NSubstitute
+    /// cannot stand in for it: matching a <see cref="Size"/> argument makes it construct one, which throws.
+    /// </summary>
+    private sealed class LocalRowsFileHashes(IConnection local, string gameKey, IDb[] stores, Task waitForBuild) : IFileHashesService
+    {
+        public IDb Current => local.Db;
+        public IDb Local => local.Db;
+        public IReadOnlyList<IDb> Databases => stores;
+        public Task WaitForLocalBaselineBuild(GameInstallation installation, CancellationToken cancellationToken = default) => waitForBuild;
+
+        public async Task RecordIndexedFiles(GameInstallation installation, IReadOnlyList<IndexedFileHash> files, CancellationToken cancellationToken = default)
+        {
+            using var tx = local.BeginTransaction();
+            LocalFileHashRows.Record(tx, local.Db, gameKey, files);
+            await tx.Commit();
+        }
+
+        public bool TryGetFingerprintedHash(GameInstallation installation, GamePath path, Size size, DateTimeOffset modifiedUtc, out Hash xxHash3)
+            => LocalFileHashRows.TryGet(local.Db, gameKey, path, size, modifiedUtc, out xxHash3);
+
+        public ValueTask<IDb> GetFileHashesDb() => throw new NotSupportedException();
+        public Task CheckForUpdate(bool forceUpdate = false) => throw new NotSupportedException();
+        public IEnumerable<VanityVersion> GetKnownVanityVersions(NexusModsGameId nexusModsGameId) => throw new NotSupportedException();
+        public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore) => throw new NotSupportedException();
+        public bool CoversInstalledBuild(LocatorIdsWithGameStore locatorIdsWithGameStore) => throw new NotSupportedException();
+        public bool TryGetVanityVersion(LocatorIdsWithGameStore locatorIdsWithGameStore, out VanityVersion version) => throw new NotSupportedException();
+        public bool TryGetLocatorIdsForVanityVersion(GameStore gameStore, VanityVersion version, out LocatorId[] locatorIds) => throw new NotSupportedException();
+        public LocatorId[] GetLocatorIdsForVersionDefinition(GameStore gameStore, VersionDefinition.ReadOnly versionDefinition) => throw new NotSupportedException();
+        public Task<LocalBaselineResult> EnsureLocalBaseline(GameInstallation installation, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task RemoveLocalBaseline(GameStore store, string gamePath, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public DynamicData.Kernel.Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files) => throw new NotSupportedException();
     }
 
     private sealed class CountingHasher : IFullFileHasher
@@ -258,11 +373,13 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         public int Calls => _paths.Count;
         public IReadOnlyCollection<AbsolutePath> Paths => _paths;
         public int PeakConcurrency => Volatile.Read(ref _peak);
+        public Action<AbsolutePath>? OnHash { get; set; }
         public void Reset() => _paths.Clear();
 
         public async ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
         {
             _paths.Add(file);
+            OnHash?.Invoke(file);
             var now = Interlocked.Increment(ref _inFlight);
             int seen;
             while ((seen = Volatile.Read(ref _peak)) < now && Interlocked.CompareExchange(ref _peak, now, seen) != seen) { }

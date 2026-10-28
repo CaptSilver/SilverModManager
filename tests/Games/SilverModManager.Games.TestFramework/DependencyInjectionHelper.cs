@@ -120,6 +120,7 @@ public static class DependencyInjectionHelper
                 .AddSteamManifestModel()
                 .AddLocalBaselineModel()
                 .AddNonVanillaFileModel()
+                .AddLocalFileHashModel()
                 .AddEpicGameStoreBuildModel()
                 .AddFileHashesQueriesSql()
                 .AddHashRelationModel()
