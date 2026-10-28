@@ -25,4 +25,5 @@ public class ApplyDiffDesignViewModel : APageViewModel<IApplyDiffViewModel>, IAp
 
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; } = ReactiveCommand.Create(() => { });
     public IViewModelInterface BodyViewModel { get; set; } = null!;
+    public bool LoadFailed => false;
 }

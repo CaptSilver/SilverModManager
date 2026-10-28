@@ -15,6 +15,9 @@ public partial class ApplyDiffView : ReactiveUserControl<IApplyDiffViewModel>
                 this.OneWayBind(ViewModel, vm => vm.BodyViewModel, v => v.TreeViewHost.ViewModel)
                     .DisposeWith(d);
 
+                this.OneWayBind(ViewModel, vm => vm.LoadFailed, v => v.FailedText.IsVisible)
+                    .DisposeWith(d);
+
                 this.BindCommand(ViewModel, vm => vm.RefreshCommand, v => v.RefreshButton)
                     .DisposeWith(d);
             }

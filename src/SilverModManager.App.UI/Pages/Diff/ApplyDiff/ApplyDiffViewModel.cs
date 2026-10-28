@@ -25,6 +25,8 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
 
     [Reactive] public partial IViewModelInterface BodyViewModel { get; set; } = null!;
 
+    [Reactive] public partial bool LoadFailed { get; private set; }
+
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
 
 
@@ -64,7 +66,18 @@ public partial class ApplyDiffViewModel : APageViewModel<IApplyDiffViewModel>, I
     // continuation resumes on the caller's context, so BodyViewModel is assigned there.
     private async Task RefreshAsync(DiffTreeViewModel diffTreeViewModel)
     {
-        await Task.Run(diffTreeViewModel.Refresh);
+        try
+        {
+            await Task.Run(diffTreeViewModel.Refresh);
+        }
+        catch
+        {
+            // Without this the page stays blank when the first tree cannot be built; the caller still logs the error.
+            LoadFailed = true;
+            throw;
+        }
+
+        LoadFailed = false;
         BodyViewModel = diffTreeViewModel;
     }
 }

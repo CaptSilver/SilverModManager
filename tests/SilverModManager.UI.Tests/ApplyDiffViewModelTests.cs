@@ -87,4 +87,57 @@ public class ApplyDiffViewModelTests(IServiceProvider provider) : AUiTest(provid
             lock (logger.Entries) logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error && e.Error is KeyNotFoundException);
         });
     }
+
+    [Fact]
+    public async Task AFailureBuildingTheFirstDiffTreeShowsAFailureInsteadOfABlankPage()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Apply Diff Failure Line");
+        var sync = Substitute.For<ISynchronizerService>();
+        sync.GetApplyDiffTree(Arg.Any<LoadoutId>()).Returns(_ => throw new KeyNotFoundException("no such loadout"));
+
+        var services = new ServiceCollection()
+            .AddSingleton(sync)
+            .AddSingleton(Connection)
+            .AddLogging()
+            .BuildServiceProvider();
+
+        var page = await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var vm = new ApplyDiffViewModel(Substitute.For<IWindowManager>(), services);
+            vm.Initialize(loadout.LoadoutId);
+            return vm;
+        });
+
+        await Eventually(() => page.LoadFailed.Should().BeTrue());
+        page.BodyViewModel.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ARefreshThatSucceedsAfterAFailureClearsTheFailure()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Apply Diff Recovers");
+        var fail = true;
+        var sync = Substitute.For<ISynchronizerService>();
+        sync.GetApplyDiffTree(Arg.Any<LoadoutId>()).Returns(_ => fail ? throw new KeyNotFoundException("no such loadout") : FileDiffTree.Create([]));
+
+        var services = new ServiceCollection()
+            .AddSingleton(sync)
+            .AddSingleton(Connection)
+            .AddLogging()
+            .BuildServiceProvider();
+
+        var page = await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var vm = new ApplyDiffViewModel(Substitute.For<IWindowManager>(), services);
+            vm.Initialize(loadout.LoadoutId);
+            return vm;
+        });
+        await Eventually(() => page.LoadFailed.Should().BeTrue());
+
+        fail = false;
+        await Dispatcher.UIThread.InvokeAsync(() => _ = page.RefreshCommand.Execute());
+
+        await Eventually(() => page.LoadFailed.Should().BeFalse());
+        await Eventually(() => page.BodyViewModel.Should().NotBeNull());
+    }
 }

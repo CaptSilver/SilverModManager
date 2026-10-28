@@ -141,6 +141,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The changes could not be read. Details are in the log..
+        /// </summary>
+        public static string ApplyDiff_LoadFailed {
+            get {
+                return ResourceManager.GetString("ApplyDiff_LoadFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Preview changes.
         /// </summary>
         public static string ApplyDiffViewModel_PageTitle {

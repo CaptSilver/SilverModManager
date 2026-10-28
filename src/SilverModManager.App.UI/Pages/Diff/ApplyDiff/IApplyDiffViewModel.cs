@@ -15,4 +15,7 @@ public interface IApplyDiffViewModel : IPageViewModelInterface
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
     
     public IViewModelInterface BodyViewModel { get; set; }
+
+    /// <summary>True when the last attempt to build the diff tree failed, so the page can say so instead of staying blank.</summary>
+    public bool LoadFailed { get; }
 }

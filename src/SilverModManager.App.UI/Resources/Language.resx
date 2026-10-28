@@ -517,6 +517,9 @@
     <data name="ApplyControlView_ViewApplyChanges" xml:space="preserve">
         <value>Preview changes</value>
     </data>
+    <data name="ApplyDiff_LoadFailed" xml:space="preserve">
+        <value>The changes could not be read. Details are in the log.</value>
+    </data>
     <data name="ApplyDiffViewModel_PageTitle" xml:space="preserve">
         <value>Preview changes</value>
     </data>
