@@ -1,3 +1,4 @@
+using SilverModManager.Games.TestFramework.Helpers;
 using SilverModManager.Abstractions.Games.FileHashes;
 using NexusMods.Hashing.xxHash3;
 using SilverModManager.MnemonicDB.Abstractions;
@@ -87,7 +88,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
     [Fact]
     public async Task LoadoutFiles_IncludesASnapshotBaselineMatchedByStoreAndPath()
     {
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.Snapshot,
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.Snapshot,
             [("a.esm", "one"), ("b.esm", "two")]);
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test");
 
@@ -99,7 +100,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
     [Fact]
     public async Task LoadoutFiles_BaselineForAnotherPath_IsNotReturned()
     {
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/elsewhere", LocalBaselineKind.Snapshot,
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/games/elsewhere", LocalBaselineKind.Snapshot,
             [("a.esm", "one"), ("b.esm", "two")]);
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test");
 
@@ -109,7 +110,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
     [Fact]
     public async Task LoadoutFiles_BaselineForAnotherStore_IsNotReturned()
     {
-        await HashRows.AddLocalBaseline(_local, GameStore.GOG, "/games/test", LocalBaselineKind.Snapshot, [("a.esm", "one")]);
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.GOG, "/games/test", LocalBaselineKind.Snapshot, [("a.esm", "one")]);
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test");
 
         LoadoutFiles(loadout).Should().BeEmpty();
@@ -119,7 +120,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
     public async Task LoadoutFiles_PathReportedNonVanilla_IsRemovedEvenWhenTheCentralStoreKnowsIt()
     {
         await HashRows.AddSteamManifest(_central, 1001, ("x.esm", "vanilla x"), ("y.esm", "vanilla y"));
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.DepotManifests,
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.DepotManifests,
             [], "x.esm");
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
 
@@ -132,7 +133,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
     public async Task LoadoutFiles_PathInASnapshotBaseline_TakesTheLocalHashOverTheCentralOne()
     {
         await HashRows.AddSteamManifest(_central, 1001, ("y.esm", "central y"));
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.Snapshot,
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.Snapshot,
             [("y.esm", "local y")]);
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
 
@@ -146,7 +147,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
     {
         // A depot-manifest baseline's manifest lists the modified file as well, with the vanilla hash.
         await HashRows.AddSteamManifest(_local, 1001, ("x.esm", "vanilla x"), ("y.esm", "vanilla y"));
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.DepotManifests,
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/games/test", LocalBaselineKind.DepotManifests,
             [("y.esm", "vanilla y")], "x.esm");
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
 
@@ -157,7 +158,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
     public async Task LoadoutFiles_BaselineOfAnotherInstallation_LeavesCentralRowsAlone()
     {
         await HashRows.AddSteamManifest(_central, 1001, ("x.esm", "vanilla x"));
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/elsewhere", LocalBaselineKind.DepotManifests,
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/games/elsewhere", LocalBaselineKind.DepotManifests,
             [], "x.esm");
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/games/test", "1001");
 
@@ -168,7 +169,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
     public async Task LoadoutFiles_GameMoved_ReadsTheBaselineAtTheNewPathOnceTheRowFollows()
     {
         await HashRows.AddSteamManifest(_central, 1001, ("x.esm", "vanilla x"), ("y.esm", "vanilla y"));
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/steam/test", LocalBaselineKind.DepotManifests,
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/steam/test", LocalBaselineKind.DepotManifests,
             [], "x.esm");
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/home/steam/test", "1001");
 
@@ -182,7 +183,7 @@ public sealed class LoadoutFilesQueryTests : IDisposable
     [Fact]
     public async Task LoadoutFiles_GameMoved_ReadsASnapshotBaselineAtTheNewPath()
     {
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/steam/test", LocalBaselineKind.Snapshot, [("a.esm", "one")]);
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/steam/test", LocalBaselineKind.Snapshot, [("a.esm", "one")]);
         var loadout = await HashRows.AddLoadout(_main, GameStore.Steam, "/home/steam/test");
 
         LoadoutFiles(loadout).Should().BeEmpty();

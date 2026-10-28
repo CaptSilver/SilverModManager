@@ -1,3 +1,4 @@
+using SilverModManager.Games.TestFramework.Helpers;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Reflection;
@@ -68,7 +69,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     [Fact]
     public async Task BaselineWithoutReports_YieldsNothing()
     {
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
 
         (await Diagnose(loadout)).Should().BeEmpty();
@@ -77,8 +78,8 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     [Fact]
     public async Task BaselineOfAnotherInstallation_YieldsNothing()
     {
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/other", LocalBaselineKind.DepotManifests, [], "mod.esp");
-        await HashRows.AddLocalBaseline(_local, GameStore.GOG, GamePath, LocalBaselineKind.DepotManifests, [], "mod.esp");
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/games/other", LocalBaselineKind.DepotManifests, [], "mod.esp");
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.GOG, GamePath, LocalBaselineKind.DepotManifests, [], "mod.esp");
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
 
         (await Diagnose(loadout)).Should().BeEmpty();
@@ -87,7 +88,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     [Fact]
     public async Task GameMoved_ReadsTheBaselineAtTheNewPathOnceTheRowFollows()
     {
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/steam/test", LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/steam/test", LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
 
@@ -109,7 +110,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
         // On an ostree host /home is a link to /var/home: the registry can report the game under one spelling while
         // the installation row holds the other, and the baseline was written under the registry's.
         _locatedFolder = "/var/home/user/games/test";
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/var/home/user/games/test", LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/var/home/user/games/test", LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest));
         var loadout = await LoadoutFor(GameStore.Steam, "/home/user/games/test");
 
@@ -120,7 +121,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     public async Task AGameTheRegistryCannotFind_IsLookedUpByTheInstallationRowsFolder()
     {
         _registryKnowsTheGame = false;
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
 
@@ -130,7 +131,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     [Fact]
     public async Task BaselineWithReports_YieldsOneDiagnosticListingEachPathAndReason()
     {
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest), ("data/other.pak", NonVanillaReason.SizeDiffers), ("b.esm", NonVanillaReason.HashDiffers));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
 
@@ -150,7 +151,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     [Fact]
     public async Task FilesTheLoadoutDeploys_AreLeftOut()
     {
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest), ("data/deployed.pak", NonVanillaReason.NotInManifest), ("data/replaced.pak", NonVanillaReason.HashDiffers));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
         var tree = Tree(
@@ -168,7 +169,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     [Fact]
     public async Task EveryFileManagedByTheLoadout_YieldsNothing()
     {
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("data/a.pak", NonVanillaReason.NotInManifest), ("Data/B.pak", NonVanillaReason.NotInManifest));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
         var tree = Tree(
@@ -184,7 +185,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     {
         // A file the loadout only recorded as part of the game's initial state, a file that is on disk and
         // in no loadout state at all, and a loadout file in another location all leave the report as it was.
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("left/over.dll", NonVanillaReason.NotInManifest), ("stray.txt", NonVanillaReason.NotInManifest), ("saves.sav", NonVanillaReason.NotInManifest));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
         var tree = new Dictionary<GamePath, SyncNode>(Tree(
@@ -203,7 +204,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     {
         // Files found in the game folder are filed in the overrides group as loadout items, so the sync tree
         // carries them like a mod's files. They are the user's own, not something the loadout put there.
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("found.dll", NonVanillaReason.NotInManifest), ("from-mod.pak", NonVanillaReason.NotInManifest));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
         var (foundItem, modItem) = await AddItems(loadout);
@@ -225,7 +226,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     {
         // Both are Game-typed nodes with no loadout hash, so the node alone cannot tell them apart: only the
         // game-installed record does.
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("data/ccinvented.esm", NonVanillaReason.NotInManifest), ("a.esm", NonVanillaReason.HashDiffers));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
         await AddGameInstalledFile(loadout, "data/ccinvented.esm");
@@ -245,7 +246,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     [Fact]
     public async Task FilesTheGameWritesItself_AreLeftOutOfTheListAndTheCount_AndNamedInAClosingLine()
     {
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest), ("bin/game.log", NonVanillaReason.NotInManifest), ("crash.DMP", NonVanillaReason.NotInManifest), ("logs/x.txt", NonVanillaReason.NotInManifest));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
 
@@ -262,7 +263,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     [Fact]
     public async Task NothingButFilesTheGameWrites_YieldsNothing()
     {
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("bin/game.log", NonVanillaReason.NotInManifest), ("CrashDumps/a.bin", NonVanillaReason.NotInManifest));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
 
@@ -273,7 +274,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     public async Task WhatCountsAsGameWritten_IsTheGamesSynchronizersCall()
     {
         _synchronizer.IsGameWrittenPath(Arg.Any<GamePath>()).Returns(call => call.Arg<GamePath>().Path.ToString() == "bin/own.dat");
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("bin/own.dat", NonVanillaReason.NotInManifest), ("game.log", NonVanillaReason.NotInManifest));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
 
@@ -327,7 +328,7 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     [Fact]
     public async Task PlainOverload_UsesNoSyncTree_AndListsEverything()
     {
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest));
         var loadout = await LoadoutFor(GameStore.Steam, GamePath);
 

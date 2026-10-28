@@ -12,5 +12,7 @@
   <ItemGroup>
     <!-- The manifest writer is shared with the Steam networking tests rather than copied. -->
     <Compile Include="..\..\Networking\SilverModManager.Networking.Steam.Tests\DepotManifestFixture.cs" Link="DepotManifestFixture.cs" />
+    <!-- The baseline row writer lives with the other test helpers; this project does not reference them. -->
+    <Compile Include="..\SilverModManager.Games.TestFramework\Helpers\LocalBaselineRows.cs" Link="LocalBaselineRows.cs" />
   </ItemGroup>
 </Project>

@@ -1,3 +1,4 @@
+using SilverModManager.Games.TestFramework.Helpers;
 using OperatingSystem = SilverModManager.Abstractions.Games.FileHashes.Values.OperatingSystem;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
@@ -21,9 +22,9 @@ internal static class HashRows
 {
     public static async Task<EntityId> AddSteamManifest(IConnection store, ulong manifestId, params (string Path, string Content)[] files)
     {
-        var hashes = await HashAll(files);
+        var hashes = await LocalBaselineRows.HashAll(files);
         using var tx = store.BeginTransaction();
-        var pathIds = AddPaths(tx, hashes);
+        var pathIds = LocalBaselineRows.AddPaths(tx, hashes);
         var manifest = new SteamManifest.New(tx)
         {
             AppId = AppId.From(1u),
@@ -39,9 +40,9 @@ internal static class HashRows
     /// <summary>One build with one depot in en-US whose product is the build's own.</summary>
     public static async Task AddGogBuild(IConnection store, ulong buildId, params (string Path, string Content)[] files)
     {
-        var hashes = await HashAll(files);
+        var hashes = await LocalBaselineRows.HashAll(files);
         using var tx = store.BeginTransaction();
-        var pathIds = AddPaths(tx, hashes);
+        var pathIds = LocalBaselineRows.AddPaths(tx, hashes);
         var manifest = new GogManifest.New(tx)
         {
             ManifestId = $"manifest-{buildId}",
@@ -90,48 +91,14 @@ internal static class HashRows
     }
 
     /// <summary>
-    /// A baseline of the installation at <paramref name="gamePath"/> holding <paramref name="files"/> as vanilla,
-    /// with their hash rows, and <paramref name="nonVanilla"/> paths it found modified. Everything is in <paramref name="store"/>.
-    /// </summary>
-    public static async Task<EntityId> AddLocalBaseline(IConnection store, GameStore gameStore, string gamePath, LocalBaselineKind kind,
-        (string Path, string Content)[] files, params string[] nonVanilla)
-    {
-        var hashes = await HashAll(files);
-        using var tx = store.BeginTransaction();
-        var pathIds = AddPaths(tx, hashes);
-        var baseline = new LocalBaseline.New(tx)
-        {
-            Store = gameStore,
-            GamePath = gamePath,
-            LocatorIds = [],
-            Kind = kind,
-            VersionName = "",
-            BuiltAt = DateTimeOffset.UnixEpoch,
-            FilesIds = pathIds,
-        };
-        foreach (var path in nonVanilla)
-        {
-            _ = new NonVanillaFile.New(tx)
-            {
-                BaselineId = baseline.Id,
-                Path = RelativePath.FromUnsanitizedInput(path),
-                Reason = NonVanillaReason.HashDiffers,
-                Size = Size.From(1),
-            };
-        }
-        var result = await tx.Commit();
-        return result[baseline.Id];
-    }
-
-    /// <summary>
     /// A baseline of the given kind that owns the manifest <paramref name="manifestId"/>, the way a build from
     /// depot manifests links them. Without <paramref name="files"/> it classified nothing.
     /// </summary>
     public static async Task AddBaselineOwningManifest(IConnection store, LocalBaselineKind kind, ulong manifestId, params (string Path, string Content)[] files)
     {
-        var hashes = await HashAll(files);
+        var hashes = await LocalBaselineRows.HashAll(files);
         using var tx = store.BeginTransaction();
-        var pathIds = AddPaths(tx, hashes);
+        var pathIds = LocalBaselineRows.AddPaths(tx, hashes);
         var manifest = new SteamManifest.New(tx)
         {
             AppId = AppId.From(1u),
@@ -183,39 +150,5 @@ internal static class HashRows
         };
         var result = await tx.Commit();
         return result[loadout.Id];
-    }
-
-    private static async Task<(string Path, MultiHash Hash)[]> HashAll((string Path, string Content)[] files)
-    {
-        var rows = new List<(string, MultiHash)>();
-        foreach (var (path, content) in files)
-            rows.Add((path, await MultiHasher.HashStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content)))));
-        return rows.ToArray();
-    }
-
-    private static List<EntityId> AddPaths(ITransaction tx, (string Path, MultiHash Hash)[] files)
-    {
-        var pathIds = new List<EntityId>();
-        foreach (var (path, hashes) in files)
-        {
-            var relation = new HashRelation.New(tx)
-            {
-                MinimalHash = hashes.MinimalHash,
-                XxHash3 = hashes.XxHash3,
-                Sha1 = hashes.Sha1,
-                XxHash64 = hashes.XxHash64,
-                Md5 = hashes.Md5,
-                Size = hashes.Size,
-                Crc32 = hashes.Crc32,
-            };
-            var pathRelation = new PathHashRelation.New(tx)
-            {
-                Path = RelativePath.FromUnsanitizedInput(path),
-                HashId = relation,
-            };
-            pathIds.Add(pathRelation.Id);
-        }
-
-        return pathIds;
     }
 }

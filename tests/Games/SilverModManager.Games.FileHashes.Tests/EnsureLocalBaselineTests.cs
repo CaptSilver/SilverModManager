@@ -1,3 +1,4 @@
+using SilverModManager.Games.TestFramework.Helpers;
 using System.Collections.Immutable;
 using System.Text;
 using DynamicData.Kernel;
@@ -74,7 +75,7 @@ public sealed class EnsureLocalBaselineTests : IDisposable
         WriteGameFile("mod.esp", "mod");
         _source.Add(101, ("a.esm", "vanilla"));
         await _coordinator.Ensure(Installation("101"));
-        var other = await HashRows.AddLocalBaseline(_store, GameStore.Steam, "/games/other", LocalBaselineKind.Snapshot, [("b.esm", "other")], "c.esm");
+        var other = await LocalBaselineRows.AddLocalBaseline(_store, GameStore.Steam, "/games/other", LocalBaselineKind.Snapshot, [("b.esm", "other")], "c.esm");
         var gamePath = Installation("101").Locations[LocationId.Game].Path.ToString();
 
         await _coordinator.Remove(GameStore.Steam, gamePath);
@@ -90,7 +91,7 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     [Fact]
     public async Task Remove_NothingAtThatPathOrStore_ChangesNothing()
     {
-        var baseline = await HashRows.AddLocalBaseline(_store, GameStore.Steam, "/games/test", LocalBaselineKind.Snapshot, [("a.esm", "one")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_store, GameStore.Steam, "/games/test", LocalBaselineKind.Snapshot, [("a.esm", "one")]);
 
         await _coordinator.Remove(GameStore.Steam, "/games/elsewhere");
         await _coordinator.Remove(GameStore.GOG, "/games/test");

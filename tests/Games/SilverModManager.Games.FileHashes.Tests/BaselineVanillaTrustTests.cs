@@ -1,3 +1,4 @@
+using SilverModManager.Games.TestFramework.Helpers;
 using System.Collections.Immutable;
 using System.Text;
 using NexusMods.Hashing.xxHash3;
@@ -44,7 +45,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     [Fact]
     public async Task AFileListedNonVanillaIsUntrusted()
     {
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReport(baseline, "content/content0/scripts/x.ws", NonVanillaReason.HashDiffers);
 
         IsTrusted("content/content0/Scripts/X.ws", out var reason).Should().BeFalse();
@@ -57,7 +58,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     [InlineData(NonVanillaReason.HashDiffers, "listed as modified")]
     public async Task TheReasonNamesWhyTheFileIsListed(NonVanillaReason listed, string expected)
     {
-        var baseline = await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         await AddReport(baseline, "x.ws", listed);
 
         IsTrusted("x.ws", out var reason).Should().BeFalse();
@@ -67,7 +68,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     [Fact]
     public async Task AListedFileWhoseHashMatchesIsTrusted()
     {
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("content/content0/scripts/x.ws", "vanilla")]);
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("content/content0/scripts/x.ws", "vanilla")]);
 
         IsTrusted("content/content0/Scripts/X.ws", out var reason).Should().BeTrue();
         reason.Should().BeEmpty();
@@ -76,7 +77,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     [Fact]
     public async Task AListedFileEditedAfterTheBaselineWasBuiltIsUntrusted()
     {
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("x.ws", "vanilla")]);
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("x.ws", "vanilla")]);
 
         IsTrusted("x.ws", out var reason, content: "edited later").Should().BeFalse();
         reason.Should().Be("the game's copy differs from the checked baseline");
@@ -85,7 +86,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     [Fact]
     public async Task AFileTheBaselineNeverListedIsUntrusted()
     {
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("other.ws", "vanilla")]);
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("other.ws", "vanilla")]);
 
         IsTrusted("x.ws", out var reason).Should().BeFalse();
         reason.Should().Be("the baseline never checked this file");
@@ -95,7 +96,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     public async Task TheBaselineIsFoundUnderTheFolderItWasWrittenFor()
     {
         // The baseline is keyed by the game registry's folder (Locations[Game]), which can differ from the locator's.
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/moved/test", LocalBaselineKind.DepotManifests, [("x.ws", "vanilla")]);
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/mnt/moved/test", LocalBaselineKind.DepotManifests, [("x.ws", "vanilla")]);
 
         IsTrusted("x.ws", out _).Should().BeFalse("only the locator's folder was searched");
         IsTrusted("x.ws", out var reason, gameFolder: FileSystem.Shared.FromUnsanitizedFullPath("/mnt/moved/test")).Should().BeTrue();
@@ -105,8 +106,8 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     [Fact]
     public async Task ABaselineOfAnotherInstallationDoesNotCount()
     {
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, "/games/other", LocalBaselineKind.DepotManifests, [], "x.ws");
-        await HashRows.AddLocalBaseline(_local, GameStore.GOG, GamePath, LocalBaselineKind.DepotManifests, [], "x.ws");
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, "/games/other", LocalBaselineKind.DepotManifests, [], "x.ws");
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.GOG, GamePath, LocalBaselineKind.DepotManifests, [], "x.ws");
 
         IsTrusted("x.ws", out var reason).Should().BeFalse();
         reason.Should().Contain("not been checked");
@@ -115,7 +116,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     [Fact]
     public async Task APathOutsideTheGameFolderIsUntrusted()
     {
-        await HashRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
         var path = new GamePath(LocationId.From("WitcherDocuments"), RelativePath.FromUnsanitizedInput("user.settings"));
 
         _trust.IsTrusted(Installation(), path, HashOf("vanilla"), out var reason).Should().BeFalse();
