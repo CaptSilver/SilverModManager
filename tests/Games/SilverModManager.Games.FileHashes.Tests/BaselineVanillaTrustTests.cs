@@ -76,6 +76,17 @@ public sealed class BaselineVanillaTrustTests : IDisposable
     }
 
     [Fact]
+    public async Task ABaselineBuiltForOtherLocatorIdsTrustsNothing()
+    {
+        await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await HashRows.BuiltForLocatorIds(_local, GamePath, "1001");
+
+        _trust.IsTrusted(Installation(locatorIds: ["1002"]), new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput("a.esm")), HashOf("vanilla"), out var reason).Should().BeFalse();
+        reason.Should().Contain("not been checked");
+        _trust.IsTrusted(Installation(locatorIds: ["1001"]), new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput("a.esm")), HashOf("vanilla"), out _).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task AListedFileEditedAfterTheBaselineWasBuiltIsUntrusted()
     {
         await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("x.ws", "vanilla")]);
@@ -90,7 +101,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
         await HashRows.AddBaselineOwningManifest(_local, LocalBaselineKind.DepotManifests, 1002);
         await HashRows.AddAttestedFile(_local, 1002, "Data/x.esm", "vanilla");
 
-        IsTrusted("data/X.esm", out var reason).Should().BeTrue("the merge read the bytes, and they are the store's");
+        IsTrusted("data/X.esm", out var reason, locatorIds: ["1002"]).Should().BeTrue("the merge read the bytes, and they are the store's");
         reason.Should().BeEmpty();
     }
 
@@ -100,7 +111,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
         await HashRows.AddBaselineOwningManifest(_local, LocalBaselineKind.DepotManifests, 1002);
         await HashRows.AddAttestedFile(_local, 1002, "x.esm", "vanilla");
 
-        IsTrusted("x.esm", out var reason, content: "edited later").Should().BeFalse();
+        IsTrusted("x.esm", out var reason, content: "edited later", locatorIds: ["1002"]).Should().BeFalse();
         reason.Should().Be("the game's copy differs from the checked baseline");
     }
 
@@ -144,12 +155,12 @@ public sealed class BaselineVanillaTrustTests : IDisposable
         reason.Should().Be("outside the game folder");
     }
 
-    private bool IsTrusted(string relative, out string reason, string content = "vanilla", AbsolutePath? gameFolder = null)
-        => _trust.IsTrusted(Installation(gameFolder), new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(relative)), HashOf(content), out reason);
+    private bool IsTrusted(string relative, out string reason, string content = "vanilla", AbsolutePath? gameFolder = null, string[]? locatorIds = null)
+        => _trust.IsTrusted(Installation(gameFolder, locatorIds), new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(relative)), HashOf(content), out reason);
 
     private static MultiHash HashOf(string content) => MultiHasher.HashStream(new MemoryStream(Encoding.UTF8.GetBytes(content))).GetAwaiter().GetResult();
 
-    private static GameInstallation Installation(AbsolutePath? gameFolder = null)
+    private static GameInstallation Installation(AbsolutePath? gameFolder = null, string[]? locatorIds = null)
     {
         var result = new GameLocatorResult
         {
@@ -157,7 +168,7 @@ public sealed class BaselineVanillaTrustTests : IDisposable
             Path = FileSystem.Shared.FromUnsanitizedFullPath(GamePath),
             Store = GameStore.Steam,
             StoreIdentifier = "1",
-            LocatorIds = [],
+            LocatorIds = [..(locatorIds ?? []).Select(LocatorId.From)],
             Locator = Substitute.For<IGameLocator>(),
         };
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, gameFolder ?? result.Path)));

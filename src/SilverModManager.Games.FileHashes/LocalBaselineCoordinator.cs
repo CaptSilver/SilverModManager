@@ -175,14 +175,29 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// The baseline for <paramref name="store"/> and <paramref name="gamePath"/> that was built for
+    /// <paramref name="locatorIds"/>. After a game update the older baseline describes files the new build replaced,
+    /// so it does not count; the set comparison is the one <see cref="AttestedFileRows.Find"/> and the
+    /// <c>file_hashes.loadout_baselines</c> query use.
+    /// </summary>
+    internal static LocalBaseline.ReadOnly? FindBaseline(IDb db, GameStore store, string gamePath, IEnumerable<string> locatorIds)
+        => FindBaseline(db, store, gamePath) is { } baseline && BuiltFor(baseline, locatorIds) ? baseline : null;
+
+    /// <summary>The installation's baseline, only while it was built for the installation's own locator ids.</summary>
+    internal static LocalBaseline.ReadOnly? FindBaselineFor(IDb db, GameInstallation installation)
+        => FindBaseline(db, installation.LocatorResult.Store, GamePathOf(installation), installation.LocatorResult.LocatorIds.Select(id => id.Value));
+
+    private static bool BuiltFor(LocalBaseline.ReadOnly baseline, IEnumerable<string> locatorIds)
+        => locatorIds.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(baseline.LocatorIds);
+
     private static LocalBaselineResult Describe(IDb db, LocalBaseline.ReadOnly baseline, bool rebuilt)
         => new(baseline.Kind, rebuilt, NonVanillaFile.FindByBaseline(db, baseline.Id).Count());
 
     private bool IsStale(LocalBaseline.ReadOnly baseline, GameInstallation installation)
     {
         var locator = installation.LocatorResult;
-        var current = locator.LocatorIds.Select(id => id.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (!current.SetEquals(baseline.LocatorIds)) return true;
+        if (!BuiltFor(baseline, locator.LocatorIds.Select(id => id.Value))) return true;
         // A build that classified nothing is never a finished one; one recorded before that was refused is replaced.
         // A file recorded from the manifest without being read counts as classified.
         if (baseline.FilesIds.Count == 0 && !NonVanillaFile.FindByBaseline(baseline.Db, baseline.Id).Any()
@@ -199,7 +214,7 @@ internal sealed class LocalBaselineCoordinator : IDisposable
         // that was already there and still can't be read (its depot key is missing) would otherwise
         // force a rebuild at every start.
         var covered = baseline.Manifests.Select(m => m.ManifestId.Value).ToHashSet();
-        foreach (var id in current)
+        foreach (var id in locator.LocatorIds.Select(locatorId => locatorId.Value))
         {
             if (!ulong.TryParse(id, out var manifestId) || covered.Contains(manifestId)) continue;
             if (!_manifestSource.TryGetManifestPath(storeRoot, ManifestId.From(manifestId), locator.Path, out var manifestPath)) continue;

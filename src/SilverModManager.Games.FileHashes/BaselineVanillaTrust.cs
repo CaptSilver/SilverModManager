@@ -36,7 +36,7 @@ public sealed class BaselineVanillaTrust(IFileHashesService fileHashes) : IVanil
         }
 
         var db = fileHashes.Local;
-        var baseline = LocalBaselineCoordinator.FindBaseline(db, installation.LocatorResult.Store, LocalBaselineCoordinator.GamePathOf(installation));
+        var baseline = LocalBaselineCoordinator.FindBaselineFor(db, installation);
         if (baseline is null)
         {
             reason = "the installed files have not been checked against the store's file list";

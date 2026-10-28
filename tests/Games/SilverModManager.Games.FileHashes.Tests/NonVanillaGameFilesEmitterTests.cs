@@ -130,6 +130,29 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
     }
 
     [Fact]
+    public async Task ABaselineBuiltForOtherLocatorIds_YieldsNothing()
+    {
+        // After a game update the baseline's rows describe files the new build replaced; the loadout no longer reads them.
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest));
+        await HashRows.BuiltForLocatorIds(_local, GamePath, "1001");
+        var stale = await LoadoutFor(GameStore.Steam, GamePath, "1002");
+
+        (await Diagnose(stale)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ABaselineBuiltForTheLoadoutsLocatorIds_StillListsItsFiles()
+    {
+        var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
+        await AddReports(baseline, ("mod.esp", NonVanillaReason.NotInManifest));
+        await HashRows.BuiltForLocatorIds(_local, GamePath, "1001");
+        var current = await LoadoutFor(GameStore.Steam, GamePath, "1001");
+
+        (await Diagnose(current)).Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task BaselineWithReports_YieldsOneDiagnosticListingEachPathAndReason()
     {
         var baseline = await LocalBaselineRows.AddLocalBaseline(_local, GameStore.Steam, GamePath, LocalBaselineKind.DepotManifests, [("a.esm", "vanilla")]);
@@ -433,9 +456,9 @@ public sealed class NonVanillaGameFilesEmitterTests : IDisposable
         return new GameInstallation(result, GameLocations.Create(ImmutableDictionary<LocationId, AbsolutePath>.Empty.Add(LocationId.Game, path)));
     }
 
-    private async Task<Loadout.ReadOnly> LoadoutFor(GameStore store, string gamePath)
+    private async Task<Loadout.ReadOnly> LoadoutFor(GameStore store, string gamePath, params string[] locatorIds)
     {
-        var id = await HashRows.AddLoadout(_main, store, gamePath);
+        var id = await HashRows.AddLoadout(_main, store, gamePath, locatorIds);
         return Loadout.Load(_main.Db, id);
     }
 }

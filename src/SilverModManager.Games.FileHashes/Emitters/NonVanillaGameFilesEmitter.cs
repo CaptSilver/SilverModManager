@@ -95,11 +95,14 @@ public class NonVanillaGameFilesEmitter : ILoadoutDiagnosticEmitter
     /// </summary>
     private LocalBaseline.ReadOnly? FindBaseline(IDb db, Loadout.ReadOnly loadout)
     {
+        // The loadout's ids, not the located install's: the notice describes what this loadout's sync sees, and
+        // a baseline built for other ids is one the sync ignores.
+        var ids = loadout.LocatorIds.Select(id => id.Value);
         if (_registry.TryGetGameInstallation(loadout, out var located))
-            return LocalBaselineCoordinator.FindBaseline(db, located.LocatorResult.Store, LocalBaselineCoordinator.GamePathOf(located));
+            return LocalBaselineCoordinator.FindBaseline(db, located.LocatorResult.Store, LocalBaselineCoordinator.GamePathOf(located), ids);
 
         var row = loadout.Installation;
-        return LocalBaselineCoordinator.FindBaseline(db, row.Store, row.Path);
+        return LocalBaselineCoordinator.FindBaseline(db, row.Store, row.Path, ids);
     }
 
     // A game this build doesn't know (an old installation) has no synchronizer to ask, so the shared rule applies.
