@@ -5623,6 +5623,15 @@ namespace SilverModManager.App.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Some mods of revision {0} didn&apos;t download, so the collection wasn&apos;t updated. Check the Downloads page, then press Update again..
+        /// </summary>
+        public static string ToastNotification_Update_not_all_downloaded {
+            get {
+                return ResourceManager.GetString("ToastNotification_Update_not_all_downloaded", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Update the installed collection to this revision before installing single mods from it..
         /// </summary>
         public static string ToastNotification_Update_collection_first {

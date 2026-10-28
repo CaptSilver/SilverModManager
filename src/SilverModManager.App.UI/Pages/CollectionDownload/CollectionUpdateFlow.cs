@@ -31,6 +31,36 @@ internal static class CollectionUpdateFlow
         return text;
     }
 
+    public enum UpdateStart
+    {
+        Updated,
+        /// <summary>The user isn't logged in, or can't download collections without premium.</summary>
+        CantDownload,
+        /// <summary>Some required mods didn't download, so the update would install only part of the revision.</summary>
+        NotAllDownloaded,
+    }
+
+    /// <summary>
+    /// One press of Update: downloads the required mods the new revision is missing, then updates to it.
+    /// </summary>
+    public static async Task<UpdateStart> DownloadThenUpdate(
+        Func<bool> isDownloaded,
+        Func<CancellationToken, Task<bool>> ensureCanDownload,
+        Func<CancellationToken, Task> download,
+        Func<CancellationToken, Task> update,
+        CancellationToken cancellationToken)
+    {
+        if (!isDownloaded())
+        {
+            if (!await ensureCanDownload(cancellationToken)) return UpdateStart.CantDownload;
+            await download(cancellationToken);
+            if (!isDownloaded()) return UpdateStart.NotAllDownloaded;
+        }
+
+        await update(cancellationToken);
+        return UpdateStart.Updated;
+    }
+
     public static async Task Run(
         IServiceProvider serviceProvider,
         IWindowManager windowManager,

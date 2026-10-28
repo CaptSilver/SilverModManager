@@ -1941,6 +1941,9 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="ToastNotification_Collection_updated" xml:space="preserve">
         <value>Collection updated</value>
     </data>
+    <data name="ToastNotification_Update_not_all_downloaded" xml:space="preserve">
+        <value>Some mods of revision {0} didn't download, so the collection wasn't updated. Check the Downloads page, then press Update again.</value>
+    </data>
     <data name="ToastNotification_Update_collection_first" xml:space="preserve">
         <value>Update the installed collection to this revision before installing single mods from it.</value>
     </data>

@@ -98,26 +98,43 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
         OptionalDownloadsCount = CollectionDownloader.CountItems(_revision, CollectionDownloader.ItemType.Optional);
 
 
+        async Task<bool> EnsureCanDownloadCollections(CancellationToken cancellationToken)
+        {
+            if (!await loginManager.EnsureLoggedIn("Download Collection", cancellationToken)) return false;
+            if (loginManager.IsPremium) return true;
+
+            var dialogResult = await windowManager.ShowDialog(CollectionDialogs.PremiumCollectionDialog(), DialogWindowType.Modal);
+            if (dialogResult.ButtonId == ButtonDefinitionId.From("go-premium")) osInterop.OpenUri(NexusModsUrlBuilder.UpgradeToPremiumUri);
+            return false;
+        }
+
+        async Task DownloadThenUpdate(NexusCollectionLoadoutGroup.ReadOnly installed, CollectionRevisionMetadata.ReadOnly revision, CancellationToken cancellationToken)
+        {
+            var items = CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Required);
+            var start = await CollectionUpdateFlow.DownloadThenUpdate(
+                isDownloaded: () => CollectionDownloader.IsFullyDownloaded(items, connection.Db),
+                ensureCanDownload: EnsureCanDownloadCollections,
+                download: token => collectionDownloader.DownloadItems(revision, CollectionDownloader.ItemType.Required, connection.Db, token).AsTask(),
+                update: token => CollectionUpdateFlow.Run(serviceProvider, windowManager, _notificationService, installed, revision, token),
+                cancellationToken);
+            logger.LogDebug("Update of collection `{Slug}` to revision {To}: {Start}", revision.Collection.Slug, revision.RevisionNumber, start);
+            if (start == CollectionUpdateFlow.UpdateStart.NotAllDownloaded)
+                _notificationService.ShowToast(string.Format(Language.ToastNotification_Update_not_all_downloaded, revision.RevisionNumber), ToastNotificationVariant.Failure);
+        }
+
         CommandDownloadRequiredItems = _isDownloadingRequiredItems.CombineLatest(_canDownloadRequiredItems, static (isDownloading, canDownload) => !isDownloading && canDownload)
             .ToReactiveCommand<Unit>(
                 executeAsync: async (_, cancellationToken) =>
                 {
-                    if (!await loginManager.EnsureLoggedIn("Download Collection", cancellationToken)) return;
-
-                    if (!loginManager.IsPremium)
+                    // This revision replaces an older installed one: downloading is the first half of that update, so finish it.
+                    var installed = CollectionUpdater.GetInstalledGroup(_collection, targetLoadout, connection.Db);
+                    if (installed.HasValue && CollectionUpdater.IsUpdateTo(installed.Value, revisionMetadata))
                     {
-                        var premiumCollectionDownloadsDialog = CollectionDialogs.PremiumCollectionDialog();
-
-                        var dialogResult = await windowManager.ShowDialog(premiumCollectionDownloadsDialog, DialogWindowType.Modal);
-
-                        if (dialogResult.ButtonId == ButtonDefinitionId.From("go-premium"))
-                        {
-                            osInterop.OpenUri(NexusModsUrlBuilder.UpgradeToPremiumUri);
-                        }
-
+                        await DownloadThenUpdate(installed.Value, revisionMetadata, cancellationToken);
                         return;
                     }
 
+                    if (!await EnsureCanDownloadCollections(cancellationToken)) return;
                     await collectionDownloader.DownloadItems(_revision, itemType: CollectionDownloader.ItemType.Required, db: connection.Db,
                         cancellationToken: cancellationToken
                     );
@@ -310,19 +327,17 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
                     var workspaceController = GetWorkspaceController();
                     workspaceController.OpenPage(WorkspaceId, pageData, new OpenPageBehavior.ReplaceTab(PanelId, TabId));
 
-                    // The new revision's page shows the progress. When its mods aren't downloaded yet, that page's Update button
-                    // does the update once they are.
+                    // The new revision's page shows the progress of the download and the update this press goes on to do.
                     var installed = CollectionUpdater.GetInstalledGroup(_collection, targetLoadout, connection.Db);
-                    var isUpdate = installed.HasValue && CollectionUpdater.IsUpdateTo(installed.Value, revision);
-                    var isDownloaded = CollectionDownloader.IsFullyDownloaded(CollectionDownloader.GetItems(revision, CollectionDownloader.ItemType.Required), connection.Db);
-                    if (isUpdate && isDownloaded)
+                    if (installed.HasValue && CollectionUpdater.IsUpdateTo(installed.Value, revision))
                     {
-                        await CollectionUpdateFlow.Run(serviceProvider, windowManager, _notificationService, installed.Value, revision, cancellationToken);
+                        // Not the command's token: replacing the tab disposes this page, which would cancel the update half-way.
+                        await DownloadThenUpdate(installed.Value, revision, CancellationToken.None);
                     }
                     else
                     {
                         logger.LogDebug("Not updating collection `{Slug}` to revision {To} from here: {Reason}", _collection.Slug, newestRevisionNumber,
-                            !installed.HasValue ? "it isn't installed in this loadout" : !isUpdate ? "the installed revision isn't older" : "its required mods aren't all downloaded yet");
+                            !installed.HasValue ? "it isn't installed in this loadout" : "the installed revision isn't older");
                     }
                 }
                 catch (Exception e) when (!cancellationToken.IsCancellationRequested && !TimeoutDetection.IsRealCancellation(e))

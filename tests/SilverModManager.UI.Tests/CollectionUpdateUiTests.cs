@@ -103,6 +103,56 @@ public class CollectionUpdateUiTests(IServiceProvider provider) : AUiTest(provid
         _ = windows.DidNotReceive().ShowDialog(Arg.Any<IDialog>(), Arg.Any<DialogWindowType>());
     }
 
+    /// <summary>Records what one press of Update did, in order.</summary>
+    private sealed class UpdatePress(bool downloaded, bool canDownload = true, bool downloadCompletes = true)
+    {
+        public List<string> Steps { get; } = [];
+        private bool _downloaded = downloaded;
+
+        public Task<CollectionUpdateFlow.UpdateStart> Run() => CollectionUpdateFlow.DownloadThenUpdate(
+            isDownloaded: () => _downloaded,
+            ensureCanDownload: _ => { Steps.Add("check login"); return Task.FromResult(canDownload); },
+            download: _ => { Steps.Add("download"); _downloaded = downloadCompletes; return Task.CompletedTask; },
+            update: _ => { Steps.Add("update"); return Task.CompletedTask; },
+            CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task UpdateDownloadsTheMissingModsAndUpdatesInOnePress()
+    {
+        var press = new UpdatePress(downloaded: false);
+
+        (await press.Run()).Should().Be(CollectionUpdateFlow.UpdateStart.Updated);
+        press.Steps.Should().Equal("check login", "download", "update");
+    }
+
+    [Fact]
+    public async Task UpdateSkipsTheDownloadWhenEverythingIsDownloaded()
+    {
+        var press = new UpdatePress(downloaded: true);
+
+        (await press.Run()).Should().Be(CollectionUpdateFlow.UpdateStart.Updated);
+        press.Steps.Should().Equal("update");
+    }
+
+    [Fact]
+    public async Task UpdateStopsWhenTheModsCantBeDownloaded()
+    {
+        var press = new UpdatePress(downloaded: false, canDownload: false);
+
+        (await press.Run()).Should().Be(CollectionUpdateFlow.UpdateStart.CantDownload);
+        press.Steps.Should().Equal("check login");
+    }
+
+    [Fact]
+    public async Task UpdateDoesntRunOnAPartialDownload()
+    {
+        var press = new UpdatePress(downloaded: false, downloadCompletes: false);
+
+        (await press.Run()).Should().Be(CollectionUpdateFlow.UpdateStart.NotAllDownloaded);
+        press.Steps.Should().Equal("check login", "download");
+    }
+
     [Fact]
     public void TheTabTitleCarriesTheRevisionOnlyWhenANewerOneExists()
     {
