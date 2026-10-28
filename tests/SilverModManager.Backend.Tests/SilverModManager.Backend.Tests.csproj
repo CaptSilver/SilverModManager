@@ -12,6 +12,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\SilverModManager.Backend\SilverModManager.Backend.csproj" />
+        <ProjectReference Include="..\..\src\SilverModManager.Games.FileHashes\SilverModManager.Games.FileHashes.csproj" />
     </ItemGroup>
 
     <Target Name="CopyResources" AfterTargets="PostBuildEvent">

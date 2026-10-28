@@ -4,6 +4,10 @@ using System.Collections.Concurrent;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using SilverModManager.Abstractions.Steam.DTOs;
+using SilverModManager.Abstractions.Steam.Values;
+using SilverModManager.Games.FileHashes;
 using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Games.FileHashes;
 using SilverModManager.Abstractions.Games.FileHashes.Models;
@@ -31,6 +35,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
     private readonly List<IDisposable> _owned = [];
     private readonly TemporaryFileManager _temp = new(FileSystem.Shared);
     private readonly CountingHasher _hasher = new();
+    private readonly CapturingLoggerProvider _logs = new();
     private readonly AbsolutePath _gameDir;
     private readonly GameInstallation _installation;
     private readonly IConnection _connection;
@@ -46,6 +51,10 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
             .AddHashRelationModel()
             .AddPathHashRelationModel()
             .AddLocalFileHashModel()
+            .AddLocalBaselineModel()
+            .AddNonVanillaFileModel()
+            .AddSteamManifestModel()
+            .AddVersionDefinitionModel()
             .BuildServiceProvider();
 
         var backend = new MnemonicDB.Storage.RocksDbBackend.Backend();
@@ -258,6 +267,52 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         _hasher.Paths.Should().ContainSingle().Which.Should().Be(moving);
     }
 
+    [Fact]
+    public async Task Index_AfterABaseline_TakesEveryReadVanillaFileFromItsFingerprint()
+    {
+        await WriteGameFiles(5);
+        var manifest = new Manifest
+        {
+            ManifestId = ManifestId.From(1),
+            DepotId = DepotId.From(2),
+            CreationTime = DateTimeOffset.UnixEpoch,
+            TotalCompressedSize = Size.Zero,
+            TotalUncompressedSize = Size.Zero,
+            Files = await Task.WhenAll(Enumerable.Range(0, 5).Select(async i => new Manifest.FileData
+            {
+                Path = RelativePath.FromUnsanitizedInput($"data/file{i}.bin"),
+                Size = Size.FromLong(Content(i).Length),
+                Hash = (await MultiHasher.HashStream(new MemoryStream(Content(i)))).Sha1,
+                Chunks = [],
+            })),
+        };
+        // No store trust, so the baseline reads all five itself.
+        await new LocalVanillaBaseline(FileSystem.Shared, NullLogger<LocalVanillaBaseline>.Instance).Build(new BaselineRequest
+        {
+            GameRoot = _gameDir,
+            Store = GameStore.Steam,
+            AppId = AppId.From(1),
+            GamePath = _gameDir.ToString(),
+            LocatorIds = ["1"],
+            Manifests = [manifest],
+            AllInstalledDepotsCovered = true,
+            IsIgnored = _ => false,
+            Game = GameId.From("IndexFixture"),
+            NexusGameId = NexusModsGameId.From(1234),
+            OperatingSystem = SilverModManager.Abstractions.Games.FileHashes.Values.OperatingSystem.Windows,
+        }, _connection);
+        var service = CreateService();
+
+        var result = await service.IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        result.NewFiles.Should().HaveCount(5);
+        _hasher.Calls.Should().Be(0);
+        // The baseline's path rows would also satisfy the minimal-hash lookup without a full read, so the
+        // counts say which route each hash took.
+        _logs.Value("FromFingerprint").Should().Be(5L);
+        _logs.Value("FromStored").Should().Be(0L);
+    }
+
     private IReadOnlyList<LocalFileHash.ReadOnly> LocalRows() => LocalFileHash.All(_connection.Db).ToList();
 
     private async Task WriteGameFiles(int count)
@@ -322,7 +377,7 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
         var hashes = new LocalRowsFileHashes(_connection, _gameDir.ToString(), stores ?? [], waitForBuild ?? Task.CompletedTask);
 
         var services = new ServiceCollection()
-            .AddLogging()
+            .AddLogging(b => b.AddProvider(_logs))
             .AddSingleton<IFileHashesService>(hashes)
             .AddSingleton<IFullFileHasher>(_hasher)
             .BuildServiceProvider();
@@ -395,6 +450,30 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
             finally
             {
                 Interlocked.Decrement(ref _inFlight);
+            }
+        }
+    }
+
+    private sealed class CapturingLoggerProvider : ILoggerProvider
+    {
+        private readonly ConcurrentBag<IReadOnlyList<KeyValuePair<string, object?>>> _states = [];
+
+        /// <summary>The named argument of the index summary line.</summary>
+        public object? Value(string name) => _states
+            .Select(s => s.FirstOrDefault(kv => kv.Key == name))
+            .Single(kv => kv.Key == name).Value;
+
+        public ILogger CreateLogger(string categoryName) => new Capture(_states);
+        public void Dispose() { }
+
+        private sealed class Capture(ConcurrentBag<IReadOnlyList<KeyValuePair<string, object?>>> states) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                if (state is IReadOnlyList<KeyValuePair<string, object?>> values && values.Any(kv => kv.Key == "FromFingerprint")) states.Add(values);
             }
         }
     }

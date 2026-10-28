@@ -6,6 +6,7 @@ using SilverModManager.Abstractions.Games.FileHashes.Models;
 using SilverModManager.Abstractions.Steam.DTOs;
 using SilverModManager.Abstractions.Steam.Values;
 using SilverModManager.MnemonicDB.Abstractions;
+using SilverModManager.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using SilverModManager.Sdk;
 using SilverModManager.Sdk.Games;
@@ -187,6 +188,28 @@ public sealed class TrustedBaselineTests : IDisposable
 
         _logger.Lines.Should().ContainSingle(l =>
             l.Contains("2 files vouched for by the store") && l.Contains("1 with stored hashes") && l.Contains("1 read because no hash was stored"));
+    }
+
+    [Fact]
+    public async Task Build_WritesNoFingerprintRowForAFileItTookFromTheStore()
+    {
+        WriteFile("a.esm", "vanilla", InstallTime.AddDays(-1));
+        WriteFile("b.esm", "other", InstallTime.AddDays(1));
+        var manifests = new[] { Manifest(1, ("a.esm", "vanilla"), ("b.esm", "other")) };
+        await Build([manifests[0]], trust: false);
+        foreach (var row in LocalFileHash.All(_store.Db).ToList())
+        {
+            using var tx = _store.BeginTransaction();
+            tx.Delete(row.Id, recursive: false);
+            await tx.Commit();
+        }
+        _opened.Clear();
+
+        await Build(manifests, trust: true);
+
+        // a.esm is vouched for by the store and never opened; b.esm is newer than the store's last write and is read.
+        _opened.Should().ContainSingle().Which.Should().EndWith("b.esm");
+        LocalFileHash.All(_store.Db).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["b.esm"]);
     }
 
     private Task<BaselineBuild> Build(Manifest[] manifests, bool trust, bool settled = true, bool knownInstallTime = true, IDb[]? extraDatabases = null)

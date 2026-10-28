@@ -52,6 +52,51 @@ public sealed class LocalVanillaBaselineTests : IDisposable
     }
 
     [Fact]
+    public async Task Build_WritesAFingerprintRowForEveryVanillaFileItHashed()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("b.esm", "other");
+
+        await Build([Manifest(1, ("a.esm", "vanilla"), ("b.esm", "other"))]);
+
+        var rows = LocalFileHash.All(_store.Db).Where(r => r.GamePath == GamePathString).ToList();
+        rows.Should().HaveCount(2);
+        var row = rows.Single(r => r.Path.ToString() == "a.esm");
+        row.Location.Should().Be(LocationId.Game);
+        row.XxHash3.Should().Be((await Hash("vanilla")).XxHash3);
+        row.Size.Should().Be(Size.FromLong(7));
+        row.ModifiedUtc.Should().Be(new DateTimeOffset(File.GetLastWriteTimeUtc(Path.Combine(_gameRoot, "a.esm"))));
+    }
+
+    [Fact]
+    public async Task Rebuild_ReplacesAFingerprintRowInsteadOfAddingAnother()
+    {
+        var path = WriteFile("a.esm", "vanilla");
+        await Build([Manifest(1, ("a.esm", "vanilla"))]);
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-3));
+
+        await Build([Manifest(2, ("a.esm", "vanilla"))]);
+
+        var row = LocalFileHash.All(_store.Db).Should().ContainSingle().Subject;
+        row.ModifiedUtc.Should().Be(new DateTimeOffset(File.GetLastWriteTimeUtc(path)));
+    }
+
+    [Fact]
+    public async Task Rebuild_KeepsTheFingerprintRowsOfFilesTheIndexRead()
+    {
+        WriteFile("a.esm", "vanilla");
+        var other = new IndexedFileHash(new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput("mods/x.esp")), Size.FromLong(3), DateTimeOffset.UnixEpoch.AddDays(1), (await Hash("mod")).XxHash3);
+        using (var tx = _store.BeginTransaction())
+        {
+            LocalFileHashRows.Record(tx, _store.Db, GamePathString, [other]);
+            await tx.Commit();
+        }
+
+        await Build([Manifest(1, ("a.esm", "vanilla"))]);
+
+        LocalFileHash.All(_store.Db).Select(r => r.Path.ToString()).Should().BeEquivalentTo(["a.esm", "mods/x.esp"]);
+    }
+
+    [Fact]
     public async Task Classify_MatchesManifestBackslashAndCaseAgainstDisk()
     {
         WriteFile("content/content0/x.bundle", "vanilla");
