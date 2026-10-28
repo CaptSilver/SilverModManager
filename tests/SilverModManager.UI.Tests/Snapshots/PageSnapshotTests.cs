@@ -18,6 +18,7 @@ using SilverModManager.App.UI.Pages.MyGames;
 using SilverModManager.App.UI.Pages.Settings;
 using SilverModManager.App.UI.Windows;
 using SilverModManager.Collections;
+using SilverModManager.MnemonicDB.Abstractions;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.Library;
 using SilverModManager.Sdk.Loadouts;
@@ -98,8 +99,26 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
         await VerifyPng(png);
     }
 
+    /// <summary>
+    /// A collection's page puts search in the same bar as the collection menu, so there is no separate row for it.
+    /// </summary>
+    [Fact]
+    public async Task Test_CollectionLoadout()
+    {
+        var loadout = await SeedLoadoutRow(GameStore.Steam, "Snapshot loadout");
+        var collection = await CollectionCreator.CreateNewCollectionGroup(Connection, loadout.LoadoutId, "My Collection");
+        await SeedLocalMod(loadout, "Gunmetal Textures", collection.Id);
+        await SeedLocalMod(loadout, "Silver Sounds", collection.Id);
+
+        var png = await Capture(() => new LoadoutView
+        {
+            DataContext = new LoadoutViewModel(Substitute.For<IWindowManager>(), Provider, loadout.LoadoutId, collection.CollectionGroupId),
+        }, isReady: window => DateComponentsIn(window).Length == 2, beforeCapture: PinInstallDates);
+        await VerifyPng(png);
+    }
+
     /// <summary>A mod added from a local archive, which is the simplest kind of row the loadout page lists.</summary>
-    private async Task SeedLocalMod(Loadout.ReadOnly loadout, string name)
+    private async Task SeedLocalMod(Loadout.ReadOnly loadout, string name, EntityId? parent = null)
     {
         using var tx = Connection.BeginTransaction();
         var item = default(LibraryItem.New);
@@ -114,9 +133,10 @@ public class PageSnapshotTests(IServiceProvider provider) : AUiTest(provider)
         var group = new LoadoutItemGroup.New(tx, out var groupId)
         {
             IsGroup = true,
-            LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = name, LoadoutId = loadout },
+LoadoutItem = new LoadoutItem.New(tx, groupId) { Name = name, LoadoutId = loadout },
         };
         _ = new LibraryLinkedLoadoutItem.New(tx, groupId) { LibraryItemId = item, LoadoutItemGroup = group };
+        if (parent is { } parentId) tx.Add(groupId, LoadoutItem.Parent, parentId);
         await tx.Commit();
     }
 

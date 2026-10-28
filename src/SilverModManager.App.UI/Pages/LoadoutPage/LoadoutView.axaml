@@ -81,7 +81,10 @@
 
                     <controls:Statusbar Grid.Row="0" x:Name="Statusbar">
 
-                        <StackPanel>
+                        <search:SearchControl x:Name="SearchControl"
+                                              ButtonSize="Toolbar" />
+
+                        <StackPanel x:Name="PanelCollectionMenu">
                             <controls:StandardButton Size="Toolbar"
                                                      Fill="Weak"
                                                      Type="Tertiary"
@@ -207,15 +210,9 @@
                         </StackPanel>
                     </controls:Statusbar>
 
-                    <!-- TOOLBAR (starts off hidden) -->
+                    <!-- SELECTION TOOLBAR (shown only while mods are selected) -->
 
-                    <controls:Toolbar Grid.Row="1" Margin="24,12, 24, 0">
-                        <ItemsControl>
-                            <search:SearchControl x:Name="SearchControl"
-                                                  ButtonSize="Toolbar" />
-                        </ItemsControl>
-
-                        <!-- selection related button group -->
+                    <controls:Toolbar Grid.Row="1" x:Name="SelectionToolbar" Margin="24,12, 24, 0">
                         <ItemsControl x:Name="ContextControlGroup">
 
                             <controls:StandardButton x:Name="DeselectItemsButton"

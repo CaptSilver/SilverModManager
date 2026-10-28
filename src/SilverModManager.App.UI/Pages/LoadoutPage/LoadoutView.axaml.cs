@@ -35,7 +35,7 @@ public partial class LoadoutView : R3UserControl<ILoadoutViewModel>
                     .AddTo(disposables);
 
                 // initially hidden
-                ContextControlGroup.IsVisible = false;
+                SelectionToolbar.IsVisible = false;
 
                 BindableViewModel.Subscribe(this, static (vm, view) =>
                     {
@@ -47,7 +47,10 @@ public partial class LoadoutView : R3UserControl<ILoadoutViewModel>
                         var enableCollectionSharing = vm?.EnableCollectionSharing ?? false;
 
                         view.AllPageHeader.IsVisible = !isCollection;
-                        view.Statusbar.IsVisible = isCollection;
+                        // The bar also carries search, so it shows on every loadout page; outside a collection there
+                        // is no menu to frame, so it drops its panel and search sits where a plain toolbar would.
+                        view.PanelCollectionMenu.IsVisible = isCollection;
+                        view.Statusbar.Classes.Set("Plain", !isCollection);
                         view.PanelShare.IsVisible = isCollection && enableCollectionSharing;
                         view.PanelPublish.IsVisible = isCollection && enableCollectionSharing;
 
@@ -162,7 +165,7 @@ public partial class LoadoutView : R3UserControl<ILoadoutViewModel>
                 this.ObserveViewModelProperty(static view => view.BindableViewModel, static vm => vm.SelectionCount)
                     .Subscribe(this, static (count, self) =>
                         {
-                            self.ContextControlGroup.IsVisible = count != 0;
+                            self.SelectionToolbar.IsVisible = count != 0;
                             self.DeselectItemsButton.Text = count == 0 ? string.Empty : string.Format(Language.Library_DeselectItemsButton_Text, count);
                         }
                     )

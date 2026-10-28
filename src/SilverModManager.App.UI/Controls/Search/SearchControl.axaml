@@ -11,7 +11,7 @@
         <controls:StandardButton x:Name="SearchButton"
                                  Type="Tertiary"
                                  Size="{Binding ButtonSize, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                 Fill="WeakAlt"
+                                 Fill="Weak"
                                  ShowIcon="Left"
                                  ShowLabel="False"
                                  LeftIcon="{x:Static icons:IconValues.Search}"

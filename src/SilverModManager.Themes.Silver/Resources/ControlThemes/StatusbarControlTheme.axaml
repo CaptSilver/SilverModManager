@@ -81,7 +81,8 @@
         <Setter Property="Focusable" Value="False" />
         <Setter Property="ClipToBounds" Value="False" />
         <Setter Property="VerticalAlignment" Value="Top" />
-        <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+        <!-- a wash rather than a solid colour, so Glass shows through the bar like its Info/Primary/Warning variants -->
+        <Setter Property="Background" Value="{StaticResource SurfaceTranslucentMidBrush}" />
         <Setter Property="Margin" Value="0 12 0 0" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="BorderBrush" Value="{StaticResource StrokeTranslucentWeakBrush}" />
@@ -123,6 +124,15 @@
         <Style Selector="^.Warning">
             <Setter Property="Background" Value="#1AFEF08A" />
             <Setter Property="Foreground" Value="{StaticResource WarningStrongBrush}" />
+        </Style>
+
+        <!-- No panel around the items: a bar that only holds a toolbar-style control (e.g. search) on some pages -->
+        <Style Selector="^.Plain">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="24, 0, 24, 0" />
+            <Style Selector="^ /template/ Border#ButtonContainer">
+                <Setter Property="Padding" Value="0" />
+            </Style>
         </Style>
     </ControlTheme>
 
