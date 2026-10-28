@@ -135,15 +135,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
         var collectionRevisionsObservable = CollectionRevisionMetadata
             .ObserveAll(conn)
             .FilterImmutable(revision => game.NexusModsGameId.IsNexusGame(revision.Collection.GameId))
-            .FilterOnObservable(revision =>
-            {
-                var groupObservable = collectionDownloader.GetCollectionGroupObservable(revision, loadout);
-                var isNotInstalledObservable = collectionDownloader.IsCollectionInstalledObservable(revision, groupObservable).Select(static isInstalled => !isInstalled);
-                // An update leaves the old revision behind with nothing installed from it; listing it would show the
-                // collection twice under one name.
-                var isSupersededObservable = CollectionUpdater.ObserveIsSuperseded(conn, revision, loadout);
-                return isNotInstalledObservable.CombineLatest(isSupersededObservable, static (isNotInstalled, isSuperseded) => isNotInstalled && !isSuperseded);
-            })
+            .FilterOnObservable(revision => collectionDownloader.IsOfferedForInstallObservable(revision, loadout))
             .Transform(ILeftMenuItemViewModel (revision) =>
             {
                 var pageData = new PageData
@@ -350,10 +342,7 @@ public partial class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewM
                 {
                     if (!group.TryGetAsNexusCollectionLoadoutGroup(out var nexusCollection))
                         return Observable.Return(true);
-                    return collectionDownloader.IsCollectionInstalledObservable(
-                        nexusCollection.Revision,
-                        Observable.Return(Optional<CollectionGroup.ReadOnly>.Create(group))
-                    );
+                    return collectionDownloader.IsListedAsInstalledObservable(nexusCollection);
                 }
             )
             .SortBy(item => item.IsReadOnly)

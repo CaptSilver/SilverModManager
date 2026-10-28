@@ -515,6 +515,49 @@ public class CollectionUpdateNexusTests(ITestOutputHelper helper) : ACyberpunkIs
         installs.Count.Should().Be(1);
     }
 
+    /// <summary>One subscription kept open across everything that follows, the way the left menu holds its filters.</summary>
+    private sealed class Watched : IDisposable
+    {
+        private readonly IDisposable _subscription;
+        private readonly object _lock = new();
+        private bool? _latest;
+
+        public Watched(IObservable<bool> observable) => _subscription = observable.Subscribe(value => { lock (_lock) _latest = value; });
+
+        private bool? Latest { get { lock (_lock) return _latest; } }
+
+        /// <summary>Waits for <paramref name="expected"/> and checks it holds, so a passing value on the way doesn't count.</summary>
+        public async Task ShouldSettleOn(bool expected, string because)
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+            while (Latest != expected && DateTime.UtcNow < deadline) await Task.Delay(50);
+            await Task.Delay(500);
+            Latest.Should().Be(expected, because);
+        }
+
+        public void Dispose() => _subscription.Dispose();
+    }
+
+    [Fact]
+    public async Task AfterAnUpdateTheMenuListsTheCollectionOnceAsInstalled()
+    {
+        var s = await InstalledFirstRevision();
+        var downloader = ServiceProvider.GetRequiredService<CollectionDownloader>();
+        using var listed = new Watched(downloader.IsListedAsInstalledObservable(s.Group));
+        using var firstOffered = new Watched(downloader.IsOfferedForInstallObservable(s.First.Revision, s.Loadout));
+        using var secondOffered = new Watched(downloader.IsOfferedForInstallObservable(s.Second.Revision, s.Loadout));
+        await listed.ShouldSettleOn(true, "revision 1 is installed");
+        await firstOffered.ShouldSettleOn(false, "revision 1 is installed");
+        await secondOffered.ShouldSettleOn(true, "revision 2 is downloaded and waiting to be installed");
+
+        var result = await CollectionUpdater.Update(ServiceProvider, s.Group, s.Second.Revision);
+        result.Error.Should().BeNull();
+
+        await listed.ShouldSettleOn(true, "the collection is installed, now on revision 2");
+        await firstOffered.ShouldSettleOn(false, "the collection was updated past revision 1");
+        await secondOffered.ShouldSettleOn(false, "revision 2 is the installed one");
+    }
+
     [Fact]
     public async Task AnOldRevisionIsSupersededOnceTheCollectionIsUpdatedPastIt()
     {

@@ -296,6 +296,39 @@ public class CollectionDownloader
     }
 
     /// <summary>
+    /// Emits whether the left menu lists <paramref name="group"/> as an installed collection: every required mod of the
+    /// revision it is on is installed in it.
+    /// </summary>
+    public IObservable<bool> IsListedAsInstalledObservable(NexusCollectionLoadoutGroup.ReadOnly group)
+    {
+        var groupObservable = Observable.Return(Optional<CollectionGroup.ReadOnly>.Create(group.AsCollectionGroup()));
+        // An update switches the group to another revision in place; judged by the revision it had when first listed,
+        // the group would read as missing the mods the update replaced.
+        return _connection.ObserveDatoms(NexusCollectionLoadoutGroup.Revision)
+            .QueryWhenChanged(_ => NexusCollectionLoadoutGroup.Load(_connection.Db, group.Id))
+            .Prepend(NexusCollectionLoadoutGroup.Load(_connection.Db, group.Id))
+            .Where(static current => current.IsValid())
+            .Select(static current => current.Revision.Id)
+            .DistinctUntilChanged()
+            .Select(revision => IsCollectionInstalledObservable(CollectionRevisionMetadata.Load(_connection.Db, revision), groupObservable))
+            .Switch();
+    }
+
+    /// <summary>
+    /// Emits whether the left menu offers <paramref name="revision"/> for install into <paramref name="loadout"/>: it isn't
+    /// installed there, and it isn't an older revision of a collection the loadout has updated past.
+    /// </summary>
+    public IObservable<bool> IsOfferedForInstallObservable(CollectionRevisionMetadata.ReadOnly revision, LoadoutId loadout)
+    {
+        var groupObservable = GetCollectionGroupObservable(revision, loadout);
+        var isNotInstalledObservable = IsCollectionInstalledObservable(revision, groupObservable).Select(static isInstalled => !isInstalled);
+        // An update leaves the old revision behind with nothing installed from it; listing it would show the
+        // collection twice under one name.
+        var isSupersededObservable = CollectionUpdater.ObserveIsSuperseded(_connection, revision, loadout);
+        return isNotInstalledObservable.CombineLatest(isSupersededObservable, static (isNotInstalled, isSuperseded) => isNotInstalled && !isSuperseded);
+    }
+
+    /// <summary>
     /// Returns all missing downloads and Uris.
     /// </summary>
     public IReadOnlyList<(CollectionDownload.ReadOnly Download, Uri Uri)> GetMissingDownloadLinks(CollectionRevisionMetadata.ReadOnly revision, IDb db, ItemType itemType = ItemType.Required)
@@ -624,21 +657,14 @@ public class CollectionDownloader
     /// </summary>
     public IObservable<Optional<CollectionGroup.ReadOnly>> GetCollectionGroupObservable(CollectionRevisionMetadata.ReadOnly revision, LoadoutId targetLoadout)
     {
+        // The whole attribute, not the datoms holding this revision: those don't report a group an update switches to
+        // the revision in place, which left the revision's page and the left menu offering an installed collection.
         return _connection
-            .ObserveDatoms(NexusCollectionLoadoutGroup.Revision, revision)
-            .QueryWhenChanged(query =>
-            {
-                foreach (var datom in query.Items)
-                {
-                    var group = CollectionGroup.Load(_connection.Db, datom.E);
-                    if (!group.IsValid()) continue;
-                    if (group.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId != targetLoadout) continue;
-                    return Optional<CollectionGroup.ReadOnly>.Create(group);
-                }
-
-                return Optional<CollectionGroup.ReadOnly>.None;
-            })
-            .Prepend(GetCollectionGroup(revision, targetLoadout, _connection.Db).Convert(static x => x.AsCollectionGroup()));
+            .ObserveDatoms(NexusCollectionLoadoutGroup.Revision)
+            .QueryWhenChanged(_ => GetCollectionGroup(revision, targetLoadout, _connection.Db))
+            .Prepend(GetCollectionGroup(revision, targetLoadout, _connection.Db))
+            .Select(static group => group.Convert(static x => x.AsCollectionGroup()))
+            .DistinctUntilChanged(static group => group.HasValue ? group.Value.Id : default);
     }
 
     /// <summary>
