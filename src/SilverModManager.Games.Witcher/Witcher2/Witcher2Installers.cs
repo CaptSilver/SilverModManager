@@ -15,6 +15,8 @@ internal static class Witcher2Installers
         {
             Root = node => node.HasDirectChild("cook.hash"),
             Destination = new GamePath(LocationId.Game, "UserContent"),
+            // Without this a readme outside the cook.hash folder makes the installer decline and the mod lands in CookedPC.
+            IgnoreFiles = [KnownExtensions.Txt, KnownExtensions.Md, KnownExtensions.Png, KnownExtensions.Jpg],
         },
         new GenericPatternMatchInstaller(provider)
         {

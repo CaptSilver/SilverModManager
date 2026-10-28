@@ -60,6 +60,21 @@ public class Witcher2InstallerTests(ITestOutputHelper outputHelper) : ALibraryAr
     }
 
     [Fact]
+    public async Task CookHashInAFolder_WithARootLevelReadme_StillGoesToUserContent()
+    {
+        var loadout = await CreateLoadout();
+        var archive = await AddFromPaths("readme.txt", "MyMod/cook.hash", "MyMod/pack0.dzip");
+
+        var result = await LoadoutManager.InstallItem(archive.AsLibraryFile().AsLibraryItem(), loadout.LoadoutId);
+
+        var targets = result.LoadoutItemGroup!.Value.Children.OfTypeLoadoutItemWithTargetPath()
+            .Select(f => ((GamePath)f.TargetPath).ToString())
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        targets.Should().Equal("{Game}/UserContent/cook.hash", "{Game}/UserContent/pack0.dzip");
+    }
+
+    [Fact]
     public async Task UnknownLayout_IsNotSupportedByEveryInstaller()
     {
         var loadout = await CreateLoadout();
