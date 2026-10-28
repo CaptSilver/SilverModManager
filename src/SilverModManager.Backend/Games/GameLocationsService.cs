@@ -54,7 +54,8 @@ internal class GameLocationsService : IGameLocationsService
         var newFiles = new ConcurrentDictionary<GamePath, IndexFileResult>();
         var modifiedFiles = new ConcurrentDictionary<GamePath, IndexFileResult>();
 
-        await Parallel.ForEachAsync(enumerable, cancellationToken: outerToken, async (file, token) =>
+        var options = new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = outerToken };
+        await Parallel.ForEachAsync(enumerable, options, async (file, token) =>
         {
             try
             {

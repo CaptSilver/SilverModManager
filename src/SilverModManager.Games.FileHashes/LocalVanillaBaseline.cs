@@ -79,7 +79,10 @@ internal sealed record BaselineRequest
 
 internal readonly record struct NonVanillaEntry(RelativePath Path, NonVanillaReason Reason, Size Size);
 
-internal sealed record BaselineBuild(EntityId BaselineId, IReadOnlyList<NonVanillaEntry> NonVanilla);
+internal sealed record BaselineBuild(EntityId BaselineId, IReadOnlyList<NonVanillaEntry> NonVanilla)
+{
+    public int Count(NonVanillaReason reason) => NonVanilla.Count(e => e.Reason == reason);
+}
 
 /// <summary>
 /// Classifies every file under a game directory against the depot manifests of the installed build and
@@ -95,7 +98,6 @@ internal sealed record BaselineBuild(EntityId BaselineId, IReadOnlyList<NonVanil
 /// </summary>
 internal sealed class LocalVanillaBaseline
 {
-    private const int HashParallelism = 4;
 
     /// <summary>
     /// Stamped on every baseline built. Bump it whenever <see cref="Classify"/> or the ignore rules change what
@@ -152,8 +154,8 @@ internal sealed class LocalVanillaBaseline
         var hashed = await HashCandidates(toRead, stats, cancellationToken);
         hashed.AddRange(resolved);
         _logger.LogInformation(
-            "Baseline of {Root}: {Trusted} files trusted without reading, {Stored} taken from stored hashes, {Read} read ({Bytes} bytes), {Elapsed}",
-            request.GameRoot, stats.Trusted, resolved.Count, stats.Read, stats.BytesRead, stopwatch.Elapsed);
+            "Baseline of {Root}: {Trusted} files vouched for by the store ({Stored} with stored hashes, {TrustedRead} read because no hash was stored), {Read} read in all ({Bytes} bytes), {Elapsed}",
+            request.GameRoot, stats.Trusted, resolved.Count, stats.TrustedWithoutStoredHash, stats.Read, stats.BytesRead, stopwatch.Elapsed);
 
         using var tx = localStore.BeginTransaction();
         RetractAt(tx, localStore.Db, request.Store, request.GamePath);
@@ -315,6 +317,9 @@ internal sealed class LocalVanillaBaseline
         /// <summary>Files the store vouches for, whether or not a stored hash was found for them.</summary>
         public int Trusted { get; set; }
 
+        /// <summary>The vouched files that had to be read anyway because no row held their hashes.</summary>
+        public int TrustedWithoutStoredHash { get; set; }
+
         public int Read => _read;
 
         public long BytesRead => Interlocked.Read(ref _bytesRead);
@@ -357,7 +362,11 @@ internal sealed class LocalVanillaBaseline
 
             stats.Trusted++;
             if (FindStoredHash(databases, entry.Sha1, candidate.Size) is { } hash) resolved.Add(new Hashed(candidate, hash));
-            else toRead.Add(candidate);
+            else
+            {
+                stats.TrustedWithoutStoredHash++;
+                toRead.Add(candidate);
+            }
         }
 
         return (resolved, toRead);
@@ -389,7 +398,7 @@ internal sealed class LocalVanillaBaseline
     private async Task<List<Hashed>> HashCandidates(List<Candidate> candidates, RebuildStats stats, CancellationToken cancellationToken)
     {
         var results = new ConcurrentBag<Hashed>();
-        var options = new ParallelOptions { MaxDegreeOfParallelism = HashParallelism, CancellationToken = cancellationToken };
+        var options = new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = cancellationToken };
         await Parallel.ForEachAsync(candidates, options, async (candidate, token) =>
         {
             try

@@ -32,6 +32,7 @@ public sealed class EnsureLocalBaselineTests : IDisposable
     private readonly IConnection _store;
     private readonly FakeManifestSource _source;
     private readonly LocalBaselineCoordinator _coordinator;
+    private readonly CapturingLogger _coordinatorLog = new();
 
     public EnsureLocalBaselineTests()
     {
@@ -45,10 +46,23 @@ public sealed class EnsureLocalBaselineTests : IDisposable
             () => _store,
             new LocalVanillaBaseline(FileSystem.Shared, NullLogger<LocalVanillaBaseline>.Instance),
             _source,
-            NullLogger<LocalBaselineCoordinator>.Instance);
+            _coordinatorLog);
     }
 
     public void Dispose() => _harness.Dispose();
+
+    [Fact]
+    public async Task Build_LogsFilesTheManifestsDoNotListApartFromChangedOnes()
+    {
+        WriteGameFile("a.esm", "vanilla");
+        WriteGameFile("mods/x.esp", "mod");
+        WriteGameFile("mods/y.esp", "mod2");
+        _source.Add(101, ("a.esm", "vanilla"));
+
+        await _coordinator.Ensure(Installation("101"));
+
+        _coordinatorLog.Lines.Should().ContainSingle(l => l.Contains("2 files the manifests do not list") && !l.Contains("differ from"));
+    }
 
     [Fact]
     public async Task FirstCall_BuildsABaselineFromTheManifests()
@@ -694,5 +708,17 @@ public sealed class EnsureLocalBaselineTests : IDisposable
             lock (Reads) Reads.Add(id);
             return _results[id];
         }
+    }
+
+    private sealed class CapturingLogger : Microsoft.Extensions.Logging.ILogger<LocalBaselineCoordinator>
+    {
+        public List<string> Lines { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Lines.Add(formatter(state, exception));
     }
 }

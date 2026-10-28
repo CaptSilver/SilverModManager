@@ -154,7 +154,9 @@ internal sealed class LocalBaselineCoordinator : IDisposable
 
         var build = await _baseline.Build(request, store, cancellationToken);
         var built = LocalBaseline.Load(_localStore().Db, build.BaselineId);
-        _logger.LogInformation("Built the {Kind} baseline for {Game}: {NonVanilla} files differ from the store's manifests", built.Kind, installation.Game.DisplayName, build.NonVanilla.Count);
+        _logger.LogInformation("Built the {Kind} baseline for {Game}: {NotInManifest} files the manifests do not list, {SizeDiffers} of another size, {HashDiffers} with other content",
+            built.Kind, installation.Game.DisplayName,
+            build.Count(NonVanillaReason.NotInManifest), build.Count(NonVanillaReason.SizeDiffers), build.Count(NonVanillaReason.HashDiffers));
         return new LocalBaselineResult(built.Kind, Rebuilt: true, build.NonVanilla.Count);
     }
 

@@ -38,6 +38,31 @@ public sealed class LocalVanillaBaselineTests : IDisposable
     public void Dispose() => _harness.Dispose();
 
     [Fact]
+    public async Task Build_ReportsEachNonVanillaReasonSeparately()
+    {
+        WriteFile("a.esm", "vanilla"); WriteFile("b.esm", "vanilla2"); WriteFile("c.esm", "vanilla3");
+        WriteFile("mods/x.esp", "mod"); WriteFile("mods/y.esp", "mod2");
+        WriteFile("d.esm", "longer-than-manifest");
+
+        var result = await Build([Manifest(1, ("a.esm", "vanilla"), ("b.esm", "vanilla2"), ("c.esm", "vanilla3"), ("d.esm", "short"))]);
+
+        result.Count(NonVanillaReason.NotInManifest).Should().Be(2);
+        result.Count(NonVanillaReason.SizeDiffers).Should().Be(1);
+        result.Count(NonVanillaReason.HashDiffers).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Classify_MatchesManifestBackslashAndCaseAgainstDisk()
+    {
+        WriteFile("content/content0/x.bundle", "vanilla");
+
+        var result = await Build([Manifest(1, (@"content\Content0\x.bundle", "vanilla"))]);
+
+        result.NonVanilla.Should().BeEmpty();
+        LocalBaseline.Load(_store.Db, result.BaselineId).Files.Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task VanillaFile_IsWrittenWithItsHashes()
     {
         WriteFile("a.esm", "vanilla");

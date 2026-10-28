@@ -179,15 +179,14 @@ public sealed class TrustedBaselineTests : IDisposable
     public async Task Rebuild_LogsHowManyFilesWereTrustedStoredAndRead()
     {
         WriteFile("a.esm", "vanilla", InstallTime.AddDays(-1));
+        await Build([Manifest(1, ("a.esm", "vanilla"))], trust: false);
         WriteFile("b.esm", "other", InstallTime.AddDays(-1));
-        var manifests = new[] { Manifest(1, ("a.esm", "vanilla"), ("b.esm", "other")) };
-        await Build(manifests, trust: false);
-        WriteFile("b.esm", "other", InstallTime.AddHours(1));
         _logger.Lines.Clear();
 
-        await Build(manifests, trust: true);
+        await Build([Manifest(1, ("a.esm", "vanilla"), ("b.esm", "other"))], trust: true);
 
-        _logger.Lines.Should().ContainSingle(l => l.Contains("1 files trusted") && l.Contains("1 taken from stored hashes") && l.Contains("1 read"));
+        _logger.Lines.Should().ContainSingle(l =>
+            l.Contains("2 files vouched for by the store") && l.Contains("1 with stored hashes") && l.Contains("1 read because no hash was stored"));
     }
 
     private Task<BaselineBuild> Build(Manifest[] manifests, bool trust, bool settled = true, bool knownInstallTime = true, IDb[]? extraDatabases = null)

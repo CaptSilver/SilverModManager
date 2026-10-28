@@ -76,6 +76,19 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
     }
 
     [Fact]
+    public async Task FirstIndex_NeverReadsMoreFilesAtOnceThanTheSharedCap()
+    {
+        // On a machine with no more threads than the cap the unbounded loop never exceeds it, so nothing could fail.
+        if (Environment.ProcessorCount <= HashingLimits.FileReaders) return;
+        await WriteGameFiles(64);
+        var service = CreateService();
+
+        await service.IndexGame(_installation, FrozenDictionary<GamePath, DiskStateEntry.ReadOnly>.Empty, GamePathFilters.Empty);
+
+        _hasher.PeakConcurrency.Should().BeLessThanOrEqualTo(HashingLimits.FileReaders);
+    }
+
+    [Fact]
     public async Task ReindexAfterAnUnchangedIndex_HashesNothing()
     {
         await WriteGameFiles(20);
@@ -239,14 +252,33 @@ public sealed class GameLocationsServiceIndexTests : IDisposable
     private sealed class CountingHasher : IFullFileHasher
     {
         private readonly ConcurrentBag<AbsolutePath> _paths = [];
+        private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _inFlight;
+        private int _peak;
         public int Calls => _paths.Count;
         public IReadOnlyCollection<AbsolutePath> Paths => _paths;
+        public int PeakConcurrency => Volatile.Read(ref _peak);
         public void Reset() => _paths.Clear();
 
         public async ValueTask<Hash> Hash(AbsolutePath file, CancellationToken cancellationToken)
         {
             _paths.Add(file);
-            return await file.XxHash3Async(token: cancellationToken);
+            var now = Interlocked.Increment(ref _inFlight);
+            int seen;
+            while ((seen = Volatile.Read(ref _peak)) < now && Interlocked.CompareExchange(ref _peak, now, seen) != seen) { }
+
+            // Parks every call until the cap's worth are in flight, or half a second has passed: with the cap
+            // only that many calls can arrive, so waiting for more would deadlock the index.
+            if (now >= HashingLimits.FileReaders) _gate.TrySetResult();
+            else await Task.WhenAny(_gate.Task, Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken));
+            try
+            {
+                return await file.XxHash3Async(token: cancellationToken);
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _inFlight);
+            }
         }
     }
 }
