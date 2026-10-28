@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using System.Collections.Concurrent;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
@@ -178,7 +179,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         var game = (loadout.InstallationInstance.Game as IGame)!;
         var fallbackInstaller = FallbackCollectionDownloadInstaller.Create(ServiceProvider, loadout, game);
 
-        await Parallel.ForEachAsync(modsAndDownloads, context.CancellationToken, async (modAndDownload, _) =>
+        await Parallel.ForEachAsync(modsAndDownloads, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = context.CancellationToken }, async (modAndDownload, _) =>
         {
             try
             {

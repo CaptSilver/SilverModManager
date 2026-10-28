@@ -1,3 +1,4 @@
+using SilverModManager.Sdk.Hashes;
 using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.Loadouts.Deployment;
@@ -329,7 +330,7 @@ public abstract class LinkDeploymentBackendBase(CopyDeploymentBackend copy, ILoo
         }
 
         // A file Ensure just extracted is trusted. Only one that was already there can have been written through.
-        await Parallel.ForEachAsync(reused, async (hash, token) =>
+        await Parallel.ForEachAsync(reused, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders }, async (hash, token) =>
         {
             var actual = await storeFiles[hash].XxHash3Async(token: token);
             if (actual == hash) return;

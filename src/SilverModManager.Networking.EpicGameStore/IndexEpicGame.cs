@@ -59,7 +59,7 @@ public static class IndexEpicGame
 
         await using (var _ = await renderer.WithProgress())
         {
-            await Parallel.ForEachAsync(location.EnumerateFiles(), token, async (file, token) =>
+            await Parallel.ForEachAsync(location.EnumerateFiles(), new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = token }, async (file, token) =>
                 {
                     var relPath = file.RelativeTo(location);
 

@@ -311,7 +311,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         if (!libraryFile.TryGetAsLibraryArchive(out var libraryArchive))
             throw new NotImplementedException();
 
-        await Parallel.ForEachAsync(libraryArchive.Children, async (child, token) =>
+        await Parallel.ForEachAsync(libraryArchive.Children, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders }, async (child, token) =>
         {
             await using var stream = await FileStore.GetFileStream(child.AsLibraryFile().Hash, token);
             var md5 = await Md5Hasher.HashAsync(stream, cancellationToken: token);
@@ -403,7 +403,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         var patches = CollectionMod.Patches.ToArray();
         var results = new ValueTuple<PatchedFile, MemoryStream>[patches.Length];
 
-        await Parallel.ForAsync(fromInclusive: 0, toExclusive: patches.Length, cancellationToken: cancellationToken, async (i, innerCancellationToken) =>
+        await Parallel.ForAsync(fromInclusive: 0, toExclusive: patches.Length, parallelOptions: new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = cancellationToken }, async (i, innerCancellationToken) =>
         {
             var patch = patches[i];
             var result = await PatchFile(patch.Key, patch.Value, srcFiles, collectionFiles, cancellationToken: innerCancellationToken);

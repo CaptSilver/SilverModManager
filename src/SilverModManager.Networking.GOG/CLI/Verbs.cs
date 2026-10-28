@@ -147,7 +147,7 @@ public static class Verbs
                                     var (manifestId, depot, manifest) = row;
                                     ConcurrentDictionary<string, Hash> foundHashes = new();
 
-                                    await Parallel.ForEachAsync(manifest.Items, token, async (item, _) =>
+                                    await Parallel.ForEachAsync(manifest.Items, new ParallelOptions { MaxDegreeOfParallelism = HashingLimits.FileReaders, CancellationToken = token }, async (item, _) =>
                                         {
                                             // If we have a MD5 hash and we've already indexed it, don't re-index it
                                             if (item.Md5.HasValue && existingHashes.TryGetValue(item.Md5.Value, out var hash))
