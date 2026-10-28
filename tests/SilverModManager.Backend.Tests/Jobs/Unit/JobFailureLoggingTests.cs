@@ -20,10 +20,13 @@ public class JobFailureLoggingTests
         public Task FailureLogged => _failureLogged.WaitAsync(TimeSpan.FromSeconds(30));
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(LogLevel logLevel) => true;
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
+            // Start/end tracing at Debug is not what these tests are about.
+            if (!IsEnabled(logLevel)) return;
+
             lock (Entries) Entries.Add((logLevel, exception));
             _failureLogged.Release();
         }

@@ -147,7 +147,9 @@ public sealed class JobMonitor : IJobMonitor, IDisposable
     {
         Task.Run(async () =>
         {
+            _logger.LogDebug("Job {JobId} of type {JobType} starting", ((IJob)ctx).Id, ctx.JobType);
             await ctx.Start();
+            _logger.LogDebug("Job {JobId} of type {JobType} ended as {Status}", ((IJob)ctx).Id, ctx.JobType, ((IJob)ctx).Status);
             
             // Note(sewer): Per the existing comment in IJob.
             // An untyped job interface, this is the reporting end of a job. The writable side is the <see cref="IJobContext{TJobType}"/>

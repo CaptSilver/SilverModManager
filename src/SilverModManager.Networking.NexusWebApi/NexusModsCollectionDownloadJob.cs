@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Downloads;
 using SilverModManager.Abstractions.NexusModsLibrary;
 using SilverModManager.Abstractions.NexusWebApi;
@@ -93,7 +94,42 @@ public class NexusModsCollectionDownloadJob : IJobDefinitionWithStart<NexusModsC
     public async ValueTask<AbsolutePath> StartAsync(IJobContext<NexusModsCollectionDownloadJob> context)
     {
         var downloadLinks = await ApiClient.CollectionDownloadLinksAsync(Slug, Revision, true, context.CancellationToken);
-        DownloadJob = HttpDownloadJob.Create(ServiceProvider, downloadLinks.Data.DownloadLinks.First().Uri, downloadLinks.Data.DownloadLinks.First().Uri, Destination);
-        return await DownloadJob;
+        var links = downloadLinks.Data.DownloadLinks;
+        if (links.Length == 0)
+            throw new InvalidOperationException("Nexus Mods returned no download links for this collection revision");
+
+        var logger = ServiceProvider.GetRequiredService<ILogger<NexusModsCollectionDownloadJob>>();
+        var failures = new List<string>();
+
+        // The links are different CDN nodes for the same file, and a node can be unreachable from one network while
+        // the next works fine, so try them in the order Nexus gave until one delivers.
+        foreach (var link in links)
+        {
+            var host = link.Uri.Authority;
+            try
+            {
+                // The page URI only ends up in logs, and the link's query holds a signature.
+                DownloadJob = HttpDownloadJob.Create(ServiceProvider, link.Uri, new Uri(link.Uri.GetLeftPart(UriPartial.Path)), Destination);
+                return await DownloadJob;
+            }
+            catch (Exception e) when (!context.CancellationToken.IsCancellationRequested && e is not OperationCanceledException)
+            {
+                var reason = Describe(host, e);
+                failures.Add(reason);
+                logger.LogInformation("Collection download from `{Cdn}` failed ({Reason}), moving on to the next link", host, reason);
+            }
+        }
+
+        throw new HttpRequestException($"None of the download servers for this collection worked: {string.Join("; ", failures)}");
     }
+
+    /// <summary>
+    /// A reason that names the host but never carries the URL, whose query holds a signature.
+    /// </summary>
+    private static string Describe(string host, Exception exception) => exception switch
+    {
+        HostNotRespondingException e => e.Message,
+        HttpRequestException { StatusCode: { } status } => $"{host} returned {(int)status}",
+        _ => $"{host} failed to download",
+    };
 }

@@ -313,6 +313,7 @@ public partial class NexusModsLibrary
         if (revisions.TryGetFirst(out var revision)) return revision;
 
         var collectionRoot = await ParseCollectionJsonFile(collectionLibraryFile, cancellationToken);
+        _logger.LogDebug("Parsed collection.json of revision {Revision} of `{Slug}`; querying the revision", revisionNumber, slug);
 
         var graphQlResult = await _graphQlClient.QueryCollectionRevision(
             collectionSlug: slug,
@@ -323,6 +324,7 @@ public partial class NexusModsLibrary
         // TODO: handle errors
         var collectionRevision = graphQlResult.AssertHasData();
 
+        _logger.LogDebug("Adding revision {Revision} of `{Slug}` to the database", revisionNumber, slug);
         var revisionMetadata = await AddCollectionToDatabase(collectionRoot, collectionRevision.Collection, collectionRevision, cancellationToken);
         return revisionMetadata;
     }

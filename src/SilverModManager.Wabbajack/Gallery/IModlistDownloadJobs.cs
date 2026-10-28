@@ -22,7 +22,7 @@ public sealed class ModlistDownloadJobs(IServiceProvider provider) : IModlistDow
     public IJobTask<IDownloadJob, AbsolutePath> Create(Uri url, AbsolutePath destination)
         => IsWabbajackCdn(url)
             ? WabbajackCdnDownloadJob.Create(provider, url, destination)
-            : HttpDownloadJob.Create(provider, url, url, destination);
+            : HttpDownloadJob.Create(provider, url, new Uri(url.GetLeftPart(UriPartial.Path)), destination);
 
     internal static bool IsWabbajackCdn(Uri url)
         => WabbajackCdnDownloadJob.DomainRemaps.ContainsKey(url.Host)

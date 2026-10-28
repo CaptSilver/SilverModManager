@@ -65,7 +65,10 @@ public sealed class JobContext<TJobDefinition, TJobResult> : IJobWithResult<TJob
             SetStatus(JobStatus.Completed);
             _tcs.TrySetResult(_result.Value);
         }
-        catch (OperationCanceledException)
+        // A timeout surfaces as an OperationCanceledException too (HttpClient does this), but nobody cancelled
+        // anything, so it falls through to Failed. Cancelling a child job also reaches here as one, with a token that
+        // is not this job's own, so the token can't be the test either.
+        catch (OperationCanceledException e) when (JobCancellationToken.IsPaused || JobCancellationToken.IsCancelled || !TimeoutDetection.HasTimeoutInChain(e))
         {
             // Distinguish between pause and true cancellation
             // Note: Job will restart when Start() is called again

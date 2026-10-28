@@ -4,6 +4,7 @@ using Avalonia.Media.Imaging;
 using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SilverModManager.Abstractions.Loadouts;
 using SilverModManager.Abstractions.NexusModsLibrary.Models;
 using SilverModManager.Abstractions.NexusWebApi;
@@ -72,6 +73,7 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
         var collectionDownloader = serviceProvider.GetRequiredService<CollectionDownloader>();
         var loginManager = serviceProvider.GetRequiredService<ILoginManager>();
         var jobMonitor = serviceProvider.GetRequiredService<IJobMonitor>();
+        var logger = serviceProvider.GetRequiredService<ILogger<CollectionDownloadViewModel>>();
 
         var tileImagePipeline = ImagePipelines.GetCollectionTileImagePipeline(serviceProvider);
         var backgroundImagePipeline = ImagePipelines.GetCollectionBackgroundImagePipeline(serviceProvider);
@@ -262,20 +264,34 @@ public sealed partial class CollectionDownloadViewModel : APageViewModel<ICollec
             executeAsync: async (_, cancellationToken) =>
             {
                 var newestRevisionNumber = NewestRevisionNumber.Value.Value;
-                var revision = await collectionDownloader.GetOrAddRevision(_collection.Slug, newestRevisionNumber, cancellationToken);
-
-                var pageData = new PageData
+                try
                 {
-                    FactoryId = CollectionDownloadPageFactory.StaticId,
-                    Context = new CollectionDownloadPageContext
-                    {
-                        TargetLoadout = targetLoadout,
-                        CollectionRevisionMetadataId = revision,
-                    },
-                };
+                    logger.LogDebug("Updating collection `{Slug}` from revision {From} to {To}", _collection.Slug, _revision.RevisionNumber, newestRevisionNumber);
+                    var revision = await collectionDownloader.GetOrAddRevision(_collection.Slug, newestRevisionNumber, cancellationToken);
+                    logger.LogDebug("Got revision {To} of collection `{Slug}` as {Id}; opening its page", newestRevisionNumber, _collection.Slug, revision.Id);
 
-                var workspaceController = GetWorkspaceController();
-                workspaceController.OpenPage(WorkspaceId, pageData, new OpenPageBehavior.ReplaceTab(PanelId, TabId));
+                    var pageData = new PageData
+                    {
+                        FactoryId = CollectionDownloadPageFactory.StaticId,
+                        Context = new CollectionDownloadPageContext
+                        {
+                            TargetLoadout = targetLoadout,
+                            CollectionRevisionMetadataId = revision,
+                        },
+                    };
+
+                    var workspaceController = GetWorkspaceController();
+                    workspaceController.OpenPage(WorkspaceId, pageData, new OpenPageBehavior.ReplaceTab(PanelId, TabId));
+                }
+                catch (Exception e) when (!cancellationToken.IsCancellationRequested && !TimeoutDetection.IsRealCancellation(e))
+                {
+                    // Not rethrown: the command has no error handler, so a throw would be swallowed along with the explanation.
+                    logger.LogError(e, "Updating collection `{Slug}` to revision {To} failed", _collection.Slug, newestRevisionNumber);
+                    _notificationService.ShowToast(
+                        string.Format(Language.ToastNotification_Couldn_t_update_to_revision__0____1_, newestRevisionNumber, e.Message),
+                        ToastNotificationVariant.Failure
+                    );
+                }
             }, awaitOperation: AwaitOperation.Drop, configureAwait: false
         );
 

@@ -1256,6 +1256,9 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="ToastNotification_Mod_updated____0_" xml:space="preserve">
         <value>Mod updated - {0}</value>
     </data>
+    <data name="ToastNotification_Couldn_t_update_to_revision__0____1_" xml:space="preserve">
+        <value>Couldn't update to revision {0}: {1}</value>
+    </data>
     <data name="ToastNotification_Adding_collection____0_" xml:space="preserve">
         <value>Collection added successfully - {0}</value>
     </data>

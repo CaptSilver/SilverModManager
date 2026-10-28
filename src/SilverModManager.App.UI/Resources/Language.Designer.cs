@@ -3913,6 +3913,15 @@ namespace SilverModManager.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Couldn't update to revision {0}: {1}.
+        /// </summary>
+        public static string ToastNotification_Couldn_t_update_to_revision__0____1_ {
+            get {
+                return ResourceManager.GetString("ToastNotification_Couldn_t_update_to_revision__0____1_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Mod uninstalled.
         /// </summary>
         public static string ToastNotification_Mods_removed {

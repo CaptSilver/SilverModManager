@@ -112,7 +112,9 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
         if (_state.TotalBytesDownloaded > Size.Zero)
             Logger.LogInformation("Resuming download from {Bytes} bytes", _state.TotalBytesDownloaded);
         
-        await FetchMetadata(context);
+        Logger.LogDebug("Requesting headers of `{Uri}`", Uri.GetLeftPart(UriPartial.Path));
+        await WithHostTimeoutReported(() => FetchMetadata(context).AsTask(), context);
+        Logger.LogDebug("Downloading `{Uri}`, {Length} bytes", Uri.GetLeftPart(UriPartial.Path), _state.ContentLength);
 
         await context.YieldAsync();
         await using var fileStream = Destination.Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
@@ -141,11 +143,11 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
 
         await context.YieldAsync();
         using var request = PrepareRequest(out var isRangeRequest);
-        using var response = await Client.SendAsync(
+        using var response = await WithHostTimeoutReported(() => Client.SendAsync(
             request: request,
             completionOption: HttpCompletionOption.ResponseHeadersRead,
             cancellationToken: context.CancellationToken
-        );
+        ), context);
 
         response.EnsureSuccessStatusCode();
 
@@ -218,6 +220,50 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
         return Destination;
     }
     
+    /// <summary>
+    /// HttpClient reports its own timeout as a cancellation, and a connect timeout as a plain network error. Left alone
+    /// the first looks like the user cancelled and the second gets retried several times over, so both become a
+    /// <see cref="HostNotRespondingException"/> that names the host and is not retried.
+    /// </summary>
+    private async Task<T> WithHostTimeoutReported<T>(Func<Task<T>> request, IJobContext context)
+    {
+        try
+        {
+            return await request();
+        }
+        catch (Exception e) when (IsTimeout(e, context))
+        {
+            throw new HostNotRespondingException(Uri.Authority, e);
+        }
+    }
+
+    private async Task WithHostTimeoutReported(Func<Task> request, IJobContext context)
+    {
+        await WithHostTimeoutReported(async () =>
+        {
+            await request();
+            return true;
+        }, context);
+    }
+
+    private static bool IsTimeout(Exception exception, IJobContext context)
+    {
+        // Pausing cancels the token and then swaps in a fresh one, so by the time this runs the token itself no longer
+        // says the job was interrupted. The job's own state does.
+        if (context.JobCancellationToken.IsPaused || context.JobCancellationToken.IsCancelled) return false;
+        return HasConnectTimeout(exception);
+    }
+
+    internal static bool HasConnectTimeout(Exception? exception)
+    {
+        if (TimeoutDetection.HasTimeoutInChain(exception)) return true;
+        for (; exception is not null; exception = exception.InnerException)
+        {
+            if (exception is SocketException { SocketErrorCode: SocketError.TimedOut }) return true;
+        }
+        return false;
+    }
+
     private HttpRequestMessage PrepareRequest(out bool isRangeRequest)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, Uri);
@@ -309,6 +355,18 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
 
         return pipeline;
     }
+}
+
+/// <summary>
+/// The host of a download did not answer in time. Deliberately not a network error the retry pipeline recognises:
+/// a host that never connects is not going to start after a few seconds.
+/// </summary>
+public class HostNotRespondingException(string host, Exception inner) : Exception($"{host} didn't respond", inner)
+{
+    /// <summary>
+    /// The host (and port, when not the default) that did not respond, without the path or query of the request.
+    /// </summary>
+    public string Host { get; } = host;
 }
 
 /// <summary>
