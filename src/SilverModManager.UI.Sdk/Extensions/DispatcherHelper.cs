@@ -4,6 +4,15 @@ namespace SilverModManager.UI.Sdk;
 
 public static class DispatcherHelper
 {
+    private const string Operation = "DispatcherHelper";
+
+    // The scope ends when the delegate returns, which for an async body is its first real await:
+    // after that the UI thread is free and a stall is not this delegate's.
+    private static T Run<T>(Func<T> func)
+    {
+        using var _ = UiOperation.Enter(Operation);
+        return func();
+    }
     
     /// <summary>
     /// Ensures the provided action is executed on the UI thread.
@@ -12,12 +21,14 @@ public static class DispatcherHelper
     {
         if (Dispatcher.UIThread.CheckAccess())
         {
+            using var _ = UiOperation.Enter(Operation);
             action();
             return Task.CompletedTask;
         }
         
         return Dispatcher.UIThread.InvokeAsync(() =>
             {
+                using var _ = UiOperation.Enter(Operation);
                 action();
                 return Task.CompletedTask;
             }
@@ -30,9 +41,9 @@ public static class DispatcherHelper
     public static Task<TResult> EnsureOnUIThreadAsync<TResult>(Func<TResult> func)
     {
         if (Dispatcher.UIThread.CheckAccess())
-            return Task.FromResult(func());
+            return Task.FromResult(Run(func));
         
-        return Dispatcher.UIThread.InvokeAsync(() => Task.FromResult(func()));
+        return Dispatcher.UIThread.InvokeAsync(() => Task.FromResult(Run(func)));
     }
     
     
@@ -43,9 +54,9 @@ public static class DispatcherHelper
     public static Task EnsureOnUIThreadAsync(Func<Task> task)
     {
         if (Dispatcher.UIThread.CheckAccess())
-            return task();
+            return Run(task);
         
-        return Dispatcher.UIThread.InvokeAsync(task);
+        return Dispatcher.UIThread.InvokeAsync(() => Run(task));
     }
     
     /// <summary>
@@ -54,19 +65,24 @@ public static class DispatcherHelper
     public static Task<TResult> EnsureOnUIThreadAsync<TResult>(Func<Task<TResult>> func)
     {
         if (Dispatcher.UIThread.CheckAccess())
-            return func();
+            return Run(func);
         
-        return Dispatcher.UIThread.InvokeAsync(func);
+        return Dispatcher.UIThread.InvokeAsync(() => Run(func));
     }
     
     public static void EnsureOnUIThread(Action action)
     {
         if (Dispatcher.UIThread.CheckAccess())
         {
+            using var _ = UiOperation.Enter(Operation);
             action();
             return;
         }
         
-        Dispatcher.UIThread.Invoke(action);
+        Dispatcher.UIThread.Invoke(() =>
+        {
+            using var _ = UiOperation.Enter(Operation);
+            action();
+        });
     }
 }

@@ -1,3 +1,4 @@
+using SilverModManager.App.UI.Diagnostics;
 using SilverModManager.App.UI.Controls.Cards;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
@@ -106,6 +107,7 @@ public static class Services
             // Replaces the refusing default the data model registers; AddUI runs after AddDataModel.
             .AddSingleton<IBackupOverflowPrompt, DialogBackupOverflowPrompt>()
             .AddSingleton<GameRunningTracker>()
+            .AddSingleton<UiStallWatchdog>()
             .AddTransient<MainWindow>()
 
             // Services

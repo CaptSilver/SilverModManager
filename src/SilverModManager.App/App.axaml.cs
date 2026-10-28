@@ -6,6 +6,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SilverModManager.App.UI;
+using SilverModManager.App.UI.Diagnostics;
 using SilverModManager.App.UI.Helpers;
 using SilverModManager.App.UI.Settings;
 using SilverModManager.App.UI.Windows;
@@ -60,10 +61,14 @@ public class App : Application
             desktop.MainWindow = reactiveWindow;
             _provider.GetService<DesktopShutdownOnHostStop>()?.Attach(desktop);
 
+            var watchdog = _provider.GetRequiredService<UiStallWatchdog>();
+            watchdog.Start();
+
             // Exit runs before the dispatcher stops, which is the last point where a dropped
             // D-Bus connection can still report to the UI context without aborting the process.
             desktop.Exit += (_, _) =>
             {
+                watchdog.Dispose();
                 try
                 {
                     AvaloniaDBus.DisposeDefaultConnection();
