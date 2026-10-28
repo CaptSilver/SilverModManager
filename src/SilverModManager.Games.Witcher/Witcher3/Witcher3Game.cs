@@ -2,10 +2,12 @@ using DynamicData.Kernel;
 using NexusMods.Paths;
 using Microsoft.Extensions.DependencyInjection;
 using SilverModManager.Abstractions.Diagnostics.Emitters;
+using SilverModManager.Abstractions.Games;
 using SilverModManager.Abstractions.Library.Installers;
 using SilverModManager.Abstractions.Loadouts.Synchronizers;
 using SilverModManager.Games.Witcher.Witcher3.Diagnostics;
 using SilverModManager.Games.Witcher.Witcher3.Installers;
+using SilverModManager.Games.Witcher.Witcher3.SortOrder;
 using SilverModManager.Sdk.Games;
 using SilverModManager.Sdk.NexusModsApi;
 
@@ -44,6 +46,8 @@ public sealed class Witcher3Game(IServiceProvider provider) : AWitcherGame<Witch
         provider.GetRequiredService<SkippedScriptMergerEmitter>(),
         provider.GetRequiredService<UnplacedArchiveFilesEmitter>(),
     ];
+
+    protected override ISortOrderVariety[] CreateSortOrderVarieties(IServiceProvider provider) => [new WitcherModSortOrderVariety(provider, this)];
 
     protected override ILoadoutSynchronizer CreateSynchronizer(IServiceProvider provider) => new Witcher3Synchronizer(provider, this);
 

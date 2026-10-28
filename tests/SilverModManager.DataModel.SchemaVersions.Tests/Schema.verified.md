@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x93D2F5C09DCC3AD1
-   - Total attributes: 360
-   - Total namespaces: 101
+   - Fingerprint: 0x370BA421067FC1DD
+   - Total attributes: 363
+   - Total namespaces: 103
    
 ## Attributes
 | AttributeId                                                                               | Type                    | Indexed | Many  | NoHistory | 
@@ -141,6 +141,9 @@ models in the app, then validate the tests to update this file.
 | SilverModManager.Games.RedEngine.Cyberpunk2077.RedModInfoFile/Version                     | Utf8                    | False   | False | False     | 
 | SilverModManager.Games.RedEngine.Cyberpunk2077.RedModSortOrder/Marker                     | Null                    | False   | False | False     | 
 | SilverModManager.Games.RedEngine.Cyberpunk2077.RedModSortableEntry/RedModFolderName       | Utf8Insensitive         | False   | False | False     | 
+| SilverModManager.Games.Witcher.WitcherModSortOrder/Marker                                 | Null                    | False   | False | False     | 
+| SilverModManager.Games.Witcher.WitcherModSortOrderItem/FolderName                         | Utf8                    | False   | False | False     | 
+| SilverModManager.Games.Witcher.WitcherModSortOrderItem/IsEnabled                          | UInt8                   | False   | False | False     | 
 | SilverModManager.Library.DownloadedFile/DownloadPageUri                                   | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.GitHubRelease/AssetName                                          | Utf8                    | False   | False | False     | 
 | SilverModManager.Library.GitHubRelease/Organization                                       | Utf8                    | False   | False | False     | 
